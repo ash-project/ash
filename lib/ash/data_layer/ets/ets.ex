@@ -649,7 +649,9 @@ defmodule Ash.DataLayer.Ets do
     else
       key_filters =
         Enum.map(keys, fn key ->
-          {key, Ash.Changeset.get_attribute(changeset, key)}
+          {key,
+           Ash.Changeset.get_attribute(changeset, key) || Map.get(changeset.params, key) ||
+             Map.get(changeset.params, to_string(key))}
         end)
 
       query = Ash.Query.do_filter(resource, and: [key_filters])
@@ -682,38 +684,61 @@ defmodule Ash.DataLayer.Ets do
 
   @impl true
   def bulk_create(resource, stream, options) do
-    with {:ok, table} <- wrap_or_create_table(resource, options.tenant) do
-      Enum.reduce_while(stream, {:ok, []}, fn changeset, {:ok, results} ->
-        pkey =
-          resource
-          |> Ash.Resource.Info.primary_key()
-          |> Enum.into(%{}, fn attr ->
-            {attr, Ash.Changeset.get_attribute(changeset, attr)}
-          end)
+    if options[:upsert?] do
+      # This is not optimized, but thats okay for now
+      stream
+      |> Enum.reduce_while({:ok, []}, fn changeset, {:ok, results} ->
+        case upsert(resource, changeset, options.upsert_keys) do
+          {:ok, result} ->
+            {:cont,
+             {:ok,
+              [
+                Ash.Resource.put_metadata(
+                  result,
+                  :bulk_create_index,
+                  changeset.context.bulk_create.index
+                )
+                | results
+              ]}}
 
-        with {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
-             record <- unload_relationships(resource, record) do
-          {:cont, {:ok, [{pkey, changeset.context.bulk_create.index, record} | results]}}
-        else
           {:error, error} ->
             {:halt, {:error, error}}
         end
       end)
-      |> case do
-        {:ok, records} ->
-          case put_or_insert_new_batch(table, records, resource, options.return_records?) do
-            :ok ->
-              :ok
+    else
+      with {:ok, table} <- wrap_or_create_table(resource, options.tenant) do
+        Enum.reduce_while(stream, {:ok, []}, fn changeset, {:ok, results} ->
+          pkey =
+            resource
+            |> Ash.Resource.Info.primary_key()
+            |> Enum.into(%{}, fn attr ->
+              {attr, Ash.Changeset.get_attribute(changeset, attr)}
+            end)
 
-            {:ok, records} ->
-              {:ok, Stream.map(records, &set_loaded/1)}
-
+          with {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
+               record <- unload_relationships(resource, record) do
+            {:cont, {:ok, [{pkey, changeset.context.bulk_create.index, record} | results]}}
+          else
             {:error, error} ->
-              {:error, error}
+              {:halt, {:error, error}}
           end
+        end)
+        |> case do
+          {:ok, records} ->
+            case put_or_insert_new_batch(table, records, resource, options.return_records?) do
+              :ok ->
+                :ok
 
-        {:error, error} ->
-          {:error, error}
+              {:ok, records} ->
+                {:ok, Stream.map(records, &set_loaded/1)}
+
+              {:error, error} ->
+                {:error, error}
+            end
+
+          {:error, error} ->
+            {:error, error}
+        end
       end
     end
   end

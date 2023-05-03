@@ -516,7 +516,8 @@ defmodule Ash.Changeset do
     |> set_context(%{
       private: %{
         upsert?: opts[:upsert?] || (action && action.upsert?) || false,
-        upsert_identity: opts[:upsert_identity] || (action && action.upsert_identity)
+        upsert_identity: opts[:upsert_identity] || (action && action.upsert_identity),
+        upsert_fields: opts[:upsert_fields] || (action && action.upsert_fields)
       }
     })
     |> do_for_action(action, params, opts)
@@ -666,17 +667,23 @@ defmodule Ash.Changeset do
   def set_on_upsert(changeset, upsert_keys) do
     keys = upsert_keys || Ash.Resource.Info.primary_key(changeset.resource)
 
-    explicitly_changing_attributes =
-      Enum.map(
-        Map.keys(changeset.attributes) -- Map.get(changeset, :defaults, []) -- keys,
-        fn key ->
-          {key, Ash.Changeset.get_attribute(changeset, key)}
-        end
-      )
+    if changeset.context[:private][:upsert_fields] do
+      Keyword.new(changeset.context[:private][:upsert_fields], fn key ->
+        {key, Ash.Changeset.get_attribute(changeset, key)}
+      end)
+    else
+      explicitly_changing_attributes =
+        Enum.map(
+          Map.keys(changeset.attributes) -- Map.get(changeset, :defaults, []) -- keys,
+          fn key ->
+            {key, Ash.Changeset.get_attribute(changeset, key)}
+          end
+        )
 
-    changeset
-    |> upsert_update_defaults()
-    |> Keyword.merge(explicitly_changing_attributes)
+      changeset
+      |> upsert_update_defaults()
+      |> Keyword.merge(explicitly_changing_attributes)
+    end
   end
 
   defp upsert_update_defaults(changeset) do

@@ -14,6 +14,7 @@ defmodule Ash.Resource.Actions.Create do
     skip_global_validations?: false,
     upsert?: false,
     upsert_identity: nil,
+    upsert_fields: nil,
     arguments: [],
     changes: [],
     allow_nil_input: [],
@@ -32,6 +33,7 @@ defmodule Ash.Resource.Actions.Create do
           delay_global_validations?: boolean,
           skip_global_validations?: boolean,
           upsert_identity: atom | nil,
+          upsert_fields: nil | list(atom),
           allow_nil_input: list(atom),
           touches_resources: list(atom),
           arguments: list(Ash.Resource.Actions.Argument.t()),
@@ -76,6 +78,14 @@ defmodule Ash.Resource.Actions.Create do
                   type: :atom,
                   doc: """
                   The identity to use for the upsert. Cannot be overriden by the caller. Ignored  if `upsert?` is not set to `true`.
+                  """
+                ],
+                upsert_fields: [
+                  type: {:list, :atom},
+                  doc: """
+                  The fields to overwrite in the case of an upsert. If not provided, all fields except for fields set by defaults will be overwritten.
+
+                  For example `uuid_primary_key :id` gets a default value, and so we would not overwrite that.
                   """
                 ]
               ]

@@ -78,8 +78,12 @@ defmodule Ash.Actions.Create.Bulk do
       raise "Old style manual actions cannot be used with bulk creates"
     end
 
-    if opts[:upsert?] || action.upsert? do
-      raise "Cannot upsert bulk actions currently"
+    upsert? = opts[:upsert?] || action.upsert?
+    upsert_fields = opts[:upsert_fields] || action.upsert_fields
+
+    if upsert? && !upsert_fields do
+      raise ArgumentError,
+            "For bulk actions, `upsert_fields` must be specified if upsert? is set to true`"
     end
 
     {_, opts} = Ash.Actions.Helpers.add_process_context(api, Ash.Changeset.new(resource), opts)
@@ -114,6 +118,13 @@ defmodule Ash.Actions.Create.Bulk do
         resource
         |> Ash.Changeset.new()
         |> Map.put(:api, api)
+        |> Ash.Changeset.set_context(%{
+          private: %{
+            upsert?: opts[:upsert?] || action.upsert? || false,
+            upsert_identity: opts[:upsert_identity] || action.upsert_identity,
+            upsert_fields: opts[:upsert_fields] || action.upsert_fields
+          }
+        })
         |> Ash.Actions.Helpers.add_context(opts)
         |> Ash.Changeset.set_context(%{bulk_create: %{index: index}})
         |> Ash.Changeset.prepare_changeset_for_action(action, opts, input)
@@ -653,6 +664,32 @@ defmodule Ash.Actions.Create.Bulk do
         {:ok, [], invalid, notifications}
 
       batch ->
+        upsert_keys =
+          if opts[:upsert?] do
+            case opts[:upsert_identity] do
+              nil ->
+                Ash.Resource.Info.primary_key(resource)
+
+              identity ->
+                keys =
+                  resource
+                  |> Ash.Resource.Info.identities()
+                  |> Enum.find(&(&1.name == identity))
+                  |> Kernel.||(
+                    raise ArgumentError,
+                          "No identity found for #{inspect(resource)} called #{inspect(identity)}"
+                  )
+                  |> Map.get(:keys)
+
+                if opts[:tenant] &&
+                     Ash.Resource.Info.multitenancy_strategy(resource) == :attribute do
+                  [Ash.Resource.Info.multitenancy_attribute(resource) | keys]
+                else
+                  keys
+                end
+            end
+          end
+
         case action.manual do
           {mod, opts} ->
             if function_exported?(mod, :bulk_create, 3) do
@@ -662,6 +699,9 @@ defmodule Ash.Actions.Create.Bulk do
                 tracer: opts[:tracer],
                 api: api,
                 batch_size: count,
+                upsert?: opts[:upsert?] || action.upsert?,
+                upsert_keys: upsert_keys,
+                upsert_fields: opts[:upsert_fields] || action.upsert_fields,
                 return_records?:
                   opts[:return_records?] || must_return_records? ||
                     must_return_records_for_changes?,
@@ -670,13 +710,16 @@ defmodule Ash.Actions.Create.Bulk do
             else
               [changeset] = batch
 
-              case mod.create(changeset, opts, %{
-                     actor: opts[:actor],
-                     tenant: opts[:tenant],
-                     authorize?: opts[:authorize?],
-                     tracer: opts[:tracer],
-                     api: api
-                   }) do
+              result =
+                mod.create(changeset, opts, %{
+                  actor: opts[:actor],
+                  tenant: opts[:tenant],
+                  authorize?: opts[:authorize?],
+                  tracer: opts[:tracer],
+                  api: api
+                })
+
+              case result do
                 {:ok, result} ->
                   {:ok,
                    [
@@ -699,6 +742,9 @@ defmodule Ash.Actions.Create.Bulk do
                 return_records?:
                   opts[:return_records?] || must_return_records? ||
                     must_return_records_for_changes?,
+                upsert?: opts[:upsert?] || action.upsert? || false,
+                upsert_keys: upsert_keys,
+                upsert_fields: opts[:upsert_fields] || action.upsert_fields,
                 tenant: opts[:tenant]
               })
             else

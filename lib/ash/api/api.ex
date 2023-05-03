@@ -346,6 +346,11 @@ defmodule Ash.Api do
                           type: :atom,
                           doc:
                             "The identity to use when detecting conflicts for `upsert?`, e.g. `upsert_identity: :full_name`. By default, the primary key is used. Has no effect if `upsert?: true` is not provided"
+                        ],
+                        upsert_fields: [
+                          type: {:list, :atom},
+                          doc:
+                            "The fields to upsert. If not set, the action's upsert_fields is used, and if that is not set, then any fields not being set to defaults are written."
                         ]
                       ]
                       |> merge_schemas(@global_opts, "Global Options")
@@ -359,6 +364,22 @@ defmodule Ash.Api do
                       )
 
   @bulk_create_opts_schema [
+                             upsert?: [
+                               type: :boolean,
+                               default: false,
+                               doc:
+                                 "If a conflict is found based on the primary key, the record is updated in the database (requires upsert support)"
+                             ],
+                             upsert_identity: [
+                               type: :atom,
+                               doc:
+                                 "The identity to use when detecting conflicts for `upsert?`, e.g. `upsert_identity: :full_name`. By default, the primary key is used. Has no effect if `upsert?: true` is not provided"
+                             ],
+                             upsert_fields: [
+                               type: {:list, :atom},
+                               doc:
+                                 "The fields to upsert. If not set, the action's upsert_fields is used, and if that is not set, then any fields not being set to defaults are written."
+                             ],
                              sorted?: [
                                type: :boolean,
                                default: false,

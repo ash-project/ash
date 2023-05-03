@@ -41,6 +41,12 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       end
     end
 
+    identities do
+      identity :unique_title, :title do
+        pre_check_with Ash.Test.Actions.BulkCreateTest
+      end
+    end
+
     policies do
       policy action(:create_with_policy) do
         authorize_if context_equals(:authorize?, true)
@@ -50,6 +56,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     attributes do
       uuid_primary_key :id
       attribute :title, :string, allow_nil?: false
+      attribute :title2, :string
+      attribute :title3, :string
 
       timestamps()
     end
@@ -85,6 +93,45 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     assert %Ash.BulkResult{records: [%{title: "title1_stuff"}, %{title: "title2_stuff"}]} =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create_with_change,
                return_records?: true,
+               sorted?: true
+             )
+  end
+
+  test "can upsert" do
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "title1", title2: "changes", title3: "wont"},
+               %{title: "title2", title2: "changes", title3: "wont"}
+             ]
+           } =
+             Api.bulk_create!(
+               [
+                 %{title: "title1", title2: "changes", title3: "wont"},
+                 %{title: "title2", title2: "changes", title3: "wont"}
+               ],
+               Post,
+               :create,
+               return_records?: true,
+               sorted?: true
+             )
+
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "title1", title2: "did_change", title3: "wont"},
+               %{title: "title2", title2: "did_change", title3: "wont"}
+             ]
+           } =
+             Api.bulk_create!(
+               [
+                 %{title: "title1", title2: "did_change", title3: "oh no"},
+                 %{title: "title2", title2: "did_change", title3: "what happened"}
+               ],
+               Post,
+               :create,
+               return_records?: true,
+               upsert?: true,
+               upsert_identity: :unique_title,
+               upsert_fields: [:title2],
                sorted?: true
              )
   end

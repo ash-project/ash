@@ -132,6 +132,9 @@ defmodule Ash.DataLayer do
   @type bulk_options :: %{
           batch_size: pos_integer,
           return_records?: boolean,
+          upsert?: boolean,
+          upsert_keys: nil | list(atom),
+          upsert_fields: nil | list(atom),
           tenant: String.t() | nil
         }
 
