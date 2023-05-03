@@ -53,7 +53,7 @@ defmodule Ash.Type.Map do
     {:ok, value}
   end
 
-  def ecto_type(), do: :map
+  def ecto_type, do: :map
 
   @moduledoc """
   Represents a map stored in the database.
