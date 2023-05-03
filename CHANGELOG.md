@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.3](https://github.com/ash-project/ash/compare/v2.9.2...v2.9.3) (2023-05-03)
+
+
+
+
+### Bug Fixes:
+
+* unbound variable in schema definition
+
+### Improvements:
+
+* support bulk upserts
+
 ## [v2.9.2](https://github.com/ash-project/ash/compare/v2.9.1...v2.9.2) (2023-05-02)
 
 
