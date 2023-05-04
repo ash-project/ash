@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.4](https://github.com/ash-project/ash/compare/v2.9.3...v2.9.4) (2023-05-04)
+
+
+
+
+### Bug Fixes:
+
+* ecto type of map is just `:map`
+
 ## [v2.9.3](https://github.com/ash-project/ash/compare/v2.9.2...v2.9.3) (2023-05-03)
 
 
