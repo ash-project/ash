@@ -666,7 +666,7 @@ defmodule Ash.Actions.Create.Bulk do
       batch ->
         upsert_keys =
           if opts[:upsert?] do
-            case opts[:upsert_identity] do
+            case opts[:upsert_identity] || action.upsert_identity do
               nil ->
                 Ash.Resource.Info.primary_key(resource)
 
