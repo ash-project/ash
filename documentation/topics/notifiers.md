@@ -29,11 +29,26 @@ end
 
 ### Including a notifier in a resource
 
+When you need your notifier to also be an extension:
+
 ```elixir
 defmodule MyResource do
   use Ash.Resource,
     notifiers: [ExampleNotifier]
 end
+```
+
+When your notifier is not an extension, include it this way to avoid a compile time dependency:
+
+```elixir
+defmodule MyResource do
+  use Ash.Resource
+	
+	resource do
+	  simple_notifiers [ExampleNotifier]
+  end
+end
+
 ```
 
 ## Transactions
