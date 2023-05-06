@@ -185,6 +185,16 @@ defmodule Ash.Changeset do
           valid?: boolean
         }
 
+  @type error_info ::
+          String.t()
+          | [
+              {:field, atom()}
+              | {:fields, [atom()]}
+              | {:message, String.t()}
+              | {:value, any()}
+            ]
+          | %{:__struct__ => atom(), required(atom()) => any()}
+
   alias Ash.Error.{
     Changes.InvalidArgument,
     Changes.InvalidAttribute,
@@ -3656,8 +3666,22 @@ defmodule Ash.Changeset do
     %{changeset | handle_errors: func}
   end
 
-  @doc "Adds an error to the changesets errors list, and marks the change as `valid?: false`"
-  @spec add_error(t(), term | String.t() | list(term | String.t())) :: t()
+  @doc """
+  Adds an error to the changesets errors list, and marks the change as `valid?: false`.
+
+  ## Error Data
+
+  The given `errors` argument can be a string, a keyword list, a struct, or a list of any of the three.
+
+  If `errors` is a keyword list, or a list of keyword lists, the following keys are supported in the keyword list:
+
+  - `field` (atom) - the field that the error is for. This is required, unless `fields` is given.
+  - `fields` (list of atoms) - the fields that the error is for. This is required, unless `field` is given.
+  - `message` (string) - the error message
+  - `value` (any) - (optional) the field value that caused the error
+  """
+  @spec add_error(t(), error_info() | [error_info()]) :: t()
+  @spec add_error(t(), error_info() | [error_info()], Keyword.t()) :: t()
   def add_error(changeset, errors, path \\ [])
 
   def add_error(changeset, errors, path) when is_list(errors) do
