@@ -10,6 +10,10 @@ defmodule Ash.Calculation.Function do
         result -> {:cont, {:ok, [result | acc]}}
       end
     end)
+    |> case do
+      {:ok, results} -> {:ok, Enum.reverse(results)}
+      error -> error
+    end
   end
 
   defp apply_fun({m, f, a}, result, context) do
