@@ -378,7 +378,7 @@ defmodule Ash.Api do
                              upsert_fields: [
                                type: {:list, :atom},
                                doc:
-                                 "The fields to upsert. If not set, the action's upsert_fields is used, and if that is not set, then any fields not being set to defaults are written."
+                                 "The fields to upsert. If not set, the action's `upsert_fields` is used. Unlike singular `create`, `bulk_create` with `upsert?` requires that `upsert_fields` be specified explicitly in one of these two locations."
                              ],
                              sorted?: [
                                type: :boolean,
