@@ -3670,7 +3670,7 @@ defmodule Ash.Changeset do
   @doc """
   Adds a filter for a record being updated or destroyed.
 
-  Used by optimistic locking. See `Ash.Resource.Change.Builtins.optimistic_lock/2` for more.
+  Used by optimistic locking. See `Ash.Resource.Change.Builtins.optimistic_lock/1` for more.
   """
   @spec filter(t(), %{optional(atom) => term}) :: t()
   def filter(changeset, fields) do
