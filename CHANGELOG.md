@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.5](https://github.com/ash-project/ash/compare/v2.9.4...v2.9.5) (2023-05-08)
+
+
+
+
+### Bug Fixes:
+
+* user proper upsert identity for bulk operations
+
+### Improvements:
+
+* optimistic locking via `changeset.filters`
+
 ## [v2.9.4](https://github.com/ash-project/ash/compare/v2.9.3...v2.9.4) (2023-05-04)
 
 
