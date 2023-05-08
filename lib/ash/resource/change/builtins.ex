@@ -135,14 +135,14 @@ defmodule Ash.Resource.Change.Builtins do
   Options:
 
   * `:amount` - Defaults to 1
-  * `:overflow?` - Defaults to `true`. If the value is over 2_147_483_647 it will roll-over to 1 (for common database limit support)
+  * `:overflow_limit` - Defaults to `nil`. If the value is over the overflow limit it will roll-over to the amount being incremented by (for common database limit support)
   """
   @spec increment(attribute :: atom, opts :: Keyword.t()) :: Ash.Resource.Change.ref()
   def increment(attribute, opts \\ []) do
     opts =
       opts
       |> Keyword.put_new(:amount, 1)
-      |> Keyword.put_new(:overflow?, true)
+      |> Keyword.put_new(:overflow_limit, nil)
       |> Keyword.put(:attribute, attribute)
 
     {Ash.Resource.Change.Increment, opts}
