@@ -73,6 +73,25 @@ defmodule Ash.Resource.Change.Builtins do
   end
 
   @doc """
+  Apply an "optimistic lock" on a record being updated or destroyed.
+
+  This is modeled after ecto's implementation of optimistic locking, so to
+  read more, see their documentation: https://hexdocs.pm/ecto/Ecto.Changeset.html#optimistic_lock/3
+
+  The primary difference is that we leave it to you to increment the field being used for optimistic locking
+  yourself. So in ecto you might do `Changeset.optimistic_lock(changeset, :foo)` and that would add 1 to the `:foo` attribute
+  automatically. In Ash, you would combine this with the `increment/1` change.
+
+  ```elixir
+  change optimistic_lock(:foo)
+  change increment(:foo)
+  ```
+  """
+  def optimistic_lock(attribute) do
+    {Ash.Resource.Change.OptimisticLock, attribute: attribute}
+  end
+
+  @doc """
   Re-fetches the record being updated and locks it for update.
 
   Only usable with data layers that support locking `:for_update`.
@@ -108,6 +127,25 @@ defmodule Ash.Resource.Change.Builtins do
   """
   def set_attribute_opts do
     @set_attribute_opts
+  end
+
+  @doc """
+  Increments an attribute's value by the amount specified, which defaults to 1.
+
+  Options:
+
+  * `:amount` - Defaults to 1
+  * `:overflow?` - Defaults to `true`. If the value is over 2_147_483_647 it will roll-over to 1 (for common database limit support)
+  """
+  @spec increment(attribute :: atom, opts :: Keyword.t()) :: Ash.Resource.Change.ref()
+  def increment(attribute, opts \\ []) do
+    opts =
+      opts
+      |> Keyword.put_new(:amount, 1)
+      |> Keyword.put_new(:overflow?, true)
+      |> Keyword.put(:attribute, attribute)
+
+    {Ash.Resource.Change.Increment, opts}
   end
 
   @spec set_attribute(

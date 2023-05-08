@@ -20,6 +20,7 @@ defmodule Ash.Changeset do
     :resource,
     :tenant,
     :timeout,
+    filters: %{},
     action_failed?: false,
     after_action: [],
     after_transaction: [],
@@ -3667,6 +3668,24 @@ defmodule Ash.Changeset do
   end
 
   @doc """
+  Adds a filter for a record being updated or destroyed.
+
+  Used by optimistic locking. See `Ash.Resource.Change.Builtins.optimistic_lock/2` for more.
+  """
+  @spec filter(t(), %{optional(atom) => term}) :: t()
+  def filter(changeset, fields) do
+    if Ash.DataLayer.data_layer_can?(changeset.resource, :changeset_filter) || fields == %{} do
+      %{changeset | filters: Map.merge(changeset.filters, fields)}
+    else
+      IO.warn(
+        "Filters (used by optimistic locking) is not supported in the #{inspect(Ash.DataLayer.data_layer(changeset.resource))} data layer"
+      )
+
+      changeset
+    end
+  end
+
+  @doc
   Adds an error to the changesets errors list, and marks the change as `valid?: false`.
 
   ## Error Data
@@ -3682,6 +3701,7 @@ defmodule Ash.Changeset do
   """
   @spec add_error(t(), error_info() | [error_info()]) :: t()
   @spec add_error(t(), error_info() | [error_info()], Keyword.t()) :: t()
+  @spec add_error(t(), term | String.t() | list(term | String.t())) :: t()
   def add_error(changeset, errors, path \\ [])
 
   def add_error(changeset, errors, path) when is_list(errors) do
