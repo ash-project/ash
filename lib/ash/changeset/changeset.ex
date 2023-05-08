@@ -3685,7 +3685,7 @@ defmodule Ash.Changeset do
     end
   end
 
-  @doc
+  @doc """
   Adds an error to the changesets errors list, and marks the change as `valid?: false`.
 
   ## Error Data
@@ -3699,7 +3699,6 @@ defmodule Ash.Changeset do
   - `message` (string) - the error message
   - `value` (any) - (optional) the field value that caused the error
   """
-  @spec add_error(t(), error_info() | [error_info()]) :: t()
   @spec add_error(t(), error_info() | [error_info()], Keyword.t()) :: t()
   @spec add_error(t(), term | String.t() | list(term | String.t())) :: t()
   def add_error(changeset, errors, path \\ [])
