@@ -16,7 +16,7 @@ defmodule Ash.Query do
   |> MyApp.Api.read!()
 
   MyApp.Author
-  |> Ash.Query.aggregate(:published_post_count, :posts, filter: [published: true])
+  |> Ash.Query.aggregate(:published_post_count, :posts, query: [filter: [published: true]])
   |> Ash.Query.sort(published_post_count: :desc)
   |> Ash.Query.limit(10)
   |> MyApp.Api.read!()

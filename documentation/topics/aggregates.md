@@ -36,7 +36,14 @@ Example:
 ```elixir
 User
 |> Ash.Query.new()
-|> Ash.Query.aggregate(:count_of_posts, :count, :posts, filter: [published: published?])
+|> Ash.Query.aggregate(
+  :count_of_posts, 
+  :count, 
+  :posts, 
+  query: [
+    filter: [published: published?]
+  ]
+)
 ```
 
 See the documentation for `Ash.Query.aggregate/4` for more information.
