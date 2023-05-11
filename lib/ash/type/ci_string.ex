@@ -183,6 +183,8 @@ defmodule Ash.Type.CiString do
   @impl true
   def cast_stored(nil, _), do: {:ok, nil}
 
+  def cast_stored(%Ash.CiString{} = value, _), do: {:ok, value}
+
   def cast_stored(value, _) do
     case Ecto.Type.load(:string, value) do
       {:ok, value} -> {:ok, Ash.CiString.new(value)}
