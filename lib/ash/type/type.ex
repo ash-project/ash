@@ -45,7 +45,8 @@ defmodule Ash.Type do
                          utc_datetime: "Ash.Type.UtcDatetime",
                          utc_datetime_usec: "Ash.Type.UtcDatetimeUsec",
                          url_encoded_binary: "Ash.Type.UrlEncodedBinary",
-                         union: "Ash.Type.Union"
+                         union: "Ash.Type.Union",
+                         module: "Ash.Type.Module"
                        ]
                        |> Enum.map(fn {key, value} ->
                          {key, Module.concat([value])}
