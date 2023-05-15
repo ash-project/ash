@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.6](https://github.com/ash-project/ash/compare/v2.9.5...v2.9.6) (2023-05-15)
+
+
+
+
+### Bug Fixes:
+
+* don't use `:map` as storage type for `Map`
+
+### Improvements:
+
+* Ash.Type.Module: Add `:module` type. (#578)
+
+* handle ci strings in `cast_stored`
+
+* better default overflow logic
+
+* custom stale record error
+
 ## [v2.9.5](https://github.com/ash-project/ash/compare/v2.9.4...v2.9.5) (2023-05-08)
 
 
