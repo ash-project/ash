@@ -108,6 +108,22 @@ defmodule Ash.Resource.Change.Builtins do
   end
 
   @doc """
+  Re-fetches the record being updated and locks it for update.
+
+  Only usable with data layers that support locking `:for_update`.
+
+  This happens in a `before_action` hook (so that it is done as part of the transaction).
+
+  If your resource has global validations (in the top level `validations` block), you may
+  want to add `delay_global_validations? true` to your action to ensure they happen on the
+  locked record.
+  """
+  @spec get_and_lock(lock :: Ash.DataLayer.lock_type()) :: Ash.Resource.Change.ref()
+  def get_and_lock(lock) do
+    {Ash.Resource.Change.GetAndLock, [lock: lock]}
+  end
+
+  @doc """
   Sets the attribute to the value provided.
 
   If a zero argument function is provided, it is called to determine the value.
