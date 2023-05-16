@@ -12,7 +12,7 @@ defmodule Ash.DataLayer do
 
   @type t :: module
   @type data_layer_query() :: struct
-  @type lock_type :: :for_update | {:data_layer, term()}
+  @type lock_type :: :for_update | term()
   @type transaction_reason ::
           %{type: :create, metadata: %{resource: Ash.Resource.t(), action: atom}}
           | %{
