@@ -108,9 +108,7 @@ defmodule Ash.Resource.Change.Builtins do
   end
 
   @doc """
-  Re-fetches the record being updated and locks it for update.
-
-  Only usable with data layers that support locking `:for_update`.
+  Re-fetches the record being updated and locks it with the given type.
 
   This happens in a `before_action` hook (so that it is done as part of the transaction).
 
