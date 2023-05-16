@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.7](https://github.com/ash-project/ash/compare/v2.9.6...v2.9.7) (2023-05-16)
+
+
+
+
+### Bug Fixes:
+
+* don't require `{:data_layer, *}` for custom locks
+
+### Improvements:
+
+* add `get_and_lock/1` builtin change
+
 ## [v2.9.6](https://github.com/ash-project/ash/compare/v2.9.5...v2.9.6) (2023-05-15)
 
 
