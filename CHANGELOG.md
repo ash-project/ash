@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.8](https://github.com/ash-project/ash/compare/v2.9.7...v2.9.8) (2023-05-17)
+
+
+
+
+### Improvements:
+
+* add unavailable error
+
 ## [v2.9.7](https://github.com/ash-project/ash/compare/v2.9.6...v2.9.7) (2023-05-16)
 
 
