@@ -14,7 +14,6 @@ defmodule Ash.Error.Invalid.Unavailable do
 
     def code(_), do: "unavailable"
 
-    @spec message(%Ash.Error.Invalid.Unavailable{}) :: <<_::64, _::_*8>>
     def message(%{resource: resource, source: source, reason: reason}) when not is_nil(source) do
       """
       #{inspect(resource)} - the resource is not available#{with_reason(reason)}.

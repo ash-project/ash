@@ -178,10 +178,10 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
-      def equal?(value, constraints) do
+      def equal?(left, right) do
         unquote(subtype_of).equal?(
-          value,
-          type_constraints(constraints, unquote(subtype_constraints))
+          left,
+          right
         )
       end
 
@@ -246,11 +246,6 @@ defmodule Ash.Type.NewType do
       @impl Ash.Type
       def storage_type do
         unquote(subtype_of).storage_type()
-      end
-
-      @impl Ash.Type
-      def ecto_type do
-        unquote(subtype_of).ecto_type()
       end
 
       @impl Ash.Type
