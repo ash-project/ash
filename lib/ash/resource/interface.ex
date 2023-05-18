@@ -41,7 +41,7 @@ defmodule Ash.Resource.Interface do
         type: :any,
         doc: "set the actor for authorization"
       ],
-      actor: [
+      tracer: [
         type: :any,
         doc: "set the tracer for the action"
       ],
