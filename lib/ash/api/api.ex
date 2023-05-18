@@ -392,6 +392,13 @@ defmodule Ash.Api do
                                doc:
                                  "Wether or not to return all of the records that were inserted. Defaults to false to account for large inserts."
                              ],
+                             batch_size: [
+                               type: :pos_integer,
+                               doc: """
+                               The number of records to include in each batch. Defaults to the `default_limit`
+                               or `max_page_size` of the action, or 100.
+                               """
+                             ],
                              return_stream?: [
                                type: :boolean,
                                default: false,
