@@ -2526,7 +2526,7 @@ defmodule Ash.Actions.Read do
                 })
             end)
 
-          {[{%{relationship: relationship, query: query, path: path}, rel_config}], rest} ->
+          {[{%{relationship: relationship, path: path}, rel_config}], rest} ->
             relationship_data =
               rest
               |> Enum.reduce(rel_config[:data], fn
