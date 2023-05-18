@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.10](https://github.com/ash-project/ash/compare/v2.9.9...v2.9.10) (2023-05-18)
+
+
+
+
+### Bug Fixes:
+
+* accidental variable shadowing in calculation loading.
+
+* add missing batch_size opt for bulk_create (#581)
+
 ## [v2.9.9](https://github.com/ash-project/ash/compare/v2.9.8...v2.9.9) (2023-05-18)
 
 
