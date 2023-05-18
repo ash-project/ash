@@ -175,26 +175,23 @@ defmodule Ash.Schema do
                 :ok
 
               %{type: :belongs_to} ->
-                belongs_to(relationship.name, relationship.destination,
+                belongs_to relationship.name, relationship.destination,
                   define_field: false,
                   references: relationship.destination_attribute,
                   foreign_key: relationship.source_attribute
-                )
 
               %{type: :has_many} ->
-                has_many(relationship.name, relationship.destination,
+                has_many relationship.name, relationship.destination,
                   foreign_key: relationship.destination_attribute,
                   references: relationship.source_attribute
-                )
 
               %{type: :has_one} ->
-                has_one(relationship.name, relationship.destination,
+                has_one relationship.name, relationship.destination,
                   foreign_key: relationship.destination_attribute,
                   references: relationship.source_attribute
-                )
 
               %{type: :many_to_many} ->
-                many_to_many(relationship.name, relationship.destination,
+                many_to_many relationship.name, relationship.destination,
                   join_through: relationship.through,
                   join_keys: [
                     {relationship.source_attribute_on_join_resource,
@@ -202,7 +199,6 @@ defmodule Ash.Schema do
                     {relationship.destination_attribute_on_join_resource,
                      relationship.destination_attribute}
                   ]
-                )
             end
 
             Module.put_attribute(

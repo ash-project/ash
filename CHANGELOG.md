@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.9](https://github.com/ash-project/ash/compare/v2.9.8...v2.9.9) (2023-05-18)
+
+
+
+
+### Bug Fixes:
+
+* errors on casting arrays of unions in newtypes
+
 ## [v2.9.8](https://github.com/ash-project/ash/compare/v2.9.7...v2.9.8) (2023-05-17)
 
 
