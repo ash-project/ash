@@ -141,7 +141,7 @@ defmodule Ash.ActionInput do
       end
 
     Enum.reduce(messages, input, fn message, input ->
-      if Exception.exception?(message) do
+      if is_exception(message) do
         error =
           message
           |> Ash.Error.to_ash_error()

@@ -3801,7 +3801,7 @@ defmodule Ash.Changeset do
       end
 
     Enum.reduce(messages, changeset, fn message, changeset ->
-      if Exception.exception?(message) do
+      if is_exception(message) do
         error =
           message
           |> Ash.Error.to_ash_error()
