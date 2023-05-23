@@ -81,8 +81,8 @@ defmodule Ash.CodeInterface do
     end)
   end
 
-  def unwrap_calc_interface_args(keys, resource, arguments) do
-    {Enum.map(keys, &unwrap_calc_interface_arg_binding(resource, arguments, &1)),
+  def unwrap_calc_interface_args(keys, resource, arguments, function_head? \\ false) do
+    {Enum.map(keys, &unwrap_calc_interface_arg_binding(resource, arguments, &1, function_head?)),
      Enum.map(keys, &unwrap_calc_interface_arg_access(&1))}
   end
 
@@ -95,7 +95,7 @@ defmodule Ash.CodeInterface do
   defp unwrap_calc_interface_arg_access(value) do
     case value do
       :_record ->
-        [type: :record, name: :record, value: {:record, [], Elixir}]
+        [type: :_record, name: :record, value: {:record, [], Elixir}]
 
       {tag, name} ->
         [type: tag, name: name, value: {name, [], Elixir}]
@@ -105,30 +105,50 @@ defmodule Ash.CodeInterface do
     end
   end
 
-  defp unwrap_calc_interface_arg_binding(resource, arguments, {:optional, binding}) do
-    access = unwrap_calc_interface_arg_binding(resource, arguments, binding)
-    {:\\, [], [access, default_calc_value(resource, arguments, binding)]}
+  defp unwrap_calc_interface_arg_binding(resource, arguments, {:optional, binding}, head?) do
+    access = unwrap_calc_interface_arg_binding(resource, arguments, binding, head?)
+
+    if head? do
+      {:\\, [], [access, default_calc_value(resource, arguments, binding)]}
+    else
+      access
+    end
   end
 
-  defp unwrap_calc_interface_arg_binding(resource, arguments, {:optional, binding, default}) do
-    access = unwrap_calc_interface_arg_binding(resource, arguments, binding)
-    {:\\, [], [access, default]}
+  defp unwrap_calc_interface_arg_binding(
+         resource,
+         arguments,
+         {:optional, binding, default},
+         head?
+       ) do
+    access = unwrap_calc_interface_arg_binding(resource, arguments, binding, head?)
+
+    if head? do
+      {:\\, [], [access, default]}
+    else
+      access
+    end
   end
 
-  defp unwrap_calc_interface_arg_binding(_resource, _arguments, {tag, value})
+  defp unwrap_calc_interface_arg_binding(_resource, _arguments, {tag, value}, _)
        when tag in [:arg, :ref] do
     {value, [], Elixir}
   end
 
-  defp unwrap_calc_interface_arg_binding(_resource, _arguments, :_record) do
-    {:record, [], Elixir}
+  defp unwrap_calc_interface_arg_binding(resource, _arguments, :_record, false) do
+    {:=, [],
+     [
+       {:%, [], [{:__aliases__, [alias: false], [resource]}, {:%{}, [], []}]},
+       {:record, [], Elixir}
+     ]}
   end
 
-  defp unwrap_calc_interface_arg_binding(_resource, _arguments, value) do
+  defp unwrap_calc_interface_arg_binding(_resource, _arguments, value, _) do
     {value, [], Elixir}
   end
 
-  defp default_calc_value(_resource, arguments, {:arg, arg_name}) do
+  @doc false
+  def default_calc_value(_resource, arguments, {:arg, arg_name}) do
     arguments
     |> Enum.find(&(&1.name == arg_name))
     |> case do
@@ -140,7 +160,7 @@ defmodule Ash.CodeInterface do
     end
   end
 
-  defp default_calc_value(resource, _, {:ref, attribute}) do
+  def default_calc_value(resource, _, {:ref, attribute}) do
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.find(&(&1.name == attribute))
@@ -153,7 +173,7 @@ defmodule Ash.CodeInterface do
     end
   end
 
-  defp default_calc_value(resource, arguments, name) do
+  def default_calc_value(resource, arguments, name) do
     case default_calc_value(resource, arguments, {:arg, name}) do
       nil ->
         default_calc_value(resource, arguments, {:ref, name})
@@ -203,6 +223,75 @@ defmodule Ash.CodeInterface do
   """
   defmacro define_interface(api, resource) do
     quote bind_quoted: [api: api, resource: resource], generated: true, location: :keep do
+      interfaces_for_defaults =
+        Enum.group_by(Ash.Resource.Info.calculation_interfaces(resource), fn interface ->
+          {interface.name, Enum.count(interface.args, &is_atom/1), Enum.count(interface.args)}
+        end)
+
+      for {{name, arity, optional_arity}, interfaces} <- interfaces_for_defaults do
+        args =
+          case interfaces do
+            [%{args: args, calculation: calculation}] ->
+              calculation = Ash.Resource.Info.calculation(resource, calculation)
+
+              {arg_bindings, _arg_access} =
+                args
+                |> Kernel.||([])
+                |> Ash.CodeInterface.unwrap_calc_interface_args(
+                  resource,
+                  calculation.arguments,
+                  true
+                )
+
+              arg_bindings
+
+            multiple ->
+              multiple
+              |> Enum.map(fn interface ->
+                interface.args
+                |> Enum.flat_map(fn
+                  {:optional, value} ->
+                    calculation = Ash.Resource.Info.calculation(resource, interface.calculation)
+                    [Ash.CodeInterface.default_calc_value(resource, calculation.arguments, value)]
+
+                  {:optional, _, value} ->
+                    [value]
+
+                  _ ->
+                    []
+                end)
+              end)
+              |> Enum.uniq()
+              |> case do
+                [_] ->
+                  interface = hd(multiple)
+                  calculation = Ash.Resource.Info.calculation(resource, interface.calculation)
+
+                  {arg_bindings, _arg_access} =
+                    interface.args
+                    |> Kernel.||([])
+                    |> Ash.CodeInterface.unwrap_calc_interface_args(
+                      resource,
+                      calculation.arguments,
+                      true
+                    )
+
+                  arg_bindings
+
+                _duplicates ->
+                  raise """
+                  The generated function #{name}/#{arity + optional_arity} would have
+                  multiple different sets of default values for arguments. Please use a different
+                  name for conflicting code interface functions.
+                  """
+              end
+          end
+
+        # sobelow_skip ["DOS.BinToAtom"]
+        def unquote(:"#{name}!")(unquote_splicing(args), opts \\ [])
+        def unquote(name)(unquote_splicing(args), opts \\ [])
+      end
+
       for interface <- Ash.Resource.Info.calculation_interfaces(resource) do
         calculation = Ash.Resource.Info.calculation(resource, interface.calculation)
 
@@ -213,14 +302,14 @@ defmodule Ash.CodeInterface do
 
         @doc "Calculate `#{calculation.name}`, raising any errors. See `#{interface.name}/#{Enum.count(interface.args) + 1}` for more."
         # sobelow_skip ["DOS.BinToAtom"]
-        def unquote(:"#{interface.name}!")(unquote_splicing(arg_bindings), opts \\ []) do
+        def unquote(:"#{interface.name}!")(unquote_splicing(arg_bindings), opts) do
           {refs, arguments, record} =
             Enum.reduce(
               [unquote_splicing(arg_access)],
               {%{}, %{}, nil},
               fn config, {refs, arguments, record} ->
                 case config[:type] do
-                  :record ->
+                  :_record ->
                     {refs, arguments, config[:value]}
 
                   :both ->
@@ -249,26 +338,28 @@ defmodule Ash.CodeInterface do
         #{if calculation.description, do: "\nDescription:" <> calculation.description}
         """
         # sobelow_skip ["DOS.BinToAtom"]
-        def unquote(interface.name)(unquote_splicing(arg_bindings), opts \\ []) do
+        def unquote(interface.name)(unquote_splicing(arg_bindings), opts) do
           {refs, arguments, record} =
-            Enum.reduce([unquote_splicing(arg_access)], {%{}, %{}, nil}, fn config,
-                                                                            {refs, arguments,
-                                                                             record} ->
-              case config[:type] do
-                :_record ->
-                  {refs, arguments, config[:value]}
+            Enum.reduce(
+              [unquote_splicing(arg_access)],
+              {%{}, %{}, nil},
+              fn config, {refs, arguments, record} ->
+                case config[:type] do
+                  :_record ->
+                    {refs, arguments, config[:value]}
 
-                :both ->
-                  {Map.put(refs, config[:name], config[:value]),
-                   Map.put(arguments, config[:name], config[:value]), record}
+                  :both ->
+                    {Map.put(refs, config[:name], config[:value]),
+                     Map.put(arguments, config[:name], config[:value]), record}
 
-                :ref ->
-                  {Map.put(refs, config[:name], config[:value]), arguments, record}
+                  :ref ->
+                    {Map.put(refs, config[:name], config[:value]), arguments, record}
 
-                :arg ->
-                  {refs, Map.put(arguments, config[:name], config[:value]), record}
+                  :arg ->
+                    {refs, Map.put(arguments, config[:name], config[:value]), record}
+                end
               end
-            end)
+            )
 
           unquote(api).calculate(unquote(resource), unquote(interface.calculation),
             refs: refs,
