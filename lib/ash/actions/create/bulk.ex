@@ -657,6 +657,13 @@ defmodule Ash.Actions.Create.Bulk do
           {changeset, %{notifications: new_notifications}} =
             Ash.Changeset.run_before_actions(changeset)
 
+          new_notifications =
+            if opts[:notify?] do
+              new_notifications
+            else
+              []
+            end
+
           if changeset.valid? do
             {[changeset | changesets], invalid, notifications ++ new_notifications}
           else
@@ -840,7 +847,13 @@ defmodule Ash.Actions.Create.Bulk do
       {[], notifications, changesets_by_index, []},
       fn result, {results, notifications, changesets_by_index, errors} ->
         changeset = changesets_by_index[result.__metadata__.bulk_create_index]
-        notifications = notifications ++ [notification(changeset, result, opts)]
+
+        notifications =
+          if opts[:notify?] do
+            [notification(changeset, result, opts) | notifications]
+          else
+            notifications
+          end
 
         try do
           case Ash.Changeset.run_after_transactions({:ok, result}, changeset) do
