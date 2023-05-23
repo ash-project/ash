@@ -345,7 +345,7 @@ defmodule Ash.Actions.Create.Bulk do
 
             {:error, notifications, error} ->
               if opts[:stop_on_error?] do
-                {:halt, {[], error}}
+                {:halt, {notify_stream([], notifications, resource, action, opts), error}}
               else
                 {error
                  |> List.wrap()
@@ -355,7 +355,11 @@ defmodule Ash.Actions.Create.Bulk do
 
             {:ok, invalid, notifications} ->
               if opts[:stop_on_error?] && !Enum.empty?(invalid) do
-                {:halt, {[], invalid}}
+                {:halt,
+                 {[],
+                  invalid
+                  |> Stream.map(&{:error, &1})
+                  |> notify_stream(notifications, resource, action, opts)}}
               else
                 {invalid
                  |> Stream.map(&{:error, &1})
