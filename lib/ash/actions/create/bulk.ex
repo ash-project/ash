@@ -568,7 +568,7 @@ defmodule Ash.Actions.Create.Bulk do
         if opts[:stop_on_error?] && !opts[:return_stream?] do
           throw({:error, Ash.Error.to_error_class(changeset.errors), 0, []})
         else
-          changeset
+          {:error, changeset}
         end
       end
     end)
