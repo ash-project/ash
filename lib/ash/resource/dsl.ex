@@ -442,9 +442,8 @@ defmodule Ash.Resource.Dsl do
     """,
     examples: [
       """
-      action :top_user_emails do
+      action :top_user_emails, {:array, :string} do
         argument :limit, :integer, default: 10, allow_nil?: false
-        returns {:array, :string}
         run fn input, context ->
           with {:ok, top_users} <- top_users(input.limit) do
             {:ok, Enum.map(top_users, &(&1.email))}

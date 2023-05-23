@@ -108,6 +108,7 @@ defmodule Ash.Actions.Create.Bulk do
 
     all_changes =
       action.changes
+      |> Enum.concat(Ash.Resource.Info.validations(resource, action.type))
       |> Enum.concat(Ash.Resource.Info.changes(resource, action.type))
       |> Enum.with_index()
 
@@ -239,6 +240,13 @@ defmodule Ash.Actions.Create.Bulk do
                   )
                   |> run_after_action_hooks(changesets_by_index)
                   |> process_results(changes, all_changes, opts)
+                  |> case do
+                    {:error, error} ->
+                      Ash.DataLayer.rollback(resource, error)
+
+                    other ->
+                      other
+                  end
                 end,
                 opts[:timeout],
                 %{
@@ -554,7 +562,7 @@ defmodule Ash.Actions.Create.Bulk do
         {:ok, changeset}
       else
         if opts[:stop_on_error?] && !opts[:return_stream?] do
-          throw({:error, Ash.Error.to_error_class(changeset.error), 0, []})
+          throw({:error, Ash.Error.to_error_class(changeset.errors), 0, []})
         else
           changeset
         end
@@ -649,7 +657,7 @@ defmodule Ash.Actions.Create.Bulk do
             {[changeset | changesets], invalid, notifications ++ new_notifications}
           else
             if opts[:stop_on_error?] && !opts[:return_stream?] do
-              throw({:error, Ash.Error.to_error_class(changeset.error), 0, []})
+              throw({:error, Ash.Error.to_error_class(changeset.errors), 0, []})
             end
 
             {changesets, [changeset | invalid], notifications ++ new_notifications}
@@ -947,7 +955,13 @@ defmodule Ash.Actions.Create.Bulk do
 
                    module.validate(changeset, opts) == :ok
                  end) do
-                module.validate(changeset, opts)
+                case module.validate(changeset, opts) do
+                  :ok ->
+                    changeset
+
+                  {:error, error} ->
+                    Ash.Changeset.add_error(changeset, error)
+                end
               else
                 changeset
               end
