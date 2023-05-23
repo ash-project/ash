@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.12](https://github.com/ash-project/ash/compare/v2.9.11...v2.9.12) (2023-05-23)
+
+
+
+
+### Bug Fixes:
+
+* properly wrap errored changesets in bulk creates
+
+* don't notify unless `notify?: true` in bulk creates
+
+* properly wrap errored changesets in `{:error` in bulk creates
+
+### Improvements:
+
+* better support for multiple code interfaces w/ same name
+
 ## [v2.9.11](https://github.com/ash-project/ash/compare/v2.9.10...v2.9.11) (2023-05-23)
 
 
