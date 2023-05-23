@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.11](https://github.com/ash-project/ash/compare/v2.9.10...v2.9.11) (2023-05-23)
+
+
+
+
+### Bug Fixes:
+
+* swap `Exception.exception?` for `Kernel.is_exception` (#584)
+
+### Improvements:
+
+* handle bulk transaction errors better
+
 ## [v2.9.10](https://github.com/ash-project/ash/compare/v2.9.9...v2.9.10) (2023-05-18)
 
 
