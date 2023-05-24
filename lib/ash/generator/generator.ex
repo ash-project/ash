@@ -251,6 +251,9 @@ defmodule Ash.Generator do
       case value do
         %StreamData{} ->
           {key, value}
+          
+        value when is_function(value, 0) ->
+          {key, StreamData.constant(value.())}
 
         value ->
           {key, StreamData.constant(value)}
