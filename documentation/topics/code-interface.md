@@ -75,7 +75,7 @@ end
 code_interface do
   define_for YourApi
   define_calculation :full_name, args: [:first_name, :last_name, {:optional, :separator}]
-  # or if you want to take a record sa an argument
+  # or if you want to take a record as an argument
   define_calculation :full_name, args: [:_record]
 end
 ```
