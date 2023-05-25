@@ -809,8 +809,16 @@ defmodule Ash.Actions.Create.Bulk do
               })
             else
               [changeset] = batch
+              upsert? = opts[:upsert?] || action.upsert? || false
 
-              case Ash.DataLayer.create(resource, changeset) do
+              result =
+                if upsert? do
+                  Ash.DataLayer.upsert(resource, changeset, upsert_keys)
+                else
+                  Ash.DataLayer.create(resource, changeset)
+                end
+
+              case result do
                 {:ok, result} ->
                   {:ok,
                    [
