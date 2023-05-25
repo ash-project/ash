@@ -392,6 +392,12 @@ defmodule Ash.Api do
                                doc:
                                  "Wether or not to return all of the records that were inserted. Defaults to false to account for large inserts."
                              ],
+                             return_errors?: [
+                               type: :boolean,
+                               default: false,
+                               doc:
+                                 "Wether or not to return all of the errors that occur. Defaults to false to account for large inserts."
+                             ],
                              batch_size: [
                                type: :pos_integer,
                                doc: """

@@ -150,11 +150,7 @@ defmodule Ash.Actions.Create.Bulk do
             {[batch(state)], %{state | batch: [item], count: 0, must_return_records?: false}}
 
           {:error, error}, state ->
-            if opts[:return_errors?] do
-              {[{:error, error}], state}
-            else
-              {[], state}
-            end
+            {[{:error, error}], state}
         end,
         fn state ->
           {[batch(state)], state}
@@ -338,19 +334,17 @@ defmodule Ash.Actions.Create.Bulk do
               if opts[:stop_on_error?] do
                 {:halt, {[], error}}
               else
-                {error
-                 |> List.wrap()
-                 |> Stream.map(&{:error, &1}), nil}
+                {error_stream(error, opts), nil}
               end
 
             {:error, notifications, error} ->
               if opts[:stop_on_error?] do
                 {:halt, {notify_stream([], notifications, resource, action, opts), error}}
               else
-                {error
-                 |> List.wrap()
-                 |> Stream.map(&{:error, &1})
-                 |> notify_stream(notifications, resource, action, opts), nil}
+                {
+                  notify_stream(error_stream(error, opts), notifications, resource, action, opts),
+                  nil
+                }
               end
 
             {:ok, invalid, notifications} ->
@@ -358,26 +352,25 @@ defmodule Ash.Actions.Create.Bulk do
                 {:halt,
                  {[],
                   invalid
-                  |> Stream.map(&{:error, &1})
+                  |> error_stream(opts)
                   |> notify_stream(notifications, resource, action, opts)}}
               else
                 {invalid
-                 |> Stream.map(&{:error, &1})
+                 |> error_stream(opts)
                  |> notify_stream(notifications, resource, action, opts), nil}
               end
 
             {:ok, batch_result, invalid, notifications} ->
               if opts[:stop_on_error?] && !Enum.empty?(invalid) do
-                {:halt, {invalid, batch_result}}
+                {:halt, {error_stream(invalid, opts), batch_result}}
               else
                 if opts[:return_records?] do
                   {batch_result
                    |> Stream.map(&{:ok, &1})
-                   |> Stream.concat(Stream.map(invalid, &{:error, &1}))
+                   |> Stream.concat(error_stream(invalid, opts))
                    |> notify_stream(notifications, resource, action, opts), nil}
                 else
-                  {invalid
-                   |> Stream.map(&{:error, &1})
+                  {error_stream(invalid, opts)
                    |> notify_stream(notifications, resource, action, opts), nil}
                 end
               end
@@ -391,7 +384,7 @@ defmodule Ash.Actions.Create.Bulk do
             remaining_items =
               successes
               |> Stream.map(&{:ok, &1})
-              |> Stream.concat(Stream.map(errors, &{:error, &1}))
+              |> Stream.concat(error_stream(errors, opts))
 
             {remaining_items, nil}
 
@@ -404,16 +397,22 @@ defmodule Ash.Actions.Create.Bulk do
       result
       |> Enum.reduce(%Ash.BulkResult{status: :empty, records: [], errors: []}, fn
         {:error, error}, result ->
+          {error_count, errors} = errors(result, error, opts)
+
           %{
             result
-            | errors: [error | result.errors],
+            | errors: errors,
+              error_count: error_count,
               status: errored(result.status)
           }
 
         {:error, notifications, error}, result ->
+          {error_count, errors} = errors(result, error, opts)
+
           %{
             result
-            | errors: [error | result.errors],
+            | errors: errors,
+              error_count: error_count,
               status: errored(result.status),
               notifications: (result.notifications || []) ++ notifications
           }
@@ -426,9 +425,12 @@ defmodule Ash.Actions.Create.Bulk do
           }
 
         {:ok, invalid, notifications}, result ->
+          {error_count, errors} = errors(result, invalid, opts)
+
           %{
             result
-            | errors: invalid ++ result.errors,
+            | errors: errors,
+              error_count: error_count,
               status: :partial_success,
               notifications: (result.notifications || []) ++ notifications
           }
@@ -447,10 +449,13 @@ defmodule Ash.Actions.Create.Bulk do
               result.records
             end
 
+          {error_count, errors} = errors(result, invalid, opts)
+
           %{
             result
             | records: records,
-              errors: invalid ++ result.errors,
+              errors: errors,
+              error_count: error_count,
               status: status,
               notifications: (result.notifications || []) ++ notifications
           }
@@ -475,11 +480,47 @@ defmodule Ash.Actions.Create.Bulk do
           :error
         end
 
-      %Ash.BulkResult{
+      result = %Ash.BulkResult{
         status: status,
-        errors: List.wrap(error),
         notifications: notifications
       }
+
+      {errors, error_count} = errors(result, error, opts)
+
+      %{result | errors: errors, error_count: error_count}
+  end
+
+  defp errors(result, invalid, opts) when is_list(invalid) do
+    Enum.reduce(invalid, {result.error_count, result.errors}, fn invalid, {error_count, errors} ->
+      errors(%{result | error_count: error_count, errors: errors}, invalid, opts)
+    end)
+  end
+
+  defp errors(result, {:error, error}, opts) do
+    if opts[:return_errors?] do
+      {result.error_count + 1, [error | result.errors]}
+    else
+      {result.error_count + 1, []}
+    end
+  end
+
+  defp errors(result, invalid, opts) do
+    if Enumerable.impl_for(invalid) do
+      invalid = Enum.to_list(invalid)
+      errors(result, invalid, opts)
+    else
+      errors(result, {:error, invalid}, opts)
+    end
+  end
+
+  defp error_stream(error, opts) do
+    if opts[:return_errors?] do
+      error
+      |> List.wrap()
+      |> Stream.map(&{:error, &1})
+    else
+      []
+    end
   end
 
   defp run_bulk_before_batches(

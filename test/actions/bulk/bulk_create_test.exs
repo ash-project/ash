@@ -97,6 +97,33 @@ defmodule Ash.Test.Actions.BulkCreateTest do
              )
   end
 
+  test "will return error count" do
+    assert %Ash.BulkResult{records: [%{title: "title1_stuff"}], error_count: 1, errors: []} =
+             Api.bulk_create!(
+               [%{title: "title1"}, %{title: %{foo: :bar}}],
+               Post,
+               :create_with_change,
+               return_records?: true,
+               sorted?: true
+             )
+  end
+
+  test "will return errors on request" do
+    assert %Ash.BulkResult{
+             records: [%{title: "title1_stuff"}],
+             error_count: 1,
+             errors: [%Ash.Changeset{}]
+           } =
+             Api.bulk_create!(
+               [%{title: "title1"}, %{title: %{foo: :bar}}],
+               Post,
+               :create_with_change,
+               return_records?: true,
+               return_errors?: true,
+               sorted?: true
+             )
+  end
+
   test "can upsert" do
     assert %Ash.BulkResult{
              records: [
@@ -179,6 +206,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  :create_with_policy,
                  authorize?: true,
                  return_records?: true,
+                 return_errors?: true,
                  sorted?: true
                )
     end
@@ -278,7 +306,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  notify?: true,
                  return_stream?: true,
                  return_notifications?: true,
-                 return_records?: true
+                 return_records?: true,
+                 return_errors?: true
                )
                |> Enum.to_list()
                |> Enum.sort_by(fn
