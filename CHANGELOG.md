@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.13](https://github.com/ash-project/ash/compare/v2.9.12...v2.9.13) (2023-05-25)
+
+
+
+
+### Bug Fixes:
+
+* properly honor the `return_errors?` option
+
 ## [v2.9.12](https://github.com/ash-project/ash/compare/v2.9.11...v2.9.12) (2023-05-23)
 
 
