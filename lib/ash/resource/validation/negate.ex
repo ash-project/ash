@@ -17,7 +17,8 @@ defmodule Ash.Resource.Validation.Negate do
   def init(opts) do
     with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @opt_schema),
          {validation, validation_opts} = opts[:validation],
-         {:ok, _opts} <- validation.init(validation_opts) do
+         {:ok, validation_opts} <- validation.init(validation_opts) do
+       Keyword.put(opts, :validation, {validation, validation_opts})
       {:ok, opts}
     else
       {:error, exception} = error when is_binary(exception) ->
