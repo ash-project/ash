@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.14](https://github.com/ash-project/ash/compare/v2.9.13...v2.9.14) (2023-05-26)
+
+
+
+
+### Bug Fixes:
+
+* properly manage relationships on bulk creates
+
+* validations could undo certain changeset changes in bulk creates
+
+* properly upsert on non batchable rows
+
 ## [v2.9.13](https://github.com/ash-project/ash/compare/v2.9.12...v2.9.13) (2023-05-25)
 
 
