@@ -228,13 +228,14 @@ defmodule Ash.Actions.Create.Bulk do
                     action,
                     opts,
                     count,
+                    changesets_by_index,
                     must_return_records?,
                     must_return_records_for_changes?,
                     data_layer_can_bulk?,
                     api,
                     before_batch_notifications
                   )
-                  |> run_after_action_hooks(changesets_by_index)
+                  |> run_after_action_hooks(opts, api)
                   |> process_results(changes, all_changes, opts)
                   |> case do
                     {:error, error} ->
@@ -313,13 +314,14 @@ defmodule Ash.Actions.Create.Bulk do
               action,
               opts,
               count,
+              changesets_by_index,
               must_return_records?,
               must_return_records_for_changes?,
               data_layer_can_bulk?,
               api,
               before_batch_notifications
             )
-            |> run_after_action_hooks(changesets_by_index)
+            |> run_after_action_hooks(opts, api)
             |> process_results(changes, all_changes, opts)
           end
       end)
@@ -684,6 +686,7 @@ defmodule Ash.Actions.Create.Bulk do
          action,
          opts,
          count,
+         changesets_by_index,
          must_return_records?,
          must_return_records_for_changes?,
          data_layer_can_bulk?,
@@ -705,8 +708,27 @@ defmodule Ash.Actions.Create.Bulk do
               []
             end
 
+          {changeset, manage_notifications} =
+            if changeset.valid? do
+              case Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
+                     changeset,
+                     opts[:actor],
+                     authorize?: opts[:authorize?],
+                     actor: opts[:actor]
+                   ) do
+                {:error, error} ->
+                  {Ash.Changeset.add_error(changeset, error), new_notifications}
+
+                {changeset, manage_instructions} ->
+                  {changeset, manage_instructions.notifications}
+              end
+            else
+              {changeset, []}
+            end
+
           if changeset.valid? do
-            {[changeset | changesets], invalid, notifications ++ new_notifications}
+            {[changeset | changesets], invalid,
+             notifications ++ new_notifications ++ manage_notifications}
           else
             if opts[:stop_on_error?] && !opts[:return_stream?] do
               throw({:error, Ash.Error.to_error_class(changeset.errors), 0, []})
@@ -721,7 +743,7 @@ defmodule Ash.Actions.Create.Bulk do
 
     case batch do
       [] ->
-        {:ok, [], invalid, notifications}
+        {:ok, [], invalid, notifications, changesets_by_index}
 
       batch ->
         upsert_keys =
@@ -749,6 +771,11 @@ defmodule Ash.Actions.Create.Bulk do
                 end
             end
           end
+
+        changesets_by_index =
+          Enum.reduce(batch, changesets_by_index, fn changeset, changesets_by_index ->
+            Map.put(changesets_by_index, changeset.context.bulk_create.index, changeset)
+          end)
 
         case action.manual do
           {mod, opts} ->
@@ -836,10 +863,10 @@ defmodule Ash.Actions.Create.Bulk do
         end
         |> case do
           {:ok, result} ->
-            {:ok, result, invalid, notifications}
+            {:ok, result, invalid, notifications, changesets_by_index}
 
           :ok ->
-            {:ok, invalid, notifications}
+            {:ok, invalid, notifications, changesets_by_index}
 
           other ->
             other
@@ -847,25 +874,53 @@ defmodule Ash.Actions.Create.Bulk do
     end
   end
 
-  defp run_after_action_hooks({:ok, invalid, notifications}, changesets_by_index) do
+  defp manage_relationships(created, api, changeset, engine_opts) do
+    with {:ok, loaded} <-
+           Ash.Actions.ManagedRelationships.load(api, created, changeset, engine_opts),
+         {:ok, with_relationships, new_notifications} <-
+           Ash.Actions.ManagedRelationships.manage_relationships(
+             loaded,
+             changeset,
+             engine_opts[:actor],
+             engine_opts
+           ) do
+      {:ok, with_relationships, %{notifications: new_notifications, new_changeset: changeset}}
+    end
+  end
+
+  defp run_after_action_hooks({:ok, invalid, notifications, changesets_by_index}, _opts, _api) do
     {:ok, invalid, notifications, changesets_by_index}
   end
 
-  defp run_after_action_hooks({:ok, batch_results, invalid, notifications}, changesets_by_index) do
+  defp run_after_action_hooks(
+         {:ok, batch_results, invalid, notifications, changesets_by_index},
+         opts,
+         api
+       ) do
     batch_results
     |> Enum.reduce_while(
       {:ok, [], notifications, changesets_by_index},
       fn result, {:ok, records, notifications, changesets_by_index} ->
         changeset = changesets_by_index[result.__metadata__.bulk_create_index]
 
-        case Ash.Changeset.run_after_actions(result, changeset, []) do
-          {:error, error} ->
-            {:halt, {:error, error}}
+        case manage_relationships(result, api, changeset,
+               actor: opts[:actor],
+               authorize?: opts[:authorize?]
+             ) do
+          {:ok, result, %{notifications: new_notifications, new_changeset: changeset}} ->
+            case Ash.Changeset.run_after_actions(result, changeset, []) do
+              {:error, error} ->
+                {:halt, {:error, error}}
 
-          {:ok, result, changeset, %{notifications: new_notifications}} ->
-            {:cont,
-             {:ok, [result | records], notifications ++ new_notifications,
-              Map.put(changesets_by_index, result.__metadata__.bulk_create_index, changeset)}}
+              {:ok, result, changeset, %{notifications: more_new_notifications}} ->
+                {:cont,
+                 {:ok, [result | records],
+                  notifications ++ new_notifications ++ more_new_notifications,
+                  Map.put(changesets_by_index, result.__metadata__.bulk_create_index, changeset)}}
+            end
+
+          {:error, error} ->
+            {:error, error}
         end
       end
     )
@@ -878,7 +933,7 @@ defmodule Ash.Actions.Create.Bulk do
     end
   end
 
-  defp run_after_action_hooks({:error, error}, _) do
+  defp run_after_action_hooks({:error, error}, _opts, _api) do
     {:error, error}
   end
 
@@ -1007,7 +1062,7 @@ defmodule Ash.Actions.Create.Bulk do
       all_changes,
       %{must_return_records?: false, batch: batch, changes: %{}, notifications: []},
       fn
-        {%{validation: {module, opts}} = validation, _change_index}, state ->
+        {%{validation: {module, opts}} = validation, _change_index}, %{batch: batch} = state ->
           batch =
             Stream.map(batch, fn changeset ->
               if Enum.all?(validation.where || [], fn {module, opts} ->
@@ -1050,11 +1105,14 @@ defmodule Ash.Actions.Create.Bulk do
             batch = batch_change(module, batch, change_opts, context, actor)
 
             must_return_records? =
-              state.must_return_records? || function_exported?(module, :after_batch, 3)
+              state.must_return_records? ||
+                Enum.any?(batch, fn item ->
+                  item.relationships not in [nil, %{}]
+                end) || function_exported?(module, :after_batch, 3)
 
             %{
               must_return_records?: must_return_records?,
-              batch: Enum.to_list(batch),
+              batch: batch,
               changes: Map.put(state.changes, change_index, :all)
             }
           else
@@ -1133,7 +1191,7 @@ defmodule Ash.Actions.Create.Bulk do
     if function_exported?(module, :batch_change, 3) && built_change_opts == change_opts do
       module.batch_change(batch, change_opts, context)
     else
-      Stream.map(batch, fn changeset ->
+      Enum.map(batch, fn changeset ->
         change_opts =
           Ash.Filter.build_filter_from_template(
             change_opts,
