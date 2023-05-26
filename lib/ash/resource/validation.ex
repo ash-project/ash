@@ -138,4 +138,6 @@ defmodule Ash.Resource.Validation do
         {:error, "Expected items of [:create, :update, :destroy], got: #{inspect(list)}"}
     end
   end
+
+  def validation_type, do: @validation_type
 end
