@@ -4,8 +4,6 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
 
   alias Ash.Resource.Validation.Negate
 
-  @moduletag :wip
-
   defmodule Post do
     use Ash.Resource
 
