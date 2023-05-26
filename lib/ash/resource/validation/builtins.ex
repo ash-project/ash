@@ -62,6 +62,17 @@ defmodule Ash.Resource.Validation.Builtins do
   end
 
   @doc """
+  Validates that other validation does not pass
+
+  ## Examples
+    validate negate(one_of(:status, [:closed, :finished]))
+  """
+  @spec negate(validation :: Validation.ref()) :: Validation.ref()
+  def negate(validation) do
+    {Validation.Negate, validation: validation}
+  end
+
+  @doc """
   Validates that the action is a specific action. Primarily meant for use in `where`.
 
   ## Examples
