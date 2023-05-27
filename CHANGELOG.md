@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.15](https://github.com/ash-project/ash/compare/v2.9.14...v2.9.15) (2023-05-27)
+
+
+
+
+### Bug Fixes:
+
+* proper required value validations in bulk creates
+
+* don't use error count in place of errors
+
+### Improvements:
+
+* make `loading?/2` smarter
+
 ## [v2.9.14](https://github.com/ash-project/ash/compare/v2.9.13...v2.9.14) (2023-05-26)
 
 
