@@ -487,7 +487,7 @@ defmodule Ash.Actions.Create.Bulk do
         notifications: notifications
       }
 
-      {errors, error_count} = errors(result, error, opts)
+      {error_count, errors} = errors(result, error, opts)
 
       %{result | errors: errors, error_count: error_count}
   end
@@ -694,9 +694,20 @@ defmodule Ash.Actions.Create.Bulk do
          before_batch_notifications
        ) do
     {batch, invalid, notifications} =
-      Enum.reduce(batch, {[], [], before_batch_notifications}, fn changeset,
-                                                                  {changesets, invalid,
-                                                                   notifications} ->
+      batch
+      |> Stream.map(fn changeset ->
+        Ash.Changeset.require_values(
+          changeset,
+          :create
+        )
+        |> Ash.Changeset.require_values(
+          :update,
+          false,
+          action.require_attributes
+        )
+      end)
+      |> Enum.reduce({[], [], before_batch_notifications}, fn changeset,
+                                                              {changesets, invalid, notifications} ->
         if changeset.valid? do
           {changeset, %{notifications: new_notifications}} =
             Ash.Changeset.run_before_actions(changeset)
