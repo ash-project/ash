@@ -6,12 +6,12 @@ defmodule Ash.Error do
   alias Ash.Error.{Forbidden, Framework, Invalid, Stacktrace, Unknown}
   alias Ash.Error.Unknown.UnknownError
 
-  @type error_class() :: :invalid | :authorization | :framework | :unknown
+  @type error_class() :: :forbidden | :invalid | :framework | :unknown
 
   @type t :: %{
           required(:__struct__) => module,
           required(:__exception__) => true,
-          required(:class) => :invalid | :forbidden | :framework | :unknown,
+          required(:class) => error_class(),
           required(:path) => [atom | integer],
           required(:changeset) => Ash.Changeset.t() | nil,
           required(:query) => Ash.Query.t() | nil,
@@ -568,8 +568,8 @@ defmodule Ash.Error do
     end)
   end
 
-  defp header(:invalid), do: "Input Invalid"
   defp header(:forbidden), do: "Forbidden"
+  defp header(:invalid), do: "Input Invalid"
   defp header(:framework), do: "Framework Error"
   defp header(:unknown), do: "Unknown Error"
 

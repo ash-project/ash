@@ -16,6 +16,6 @@ defmodule Ash.Error.Forbidden do
       Ash.Error.error_descriptions(errors)
     end
 
-    def code(_), do: "Forbidden"
+    def code(_), do: "forbidden"
   end
 end
