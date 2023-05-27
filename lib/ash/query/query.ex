@@ -851,7 +851,13 @@ defmodule Ash.Query do
 
   def loading?(query, item) when is_atom(item) do
     Keyword.has_key?(query.load || [], item) || Map.has_key?(query.calculations, item) ||
-      Map.has_key?(query.aggregates, item)
+      Map.has_key?(query.aggregates, item) ||
+      Enum.any?(query.calculations, fn {_, %{calc_name: calc_name}} ->
+        calc_name == item
+      end) ||
+      Enum.any?(query.aggregates, fn {_, %{agg_name: agg_name}} ->
+        agg_name == item
+      end)
   end
 
   @doc """

@@ -13,6 +13,7 @@ defmodule Ash.Query.Aggregate do
     :implementation,
     :load,
     :read_action,
+    :agg_name,
     authorize?: true,
     uniq?: false,
     filterable?: true
@@ -195,6 +196,7 @@ defmodule Ash.Query.Aggregate do
       {:ok,
        %__MODULE__{
          name: name,
+         agg_name: name,
          resource: resource,
          constraints: constraints,
          default_value: default || default_value(kind),
