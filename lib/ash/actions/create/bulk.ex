@@ -498,6 +498,10 @@ defmodule Ash.Actions.Create.Bulk do
     end)
   end
 
+  defp errors(result, nil, _opts) do
+    {result.error_count + 1, []}
+  end
+
   defp errors(result, {:error, error}, opts) do
     if opts[:return_errors?] do
       {result.error_count + 1, [error | result.errors]}
