@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.16](https://github.com/ash-project/ash/compare/v2.9.15...v2.9.16) (2023-05-29)
+
+
+
+
+### Bug Fixes:
+
+* handle pre-hydrated predicates in expressions
+
+* handle `nil` errors on bulk creates
+
+* add `:forbidden` to `error_class`, lowercase code for `Forbidden` (#589)
+
 ## [v2.9.15](https://github.com/ash-project/ash/compare/v2.9.14...v2.9.15) (2023-05-27)
 
 
