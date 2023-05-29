@@ -1987,11 +1987,6 @@ defmodule Ash.Query do
     query = to_query(query)
 
     if Ash.DataLayer.data_layer_can?(query.resource, :filter) do
-      agg_names =
-        query.resource
-        |> Ash.Resource.Info.aggregates()
-        |> Enum.map(& &1.name)
-
       filter =
         if query.filter do
           Ash.Filter.add_to_filter(
@@ -2012,48 +2007,7 @@ defmodule Ash.Query do
 
       case filter do
         {:ok, filter} ->
-          aggregates_to_load =
-            filter
-            |> Ash.Filter.used_aggregates()
-            |> Enum.map(& &1.name)
-            |> Enum.filter(&(&1 in agg_names))
-            |> Enum.reject(&Map.has_key?(query.aggregates, &1))
-
-          aggs_to_load_for_calculations =
-            filter
-            |> Ash.Filter.used_calculations(
-              query.resource,
-              [],
-              query.calculations,
-              query.aggregates
-            )
-            |> Enum.flat_map(fn calculation ->
-              expression = calculation.module.expression(calculation.opts, calculation.context)
-
-              case Ash.Filter.hydrate_refs(expression, %{
-                     resource: query.resource,
-                     aggregates: query.aggregates,
-                     calculations: query.calculations,
-                     relationship_path: [],
-                     public?: false
-                   }) do
-                {:ok, expression} ->
-                  expression
-                  |> Ash.Filter.used_aggregates([])
-                  |> Enum.map(& &1.name)
-
-                _ ->
-                  []
-              end
-            end)
-            |> Enum.filter(&(&1 in agg_names))
-            |> Enum.reject(fn agg ->
-              Map.has_key?(query.aggregates, agg) || agg in aggregates_to_load
-            end)
-
-          query
-          |> Ash.Query.load(aggregates_to_load ++ aggs_to_load_for_calculations)
-          |> Map.put(:filter, filter)
+          Map.put(query, :filter, filter)
 
         {:error, error} ->
           add_error(query, :filter, error)

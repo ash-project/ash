@@ -2231,6 +2231,15 @@ defmodule Ash.Filter do
     add_expression_part({:not, not_expression}, context, expression)
   end
 
+  defp add_expression_part(%_{__predicate__?: _} = pred, context, expression) do
+    {:ok,
+     BooleanExpression.optimized_new(
+       :and,
+       expression,
+       move_to_relationship_path(pred, context[:relationship_path] || [])
+     )}
+  end
+
   defp add_expression_part(%_{} = record, context, expression) do
     pkey_filter =
       record
