@@ -80,7 +80,7 @@ Requires that an actor is set for all requests.
 Important: `nil` is still a valid actor, so this won't prevent providing `actor: nil`.
 
 
-#### `d:Ash.Api.dsl.authorization|authorize`
+#### `d:Ash.Api.Dsl.authorization|authorize`
 
 ##### Important!
 
