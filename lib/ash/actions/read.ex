@@ -1209,6 +1209,27 @@ defmodule Ash.Actions.Read do
           end)
           |> Enum.filter(& &1)
 
+        loaded =
+          calc.required_loads
+          |> Enum.map(fn
+            {key, _} ->
+              key
+
+            key ->
+              key
+          end)
+          |> Enum.reduce(loaded, fn
+            key, query when is_atom(key) ->
+              if relationship = Ash.Resource.Info.relationship(query.resource, key) do
+                Ash.Query.ensure_selected(query, relationship.source_attribute)
+              else
+                query
+              end
+
+            _, query ->
+              query
+          end)
+
         {loaded
          |> Ash.Query.ensure_selected(calc.select), new_loads ++ required_calc_loads}
       end)
@@ -1437,14 +1458,26 @@ defmodule Ash.Actions.Read do
 
             select =
               calculation_deps
-              |> Enum.filter(fn
+              |> Enum.flat_map(fn
                 %{type: :attribute} = attr_dep ->
-                  attr_dep.path == dep.path ++ [{dep.relationship, dep.query}]
+                  if attr_dep.path == dep.path ++ [{dep.relationship, dep.query}] do
+                    [attr_dep.attribute]
+                  else
+                    []
+                  end
+
+                %{type: :relationship} = rel_dep ->
+                  if rel_dep.path == dep.path ++ [{dep.relationship, dep.query}] do
+                    [
+                      Ash.Resource.Info.relationship(relationship.destination, dep.relationship).source_attribute
+                    ]
+                  else
+                    []
+                  end
 
                 _ ->
-                  false
+                  []
               end)
-              |> Enum.map(& &1.attribute)
 
             Ash.Actions.Load.calc_dep_requests(
               relationship,
