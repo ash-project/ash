@@ -25,7 +25,7 @@ defmodule Ash.Test.Resource.Validation.StringLengthTest do
       {:ok, opts} = StringLength.init(attribute: :body, min: 3)
       changeset = Ash.Changeset.new(Post, %{body: "no"})
 
-      assert_error(changeset, opts, "body must have length of at least 3")
+      assert_error(changeset, opts, "must have length of at least 3")
     end
   end
 
@@ -41,7 +41,7 @@ defmodule Ash.Test.Resource.Validation.StringLengthTest do
       {:ok, opts} = StringLength.init(attribute: :body, max: 3)
       changeset = Ash.Changeset.new(Post, %{body: "invalid"})
 
-      assert_error(changeset, opts, "body must have length of no more than 3")
+      assert_error(changeset, opts, "must have length of no more than 3")
     end
   end
 
@@ -57,10 +57,10 @@ defmodule Ash.Test.Resource.Validation.StringLengthTest do
       {:ok, opts} = StringLength.init(attribute: :body, exact: 3)
 
       changeset = Ash.Changeset.new(Post, %{body: "no"})
-      assert_error(changeset, opts, "body must have length of exactly 3")
+      assert_error(changeset, opts, "must have length of exactly 3")
 
       changeset = Ash.Changeset.new(Post, %{body: "invalid"})
-      assert_error(changeset, opts, "body must have length of exactly 3")
+      assert_error(changeset, opts, "must have length of exactly 3")
     end
   end
 
@@ -76,10 +76,10 @@ defmodule Ash.Test.Resource.Validation.StringLengthTest do
       {:ok, opts} = StringLength.init(attribute: :body, min: 2, max: 4)
 
       changeset = Ash.Changeset.new(Post, %{body: "n"})
-      assert_error(changeset, opts, "body must have length of between 2 and 4")
+      assert_error(changeset, opts, "must have length of between 2 and 4")
 
       changeset = Ash.Changeset.new(Post, %{body: "invalid"})
-      assert_error(changeset, opts, "body must have length of between 2 and 4")
+      assert_error(changeset, opts, "must have length of between 2 and 4")
     end
   end
 
