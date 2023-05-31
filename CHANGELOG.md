@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.17](https://github.com/ash-project/ash/compare/v2.9.16...v2.9.17) (2023-05-31)
+
+
+
+
+### Bug Fixes:
+
+* properly load depended on source attributes
+
 ## [v2.9.16](https://github.com/ash-project/ash/compare/v2.9.15...v2.9.16) (2023-05-29)
 
 
