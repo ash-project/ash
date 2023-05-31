@@ -2142,17 +2142,27 @@ defmodule Ash.Actions.Read do
       query.sort
       |> Enum.flat_map(fn
         {%Ash.Query.Calculation{} = calc, _} ->
-          [calc]
+          [{:calc, calc}]
+
+        {field, _} ->
+          if Ash.Resource.Info.aggregate(query.resource, field) do
+            [{:agg, field}]
+          else
+            []
+          end
 
         _ ->
           []
       end)
       |> Enum.reduce(query, fn
-        %{load: nil} = calc, query ->
+        {:calc, %{load: nil} = calc}, query ->
           Ash.Query.calculate(query, calc.name, {calc.module, calc.opts}, calc.type, calc.context)
 
-        %{load: load, context: context}, query ->
+        {:calc, %{load: load, context: context}}, query ->
           Ash.Query.load(query, [{load, context}])
+
+        {:agg, field}, query ->
+          Ash.Query.load(query, field)
       end)
 
     limited =
