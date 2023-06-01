@@ -407,6 +407,6 @@ defmodule Ash.Error.Forbidden.Policy do
       end
     end
 
-    def code(_), do: "forbidden"
+    def code(_), do: "forbidden_by_policy"
   end
 end
