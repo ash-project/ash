@@ -2379,7 +2379,7 @@ defmodule Ash.Filter do
                InvalidFilterValue.exception(
                  value: inspect(nested_statement),
                  message:
-                   "A single value must be castable to the primary key of the resource: #{inspect(context.resource)}"
+                   "a single value must be castable to the primary key of the resource: #{inspect(context.resource)}"
                )}
           end
         end
@@ -2666,7 +2666,7 @@ defmodule Ash.Filter do
            Ash.Error.Query.InvalidExpression.exception(
              expression: expr,
              message:
-               "Cannot access multiple resources for a data layer that can't be joined from within a single expression"
+               "cannot access multiple resources for a data layer that can't be joined from within a single expression"
            )}
         end
 
@@ -2674,7 +2674,7 @@ defmodule Ash.Filter do
         {:error,
          Ash.Error.Query.InvalidExpression.exception(
            expression: expr,
-           message: "Cannot access multiple data layers within a single expression"
+           message: "cannot access multiple data layers within a single expression"
          )}
     end
   end

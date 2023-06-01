@@ -496,7 +496,7 @@ defmodule Ash.Actions.Read do
 
       %Ash.Query.Ref{attribute: %Ash.Resource.Calculation{}} = ref ->
         raise Ash.Error.Framework.AssumptionFailed,
-          message: "Unhandled calculation in filter statement #{inspect(ref)}"
+          message: "unhandled calculation in filter statement #{inspect(ref)}"
 
       %Ash.Query.Ref{attribute: %Ash.Query.Calculation{} = calc} = ref ->
         %{
@@ -1738,7 +1738,7 @@ defmodule Ash.Actions.Read do
           )
         else
           raise Ash.Error.Framework.AssumptionFailed,
-            message: "Only calculation & relationship deps should have input"
+            message: "only calculation & relationship deps should have input"
         end
 
       %Ash.Query.Calculation{} = calculation ->
@@ -1785,7 +1785,7 @@ defmodule Ash.Actions.Read do
           true ->
             raise Ash.Error.Framework.AssumptionFailed,
               message:
-                "Only attribute & aggregate deps should remain at this point. Got #{inspect(other)} on #{inspect(query.resource)}"
+                "only attribute & aggregate deps should remain at this point, got #{inspect(other)} on #{inspect(query.resource)}"
         end
     end)
   end

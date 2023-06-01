@@ -443,7 +443,7 @@ defmodule Ash.Actions.ManagedRelationships do
               |> Ash.Changeset.add_error(
                 InvalidRelationship.exception(
                   relationship: relationship.name,
-                  message: "Changes would create a new related record"
+                  message: "changes would create a new related record"
                 )
               )
               |> Ash.Changeset.put_context(:private, %{
@@ -1082,7 +1082,7 @@ defmodule Ash.Actions.ManagedRelationships do
           {:error,
            InvalidRelationship.exception(
              relationship: relationship.name,
-             message: "Changes would create a new related record"
+             message: "changes would create a new related record"
            )}
         end
 
@@ -1236,7 +1236,7 @@ defmodule Ash.Actions.ManagedRelationships do
         {:error,
          InvalidRelationship.exception(
            relationship: relationship.name,
-           message: "Changes would update a record"
+           message: "changes would update a record"
          )}
 
       :ignore ->
@@ -1621,7 +1621,7 @@ defmodule Ash.Actions.ManagedRelationships do
              {:error,
               InvalidRelationship.exception(
                 relationship: relationship.name,
-                message: "Changes would destroy a record"
+                message: "changes would destroy a record"
               )}}
 
           {:unrelate, action_name} ->

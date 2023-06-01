@@ -22,7 +22,7 @@ defmodule Ash.Resource.Change.RelateActor do
         changeset,
         InvalidRelationship.exception(
           relationship: opts[:relationship],
-          message: "Could not relate to actor, as no actor was found (and :allow_nil? is false)"
+          message: "could not relate to actor, as no actor was found (and :allow_nil? is false)"
         )
       )
     end

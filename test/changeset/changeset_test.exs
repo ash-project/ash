@@ -519,7 +519,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       post2 = %{title: "title"}
 
       assert_raise Ash.Error.Invalid,
-                   ~r/Invalid value provided for posts: Changes would create a new related record/,
+                   ~r/Invalid value provided for posts: changes would create a new related record/,
                    fn ->
                      Author
                      |> Changeset.new()
@@ -786,7 +786,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         )
 
       assert [%Ash.Error.Changes.InvalidRelationship{} = relation_error] = changeset.errors
-      assert relation_error.message =~ "Cannot provide structs that don't match the destination"
+      assert relation_error.message =~ "cannot provide structs that don't match the destination"
     end
 
     test "it returns error if relationship does not exists" do
@@ -872,7 +872,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     test "arguments can be used in invalid changes" do
-      assert_raise Ash.Error.Invalid, ~r/Confirmation did not match value/, fn ->
+      assert_raise Ash.Error.Invalid, ~r/confirmation did not match value/, fn ->
         Category
         |> Changeset.new(%{"name" => "foo"})
         |> Changeset.set_argument(:confirm_name, "bar")
@@ -904,7 +904,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                %Ash.Error.Changes.InvalidAttribute{
                  class: :invalid,
                  field: :confirm_name,
-                 message: "Confirmation did not match value",
+                 message: "confirmation did not match value",
                  path: []
                }
              ] =

@@ -179,7 +179,7 @@ defmodule Ash.Resource.Validation.Builtins do
 
       validate numericality(:age, greater_than_or_equal_to: 18),
         where: [attribute_equals(:show_adult_content, true)],
-        message: "Must be over %{greater_than_or_equal_to} to enable adult content."
+        message: "must be over %{greater_than_or_equal_to} to enable adult content."
 
       validate numericality(:points, greater_than: 0, less_than_or_equal_to: 100)
   """

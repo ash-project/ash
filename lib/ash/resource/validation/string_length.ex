@@ -37,8 +37,7 @@ defmodule Ash.Resource.Validation.StringLength do
                InvalidAttribute.exception(
                  value: value,
                  field: opts[:attribute],
-                 message: "%{field} could not be parsed",
-                 vars: [field: opts[:attribute]]
+                 message: "could not be parsed"
                )}
           end
 
@@ -60,8 +59,8 @@ defmodule Ash.Resource.Validation.StringLength do
        InvalidAttribute.exception(
          value: value,
          field: opts[:attribute],
-         message: "%{field} must have length of exactly %{exact}",
-         vars: [field: opts[:attribute], exact: exact]
+         message: "must have length of exactly %{exact}",
+         vars: [exact: exact]
        )}
     end
   end
@@ -76,8 +75,8 @@ defmodule Ash.Resource.Validation.StringLength do
        InvalidAttribute.exception(
          value: value,
          field: opts[:attribute],
-         message: "%{field} must have length of between %{min} and %{max}",
-         vars: [field: opts[:attribute], min: min, max: max]
+         message: "must have length of between %{min} and %{max}",
+         vars: [min: min, max: max]
        )}
     end
   end
@@ -90,8 +89,8 @@ defmodule Ash.Resource.Validation.StringLength do
        InvalidAttribute.exception(
          value: value,
          field: opts[:attribute],
-         message: "%{field} must have length of at least %{min}",
-         vars: [field: opts[:attribute], min: min]
+         message: "must have length of at least %{min}",
+         vars: [min: min]
        )}
     end
   end
@@ -104,8 +103,8 @@ defmodule Ash.Resource.Validation.StringLength do
        InvalidAttribute.exception(
          value: value,
          field: opts[:attribute],
-         message: "%{field} must have length of no more than %{max}",
-         vars: [field: opts[:attribute], max: max]
+         message: "must have length of no more than %{max}",
+         vars: [max: max]
        )}
     end
   end
