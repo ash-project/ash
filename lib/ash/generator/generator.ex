@@ -226,7 +226,12 @@ defmodule Ash.Generator do
            StreamData.one_of(options)
          )}
       else
-        {Map.put(required, attribute.name, attribute_generator(attribute)), optional}
+        # only create a value for attributes that didn't get a dedicated generator
+         if attribute.name not in Map.keys(generators) do
+          {Map.put(required, attribute.name, attribute_generator(attribute)), optional}
+        else
+          {required, optional}
+        end
       end
     end)
     |> then(fn {required, optional} ->
