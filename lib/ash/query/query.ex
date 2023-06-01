@@ -904,12 +904,36 @@ defmodule Ash.Query do
             load_relationship(query, [{field, nested_query}])
 
           resource_calculation = Ash.Resource.Info.calculation(query.resource, field) ->
+            {name, load} =
+              cond do
+                Keyword.keyword?(rest) ->
+                  case Keyword.fetch(rest, :as) do
+                    {:ok, value} ->
+                      {value, nil}
+
+                    :error ->
+                      {resource_calculation.name, resource_calculation.name}
+                  end
+
+                is_map(rest) ->
+                  case Map.fetch(rest, :as) do
+                    {:ok, value} ->
+                      {value, nil}
+
+                    :error ->
+                      {resource_calculation.name, resource_calculation.name}
+                  end
+
+                true ->
+                  {resource_calculation.name, resource_calculation.name}
+              end
+
             {module, opts} = resource_calculation.calculation
 
             with {:ok, args} <- validate_calculation_arguments(resource_calculation, rest),
                  {:ok, calculation} <-
                    Calculation.new(
-                     resource_calculation.name,
+                     name,
                      module,
                      opts,
                      {resource_calculation.type, resource_calculation.constraints},
@@ -918,9 +942,9 @@ defmodule Ash.Query do
                      resource_calculation.load
                    ) do
               calculation =
-                select_and_load_calc(resource_calculation, %{calculation | load: field}, query)
+                select_and_load_calc(resource_calculation, %{calculation | load: load}, query)
 
-              Map.update!(query, :calculations, &Map.put(&1, field, calculation))
+              Map.update!(query, :calculations, &Map.put(&1, name, calculation))
             else
               {:error, error} ->
                 Ash.Query.add_error(query, :load, error)
