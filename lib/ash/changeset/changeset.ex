@@ -2625,7 +2625,7 @@ defmodule Ash.Changeset do
         error =
           InvalidRelationship.exception(
             relationship: relationship.name,
-            message: "Relationship is not editable"
+            message: "relationship is not editable"
           )
 
         add_error(changeset, error)
@@ -2634,7 +2634,7 @@ defmodule Ash.Changeset do
         error =
           InvalidRelationship.exception(
             relationship: relationship.name,
-            message: "Cannot manage a manual relationship"
+            message: "cannot manage a manual relationship"
           )
 
         add_error(changeset, error)
@@ -2643,7 +2643,7 @@ defmodule Ash.Changeset do
         error =
           InvalidRelationship.exception(
             relationship: relationship.name,
-            message: "Cannot manage a #{type} relationship with a list of records"
+            message: "cannot manage a #{type} relationship with a list of records"
           )
 
         add_error(changeset, error)
@@ -2707,7 +2707,7 @@ defmodule Ash.Changeset do
               changeset,
               InvalidRelationship.exception(
                 relationship: relationship.name,
-                message: "Cannot provide structs that don't match the destination"
+                message: "cannot provide structs that don't match the destination"
               )
             )
           else
