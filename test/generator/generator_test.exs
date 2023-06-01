@@ -143,7 +143,6 @@ defmodule Ash.Test.GeneratorTest do
     end
   end
 
-
   describe "action_input" do
     test "action input can be provided to an action" do
       check all(input <- Ash.Generator.action_input(Post, :create)) do
