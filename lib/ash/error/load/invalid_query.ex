@@ -9,8 +9,6 @@ defmodule Ash.Error.Load.InvalidQuery do
 
     def code(_), do: "invalid_load_query"
 
-    def class(_), do: :invalid
-
     def message(%{query: query, load_path: load_path}) do
       errors_by_path =
         query.errors
@@ -25,7 +23,5 @@ defmodule Ash.Error.Load.InvalidQuery do
           Enum.map_join(errors, "\n", &"* #{inspect(key)} - #{Exception.message(&1)}")
         end)
     end
-
-    def stacktrace(_), do: nil
   end
 end

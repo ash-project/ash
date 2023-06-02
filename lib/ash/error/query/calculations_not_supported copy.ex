@@ -9,12 +9,8 @@ defmodule Ash.Error.Query.CalculationsNotSupported do
 
     def code(_), do: "calculations_not_supported"
 
-    def class(_), do: :invalid
-
     def message(%{resource: resource, feature: feature}) do
       "Data layer for #{inspect(resource)} does not support #{feature} calculations"
     end
-
-    def stacktrace(_), do: nil
   end
 end

@@ -9,8 +9,6 @@ defmodule Ash.Error.EngineError do
 
     def code(_), do: "engine_error"
 
-    def class(_), do: :framework
-
     def message(%{state: state, message: message}) do
       transaction_info =
         if state.transaction_id do
@@ -23,7 +21,5 @@ defmodule Ash.Error.EngineError do
       #{Ash.Engine.long_breakdown(state)}
       """
     end
-
-    def stacktrace(_), do: nil
   end
 end

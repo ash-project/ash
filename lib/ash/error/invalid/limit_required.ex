@@ -9,12 +9,8 @@ defmodule Ash.Error.Invalid.LimitRequired do
 
     def code(_), do: "limit_is_required"
 
-    def class(_), do: :invalid
-
     def message(_) do
       "Limit is required"
     end
-
-    def stacktrace(_), do: nil
   end
 end

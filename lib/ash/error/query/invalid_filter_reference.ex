@@ -9,8 +9,6 @@ defmodule Ash.Error.Query.InvalidFilterReference do
 
     def code(_), do: "invalid_filter_reference"
 
-    def class(_), do: :invalid
-
     def message(%{field: field, simple_equality?: true}) do
       "#{field} cannot be referenced in filters, except by simple equality"
     end
@@ -18,7 +16,5 @@ defmodule Ash.Error.Query.InvalidFilterReference do
     def message(%{field: field}) do
       "#{field} cannot be referenced in filters"
     end
-
-    def stacktrace(_), do: nil
   end
 end

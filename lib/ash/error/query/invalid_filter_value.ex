@@ -9,8 +9,6 @@ defmodule Ash.Error.Query.InvalidFilterValue do
 
     def code(_), do: "invalid_filter_value"
 
-    def class(_), do: :invalid
-
     def message(%{value: value, message: message, context: context}) when not is_nil(context) do
       if message do
         "Invalid filter value `#{inspect(value)}` supplied in `#{inspect(context)}`: " <> message
@@ -26,7 +24,5 @@ defmodule Ash.Error.Query.InvalidFilterValue do
         "Invalid filter value `#{inspect(value)}`."
       end
     end
-
-    def stacktrace(_), do: nil
   end
 end

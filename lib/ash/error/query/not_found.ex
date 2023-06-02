@@ -9,8 +9,6 @@ defmodule Ash.Error.Query.NotFound do
 
     def code(_), do: "not_found"
 
-    def class(_), do: :invalid
-
     def message(%{primary_key: nil, resource: _resource}) do
       "record not found"
     end
@@ -18,8 +16,6 @@ defmodule Ash.Error.Query.NotFound do
     def message(%{primary_key: key, resource: _resource}) do
       "record with #{id_string(key)} not found"
     end
-
-    def stacktrace(_), do: nil
 
     defp id_string(%Ash.Filter{} = filter) do
       inspect(filter)

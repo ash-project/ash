@@ -9,8 +9,6 @@ defmodule Ash.Error.Load.NoSuchRelationship do
 
     def code(_), do: "no_such_load_relationship"
 
-    def class(_), do: :invalid
-
     def message(%{resource: resource, relationship: relationship, load_path: load_path}) do
       if load_path == [] do
         "No such relationship #{inspect(resource)}.#{relationship}"
@@ -18,7 +16,5 @@ defmodule Ash.Error.Load.NoSuchRelationship do
         "No such relationship #{inspect(resource)}.#{relationship} at #{Enum.join(load_path, ".")}"
       end
     end
-
-    def stacktrace(_), do: nil
   end
 end

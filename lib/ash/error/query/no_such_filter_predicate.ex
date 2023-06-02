@@ -9,12 +9,8 @@ defmodule Ash.Error.Query.NoSuchFilterPredicate do
 
     def code(_), do: "no_such_filter_predicate"
 
-    def class(_), do: :invalid
-
     def message(%{key: key, resource: resource}) do
       "No such filter predicate for #{inspect(resource)}: #{inspect(key)}"
     end
-
-    def stacktrace(_), do: nil
   end
 end

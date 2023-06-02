@@ -9,15 +9,11 @@ defmodule Ash.Error.Query.ReadActionRequired do
 
     def code(_), do: "read_action_required"
 
-    def class(_), do: :invalid
-
     def message(%{resource: resource}) do
       """
       A default read action is required on the destination in order to filter
       on a relationship. Destination: #{inspect(resource)}
       """
     end
-
-    def stacktrace(_), do: nil
   end
 end
