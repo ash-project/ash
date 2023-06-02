@@ -9,12 +9,8 @@ defmodule Ash.Error.Query.AggregatesNotSupported do
 
     def code(_), do: "aggregates_not_supported"
 
-    def class(_), do: :invalid
-
     def message(%{resource: resource, feature: feature}) do
       "Data layer for #{inspect(resource)} does not support #{feature} aggregates"
     end
-
-    def stacktrace(_), do: nil
   end
 end

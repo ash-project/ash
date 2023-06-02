@@ -18,8 +18,6 @@ defmodule Ash.Error.Query.NoComplexSortsWithKeysetPagination do
 
     def code(_), do: "no_complex_sorts_with_keyset_pagination"
 
-    def class(_), do: :invalid
-
     def message(%{resource: resource, sort: sort}) do
       """
       Attempted to sort by a calculation or aggregate while using keyset pagination with #{inspect(resource)}
@@ -29,7 +27,5 @@ defmodule Ash.Error.Query.NoComplexSortsWithKeysetPagination do
       Sort: #{inspect(sort)}
       """
     end
-
-    def stacktrace(_), do: nil
   end
 end

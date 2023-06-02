@@ -9,12 +9,8 @@ defmodule Ash.Error.Query.UnsupportedPredicate do
 
     def code(_), do: "unsupported_predicate"
 
-    def class(_), do: :invalid
-
     def message(%{resource: resource, predicate: predicate, type: type}) do
       "Data layer for #{inspect(resource)} does not support #{inspect(predicate)} for #{inspect(type)}"
     end
-
-    def stacktrace(_), do: nil
   end
 end

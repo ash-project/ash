@@ -9,12 +9,8 @@ defmodule Ash.Error.Invalid.PaginationRequired do
 
     def code(_), do: "pagination_required"
 
-    def class(_), do: :invalid
-
     def message(_) do
       "Pagination is required"
     end
-
-    def stacktrace(_), do: nil
   end
 end

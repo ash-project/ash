@@ -9,12 +9,8 @@ defmodule Ash.Error.Query.NoSuchAttributeOrRelationship do
 
     def code(_), do: "no_such_attribute_or_relationship"
 
-    def class(_), do: :invalid
-
     def message(%{attribute_or_relationship: attribute_or_relationship, resource: resource}) do
       "No such attribute or relationship #{inspect(attribute_or_relationship)} for #{inspect(resource)}"
     end
-
-    def stacktrace(_), do: nil
   end
 end
