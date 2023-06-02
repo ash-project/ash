@@ -227,10 +227,10 @@ defmodule Ash.Generator do
          )}
       else
         # only create a value for attributes that didn't get a dedicated generator
-        if attribute.name not in Map.keys(generators) do
-          {Map.put(required, attribute.name, attribute_generator(attribute)), optional}
-        else
+        if attribute.name in Map.keys(generators) do
           {required, optional}
+        else
+          {Map.put(required, attribute.name, attribute_generator(attribute)), optional}
         end
       end
     end)
