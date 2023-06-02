@@ -1,4 +1,4 @@
-defmodule Ash.Test.Actions.BulkCreateTest do
+defmodule Ash.Test.Actions.StreamTest do
   @moduledoc false
   use ExUnit.Case, async: true
 

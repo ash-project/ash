@@ -22,6 +22,10 @@ defmodule Ash.Test.GeneratorTest do
     attributes do
       uuid_primary_key :id
       attribute :name, :string, default: "Fred"
+
+      attribute :meta, :map do
+        allow_nil? false
+      end
     end
 
     relationships do
@@ -149,7 +153,10 @@ defmodule Ash.Test.GeneratorTest do
     end
 
     test "overrides are applied" do
-      check all(input <- Ash.Generator.action_input(Post, :create, %{title: "text"})) do
+      check all(
+              input <-
+                Ash.Generator.action_input(Post, :create, %{title: "text"})
+            ) do
         post =
           Post
           |> Ash.Changeset.for_create(:create, input)
@@ -183,10 +190,13 @@ defmodule Ash.Test.GeneratorTest do
     end
   end
 
+  @meta_generator %{
+    meta: %{}
+  }
   describe "seed_input" do
     test "it returns attributes generated" do
       Author
-      |> Ash.Generator.seed_input()
+      |> Ash.Generator.seed_input(@meta_generator)
       |> Enum.take(10)
       |> Enum.each(fn input ->
         seed!(Author, input)
@@ -194,13 +204,13 @@ defmodule Ash.Test.GeneratorTest do
     end
 
     test "it can be used in property testing" do
-      check all(input <- Ash.Generator.seed_input(Author)) do
+      check all(input <- Ash.Generator.seed_input(Author, @meta_generator)) do
         seed!(Author, input)
       end
     end
 
     test "many seeds can be generated with seed_many!" do
-      assert Enum.count(Ash.Generator.seed_many!(Author, 5)) == 5
+      assert Enum.count(Ash.Generator.seed_many!(Author, 5, @meta_generator)) == 5
     end
   end
 
