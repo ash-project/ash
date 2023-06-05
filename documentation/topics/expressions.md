@@ -8,7 +8,7 @@ Ash.Query.expr(x + y)
 Ash.Query.expr(post.title <> " | " <> post.subtitle)
 ```
 
-Ash expressions have some interesting properties in their evaluation, primarily because they are made to be portable, i.e executable in some data layer (like SQL) or executable in Elixir. In general, these expressions will behave the same way they do in Elixir. The primary difference is how `nil` values work. They behave the way that `NULL` values behave in SQL. This is primarily because this pattern is easier to replicate to various popular data layers, and is generally safer when using expressions for things like authentication. The practical implications of this are that `nil` values will "poison" many expressions, and cause them to return `nil`. For example, `x + nil` would always evaluate to `nil`.
+Ash expressions have some interesting properties in their evaluation, primarily because they are made to be portable, i.e executable in some data layer (like SQL) or executable in Elixir. In general, these expressions will behave the same way they do in Elixir. The primary difference is how `nil` values work. They behave the way that `NULL` values behave in SQL. This is primarily because this pattern is easier to replicate to various popular data layers, and is generally safer when using expressions for things like authentication. The practical implications of this are that `nil` values will "poison" many expressions, and cause them to return `nil`. For example, `x + nil` would always evaluate to `nil`. Additionally, `true and nil` will always result in `nil`, *this is also true with or and not*, i.e `true or nil` will return `nil`, and `not nil` will return `nil`.
 
 ## Operators
 
