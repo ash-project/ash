@@ -1468,8 +1468,24 @@ defmodule Ash.Actions.Read do
 
                 %{type: :relationship} = rel_dep ->
                   if rel_dep.path == dep.path ++ [{dep.relationship, dep.query}] do
+                    nested_relationship =
+                      Ash.Resource.Info.relationship(relationship.destination, dep.relationship)
+
+                    if !nested_relationship do
+                      raise """
+                      Internal Error:
+
+                      Calculation depends on relationship but we could not determine the relationship
+
+                      Resource: #{inspect(relationship.destination)}
+
+                      Relationship Dependency:
+                      #{inspect(rel_dep)}
+                      """
+                    end
+
                     [
-                      Ash.Resource.Info.relationship(relationship.destination, dep.relationship).source_attribute
+                      nested_relationship.source_attribute
                     ]
                   else
                     []

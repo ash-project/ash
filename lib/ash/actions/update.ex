@@ -457,6 +457,11 @@ defmodule Ash.Actions.Update do
                             {:error, changeset}
                           end
                       end
+                      |> Helpers.load(changeset, api,
+                        actor: actor,
+                        authorize?: authorize?,
+                        tracer: tracer
+                      )
                     end,
                     transaction?:
                       Keyword.get(request_opts, :transaction?, true) && action.transaction?,

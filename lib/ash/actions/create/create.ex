@@ -513,6 +513,11 @@ defmodule Ash.Actions.Create do
                     actor: actor,
                     authorize?: authorize?
                   )
+                  |> Helpers.load(changeset, api,
+                    actor: actor,
+                    authorize?: authorize?,
+                    tracer: tracer
+                  )
 
                 {:error, %Ash.Changeset{} = changeset} ->
                   {:error, changeset.errors, %{set: %{changeset: changeset}}}

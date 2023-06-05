@@ -12,5 +12,9 @@ defmodule Ash.Policy.Check.Loading do
     Ash.Query.loading?(query, opts[:field])
   end
 
+  def match?(_actor, %{changeset: %Ash.Changeset{} = query}, opts) do
+    Ash.Changeset.loading?(query, opts[:field])
+  end
+
   def match?(_, _, _), do: false
 end

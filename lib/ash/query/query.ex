@@ -828,13 +828,13 @@ defmodule Ash.Query do
 
   It accepts an atom or a list of atoms, which is treated for as a "path", i.e:
 
-      Resource |> Ash.Query.load(friends: [enemies: [:score]]) |> Ash.Query.loaded?([:friends, :enemies, :score])
+      Resource |> Ash.Query.load(friends: [enemies: [:score]]) |> Ash.Query.loading?([:friends, :enemies, :score])
       iex> true
 
-      Resource |> Ash.Query.load(friends: [enemies: [:score]]) |> Ash.Query.loaded?([:friends, :score])
+      Resource |> Ash.Query.load(friends: [enemies: [:score]]) |> Ash.Query.loading?([:friends, :score])
       iex> false
 
-      Resource |> Ash.Query.load(friends: [enemies: [:score]]) |> Ash.Query.loaded?(:friends)
+      Resource |> Ash.Query.load(friends: [enemies: [:score]]) |> Ash.Query.loading?(:friends)
       iex> true
   """
   def loading?(query, [last]) do
@@ -850,8 +850,7 @@ defmodule Ash.Query do
   end
 
   def loading?(query, item) when is_atom(item) do
-    Keyword.has_key?(query.load || [], item) || Map.has_key?(query.calculations, item) ||
-      Map.has_key?(query.aggregates, item) ||
+    Keyword.has_key?(query.load || [], item) ||
       Enum.any?(query.calculations, fn {_, %{calc_name: calc_name}} ->
         calc_name == item
       end) ||
@@ -942,7 +941,11 @@ defmodule Ash.Query do
                      resource_calculation.load
                    ) do
               calculation =
-                select_and_load_calc(resource_calculation, %{calculation | load: load}, query)
+                select_and_load_calc(
+                  resource_calculation,
+                  %{calculation | load: load, calc_name: name},
+                  query
+                )
 
               Map.update!(query, :calculations, &Map.put(&1, name, calculation))
             else
@@ -1057,7 +1060,12 @@ defmodule Ash.Query do
              resource_calculation.filterable?,
              resource_calculation.load
            ) do
-      {:ok, select_and_load_calc(resource_calculation, %{calculation | load: name}, query)}
+      {:ok,
+       select_and_load_calc(
+         resource_calculation,
+         %{calculation | load: name, calc_name: name},
+         query
+       )}
     end
   end
 
@@ -1833,7 +1841,7 @@ defmodule Ash.Query do
         calculation =
           select_and_load_calc(
             resource_calculation,
-            %{calculation | load: nil, name: as_name},
+            %{calculation | load: nil, name: as_name, calc_name: resource_calculation.name},
             query
           )
 

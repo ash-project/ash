@@ -401,6 +401,36 @@ defmodule Ash.Actions.Helpers do
     end
   end
 
+  def load({:ok, result, instructions}, changeset, api, opts) do
+    if changeset.load in [nil, []] do
+      {:ok, result, instructions}
+    else
+      case api.load(result, changeset.load, opts) do
+        {:ok, result} ->
+          {:ok, result, instructions}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end
+  end
+
+  def load({:ok, result}, changeset, api, opts) do
+    if changeset.load in [nil, []] do
+      {:ok, result}
+    else
+      case api.load(result, changeset.load, opts) do
+        {:ok, result} ->
+          {:ok, result}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end
+  end
+
+  def load(other, _, _, _), do: other
+
   def select({:ok, results}, query) do
     {:ok, select(results, query)}
   end

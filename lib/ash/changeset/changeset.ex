@@ -36,6 +36,7 @@ defmodule Ash.Changeset do
     phase: :validate,
     relationships: %{},
     select: nil,
+    load: [],
     valid?: true
   ]
 
@@ -79,6 +80,20 @@ defmodule Ash.Changeset do
           empty()
         end
 
+      select =
+        if changeset.select do
+          concat("select: ", to_doc(changeset.select, opts))
+        else
+          empty()
+        end
+
+      load =
+        if changeset.load && changeset.load != [] do
+          concat("load: ", to_doc(changeset.load, opts))
+        else
+          empty()
+        end
+
       container_doc(
         "#Ash.Changeset<",
         [
@@ -92,7 +107,9 @@ defmodule Ash.Changeset do
           concat("errors: ", to_doc(changeset.errors, opts)),
           concat("data: ", to_doc(changeset.data, opts)),
           context,
-          concat("valid?: ", to_doc(changeset.valid?, opts))
+          concat("valid?: ", to_doc(changeset.valid?, opts)),
+          select,
+          load
         ],
         ">",
         opts,
@@ -181,6 +198,7 @@ defmodule Ash.Changeset do
           },
           resource: module,
           select: [atom] | nil,
+          load: keyword(keyword),
           tenant: any,
           timeout: pos_integer() | nil,
           valid?: boolean
@@ -344,6 +362,25 @@ defmodule Ash.Changeset do
   end
 
   @doc """
+  Calls the provided load statement on the result of the action at the very end of the action.
+  """
+  def load(changeset, load) do
+    query =
+      changeset.resource
+      |> Ash.Query.new()
+      |> Map.put(:errors, [])
+      |> Ash.Query.load(changeset.load)
+      |> Ash.Query.load(load)
+
+    changeset = %{
+      changeset
+      | load: Enum.concat(changeset.load || [], List.wrap(load))
+    }
+
+    Enum.reduce(query.errors, changeset, &add_error(&2, &1))
+  end
+
+  @doc """
   Ensures that the given attributes are selected.
 
   The first call to `select/2` will *limit* the fields to only the provided fields.
@@ -396,6 +433,27 @@ defmodule Ash.Changeset do
           attribute && (attribute.private? || attribute.primary_key?)
         end
     end
+  end
+
+  @doc """
+  Returns true if the field/relationship or path to field/relationship is being loaded.
+
+  It accepts an atom or a list of atoms, which is treated for as a "path", i.e:
+
+      Resource |> Ash.Changeset.load(friends: [enemies: [:score]]) |> Ash.Changeset.loading?([:friends, :enemies, :score])
+      iex> true
+
+      Resource |> Ash.Changeset.load(friends: [enemies: [:score]]) |> Ash.Changeset.loading?([:friends, :score])
+      iex> false
+
+      Resource |> Ash.Changeset.load(friends: [enemies: [:score]]) |> Ash.Changeset.loading?(:friends)
+      iex> true
+  """
+  def loading?(changeset, path) do
+    changeset.resource
+    |> Ash.Query.new()
+    |> Ash.Query.load(changeset.load)
+    |> Ash.Query.loading?(path)
   end
 
   @manage_types [:append_and_remove, :append, :remove, :direct_control, :create]

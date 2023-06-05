@@ -95,6 +95,7 @@ defmodule Ash.Actions.Destroy do
       actor: actor,
       timeout: opts[:timeout] || changeset.timeout || Ash.Api.Info.timeout(api),
       return_notifications?: opts[:return_notifications?],
+      return_destroyed?: return_destroyed?,
       tracer: opts[:tracer],
       timeout: opts[:timeout],
       tenant: opts[:tenant]
@@ -155,6 +156,7 @@ defmodule Ash.Actions.Destroy do
     default_timeout = request_opts[:default_timeout]
     tracer = request_opts[:tracer]
     authorize? = request_opts[:authorize?]
+    return_destroyed? = request_opts[:return_destroyed?]
 
     record =
       request_opts[:record] ||
@@ -324,6 +326,17 @@ defmodule Ash.Actions.Destroy do
                           end
                         end
                     end
+                    |> then(fn result ->
+                      if return_destroyed? do
+                        Helpers.load(result, changeset, api,
+                          actor: actor,
+                          authorize?: authorize?,
+                          tracer: tracer
+                        )
+                      else
+                        result
+                      end
+                    end)
                 end,
                 transaction?:
                   Keyword.get(request_opts, :transaction?, true) && action.transaction?,

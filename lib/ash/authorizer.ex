@@ -23,12 +23,16 @@ defmodule Ash.Authorizer do
               | {:filter, Keyword.t(), state}
               | {:filter_and_continue, Keyword.t(), state}
               | {:error, term}
+  @callback add_calculations(Ash.Query.t() | Ash.Changeset.t(), state, context) ::
+              {:ok, Ash.Query.t() | Ash.Changeset.t()} | {:error, Ash.Error.t()}
+  @callback alter_results(state, list(Ash.Resource.record()), context) ::
+              {:ok, list(Ash.Resource.record())} | {:error, Ash.Error.t()}
   @callback check_context(state) :: [atom]
   @callback check(state, context) ::
               :authorized | {:data, list(Ash.Resource.record())} | {:error, term}
   @callback exception(atom, state) :: no_return
 
-  @optional_callbacks [exception: 2]
+  @optional_callbacks [exception: 2, add_calculations: 3, alter_results: 3]
 
   def initial_state(module, actor, resource, action, verbose?) do
     module.initial_state(actor, resource, action, verbose?)
@@ -52,6 +56,22 @@ defmodule Ash.Authorizer do
 
   def strict_check(module, state, context) do
     module.strict_check(state, context)
+  end
+
+  def add_calculations(module, query_or_changeset, state, context) do
+    if function_exported?(module, :add_calculations, 3) do
+      module.add_calculations(query_or_changeset, state, context)
+    else
+      query_or_changeset
+    end
+  end
+
+  def alter_results(module, state, records, context) do
+    if function_exported?(module, :add_calculations, 3) do
+      module.alter_results(state, records, context)
+    else
+      {:ok, records}
+    end
   end
 
   def check_context(module, state) do

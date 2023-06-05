@@ -334,7 +334,9 @@ defmodule Ash.Resource do
       :__metadata__,
       :__order__,
       :calculations,
-      :aggregates
+      :aggregates,
+      :relationships,
+      :as
     ]
   end
 
