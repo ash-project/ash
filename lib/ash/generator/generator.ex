@@ -198,37 +198,37 @@ defmodule Ash.Generator do
             nil
         end
 
-      if attribute.allow_nil? || !is_nil(default) do
-        options = [attribute_generator(attribute)]
-
-        options =
-          if attribute.allow_nil? do
-            if keep_nil? do
-              [StreamData.constant(:__keep_nil__) | options]
-            else
-              [StreamData.constant(nil) | options]
-            end
-          else
-            options
-          end
-
-        options =
-          if attribute.allow_nil? && is_nil(default) do
-            [StreamData.constant(nil) | options]
-          else
-            options
-          end
-
-        {required,
-         Map.put(
-           optional,
-           attribute.name,
-           StreamData.one_of(options)
-         )}
+      # only create a value for attributes that didn't get a dedicated generator
+      if attribute.name in Map.keys(generators) do
+        {required, optional}
       else
-        # only create a value for attributes that didn't get a dedicated generator
-        if attribute.name in Map.keys(generators) do
-          {required, optional}
+        if attribute.allow_nil? || !is_nil(default) do
+          options = [attribute_generator(attribute)]
+
+          options =
+            if attribute.allow_nil? do
+              if keep_nil? do
+                [StreamData.constant(:__keep_nil__) | options]
+              else
+                [StreamData.constant(nil) | options]
+              end
+            else
+              options
+            end
+
+          options =
+            if attribute.allow_nil? && is_nil(default) do
+              [StreamData.constant(nil) | options]
+            else
+              options
+            end
+
+          {required,
+           Map.put(
+             optional,
+             attribute.name,
+             StreamData.one_of(options)
+           )}
         else
           {Map.put(required, attribute.name, attribute_generator(attribute)), optional}
         end
