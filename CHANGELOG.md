@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.20](https://github.com/ash-project/ash/compare/v2.9.19...v2.9.20) (2023-06-05)
+
+
+
+
+### Bug Fixes:
+
+* also do not autogenerate values for optional fields that have a generator (#599)
+
+* rename few error files to match module names (#597)
+
+### Improvements:
+
+* support `changeset.load`
+
 ## [v2.9.19](https://github.com/ash-project/ash/compare/v2.9.18...v2.9.19) (2023-06-02)
 
 
