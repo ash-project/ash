@@ -373,11 +373,15 @@ defmodule Ash.DataLayer.Ets do
             case Ash.Expr.eval_hydrated(expression, record: record, resource: resource) do
               {:ok, value} ->
                 if calculation.load do
-                  {:cont, {:ok, Map.put(record, calculation.load, value)}}
+                  {:cont, {:ok, Map.put(record, calculation.load, value || calculation.default)}}
                 else
                   {:cont,
                    {:ok,
-                    Map.update!(record, :calculations, &Map.put(&1, calculation.name, value))}}
+                    Map.update!(
+                      record,
+                      :calculations,
+                      &Map.put(&1, calculation.name, value || calculation.default)
+                    )}}
                 end
 
               :unknown ->
@@ -385,7 +389,12 @@ defmodule Ash.DataLayer.Ets do
                   {:cont, {:ok, Map.put(record, calculation.load, nil)}}
                 else
                   {:cont,
-                   {:ok, Map.update!(record, :calculations, &Map.put(&1, calculation.name, nil))}}
+                   {:ok,
+                    Map.update!(
+                      record,
+                      :calculations,
+                      &Map.put(&1, calculation.name, calculation.default)
+                    )}}
                 end
 
               {:error, error} ->

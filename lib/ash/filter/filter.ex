@@ -193,7 +193,7 @@ defmodule Ash.Filter do
     use Ash.Api
 
     resources do
-      allow_unregistered? true
+      allow_unregistered?(true)
     end
   end
 
@@ -1717,7 +1717,7 @@ defmodule Ash.Filter do
   end
 
   defp records_to_expression(records, relationship, path) do
-    Enum.reduce_while(records, {:ok, nil}, fn record, {:ok, expression} ->
+    Enum.reduce_while(records, {:ok, true}, fn record, {:ok, expression} ->
       case records_to_expression([record], relationship, path) do
         {:ok, operator} ->
           {:cont, {:ok, BooleanExpression.optimized_new(:and, expression, operator)}}
@@ -2074,7 +2074,7 @@ defmodule Ash.Filter do
     do: {:ok, move_to_relationship_path(expression, context[:relationship_path] || [])}
 
   defp parse_expression(statement, context) when is_list(statement) do
-    Enum.reduce_while(statement, {:ok, nil}, fn expression_part, {:ok, expression} ->
+    Enum.reduce_while(statement, {:ok, true}, fn expression_part, {:ok, expression} ->
       case add_expression_part(expression_part, context, expression) do
         {:ok, new_expression} ->
           {:cont, {:ok, new_expression}}
@@ -2089,8 +2089,13 @@ defmodule Ash.Filter do
     parse_expression([statement], context)
   end
 
-  defp add_expression_part(boolean, _context, expression) when is_boolean(boolean),
-    do: {:ok, BooleanExpression.optimized_new(:and, expression, boolean)}
+  defp add_expression_part(boolean, context, nil) do
+    add_expression_part(boolean, context, true)
+  end
+
+  defp add_expression_part(boolean, _context, expression) when is_boolean(boolean) do
+    {:ok, BooleanExpression.optimized_new(:and, expression, boolean)}
+  end
 
   defp add_expression_part(%__MODULE__{expression: adding_expression}, context, expression) do
     {:ok,
@@ -2544,7 +2549,7 @@ defmodule Ash.Filter do
 
     value
     |> Map.to_list()
-    |> Enum.reduce_while({:ok, nil}, fn {key, value}, {:ok, expression} ->
+    |> Enum.reduce_while({:ok, true}, fn {key, value}, {:ok, expression} ->
       case add_expression_part({key, value}, context, expression) do
         {:ok, new_expression} ->
           {:cont, {:ok, new_expression}}
@@ -3240,16 +3245,22 @@ defmodule Ash.Filter do
 
   defp add_to_ref_path(other, _), do: other
 
-  defp parse_and_join(statements, op, context) do
-    Enum.reduce_while(statements, {:ok, nil}, fn statement, {:ok, expression} ->
-      case parse_expression(statement, context) do
-        {:ok, nested_expression} ->
-          {:cont, {:ok, BooleanExpression.optimized_new(op, expression, nested_expression)}}
+  defp parse_and_join([statement | statements], op, context) do
+    case parse_expression(statement, context) do
+      {:ok, nested_expression} ->
+        Enum.reduce_while(statements, {:ok, nested_expression}, fn statement, {:ok, expression} ->
+          case parse_expression(statement, context) do
+            {:ok, nested_expression} ->
+              {:cont, {:ok, BooleanExpression.optimized_new(op, expression, nested_expression)}}
 
-        {:error, error} ->
-          {:halt, {:error, error}}
-      end
-    end)
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+        end)
+
+      {:error, error} ->
+        {:halt, {:error, error}}
+    end
   end
 
   defp parse_predicates(value, field, context) when not is_list(value) and not is_map(value) do
@@ -3266,7 +3277,7 @@ defmodule Ash.Filter do
       parse_predicates([eq: values], attr, context)
     else
       if is_map(values) || Keyword.keyword?(values) do
-        Enum.reduce_while(values, {:ok, nil}, fn
+        Enum.reduce_while(values, {:ok, true}, fn
           {:not, value}, {:ok, expression} ->
             case parse_predicates(List.wrap(value), attr, context) do
               {:ok, not_expression} ->

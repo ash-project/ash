@@ -8,8 +8,10 @@ defmodule Ash.Query.BooleanExpression do
   alias Ash.Query.Ref
 
   def new(_, nil, nil), do: nil
-  def new(_, left, nil), do: left
-  def new(_, nil, right), do: right
+  def new(:or, left, nil), do: left
+  def new(:or, nil, right), do: right
+  def new(:and, _, nil), do: nil
+  def new(:and, nil, _), do: nil
 
   def new(op, left, right) do
     %__MODULE__{op: op, left: left, right: right}
@@ -27,8 +29,12 @@ defmodule Ash.Query.BooleanExpression do
   def optimized_new(:and, _, false), do: false
   def optimized_new(:or, true, _), do: true
   def optimized_new(:or, _, true), do: true
-  def optimized_new(_, nil, right), do: right
-  def optimized_new(_, left, nil), do: left
+  def optimized_new(:or, nil, right), do: right
+  def optimized_new(:or, left, nil), do: left
+  def optimized_new(:and, true, right), do: right
+  def optimized_new(:and, left, true), do: left
+  def optimized_new(:and, nil, _), do: nil
+  def optimized_new(:and, _, nil), do: nil
 
   def optimized_new(
         op,

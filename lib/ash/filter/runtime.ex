@@ -279,10 +279,16 @@ defmodule Ash.Filter.Runtime do
                 :unknown
             end
 
+          %Not{expression: nil} ->
+            {:ok, nil}
+
           %Not{expression: expression} ->
             case do_match(record, expression, parent, resource) do
               :unknown ->
                 :unknown
+
+              {:ok, nil} ->
+                {:ok, nil}
 
               {:ok, match?} ->
                 {:ok, !match?}
@@ -744,7 +750,7 @@ defmodule Ash.Filter.Runtime do
         {:ok, false}
 
       {:ok, nil} ->
-        {:ok, false}
+        {:ok, nil}
 
       {:ok, true} ->
         case do_match(record, right, parent) do
@@ -752,7 +758,7 @@ defmodule Ash.Filter.Runtime do
             {:ok, false}
 
           {:ok, nil} ->
-            {:ok, false}
+            {:ok, nil}
 
           {:ok, _} ->
             {:ok, true}

@@ -29,16 +29,16 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     actions do
-      defaults [:read, :create, :update, :destroy]
+      defaults([:read, :create, :update, :destroy])
     end
 
     attributes do
-      uuid_primary_key :id
-      attribute :name, :string
+      uuid_primary_key(:id)
+      attribute(:name, :string)
     end
 
     relationships do
-      has_many :posts, Ash.Test.Actions.ReadTest.Post, destination_attribute: :author1_id
+      has_many(:posts, Ash.Test.Actions.ReadTest.Post, destination_attribute: :author1_id)
     end
   end
 
@@ -47,39 +47,39 @@ defmodule Ash.Test.Actions.ReadTest do
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
     identities do
-      identity :backup_id, [:uuid], pre_check_with: Api
+      identity(:backup_id, [:uuid], pre_check_with: Api)
     end
 
     ets do
-      private? true
+      private?(true)
     end
 
     actions do
-      defaults [:read, :create, :update, :destroy]
+      defaults([:read, :create, :update, :destroy])
 
       read :read_with_after_action do
-        prepare PostPreparation
+        prepare(PostPreparation)
       end
 
       read :get_by_id do
-        get_by :id
+        get_by(:id)
       end
 
       read :get_by_id_and_uuid do
-        get_by [:id, :uuid]
+        get_by([:id, :uuid])
       end
     end
 
     attributes do
-      uuid_primary_key :id
-      attribute :uuid, :uuid, default: &Ash.UUID.generate/0
-      attribute :title, :string
-      attribute :contents, :string
+      uuid_primary_key(:id)
+      attribute(:uuid, :uuid, default: &Ash.UUID.generate/0)
+      attribute(:title, :string)
+      attribute(:contents, :string)
     end
 
     relationships do
-      belongs_to :author1, Ash.Test.Actions.ReadTest.Author
-      belongs_to :author2, Ash.Test.Actions.ReadTest.Author
+      belongs_to(:author1, Ash.Test.Actions.ReadTest.Author)
+      belongs_to(:author2, Ash.Test.Actions.ReadTest.Author)
     end
   end
 

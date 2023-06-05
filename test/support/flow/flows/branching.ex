@@ -29,7 +29,7 @@ defmodule Ash.Test.Flow.Flows.Branching do
         end
       end
 
-      branch :inner_branch_alt, expr(not (^arg(:do_inner_branch))) do
+      branch :inner_branch_alt, expr(not (^arg(:do_inner_branch) || false)) do
         custom :inner_branch_alt_return, Ash.Test.Flow.Steps.SimpleReturn do
           input %{return: "inner_branch didn't happen"}
         end
