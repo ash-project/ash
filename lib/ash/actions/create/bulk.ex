@@ -1109,7 +1109,7 @@ defmodule Ash.Actions.Create.Bulk do
             changes: state.changes
           }
 
-        {%{change: {module, change_opts}} = change, change_index}, state ->
+        {%{change: {module, change_opts}} = change, change_index}, %{batch: batch} = state ->
           if Enum.empty?(change.where) && !change.only_when_valid? do
             context = %{
               actor: actor,
