@@ -1883,6 +1883,22 @@ defmodule Ash.Api do
     api
     |> bulk_create(inputs, resource, action, opts)
     |> case do
+      %Ash.BulkResult{status: :error, errors: []} ->
+        if opts[:return_errors?] do
+          raise Ash.Error.to_error_class(
+                  Ash.Error.Unknown.UnknownError.exception(
+                    error: "Something went wrong with bulk create, but no errors were produced."
+                  )
+                )
+        else
+          raise Ash.Error.to_error_class(
+                  Ash.Error.Unknown.UnknownError.exception(
+                    error:
+                      "Something went wrong with bulk create, but no errors were produced due to `return_errors?` being set to `false`."
+                  )
+                )
+        end
+
       %Ash.BulkResult{status: :error, errors: errors} ->
         raise Ash.Error.to_error_class(errors)
 
