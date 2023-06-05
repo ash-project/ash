@@ -23,6 +23,10 @@ defmodule Ash.Test.GeneratorTest do
       uuid_primary_key :id
       attribute :name, :string, default: "Fred"
 
+      attribute :metadata, :map do
+        allow_nil? true
+      end
+
       attribute :meta, :map do
         allow_nil? false
       end
@@ -191,7 +195,8 @@ defmodule Ash.Test.GeneratorTest do
   end
 
   @meta_generator %{
-    meta: %{}
+    meta: %{},
+    metadata: %{}
   }
   describe "seed_input" do
     test "it returns attributes generated" do
