@@ -21,8 +21,7 @@ defmodule Ash.Flow.Executor.AshEngine do
     steps =
       flow
       |> Ash.Flow.Info.steps()
-      |> apply_opts(opts)
-      |> to_steps(input)
+      |> to_steps(input, opts)
       |> hydrate_flows(opts)
 
     {:ok,
@@ -33,19 +32,7 @@ defmodule Ash.Flow.Executor.AshEngine do
      }}
   end
 
-  defp apply_opts(steps, opts) do
-    Enum.map(steps, fn step ->
-      case step do
-        %{tenant: _} ->
-          %{step | tenant: Keyword.get(opts, :tenant)}
-
-        _ ->
-          step
-      end
-    end)
-  end
-
-  defp to_steps(steps, input) do
+  defp to_steps(steps, input, opts) do
     Enum.map(steps, fn step ->
       step =
         case step do
@@ -61,7 +48,10 @@ defmodule Ash.Flow.Executor.AshEngine do
                 step
               end
 
-            %{step | steps: to_steps(steps, input)}
+            %{step | steps: to_steps(steps, input, opts)}
+
+          %{tenant: _tenant} = step ->
+            %{step | tenant: Keyword.get(opts, :tenant)}
 
           step ->
             step
