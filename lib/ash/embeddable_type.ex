@@ -64,11 +64,11 @@ defmodule Ash.EmbeddableType do
     use Ash.Api
 
     resources do
-      allow_unregistered? true
+      allow_unregistered?(true)
     end
 
     execution do
-      timeout :infinity
+      timeout(:infinity)
     end
   end
 
@@ -163,6 +163,11 @@ defmodule Ash.EmbeddableType do
       alias Ash.EmbeddableType.ShadowApi
 
       def storage_type, do: :map
+
+      def load(record, load, _constraints, %{api: api} = context) do
+        opts = context |> Map.take([:actor, :authorize?, :tenant, :tracer]) |> Map.to_list()
+        api.load(record, load, opts)
+      end
 
       def cast_input(%{__struct__: __MODULE__} = input, _constraints), do: {:ok, input}
 
@@ -422,6 +427,12 @@ defmodule Ash.EmbeddableType do
     # credo:disable-for-next-line Credo.Check.Refactor.LongQuoteBlocks
     quote location: :keep do
       alias Ash.EmbeddableType.ShadowApi
+
+      def load(record, load, _constraints, %{api: api} = context) do
+        opts = context |> Map.take([:actor, :authorize?, :tenant, :tracer]) |> Map.to_list()
+        api.load(record, load, opts)
+      end
+
       def array_constraints, do: Ash.EmbeddableType.embedded_resource_array_constraints()
 
       def apply_constraints_array(term, constraints) do

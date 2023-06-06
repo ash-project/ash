@@ -762,14 +762,10 @@ defmodule Ash.Actions.Load do
             Ash.Query.filter(actual_query, ^authorization_filter)
         end
 
-      source_query = get_in(data, parent_query_path)
-
       source_query =
-        if calc_dep.query.tenant do
-          Ash.Query.set_tenant(source_query, calc_dep.query.tenant)
-        else
-          source_query
-        end
+        data
+        |> get_in(parent_query_path)
+        |> maybe_set_calc_query_tenant(calc_dep)
 
       with {:ok, new_query} <-
              true_load_query(
@@ -779,6 +775,7 @@ defmodule Ash.Actions.Load do
                parent_data_path,
                join_request_path
              ),
+           new_query <- maybe_set_calc_query_tenant(new_query, calc_dep),
            {:ok, results} <-
              run_actual_query(
                new_query,
@@ -801,6 +798,14 @@ defmodule Ash.Actions.Load do
           {:error, error}
       end
     end)
+  end
+
+  defp maybe_set_calc_query_tenant(query, calc_dep) do
+    if calc_dep.query.tenant do
+      Ash.Query.set_tenant(query, calc_dep.query.tenant)
+    else
+      query
+    end
   end
 
   defp data(

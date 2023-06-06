@@ -25,6 +25,8 @@ defmodule Ash.Tracer do
           authorize?: boolean()
         }
 
+  @type t :: module
+
   @callback start_span(span_type(), name :: String.t()) :: :ok
   @callback stop_span() :: :ok
   @callback get_span_context() :: term()

@@ -112,6 +112,71 @@ defmodule Ash.Type.Union do
   def storage_type, do: :map
 
   @impl true
+  def load(unions, load, constraints, context) do
+    unions
+    |> Stream.with_index()
+    |> Stream.map(fn {item, index} ->
+      Map.put(item, :__index__, index)
+    end)
+    |> Enum.group_by(& &1.type)
+    |> Enum.reduce_while({:ok, []}, fn {name, values}, {:ok, acc} ->
+      value_indexes_to_full_index =
+        values
+        |> Enum.with_index()
+        |> Map.new(fn {value, index} ->
+          {index, value.__index__}
+        end)
+
+      values = Enum.map(values, & &1.value)
+
+      result =
+        if load[name] do
+          type = constraints[:types][name][:type]
+
+          Ash.Type.load(
+            type,
+            values,
+            load[name],
+            constraints[:types][name][:constraints],
+            context
+          )
+        else
+          {:ok, values}
+        end
+
+      case result do
+        {:ok, values} ->
+          values_with_index =
+            values
+            |> Enum.with_index()
+            |> Enum.map(fn {value, index} ->
+              Map.put(
+                %Ash.Union{value: value, type: name},
+                :__index__,
+                Map.get(value_indexes_to_full_index, index)
+              )
+            end)
+
+          {:cont, {:ok, [values_with_index | acc]}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, batches} ->
+        {:ok,
+         batches
+         |> Stream.flat_map(& &1)
+         |> Enum.sort_by(& &1.__index__)
+         |> Enum.map(&Map.delete(&1, :__index__))}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @impl true
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(%Ash.Union{value: value, type: type_name}, constraints) do

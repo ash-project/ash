@@ -138,6 +138,14 @@ defmodule Ash.Type do
   @type t :: atom | {:array, atom}
   @type error :: :error | {:error, String.t() | Keyword.t()}
 
+  @type load_context :: %{
+          api: Ash.Api.t(),
+          actor: term() | nil,
+          tenant: String.t() | nil,
+          tracer: Ash.Tracer.t() | nil,
+          authorize?: boolean | nil
+        }
+
   @callback storage_type() :: Ecto.Type.t()
   @doc """
   Useful for typed data layers (like ash_postgres) to instruct them not to attempt to cast input values.
@@ -184,6 +192,13 @@ defmodule Ash.Type do
   @callback embedded?() :: boolean
   @callback generator(constraints) :: Enumerable.t()
   @callback simple_equality?() :: boolean
+  @callback load(
+              values :: list(term),
+              load :: Keyword.t(),
+              constraints :: Keyword.t(),
+              context :: load_context()
+            ) ::
+              {:ok, list(term)} | {:error, Ash.Error.t()}
 
   @optional_callbacks [
     cast_stored_array: 2,
@@ -195,7 +210,8 @@ defmodule Ash.Type do
     apply_constraints_array: 2,
     array_constraints: 0,
     dump_to_embedded: 2,
-    dump_to_embedded_array: 2
+    dump_to_embedded_array: 2,
+    load: 4
   ]
 
   @builtin_types Keyword.values(@builtin_short_names)
@@ -784,6 +800,32 @@ defmodule Ash.Type do
 
   def equal?(type, left, right) do
     type.equal?(left, right)
+  end
+
+  @spec load(
+          type :: Ash.Type.t(),
+          values :: list(term),
+          load :: Keyword.t(),
+          constraints :: Keyword.t(),
+          context :: load_context()
+        ) ::
+          {:ok, list(term)} | {:error, Ash.Error.t()}
+  def load({:array, type}, values, loads, constraints, context) do
+    load(type, values, loads, constraints[:items] || [], context)
+  end
+
+  def load(
+        type,
+        values,
+        loads,
+        constraints,
+        context
+      ) do
+    if function_exported?(type, :load, 4) do
+      type.load(values, loads, constraints, context)
+    else
+      {:error, Ash.Error.Query.InvalidLoad.exception(load: loads)}
+    end
   end
 
   @doc """
