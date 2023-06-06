@@ -17,12 +17,12 @@ defmodule Ash.Flow.Executor.AshEngine do
     defstruct [:steps, :flow, :returns]
   end
 
-  def build(flow, input, _opts) do
+  def build(flow, input, opts) do
     steps =
       flow
       |> Ash.Flow.Info.steps()
-      |> to_steps(input)
-      |> hydrate_flows()
+      |> to_steps(input, opts)
+      |> hydrate_flows(opts)
 
     {:ok,
      %Flow{
@@ -32,7 +32,7 @@ defmodule Ash.Flow.Executor.AshEngine do
      }}
   end
 
-  defp to_steps(steps, input) do
+  defp to_steps(steps, input, opts) do
     Enum.map(steps, fn step ->
       step =
         case step do
@@ -48,7 +48,10 @@ defmodule Ash.Flow.Executor.AshEngine do
                 step
               end
 
-            %{step | steps: to_steps(steps, input)}
+            %{step | steps: to_steps(steps, input, opts)}
+
+          %{tenant: _tenant} = step ->
+            %{step | tenant: Keyword.get(opts, :tenant)}
 
           step ->
             step
@@ -58,7 +61,7 @@ defmodule Ash.Flow.Executor.AshEngine do
     end)
   end
 
-  defp hydrate_flows(steps) do
+  defp hydrate_flows(steps, opts) do
     Enum.flat_map(steps, fn
       %Step{
         input: input,
@@ -71,7 +74,7 @@ defmodule Ash.Flow.Executor.AshEngine do
         }
       } = run_flow_step ->
         {run_flow_input, _} = Ash.Flow.Template.handle_input_template(run_flow_input, input)
-        {:ok, %{steps: hydrated_steps}} = build(flow, run_flow_input, [])
+        {:ok, %{steps: hydrated_steps}} = build(flow, run_flow_input, opts)
 
         built_steps =
           hydrated_steps
@@ -119,7 +122,8 @@ defmodule Ash.Flow.Executor.AshEngine do
         |> handle_input_templates()
 
       %Step{step: %{steps: steps} = inner_step} = step ->
-        [%{step | step: %{inner_step | steps: hydrate_flows(steps)}}] |> handle_input_templates()
+        [%{step | step: %{inner_step | steps: hydrate_flows(steps, opts)}}]
+        |> handle_input_templates()
 
       step ->
         [step] |> handle_input_templates()
