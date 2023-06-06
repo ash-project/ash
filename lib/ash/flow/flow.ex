@@ -138,7 +138,7 @@ defmodule Ash.Flow do
   end
 
   defp add_tenant(opts) do
-    if Keyword.has_key?(opts, :actor) do
+    if Keyword.has_key?(opts, :tenant) do
       opts
     else
       case Process.get(:ash_tenant) do
