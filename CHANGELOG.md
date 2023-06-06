@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.21](https://github.com/ash-project/ash/compare/v2.9.20...v2.9.21) (2023-06-06)
+
+
+
+
+### Bug Fixes:
+
+* properly chain batch to each change in bulk creates
+
+* properly handle failed bulk creates with no errors
+
+### Improvements:
+
+* handle `nil`s in memory the same way sql would have
+
 ## [v2.9.20](https://github.com/ash-project/ash/compare/v2.9.19...v2.9.20) (2023-06-05)
 
 
