@@ -14,7 +14,7 @@ defmodule Ash.Flow.Step.Custom do
       async?: [
         type: :boolean,
         doc: """
-        Whether or not this step can be run outside of the current process. Defaults to true.
+        Whether or not this step can be run outside of the current process.
         """,
         default: false
       ]
