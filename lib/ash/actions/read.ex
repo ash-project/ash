@@ -741,20 +741,38 @@ defmodule Ash.Actions.Read do
         pkey_value =
           record |> Map.take(Ash.Resource.Info.primary_key(query.resource)) |> Map.to_list()
 
-        Ash.Query.filter(query, ^pkey_value)
+        query = Ash.Query.filter(query, ^pkey_value)
+
+        if tenant = record.__metadata__[:tenant] do
+          Ash.Query.set_tenant(query, tenant)
+        else
+          query
+        end
 
       {:ok, %{} = record} ->
         pkey_value =
           record |> Map.take(Ash.Resource.Info.primary_key(query.resource)) |> Map.to_list()
 
-        Ash.Query.filter(query, ^pkey_value)
+        query = Ash.Query.filter(query, ^pkey_value)
 
-      {:ok, records} when is_list(records) ->
+        if tenant = record.__metadata__[:tenant] do
+          Ash.Query.set_tenant(query, tenant)
+        else
+          query
+        end
+
+      {:ok, [record | _] = records} ->
         pkey = Ash.Resource.Info.primary_key(query.resource)
         pkey_value = Enum.map(records, fn record -> record |> Map.take(pkey) |> Map.to_list() end)
 
         filter = [or: pkey_value]
-        Ash.Query.filter(query, ^filter)
+        query = Ash.Query.filter(query, ^filter)
+
+        if tenant = record.__metadata__[:tenant] do
+          Ash.Query.set_tenant(query, tenant)
+        else
+          query
+        end
     end
   end
 
@@ -1501,7 +1519,8 @@ defmodule Ash.Actions.Read do
               [
                 actor: request_opts[:actor],
                 authorize?: authorize?,
-                tracer: request_opts[:tracer]
+                tracer: request_opts[:tracer],
+                tenant: request_opts[:tenant]
               ],
               dep,
               path,
