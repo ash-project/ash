@@ -1540,8 +1540,7 @@ defmodule Ash.Actions.Read do
               dep.path
               |> Enum.map(&elem(&1, 0))
               |> Enum.concat([dep.calculation.name])
-              |> Enum.map(&inspect/1)
-              |> Enum.join(".")
+              |> Enum.map_join(".", &inspect/1)
 
             query =
               case List.last(dep.path) do

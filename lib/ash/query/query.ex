@@ -935,7 +935,7 @@ defmodule Ash.Query do
             if Ash.Type.can_load?(attribute.type) do
               query
               |> Ash.Query.ensure_selected(attribute.name)
-              |> Ash.Query.load_through(:attributes, attribute.name, rest)
+              |> Ash.Query.load_through(:attribute, attribute.name, rest)
             else
               add_error(
                 query,
@@ -1007,7 +1007,7 @@ defmodule Ash.Query do
       end
     else
       {:error, error} ->
-        Ash.Query.add_error(query, :load, error)
+        add_error(query, :load, error)
     end
   end
 
@@ -1132,7 +1132,7 @@ defmodule Ash.Query do
         )
 
       Ash.Resource.Info.attribute(query.resource, field) ->
-        Ash.Query.ensure_selected(query, field)
+        ensure_selected(query, field)
 
       Ash.Resource.Info.relationship(query.resource, field) ->
         load_relationship(query, field)
@@ -1147,7 +1147,7 @@ defmodule Ash.Query do
                {:can?,
                 Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, aggregate.kind})},
              %{valid?: true} = aggregate_query <-
-               Ash.Query.for_read(related, read_action),
+               for_read(related, read_action),
              %{valid?: true} = aggregate_query <-
                build(aggregate_query, filter: aggregate.filter, sort: aggregate.sort),
              {:ok, query_aggregate} <-
@@ -1765,13 +1765,13 @@ defmodule Ash.Query do
             read_action = Ash.Resource.Info.primary_action!(related, :read).name
 
             related
-            |> Ash.Query.for_read(read_action)
+            |> for_read(read_action)
 
           options when is_list(options) ->
             read_action = Ash.Resource.Info.primary_action!(related, :read).name
 
             related
-            |> Ash.Query.for_read(read_action)
+            |> for_read(read_action)
             |> build(options)
 
           %Ash.Query{} = query ->
@@ -1887,7 +1887,7 @@ defmodule Ash.Query do
         load_resource_calculation(query, resource_calculation, args, opts[:load_through])
       end
     else
-      Ash.Query.add_error(query, "No such calculation: #{inspect(calc_name)}")
+      add_error(query, "No such calculation: #{inspect(calc_name)}")
     end
   end
 
@@ -2322,7 +2322,7 @@ defmodule Ash.Query do
   defp add_tenant_to_aggregate_query(aggregate, %{tenant: nil}), do: aggregate
 
   defp add_tenant_to_aggregate_query(%{query: nil} = aggregate, ash_query) do
-    aggregate_with_query = %{aggregate | query: Ash.Query.new(aggregate.resource)}
+    aggregate_with_query = %{aggregate | query: new(aggregate.resource)}
     add_tenant_to_aggregate_query(aggregate_with_query, ash_query)
   end
 

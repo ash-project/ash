@@ -7,8 +7,6 @@ defmodule Ash.Filter do
   alias Ash.Engine.Request
 
   alias Ash.Error.Query.{
-    AggregatesNotSupported,
-    CalculationsNotSupported,
     InvalidFilterValue,
     NoSuchAttributeOrRelationship,
     NoSuchFilterPredicate,
@@ -3063,37 +3061,6 @@ defmodule Ash.Filter do
 
   def do_hydrate_refs(val, _context) do
     {:ok, val}
-  end
-
-  defp add_aggregate_expression(context, nested_statement, field, expression) do
-    if context.resource && Ash.DataLayer.data_layer_can?(context.resource, :aggregate_filter) do
-      case parse_predicates(nested_statement, Map.get(context.aggregates, field), context) do
-        {:ok, nested_statement} ->
-          {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
-
-        {:error, error} ->
-          {:error, error}
-      end
-    else
-      {:error, AggregatesNotSupported.exception(resource: context.resource, feature: "filtering")}
-    end
-  end
-
-  defp add_calculation_expression(context, nested_statement, field, module, expression) do
-    if context.resource &&
-         Ash.DataLayer.data_layer_can?(context.resource, :expression_calculation) &&
-         :erlang.function_exported(module, :expression, 2) do
-      case parse_predicates(nested_statement, Map.get(context.calculations, field), context) do
-        {:ok, nested_statement} ->
-          {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
-
-        {:error, error} ->
-          {:error, error}
-      end
-    else
-      {:error,
-       CalculationsNotSupported.exception(resource: context.resource, feature: "filtering")}
-    end
   end
 
   defp validate_data_layers_support_boolean_filters(%BooleanExpression{
