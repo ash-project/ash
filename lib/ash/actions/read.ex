@@ -1487,7 +1487,10 @@ defmodule Ash.Actions.Read do
                 %{type: :relationship} = rel_dep ->
                   if rel_dep.path == dep.path ++ [{dep.relationship, dep.query}] do
                     nested_relationship =
-                      Ash.Resource.Info.relationship(relationship.destination, dep.relationship)
+                      Ash.Resource.Info.relationship(
+                        relationship.destination,
+                        rel_dep.relationship
+                      )
 
                     if !nested_relationship do
                       raise """
