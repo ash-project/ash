@@ -31,7 +31,7 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
 
   @impl true
   def validate(changeset, opts) do
-    value = Ash.Changeset.get_attribute(changeset, opts[:attribute])
+    value = Ash.Changeset.get_argument_or_attribute(changeset, opts[:attribute])
 
     if value == opts[:value] do
       {:error,
