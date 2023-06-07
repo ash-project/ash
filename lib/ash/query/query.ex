@@ -994,7 +994,7 @@ defmodule Ash.Query do
       calculation =
         select_and_load_calc(
           resource_calculation,
-          %{calculation | load: load, calc_name: name},
+          %{calculation | load: load, calc_name: resource_calculation.name},
           query
         )
 
@@ -1112,7 +1112,7 @@ defmodule Ash.Query do
       {:ok,
        select_and_load_calc(
          resource_calculation,
-         %{calculation | load: name, calc_name: name},
+         %{calculation | load: name, calc_name: resource_calculation.name},
          query
        )}
     end
