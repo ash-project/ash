@@ -1498,7 +1498,7 @@ defmodule Ash.Actions.Read do
                       Resource: #{inspect(relationship.destination)}
 
                       Relationship Dependency:
-                      #{inspect(rel_dep)}
+                      #{inspect(dep)}
                       """
                     end
 
