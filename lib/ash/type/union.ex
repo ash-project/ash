@@ -129,14 +129,19 @@ defmodule Ash.Type.Union do
 
       values = Enum.map(values, & &1.value)
 
+      our_load =
+        if load[:*] || load[name] do
+          List.wrap(load[:*]) ++ List.wrap(load[name])
+        end
+
       result =
-        if load[name] do
+        if our_load do
           type = constraints[:types][name][:type]
 
           Ash.Type.load(
             type,
             values,
-            load[name],
+            our_load,
             constraints[:types][name][:constraints],
             context
           )

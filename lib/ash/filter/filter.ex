@@ -2347,11 +2347,6 @@ defmodule Ash.Filter do
 
   defp add_expression_part({field, nested_statement}, context, expression)
        when is_atom(field) or is_binary(field) do
-    aggregates =
-      Enum.flat_map(context.aggregates, fn {key, _} ->
-        [key, to_string(key)]
-      end)
-
     cond do
       rel = relationship(context, field) ->
         context =

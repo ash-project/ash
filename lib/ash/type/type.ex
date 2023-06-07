@@ -821,11 +821,21 @@ defmodule Ash.Type do
         constraints,
         context
       ) do
+    type = get_type(type)
+
     if function_exported?(type, :load, 4) do
       type.load(values, loads, constraints, context)
     else
       {:error, Ash.Error.Query.InvalidLoad.exception(load: loads)}
     end
+  end
+
+  @spec can_load?(t()) :: boolean
+  def can_load?({:array, type}), do: can_load?(type)
+
+  def can_load?(type) do
+    type = get_type(type)
+    function_exported?(type, :load, 4)
   end
 
   @doc """

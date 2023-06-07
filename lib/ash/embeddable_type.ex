@@ -164,11 +164,6 @@ defmodule Ash.EmbeddableType do
 
       def storage_type, do: :map
 
-      def load(record, load, _constraints, %{api: api} = context) do
-        opts = context |> Map.take([:actor, :authorize?, :tenant, :tracer]) |> Map.to_list()
-        api.load(record, load, opts)
-      end
-
       def cast_input(%{__struct__: __MODULE__} = input, _constraints), do: {:ok, input}
 
       def cast_input(value, constraints) when is_map(value) do
