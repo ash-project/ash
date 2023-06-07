@@ -828,8 +828,8 @@ defmodule Ash.Actions.Read do
               ash_query.api,
               actor,
               authorize?,
-              data[:tracer],
-              ash_query.tenant
+              request_opts[:tenant] || ash_query.tenant,
+              data[:tracer]
             )
           end)
           |> Enum.uniq()
