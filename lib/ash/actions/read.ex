@@ -1499,7 +1499,7 @@ defmodule Ash.Actions.Read do
 
                       Dependency:
                       #{inspect(dep)}
-                      
+
                       Relationship Dependency:
                       #{inspect(rel_dep)}
                       """
@@ -1537,6 +1537,7 @@ defmodule Ash.Actions.Read do
               dep.path
               |> Enum.map(&elem(&1, 0))
               |> Enum.concat([dep.calculation.name])
+              |> Enum.map(&inspect/1)
               |> Enum.join(".")
 
             query =
@@ -2522,7 +2523,7 @@ defmodule Ash.Actions.Read do
             end
           end),
         path: path ++ [:calculation_results, {calculation.name, calculation.load}],
-        name: "calculate #{calculation.name}"
+        name: "calculate #{inspect(calculation.name)}"
       )
     else
       Request.new(
@@ -2566,7 +2567,7 @@ defmodule Ash.Actions.Read do
             end
           end),
         path: path ++ [:calculation_results, {calculation.name, calculation.load}],
-        name: "calculate #{calculation.name}"
+        name: "calculate #{inspect(calculation.name)}"
       )
     end
   end
