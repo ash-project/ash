@@ -2352,11 +2352,6 @@ defmodule Ash.Filter do
         [key, to_string(key)]
       end)
 
-    calculations =
-      Enum.flat_map(context.calculations, fn {key, _} ->
-        [key, to_string(key)]
-      end)
-
     cond do
       rel = relationship(context, field) ->
         context =
@@ -2443,35 +2438,6 @@ defmodule Ash.Filter do
           {:error, error} ->
             {:error, error}
         end
-
-      field in calculations ->
-        module =
-          case Map.get(context.calculations, field) do
-            %{calculation: {module, _}} ->
-              module
-
-            %{module: module} ->
-              module
-          end
-
-        field =
-          if is_binary(field) do
-            String.to_existing_atom(field)
-          else
-            field
-          end
-
-        add_calculation_expression(context, nested_statement, field, module, expression)
-
-      field in aggregates ->
-        field =
-          if is_binary(field) do
-            String.to_existing_atom(field)
-          else
-            field
-          end
-
-        add_aggregate_expression(context, nested_statement, field, expression)
 
       resource_calculation = calculation(context, field) ->
         {module, opts} = resource_calculation.calculation
