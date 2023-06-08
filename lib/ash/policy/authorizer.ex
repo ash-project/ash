@@ -152,6 +152,7 @@ defmodule Ash.Policy.Authorizer do
     ],
     args: [:condition],
     target: Ash.Policy.Policy,
+    transform: {Ash.Policy.Policy, :transform, []},
     entities: [
       policies: [
         @authorize_if,
@@ -271,7 +272,8 @@ defmodule Ash.Policy.Authorizer do
 
   @behaviour Ash.Authorizer
 
-  use Spark.Dsl.Extension, sections: @sections
+  use Spark.Dsl.Extension,
+    sections: @sections
 
   @impl true
   def exception({:changeset_doesnt_match_filter, filter}, state) do

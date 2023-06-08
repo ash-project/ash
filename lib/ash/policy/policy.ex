@@ -47,6 +47,24 @@ defmodule Ash.Policy.Policy do
     end
   end
 
+  @doc false
+  def transform(policy) do
+    if Enum.empty?(policy.policies) do
+      {:error, "Policies must have at least one check."}
+    else
+      policy.policies
+      |> List.last()
+      |> case do
+        %{type: bad_type} when bad_type in [:forbid_if, :forbid_unless] ->
+          {:error,
+           "Policies must not end in forbid_if or forbid_unless checks. These checks would have no effect."}
+
+        _ ->
+          {:ok, policy}
+      end
+    end
+  end
+
   defp build_requirements_expression(policies, authorizer) do
     {at_least_one_policy_expression, authorizer} =
       at_least_one_policy_expression(policies, authorizer)
