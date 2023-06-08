@@ -38,6 +38,7 @@ defmodule Ash.Query do
     :tenant,
     :timeout,
     :lock,
+    load_through: %{},
     action_failed?: false,
     after_action: [],
     aggregates: %{},
@@ -912,7 +913,7 @@ defmodule Ash.Query do
 
       {field, {args, load_through}}, query ->
         if resource_calculation = Ash.Resource.Info.calculation(query.resource, field) do
-          load_resource_calculation(resource_calculation, args, load_through)
+          load_resource_calculation(query, resource_calculation, args, load_through)
         else
           add_error(
             query,

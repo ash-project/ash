@@ -810,6 +810,9 @@ defmodule Ash.Type do
           context :: load_context()
         ) ::
           {:ok, list(term)} | {:error, Ash.Error.t()}
+  def load(_, [], _, _, _), do: {:ok, []}
+  def load(_, nil, _, _, _), do: {:ok, nil}
+
   def load({:array, type}, values, loads, constraints, context) do
     load(type, values, loads, constraints[:items] || [], context)
   end
@@ -821,21 +824,49 @@ defmodule Ash.Type do
         constraints,
         context
       ) do
-    type = get_type(type)
+    splicing_nil_values(values, fn values ->
+      type = get_type(type)
 
-    if function_exported?(type, :load, 4) do
-      type.load(values, loads, constraints, context)
-    else
-      {:error, Ash.Error.Query.InvalidLoad.exception(load: loads)}
-    end
+      if can_load?(type) do
+        type.load(values, loads, constraints, context)
+      else
+        {:error, Ash.Error.Query.InvalidLoad.exception(load: loads)}
+      end
+    end)
   end
+
+  def splicing_nil_values(values, callback) when is_list(values) do
+    values
+    |> Stream.with_index()
+    |> Enum.reduce({[], []}, fn
+      {nil, index}, {acc, nil_indices} ->
+        {acc, [index | nil_indices]}
+
+      {value, _index}, {acc, nil_indices} ->
+        {[value | acc], nil_indices}
+    end)
+    |> then(fn {list, nil_indices} ->
+      case callback.(list) do
+        {:ok, new_list} ->
+          nil_indices = Enum.reverse(nil_indices)
+          new_list = Enum.reverse(new_list)
+
+          {:ok, Enum.reduce(nil_indices, new_list, &List.insert_at(&2, &1, nil))}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end)
+  end
+
+  def splicing_nil_values(value, callback), do: callback.(value)
 
   @spec can_load?(t()) :: boolean
   def can_load?({:array, type}), do: can_load?(type)
 
   def can_load?(type) do
     type = get_type(type)
-    function_exported?(type, :load, 4)
+    type.can_load?()
   end
 
   @doc """
@@ -1056,6 +1087,12 @@ defmodule Ash.Type do
 
         @impl true
         def equal?(left, right), do: left == right
+      end
+
+      if Module.defines?(__MODULE__, {:load, 4}, :def) do
+        def can_load?, do: true
+      else
+        def can_load?, do: false
       end
     end
   end

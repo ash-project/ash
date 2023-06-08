@@ -15,13 +15,70 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      defaults([:create, :read, :update, :destroy])
     end
 
     attributes do
-      uuid_primary_key :id
-      attribute :name, :ci_string
+      uuid_primary_key(:id)
+      attribute(:name, :ci_string)
     end
+  end
+
+  defmodule Bio do
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      attribute(:first_name, :string)
+      attribute(:last_name, :string)
+
+      attribute :type, :string do
+        allow_nil?(false)
+        default("bio")
+        private?(true)
+      end
+    end
+
+    calculations do
+      calculate(:full_name, :string, expr(first_name <> " " <> last_name))
+    end
+  end
+
+  defmodule OtherKindOfBio do
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      attribute(:first_name, :string)
+      attribute(:last_name, :string)
+
+      attribute :type, :string do
+        allow_nil?(false)
+        default("other_kind_of_bio")
+        private?(true)
+      end
+    end
+
+    calculations do
+      calculate(:full_name, :string, expr(first_name <> " " <> last_name))
+    end
+  end
+
+  defmodule BioUnion do
+    use Ash.Type.NewType,
+      subtype_of: :union,
+      constraints: [
+        types: [
+          bio: [
+            type: Bio,
+            tag: :type,
+            tag_value: "bio"
+          ],
+          other_kind_of_bio: [
+            type: OtherKindOfBio,
+            tag: :type,
+            tag_value: "other_kind_of_bio"
+          ]
+        ]
+      ]
   end
 
   defmodule Author do
@@ -37,26 +94,33 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      defaults([:create, :read, :update, :destroy])
     end
 
     attributes do
-      uuid_primary_key :id
-      attribute :name, :string
+      uuid_primary_key(:id)
+      attribute(:name, :string)
+      attribute(:bio, Bio)
+      attribute(:bio_union, BioUnion)
+    end
+
+    calculations do
+      calculate(:bio_union_calc, BioUnion, expr(bio_union))
     end
 
     relationships do
-      has_many :posts, Ash.Test.Actions.LoadTest.Post, destination_attribute: :author_id
+      has_many(:posts, Ash.Test.Actions.LoadTest.Post, destination_attribute: :author_id)
 
-      has_one :latest_post, Ash.Test.Actions.LoadTest.Post,
+      has_one(:latest_post, Ash.Test.Actions.LoadTest.Post,
         destination_attribute: :author_id,
         sort: [inserted_at: :desc]
+      )
 
       belongs_to :campaign, Ash.Test.Actions.LoadTest.Campaign do
-        attribute_type :ci_string
-        source_attribute :campaign_name
-        destination_attribute :name
-        attribute_writable? true
+        attribute_type(:ci_string)
+        source_attribute(:campaign_name)
+        destination_attribute(:name)
+        attribute_writable?(true)
       end
     end
   end
@@ -94,41 +158,42 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      defaults([:create, :read, :update, :destroy])
     end
 
     attributes do
-      uuid_primary_key :id
-      attribute :title, :string
-      attribute :contents, :string
-      attribute :category, :string
+      uuid_primary_key(:id)
+      attribute(:title, :string)
+      attribute(:contents, :string)
+      attribute(:category, :string)
       timestamps()
     end
 
     code_interface do
-      define_for Ash.Test.Actions.LoadTest.Api
+      define_for(Ash.Test.Actions.LoadTest.Api)
 
       define :get_by_id do
-        action :read
-        get_by [:id]
+        action(:read)
+        get_by([:id])
       end
     end
 
     relationships do
-      belongs_to :author, Author
+      belongs_to(:author, Author)
 
       has_many :posts_in_same_category, __MODULE__ do
-        manual PostsInSameCategory
+        manual(PostsInSameCategory)
       end
 
       has_many :ratings, Ash.Test.Actions.LoadTest.Rating do
-        api Ash.Test.Actions.LoadTest.Api2
+        api(Ash.Test.Actions.LoadTest.Api2)
       end
 
-      many_to_many :categories, Ash.Test.Actions.LoadTest.Category,
+      many_to_many(:categories, Ash.Test.Actions.LoadTest.Category,
         through: Ash.Test.Actions.LoadTest.PostCategory,
         destination_attribute_on_join_resource: :category_id,
         source_attribute_on_join_resource: :post_id
+      )
     end
   end
 
@@ -141,15 +206,16 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      defaults([:create, :read, :update, :destroy])
     end
 
     relationships do
-      belongs_to :post, Post, primary_key?: true, allow_nil?: false
+      belongs_to(:post, Post, primary_key?: true, allow_nil?: false)
 
-      belongs_to :category, Ash.Test.Actions.LoadTest.Category,
+      belongs_to(:category, Ash.Test.Actions.LoadTest.Category,
         primary_key?: true,
         allow_nil?: false
+      )
     end
   end
 
@@ -162,19 +228,20 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      defaults([:create, :read, :update, :destroy])
     end
 
     attributes do
-      uuid_primary_key :id
-      attribute :name, :string
+      uuid_primary_key(:id)
+      attribute(:name, :string)
     end
 
     relationships do
-      many_to_many :posts, Post,
+      many_to_many(:posts, Post,
         through: PostCategory,
         destination_attribute_on_join_resource: :post_id,
         source_attribute_on_join_resource: :category_id
+      )
     end
   end
 
@@ -183,21 +250,21 @@ defmodule Ash.Test.Actions.LoadTest do
       data_layer: Ash.DataLayer.Ets
 
     ets do
-      private? true
+      private?(true)
     end
 
     attributes do
-      uuid_primary_key :id
-      attribute :rating, :integer
+      uuid_primary_key(:id)
+      attribute(:rating, :integer)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      defaults([:create, :read, :update, :destroy])
     end
 
     relationships do
       belongs_to :post, Post do
-        api Ash.Test.Actions.LoadTest.Api
+        api(Ash.Test.Actions.LoadTest.Api)
       end
     end
   end
@@ -229,7 +296,7 @@ defmodule Ash.Test.Actions.LoadTest do
     use Ash.Api
 
     resources do
-      registry Registry
+      registry(Registry)
     end
   end
 
@@ -238,7 +305,7 @@ defmodule Ash.Test.Actions.LoadTest do
     use Ash.Api
 
     resources do
-      registry Registry2
+      registry(Registry2)
     end
   end
 
@@ -610,6 +677,79 @@ defmodule Ash.Test.Actions.LoadTest do
         |> Api.read!()
 
       assert author.latest_post.id == post2.id
+    end
+  end
+
+  describe "loading through attributes" do
+    test "can load calculations through attributes" do
+      Author
+      |> new(%{name: "zerg", bio: %{first_name: "donald", last_name: "duck"}})
+      |> Api.create!()
+
+      assert [%{bio: %{full_name: "donald duck"}}] =
+               Author
+               |> Ash.Query.load(bio: :full_name)
+               |> Api.read!()
+    end
+
+    test "can load calculations through union" do
+      Author
+      |> new(%{name: "zerg", bio_union: %{type: "bio", first_name: "donald", last_name: "duck"}})
+      |> Api.create!()
+
+      Author
+      |> new(%{
+        name: "zerg",
+        bio_union: %{type: "other_kind_of_bio", first_name: "donald", last_name: "duck"}
+      })
+      |> Api.create!()
+
+      assert [
+               %{bio_union: %Ash.Union{value: %{full_name: "donald duck"}}},
+               %{bio_union: %Ash.Union{value: %{full_name: "donald duck"}}}
+             ] =
+               Author
+               |> Ash.Query.load(bio_union: [*: :full_name])
+               |> Api.read!()
+
+      assert [
+               %{bio_union: %Ash.Union{value: %{full_name: "donald duck"}}},
+               %{bio_union: %Ash.Union{value: %{full_name: "donald duck"}}}
+             ] =
+               Author
+               |> Ash.Query.load(bio_union: [bio: :full_name, other_kind_of_bio: :full_name])
+               |> Api.read!()
+    end
+
+    test "can load calculations through union produced by a calculation" do
+      Author
+      |> new(%{name: "zerg", bio_union: %{type: "bio", first_name: "donald", last_name: "duck"}})
+      |> Api.create!()
+
+      Author
+      |> new(%{
+        name: "zerg",
+        bio_union: %{type: "other_kind_of_bio", first_name: "donald", last_name: "duck"}
+      })
+      |> Api.create!()
+
+      assert [
+               %{bio_union_calc: %Ash.Union{value: %{full_name: "donald duck"}}},
+               %{bio_union_calc: %Ash.Union{value: %{full_name: "donald duck"}}}
+             ] =
+               Author
+               |> Ash.Query.load(bio_union_calc: {%{}, [*: :full_name]})
+               |> Api.read!()
+
+      assert [
+               %{bio_union_calc: %Ash.Union{value: %{full_name: "donald duck"}}},
+               %{bio_union_calc: %Ash.Union{value: %{full_name: "donald duck"}}}
+             ] =
+               Author
+               |> Ash.Query.load(
+                 bio_union_calc: {%{}, [bio: :full_name, other_kind_of_bio: :full_name]}
+               )
+               |> Api.read!()
     end
   end
 end

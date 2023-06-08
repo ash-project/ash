@@ -95,6 +95,18 @@ defmodule Ash.Type.NewType do
         unquote(subtype_of)
       end
 
+      if Ash.Type.can_load?(subtype_of) do
+        @impl Ash.Type
+        def load(values, load, constraints, context) do
+          unquote(subtype_of).load(
+            values,
+            load,
+            type_constraints(constraints, unquote(subtype_constraints)),
+            context
+          )
+        end
+      end
+
       @impl Ash.Type
       def cast_input(value, constraints) do
         case unquote(subtype_of).cast_input(

@@ -2,9 +2,9 @@ defmodule Ash.Test.Resource.CalculationsTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Resource.Calculation
   alias Ash.Test.Support.PolicySimple.Api
   alias Ash.Test.Support.PolicySimple.Post
-  alias Ash.Resource.Calculation
 
   defmacrop defposts(do: body) do
     quote do

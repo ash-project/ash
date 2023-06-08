@@ -402,6 +402,13 @@ defmodule Ash.Actions.Read do
                 else
                   data
                   |> Load.attach_loads(get_in(context, path ++ [:fetch, :load]) || %{})
+                  |> load_through_attributes(
+                    query,
+                    api,
+                    context[:actor],
+                    context[:tracer],
+                    context[:authorize?]
+                  )
                   |> add_aggregate_values(
                     fetched_data[:aggregates],
                     query.resource,
@@ -438,6 +445,9 @@ defmodule Ash.Actions.Read do
                       |> then(fn result -> {:ok, result} end)
                       |> unwrap_for_get(get?, not_found_error?, query.resource)
 
+                    {:error, error} ->
+                      {:error, error}
+
                     {:requests, requests} ->
                       {:requests, Enum.map(requests, &{&1, :data})}
                   end
@@ -448,6 +458,115 @@ defmodule Ash.Actions.Read do
       )
 
     [fetch, process]
+  end
+
+  defp load_through_attributes(results, query, api, actor, tracer, authorize?) do
+    Enum.reduce_while(query.load_through, {:ok, results}, fn
+      {:calculation, load_through}, {:ok, results} ->
+        Enum.reduce_while(load_through, {:ok, results}, fn {name, load_statement},
+                                                           {:ok, results} ->
+          load_statement =
+            if is_map(load_statement) do
+              Map.to_list(load_statement)
+            else
+              load_statement
+            end
+
+          calculation = Map.get(query.calculations, name)
+
+          values =
+            case calculation.load do
+              nil ->
+                Enum.map(results, &Map.get(&1.calculations, calculation.name))
+
+              load ->
+                Enum.map(results, &Map.get(&1, load))
+            end
+
+          case Ash.Type.load(
+                 calculation.type,
+                 values,
+                 load_statement,
+                 calculation.constraints,
+                 %{
+                   api: api,
+                   actor: actor,
+                   tenant: query.tenant,
+                   tracer: tracer,
+                   authorize?: authorize?
+                 }
+               ) do
+            {:ok, new_values} ->
+              case calculation.load do
+                nil ->
+                  {:cont,
+                   {:ok,
+                    Enum.zip_with(results, new_values, fn record, value ->
+                      Map.update!(record, :calculations, fn calculations ->
+                        Map.put(calculations, calculation.name, value)
+                      end)
+                    end)}}
+
+                load ->
+                  {:cont,
+                   {:ok,
+                    Enum.zip_with(results, new_values, fn record, value ->
+                      Map.put(record, load, value)
+                    end)}}
+              end
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+        end)
+        |> case do
+          {:ok, results} ->
+            {:cont, {:ok, results}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+
+      {:attribute, load_through}, {:ok, results} ->
+        Enum.reduce_while(load_through, {:ok, results}, fn
+          {name, load_statement}, {:ok, results} ->
+            load_statement =
+              if is_map(load_statement) do
+                Map.to_list(load_statement)
+              else
+                load_statement
+              end
+
+            attribute = Ash.Resource.Info.attribute(query.resource, name)
+
+            values = Enum.map(results, &Map.get(&1, attribute.name))
+
+            case Ash.Type.load(attribute.type, values, load_statement, attribute.constraints, %{
+                   api: api,
+                   actor: actor,
+                   tenant: query.tenant,
+                   tracer: tracer,
+                   authorize?: authorize?
+                 }) do
+              {:ok, new_values} ->
+                {:cont,
+                 {:ok,
+                  Enum.zip_with(results, new_values, fn record, value ->
+                    Map.put(record, attribute.name, value)
+                  end)}}
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
+        end)
+        |> case do
+          {:ok, results} ->
+            {:cont, {:ok, results}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+    end)
   end
 
   defp add_calculation_context(query, actor, authorize?, tenant, tracer) do
@@ -1764,8 +1883,21 @@ defmodule Ash.Actions.Read do
     required_loads
     |> List.wrap()
     |> Enum.flat_map(fn
+      {_load, {_, _}} ->
+        raise Ash.Error.Framework.AssumptionFailed,
+          message: """
+          Loading through types is not supported in calculation dependencies yet!
+          """
+
       {load, rest} when is_atom(load) ->
         if relationship = Ash.Resource.Info.relationship(query.resource, load) do
+          if has_key?(rest, :as) do
+            raise Ash.Error.Framework.AssumptionFailed,
+              message: """
+              Loading through types is not supported in calculation dependencies yet!
+              """
+          end
+
           expand_load_relationship(
             relationship,
             api,
@@ -1779,7 +1911,9 @@ defmodule Ash.Actions.Read do
           )
         else
           raise Ash.Error.Framework.AssumptionFailed,
-            message: "only calculation & relationship deps should have input"
+            message: """
+            Loading through types is not supported in calculation dependencies yet!
+            """
         end
 
       %Ash.Query.Calculation{} = calculation ->
@@ -1829,6 +1963,14 @@ defmodule Ash.Actions.Read do
                 "only attribute & aggregate deps should remain at this point, got #{inspect(other)} on #{inspect(query.resource)}"
         end
     end)
+  end
+
+  defp has_key?(value, key) when is_map(value) do
+    Map.has_key?(value, key)
+  end
+
+  defp has_key?(value, key) when is_list(value) do
+    Keyword.has_key?(value, key)
   end
 
   defp add_calc_context_to_query(query, actor, authorize?, tenant, tracer) do
@@ -2643,8 +2785,12 @@ defmodule Ash.Actions.Read do
     |> Enum.reject(& &1.__metadata__[:context][:private][:missing_from_data_layer])
   end
 
+  defp add_calculation_values({:error, error}, _, _, _, _, _, _, _, _, _, _, _, _, _) do
+    {:error, error}
+  end
+
   defp add_calculation_values(
-         results,
+         {:ok, results},
          resource,
          api,
          action,
@@ -2683,7 +2829,7 @@ defmodule Ash.Actions.Read do
   end
 
   defp add_calculation_values(
-         results,
+         {:ok, results},
          resource,
          _api,
          _action,
@@ -2792,7 +2938,17 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp add_aggregate_values(results, aggregates, resource, aggregate_values, aggregates_in_query) do
+  defp add_aggregate_values({:error, error}, _, _, _, _) do
+    {:error, error}
+  end
+
+  defp add_aggregate_values(
+         {:ok, results},
+         aggregates,
+         resource,
+         aggregate_values,
+         aggregates_in_query
+       ) do
     keys_to_aggregates =
       aggregate_values
       |> Enum.reduce(%{}, fn {_uniqueifier, aggregate_values}, acc ->
@@ -2814,22 +2970,23 @@ defmodule Ash.Actions.Read do
       |> Enum.map(fn {_, aggregate} -> aggregate.load end)
       |> Enum.reject(&is_nil/1)
 
-    Enum.map(results, fn result ->
-      aggregate_values = Map.get(keys_to_aggregates, Map.take(result, pkey), %{})
+    {:ok,
+     Enum.map(results, fn result ->
+       aggregate_values = Map.get(keys_to_aggregates, Map.take(result, pkey), %{})
 
-      aggregate_values =
-        aggregates
-        |> Enum.reject(fn {name, _aggregate} ->
-          Enum.find(aggregates_in_query, &(&1.name == name))
-        end)
-        |> Enum.reduce(aggregate_values, fn {_, aggregate}, aggregate_values ->
-          Map.put_new(aggregate_values, aggregate.name, aggregate.default_value)
-        end)
+       aggregate_values =
+         aggregates
+         |> Enum.reject(fn {name, _aggregate} ->
+           Enum.find(aggregates_in_query, &(&1.name == name))
+         end)
+         |> Enum.reduce(aggregate_values, fn {_, aggregate}, aggregate_values ->
+           Map.put_new(aggregate_values, aggregate.name, aggregate.default_value)
+         end)
 
-      {top_level, nested} = Map.split(aggregate_values || %{}, loaded)
+       {top_level, nested} = Map.split(aggregate_values || %{}, loaded)
 
-      Map.merge(%{result | aggregates: Map.merge(result.aggregates, nested)}, top_level)
-    end)
+       Map.merge(%{result | aggregates: Map.merge(result.aggregates, nested)}, top_level)
+     end)}
   end
 
   defp add_calculations(data_layer_query, query, calculations_to_add) do
