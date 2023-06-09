@@ -5,7 +5,7 @@ defmodule Ash.Policy.Check.ChangingAttributes do
   @impl true
   def describe(opts) do
     message =
-      Enum.map_join(opts, " and ", fn
+      Enum.map_join(opts[:changing], " and ", fn
         {key, further} ->
           field_message =
             Enum.map_join(further, ", ", fn
@@ -27,7 +27,7 @@ defmodule Ash.Policy.Check.ChangingAttributes do
 
   @impl true
   def match?(_actor, %{changeset: %Ash.Changeset{} = changeset}, opts) do
-    Enum.all?(opts, fn
+    Enum.all?(opts[:changing], fn
       {attribute, opts} ->
         if Keyword.has_key?(opts, :from) && changeset.action_type == :create do
           false

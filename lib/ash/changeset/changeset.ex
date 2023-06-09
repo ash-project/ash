@@ -432,7 +432,7 @@ defmodule Ash.Changeset do
 
           attribute && (attribute.private? || attribute.primary_key?)
         end
-    end
+    end || loading?(changeset, field)
   end
 
   @doc """
@@ -454,6 +454,19 @@ defmodule Ash.Changeset do
     |> Ash.Query.new()
     |> Ash.Query.load(changeset.load)
     |> Ash.Query.loading?(path)
+  end
+
+  @doc """
+  Returns a list of attributes, aggregates, relationships, and calculations that are being loaded
+
+  Provide a list of field types to narrow down the returned results.
+  """
+  def accessing(changeset, types \\ [:attributes, :relationships, :calculations, :attributes]) do
+    changeset.resource
+    |> Ash.Query.new()
+    |> Ash.Query.load(changeset.load)
+    |> Ash.Query.select(changeset.select)
+    |> Ash.Query.accessing(types)
   end
 
   @manage_types [:append_and_remove, :append, :remove, :direct_control, :create]

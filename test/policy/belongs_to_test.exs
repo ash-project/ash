@@ -48,7 +48,7 @@ defmodule Ash.Test.Policy.Actions.BelongsToTest do
 
     policies do
       policy always() do
-        forbid_if always()
+        authorize_if never()
       end
     end
   end

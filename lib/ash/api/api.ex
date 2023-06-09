@@ -511,7 +511,8 @@ defmodule Ash.Api do
           query_or_changeset_or_action ::
             Ash.Query.t()
             | Ash.Changeset.t()
-            | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()},
+            | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()}
+            | {Ash.Resource.t(), atom | Ash.Resource.Actions.action(), input :: map},
           actor :: term,
           opts :: Keyword.t()
         ) ::
@@ -531,7 +532,8 @@ defmodule Ash.Api do
           action_or_query_or_changeset ::
             Ash.Query.t()
             | Ash.Changeset.t()
-            | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()},
+            | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()}
+            | {Ash.Resource.t(), atom | Ash.Resource.Actions.action(), input :: map},
           actor :: term,
           opts :: Keyword.t()
         ) ::
@@ -540,54 +542,63 @@ defmodule Ash.Api do
     opts = Keyword.put_new(opts, :maybe_is, :maybe)
     opts = Keyword.put_new(opts, :run_queries?, true)
 
-    {resource, action_or_query_or_changeset} =
+    {resource, action_or_query_or_changeset, input} =
       case action_or_query_or_changeset do
         %Ash.Query{} = query ->
-          {query.resource, query}
+          {query.resource, query, nil}
 
         %Ash.Changeset{} = changeset ->
-          {changeset.resource, changeset}
+          {changeset.resource, changeset, nil}
 
-        {resource, %Ash.Resource.Actions.Create{}} = action ->
-          {resource, action}
-
-        {resource, %Ash.Resource.Actions.Read{}} = action ->
-          {resource, action}
-
-        {resource, %Ash.Resource.Actions.Update{}} = action ->
-          {resource, action}
-
-        {resource, %Ash.Resource.Actions.Destroy{}} = action ->
-          {resource, action}
+        {resource, %struct{}} = action
+        when struct in [
+               Ash.Resource.Actions.Create,
+               Ash.Resource.Actions.Read,
+               Ash.Resource.Actions.Update,
+               Ash.Resource.Actions.Destroy
+             ] ->
+          {resource, action, %{}}
 
         {resource, name} when is_atom(name) ->
-          {resource, Ash.Resource.Info.action(resource, name)}
+          {resource, Ash.Resource.Info.action(resource, name), %{}}
+
+        {resource, %struct{}, input} = action
+        when struct in [
+               Ash.Resource.Actions.Create,
+               Ash.Resource.Actions.Read,
+               Ash.Resource.Actions.Update,
+               Ash.Resource.Actions.Destroy
+             ] ->
+          {resource, action, input}
+
+        {resource, name, input} when is_atom(name) ->
+          {resource, Ash.Resource.Info.action(resource, name), input}
       end
 
     query_or_changeset =
       case action_or_query_or_changeset do
         %{type: :update, name: name} ->
           if opts[:data] do
-            Ash.Changeset.for_update(opts[:data], name)
+            Ash.Changeset.for_update(opts[:data], name, input, actor: actor)
           else
             resource
             |> struct()
-            |> Ash.Changeset.for_update(name)
+            |> Ash.Changeset.for_update(name, input, actor: actor)
           end
 
         %{type: :create, name: name} ->
-          Ash.Changeset.for_create(resource, name)
+          Ash.Changeset.for_create(resource, name, input, actor: actor)
 
         %{type: :read, name: name} ->
-          Ash.Query.for_read(resource, name)
+          Ash.Query.for_read(resource, name, input, actor: actor)
 
         %{type: :destroy, name: name} ->
           if opts[:data] do
-            Ash.Changeset.for_destroy(opts[:data], name)
+            Ash.Changeset.for_destroy(opts[:data], name, input, actor: actor)
           else
             resource
             |> struct()
-            |> Ash.Changeset.for_destroy(name)
+            |> Ash.Changeset.for_destroy(name, input, actor: actor)
           end
 
         other ->
@@ -925,7 +936,8 @@ defmodule Ash.Api do
           actor: opts[:actor],
           tenant: opts[:tenant],
           authorize?: opts[:authorize?],
-          tracer: opts[:tracer]
+          tracer: opts[:tracer],
+          resource: resource
         })
         |> Map.merge(opts[:args] || %{})
         |> Map.put(:ash, %{type: type, constraints: constraints})

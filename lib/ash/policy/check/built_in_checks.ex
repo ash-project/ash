@@ -239,10 +239,12 @@ defmodule Ash.Policy.Check.Builtins do
       Enum.map(opts, fn opt ->
         if is_atom(opt) do
           {opt, []}
+        else
+          opt
         end
       end)
 
-    {Ash.Policy.Check.ChangingAttributes, opts}
+    {Ash.Policy.Check.ChangingAttributes, changing: opts}
   end
 
   @doc """

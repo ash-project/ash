@@ -23,13 +23,23 @@ defmodule Ash.Calculation do
     end
   end
 
-  @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
-  @callback describe(Keyword.t()) :: String.t()
-  @callback calculate([Ash.Resource.record()], Keyword.t(), map) ::
+  @type context :: %{
+          :actor => term | nil,
+          :tenant => String.t() | nil,
+          :authorize? => boolean | nil,
+          :tracer => module | nil,
+          optional(atom) => any
+        }
+
+  @type opts :: Keyword.t()
+
+  @callback init(opts) :: {:ok, opts} | {:error, term}
+  @callback describe(opts) :: String.t()
+  @callback calculate([Ash.Resource.record()], opts, context) ::
               {:ok, [term]} | [term] | {:error, term} | :unknown
-  @callback expression(Keyword.t(), map) :: any
-  @callback load(Ash.Query.t(), Keyword.t(), map) :: atom | [atom] | Keyword.t()
-  @callback select(Ash.Query.t(), Keyword.t(), map) :: list(atom)
+  @callback expression(opts, context) :: any
+  @callback load(Ash.Query.t(), opts, context) :: atom | [atom] | Keyword.t()
+  @callback select(Ash.Query.t(), opts, context) :: list(atom)
 
   @optional_callbacks expression: 2, calculate: 3
 end

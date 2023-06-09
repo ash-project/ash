@@ -789,6 +789,29 @@ defmodule Ash.Query do
   end
 
   @doc """
+  Returns a list of attributes, aggregates, relationships, and calculations that are being loaded
+
+  Provide a list of field types to narrow down the returned results.
+  """
+  def accessing(query, types \\ [:attributes, :relationships, :calculations, :attributes]) do
+    [
+      {:aggregates, Ash.Resource.Info.aggregates(query)},
+      {:relationships, Ash.Resource.Info.relationships(query)},
+      {:calculations, Ash.Resource.Info.calculations(query)},
+      {:attributes, Ash.Resource.Info.attributes(query)}
+    ]
+    |> Stream.flat_map(fn {type, fields} ->
+      if type in types do
+        fields
+      else
+        []
+      end
+    end)
+    |> Stream.map(& &1.name)
+    |> Enum.filter(&loading?(query, &1))
+  end
+
+  @doc """
   Ensure the the specified attributes are `nil` in the query results.
   """
   def deselect(query, fields) do
@@ -821,7 +844,7 @@ defmodule Ash.Query do
 
           attribute && (attribute.primary_key? || attribute.private?)
         end
-    end
+    end || loading?(query, field)
   end
 
   @doc """
@@ -851,9 +874,17 @@ defmodule Ash.Query do
   end
 
   def loading?(query, item) when is_atom(item) do
-    Keyword.has_key?(query.load || [], item) ||
-      Enum.any?(query.calculations, fn {_, %{calc_name: calc_name}} ->
-        calc_name == item
+    item in List.wrap(query.select) ||
+      Keyword.has_key?(query.load || [], item) ||
+      Enum.any?(query.calculations, fn
+        {_, %{module: Ash.Resource.Calculation.LoadRelationship, opts: opts}} ->
+          opts[:relationship] == item
+
+        {_, %{module: Ash.Resource.Calculation.LoadAttribute, opts: opts}} ->
+          opts[:attribute] == item
+
+        {_, %{calc_name: calc_name}} ->
+          calc_name == item
       end) ||
       Enum.any?(query.aggregates, fn {_, %{agg_name: agg_name}} ->
         agg_name == item

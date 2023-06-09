@@ -53,7 +53,13 @@ defmodule Ash.Actions.Load do
         else
           related_query
         end
-        |> Ash.Query.ensure_selected(relationship.destination_attribute)
+
+      related_query =
+        if Map.get(relationship, :no_attributes?) do
+          related_query
+        else
+          Ash.Query.ensure_selected(related_query, relationship.destination_attribute)
+        end
 
       related_query =
         if relationship.cardinality == :one do
@@ -132,9 +138,20 @@ defmodule Ash.Actions.Load do
          data,
          lead_path
        ) do
+    value =
+      case value do
+        %_{} = value ->
+          List.wrap(value)
+
+        list when is_list(list) ->
+          list
+
+        value when is_map(value) ->
+          value |> Map.values() |> List.flatten()
+      end
+
     map_or_update(data, lead_path, fn record ->
-      Ash.Resource
-      Map.put(record, name, List.wrap(value))
+      Map.put(record, name, value)
     end)
   end
 
