@@ -405,7 +405,12 @@ defmodule Ash.Actions.Helpers do
     if changeset.load in [nil, []] do
       {:ok, result, instructions}
     else
-      case api.load(result, changeset.load, opts) do
+      query =
+        changeset.resource
+        |> Ash.Query.select([])
+        |> Ash.Query.load(changeset.load)
+
+      case api.load(result, query, opts) do
         {:ok, result} ->
           {:ok, result, instructions}
 
@@ -419,7 +424,12 @@ defmodule Ash.Actions.Helpers do
     if changeset.load in [nil, []] do
       {:ok, result}
     else
-      case api.load(result, changeset.load, opts) do
+      query =
+        changeset.resource
+        |> Ash.Query.select([])
+        |> Ash.Query.load(changeset.load)
+
+      case api.load(result, query, opts) do
         {:ok, result} ->
           {:ok, result}
 

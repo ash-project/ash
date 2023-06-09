@@ -402,13 +402,6 @@ defmodule Ash.Actions.Read do
                 else
                   data
                   |> Load.attach_loads(get_in(context, path ++ [:fetch, :load]) || %{})
-                  |> load_through_attributes(
-                    query,
-                    api,
-                    context[:actor],
-                    context[:tracer],
-                    context[:authorize?]
-                  )
                   |> add_aggregate_values(
                     fetched_data[:aggregates],
                     query.resource,
@@ -429,6 +422,13 @@ defmodule Ash.Actions.Read do
                     context[:authorize?],
                     context[:tracer],
                     request_opts
+                  )
+                  |> load_through_attributes(
+                    query,
+                    api,
+                    context[:actor],
+                    context[:tracer],
+                    context[:authorize?]
                   )
                   |> case do
                     {:ok, values} ->
@@ -460,7 +460,9 @@ defmodule Ash.Actions.Read do
     [fetch, process]
   end
 
-  defp load_through_attributes(results, query, api, actor, tracer, authorize?) do
+  defp load_through_attributes({:requests, error}, _, _, _, _, _), do: {:requests, error}
+
+  defp load_through_attributes({:ok, results}, query, api, actor, tracer, authorize?) do
     Enum.reduce_while(query.load_through, {:ok, results}, fn
       {:calculation, load_through}, {:ok, results} ->
         Enum.reduce_while(load_through, {:ok, results}, fn {name, load_statement},
@@ -2938,12 +2940,8 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp add_aggregate_values({:error, error}, _, _, _, _) do
-    {:error, error}
-  end
-
   defp add_aggregate_values(
-         {:ok, results},
+         results,
          aggregates,
          resource,
          aggregate_values,

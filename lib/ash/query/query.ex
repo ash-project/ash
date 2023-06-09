@@ -114,6 +114,21 @@ defmodule Ash.Query do
     import Inspect.Algebra
 
     def inspect(query, opts) do
+      load_through_attributes = Map.to_list(query.load_through[:attributes] || %{})
+
+      query = %{
+        query
+        | load: Keyword.merge(query.load || [], load_through_attributes),
+          calculations:
+            Map.new(query.calculations, fn {name, calc} ->
+              if load_through = query.load_through[:calculations][name] do
+                {name, {calc, load_through}}
+              else
+                {name, calc}
+              end
+            end)
+      }
+
       sort? = query.sort != []
       load? = query.load != []
       aggregates? = query.aggregates != %{}
