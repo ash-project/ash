@@ -449,7 +449,7 @@ defmodule Ash.CodeInterface do
 
                 unquote(api).run_action(
                   action_input,
-                  Keyword.drop(opts, [:actor, :changeset, :tenant, :authorize?, :tracer])
+                  Keyword.drop(opts, [:input, :actor, :tenant, :authorize?, :tracer])
                 )
               end
             end
@@ -477,7 +477,8 @@ defmodule Ash.CodeInterface do
                   end)
 
                 action_input =
-                  (opts[:input] || unquote(resource))
+                  opts[:input]
+                  |> Kernel.||(unquote(resource))
                   |> Ash.ActionInput.for_action(
                     unquote(action.name),
                     input,
@@ -486,7 +487,7 @@ defmodule Ash.CodeInterface do
 
                 unquote(api).run_action!(
                   action_input,
-                  Keyword.drop(opts, [:actor, :changeset, :authorize?, :tracer])
+                  Keyword.drop(opts, [:input, :actor, :tenant, :authorize?, :tracer])
                 )
               end
             end
@@ -543,7 +544,14 @@ defmodule Ash.CodeInterface do
                 if unquote(interface.get? || action.get?) do
                   query
                   |> unquote(api).read_one(
-                    Keyword.drop(opts, [:query, :tenant, :authorize?, :actor, :not_found_error?])
+                    Keyword.drop(opts, [
+                      :query,
+                      :not_found_error?,
+                      :actor,
+                      :tenant,
+                      :authorize?,
+                      :tracer
+                    ])
                   )
                   |> case do
                     {:ok, nil} ->
@@ -563,7 +571,7 @@ defmodule Ash.CodeInterface do
                 else
                   unquote(api).read(
                     query,
-                    Keyword.drop(opts, [:query, :tenant, :actor, :authorize?])
+                    Keyword.drop(opts, [:query, :actor, :tenant, :authorize?, :tracer])
                   )
                 end
               end
@@ -621,7 +629,14 @@ defmodule Ash.CodeInterface do
                 if unquote(interface.get? || action.get?) do
                   query
                   |> unquote(api).read_one!(
-                    Keyword.drop(opts, [:query, :tenant, :authorize?, :actor, :not_found_error?])
+                    Keyword.drop(opts, [
+                      :query,
+                      :not_found_error?,
+                      :actor,
+                      :tenant,
+                      :authorize?,
+                      :tracer
+                    ])
                   )
                   |> case do
                     nil ->
@@ -638,7 +653,7 @@ defmodule Ash.CodeInterface do
                 else
                   unquote(api).read!(
                     query,
-                    Keyword.drop(opts, [:query, :tenant, :actor, :authorize?])
+                    Keyword.drop(opts, [:query, :actor, :tenant, :authorize?, :tracer])
                   )
                 end
               end
@@ -677,7 +692,7 @@ defmodule Ash.CodeInterface do
 
                 unquote(api).create(
                   changeset,
-                  Keyword.drop(opts, [:actor, :changeset, :tenant, :authorize?, :tracer])
+                  Keyword.drop(opts, [:changeset, :actor, :tenant, :authorize?, :tracer])
                 )
               end
             end
@@ -705,7 +720,8 @@ defmodule Ash.CodeInterface do
                   end)
 
                 changeset =
-                  (opts[:changeset] || unquote(resource))
+                  opts[:changeset]
+                  |> Kernel.||(unquote(resource))
                   |> Ash.Changeset.for_create(
                     unquote(action.name),
                     input,
@@ -714,7 +730,7 @@ defmodule Ash.CodeInterface do
 
                 unquote(api).create!(
                   changeset,
-                  Keyword.drop(opts, [:actor, :changeset, :authorize?, :tracer])
+                  Keyword.drop(opts, [:changeset, :actor, :tenant, :authorize?, :tracer])
                 )
               end
             end
