@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.24](https://github.com/ash-project/ash/compare/v2.9.23...v2.9.24) (2023-06-09)
+
+
+
+
+### Bug Fixes:
+
+* pass empty select statement when loading on changesets
+
+* fixes for loading through attributes
+
+* drop proper opts keys when calling api in code interface (#608)
+
 ## [v2.9.23](https://github.com/ash-project/ash/compare/v2.9.22...v2.9.23) (2023-06-09)
 
 
