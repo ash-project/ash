@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.23](https://github.com/ash-project/ash/compare/v2.9.22...v2.9.23) (2023-06-09)
+
+
+
+
+### Bug Fixes:
+
+* remove validation that was breaking real design patterns
+
 ## [v2.9.22](https://github.com/ash-project/ash/compare/v2.9.21...v2.9.22) (2023-06-09)
 
 
