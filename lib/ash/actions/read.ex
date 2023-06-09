@@ -2793,12 +2793,8 @@ defmodule Ash.Actions.Read do
     |> Enum.reject(& &1.__metadata__[:context][:private][:missing_from_data_layer])
   end
 
-  defp add_calculation_values({:error, error}, _, _, _, _, _, _, _, _, _, _, _, _, _) do
-    {:error, error}
-  end
-
   defp add_calculation_values(
-         {:ok, results},
+         results,
          resource,
          api,
          action,
@@ -2837,7 +2833,7 @@ defmodule Ash.Actions.Read do
   end
 
   defp add_calculation_values(
-         {:ok, results},
+         results,
          resource,
          _api,
          _action,
@@ -2974,23 +2970,22 @@ defmodule Ash.Actions.Read do
       |> Enum.map(fn {_, aggregate} -> aggregate.load end)
       |> Enum.reject(&is_nil/1)
 
-    {:ok,
-     Enum.map(results, fn result ->
-       aggregate_values = Map.get(keys_to_aggregates, Map.take(result, pkey), %{})
+    Enum.map(results, fn result ->
+      aggregate_values = Map.get(keys_to_aggregates, Map.take(result, pkey), %{})
 
-       aggregate_values =
-         aggregates
-         |> Enum.reject(fn {name, _aggregate} ->
-           Enum.find(aggregates_in_query, &(&1.name == name))
-         end)
-         |> Enum.reduce(aggregate_values, fn {_, aggregate}, aggregate_values ->
-           Map.put_new(aggregate_values, aggregate.name, aggregate.default_value)
-         end)
+      aggregate_values =
+        aggregates
+        |> Enum.reject(fn {name, _aggregate} ->
+          Enum.find(aggregates_in_query, &(&1.name == name))
+        end)
+        |> Enum.reduce(aggregate_values, fn {_, aggregate}, aggregate_values ->
+          Map.put_new(aggregate_values, aggregate.name, aggregate.default_value)
+        end)
 
-       {top_level, nested} = Map.split(aggregate_values || %{}, loaded)
+      {top_level, nested} = Map.split(aggregate_values || %{}, loaded)
 
-       Map.merge(%{result | aggregates: Map.merge(result.aggregates, nested)}, top_level)
-     end)}
+      Map.merge(%{result | aggregates: Map.merge(result.aggregates, nested)}, top_level)
+    end)
   end
 
   defp add_calculations(data_layer_query, query, calculations_to_add) do
