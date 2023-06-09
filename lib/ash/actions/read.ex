@@ -491,40 +491,89 @@ defmodule Ash.Actions.Read do
                 Enum.map(results, &Map.get(&1, load))
             end
 
-          case Ash.Type.load(
-                 calculation.type,
-                 values,
-                 load_statement,
-                 calculation.constraints,
-                 %{
-                   api: api,
-                   actor: actor,
-                   tenant: query.tenant,
-                   tracer: tracer,
-                   authorize?: authorize?
-                 }
-               ) do
-            {:ok, new_values} ->
-              case calculation.load do
-                nil ->
-                  {:cont,
-                   {:ok,
-                    Enum.zip_with(results, new_values, fn record, value ->
-                      Map.update!(record, :calculations, fn calculations ->
-                        Map.put(calculations, calculation.name, value)
-                      end)
-                    end)}}
+          case calculation.type do
+            {:array, _} ->
+              Enum.reduce_while(values, {:ok, []}, fn list, {:ok, acc} ->
+                case Ash.Type.load(
+                       calculation.type,
+                       list,
+                       load_statement,
+                       calculation.constraints,
+                       %{
+                         api: api,
+                         actor: actor,
+                         tenant: query.tenant,
+                         tracer: tracer,
+                         authorize?: authorize?
+                       }
+                     ) do
+                  {:ok, new_values} ->
+                    {:cont, {:ok, [new_values | acc]}}
 
-                load ->
-                  {:cont,
-                   {:ok,
-                    Enum.zip_with(results, new_values, fn record, value ->
-                      Map.put(record, load, value)
-                    end)}}
+                  {:error, error} ->
+                    {:halt, {:error, error}}
+                end
+              end)
+              |> case do
+                {:ok, list} ->
+                  case calculation.load do
+                    nil ->
+                      {:cont,
+                       {:ok,
+                        Enum.zip_with(results, Enum.reverse(list), fn record, value ->
+                          Map.update!(record, :calculations, fn calculations ->
+                            Map.put(calculations, calculation.name, value)
+                          end)
+                        end)}}
+
+                    load ->
+                      {:cont,
+                       {:ok,
+                        Enum.zip_with(results, Enum.reverse(list), fn record, value ->
+                          Map.put(record, load, value)
+                        end)}}
+                  end
+
+                {:error, error} ->
+                  {:halt, {:error, error}}
               end
 
-            {:error, error} ->
-              {:halt, {:error, error}}
+            _ ->
+              case Ash.Type.load(
+                     calculation.type,
+                     values,
+                     load_statement,
+                     calculation.constraints,
+                     %{
+                       api: api,
+                       actor: actor,
+                       tenant: query.tenant,
+                       tracer: tracer,
+                       authorize?: authorize?
+                     }
+                   ) do
+                {:ok, new_values} ->
+                  case calculation.load do
+                    nil ->
+                      {:cont,
+                       {:ok,
+                        Enum.zip_with(results, new_values, fn record, value ->
+                          Map.update!(record, :calculations, fn calculations ->
+                            Map.put(calculations, calculation.name, value)
+                          end)
+                        end)}}
+
+                    load ->
+                      {:cont,
+                       {:ok,
+                        Enum.zip_with(results, new_values, fn record, value ->
+                          Map.put(record, load, value)
+                        end)}}
+                  end
+
+                {:error, error} ->
+                  {:halt, {:error, error}}
+              end
           end
         end)
         |> case do
@@ -536,36 +585,79 @@ defmodule Ash.Actions.Read do
         end
 
       {:attribute, load_through}, {:ok, results} ->
-        Enum.reduce_while(load_through, {:ok, results}, fn
-          {name, load_statement}, {:ok, results} ->
-            load_statement =
-              if is_map(load_statement) do
-                Map.to_list(load_statement)
-              else
-                load_statement
+        Enum.reduce_while(load_through, {:ok, results}, fn {name, load_statement},
+                                                           {:ok, results} ->
+          load_statement =
+            if is_map(load_statement) do
+              Map.to_list(load_statement)
+            else
+              load_statement
+            end
+
+          attribute = Ash.Resource.Info.attribute(query.resource, name)
+
+          values = Enum.map(results, &Map.get(&1, attribute.name))
+
+          case attribute.type do
+            {:array, _} ->
+              Enum.reduce_while(values, {:ok, []}, fn list, {:ok, acc} ->
+                case Ash.Type.load(
+                       attribute.type,
+                       list,
+                       load_statement,
+                       attribute.constraints,
+                       %{
+                         api: api,
+                         actor: actor,
+                         tenant: query.tenant,
+                         tracer: tracer,
+                         authorize?: authorize?
+                       }
+                     ) do
+                  {:ok, new_values} ->
+                    {:cont, {:ok, [new_values | acc]}}
+
+                  {:error, error} ->
+                    {:halt, {:error, error}}
+                end
+              end)
+              |> case do
+                {:ok, list} ->
+                  {:cont,
+                   {:ok,
+                    Enum.zip_with(results, Enum.reverse(list), fn record, value ->
+                      Map.put(record, attribute.name, value)
+                    end)}}
+
+                {:error, error} ->
+                  {:halt, {:error, error}}
               end
 
-            attribute = Ash.Resource.Info.attribute(query.resource, name)
+            _ ->
+              case Ash.Type.load(
+                     attribute.type,
+                     values,
+                     load_statement,
+                     attribute.constraints,
+                     %{
+                       api: api,
+                       actor: actor,
+                       tenant: query.tenant,
+                       tracer: tracer,
+                       authorize?: authorize?
+                     }
+                   ) do
+                {:ok, new_values} ->
+                  {:cont,
+                   {:ok,
+                    Enum.zip_with(results, new_values, fn record, value ->
+                      Map.put(record, attribute.name, value)
+                    end)}}
 
-            values = Enum.map(results, &Map.get(&1, attribute.name))
-
-            case Ash.Type.load(attribute.type, values, load_statement, attribute.constraints, %{
-                   api: api,
-                   actor: actor,
-                   tenant: query.tenant,
-                   tracer: tracer,
-                   authorize?: authorize?
-                 }) do
-              {:ok, new_values} ->
-                {:cont,
-                 {:ok,
-                  Enum.zip_with(results, new_values, fn record, value ->
-                    Map.put(record, attribute.name, value)
-                  end)}}
-
-              {:error, error} ->
-                {:halt, {:error, error}}
-            end
+                {:error, error} ->
+                  {:halt, {:error, error}}
+              end
+          end
         end)
         |> case do
           {:ok, results} ->
