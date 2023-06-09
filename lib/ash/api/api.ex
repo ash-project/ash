@@ -1541,8 +1541,18 @@ defmodule Ash.Api do
     {:ok, page}
   end
 
-  def page(_, %Ash.Page.Keyset{results: []} = page, :prev) do
+  def page(_, %Ash.Page.Keyset{before: nil, after: nil} = page, :prev) do
     {:ok, page}
+  end
+
+  def page(api, %Ash.Page.Keyset{results: [], before: before, rerun: {query, opts}}, :prev)
+      when not is_nil(before) do
+    new_page_opts =
+      opts[:page]
+      |> Keyword.delete(:before)
+      |> Keyword.put(:after, before)
+
+    read(api, query, Keyword.put(opts, :page, new_page_opts))
   end
 
   def page(_, %Ash.Page.Keyset{}, n) when is_integer(n) do
@@ -1551,7 +1561,7 @@ defmodule Ash.Api do
 
   def page(
         api,
-        %Ash.Page.Keyset{results: results, rerun: {query, opts}},
+        %Ash.Page.Keyset{results: results, rerun: {query, opts}} = page,
         :next
       ) do
     last_keyset =
@@ -1565,10 +1575,16 @@ defmodule Ash.Api do
       |> Keyword.delete(:before)
       |> Keyword.put(:after, last_keyset)
 
-    read(api, query, Keyword.put(opts, :page, new_page_opts))
+    case read(api, query, Keyword.put(opts, :page, new_page_opts)) do
+      {:ok, %{results: []}} ->
+        {:ok, page}
+
+      other ->
+        other
+    end
   end
 
-  def page(api, %Ash.Page.Keyset{results: results, rerun: {query, opts}}, :prev) do
+  def page(api, %Ash.Page.Keyset{results: results, rerun: {query, opts}} = page, :prev) do
     first_keyset =
       results
       |> List.first()
@@ -1580,7 +1596,13 @@ defmodule Ash.Api do
       |> Keyword.put(:before, first_keyset)
       |> Keyword.delete(:after)
 
-    read(api, query, Keyword.put(opts, :page, new_page_opts))
+    case read(api, query, Keyword.put(opts, :page, new_page_opts)) do
+      {:ok, %{results: []}} ->
+        {:ok, page}
+
+      other ->
+        other
+    end
   end
 
   def page(api, %Ash.Page.Keyset{rerun: {query, opts}}, :first) do
