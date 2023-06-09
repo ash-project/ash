@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.26](https://github.com/ash-project/ash/compare/v2.9.25...v2.9.26) (2023-06-09)
+
+
+
+
+### Bug Fixes:
+
+* properly handle loading through list types
+
+### Improvements:
+
+* better keyset pagination behavior on first and last pages
+
 ## [v2.9.25](https://github.com/ash-project/ash/compare/v2.9.24...v2.9.25) (2023-06-09)
 
 
