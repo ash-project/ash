@@ -5,6 +5,45 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.22](https://github.com/ash-project/ash/compare/v2.9.21...v2.9.22) (2023-06-09)
+
+
+
+
+### Bug Fixes:
+
+* various fixes to data loading
+
+* properly set tenant on nested calculation loads
+
+* properly set calc_name to resource calculation name on aliased calc loads
+
+* check correct calculation dependency for relationship
+
+* don't use `to_string` on the calculation names
+
+* don't need to check current aggs/calcs in filters anymore
+
+* set query tenant on calc dep loads
+
+* copy tenant to step on flow build (#603)
+
+* ensure add_tenant/1 checks the correctkey (#601)
+
+### Improvements:
+
+* optimize `LoadRelationship` calculation
+
+* `Ash.Query.accessing/2` to get a list of fields being accessed
+
+* builting `LoadAttribute` and `LoadRelationship` calculations
+
+* warn on invalid/impossible policies
+
+* support loading through types
+
+* properly set tenant from initial data
+
 ## [v2.9.21](https://github.com/ash-project/ash/compare/v2.9.20...v2.9.21) (2023-06-06)
 
 
