@@ -541,6 +541,8 @@ defmodule Ash.CodeInterface do
                     )
                   end
 
+                query = %{query | api: unquote(api)}
+
                 if unquote(interface.get? || action.get?) do
                   query
                   |> unquote(api).read_one(

@@ -305,6 +305,12 @@ defmodule Ash.Actions.Read do
                     {:error, query.errors, %{set: %{query: query}}}
                 end
               else
+                if !api do
+                  raise Ash.Error.Framework.AssumptionFailed,
+                    message:
+                      "No api configured when generating requests for read: #{inspect(api)}, #{inspect(query)}"
+                end
+
                 query = %{
                   query
                   | api: api,
