@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.25](https://github.com/ash-project/ash/compare/v2.9.24...v2.9.25) (2023-06-09)
+
+
+
+
+### Bug Fixes:
+
+* handle api missing in code interface calls
+
 ## [v2.9.24](https://github.com/ash-project/ash/compare/v2.9.23...v2.9.24) (2023-06-09)
 
 
