@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.27](https://github.com/ash-project/ash/compare/v2.9.26...v2.9.27) (2023-06-10)
+
+
+
+
+### Bug Fixes:
+
+* honor query limit when streaming
+
+* refactor out some repetition in code interface (#609)
+
 ## [v2.9.26](https://github.com/ash-project/ash/compare/v2.9.25...v2.9.26) (2023-06-09)
 
 
