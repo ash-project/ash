@@ -55,14 +55,14 @@ jobs:
         id: cache-deps
         with:
           path: ${{matrix.project.name}}/deps
-          key: ${{matrix.project.name}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-2-${{ hashFiles(format('{0}{1}', github.workspace, '/ash/mix.lock')) }}
-          restore-keys: ${{matrix.project.name}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-2-
+          key: ${{matrix.project.name}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-2-${{ hashFiles('config/**/*.exs') }}-${{ hashFiles(format('{0}{1}', github.workspace, '/ash/mix.lock')) }}
+          restore-keys: ${{matrix.project.name}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-deps-2-${{ hashFiles('config/**/*.exs') }}-
       - uses: actions/cache@v1
         id: cache-build
         with:
           path: ${{matrix.project.name}}/_build
-          key: ${{matrix.project.name}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-3-${{ hashFiles(format('{0}{1}', github.workspace, '/ash/mix.lock')) }}
-          restore-keys: ${{matrix.project.name}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-3-
+          key: ${{matrix.project.name}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-3-${{ hashFiles('config/**/*.exs') }}-${{ hashFiles(format('{0}{1}', github.workspace, '/ash/mix.lock')) }}
+          restore-keys: ${{matrix.project.name}}-otp-${{matrix.otp}}-elixir-${{matrix.elixir}}-build-3-${{ hashFiles('config/**/*.exs') }}-
       - name: mix deps.get inside ./${{matrix.project.name}}
         run: mix deps.get
         working-directory: ./${{matrix.project.name}}
