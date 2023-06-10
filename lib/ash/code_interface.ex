@@ -417,6 +417,30 @@ defmodule Ash.CodeInterface do
 
         case action.type do
           :action ->
+            resolve_opts_params_input =
+              quote do
+                {params, opts} =
+                  if opts == [] && Keyword.keyword?(params_or_opts),
+                    do: {%{}, params_or_opts},
+                    else: {params_or_opts, opts}
+
+                params =
+                  unquote(args)
+                  |> Enum.zip([unquote_splicing(arg_vars)])
+                  |> Enum.reduce(params, fn {key, value}, params ->
+                    Map.put(params, key, value)
+                  end)
+
+                input =
+                  opts[:input]
+                  |> Kernel.||(unquote(resource))
+                  |> Ash.ActionInput.for_action(
+                    unquote(action.name),
+                    params,
+                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
+                  )
+              end
+
             @doc doc
             @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 2}}
             def unquote(interface.name)(
@@ -424,110 +448,55 @@ defmodule Ash.CodeInterface do
                   params_or_opts \\ %{},
                   opts \\ []
                 ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(__MODULE__, elem(__ENV__.function, 0), [
-                  unquote_splicing(arg_vars),
-                  %{},
-                  params_or_opts
-                ])
-              else
-                input =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
-                  end)
+              unquote(resolve_opts_params_input)
 
-                action_input =
-                  opts[:input]
-                  |> Kernel.||(unquote(resource))
-                  |> Ash.ActionInput.for_action(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
-                  )
-
-                unquote(api).run_action(
-                  action_input,
-                  Keyword.drop(opts, [:input, :actor, :tenant, :authorize?, :tracer])
-                )
-              end
+              unquote(api).run_action(
+                input,
+                Keyword.drop(opts, [:input, :actor, :tenant, :authorize?, :tracer])
+              )
             end
 
             @doc doc
-            @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 2}}
             # sobelow_skip ["DOS.BinToAtom"]
+            @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 2}}
             def unquote(:"#{interface.name}!")(
                   unquote_splicing(arg_vars_function),
                   params_or_opts \\ %{},
                   opts \\ []
                 ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(__MODULE__, elem(__ENV__.function, 0), [
-                  unquote_splicing(arg_vars),
-                  %{},
-                  params_or_opts
-                ])
-              else
-                input =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
-                  end)
+              unquote(resolve_opts_params_input)
 
-                action_input =
-                  opts[:input]
-                  |> Kernel.||(unquote(resource))
-                  |> Ash.ActionInput.for_action(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
-                  )
-
-                unquote(api).run_action!(
-                  action_input,
-                  Keyword.drop(opts, [:input, :actor, :tenant, :authorize?, :tracer])
-                )
-              end
+              unquote(api).run_action!(
+                input,
+                Keyword.drop(opts, [:input, :actor, :tenant, :authorize?, :tracer])
+              )
             end
 
           :read ->
-            @doc doc
-            @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 2}}
-            def unquote(interface.name)(
-                  unquote_splicing(arg_vars_function),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(
-                  __MODULE__,
-                  elem(__ENV__.function, 0),
-                  [
-                    unquote_splicing(arg_vars),
-                    %{},
-                    params_or_opts
-                  ]
-                )
-              else
-                input =
+            resolve_opts_params_query =
+              quote do
+                {params, opts} =
+                  if opts == [] && Keyword.keyword?(params_or_opts),
+                    do: {%{}, params_or_opts},
+                    else: {params_or_opts, opts}
+
+                params =
                   unquote(args)
                   |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
+                  |> Enum.reduce(params, fn {key, value}, params ->
+                    Map.put(params, key, value)
                   end)
 
                 query =
                   if unquote(filter_keys) do
                     require Ash.Query
-                    {filters, input} = Map.split(input, unquote(filter_keys))
+                    {filters, params} = Map.split(params, unquote(filter_keys))
 
                     opts[:query]
                     |> Kernel.||(unquote(resource))
                     |> Ash.Query.for_read(
                       unquote(action.name),
-                      input,
+                      params,
                       Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
                     )
                     |> Ash.Query.filter(filters)
@@ -536,132 +505,14 @@ defmodule Ash.CodeInterface do
                     |> Kernel.||(unquote(resource))
                     |> Ash.Query.for_read(
                       unquote(action.name),
-                      input,
+                      params,
                       Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
                     )
                   end
 
                 query = %{query | api: unquote(api)}
-
-                if unquote(interface.get? || action.get?) do
-                  query
-                  |> unquote(api).read_one(
-                    Keyword.drop(opts, [
-                      :query,
-                      :not_found_error?,
-                      :actor,
-                      :tenant,
-                      :authorize?,
-                      :tracer
-                    ])
-                  )
-                  |> case do
-                    {:ok, nil} ->
-                      if unquote(interface.not_found_error?) == false ||
-                           Keyword.get(opts, :not_found_error?) == false do
-                        {:ok, nil}
-                      else
-                        {:error, Ash.Error.Query.NotFound.exception(resource: query.resource)}
-                      end
-
-                    {:ok, result} ->
-                      {:ok, result}
-
-                    {:error, error} ->
-                      {:error, error}
-                  end
-                else
-                  unquote(api).read(
-                    query,
-                    Keyword.drop(opts, [:query, :actor, :tenant, :authorize?, :tracer])
-                  )
-                end
               end
-            end
 
-            @doc doc
-            # sobelow_skip ["DOS.BinToAtom"]
-            @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 2}}
-            def unquote(:"#{interface.name}!")(
-                  unquote_splicing(arg_vars_function),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(
-                  __MODULE__,
-                  elem(__ENV__.function, 0),
-                  [
-                    unquote_splicing(arg_vars),
-                    %{},
-                    params_or_opts
-                  ]
-                )
-              else
-                input =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
-                  end)
-
-                query =
-                  if unquote(filter_keys) do
-                    require Ash.Query
-                    {filters, input} = Map.split(input, unquote(filter_keys))
-
-                    opts[:query]
-                    |> Kernel.||(unquote(resource))
-                    |> Ash.Query.for_read(
-                      unquote(action.name),
-                      input,
-                      Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
-                    )
-                    |> Ash.Query.filter(filters)
-                  else
-                    opts[:query]
-                    |> Kernel.||(unquote(resource))
-                    |> Ash.Query.for_read(
-                      unquote(action.name),
-                      input,
-                      Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
-                    )
-                  end
-
-                if unquote(interface.get? || action.get?) do
-                  query
-                  |> unquote(api).read_one!(
-                    Keyword.drop(opts, [
-                      :query,
-                      :not_found_error?,
-                      :actor,
-                      :tenant,
-                      :authorize?,
-                      :tracer
-                    ])
-                  )
-                  |> case do
-                    nil ->
-                      if unquote(interface.not_found_error?) == false ||
-                           Keyword.get(opts, :not_found_error?) == false do
-                        nil
-                      else
-                        raise Ash.Error.Query.NotFound, resource: query.resource
-                      end
-
-                    result ->
-                      result
-                  end
-                else
-                  unquote(api).read!(
-                    query,
-                    Keyword.drop(opts, [:query, :actor, :tenant, :authorize?, :tracer])
-                  )
-                end
-              end
-            end
-
-          :create ->
             @doc doc
             @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 2}}
             def unquote(interface.name)(
@@ -669,56 +520,98 @@ defmodule Ash.CodeInterface do
                   params_or_opts \\ %{},
                   opts \\ []
                 ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(__MODULE__, elem(__ENV__.function, 0), [
-                  unquote_splicing(arg_vars),
-                  %{},
-                  params_or_opts
-                ])
+              unquote(resolve_opts_params_query)
+
+              if unquote(interface.get? || action.get?) do
+                query
+                |> unquote(api).read_one(
+                  Keyword.drop(opts, [
+                    :query,
+                    :not_found_error?,
+                    :actor,
+                    :tenant,
+                    :authorize?,
+                    :tracer
+                  ])
+                )
+                |> case do
+                  {:ok, nil} ->
+                    if unquote(interface.not_found_error?) == false ||
+                         Keyword.get(opts, :not_found_error?) == false do
+                      {:ok, nil}
+                    else
+                      {:error, Ash.Error.Query.NotFound.exception(resource: query.resource)}
+                    end
+
+                  {:ok, result} ->
+                    {:ok, result}
+
+                  {:error, error} ->
+                    {:error, error}
+                end
               else
-                input =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
-                  end)
-
-                changeset =
-                  opts[:changeset]
-                  |> Kernel.||(unquote(resource))
-                  |> Ash.Changeset.for_create(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
-                  )
-
-                unquote(api).create(
-                  changeset,
-                  Keyword.drop(opts, [:changeset, :actor, :tenant, :authorize?, :tracer])
+                unquote(api).read(
+                  query,
+                  Keyword.drop(opts, [:query, :actor, :tenant, :authorize?, :tracer])
                 )
               end
             end
 
             @doc doc
-            @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 2}}
             # sobelow_skip ["DOS.BinToAtom"]
+            @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 2}}
             def unquote(:"#{interface.name}!")(
                   unquote_splicing(arg_vars_function),
                   params_or_opts \\ %{},
                   opts \\ []
                 ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(__MODULE__, elem(__ENV__.function, 0), [
-                  unquote_splicing(arg_vars),
-                  %{},
-                  params_or_opts
-                ])
+              unquote(resolve_opts_params_query)
+
+              if unquote(interface.get? || action.get?) do
+                query
+                |> unquote(api).read_one!(
+                  Keyword.drop(opts, [
+                    :query,
+                    :not_found_error?,
+                    :actor,
+                    :tenant,
+                    :authorize?,
+                    :tracer
+                  ])
+                )
+                |> case do
+                  nil ->
+                    if unquote(interface.not_found_error?) == false ||
+                         Keyword.get(opts, :not_found_error?) == false do
+                      nil
+                    else
+                      raise Ash.Error.Query.NotFound, resource: query.resource
+                    end
+
+                  result ->
+                    result
+                end
               else
-                input =
+                unquote(api).read!(
+                  query,
+                  Keyword.drop(opts, [:query, :actor, :tenant, :authorize?, :tracer])
+                )
+              end
+            end
+
+          :create ->
+            resolve_opts_params_changeset =
+              quote do
+                {params, opts} =
+                  if opts == [] && Keyword.keyword?(params_or_opts),
+                    do: {%{}, params_or_opts},
+                    else: {params_or_opts, opts}
+
+                params =
                   unquote(args)
                   |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
+                  |> Enum.reduce(params, fn {key, value}, params ->
+                    Map.put(params, key, value)
                   end)
 
                 changeset =
@@ -726,18 +619,66 @@ defmodule Ash.CodeInterface do
                   |> Kernel.||(unquote(resource))
                   |> Ash.Changeset.for_create(
                     unquote(action.name),
-                    input,
+                    params,
                     Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
                   )
-
-                unquote(api).create!(
-                  changeset,
-                  Keyword.drop(opts, [:changeset, :actor, :tenant, :authorize?, :tracer])
-                )
               end
+
+            @doc doc
+            @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 2}}
+            def unquote(interface.name)(
+                  unquote_splicing(arg_vars_function),
+                  params_or_opts \\ %{},
+                  opts \\ []
+                ) do
+              unquote(resolve_opts_params_changeset)
+
+              unquote(api).create(
+                changeset,
+                Keyword.drop(opts, [:changeset, :actor, :tenant, :authorize?, :tracer])
+              )
+            end
+
+            @doc doc
+            # sobelow_skip ["DOS.BinToAtom"]
+            @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 2}}
+            def unquote(:"#{interface.name}!")(
+                  unquote_splicing(arg_vars_function),
+                  params_or_opts \\ %{},
+                  opts \\ []
+                ) do
+              unquote(resolve_opts_params_changeset)
+
+              unquote(api).create!(
+                changeset,
+                Keyword.drop(opts, [:changeset, :actor, :tenant, :authorize?, :tracer])
+              )
             end
 
           :update ->
+            resolve_opts_params_changeset =
+              quote do
+                {params, opts} =
+                  if opts == [] && Keyword.keyword?(params_or_opts),
+                    do: {%{}, params_or_opts},
+                    else: {params_or_opts, opts}
+
+                params =
+                  unquote(args)
+                  |> Enum.zip([unquote_splicing(arg_vars)])
+                  |> Enum.reduce(params, fn {key, value}, params ->
+                    Map.put(params, key, value)
+                  end)
+
+                changeset =
+                  record
+                  |> Ash.Changeset.for_update(
+                    unquote(action.name),
+                    params,
+                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
+                  )
+              end
+
             @doc doc
             @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 3}}
             def unquote(interface.name)(
@@ -746,34 +687,12 @@ defmodule Ash.CodeInterface do
                   params_or_opts \\ %{},
                   opts \\ []
                 ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(__MODULE__, elem(__ENV__.function, 0), [
-                  record,
-                  unquote_splicing(arg_vars),
-                  %{},
-                  params_or_opts
-                ])
-              else
-                input =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
-                  end)
+              unquote(resolve_opts_params_changeset)
 
-                changeset =
-                  record
-                  |> Ash.Changeset.for_update(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
-                  )
-
-                unquote(api).update(
-                  changeset,
-                  Keyword.drop(opts, [:actor, :tenant, :authorize?, :tracer])
-                )
-              end
+              unquote(api).update(
+                changeset,
+                Keyword.drop(opts, [:actor, :tenant, :authorize?, :tracer])
+              )
             end
 
             @doc doc
@@ -785,37 +704,38 @@ defmodule Ash.CodeInterface do
                   params_or_opts \\ %{},
                   opts \\ []
                 ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(__MODULE__, elem(__ENV__.function, 0), [
-                  record,
-                  unquote_splicing(arg_vars),
-                  %{},
-                  params_or_opts
-                ])
-              else
-                input =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
-                  end)
+              unquote(resolve_opts_params_changeset)
 
-                changeset =
-                  record
-                  |> Ash.Changeset.for_update(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
-                  )
-
-                unquote(api).update!(
-                  changeset,
-                  Keyword.drop(opts, [:actor, :tenant, :authorize?, :tracer])
-                )
-              end
+              unquote(api).update!(
+                changeset,
+                Keyword.drop(opts, [:actor, :tenant, :authorize?, :tracer])
+              )
             end
 
           :destroy ->
+            resolve_opts_params_changeset =
+              quote do
+                {params, opts} =
+                  if opts == [] && Keyword.keyword?(params_or_opts),
+                    do: {%{}, params_or_opts},
+                    else: {params_or_opts, opts}
+
+                params =
+                  unquote(args)
+                  |> Enum.zip([unquote_splicing(arg_vars)])
+                  |> Enum.reduce(params, fn {key, value}, params ->
+                    Map.put(params, key, value)
+                  end)
+
+                changeset =
+                  record
+                  |> Ash.Changeset.for_destroy(
+                    unquote(action.name),
+                    params,
+                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
+                  )
+              end
+
             @doc doc
             @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 3}}
             def unquote(interface.name)(
@@ -824,34 +744,12 @@ defmodule Ash.CodeInterface do
                   params_or_opts \\ %{},
                   opts \\ []
                 ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(__MODULE__, elem(__ENV__.function, 0), [
-                  record,
-                  unquote_splicing(arg_vars),
-                  %{},
-                  params_or_opts
-                ])
-              else
-                input =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
-                  end)
+              unquote(resolve_opts_params_changeset)
 
-                changeset =
-                  record
-                  |> Ash.Changeset.for_destroy(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
-                  )
-
-                unquote(api).destroy(
-                  changeset,
-                  Keyword.drop(opts, [:actor, :tenant, :authorize?, :tracer])
-                )
-              end
+              unquote(api).destroy(
+                changeset,
+                Keyword.drop(opts, [:actor, :tenant, :authorize?, :tracer])
+              )
             end
 
             @doc doc
@@ -863,34 +761,12 @@ defmodule Ash.CodeInterface do
                   params_or_opts \\ %{},
                   opts \\ []
                 ) do
-              if opts == [] && Keyword.keyword?(params_or_opts) do
-                apply(__MODULE__, elem(__ENV__.function, 0), [
-                  record,
-                  unquote_splicing(arg_vars),
-                  %{},
-                  params_or_opts
-                ])
-              else
-                input =
-                  unquote(args)
-                  |> Enum.zip([unquote_splicing(arg_vars)])
-                  |> Enum.reduce(params_or_opts, fn {key, value}, params_or_opts ->
-                    Map.put(params_or_opts, key, value)
-                  end)
+              unquote(resolve_opts_params_changeset)
 
-                changeset =
-                  record
-                  |> Ash.Changeset.for_destroy(
-                    unquote(action.name),
-                    input,
-                    Keyword.take(opts, [:actor, :tenant, :authorize?, :tracer])
-                  )
-
-                unquote(api).destroy!(
-                  changeset,
-                  Keyword.drop(opts, [:actor, :tenant, :authorize?, :tracer])
-                )
-              end
+              unquote(api).destroy!(
+                changeset,
+                Keyword.drop(opts, [:actor, :tenant, :authorize?, :tracer])
+              )
             end
         end
       end
