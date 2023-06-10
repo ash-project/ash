@@ -224,7 +224,7 @@ defmodule Ash.DataLayer do
                       set_tenant: 3
 
   @doc "The data layer of the resource, or nil if it does not have one"
-  @spec data_layer(Ash.Resource.t() | Spark.Dsl.t()) :: Ash.DataLayer.t()
+  @spec data_layer(Ash.Resource.t() | Spark.Dsl.t()) :: Ash.DataLayer.t() | nil
   def data_layer(resource) do
     Extension.get_persisted(resource, :data_layer)
   end

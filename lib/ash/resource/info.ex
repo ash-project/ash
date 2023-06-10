@@ -721,4 +721,8 @@ defmodule Ash.Resource.Info do
         true
     end
   end
+
+  @doc "The data layer of the resource, or nil if it does not have one"
+  @spec data_layer(Ash.Resource.t()) :: Ash.DataLayer.t() | nil
+  defdelegate data_layer(resource), to: Ash.DataLayer
 end
