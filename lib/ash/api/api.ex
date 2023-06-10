@@ -1777,6 +1777,19 @@ defmodule Ash.Api do
       end,
       & &1
     )
+    |> take_query_limit(query)
+  end
+
+  # This is technically an inefficient way to do this
+  # because the last request we make will take `query.limit` instead of
+  # calculating a smaller limit based on how many records we've received
+  # so far.
+  defp take_query_limit(stream, query) do
+    if query.limit do
+      Stream.take(stream, query.limit)
+    else
+      stream
+    end
   end
 
   @doc false

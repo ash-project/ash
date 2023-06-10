@@ -59,4 +59,18 @@ defmodule Ash.Test.Actions.StreamTest do
 
     assert count == 10
   end
+
+  test "records can be streamed, and the overall limit will be honored" do
+    1..10
+    |> Stream.map(&%{title: "title#{&1}"})
+    |> Api.bulk_create!(Post, :create)
+
+    count =
+      Post
+      |> Ash.Query.limit(7)
+      |> Api.stream!(batch_size: 5)
+      |> Enum.count()
+
+    assert count == 7
+  end
 end
