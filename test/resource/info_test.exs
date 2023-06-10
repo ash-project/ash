@@ -151,5 +151,9 @@ defmodule Ash.Test.Resource.InfoTest do
       assert false == Info.sortable?(Comment, :post_authors)
       assert false == Info.sortable?(Comment, :formatted_post_title, pagination_type: :keyset)
     end
+
+    test "get datalayer from resource" do
+      assert Ash.DataLayer.Ets == Info.data_layer(Post)
+    end
   end
 end
