@@ -35,3 +35,4 @@ shell.nix
 .DS_Store
 
 .vscode
+.elixir-tools
