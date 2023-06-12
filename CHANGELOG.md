@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.28](https://github.com/ash-project/ash/compare/v2.9.27...v2.9.28) (2023-06-12)
+
+
+
+
+### Bug Fixes:
+
+* don't load `nil` values for runtime types
+
+* properly set `upsert_keys` on bulk upserts
+
+* continue refactor in code interface (#611)
+
+### Improvements:
+
+* properly pass calculation args in keyset filters
+
 ## [v2.9.27](https://github.com/ash-project/ash/compare/v2.9.26...v2.9.27) (2023-06-10)
 
 
