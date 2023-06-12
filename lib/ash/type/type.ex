@@ -554,6 +554,7 @@ defmodule Ash.Type do
 
   def cast_stored(type, term, constraints) do
     type = get_type(type)
+
     type.cast_stored(term, constraints)
   end
 

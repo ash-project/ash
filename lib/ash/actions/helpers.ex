@@ -303,13 +303,13 @@ defmodule Ash.Actions.Helpers do
           {:ok, result} ->
             {:cont, {:ok, [result | results]}}
 
-          other ->
-            {:halt, other}
+          {:error, error} ->
+            {:halt, {:error, error}}
         end
       end)
       |> case do
         {:ok, results} -> {:ok, Enum.reverse(results)}
-        other -> other
+        {:error, error} -> {:error, error}
       end
     end
   end
@@ -356,12 +356,22 @@ defmodule Ash.Actions.Helpers do
   defp do_load_runtime_types(record, select, calculations) do
     select
     |> Enum.reduce_while({:ok, record}, fn attr, {:ok, record} ->
-      case Ash.Type.cast_stored(attr.type, Map.get(record, attr.name), attr.constraints) do
-        {:ok, value} ->
-          {:cont, {:ok, Map.put(record, attr.name, value)}}
+      case Map.get(record, attr.name) do
+        nil ->
+          {:cont, {:ok, record}}
 
-        other ->
-          {:halt, other}
+        value ->
+          case Ash.Type.cast_stored(
+                 attr.type,
+                 value,
+                 attr.constraints
+               ) do
+            {:ok, value} ->
+              {:cont, {:ok, Map.put(record, attr.name, value)}}
+
+            :error ->
+              {:halt, {:error, message: "is invalid", field: attr.name}}
+          end
       end
     end)
     |> case do
@@ -369,29 +379,42 @@ defmodule Ash.Actions.Helpers do
         Enum.reduce_while(calculations, {:ok, record}, fn {name, calc}, {:ok, record} ->
           case calc.load do
             nil ->
-              case Ash.Type.cast_stored(
-                     calc.type,
-                     Map.get(record.calculations || %{}, calc.name),
-                     Map.get(calc, :constraints, [])
-                   ) do
-                {:ok, value} ->
-                  {:cont, {:ok, Map.update!(record, :calculations, &Map.put(&1, name, value))}}
+              case Map.get(record.calculations || %{}, calc.name) do
+                nil ->
+                  {:cont, {:ok, record}}
 
-                other ->
-                  {:halt, other}
+                value ->
+                  case Ash.Type.cast_stored(
+                         calc.type,
+                         value,
+                         Map.get(calc, :constraints, [])
+                       ) do
+                    {:ok, value} ->
+                      {:cont,
+                       {:ok, Map.update!(record, :calculations, &Map.put(&1, name, value))}}
+
+                    :error ->
+                      {:halt, {:error, message: "is invalid", field: calc.name}}
+                  end
               end
 
             load ->
-              case Ash.Type.cast_stored(
-                     calc.type,
-                     Map.get(record, load),
-                     Map.get(calc, :constraints, [])
-                   ) do
-                {:ok, casted} ->
-                  {:cont, {:ok, Map.put(record, load, casted)}}
+              case Map.get(record, load) do
+                nil ->
+                  {:cont, {:ok, record}}
 
-                other ->
-                  {:halt, other}
+                value ->
+                  case Ash.Type.cast_stored(
+                         calc.type,
+                         value,
+                         Map.get(calc, :constraints, [])
+                       ) do
+                    {:ok, casted} ->
+                      {:cont, {:ok, Map.put(record, load, casted)}}
+
+                    :error ->
+                      {:halt, {:error, message: "is invalid", field: calc.name}}
+                  end
               end
           end
         end)

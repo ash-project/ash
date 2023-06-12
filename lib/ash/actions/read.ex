@@ -1334,7 +1334,8 @@ defmodule Ash.Actions.Read do
                  {:ok, query} <-
                    Ash.DataLayer.offset(query, ash_query.offset, ash_query.resource),
                  {:ok, query} <- set_tenant(query, ash_query),
-                 {:ok, query} <- Ash.DataLayer.lock(query, ash_query.lock, ash_query.resource),
+                 {:ok, query} <-
+                   Ash.DataLayer.lock(query, ash_query.lock, ash_query.resource),
                  {:ok, results} <-
                    run_query(
                      set_phase(ash_query, :executing),
@@ -1349,7 +1350,8 @@ defmodule Ash.Actions.Read do
                      aggregates_in_query,
                      calculations_in_query
                    ),
-                 :ok <- validate_get(results, ash_query.action, ash_query),
+                 :ok <-
+                   validate_get(results, ash_query.action, ash_query),
                  {:ok, results, after_notifications} <-
                    run_after_action(initial_query, results),
                  {:ok, count} <- maybe_await(count) do
@@ -1379,8 +1381,8 @@ defmodule Ash.Actions.Read do
               %{valid?: false} = query ->
                 {:error, query.errors}
 
-              other ->
-                other
+              {:error, error} ->
+                {:error, error}
             end
         end
       end
