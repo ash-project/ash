@@ -67,7 +67,7 @@ defmodule Ash.Page.Keyset do
     field =
       case field do
         %Ash.Query.Calculation{} = calc ->
-          %Ash.Query.Ref{attribute: calc, resource: resource, relationship_path: []}
+          calc
 
         field ->
           field

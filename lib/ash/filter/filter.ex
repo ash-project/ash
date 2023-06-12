@@ -2503,6 +2503,20 @@ defmodule Ash.Filter do
     end
   end
 
+  defp add_expression_part({%Ash.Query.Calculation{} = calc, rest}, context, expression) do
+    case parse_predicates(rest, calc, context) do
+      {:ok, nested_statement} ->
+        {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp add_expression_part(%Ash.Query.Calculation{} = calc, _context, expression) do
+    {:ok, BooleanExpression.optimized_new(:and, calc, expression)}
+  end
+
   defp add_expression_part(value, context, expression) when is_map(value) do
     # Can't call `parse_expression/2` here because it will loop
 
@@ -3187,7 +3201,7 @@ defmodule Ash.Filter do
         end)
 
       {:error, error} ->
-        {:halt, {:error, error}}
+        {:error, error}
     end
   end
 
