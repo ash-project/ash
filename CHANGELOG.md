@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.9.29](https://github.com/ash-project/ash/compare/v2.9.28...v2.9.29) (2023-06-12)
+
+
+
+
+### Bug Fixes:
+
+* can_load?/1 -> can_load?/2
+
+* handle new load calculations in nested `loading?` checks
+
 ## [v2.9.28](https://github.com/ash-project/ash/compare/v2.9.27...v2.9.28) (2023-06-12)
 
 
