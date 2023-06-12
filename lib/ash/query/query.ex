@@ -885,7 +885,7 @@ defmodule Ash.Query do
       %Ash.Query{} = next -> loading?(next, rest)
       nil -> false
       other -> raise "Cannot check if loading path #{inspect(rest)} of #{inspect(other)}"
-    end
+    end || loading_through?(query, [first | rest])
   end
 
   def loading?(query, item) when is_atom(item) do
@@ -903,6 +903,35 @@ defmodule Ash.Query do
       end) ||
       Enum.any?(query.aggregates, fn {_, %{agg_name: agg_name}} ->
         agg_name == item
+      end)
+  end
+
+  defp loading_through?(query, [first | rest]) do
+    Enum.any?(query.calculations, fn
+      {_, %{module: Ash.Resource.Calculation.LoadRelationship, opts: opts}} ->
+        if opts[:relationship] == first do
+          if opts[:query] do
+            Ash.Query.loading?(opts[:query], rest)
+          end
+        end
+
+      {_, %{module: Ash.Resource.Calculation.LoadAttribute, opts: opts}} ->
+        opts[:attribute] == first && opts[:load] && loading_via_keyword?(opts[:load], rest)
+    end)
+  end
+
+  defp loading_via_keyword?(keyword, item) when is_atom(item) do
+    Keyword.keyword?(keyword) and Keyword.has_key?(keyword, item)
+  end
+
+  defp loading_via_keyword?(keyword, [item]) do
+    loading_via_keyword?(keyword, item)
+  end
+
+  defp loading_via_keyword?(keyword, [first | rest]) do
+    Keyword.keyword?(keyword) and
+      Enum.any?(keyword, fn {key, next} ->
+        key == first && loading_via_keyword?(next, rest)
       end)
   end
 
