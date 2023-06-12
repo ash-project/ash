@@ -90,6 +90,42 @@ defmodule Ash.Test.CodeInterfaceTest do
       assert "Hello fred" == User.hello!("fred")
       assert {:ok, "Hello george"} == User.hello("george")
     end
+
+    test "generic actions have a helper method to produce inputs" do
+      assert %Ash.ActionInput{action: %{name: :hello}, params: %{name: "bob"}} =
+               User.input_to_hello("bob")
+    end
+  end
+
+  describe "read actions" do
+    test "read actions have a helper methods to produce queries" do
+      assert %Ash.Query{action: %{name: :read}} = User.query_to_read_users()
+      assert %Ash.Query{action: %{name: :read}} = User.query_to_get_by_id("some uuid")
+    end
+
+    test "read actions have a helper to test authorization" do
+      assert {:ok, false} == User.can_read_users(nil)
+      assert {:ok, false} == User.can_get_by_id(nil, "some uuid")
+      assert false == User.can_read_users?(nil)
+      assert false == User.can_get_by_id?(nil, "some uuid")
+    end
+  end
+
+  describe "create actions" do
+    test "create actions have a helper methods to produce changeset" do
+      assert %Ash.Changeset{action: %{name: :create}, attributes: %{first_name: "fred"}} =
+               User.changeset_to_create()
+
+      assert %Ash.Changeset{action: %{name: :create}, attributes: %{first_name: "bob"}} =
+               User.changeset_to_create("bob")
+    end
+
+    test "create actions have a helper to test authorization" do
+      assert {:ok, false} == User.can_create(nil)
+      assert {:ok, false} == User.can_create(nil, "bob")
+      assert false == User.can_create?(nil)
+      assert false == User.can_create?(nil, "bob")
+    end
   end
 
   describe "calculations" do
