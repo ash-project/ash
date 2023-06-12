@@ -39,6 +39,18 @@ defmodule Ash.Type.Struct do
 
   def cast_input(_, _), do: :error
 
+  @impl Ash.Type
+  def load(record, load, _constraints, %{api: api} = context) do
+    opts = context |> Map.take([:actor, :authorize?, :tenant, :tracer]) |> Map.to_list()
+
+    api.load(record, load, opts)
+  end
+
+  @impl Ash.Type
+  def can_load?(constraints) do
+    constraints[:instance_of] && Ash.Resource.Info.resource?(constraints[:instance_of])
+  end
+
   @impl true
   def cast_stored(_, _), do: :error
 

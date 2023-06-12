@@ -1008,7 +1008,7 @@ defmodule Ash.Query do
             load_resource_calculation(query, resource_calculation, rest)
 
           attribute = Ash.Resource.Info.attribute(query.resource, field) ->
-            if Ash.Type.can_load?(attribute.type) do
+            if Ash.Type.can_load?(attribute.type, attribute.constraints) do
               query
               |> Ash.Query.ensure_selected(attribute.name)
               |> Ash.Query.load_through(:attribute, attribute.name, rest)
@@ -1030,60 +1030,64 @@ defmodule Ash.Query do
   end
 
   defp load_resource_calculation(query, resource_calculation, args, load_through \\ nil) do
-    {name, load} =
-      cond do
-        Keyword.keyword?(args) ->
-          case Keyword.fetch(args, :as) do
-            {:ok, value} ->
-              {value, nil}
+    if Keyword.keyword?(args) || is_map(args) do
+      {name, load} =
+        cond do
+          Keyword.keyword?(args) ->
+            case Keyword.fetch(args, :as) do
+              {:ok, value} ->
+                {value, nil}
 
-            :error ->
-              {resource_calculation.name, resource_calculation.name}
-          end
+              :error ->
+                {resource_calculation.name, resource_calculation.name}
+            end
 
-        is_map(args) ->
-          case Map.fetch(args, :as) do
-            {:ok, value} ->
-              {value, nil}
+          is_map(args) ->
+            case Map.fetch(args, :as) do
+              {:ok, value} ->
+                {value, nil}
 
-            :error ->
-              {resource_calculation.name, resource_calculation.name}
-          end
+              :error ->
+                {resource_calculation.name, resource_calculation.name}
+            end
 
-        true ->
-          {resource_calculation.name, resource_calculation.name}
-      end
+          true ->
+            {resource_calculation.name, resource_calculation.name}
+        end
 
-    {module, opts} = resource_calculation.calculation
+      {module, opts} = resource_calculation.calculation
 
-    with {:ok, args} <- validate_calculation_arguments(resource_calculation, args),
-         {:ok, calculation} <-
-           Calculation.new(
-             name,
-             module,
-             opts,
-             {resource_calculation.type, resource_calculation.constraints},
-             Map.put(args, :context, query.context),
-             resource_calculation.filterable?,
-             resource_calculation.load
-           ) do
-      calculation =
-        select_and_load_calc(
-          resource_calculation,
-          %{calculation | load: load, calc_name: resource_calculation.name},
+      with {:ok, args} <- validate_calculation_arguments(resource_calculation, args),
+           {:ok, calculation} <-
+             Calculation.new(
+               name,
+               module,
+               opts,
+               {resource_calculation.type, resource_calculation.constraints},
+               Map.put(args, :context, query.context),
+               resource_calculation.filterable?,
+               resource_calculation.load
+             ) do
+        calculation =
+          select_and_load_calc(
+            resource_calculation,
+            %{calculation | load: load, calc_name: resource_calculation.name},
+            query
+          )
+
+        query = Map.update!(query, :calculations, &Map.put(&1, name, calculation))
+
+        if load_through do
+          load_through(query, :calculation, name, load_through)
+        else
           query
-        )
-
-      query = Map.update!(query, :calculations, &Map.put(&1, name, calculation))
-
-      if load_through do
-        load_through(query, :calculation, name, load_through)
+        end
       else
-        query
+        {:error, error} ->
+          add_error(query, :load, error)
       end
     else
-      {:error, error} ->
-        add_error(query, :load, error)
+      Ash.Error.Query.InvalidLoad.exception(load: {resource_calculation.name, args})
     end
   end
 

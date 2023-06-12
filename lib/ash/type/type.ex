@@ -153,6 +153,7 @@ defmodule Ash.Type do
   You generally won't need this, but it can be an escape hatch for certain cases.
   """
   @callback cast_in_query?(constraints) :: boolean
+  @callback can_load?(constraints) :: boolean
   @callback ecto_type() :: Ecto.Type.t()
   @callback cast_input(term, constraints) ::
               {:ok, term} | error()
@@ -828,7 +829,7 @@ defmodule Ash.Type do
     splicing_nil_values(values, fn values ->
       type = get_type(type)
 
-      if can_load?(type) do
+      if can_load?(type, constraints) do
         type.load(values, loads, constraints, context)
       else
         {:error, Ash.Error.Query.InvalidLoad.exception(load: loads)}
@@ -863,12 +864,13 @@ defmodule Ash.Type do
 
   def splicing_nil_values(value, callback), do: callback.(value)
 
-  @spec can_load?(t()) :: boolean
-  def can_load?({:array, type}), do: can_load?(type)
+  @spec can_load?(t(), Keyword.t()) :: boolean
+  def can_load?(type, constraints \\ [])
+  def can_load?({:array, type}, constraints), do: can_load?(type, constraints[:items] || [])
 
-  def can_load?(type) do
+  def can_load?(type, constraints) do
     type = get_type(type)
-    type.can_load?()
+    type.can_load?(constraints)
   end
 
   @doc """
@@ -1091,10 +1093,13 @@ defmodule Ash.Type do
         def equal?(left, right), do: left == right
       end
 
-      if Module.defines?(__MODULE__, {:load, 4}, :def) do
-        def can_load?, do: true
-      else
-        def can_load?, do: false
+      unless Module.defines?(__MODULE__, {:can_load, 1}, :def) do
+        @impl Ash.Type
+        if Module.defines?(__MODULE__, {:load, 4}, :def) do
+          def can_load?(_), do: true
+        else
+          def can_load?(_), do: false
+        end
       end
     end
   end

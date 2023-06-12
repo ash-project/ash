@@ -95,7 +95,7 @@ defmodule Ash.Type.NewType do
         unquote(subtype_of)
       end
 
-      if Ash.Type.can_load?(subtype_of) do
+      if Ash.Type.can_load?(subtype_of, subtype_constraints) do
         @impl Ash.Type
         def load(values, load, constraints, context) do
           unquote(subtype_of).load(
