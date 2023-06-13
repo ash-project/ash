@@ -49,7 +49,7 @@ Validations can be scoped to the `type` (`:create`, `:update`, `:destroy`) of ac
 
 ```elixir
 create :create do
-  validate attribute_equals(:name, "fred)
+  validate attribute_equals(:name, "fred")
 end
 ```
 
