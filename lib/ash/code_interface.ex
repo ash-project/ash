@@ -430,250 +430,217 @@ defmodule Ash.CodeInterface do
               end)
           end
 
-        case action.type do
-          :action ->
-            resolve_opts_params_input =
-              quote do
-                unquote(resolve_opts_params)
+        {subject, subject_args, resolve_subject, act, act!} =
+          case action.type do
+            :action ->
+              subject = quote do: input
 
-                {input_opts, opts} =
-                  Keyword.split(opts, [:input, :actor, :tenant, :authorize?, :tracer])
+              resolve_subject =
+                quote do
+                  {input_opts, opts} =
+                    Keyword.split(opts, [:input, :actor, :tenant, :authorize?, :tracer])
 
-                {input, input_opts} = Keyword.pop(input_opts, :input)
+                  {input, input_opts} = Keyword.pop(input_opts, :input)
 
-                input =
-                  input
-                  |> Kernel.||(unquote(resource))
-                  |> Ash.ActionInput.for_action(unquote(action.name), params, input_opts)
-              end
-
-            @doc doc
-            @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 2}}
-            def unquote(interface.name)(
-                  unquote_splicing(arg_vars_function),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              unquote(resolve_opts_params_input)
-              unquote(api).run_action(input, opts)
-            end
-
-            @doc doc
-            # sobelow_skip ["DOS.BinToAtom"]
-            @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 2}}
-            def unquote(:"#{interface.name}!")(
-                  unquote_splicing(arg_vars_function),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              unquote(resolve_opts_params_input)
-              unquote(api).run_action!(input, opts)
-            end
-
-          :read ->
-            resolve_opts_params_query =
-              quote do
-                unquote(resolve_opts_params)
-
-                {query_opts, opts} =
-                  Keyword.split(opts, [:query, :actor, :tenant, :authorize?, :tracer])
-
-                {query, query_opts} = Keyword.pop(query_opts, :query)
-
-                query =
-                  if unquote(filter_keys) do
-                    require Ash.Query
-                    {filters, params} = Map.split(params, unquote(filter_keys))
-
-                    query
+                  input =
+                    input
                     |> Kernel.||(unquote(resource))
-                    |> Ash.Query.for_read(unquote(action.name), params, query_opts)
-                    |> Ash.Query.filter(filters)
-                  else
+                    |> Ash.ActionInput.for_action(unquote(action.name), params, input_opts)
+                end
+
+              act = quote do: unquote(api).run_action(input, opts)
+              act! = quote do: unquote(api).run_action!(input, opts)
+
+              {subject, [], resolve_subject, act, act!}
+
+            :read ->
+              subject = quote do: query
+
+              resolve_subject =
+                quote do
+                  {query_opts, opts} =
+                    Keyword.split(opts, [:query, :actor, :tenant, :authorize?, :tracer])
+
+                  {query, query_opts} = Keyword.pop(query_opts, :query)
+
+                  query =
+                    if unquote(filter_keys) do
+                      require Ash.Query
+                      {filters, params} = Map.split(params, unquote(filter_keys))
+
+                      query
+                      |> Kernel.||(unquote(resource))
+                      |> Ash.Query.for_read(unquote(action.name), params, query_opts)
+                      |> Ash.Query.filter(filters)
+                    else
+                      query
+                      |> Kernel.||(unquote(resource))
+                      |> Ash.Query.for_read(unquote(action.name), params, query_opts)
+                    end
+
+                  query = %{query | api: unquote(api)}
+                end
+
+              act =
+                if interface.get? || action.get? do
+                  quote do
                     query
-                    |> Kernel.||(unquote(resource))
-                    |> Ash.Query.for_read(unquote(action.name), params, query_opts)
+                    |> unquote(api).read_one(Keyword.delete(opts, :not_found_error?))
+                    |> case do
+                      {:ok, nil} ->
+                        if unquote(interface.not_found_error?) == false ||
+                             Keyword.get(opts, :not_found_error?) == false do
+                          {:ok, nil}
+                        else
+                          {:error, Ash.Error.Query.NotFound.exception(resource: query.resource)}
+                        end
+
+                      result ->
+                        result
+                    end
                   end
-
-                query = %{query | api: unquote(api)}
-              end
-
-            @doc doc
-            @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 2}}
-            def unquote(interface.name)(
-                  unquote_splicing(arg_vars_function),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              unquote(resolve_opts_params_query)
-
-              if unquote(interface.get? || action.get?) do
-                query
-                |> unquote(api).read_one(Keyword.delete(opts, :not_found_error?))
-                |> case do
-                  {:ok, nil} ->
-                    if unquote(interface.not_found_error?) == false ||
-                         Keyword.get(opts, :not_found_error?) == false do
-                      {:ok, nil}
-                    else
-                      {:error, Ash.Error.Query.NotFound.exception(resource: query.resource)}
-                    end
-
-                  {:ok, result} ->
-                    {:ok, result}
-
-                  {:error, error} ->
-                    {:error, error}
+                else
+                  quote do: unquote(api).read(query, opts)
                 end
-              else
-                unquote(api).read(query, opts)
-              end
-            end
 
-            @doc doc
-            # sobelow_skip ["DOS.BinToAtom"]
-            @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 2}}
-            def unquote(:"#{interface.name}!")(
-                  unquote_splicing(arg_vars_function),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              unquote(resolve_opts_params_query)
+              act! =
+                if interface.get? || action.get? do
+                  quote do
+                    query
+                    |> unquote(api).read_one!(Keyword.delete(opts, :not_found_error?))
+                    |> case do
+                      nil ->
+                        if unquote(interface.not_found_error?) == false ||
+                             Keyword.get(opts, :not_found_error?) == false do
+                          nil
+                        else
+                          raise Ash.Error.Query.NotFound, resource: query.resource
+                        end
 
-              if unquote(interface.get? || action.get?) do
-                query
-                |> unquote(api).read_one!(Keyword.delete(opts, :not_found_error?))
-                |> case do
-                  nil ->
-                    if unquote(interface.not_found_error?) == false ||
-                         Keyword.get(opts, :not_found_error?) == false do
-                      nil
-                    else
-                      raise Ash.Error.Query.NotFound, resource: query.resource
+                      result ->
+                        result
                     end
-
-                  result ->
-                    result
+                  end
+                else
+                  quote do: unquote(api).read!(query, opts)
                 end
-              else
-                unquote(api).read!(query, opts)
-              end
-            end
 
-          :create ->
-            resolve_opts_params_changeset =
-              quote do
-                unquote(resolve_opts_params)
+              {subject, [], resolve_subject, act, act!}
 
-                {changeset_opts, opts} =
-                  Keyword.split(opts, [:changeset, :actor, :tenant, :authorize?, :tracer])
+            :create ->
+              subject = quote do: changeset
 
-                {changeset, changeset_opts} = Keyword.pop(changeset_opts, :changeset)
+              resolve_subject =
+                quote do
+                  {changeset_opts, opts} =
+                    Keyword.split(opts, [:changeset, :actor, :tenant, :authorize?, :tracer])
 
-                changeset =
-                  changeset
-                  |> Kernel.||(unquote(resource))
-                  |> Ash.Changeset.for_create(unquote(action.name), params, changeset_opts)
-              end
+                  {changeset, changeset_opts} = Keyword.pop(changeset_opts, :changeset)
 
-            @doc doc
-            @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 2}}
-            def unquote(interface.name)(
+                  changeset =
+                    changeset
+                    |> Kernel.||(unquote(resource))
+                    |> Ash.Changeset.for_create(unquote(action.name), params, changeset_opts)
+                end
+
+              act = quote do: unquote(api).create(changeset, opts)
+              act! = quote do: unquote(api).create!(changeset, opts)
+
+              {subject, [], resolve_subject, act, act!}
+
+            :update ->
+              subject = quote do: changeset
+              subject_args = quote do: [record]
+
+              resolve_subject =
+                quote do
+                  {changeset_opts, opts} =
+                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer])
+
+                  changeset =
+                    record
+                    |> Ash.Changeset.for_update(unquote(action.name), params, changeset_opts)
+                end
+
+              act = quote do: unquote(api).update(changeset, opts)
+              act! = quote do: unquote(api).update!(changeset, opts)
+
+              {subject, subject_args, resolve_subject, act, act!}
+
+            :destroy ->
+              subject = quote do: changeset
+              subject_args = quote do: [record]
+
+              resolve_subject =
+                quote do
+                  {changeset_opts, opts} =
+                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer])
+
+                  changeset =
+                    record
+                    |> Ash.Changeset.for_destroy(unquote(action.name), params, changeset_opts)
+                end
+
+              act = quote do: unquote(api).destroy(changeset, opts)
+              act! = quote do: unquote(api).destroy!(changeset, opts)
+
+              {subject, subject_args, resolve_subject, act, act!}
+          end
+
+        subject_name = elem(subject, 0)
+
+        common_args =
+          quote do: [
+                  unquote_splicing(subject_args),
                   unquote_splicing(arg_vars_function),
                   params_or_opts \\ %{},
                   opts \\ []
-                ) do
-              unquote(resolve_opts_params_changeset)
-              unquote(api).create(changeset, opts)
-            end
+                ]
 
-            @doc doc
-            # sobelow_skip ["DOS.BinToAtom"]
-            @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 2}}
-            def unquote(:"#{interface.name}!")(
-                  unquote_splicing(arg_vars_function),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              unquote(resolve_opts_params_changeset)
-              unquote(api).create!(changeset, opts)
-            end
+        @doc doc
+        @dialyzer {:nowarn_function, {interface.name, length(common_args)}}
+        def unquote(interface.name)(unquote_splicing(common_args)) do
+          unquote(resolve_opts_params)
+          unquote(resolve_subject)
+          unquote(act)
+        end
 
-          :update ->
-            resolve_opts_params_changeset =
-              quote do
-                unquote(resolve_opts_params)
+        @doc doc
+        # sobelow_skip ["DOS.BinToAtom"]
+        @dialyzer {:nowarn_function, {:"#{interface.name}!", length(common_args)}}
+        def unquote(:"#{interface.name}!")(unquote_splicing(common_args)) do
+          unquote(resolve_opts_params)
+          unquote(resolve_subject)
+          unquote(act!)
+        end
 
-                {changeset_opts, opts} =
-                  Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer])
+        # sobelow_skip ["DOS.BinToAtom"]
+        @dialyzer {:nowarn_function,
+                   {:"#{subject_name}_to_#{interface.name}", length(common_args)}}
+        def unquote(:"#{subject_name}_to_#{interface.name}")(unquote_splicing(common_args)) do
+          unquote(resolve_opts_params)
+          unquote(resolve_subject)
+          unquote(subject)
+        end
 
-                changeset =
-                  record
-                  |> Ash.Changeset.for_update(unquote(action.name), params, changeset_opts)
-              end
+        if action.type != :action do
+          # sobelow_skip ["DOS.BinToAtom"]
+          @dialyzer {:nowarn_function, {:"can_#{interface.name}", length(common_args) + 1}}
+          def unquote(:"can_#{interface.name}")(actor, unquote_splicing(common_args)) do
+            unquote(resolve_opts_params)
+            opts = Keyword.put(opts, :actor, actor)
+            unquote(resolve_subject)
+            unquote(api).can(unquote(subject), actor, opts)
+          end
 
-            @doc doc
-            @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 3}}
-            def unquote(interface.name)(
-                  record,
-                  unquote_splicing(arg_vars_function),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              unquote(resolve_opts_params_changeset)
-              unquote(api).update(changeset, opts)
-            end
-
-            @doc doc
-            # sobelow_skip ["DOS.BinToAtom"]
-            @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 3}}
-            def unquote(:"#{interface.name}!")(
-                  record,
-                  unquote_splicing(arg_vars_function),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              unquote(resolve_opts_params_changeset)
-              unquote(api).update!(changeset, opts)
-            end
-
-          :destroy ->
-            resolve_opts_params_changeset =
-              quote do
-                unquote(resolve_opts_params)
-
-                {changeset_opts, opts} =
-                  Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer])
-
-                changeset =
-                  record
-                  |> Ash.Changeset.for_destroy(unquote(action.name), params, changeset_opts)
-              end
-
-            @doc doc
-            @dialyzer {:nowarn_function, {interface.name, Enum.count(args) + 3}}
-            def unquote(interface.name)(
-                  record,
-                  unquote_splicing(arg_vars_function),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              unquote(resolve_opts_params_changeset)
-              unquote(api).destroy(changeset, opts)
-            end
-
-            @doc doc
-            # sobelow_skip ["DOS.BinToAtom"]
-            @dialyzer {:nowarn_function, {:"#{interface.name}!", Enum.count(args) + 3}}
-            def unquote(:"#{interface.name}!")(
-                  record,
-                  unquote_splicing(arg_vars_function),
-                  params_or_opts \\ %{},
-                  opts \\ []
-                ) do
-              unquote(resolve_opts_params_changeset)
-              unquote(api).destroy!(changeset, opts)
-            end
+          # sobelow_skip ["DOS.BinToAtom"]
+          @dialyzer {:nowarn_function, {:"can_#{interface.name}?", length(common_args) + 1}}
+          def unquote(:"can_#{interface.name}?")(actor, unquote_splicing(common_args)) do
+            unquote(resolve_opts_params)
+            opts = Keyword.put(opts, :actor, actor)
+            unquote(resolve_subject)
+            unquote(api).can?(unquote(subject), actor, opts)
+          end
         end
       end
     end
