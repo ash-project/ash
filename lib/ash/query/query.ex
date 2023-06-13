@@ -1648,6 +1648,14 @@ defmodule Ash.Query do
       type: :any,
       doc: "A load statement to add to the query"
     ],
+    select: [
+      type: :any,
+      doc: "A select statement to add to the query"
+    ],
+    ensure_selected: [
+      type: :any,
+      doc: "An ensure_selected statement to add to the query"
+    ],
     aggregate: [
       type: :any,
       doc:
