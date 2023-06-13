@@ -511,6 +511,7 @@ defmodule Ash.Api do
           query_or_changeset_or_action ::
             Ash.Query.t()
             | Ash.Changeset.t()
+            | Ash.ActionInput.t()
             | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()}
             | {Ash.Resource.t(), atom | Ash.Resource.Actions.action(), input :: map},
           actor :: term,
@@ -532,6 +533,7 @@ defmodule Ash.Api do
           action_or_query_or_changeset ::
             Ash.Query.t()
             | Ash.Changeset.t()
+            | Ash.ActionInput.t()
             | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()}
             | {Ash.Resource.t(), atom | Ash.Resource.Actions.action(), input :: map},
           actor :: term,
@@ -550,12 +552,16 @@ defmodule Ash.Api do
         %Ash.Changeset{} = changeset ->
           {changeset.resource, changeset, nil}
 
+        %Ash.ActionInput{} = input ->
+          {input.resource, input, nil}
+
         {resource, %struct{}} = action
         when struct in [
                Ash.Resource.Actions.Create,
                Ash.Resource.Actions.Read,
                Ash.Resource.Actions.Update,
-               Ash.Resource.Actions.Destroy
+               Ash.Resource.Actions.Destroy,
+               Ash.Resource.Actions.Action
              ] ->
           {resource, action, %{}}
 
@@ -567,7 +573,8 @@ defmodule Ash.Api do
                Ash.Resource.Actions.Create,
                Ash.Resource.Actions.Read,
                Ash.Resource.Actions.Update,
-               Ash.Resource.Actions.Destroy
+               Ash.Resource.Actions.Destroy,
+               Ash.Resource.Actions.Action
              ] ->
           {resource, action, input}
 
@@ -575,7 +582,7 @@ defmodule Ash.Api do
           {resource, Ash.Resource.Info.action(resource, name), input}
       end
 
-    query_or_changeset =
+    subject =
       case action_or_query_or_changeset do
         %{type: :update, name: name} ->
           if opts[:data] do
@@ -601,30 +608,24 @@ defmodule Ash.Api do
             |> Ash.Changeset.for_destroy(name, input, actor: actor)
           end
 
-        other ->
-          other
+        %{type: :action, name: name} ->
+          Ash.ActionInput.for_action(resource, name, input, actor: actor)
+
+        %struct{} when struct in [Ash.Query, Ash.Changeset, Ash.ActionInput] ->
+          action_or_query_or_changeset
+
+        _ ->
+          raise ArgumentError,
+            message: "Invalid action/query/changeset \"#{inspect(action_or_query_or_changeset)}\""
       end
 
-    # Get action type from resource
-    case query_or_changeset do
-      %Ash.Query{} = query ->
-        query = Map.put(query, :api, api)
+    subject = %{subject | api: api}
 
-        run_check(api, actor, query, opts)
-
-      %Ash.Changeset{} = changeset ->
-        changeset = Map.put(changeset, :api, api)
-
-        run_check(api, actor, changeset, opts)
-
-      _ ->
-        raise ArgumentError,
-          message: "Invalid action/query/changeset \"#{inspect(action_or_query_or_changeset)}\""
-    end
+    run_check(api, actor, subject, opts)
   end
 
-  defp run_check(api, actor, query_or_changeset, opts) do
-    query_or_changeset.resource
+  defp run_check(api, actor, subject, opts) do
+    subject.resource
     |> Ash.Resource.Info.authorizers()
     |> Enum.reduce_while(
       {false, nil},
@@ -632,26 +633,18 @@ defmodule Ash.Api do
         authorizer_state =
           authorizer.initial_state(
             actor,
-            query_or_changeset.resource,
-            query_or_changeset.action,
+            subject.resource,
+            subject.action,
             false
           )
 
-        context =
-          case query_or_changeset do
-            %Ash.Query{} = query ->
-              %{
-                api: api,
-                query: query,
-                changeset: nil
-              }
+        context = %{api: api, query: nil, changeset: nil, action_input: nil}
 
-            changeset ->
-              %{
-                api: api,
-                query: nil,
-                changeset: changeset
-              }
+        context =
+          case subject do
+            %Ash.Query{} -> Map.put(context, :query, subject)
+            %Ash.Changeset{} -> Map.put(context, :changeset, subject)
+            %Ash.ActionInput{} -> Map.put(context, :action_input, subject)
           end
 
         case authorizer.strict_check(authorizer_state, context) do
@@ -664,15 +657,23 @@ defmodule Ash.Api do
           {:authorized, _} ->
             {:cont, {true, query}}
 
+          :forbidden ->
+            {:halt, {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+
+          _ when not is_nil(context.action_input) ->
+            raise """
+            Cannot use filter or runtime checks with generic actions
+
+            Failed when authorizing #{inspect(subject.resource)}.#{subject.action.name}
+            """
+
           {:filter, _authorizer, filter} ->
-            query =
-              query || Ash.Query.new(query_or_changeset.resource, api) |> Ash.Query.select([])
+            query = query || Ash.Query.new(subject.resource, api) |> Ash.Query.select([])
 
             {:cont, {true, query |> Ash.Query.filter(^filter)}}
 
           {:filter, filter} ->
-            query =
-              query || Ash.Query.new(query_or_changeset.resource, api) |> Ash.Query.select([])
+            query = query || Ash.Query.new(subject.resource, api) |> Ash.Query.select([])
 
             {:cont, {true, Ash.Query.filter(query, ^filter)}}
 
@@ -689,9 +690,6 @@ defmodule Ash.Api do
             else
               {:halt, {:maybe, nil}}
             end
-
-          :forbidden ->
-            {:halt, {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
         end
       end
     )
@@ -701,7 +699,7 @@ defmodule Ash.Api do
 
       {true, query} when not is_nil(query) ->
         if opts[:run_queries?] do
-          case query_or_changeset do
+          case subject do
             %Ash.Query{} ->
               if opts[:data] do
                 data = List.wrap(opts[:data])

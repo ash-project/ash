@@ -477,8 +477,6 @@ defmodule Ash.CodeInterface do
                       |> Kernel.||(unquote(resource))
                       |> Ash.Query.for_read(unquote(action.name), params, query_opts)
                     end
-
-                  query = %{query | api: unquote(api)}
                 end
 
               act =
@@ -589,6 +587,12 @@ defmodule Ash.CodeInterface do
 
         subject_name = elem(subject, 0)
 
+        resolve_subject =
+          quote do
+            unquote(resolve_subject)
+            unquote(subject) = %{unquote(subject) | api: unquote(api)}
+          end
+
         common_args =
           quote do: [
                   unquote_splicing(subject_args),
@@ -623,24 +627,22 @@ defmodule Ash.CodeInterface do
           unquote(subject)
         end
 
-        if action.type != :action do
-          # sobelow_skip ["DOS.BinToAtom"]
-          @dialyzer {:nowarn_function, {:"can_#{interface.name}", length(common_args) + 1}}
-          def unquote(:"can_#{interface.name}")(actor, unquote_splicing(common_args)) do
-            unquote(resolve_opts_params)
-            opts = Keyword.put(opts, :actor, actor)
-            unquote(resolve_subject)
-            unquote(api).can(unquote(subject), actor, opts)
-          end
+        # sobelow_skip ["DOS.BinToAtom"]
+        @dialyzer {:nowarn_function, {:"can_#{interface.name}", length(common_args) + 1}}
+        def unquote(:"can_#{interface.name}")(actor, unquote_splicing(common_args)) do
+          unquote(resolve_opts_params)
+          opts = Keyword.put(opts, :actor, actor)
+          unquote(resolve_subject)
+          unquote(api).can(unquote(subject), actor, opts)
+        end
 
-          # sobelow_skip ["DOS.BinToAtom"]
-          @dialyzer {:nowarn_function, {:"can_#{interface.name}?", length(common_args) + 1}}
-          def unquote(:"can_#{interface.name}?")(actor, unquote_splicing(common_args)) do
-            unquote(resolve_opts_params)
-            opts = Keyword.put(opts, :actor, actor)
-            unquote(resolve_subject)
-            unquote(api).can?(unquote(subject), actor, opts)
-          end
+        # sobelow_skip ["DOS.BinToAtom"]
+        @dialyzer {:nowarn_function, {:"can_#{interface.name}?", length(common_args) + 1}}
+        def unquote(:"can_#{interface.name}?")(actor, unquote_splicing(common_args)) do
+          unquote(resolve_opts_params)
+          opts = Keyword.put(opts, :actor, actor)
+          unquote(resolve_subject)
+          unquote(api).can?(unquote(subject), actor, opts)
         end
       end
     end
