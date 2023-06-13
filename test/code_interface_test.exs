@@ -95,6 +95,11 @@ defmodule Ash.Test.CodeInterfaceTest do
       assert %Ash.ActionInput{action: %{name: :hello}, params: %{name: "bob"}} =
                User.input_to_hello("bob")
     end
+
+    test "generic actions have a helper to test authorization" do
+      assert {:ok, false} == User.can_hello(nil, "fred")
+      assert false == User.can_hello?(nil, "fred")
+    end
   end
 
   describe "read actions" do
