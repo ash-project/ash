@@ -310,11 +310,6 @@ defmodule Ash.Query do
       doc:
         "set authorize?, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
     ],
-    authorize?: [
-      type: :boolean,
-      doc:
-        "set tracer, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
-    ],
     tracer: [
       type: :atom,
       doc:
@@ -326,6 +321,7 @@ defmodule Ash.Query do
     ]
   ]
 
+  @doc false
   def for_read_opts, do: @for_read_opts
 
   @doc """
