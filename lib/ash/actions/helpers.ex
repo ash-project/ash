@@ -435,7 +435,7 @@ defmodule Ash.Actions.Helpers do
 
       case api.load(result, query, opts) do
         {:ok, result} ->
-          {:ok, result, instructions}
+          {:ok, result, Map.put(instructions, :notification_data, result)}
 
         {:error, error} ->
           {:error, error}
