@@ -1074,8 +1074,8 @@ defmodule Ash.Api do
 
   In cases with "runtime" checks (checks after the action), we may not be able to determine
   an answer, and so the value `:maybe` will be returned from `can/2`. The `can?` function assumes that
-  `:maybe` means `false`. Keep in mind, this is just for doing things like "can they do this" in a UI,
-  so assuming `:maybe` is `false` is fine. The actual action invocation will be properly checked regardless.
+  `:maybe` means `true`. Keep in mind, this is just for doing things like "can they do this" in a UI,
+  so assuming `:maybe` is `true` is fine. The actual action invocation will be properly checked regardless.
   If you have runtime checks, you may need to use `can` instead of `can?`, or configure what `:maybe` means.
 
   ## Options
