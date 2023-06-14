@@ -289,6 +289,7 @@ defmodule Ash.Actions.PaginationTest do
       %{results: first_results} =
         User
         |> Ash.Query.sort([:subname, :name])
+        |> Ash.Query.select([:name])
         |> Api.read!(action: :keyset, page: [limit: 5])
 
       assert Enum.map(first_results, & &1.name) == ~w(0 2 4 6 8)
@@ -299,6 +300,7 @@ defmodule Ash.Actions.PaginationTest do
       %{results: second_results} =
         User
         |> Ash.Query.sort([:subname, :name])
+        |> Ash.Query.select([:name])
         |> Api.read!(action: :keyset, page: [limit: 5, after: keyset])
 
       assert Enum.map(second_results, & &1.name) == ~w(1 3 5 7 9)

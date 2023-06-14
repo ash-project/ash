@@ -2425,19 +2425,18 @@ defmodule Ash.Actions.Read do
   defp keyset_pagination(query, pagination, opts) do
     query =
       query.sort
-      |> Enum.flat_map(fn
+      |> Enum.map(fn
         {%Ash.Query.Calculation{} = calc, _} ->
           [{:calc, calc}]
 
         {field, _} ->
-          if Ash.Resource.Info.aggregate(query.resource, field) do
-            [{:agg, field}]
-          else
-            []
-          end
+          cond do
+            Ash.Resource.Info.aggregate(query.resource, field) ->
+              {:agg, field}
 
-        _ ->
-          []
+            Ash.Resource.Info.attribute(query.resource, field) ->
+              {:attr, field}
+          end
       end)
       |> Enum.reduce(query, fn
         {:calc, %{load: nil} = calc}, query ->
@@ -2448,6 +2447,9 @@ defmodule Ash.Actions.Read do
 
         {:agg, field}, query ->
           Ash.Query.load(query, field)
+
+        {:attr, field}, query ->
+          Ash.Query.ensure_selected(query, field)
       end)
 
     limited =
