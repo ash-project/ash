@@ -2427,7 +2427,7 @@ defmodule Ash.Actions.Read do
       query.sort
       |> Enum.map(fn
         {%Ash.Query.Calculation{} = calc, _} ->
-          [{:calc, calc}]
+          {:calc, calc}
 
         {field, _} ->
           cond do
