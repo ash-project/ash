@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.10.0](https://github.com/ash-project/ash/compare/v2.9.29...v2.10.0) (2023-06-14)
+
+
+
+
+### Features:
+
+* generate some action helpers with code interface (#614)
+
+### Bug Fixes:
+
+* ensure attributes for keyset pagination are selected
+
+### Improvements:
+
+* add support for generic actions in `api.can` (#617)
+
 ## [v2.9.29](https://github.com/ash-project/ash/compare/v2.9.28...v2.9.29) (2023-06-12)
 
 
