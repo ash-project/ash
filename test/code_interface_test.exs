@@ -13,6 +13,7 @@ defmodule Ash.Test.CodeInterfaceTest do
     code_interface do
       define_for Ash.Test.CodeInterfaceTest.Api
       define :get_user, action: :read, get?: true, args: [:id]
+      define :get_user_safely, action: :read, get?: true, args: [:id], not_found_error?: false
       define :read_users, action: :read
       define :get_by_id, action: :read, get_by: [:id]
       define :create, args: [{:optional, :first_name}]
@@ -86,29 +87,29 @@ defmodule Ash.Test.CodeInterfaceTest do
   end
 
   describe "generic actions" do
-    test "generic actions can be invoked" do
+    test "can be invoked" do
       assert "Hello fred" == User.hello!("fred")
       assert {:ok, "Hello george"} == User.hello("george")
     end
 
-    test "generic actions have a helper method to produce inputs" do
+    test "have a helper method to produce inputs" do
       assert %Ash.ActionInput{action: %{name: :hello}, params: %{name: "bob"}} =
                User.input_to_hello("bob")
     end
 
-    test "generic actions have a helper to test authorization" do
+    test "have a helper to test authorization" do
       assert {:ok, false} == User.can_hello(nil, "fred")
       assert false == User.can_hello?(nil, "fred")
     end
   end
 
   describe "read actions" do
-    test "read actions have a helper methods to produce queries" do
+    test "have a helper methods to produce queries" do
       assert %Ash.Query{action: %{name: :read}} = User.query_to_read_users()
       assert %Ash.Query{action: %{name: :read}} = User.query_to_get_by_id("some uuid")
     end
 
-    test "read actions have a helper to test authorization" do
+    test "have a helper to test authorization" do
       assert {:ok, false} == User.can_read_users(nil)
       assert {:ok, false} == User.can_get_by_id(nil, "some uuid")
       assert false == User.can_read_users?(nil)
@@ -116,8 +117,31 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
   end
 
+  describe "read get actions" do
+    test "raise on not found by default" do
+      assert_raise Ash.Error.Query.NotFound, fn ->
+        User.get_user!(Ash.UUID.generate())
+      end
+    end
+
+    test "do not raise on not found if were defined with `not_found_error?: false`" do
+      assert nil == User.get_user_safely!(Ash.UUID.generate())
+    end
+
+    test "do not raise on not found if option `not_found_error?: false` is passed" do
+      assert nil == User.get_user!(Ash.UUID.generate(), not_found_error?: false)
+      assert nil == User.get_user_safely!(Ash.UUID.generate(), not_found_error?: false)
+    end
+
+    test "raise on not found if option `not_found_error?: true` is passed" do
+      assert_raise Ash.Error.Query.NotFound, fn ->
+        User.get_user_safely!(Ash.UUID.generate(), not_found_error?: true)
+      end
+    end
+  end
+
   describe "create actions" do
-    test "create actions have a helper methods to produce changeset" do
+    test "have a helper methods to produce changeset" do
       assert %Ash.Changeset{action: %{name: :create}, attributes: %{first_name: "fred"}} =
                User.changeset_to_create()
 
@@ -125,7 +149,7 @@ defmodule Ash.Test.CodeInterfaceTest do
                User.changeset_to_create("bob")
     end
 
-    test "create actions have a helper to test authorization" do
+    test "have a helper to test authorization" do
       assert {:ok, false} == User.can_create(nil)
       assert {:ok, false} == User.can_create(nil, "bob")
       assert false == User.can_create?(nil)
@@ -155,12 +179,6 @@ defmodule Ash.Test.CodeInterfaceTest do
         |> Api.create!()
 
       assert "Zach Daniel" = User.full_name_record!(user)
-    end
-  end
-
-  test "get! raises on not found" do
-    assert_raise Ash.Error.Query.NotFound, fn ->
-      User.get_user!(Ash.UUID.generate())
     end
   end
 

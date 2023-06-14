@@ -479,19 +479,25 @@ defmodule Ash.CodeInterface do
                     end
                 end
 
+              resolve_not_found_error? =
+                quote do
+                  {not_found_error?, opts} = Keyword.pop(opts, :not_found_error?)
+
+                  not_found_error? =
+                    if not_found_error? != nil,
+                      do: not_found_error?,
+                      else: unquote(interface.not_found_error?)
+                end
+
               act =
                 if interface.get? || action.get? do
                   quote do
-                    query
-                    |> unquote(api).read_one(Keyword.delete(opts, :not_found_error?))
+                    unquote(resolve_not_found_error?)
+
+                    unquote(api).read_one(query, opts)
                     |> case do
-                      {:ok, nil} ->
-                        if unquote(interface.not_found_error?) == false ||
-                             Keyword.get(opts, :not_found_error?) == false do
-                          {:ok, nil}
-                        else
-                          {:error, Ash.Error.Query.NotFound.exception(resource: query.resource)}
-                        end
+                      {:ok, nil} when not_found_error? ->
+                        {:error, Ash.Error.Query.NotFound.exception(resource: query.resource)}
 
                       result ->
                         result
@@ -504,16 +510,12 @@ defmodule Ash.CodeInterface do
               act! =
                 if interface.get? || action.get? do
                   quote do
-                    query
-                    |> unquote(api).read_one!(Keyword.delete(opts, :not_found_error?))
+                    unquote(resolve_not_found_error?)
+
+                    unquote(api).read_one!(query, opts)
                     |> case do
-                      nil ->
-                        if unquote(interface.not_found_error?) == false ||
-                             Keyword.get(opts, :not_found_error?) == false do
-                          nil
-                        else
-                          raise Ash.Error.Query.NotFound, resource: query.resource
-                        end
+                      nil when not_found_error? ->
+                        raise Ash.Error.Query.NotFound, resource: query.resource
 
                       result ->
                         result
