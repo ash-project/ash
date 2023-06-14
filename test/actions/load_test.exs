@@ -537,6 +537,45 @@ defmodule Ash.Test.Actions.LoadTest do
       end
     end
 
+    test "nested lazy loads work" do
+      author =
+        Author
+        |> new(%{name: "zerg"})
+        |> Api.create!()
+
+      post1 =
+        Post
+        |> new(%{title: "post1"})
+        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Api.create!()
+
+      post2 =
+        Post
+        |> new(%{title: "post2"})
+        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Api.create!()
+
+      author =
+        Author
+        |> Ash.Query.load(:posts)
+        |> Ash.Query.filter(posts.id == ^post1.id)
+        |> Api.read_one!(authorize?: true)
+        |> Api.load!([posts: :author], lazy?: true)
+
+      author_id = author.id
+
+      assert %{posts: [%{author: %{id: ^author_id}}, %{author: %{id: ^author_id}}]} = author
+
+      post =
+        Post
+        |> Ash.Query.load(:author)
+        |> Ash.Query.filter(id == ^post1.id)
+        |> Api.read_one!()
+        |> Api.load!([author: :posts], lazy?: true)
+
+      assert %{author: %{posts: [_, _]}} = post
+    end
+
     test "it allows loading across APIs" do
       author =
         Author
@@ -591,6 +630,37 @@ defmodule Ash.Test.Actions.LoadTest do
       assert [%{id: id1}, %{id: id2}] = post.categories
 
       assert Enum.sort([category1.id, category2.id]) == Enum.sort([id1, id2])
+    end
+
+    test "it allows loading nested many to many relationships lazily" do
+      category1 =
+        Category
+        |> new(%{name: "lame"})
+        |> Api.create!()
+
+      category2 =
+        Category
+        |> new(%{name: "cool"})
+        |> Api.create!()
+
+      post =
+        Post
+        |> new(%{title: "post1"})
+        |> manage_relationship(:categories, [category1, category2], type: :append_and_remove)
+        |> Api.create!()
+
+      [post] =
+        Post
+        |> Ash.Query.load(:categories)
+        |> Ash.Query.filter(id == ^post.id)
+        |> Api.read!(authorize?: true)
+
+      assert %{posts: [%{categories: [_, _]}]} =
+               Category
+               |> Ash.Query.filter(id == ^category1.id)
+               |> Ash.Query.load(:posts)
+               |> Api.read_one!()
+               |> Api.load!([posts: :categories], lazy?: true)
     end
 
     test "it allows loading many to many relationships after the fact" do

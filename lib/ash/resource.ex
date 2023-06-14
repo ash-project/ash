@@ -281,35 +281,73 @@ defmodule Ash.Resource do
 
   def unload(other, _), do: other
 
-  @doc "Returns true if the load or path to load has been loaded"
+  @doc """
+  Returns true if the load or path to load has been loaded
+
+  ## Options
+
+  - `lists`: set to `:any` to have this return true if any record in a list that appears has the value loaded. Default is `:all`.
+  - `unknown`: set to `true` to have unknown paths (like nil values or non-resources) return true. Defaults to `false`
+  """
   @spec loaded?(
           nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page(),
-          atom | list(atom)
+          atom | Ash.Query.Calculation.t() | Ash.Query.Aggregate.t() | list(atom),
+          opts :: Keyword.t()
         ) ::
           boolean
-  def loaded?(nil, _), do: true
+  def loaded?(data, path, opts \\ [])
 
-  def loaded?(%page{results: results}, path) when page in [Ash.Page.Keyset, Ash.Page.Offset] do
-    loaded?(results, path)
+  def loaded?(records, path, opts) when not is_list(path) do
+    loaded?(records, List.wrap(path), opts)
   end
 
-  def loaded?(records, path) when not is_list(path) do
-    loaded?(records, [path])
+  def loaded?(%Ash.NotLoaded{}, _, _opts), do: false
+  def loaded?(_, [], _opts), do: true
+  # We actually just can't tell here, so we say no
+  def loaded?(nil, _, opts), do: Keyword.get(opts, :unknown, false)
+
+  def loaded?(%page{results: results}, path, opts)
+      when page in [Ash.Page.Keyset, Ash.Page.Offset] do
+    loaded?(results, path, opts)
   end
 
-  def loaded?(records, path) when is_list(records) do
-    Enum.all?(records, &loaded?(&1, path))
+  def loaded?(records, path, opts) when is_list(records) do
+    case Keyword.get(opts, :lists, :all) do
+      :all ->
+        Enum.all?(records, &loaded?(&1, path, opts))
+
+      :any ->
+        Enum.any?(records, &loaded?(&1, path, opts))
+    end
   end
 
-  def loaded?(%Ash.NotLoaded{}, _), do: false
-
-  def loaded?(_, []), do: true
-
-  def loaded?(record, [key | rest]) do
-    record
-    |> Map.get(key)
-    |> loaded?(rest)
+  def loaded?(record, [%Ash.Query.Calculation{} = calculation], _opts) do
+    if calculation.load do
+      Map.get(record, calculation.load) != %Ash.NotLoaded{}
+    else
+      Map.has_key?(record.calculations, calculation.name)
+    end
   end
+
+  def loaded?(record, [%Ash.Query.Aggregate{} = aggregate], _opts) do
+    if aggregate.load do
+      Map.get(record, aggregate.load) != %Ash.NotLoaded{}
+    else
+      Map.has_key?(record.aggregates, aggregate.name)
+    end
+  end
+
+  def loaded?(%resource{} = record, [key | rest], opts) do
+    if Ash.Resource.Info.resource?(resource) do
+      record
+      |> Map.get(key)
+      |> loaded?(rest, opts)
+    else
+      Keyword.get(opts, :unknown, false)
+    end
+  end
+
+  def loaded?(_other, _, opts), do: Keyword.get(opts, :unknown, false)
 
   @spec get_metadata(Ash.Resource.record(), atom | list(atom)) :: term
   def get_metadata(record, key_or_path) do

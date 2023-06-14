@@ -465,7 +465,6 @@ defmodule Ash.Actions.Load do
   @doc false
   def calc_dep_requests(
         relationship,
-        lazy?,
         opts,
         calc_dep,
         path,
@@ -482,7 +481,6 @@ defmodule Ash.Actions.Load do
           root_query,
           path,
           opts,
-          lazy?,
           calc_dep
         )
       end
@@ -490,7 +488,6 @@ defmodule Ash.Actions.Load do
     load_request =
       calc_dep_load_request(
         relationship,
-        lazy?,
         opts,
         calc_dep,
         root_query,
@@ -508,7 +505,6 @@ defmodule Ash.Actions.Load do
 
   defp calc_dep_load_request(
          relationship,
-         lazy?,
          opts,
          calc_dep,
          root_query,
@@ -577,7 +573,6 @@ defmodule Ash.Actions.Load do
       data:
         calc_dep_data(
           relationship,
-          lazy?,
           dependencies,
           this_request_path,
           calc_dep,
@@ -587,6 +582,7 @@ defmodule Ash.Actions.Load do
           parent_data_path,
           parent_query_path,
           this_request_path ++ [:join],
+          nil,
           actual_query
         )
     )
@@ -685,7 +681,6 @@ defmodule Ash.Actions.Load do
 
   defp calc_dep_data(
          %{manual: manual} = relationship,
-         lazy?,
          dependencies,
          _this_request_path,
          calc_dep,
@@ -695,7 +690,8 @@ defmodule Ash.Actions.Load do
          parent_data_path,
          _parent_query_path,
          _join_request_path,
-         actual_query
+         actual_query,
+         _
        )
        when not is_nil(manual) do
     {mod, opts} =
@@ -710,54 +706,43 @@ defmodule Ash.Actions.Load do
     Request.resolve(dependencies, fn data ->
       data = get_in(data, parent_data_path)
 
-      lazy_load_or(
-        data,
-        lazy?,
-        relationship.name,
-        root_query.query.api,
-        actual_query,
-        request_opts,
-        fn ->
-          data
-          |> mod.load(opts, %{
-            relationship: relationship,
-            query: actual_query,
-            actor: request_opts[:actor],
-            authorize?: request_opts[:authorize?],
-            api: calc_dep.query.api,
-            tenant: root_query.tenant
-          })
-          |> case do
-            {:ok, result} ->
-              # TODO: this will result in quite a few requests potentially for aggs/calcs
-              # This should be optimized.
-              Enum.reduce_while(result, {:ok, %{}}, fn {key, records}, {:ok, acc} ->
-                case calc_dep.query.api.load(records, %{actual_query | load: []},
-                       lazy?: true,
-                       tenant: calc_dep.query.tenant,
-                       actor: request_opts[:actor],
-                       authorize?: request_opts[:authorize?],
-                       tracer: request_opts[:tracer]
-                     ) do
-                  {:ok, results} ->
-                    {:cont, {:ok, Map.put(acc, key, results)}}
+      data
+      |> mod.load(opts, %{
+        relationship: relationship,
+        query: actual_query,
+        actor: request_opts[:actor],
+        authorize?: request_opts[:authorize?],
+        api: calc_dep.query.api,
+        tenant: root_query.tenant
+      })
+      |> case do
+        {:ok, result} ->
+          # TODO: this will result in quite a few requests potentially for aggs/calcs
+          # This should be optimized.
+          Enum.reduce_while(result, {:ok, %{}}, fn {key, records}, {:ok, acc} ->
+            case calc_dep.query.api.load(records, %{actual_query | load: []},
+                   lazy?: true,
+                   tenant: calc_dep.query.tenant,
+                   actor: request_opts[:actor],
+                   authorize?: request_opts[:authorize?],
+                   tracer: request_opts[:tracer]
+                 ) do
+              {:ok, results} ->
+                {:cont, {:ok, Map.put(acc, key, results)}}
 
-                  {:error, error} ->
-                    {:halt, {:error, error}}
-                end
-              end)
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
+          end)
 
-            {:error, error} ->
-              {:error, error}
-          end
-        end
-      )
+        {:error, error} ->
+          {:error, error}
+      end
     end)
   end
 
   defp calc_dep_data(
          relationship,
-         lazy?,
          dependencies,
          this_request_path,
          calc_dep,
@@ -767,6 +752,7 @@ defmodule Ash.Actions.Load do
          parent_data_path,
          parent_query_path,
          join_request_path,
+         non_join_source_data_path,
          actual_query
        ) do
     Request.resolve(dependencies, fn data ->
@@ -802,9 +788,10 @@ defmodule Ash.Actions.Load do
                relationship,
                source_query,
                opts,
-               lazy?,
+               false,
                parent_data_path,
-               join_request_path
+               join_request_path,
+               non_join_source_data_path
              ) do
         {:ok, results}
       else
@@ -982,6 +969,15 @@ defmodule Ash.Actions.Load do
             request_path ++ [:load] ++ [data_path] ++ [:data]
         end
 
+      non_join_source_data_path =
+        case path do
+          [] ->
+            request_path ++ [:data, :results]
+
+          _path ->
+            request_path ++ [:load] ++ [path |> Enum.reverse() |> Enum.map(& &1.name)] ++ [:data]
+        end
+
       with {:ok, new_query} <-
              true_load_query(
                relationship,
@@ -1001,7 +997,8 @@ defmodule Ash.Actions.Load do
                opts,
                lazy?,
                source_data_path,
-               join_request_path
+               join_request_path,
+               non_join_source_data_path
              ) do
         {:ok, results}
       else
@@ -1210,6 +1207,7 @@ defmodule Ash.Actions.Load do
                      opts,
                      lazy?,
                      source_data_path,
+                     nil,
                      nil
                    ) do
               {:ok, results}
@@ -1230,7 +1228,6 @@ defmodule Ash.Actions.Load do
          root_query,
          path,
          opts,
-         lazy?,
          calc_dep
        ) do
     {parent_dep_path, parent_data_path, parent_query_path} =
@@ -1330,8 +1327,9 @@ defmodule Ash.Actions.Load do
                      relationship,
                      source_query,
                      opts,
-                     lazy?,
+                     false,
                      parent_data_path,
+                     nil,
                      nil
                    ) do
               {:ok, results}
@@ -1445,7 +1443,8 @@ defmodule Ash.Actions.Load do
          request_opts,
          lazy?,
          source_data_path,
-         join_request_path
+         join_request_path,
+         non_join_source_data
        ) do
     {offset, limit} = offset_and_limit(base_query)
 
@@ -1460,8 +1459,23 @@ defmodule Ash.Actions.Load do
           value
       end
 
+    source_data_to_get_lazy_load_from =
+      if relationship.type == :many_to_many && lazy? do
+        case get_in(data, non_join_source_data) do
+          value when is_map(value) ->
+            value
+            |> Map.values()
+            |> Enum.flat_map(&List.wrap/1)
+
+          value ->
+            value
+        end
+      else
+        source_data
+      end
+
     lazy_load_or(
-      source_data,
+      source_data_to_get_lazy_load_from,
       lazy?,
       relationship.name,
       query.api,

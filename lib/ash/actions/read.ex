@@ -208,22 +208,27 @@ defmodule Ash.Actions.Read do
 
     query =
       if initial_data && query && lazy? do
-        new_load =
-          query.load
-          |> List.wrap()
-          |> Enum.reject(fn load ->
-            case load do
-              {key, _value} ->
-                calculation_or_aggregate?(resource, key) &&
-                  Ash.Resource.loaded?(resource, key)
+        query
+        |> Map.update!(:calculations, fn calculations ->
+          keys =
+            calculations
+            |> Enum.reject(fn {_key, calc} ->
+              Ash.Resource.loaded?(initial_data, calc)
+            end)
+            |> Enum.map(&elem(&1, 0))
 
-              key ->
-                calculation_or_aggregate?(resource, key) &&
-                  Ash.Resource.loaded?(resource, key)
-            end
-          end)
+          Map.drop(calculations, keys)
+        end)
+        |> Map.update!(:aggregates, fn aggregates ->
+          keys =
+            aggregates
+            |> Enum.reject(fn {_key, calc} ->
+              Ash.Resource.loaded?(initial_data, calc)
+            end)
+            |> Enum.map(&elem(&1, 0))
 
-        %{query | load: new_load}
+          Map.drop(aggregates, keys)
+        end)
       else
         query
       end
@@ -750,11 +755,6 @@ defmodule Ash.Actions.Read do
     |> Keyword.put(:authorize?, authorize?)
     |> Keyword.put(:actor, actor)
     |> Keyword.put(:verbose?, verbose?)
-  end
-
-  defp calculation_or_aggregate?(resource, field) do
-    !!(Ash.Resource.Info.aggregate(resource, field) ||
-         Ash.Resource.Info.calculation(resource, field))
   end
 
   defp handle_attribute_multitenancy(query) do
@@ -1742,7 +1742,6 @@ defmodule Ash.Actions.Read do
 
             Ash.Actions.Load.calc_dep_requests(
               relationship,
-              request_opts[:lazy?],
               [
                 actor: request_opts[:actor],
                 authorize?: authorize?,
