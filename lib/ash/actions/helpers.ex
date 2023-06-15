@@ -435,7 +435,13 @@ defmodule Ash.Actions.Helpers do
 
       case api.load(result, query, opts) do
         {:ok, result} ->
-          {:ok, result, Map.put(instructions, :notification_data, result)}
+          {:ok, result,
+           Map.update(
+             instructions,
+             :set_keys,
+             %{notification_data: result},
+             &Map.put(&1, :notification_data, result)
+           )}
 
         {:error, error} ->
           {:error, error}
@@ -454,7 +460,7 @@ defmodule Ash.Actions.Helpers do
 
       case api.load(result, query, opts) do
         {:ok, result} ->
-          {:ok, result}
+          {:ok, result, %{set_keys: %{notification_data: result}}}
 
         {:error, error} ->
           {:error, error}

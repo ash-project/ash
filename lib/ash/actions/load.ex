@@ -690,8 +690,8 @@ defmodule Ash.Actions.Load do
          parent_data_path,
          _parent_query_path,
          _join_request_path,
-         actual_query,
-         _
+         _,
+         actual_query
        )
        when not is_nil(manual) do
     {mod, opts} =

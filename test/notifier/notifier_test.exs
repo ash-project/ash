@@ -80,6 +80,8 @@ defmodule Ash.Test.NotifierTest do
       defaults [:create, :read, :update, :destroy]
 
       create :create_with_comment do
+        change load(:comments)
+
         change fn changeset, _ ->
           Ash.Changeset.after_action(changeset, fn _changeset, result ->
             Comment
@@ -189,6 +191,14 @@ defmodule Ash.Test.NotifierTest do
     |> Api.create!()
 
     assert_receive {:notification, %Ash.Notifier.Notification{data: %Comment{name: "auto"}}}
+  end
+
+  test "the `load/1` change puts the loaded data into the notification" do
+    Post
+    |> Ash.Changeset.for_create(:create_with_comment, %{name: "foobar"})
+    |> Api.create!()
+
+    assert_receive {:notification, %Ash.Notifier.Notification{data: %Post{comments: [_]}}}
   end
 
   test "notifications use the data before its limited by a select statement" do
