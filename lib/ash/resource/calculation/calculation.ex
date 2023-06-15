@@ -40,8 +40,9 @@ defmodule Ash.Resource.Calculation do
          ]},
       required: true,
       doc: """
-      The module or `{module, opts}` to use for the calculation
-      Also accepts a function that takes the list of records and the context.
+      The module or `{module, opts}` to use for the calculation.
+      Also accepts a function that takes a single record and produces the result.
+      IMPORTANT: This function *does not take and return lists* like the `calculate/3` callback does.
       """
     ],
     description: [
