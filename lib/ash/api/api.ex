@@ -1736,6 +1736,12 @@ defmodule Ash.Api do
         )
       end
 
+    if is_nil(query.action.pagination) || !query.action.pagination.keyset? do
+      raise Ash.Error.Invalid.NonStreamableAction,
+        resource: query.resource,
+        action: query.action
+    end
+
     {batch_size, opts} =
       Keyword.pop(
         opts,
@@ -1750,12 +1756,6 @@ defmodule Ash.Api do
           {:halt, nil}
 
         after_keyset ->
-          if is_nil(query.action.pagination) || !query.action.pagination.keyset? do
-            raise Ash.Error.Invalid.NonStreamableAction,
-              resource: query.resource,
-              action: query.action
-          end
-
           keyset = if after_keyset != nil, do: [after: after_keyset], else: []
           page_opts = Keyword.merge(keyset, limit: batch_size)
 
