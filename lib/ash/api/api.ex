@@ -953,6 +953,7 @@ defmodule Ash.Api do
           end
         end)
         |> Map.put(:actor, opts[:actor])
+        |> Map.put(:api, opts[:api])
 
       Code.ensure_compiled!(module)
 

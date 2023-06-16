@@ -311,6 +311,8 @@ defmodule Ash.Engine do
             if state.errors == [] do
               detect_deadlocks(state)
 
+              IO.puts(long_breakdown(state))
+
               raise """
               Engine Deadlock! No async tasks and state is the same after iteration.
               #{long_breakdown(state)}

@@ -263,7 +263,7 @@ defmodule Ash.Actions.Sort do
   def runtime_sort([%resource{} | _] = results, [{field, direction} | rest], opts) do
     results
     |> load_field(field, resource, opts)
-    |> Enum.group_by(&resolve_field(&1, field, resource))
+    |> Enum.group_by(&resolve_field(&1, field, resource, api: opts))
     |> sort_by(fn {key, _value} -> key end, direction)
     |> Enum.flat_map(fn {_, records} ->
       runtime_sort(records, rest, Keyword.put(opts, :rekey?, false))
@@ -292,10 +292,11 @@ defmodule Ash.Actions.Sort do
     end
   end
 
-  defp resolve_field(record, %Ash.Query.Calculation{} = calc, resource) do
+  defp resolve_field(record, %Ash.Query.Calculation{} = calc, resource, opts) do
     cond do
       :erlang.function_exported(calc.module, :calculate, 3) ->
-        calc.module.calculate([record], calc.opts, calc.context)
+        context = Map.put(calc.context, :api, opts[:api])
+        calc.module.calculate([record], calc.opts, context)
 
       :erlang.function_exported(calc.module, :expression, 2) ->
         expression = calc.module.expression(calc.opts, calc.context)
@@ -324,7 +325,7 @@ defmodule Ash.Actions.Sort do
     end
   end
 
-  defp resolve_field(record, field, _resource) do
+  defp resolve_field(record, field, _resource, _) do
     Map.get(record, field)
   end
 

@@ -1813,10 +1813,12 @@ defmodule Ash.Actions.Read do
 
                     primary_keys = Enum.map(temp_results, &Map.take(&1, primary_key))
 
+                    context = Map.put(calculation.context, :api, query.api)
+
                     case calculation.module.calculate(
                            temp_results,
                            calculation.opts,
-                           calculation.context
+                           context
                          ) do
                       :unknown ->
                         case run_calculation_query(
@@ -2719,7 +2721,9 @@ defmodule Ash.Actions.Read do
             temp_results = calc_temp_results(results, calc_dependencies, data, path, query)
             primary_keys = Enum.map(temp_results, &Map.take(&1, primary_key))
 
-            case calculation.module.calculate(temp_results, calculation.opts, calculation.context) do
+            context = Map.put(calculation.context, :api, api)
+
+            case calculation.module.calculate(temp_results, calculation.opts, context) do
               :unknown ->
                 case run_calculation_query(
                        temp_results,
