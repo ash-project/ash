@@ -69,5 +69,37 @@ defmodule Ash.Test.Resource.IdentitiesTest do
                %Ash.Resource.Identity{description: "require one of name/contents"}
              ] = Ash.Resource.Info.identities(Post)
     end
+
+    test "enforce identity constraints on fields having relationships" do
+      assert_raise Spark.Error.DslError,
+                   ~r/Argument :site should be renamed as :site_id in `identities` block./,
+                   fn ->
+                     defmodule Site do
+                       @moduledoc false
+                       use Ash.Resource
+
+                       attributes do
+                         uuid_primary_key :id
+                         attribute :url, :string
+                       end
+                     end
+
+                     defposts do
+                       actions do
+                         read :read do
+                           primary? true
+                         end
+
+                         relationships do
+                           belongs_to :site, Site
+                         end
+                       end
+
+                       identities do
+                         identity :name_site, [:name, :site]
+                       end
+                     end
+                   end
+    end
   end
 end
