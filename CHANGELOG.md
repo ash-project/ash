@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.10.1](https://github.com/ash-project/ash/compare/v2.10.0...v2.10.1) (2023-06-16)
+
+
+
+
+### Bug Fixes:
+
+* check paginability before streaming
+
+* properly set notification_data from loaded record
+
+* properly handle lazy loaded many to many relationships
+
+* remove duplicate doc for `authorize?` in `Query.for_read_opts` (#623)
+
+* set notification data with loaded result
+
+* honor `not_found_error?: true` opt in code interface get actions (#620)
+
+* typo on keyset refactor
+
+### Improvements:
+
+* fix problems w/ nested loads using relationship load calcs
+
 ## [v2.10.0](https://github.com/ash-project/ash/compare/v2.9.29...v2.10.0) (2023-06-14)
 
 
