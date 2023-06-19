@@ -341,10 +341,6 @@ defmodule Ash.Actions.ManagedRelationships do
 
   defp get_input_value(_, _), do: nil
 
-  defp api(api, relationship) when is_atom(api) do
-    relationship.api || api
-  end
-
   defp api(changeset, relationship) do
     relationship.api || changeset.api
   end
@@ -946,7 +942,7 @@ defmodule Ash.Actions.ManagedRelationships do
          relationship,
          join_keys,
          input,
-         api,
+         _api,
          opts,
          found,
          current_value,
@@ -995,7 +991,7 @@ defmodule Ash.Actions.ManagedRelationships do
         )
         |> Ash.Changeset.set_context(join_relationship.context)
         |> Ash.Changeset.set_tenant(changeset.tenant)
-        |> api(api, join_relationship).create(return_notifications?: true)
+        |> api(changeset, join_relationship).create(return_notifications?: true)
         |> case do
           {:ok, _created, notifications} ->
             case key do
@@ -1253,7 +1249,7 @@ defmodule Ash.Actions.ManagedRelationships do
                actor,
                opts,
                action_name,
-               changeset.tenant,
+               changeset,
                relationship
              ) do
           {:ok, notifications} ->
@@ -1271,7 +1267,7 @@ defmodule Ash.Actions.ManagedRelationships do
                actor,
                opts,
                action_name,
-               changeset.tenant,
+               changeset,
                relationship
              ) do
           {:ok, notifications} ->
@@ -1632,7 +1628,7 @@ defmodule Ash.Actions.ManagedRelationships do
                    actor,
                    opts,
                    action_name,
-                   changeset.tenant,
+                   changeset,
                    relationship
                  ) do
               {:ok, notifications} ->
@@ -1649,13 +1645,15 @@ defmodule Ash.Actions.ManagedRelationships do
   defp unrelate_data(
          source_record,
          record,
-         api,
+         _api,
          actor,
          opts,
          action_name,
-         tenant,
+         changeset,
          %{type: :many_to_many} = relationship
        ) do
+    tenant = changeset.tenant
+
     action_name =
       action_name || Ash.Resource.Info.primary_action(relationship.through, :destroy).name
 
@@ -1676,7 +1674,7 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.Query.limit(1)
     |> Ash.Query.set_tenant(tenant)
     |> Ash.Query.set_context(join_relationship.context)
-    |> api(api, join_relationship).read_one(authorize?: opts[:authorize?], actor: actor)
+    |> api(changeset, join_relationship).read_one(authorize?: opts[:authorize?], actor: actor)
     |> case do
       {:ok, result} ->
         result
@@ -1687,7 +1685,7 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.Changeset.for_destroy(action_name, %{}, actor: actor, authorize?: opts[:authorize?])
         |> Ash.Changeset.set_context(join_relationship.context)
         |> Ash.Changeset.set_tenant(tenant)
-        |> api(api, join_relationship).destroy(return_notifications?: true)
+        |> api(changeset, join_relationship).destroy(return_notifications?: true)
         |> case do
           {:ok, notifications} ->
             {:ok, notifications}
@@ -1708,10 +1706,12 @@ defmodule Ash.Actions.ManagedRelationships do
          actor,
          opts,
          action_name,
-         tenant,
+         changeset,
          %{type: type} = relationship
        )
        when type in [:has_many, :has_one] do
+    tenant = changeset.tenant
+
     action_name =
       action_name || Ash.Resource.Info.primary_action(relationship.destination, :update).name
 
@@ -1745,7 +1745,7 @@ defmodule Ash.Actions.ManagedRelationships do
          _actor,
          _opts,
          _action_name,
-         _tenant,
+         _changeset,
          %{type: :belongs_to}
        ) do
     {:ok, []}
@@ -1754,13 +1754,15 @@ defmodule Ash.Actions.ManagedRelationships do
   defp destroy_data(
          source_record,
          record,
-         api,
+         _api,
          actor,
          opts,
          action_name,
-         tenant,
+         changeset,
          %{type: :many_to_many} = relationship
        ) do
+    tenant = changeset.tenant
+
     action_name =
       action_name || Ash.Resource.Info.primary_action(relationship.through, :destroy).name
 
@@ -1780,7 +1782,7 @@ defmodule Ash.Actions.ManagedRelationships do
     )
     |> Ash.Query.limit(1)
     |> Ash.Query.set_tenant(tenant)
-    |> api(api, join_relationship).read_one(authorize?: opts[:authorize?], actor: actor)
+    |> api(changeset, join_relationship).read_one(authorize?: opts[:authorize?], actor: actor)
     |> case do
       {:ok, result} ->
         result
@@ -1791,7 +1793,7 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.Changeset.for_destroy(action_name, %{}, actor: actor, authorize?: opts[:authorize?])
         |> Ash.Changeset.set_context(join_relationship.context)
         |> Ash.Changeset.set_tenant(tenant)
-        |> api(api, join_relationship).destroy(return_notifications?: true)
+        |> api(changeset, join_relationship).destroy(return_notifications?: true)
         |> case do
           {:ok, notifications} ->
             {:ok, notifications}
@@ -1812,9 +1814,11 @@ defmodule Ash.Actions.ManagedRelationships do
          actor,
          opts,
          action_name,
-         tenant,
+         changeset,
          relationship
        ) do
+    tenant = changeset.tenant
+
     action_name =
       action_name || Ash.Resource.Info.primary_action(relationship.destination, :update).name
 
