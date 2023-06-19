@@ -942,7 +942,7 @@ defmodule Ash.Actions.ManagedRelationships do
          relationship,
          join_keys,
          input,
-         api,
+         _api,
          opts,
          found,
          current_value,
@@ -1645,7 +1645,7 @@ defmodule Ash.Actions.ManagedRelationships do
   defp unrelate_data(
          source_record,
          record,
-         api,
+         _api,
          actor,
          opts,
          action_name,
@@ -1745,7 +1745,7 @@ defmodule Ash.Actions.ManagedRelationships do
          _actor,
          _opts,
          _action_name,
-         changeset,
+         _changeset,
          %{type: :belongs_to}
        ) do
     {:ok, []}
@@ -1754,7 +1754,7 @@ defmodule Ash.Actions.ManagedRelationships do
   defp destroy_data(
          source_record,
          record,
-         api,
+         _api,
          actor,
          opts,
          action_name,
