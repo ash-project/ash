@@ -1334,7 +1334,6 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.ValidateRelationshipAttributesMatch,
     Ash.Resource.Verifiers.VerifyReservedCalculationArguments,
     Ash.Resource.Verifiers.VerifyIdentityFields
-
   ]
 
   @moduledoc """

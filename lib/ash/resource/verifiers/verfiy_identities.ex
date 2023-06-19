@@ -7,21 +7,17 @@ defmodule Ash.Resource.Verifiers.VerifyIdentityFields do
   def verify(dsl) do
     identities = Ash.Resource.Info.identities(dsl)
 
-    identity_names = Enum.flat_map(identities, fn identity -> identity.keys end)
+    for identity <- identities do
+      for key <- identity.keys do
+        if !Ash.Resource.Info.attribute(dsl, key) do
+          raise Spark.Error.DslError,
+            module: Spark.Dsl.Verifier.get_persisted(dsl, :module),
+            message: "All identity keys must be attributes. Got: #{inspect(key)}",
+            path: [:identities, identity.name]
+        end
+      end
+    end
 
-    relations =
-      dsl
-      |> Ash.Resource.Info.relationships()
-      |> Enum.filter(fn relation ->
-        relation.type == :belongs_to and relation.name in identity_names
-      end)
-
-    Enum.each(relations, fn rel ->
-      raise Spark.Error.DslError,
-        module: Spark.Dsl.Verifier.get_persisted(dsl, :module),
-        message:
-          "Argument #{inspect(rel.name)} should be renamed as #{inspect(rel.name)}_id in `identities` block.",
-        path: [:identities, :identity, rel.name]
-    end)
+    :ok
   end
 end

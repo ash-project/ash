@@ -70,9 +70,9 @@ defmodule Ash.Test.Resource.IdentitiesTest do
              ] = Ash.Resource.Info.identities(Post)
     end
 
-    test "enforce identity constraints on fields having relationships" do
+    test "enforce identity constraints on attributes" do
       assert_raise Spark.Error.DslError,
-                   ~r/Argument :site should be renamed as :site_id in `identities` block./,
+                   ~r/All identity keys must be attributes. Got: :naem/,
                    fn ->
                      defmodule Site do
                        @moduledoc false
@@ -96,7 +96,7 @@ defmodule Ash.Test.Resource.IdentitiesTest do
                        end
 
                        identities do
-                         identity :name_site, [:name, :site]
+                         identity :name_site, [:naem, :site]
                        end
                      end
                    end
