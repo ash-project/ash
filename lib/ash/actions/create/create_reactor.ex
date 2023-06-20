@@ -31,7 +31,6 @@ defmodule Ash.Actions.Create.CreateReactor do
     argument :opts, result(:setup_changeset_and_opts), transform: &Map.get(&1, :opts)
 
     run(fn %{changeset: changeset, opts: opts} ->
-      nil
       # this is basically what we need
       # but w/ more options to `Ash.Api.can` to get the right
       # kinds of exceptions out. Actually, we should just write
