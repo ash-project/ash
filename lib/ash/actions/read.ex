@@ -9,7 +9,6 @@ defmodule Ash.Actions.Read do
   alias Ash.Query.Aggregate
 
   require Logger
-  require Ash.Flags
   require Ash.Query
   require Ash.Tracer
 
@@ -71,39 +70,40 @@ defmodule Ash.Actions.Read do
           | {:error, term}
   def run(query, action, opts \\ [])
 
-  if Ash.Flags.read_uses_flow?() do
-    def run(query, action, opts), do: Ash.Actions.Flows.Read.run(query, action, opts)
-  else
-    def run(query, action, opts) do
-      {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
+  def run(query, action, opts) do
+    {query, opts} =
+      Ash.Actions.Helpers.add_process_context(
+        query.api,
+        query,
+        opts
+      )
 
-      Ash.Tracer.span :action,
-                      Ash.Api.Info.span_name(query.api, query.resource, action.name),
-                      opts[:tracer] do
-        metadata = %{
-          api: query.api,
-          resource: query.resource,
-          resource_short_name: Ash.Resource.Info.short_name(query.resource),
-          actor: opts[:actor],
-          tenant: opts[:tenant],
-          action: action.name,
-          authorize?: opts[:authorize?]
-        }
+    Ash.Tracer.span :action,
+                    Ash.Api.Info.span_name(query.api, query.resource, action.name),
+                    opts[:tracer] do
+      metadata = %{
+        api: query.api,
+        resource: query.resource,
+        resource_short_name: Ash.Resource.Info.short_name(query.resource),
+        actor: opts[:actor],
+        tenant: opts[:tenant],
+        action: action.name,
+        authorize?: opts[:authorize?]
+      }
 
-        Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(query.api), :read], metadata do
-          Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
+      Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(query.api), :read], metadata do
+        Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
-          case do_run(query, action, opts) do
-            {:error, error} ->
-              if opts[:tracer] do
-                opts[:tracer].set_error(Ash.Error.to_error_class(error))
-              end
+        case do_run(query, action, opts) do
+          {:error, error} ->
+            if opts[:tracer] do
+              opts[:tracer].set_error(Ash.Error.to_error_class(error))
+            end
 
-              {:error, error}
+            {:error, error}
 
-            other ->
-              other
-          end
+          other ->
+            other
         end
       end
     end
@@ -1742,12 +1742,9 @@ defmodule Ash.Actions.Read do
 
             Ash.Actions.Load.calc_dep_requests(
               relationship,
-              [
-                actor: request_opts[:actor],
-                authorize?: authorize?,
-                tracer: request_opts[:tracer],
-                tenant: request_opts[:tenant]
-              ],
+              request_opts
+              |> Keyword.take([:actor, :tracer, :tenant])
+              |> Keyword.put(:authorize?, authorize?),
               dep,
               path,
               query,

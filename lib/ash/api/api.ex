@@ -769,11 +769,11 @@ defmodule Ash.Api do
               end
 
             %Ash.Changeset{} ->
-              if opts[:return_forbidden_error?] do
-                {:ok, false, Ash.Error.Forbidden.exception([])}
-              else
-                {:ok, false}
-              end
+              raise """
+              Cannot have a policy evaluate to a filter with create actions.
+              """
+
+              {:ok, false}
           end
         else
           {:ok, :maybe}
@@ -1917,8 +1917,31 @@ defmodule Ash.Api do
   def create(api, changeset, opts) do
     with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @create_opts_schema),
          {:ok, resource} <- Ash.Api.Info.resource(api, changeset.resource),
-         {:ok, action} <- get_action(resource, opts, :create, changeset.action) do
-      Create.run(api, changeset, action, opts)
+         {:ok, action} <- get_action(resource, opts, :create, changeset.action),
+         %{valid?: true} = changeset <- Ash.Changeset.for_create(changeset, action, opts) do
+      changeset = %{changeset | api: api}
+
+      case Reactor.run(Ash.Actions.Create.CreateReactor, %{changeset: changeset, opts: opts}) do
+        {:ok, {result, notifications}} ->
+          {:ok, result, notifications}
+
+        {:ok, result} ->
+          {:ok, result}
+
+        {:error, [%Ash.Changeset{} = changeset]} ->
+          errors = changeset.errors
+          errors = Ash.Actions.Helpers.process_errors(changeset, errors)
+          {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
+
+        {:error, error} ->
+          errors = Ash.Actions.Helpers.process_errors(changeset, List.wrap(error))
+          {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
+      end
+    else
+      %Ash.Changeset{valid?: false} = changeset ->
+        errors = changeset.errors
+        errors = Ash.Actions.Helpers.process_errors(changeset, errors)
+        {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
     end
   end
 

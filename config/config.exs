@@ -2,9 +2,6 @@ import Config
 
 config :ash, :use_all_identities_in_manage_relationship?, false
 
-config :ash,
-  flags: [read_uses_flow?: System.get_env("FLAG_READ_USES_FLOW", "false") == "true"]
-
 if Mix.env() == :dev do
   config :git_ops,
     mix_project: Ash.MixProject,

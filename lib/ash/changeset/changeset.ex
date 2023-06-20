@@ -594,15 +594,19 @@ defmodule Ash.Changeset do
         action -> action
       end
 
-    changeset
-    |> set_context(%{
-      private: %{
-        upsert?: opts[:upsert?] || (action && action.upsert?) || false,
-        upsert_identity: opts[:upsert_identity] || (action && action.upsert_identity),
-        upsert_fields: opts[:upsert_fields] || (action && action.upsert_fields)
-      }
-    })
-    |> do_for_action(action, params, opts)
+    if changeset.__validated_for_action__ == action.name do
+      changeset
+    else
+      changeset
+      |> set_context(%{
+        private: %{
+          upsert?: opts[:upsert?] || (action && action.upsert?) || false,
+          upsert_identity: opts[:upsert_identity] || (action && action.upsert_identity),
+          upsert_fields: opts[:upsert_fields] || (action && action.upsert_fields)
+        }
+      })
+      |> do_for_action(action, params, opts)
+    end
   end
 
   @doc """
@@ -1099,10 +1103,19 @@ defmodule Ash.Changeset do
          is_nil(changeset.tenant) do
       add_error(
         changeset,
-        "#{inspect(changeset.resource)} changesets require a tenant to be specified"
+        Ash.Error.Invalid.TenantRequired.exception(resource: changeset.resource)
       )
     else
       changeset
+    end
+  end
+
+  @doc false
+  def validate_upsert_support(changeset) do
+    if Ash.DataLayer.data_layer_can?(changeset.resource, :upsert) do
+      changeset
+    else
+      add_error(changeset, "#{inspect(changeset.resource)} does not support upserts")
     end
   end
 
@@ -1699,11 +1712,20 @@ defmodule Ash.Changeset do
   @spec with_hooks(
           t(),
           (t() ->
-             {:ok, term, %{notifications: list(Ash.Notifier.Notification.t())}}
+             {:ok, term,
+              %{
+                required(:notifications) => list(Ash.Notifier.Notification.t()),
+                optional(atom) => any
+              }}
              | {:error, term}),
           Keyword.t()
         ) ::
-          {:ok, term, t(), %{notifications: list(Ash.Notifier.Notification.t())}} | {:error, term}
+          {:ok, term, t(),
+           %{
+             required(:notifications) => list(Ash.Notifier.Notification.t()),
+             optional(atom) => any
+           }}
+          | {:error, term}
   def with_hooks(changeset, func, opts \\ [])
 
   def with_hooks(changeset, _func, _opts) when changeset.valid? == false do

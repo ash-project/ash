@@ -76,15 +76,24 @@ defmodule Ash.Actions.Helpers do
 
   def set_opts(opts, api, query_or_changeset \\ nil) do
     opts
+    # add_actor does not set the actor in all cases
+    # we do this on purpose so that `add_authorize?` knows
+    # whether the actor was explicitly passed
+    # this is why afterwards we `Keyword.put_new(opts, :actor, nil)`
     |> add_actor(query_or_changeset, api)
     |> add_authorize?(api)
-    |> add_tenant()
+    |> Keyword.put_new(:actor, nil)
+    |> add_tenant(query_or_changeset)
     |> add_tracer()
   end
 
   def add_context(query_or_changeset, opts) do
     context = Process.get(:ash_context, %{}) || %{}
-    private_context = Map.new(Keyword.take(opts, [:actor, :authorize?]))
+
+    private_context =
+      opts
+      |> Keyword.take([:actor, :authorize?, :tracer])
+      |> Map.new()
 
     case query_or_changeset do
       %{__struct__: Ash.ActionInput} ->
@@ -96,6 +105,7 @@ defmodule Ash.Actions.Helpers do
         query_or_changeset
         |> Ash.Query.set_context(context)
         |> Ash.Query.set_context(%{private: private_context})
+        |> Ash.Query.set_tenant(opts[:tenant])
 
       %{__struct__: Ash.Changeset} ->
         query_or_changeset
@@ -103,6 +113,7 @@ defmodule Ash.Actions.Helpers do
         |> Ash.Changeset.set_context(%{
           private: private_context
         })
+        |> Ash.Changeset.set_tenant(opts[:tenant])
     end
   end
 
@@ -173,7 +184,7 @@ defmodule Ash.Actions.Helpers do
     end
   end
 
-  defp add_tenant(opts) do
+  defp add_tenant(opts, query_or_changeset) do
     if Keyword.has_key?(opts, :tenant) do
       opts
     else
@@ -182,7 +193,13 @@ defmodule Ash.Actions.Helpers do
           Keyword.put(opts, :tenant, value)
 
         _ ->
-          opts
+          case query_or_changeset do
+            %{tenant: tenant} ->
+              Keyword.put(opts, :tenant, tenant)
+
+            _ ->
+              opts
+          end
       end
     end
   end
@@ -198,7 +215,7 @@ defmodule Ash.Actions.Helpers do
         _ ->
           case Application.get_env(:ash, :tracer) do
             nil ->
-              opts
+              Keyword.put(opts, :tracer, nil)
 
             tracer ->
               Keyword.put(opts, :tracer, tracer)
@@ -207,8 +224,12 @@ defmodule Ash.Actions.Helpers do
     end
   end
 
-  def warn_missed!(resource, action, result) do
-    case Map.get(result, :resource_notifications, []) do
+  def warn_missed!(resource, action, %{resource_notifications: resource_notifications}) do
+    warn_missed!(resource, action, resource_notifications)
+  end
+
+  def warn_missed!(resource, action, resource_notifications) do
+    case resource_notifications do
       empty when empty in [nil, []] ->
         :ok
 
