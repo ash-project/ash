@@ -549,11 +549,10 @@ defmodule Ash.Test.Actions.LoadTest do
         |> manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
-      post2 =
-        Post
-        |> new(%{title: "post2"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
-        |> Api.create!()
+      Post
+      |> new(%{title: "post2"})
+      |> manage_relationship(:author, author, type: :append_and_remove)
+      |> Api.create!()
 
       author =
         Author
@@ -649,11 +648,11 @@ defmodule Ash.Test.Actions.LoadTest do
         |> manage_relationship(:categories, [category1, category2], type: :append_and_remove)
         |> Api.create!()
 
-      [post] =
-        Post
-        |> Ash.Query.load(:categories)
-        |> Ash.Query.filter(id == ^post.id)
-        |> Api.read!(authorize?: true)
+      assert [_] =
+               Post
+               |> Ash.Query.load(:categories)
+               |> Ash.Query.filter(id == ^post.id)
+               |> Api.read!(authorize?: true)
 
       assert %{posts: [%{categories: [_, _]}]} =
                Category
@@ -757,6 +756,17 @@ defmodule Ash.Test.Actions.LoadTest do
       |> Api.create!()
 
       assert [%{bio: %{full_name: "donald duck"}}] =
+               Author
+               |> Ash.Query.load(bio: :full_name)
+               |> Api.read!()
+    end
+
+    test "can load calculations through nil attributes" do
+      Author
+      |> new(%{name: "zerg"})
+      |> Api.create!()
+
+      assert [%{bio: nil}] =
                Author
                |> Ash.Query.load(bio: :full_name)
                |> Api.read!()

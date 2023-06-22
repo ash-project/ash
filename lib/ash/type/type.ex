@@ -837,9 +837,16 @@ defmodule Ash.Type do
     end)
   end
 
+  @doc false
   def splicing_nil_values(values, callback) when is_list(values) do
     values
-    |> Stream.flat_map(&List.wrap/1)
+    |> Stream.flat_map(fn value ->
+      if is_list(value) do
+        value
+      else
+        [value]
+      end
+    end)
     |> Stream.with_index()
     |> Enum.reduce({[], []}, fn
       {nil, index}, {acc, nil_indices} ->
