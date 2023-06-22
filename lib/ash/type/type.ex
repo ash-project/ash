@@ -1093,7 +1093,7 @@ defmodule Ash.Type do
         def equal?(left, right), do: left == right
       end
 
-      unless Module.defines?(__MODULE__, {:can_load, 1}, :def) do
+      unless Module.defines?(__MODULE__, {:can_load?, 1}, :def) do
         @impl Ash.Type
         if Module.defines?(__MODULE__, {:load, 4}, :def) do
           def can_load?(_), do: true
