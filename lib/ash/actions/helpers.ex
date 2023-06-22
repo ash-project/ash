@@ -485,25 +485,33 @@ defmodule Ash.Actions.Helpers do
   end
 
   def restrict_field_access(%_{} = record, query_or_changeset) do
-    record.calculations
-    |> Enum.reduce(record, fn {{:__ash_fields_are_visible__, fields}, value}, record ->
-      if value do
-        record
-      else
-        Enum.reduce(fields, record, fn field, record ->
-          type =
-            case Ash.Resource.Info.field(query_or_changeset.resource, field) do
-              %Ash.Resource.Aggregate{} -> :aggregate
-              %Ash.Resource.Attribute{} -> :attribute
-              %Ash.Resource.Calculation{} -> :calculation
-            end
+    if internal?(query_or_changeset) do
+      record
+    else
+      record.calculations
+      |> Enum.reduce(record, fn
+        {{:__ash_fields_are_visible__, fields}, value}, record ->
+          if value do
+            record
+          else
+            Enum.reduce(fields, record, fn field, record ->
+              type =
+                case Ash.Resource.Info.field(query_or_changeset.resource, field) do
+                  %Ash.Resource.Aggregate{} -> :aggregate
+                  %Ash.Resource.Attribute{} -> :attribute
+                  %Ash.Resource.Calculation{} -> :calculation
+                end
 
+              record
+              |> Map.put(field, %Ash.ForbiddenField{field: field, type: type})
+              |> replace_dynamic_loads(field, type, query_or_changeset)
+            end)
+          end
+
+        _, record ->
           record
-          |> Map.put(field, %Ash.ForbiddenField{field: field, type: type})
-          |> replace_dynamic_loads(field, type, query_or_changeset)
-        end)
-      end
-    end)
+      end)
+    end
   end
 
   defp replace_dynamic_loads(record, field, type, query_or_changeset)

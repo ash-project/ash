@@ -58,7 +58,15 @@ defmodule Ash.Actions.Load do
         if Map.get(relationship, :no_attributes?) do
           related_query
         else
-          Ash.Query.ensure_selected(related_query, relationship.destination_attribute)
+          if Map.get(relationship, :manual) &&
+               !Ash.Resource.Info.attribute(
+                 relationship.destination,
+                 relationship.destination_attribute
+               ) do
+            related_query
+          else
+            Ash.Query.ensure_selected(related_query, relationship.destination_attribute)
+          end
         end
 
       related_query =

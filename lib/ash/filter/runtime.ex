@@ -39,22 +39,22 @@ defmodule Ash.Filter.Runtime do
     {refs_to_load, refs} =
       filter
       |> Ash.Filter.list_refs()
-      |> Enum.reject(&match?(%{attribute: %Ash.Resource.Attribute{}}, &1))
       |> Enum.split_with(&(&1.relationship_path == []))
 
     refs_to_load =
       refs_to_load
-      |> Enum.reject(fn
-        %{attribute: %Ash.Resource.Calculation{}} ->
-          true
-
-        _ ->
-          false
-      end)
       |> Enum.map(fn
         %{attribute: %{name: name}} ->
           name
+
+        %{attribute: name} when is_atom(name) ->
+          name
+
+        _ ->
+          nil
       end)
+      |> Enum.filter(& &1)
+      |> Enum.reject(&Ash.Resource.loaded?(records, &1))
 
     records = api.load!(records, refs_to_load)
 
@@ -204,6 +204,67 @@ defmodule Ash.Filter.Runtime do
       |> Map.put(rel, value)
       |> Ash.Resource.set_metadata(%{unflattened_rels: %{rel => full_flattened}})
     end)
+  end
+
+  @doc false
+  def load_and_eval(record, expression, parent \\ nil, resource \\ nil, api \\ nil) do
+    if api && record do
+      {refs_to_load, refs} =
+        expression
+        |> Ash.Filter.list_refs()
+        |> Enum.split_with(&(&1.relationship_path == []))
+
+      refs_to_load =
+        refs_to_load
+        |> Enum.map(fn
+          %{attribute: %{name: name}} ->
+            name
+
+          %{attribute: name} when is_atom(name) ->
+            name
+
+          _ ->
+            nil
+        end)
+        |> Enum.filter(& &1)
+        |> Enum.reject(&Ash.Resource.loaded?(record, &1))
+
+      record =
+        case refs_to_load do
+          [] ->
+            record
+
+          refs ->
+            api.load!(record, refs)
+        end
+
+      expression
+      |> Ash.Filter.relationship_paths(true)
+      |> Enum.reject(&(&1 == []))
+      |> Enum.uniq()
+      |> Enum.reject(&Ash.Resource.loaded?(record, &1))
+      |> Enum.map(&path_to_load(resource, &1, refs))
+      |> case do
+        [] ->
+          do_match(record, expression, parent, resource)
+
+        need_to_load ->
+          query =
+            resource
+            |> Ash.Query.load(need_to_load)
+            |> Ash.Query.set_context(%{private: %{internal?: true}})
+
+          case api.load(record, query) do
+            {:ok, loaded} ->
+              do_match(loaded, expression, parent, resource)
+
+            other ->
+              other
+          end
+      end
+    else
+      do_match(record, expression, parent, resource)
+    end
   end
 
   @doc false
@@ -385,10 +446,35 @@ defmodule Ash.Filter.Runtime do
     resolve_ref(ref, record, parent, resource)
   end
 
-  defp resolve_expr(%BooleanExpression{left: left, right: right}, record, parent, resource) do
+  defp resolve_expr(
+         %BooleanExpression{op: :and, left: left, right: right},
+         record,
+         parent,
+         resource
+       ) do
     with {:ok, left_resolved} <- resolve_expr(left, record, parent, resource),
          {:ok, right_resolved} <- resolve_expr(right, record, parent, resource) do
-      {:ok, left_resolved && right_resolved}
+      if is_nil(left_resolved) || is_nil(right_resolved) do
+        {:ok, nil}
+      else
+        {:ok, !!left_resolved and !!right_resolved}
+      end
+    end
+  end
+
+  defp resolve_expr(
+         %BooleanExpression{op: :or, left: left, right: right},
+         record,
+         parent,
+         resource
+       ) do
+    with {:ok, left_resolved} <- resolve_expr(left, record, parent, resource),
+         {:ok, right_resolved} <- resolve_expr(right, record, parent, resource) do
+      if is_nil(left_resolved) || is_nil(right_resolved) do
+        {:ok, nil}
+      else
+        {:ok, !!left_resolved or !!right_resolved}
+      end
     end
   end
 
@@ -412,6 +498,7 @@ defmodule Ash.Filter.Runtime do
          resource
        ) do
     record
+    |> flatten_relationships([path])
     |> load_unflattened(path)
     |> get_related(path)
     |> case do
@@ -438,6 +525,7 @@ defmodule Ash.Filter.Runtime do
 
   defp resolve_expr(%Ash.Query.Exists{at_path: at_path} = exists, record, parent, resource) do
     record
+    |> flatten_relationships([at_path])
     |> get_related(at_path)
     |> case do
       :unknown ->
@@ -698,7 +786,7 @@ defmodule Ash.Filter.Runtime do
   defp path_to_load(resource, [first], refs) do
     to_load =
       refs
-      |> Enum.filter(&(&1.relationship_path == []))
+      |> Enum.filter(&(&1.relationship_path == [first]))
       |> Enum.map(fn
         %{attribute: %Ash.Resource.Calculation{load: nil} = calc} ->
           {calc.name, calc}
@@ -721,7 +809,7 @@ defmodule Ash.Filter.Runtime do
 
     to_load =
       refs
-      |> Enum.filter(&(&1.relationship_path == []))
+      |> Enum.filter(&(&1.relationship_path == [first]))
       |> Enum.map(fn
         %{attribute: %Ash.Resource.Calculation{load: nil} = calc} ->
           {calc.name, calc}

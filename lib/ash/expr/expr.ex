@@ -35,7 +35,13 @@ defmodule Ash.Expr do
 
   @doc false
   def eval_hydrated(expression, opts \\ []) do
-    Ash.Filter.Runtime.do_match(opts[:record], expression, opts[:parent], opts[:resource])
+    Ash.Filter.Runtime.load_and_eval(
+      opts[:record],
+      expression,
+      opts[:parent],
+      opts[:resource],
+      opts[:api]
+    )
   end
 
   defmacro where(left, right) do

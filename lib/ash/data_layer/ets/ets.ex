@@ -340,7 +340,7 @@ defmodule Ash.DataLayer.Ets do
          {:ok, records} <-
            filter_matches(records, filter, api),
          {:ok, records} <-
-           do_add_calculations(records, resource, calculations) do
+           do_add_calculations(records, resource, calculations, api) do
       offset_records =
         records
         |> Sort.runtime_sort(sort, api: api)
@@ -357,9 +357,9 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp do_add_calculations(records, _resource, []), do: {:ok, records}
+  defp do_add_calculations(records, _resource, [], _api), do: {:ok, records}
 
-  defp do_add_calculations(records, resource, calculations) do
+  defp do_add_calculations(records, resource, calculations, api) do
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
       calculations
       |> Enum.reduce_while({:ok, record}, fn calculation, {:ok, record} ->
@@ -370,7 +370,7 @@ defmodule Ash.DataLayer.Ets do
                public?: false
              }) do
           {:ok, expression} ->
-            case Ash.Expr.eval_hydrated(expression, record: record, resource: resource) do
+            case Ash.Expr.eval_hydrated(expression, record: record, resource: resource, api: api) do
               {:ok, value} ->
                 if calculation.load do
                   {:cont, {:ok, Map.put(record, calculation.load, value)}}

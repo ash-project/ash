@@ -20,6 +20,6 @@ defmodule Ash.Policy.FieldPolicy do
   end
 
   defp set_field_policy_opt(%{check_opts: opts} = policy) do
-    %{policy | check_opts: Keyword.put(opts, :ash_field_policy?, true)}
+    %{policy | check_opts: Keyword.merge(opts, ash_field_policy?: true, access_type: :filter)}
   end
 end

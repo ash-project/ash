@@ -67,8 +67,29 @@ defmodule Ash.Test.Policy.RbacTest do
                |> Map.get(:role)
     end
 
-    test "when reading as a user that cant see the field with a `relates_to_actor_via` check, the value is not displayed" do
-      raise "gotta do this"
+    test "when reading as a user that cant see the field with a `relates_to_actor_via` check, the value is not displayed",
+         %{
+           user: user,
+           ticket: ticket,
+           other_ticket: other_ticket
+         } do
+      Application.put_env(:foo, :bar, true)
+
+      assert nil ==
+               Ticket
+               |> Ash.Query.select(:status)
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
+               |> Ash.Query.filter(id == ^ticket.id)
+               |> Api.read_one!()
+               |> Map.get(:status)
+
+      assert %Ash.ForbiddenField{} =
+               Ticket
+               |> Ash.Query.select(:status)
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
+               |> Ash.Query.filter(id == ^other_ticket.id)
+               |> Api.read_one!()
+               |> Map.get(:status)
     end
   end
 

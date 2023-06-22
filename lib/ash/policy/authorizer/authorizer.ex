@@ -696,7 +696,7 @@ defmodule Ash.Policy.Authorizer do
           {:error, _} ->
             {false, authorizer}
 
-          {:filter, filter, authorizer} ->
+          {:filter, authorizer, filter} ->
             {filter, authorizer}
 
           {:filter_and_continue, filter, _authorizer} ->
@@ -716,6 +716,12 @@ defmodule Ash.Policy.Authorizer do
             """
         end
 
+      # This is a hack that we need to clean up.
+      # Creating this kind of expression should be its own thing that we do
+      # with something in the `Expr` module
+
+      %{expression: expr} = Ash.Filter.parse!(query_or_changeset.resource, expr)
+
       {:ok, calculation} =
         Ash.Query.Calculation.new(
           {:__ash_fields_are_visible__, fields},
@@ -732,7 +738,7 @@ defmodule Ash.Policy.Authorizer do
            ), authorizer}
 
         %Ash.Changeset{} = query ->
-          {Ash.Query.load(
+          {Ash.Changeset.load(
              query,
              calculation
            ), authorizer}
