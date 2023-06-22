@@ -19,6 +19,8 @@ defmodule Ash.Policy.Authorizer do
 
   @type t :: %__MODULE__{}
 
+  require Ash.Expr
+
   alias Ash.Policy.{Checker, Policy}
 
   @check_schema [
@@ -223,7 +225,108 @@ defmodule Ash.Policy.Authorizer do
     ]
   }
 
-  @sections [@policies]
+  @field_policy %Spark.Dsl.Entity{
+    name: :field_policy,
+    describe: """
+    Field policies behave similarly to policies. See `d:Ash.Policy.Authorizer.field_policies`
+    for more.
+    """,
+    identifier: {:auto, :unique_integer},
+    schema: [
+      description: [
+        type: :string,
+        doc: "A description for the policy, used when explaining authorization results"
+      ],
+      fields: [
+        type: {:wrap_list, :atom},
+        doc: "The field or fields that the policy applies to."
+      ],
+      condition: [
+        type: {:custom, __MODULE__, :validate_condition, []},
+        doc: """
+        A check or list of checks that must be true in order for this field policy to apply.
+        If not specified, it always applies.
+        """
+      ]
+    ],
+    args: [:fields, {:optional, :condition, {Ash.Policy.Check.Static, result: true}}],
+    target: Ash.Policy.FieldPolicy,
+    transform: {Ash.Policy.FieldPolicy, :transform, []},
+    entities: [
+      policies: [
+        @authorize_if,
+        @forbid_if,
+        @authorize_unless,
+        @forbid_unless
+      ]
+    ]
+  }
+
+  @field_policies %Spark.Dsl.Section{
+    name: :field_policies,
+    imports: [
+      Ash.Policy.Check.Builtins,
+      Ash.Filter.TemplateHelpers
+    ],
+    describe: """
+    Authorize access to specific fields via policies scoped to fields.
+
+    If *any* field policies exist then *all* fields must be authorized by a field policy.
+    If you want a "deny-list" style, then you can add policies for specific fields
+    and add a catch-all policy using the special field name `:*`. All policies that apply
+    to a field must be authorized.
+
+    The only exception to the above behavior is primary keys, which can always be read by everyone.
+
+    Additionally, keep in mind that adding `Ash.Policy.Authorizer` will require that all actions
+    pass policies. If you want to just add field policies, you will need to add a policy that allows
+    all access explicitly, i.e
+
+    ```elixir
+    policies do
+      policy always() do
+        authorize_if always()
+      end
+    end
+    ```
+
+    Using expressions: unlike in regular policies, expressions in field policies cannot refer
+    to related entities currently. Instead, you will need to create aggregates or expression calculations
+    that return the results you want to reference.
+
+    In results, forbidden fields will be replaced with a special value: `%Ash.ForbiddenField{}`.
+
+    When these fields are referred to in filters, they will be replaced with an expression that evaluates
+    to `nil`. To support this behavior, only expression/filter checks are allowed in field policies.
+    """,
+    examples: [
+      """
+      field_policies do
+        field_policy :admin_only_field do
+          authorize_if actor_attribute_equals(:admin, true)
+          authorize_if
+        end
+      end
+      """,
+      """
+      # Example of denylist style
+      field_policies do
+        field_policy [:sensitive, :fields] do
+          authorize_if actor_attribute_equals(:admin, true)
+        end
+
+        field_policy :* do
+          authorize_if always()
+        end
+      end
+      """
+    ],
+    entities: [
+      @field_policy
+    ]
+  }
+
+  @sections [@policies, @field_policies]
 
   @moduledoc """
   An authorization extension for ash resources.
@@ -272,8 +375,14 @@ defmodule Ash.Policy.Authorizer do
 
   @behaviour Ash.Authorizer
 
+  @transformers [
+    Ash.Policy.Authorizer.Transformers.AddMissingFieldPolicies,
+    Ash.Policy.Authorizer.Transformers.CacheFieldPolicies
+  ]
+
   use Spark.Dsl.Extension,
-    sections: @sections
+    sections: @sections,
+    transformers: @transformers
 
   @impl true
   def exception({:changeset_doesnt_match_filter, filter}, state) do
@@ -389,6 +498,249 @@ defmodule Ash.Policy.Authorizer do
       {other, _authorizer} ->
         other
     end
+  end
+
+  @impl true
+  def alter_filter(
+        %Ash.Filter{expression: expression, resource: resource} = filter,
+        authorizer,
+        context
+      ) do
+    {expr, _acc} =
+      replace_refs(expression, %{
+        stack: [{resource, [], context.query.action}],
+        authorizers: %{{resource, context.query.action} => authorizer},
+        verbose?: authorizer.verbose?,
+        actor: authorizer.actor
+      })
+
+    {:ok, %{filter | expression: expr}}
+  end
+
+  def alter_filter(filter, _, _), do: {:ok, filter}
+
+  defp replace_refs(expression, acc) do
+    case expression do
+      %Ash.Query.BooleanExpression{op: op, left: left, right: right} ->
+        {left, acc} = replace_refs(left, acc)
+        {right, acc} = replace_refs(right, acc)
+        {Ash.Query.BooleanExpression.optimized_new(op, left, right), acc}
+
+      %Ash.Query.Not{expression: not_expr} = expr ->
+        {not_expr, acc} = replace_refs(not_expr, acc)
+        {%{expr | expression: not_expr}, acc}
+
+      %Ash.Query.Parent{expr: expr} = this ->
+        {expr, acc} = replace_refs(expr, %{acc | stack: Enum.drop(acc.stack, 1)})
+
+        {%{this | expr: expr}, acc}
+
+      %Ash.Query.Exists{expr: expr, at_path: at_path, path: path} = exists ->
+        full_path = at_path ++ path
+        [{resource, current_path, _} | _] = acc.stack
+        {resource, action} = related_with_action(resource, full_path)
+
+        {expr, acc} =
+          replace_refs(expr, %{
+            acc
+            | stack: [{resource, current_path ++ full_path, action} | acc.stack]
+          })
+
+        {%{exists | expr: expr}, acc}
+
+      %{__operator__?: true, left: left, right: right} = op ->
+        {left, acc} = replace_refs(left, acc)
+        {right, acc} = replace_refs(right, acc)
+
+        {%{op | left: left, right: right}, acc}
+
+      %{__function__?: true, arguments: arguments} = function ->
+        {args, acc} =
+          Enum.reduce(arguments, {[], acc}, fn arg, {args, acc} ->
+            {arg, acc} = replace_refs(arg, acc)
+            {[arg | args], acc}
+          end)
+
+        {%{function | arguments: Enum.reverse(args)}, acc}
+
+      %Ash.Query.Ref{input?: true} = ref ->
+        do_replace_ref(ref, acc)
+
+      other ->
+        {other, acc}
+    end
+  end
+
+  defp do_replace_ref(
+         %{attribute: %struct{name: name}} = ref,
+         %{stack: [{resource, _path, action} | _]} = acc
+       )
+       when struct in [Ash.Resource.Attribute, Ash.Resource.Aggregate, Ash.Resource.Calculation] do
+    {expr, acc} = expression_for_field(resource, name, action, ref, acc)
+
+    {expr, acc}
+  end
+
+  defp do_replace_ref(ref, acc) do
+    {ref, acc}
+  end
+
+  defp related_with_action(resource, path) do
+    first = :lists.droplast(path)
+    last = List.last(path)
+
+    relationship =
+      resource
+      |> Ash.Resource.Info.related(first)
+      |> Ash.Resource.Info.relationship(last)
+
+    if relationship.read_action do
+      {relationship.destination,
+       Ash.Resource.Info.action(relationship.destination, relationship.read_action)}
+    else
+      {relationship.destination,
+       Ash.Resource.Info.primary_action!(relationship.destination, :read)}
+    end
+  end
+
+  defp expression_for_field(resource, field, action, ref, acc) do
+    policies = Ash.Policy.Info.field_policies_for_field(resource, field)
+
+    {authorizer, acc} =
+      case Map.fetch(acc.authorizers, {resource, action}) do
+        {:ok, authorizer} ->
+          {authorizer, acc}
+
+        :error ->
+          authorizer = initial_state(acc.actor, resource, action, acc.verbose?)
+
+          {authorizer,
+           %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
+      end
+
+    {expr, authorizer} =
+      case strict_check_result(%{authorizer | policies: policies}) do
+        {:authorized, authorizer} ->
+          {true, authorizer}
+
+        {:error, _} ->
+          {false, authorizer}
+
+        {:filter, filter, authorizer} ->
+          {filter, authorizer}
+
+        {:filter_and_continue, filter, _authorizer} ->
+          raise """
+          Was given a partial filter for a field policy for field #{inspect(field)}.
+
+          Filter: #{inspect(filter)}
+
+          Field policies must currently use only filter checks or simple checks.
+          """
+
+        {:continue, _} ->
+          raise """
+          Detected necessity for a runtime check for a field policy for field #{inspect(field)}.
+
+          Field policies must currently use only filter checks or simple checks.
+          """
+      end
+
+    expr =
+      Ash.Expr.expr(
+        if ^expr do
+          ^%{ref | input?: false}
+        else
+          nil
+        end
+      )
+
+    {expr, %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
+  end
+
+  @impl true
+  def add_calculations(query_or_changeset, authorizer, _context) do
+    accessing_fields =
+      case query_or_changeset do
+        %Ash.Query{} = query ->
+          Ash.Query.accessing(query, [:attributes, :calculations, :aggregates])
+
+        %Ash.Changeset{} = changeset ->
+          Ash.Changeset.accessing(changeset, [:attributes, :calculations, :aggregates])
+      end
+
+    query_or_changeset.resource
+    |> Ash.Policy.Info.field_policies()
+    |> Enum.filter(fn policy ->
+      Enum.any?(policy.fields, &(&1 in accessing_fields))
+    end)
+    |> Enum.reduce(%{}, fn field_policy, acc ->
+      field_policy.fields
+      |> Enum.reduce(%{}, fn field, acc ->
+        Map.update(acc, field, [field_policy], &[field_policy | &1])
+      end)
+      |> Enum.reduce(acc, fn {field, field_policies}, acc ->
+        Map.update(acc, field_policies, [field], &[field | &1])
+      end)
+      |> Map.new(fn {key, value} ->
+        {key, Enum.uniq(value)}
+      end)
+    end)
+    |> Enum.reduce({query_or_changeset, authorizer}, fn {policies, fields},
+                                                        {query_or_changeset, authorizer} ->
+      {expr, authorizer} =
+        case strict_check_result(%{authorizer | policies: policies}) do
+          {:authorized, authorizer} ->
+            {true, authorizer}
+
+          {:error, _} ->
+            {false, authorizer}
+
+          {:filter, filter, authorizer} ->
+            {filter, authorizer}
+
+          {:filter_and_continue, filter, _authorizer} ->
+            raise """
+            Was given a partial filter for a field policy for fields #{inspect(fields)}.
+
+            Filter: #{inspect(filter)}
+
+            Field policies must currently use only filter checks or simple checks.
+            """
+
+          {:continue, _} ->
+            raise """
+            Detected necessity for a runtime check for a field policy for fields #{inspect(fields)}.
+
+            Field policies must currently use only filter checks or simple checks.
+            """
+        end
+
+      {:ok, calculation} =
+        Ash.Query.Calculation.new(
+          {:__ash_fields_are_visible__, fields},
+          Ash.Resource.Calculation.Expression,
+          [expr: expr],
+          :boolean
+        )
+
+      case query_or_changeset do
+        %Ash.Query{} = query ->
+          {Ash.Query.load(
+             query,
+             calculation
+           ), authorizer}
+
+        %Ash.Changeset{} = query ->
+          {Ash.Query.load(
+             query,
+             calculation
+           ), authorizer}
+      end
+    end)
+    |> then(fn {result, authorizer} ->
+      {:ok, result, authorizer}
+    end)
   end
 
   defp strict_check_all_facts(authorizer) do

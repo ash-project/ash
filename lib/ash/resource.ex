@@ -378,6 +378,7 @@ defmodule Ash.Resource do
       :__meta__,
       :__metadata__,
       :__order__,
+      :*,
       :calculations,
       :aggregates,
       :relationships,

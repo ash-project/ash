@@ -133,17 +133,4 @@ defmodule Ash.Test.Policy.SimpleTest do
   test "filter checks work via deeply related data", %{user: user} do
     assert Api.read!(Trip, actor: user) == []
   end
-
-  describe "loading" do
-    test "fails if loading the specified item", %{user: user} do
-      Trip
-      |> Api.read!(action: :cant_load_car, actor: user)
-
-      assert_raise(Ash.Error.Forbidden, fn ->
-        Trip
-        |> Ash.Query.load(:car)
-        |> Api.read!(action: :cant_load_car, actor: user)
-      end)
-    end
-  end
 end

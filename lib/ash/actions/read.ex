@@ -301,7 +301,9 @@ defmodule Ash.Actions.Read do
                   filter_requests: [],
                   query_opts: query_opts
                 })
+                |> Ash.Query.select(query.select || [])
                 |> query_with_initial_data(request_opts)
+                |> add_field_level_auth(api, request_opts)
                 |> case do
                   %{valid?: true} = query ->
                     {:ok, query}
@@ -444,6 +446,7 @@ defmodule Ash.Actions.Read do
                   |> case do
                     {:ok, values} ->
                       values
+                      |> Helpers.restrict_field_access(query)
                       |> add_tenant(query)
                       |> add_page(
                         action,
@@ -1184,7 +1187,7 @@ defmodule Ash.Actions.Read do
                        %{
                          actor: actor,
                          tenant: ash_query.tenant,
-                         authorize?: authorize?,
+                         authorize?: false,
                          api: ash_query.api
                        },
                        true
@@ -2315,6 +2318,47 @@ defmodule Ash.Actions.Read do
       end
     end)
     |> elem(1)
+  end
+
+  defp add_field_level_auth(query, api, opts) do
+    if opts[:authorize?] do
+      do_add_field_level_auth(query, api, opts)
+    else
+      query
+    end
+  end
+
+  defp do_add_field_level_auth(query, api, opts) do
+    data = %{
+      query: query,
+      changeset: nil,
+      api: api,
+      resource: query.resource,
+      action_input: nil
+    }
+
+    query.resource
+    |> Ash.Resource.Info.authorizers()
+    |> Enum.reduce(query, fn authorizer, query ->
+      state =
+        Ash.Authorizer.initial_state(
+          authorizer,
+          opts[:actor],
+          query.resource,
+          query.action,
+          opts[:verbose?] || false
+        )
+
+      context = Ash.Authorizer.strict_check_context(authorizer, data)
+
+      case Ash.Authorizer.add_calculations(authorizer, query, state, context) do
+        {:ok, query, _} ->
+          query
+
+        {:error, error} ->
+          Ash.Query.add_error(query, error)
+      end
+    end)
   end
 
   defp set_tenant(query, ash_query) do

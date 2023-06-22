@@ -255,9 +255,10 @@ defmodule Ash.Policy.Policy do
   end
 
   defp compile_policy_expression(
-         [%__MODULE__{condition: condition, policies: policies}],
+         [%struct{condition: condition, policies: policies}],
          authorizer
-       ) do
+       )
+       when struct in [__MODULE__, Ash.Policy.FieldPolicy] do
     {condition_expression, authorizer} = condition_expression(condition, authorizer)
 
     case condition_expression do

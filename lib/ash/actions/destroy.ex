@@ -333,6 +333,7 @@ defmodule Ash.Actions.Destroy do
                           authorize?: authorize?,
                           tracer: tracer
                         )
+                        |> Helpers.restrict_field_access(changeset)
                       else
                         result
                       end

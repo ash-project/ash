@@ -20,7 +20,7 @@ defmodule Ash.MixProject do
       package: package(),
       deps: deps(),
       dialyzer: [plt_add_apps: [:mix, :mnesia, :earmark, :plug]],
-      xref: [exclude: [:mnesia]],
+      included_applications: [:mnesia],
       docs: docs(),
       aliases: aliases(),
       description: @description,
@@ -273,7 +273,7 @@ defmodule Ash.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:spark, "~> 1.0"},
+      {:spark, "~> 1.1 and >= 1.1.18"},
       {:ecto, "~> 3.7"},
       {:ets, "~> 0.8.0"},
       {:decimal, "~> 2.0"},

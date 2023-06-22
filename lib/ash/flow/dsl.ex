@@ -210,6 +210,8 @@ defmodule Ash.Flow.Dsl do
     ]
   }
 
+  @leaf_steps [@create, @debug, @update, @destroy, @validate, @read, @run_flow, @custom]
+
   @transaction %Spark.Dsl.Entity{
     name: :transaction,
     describe: """
@@ -220,7 +222,7 @@ defmodule Ash.Flow.Dsl do
     args: [:name, :resource],
     recursive_as: :steps,
     entities: [
-      steps: []
+      steps: @leaf_steps
     ],
     no_depend_modules: [:touches_resources],
     examples: [
@@ -255,7 +257,7 @@ defmodule Ash.Flow.Dsl do
     recursive_as: :steps,
     no_depend_modules: [:touches_resources],
     entities: [
-      steps: []
+      steps: @leaf_steps
     ],
     examples: [
       """
@@ -284,7 +286,7 @@ defmodule Ash.Flow.Dsl do
     recursive_as: :steps,
     no_depend_modules: [:touches_resources],
     entities: [
-      steps: []
+      steps: @leaf_steps
     ],
     examples: [
       """
@@ -316,19 +318,12 @@ defmodule Ash.Flow.Dsl do
       """
     ],
     imports: [Ash.Flow.StepHelpers],
-    entities: [
-      @map,
-      @branch,
-      @transaction,
-      @create,
-      @debug,
-      @update,
-      @destroy,
-      @validate,
-      @read,
-      @run_flow,
-      @custom
-    ]
+    entities:
+      [
+        @map,
+        @branch,
+        @transaction
+      ] ++ @leaf_steps
   }
 
   @transformers [

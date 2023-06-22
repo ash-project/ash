@@ -216,6 +216,7 @@ defmodule Ash.Filter do
           aggregates: aggregates,
           calculations: calculations,
           public?: true,
+          input?: true,
           data_layer: Ash.DataLayer.data_layer(resource)
         },
         context
@@ -303,6 +304,7 @@ defmodule Ash.Filter do
           aggregates: aggregates,
           calculations: calculations,
           public?: false,
+          input?: false,
           root_resource: resource,
           data_layer: Ash.DataLayer.data_layer(resource)
         },
@@ -2570,7 +2572,7 @@ defmodule Ash.Filter do
     else
       {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
 
-      Logger.warn(
+      Logger.warning(
         "Failed to detect relationship #{inspect(resource)} | #{inspect([item | rest])}\n#{Exception.format_stacktrace(stacktrace)}"
       )
 
@@ -2848,6 +2850,7 @@ defmodule Ash.Filter do
       %Ash.Query.Ref{
         attribute: value,
         relationship_path: [],
+        input?: context.input?,
         resource: context.root_resource
       },
       context
@@ -2869,6 +2872,8 @@ defmodule Ash.Filter do
         %{aggregates: aggregates, calculations: calculations} = context
       )
       when is_atom(attribute) or is_binary(attribute) do
+    ref = %{ref | input?: ref.input? || context[:input?] || false}
+
     case related(context, ref.relationship_path) do
       nil ->
         {:error,
@@ -2917,7 +2922,10 @@ defmodule Ash.Filter do
             with %{valid?: true} = aggregate_query <-
                    Ash.Query.for_read(agg_related, read_action),
                  %{valid?: true} = aggregate_query <-
-                   Ash.Query.build(aggregate_query, filter: aggregate.filter, sort: aggregate.sort),
+                   Ash.Query.build(aggregate_query,
+                     filter: aggregate.filter,
+                     sort: aggregate.sort
+                   ),
                  {:ok, query_aggregate} <-
                    Aggregate.new(
                      related,
@@ -2968,6 +2976,7 @@ defmodule Ash.Filter do
   end
 
   def do_hydrate_refs(%Ref{relationship_path: relationship_path, resource: nil} = ref, context) do
+    ref = %{ref | input?: ref.input? || context[:input?] || false}
     {:ok, %{ref | resource: Ash.Resource.Info.related(context.resource, relationship_path)}}
   end
 
@@ -3044,6 +3053,7 @@ defmodule Ash.Filter do
       aggregates: %{},
       calculations: %{},
       public?: context[:public?],
+      input?: context[:input?],
       data_layer: Ash.DataLayer.data_layer(new_resource)
     }
 
@@ -3071,6 +3081,10 @@ defmodule Ash.Filter do
       {:ok, value} -> {:ok, Enum.reverse(value)}
       {:error, error} -> {:error, error}
     end
+  end
+
+  def do_hydrate_refs(%Ref{} = ref, context) do
+    {:ok, %{ref | input?: ref.input? || context[:input?] || false}}
   end
 
   def do_hydrate_refs(val, _context) do

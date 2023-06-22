@@ -518,6 +518,7 @@ defmodule Ash.Actions.Create do
                     authorize?: authorize?,
                     tracer: tracer
                   )
+                  |> Helpers.restrict_field_access(changeset)
 
                 {:error, %Ash.Changeset{} = changeset} ->
                   {:error, changeset.errors, %{set: %{changeset: changeset}}}

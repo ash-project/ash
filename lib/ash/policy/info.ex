@@ -23,6 +23,11 @@ defmodule Ash.Policy.Info do
     Application.get_env(:ash, :policies)[:log_successful_policy_breakdowns]
   end
 
+  @doc "Gets the field policies relevant to a given field"
+  def field_policies_for_field(resource, field) do
+    Extension.get_persisted(resource, :fields_to_field_policies, %{})[field]
+  end
+
   @doc """
   A utility to determine if a given query/changeset would pass authorization.
 
@@ -131,6 +136,12 @@ defmodule Ash.Policy.Info do
     |> Enum.map_join("\n", fn line ->
       "  " <> line
     end)
+  end
+
+  def field_policies(resource) do
+    resource
+    |> Extension.get_entities([:field_policies])
+    |> set_access_type(default_access_type(resource))
   end
 
   def policies(resource) do

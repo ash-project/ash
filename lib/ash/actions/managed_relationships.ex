@@ -1682,7 +1682,10 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.Changeset.set_context(%{
           accessing_from: %{source: join_relationship.source, name: join_relationship.name}
         })
-        |> Ash.Changeset.for_destroy(action_name, %{}, actor: actor, authorize?: opts[:authorize?])
+        |> Ash.Changeset.for_destroy(action_name, %{},
+          actor: actor,
+          authorize?: opts[:authorize?]
+        )
         |> Ash.Changeset.set_context(join_relationship.context)
         |> Ash.Changeset.set_tenant(tenant)
         |> api(changeset, join_relationship).destroy(return_notifications?: true)
@@ -1790,7 +1793,10 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.Changeset.set_context(%{
           accessing_from: %{source: join_relationship.source, name: join_relationship.name}
         })
-        |> Ash.Changeset.for_destroy(action_name, %{}, actor: actor, authorize?: opts[:authorize?])
+        |> Ash.Changeset.for_destroy(action_name, %{},
+          actor: actor,
+          authorize?: opts[:authorize?]
+        )
         |> Ash.Changeset.set_context(join_relationship.context)
         |> Ash.Changeset.set_tenant(tenant)
         |> api(changeset, join_relationship).destroy(return_notifications?: true)

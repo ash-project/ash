@@ -182,7 +182,7 @@ defmodule Ash.DataLayer do
   @callback destroy(Ash.Resource.t(), Ash.Changeset.t()) :: :ok | {:error, term}
   @callback transaction(
               Ash.Resource.t(),
-              (() -> term),
+              (-> term),
               nil | pos_integer(),
               reason :: transaction_reason()
             ) ::
@@ -246,7 +246,7 @@ defmodule Ash.DataLayer do
   @doc "Wraps the execution of the function in a transaction with the resource's data_layer"
   @spec transaction(
           Ash.Resource.t() | [Ash.Resource.t()],
-          (() -> term),
+          (-> term),
           nil | pos_integer(),
           reason :: transaction_reason()
         ) :: term

@@ -1821,7 +1821,7 @@ defmodule Ash.Changeset do
           "still"
         end
 
-      Logger.warn("""
+      Logger.warning("""
       One or more `#{type}` hooks on `#{inspect(changeset.resource)}.#{changeset.action.name}` are being executed,
       but there is an ongoing transaction #{message} happening.
 
@@ -2266,7 +2266,7 @@ defmodule Ash.Changeset do
 
   @spec manage_relationship_opts(manage_relationship_type()) :: Keyword.t()
   def manage_relationship_opts(:replace) do
-    Logger.warn(
+    Logger.warning(
       "type: :replace has been renamed to `:append_and_remove` in 2.0, and it will be removed in 2.1"
     )
 
@@ -2646,7 +2646,7 @@ defmodule Ash.Changeset do
   def manage_relationship(changeset, relationship, input, opts) do
     opts =
       if opts[:type] == :replace do
-        Logger.warn(
+        Logger.warning(
           "type: :replace has been renamed to `:append_and_remove` in 2.0, and it will be removed in 2.1"
         )
 
@@ -3158,7 +3158,7 @@ defmodule Ash.Changeset do
   Use this if you want to only perform some expensive calculation for an attribute value
   only if there isn't already a change for that attribute
   """
-  @spec change_new_attribute_lazy(t(), atom, (() -> any)) :: t()
+  @spec change_new_attribute_lazy(t(), atom, (-> any)) :: t()
   def change_new_attribute_lazy(changeset, attribute, func) do
     maybe_already_validated_error!(changeset, :force_change_new_attribute_lazy)
 
@@ -3282,7 +3282,7 @@ defmodule Ash.Changeset do
 
   See `change_new_attribute_lazy/3` for more.
   """
-  @spec force_change_new_attribute_lazy(t(), atom, (() -> any)) :: t()
+  @spec force_change_new_attribute_lazy(t(), atom, (-> any)) :: t()
   def force_change_new_attribute_lazy(changeset, attribute, func) do
     if changing_attribute?(changeset, attribute) do
       changeset

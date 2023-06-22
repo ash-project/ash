@@ -615,17 +615,17 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Returns all attributes, aggregates, calculations and relationships of a resource"
-  @spec fields(Spark.Dsl.t() | Ash.Resource.t()) :: [
+  @spec fields(
+          Spark.Dsl.t() | Ash.Resource.t(),
+          types :: list(:attributes | :aggregates | :calculations | :relationships)
+        ) :: [
           Ash.Resource.Attribute.t()
           | Ash.Resource.Aggregate.t()
           | Ash.Resource.Calculation.t()
           | Ash.Resource.Relationships.relationship()
         ]
-  def fields(resource) do
-    Extension.get_entities(resource, [:attributes])
-    |> Enum.concat(Extension.get_entities(resource, [:aggregates]))
-    |> Enum.concat(Extension.get_entities(resource, [:calculations]))
-    |> Enum.concat(Extension.get_entities(resource, [:relationships]))
+  def fields(resource, types \\ [:attributes, :aggregates, :calculations, :relationships]) do
+    Enum.flat_map(types, &Extension.get_entities(resource, [&1]))
   end
 
   @doc "Get a field from a resource by name"

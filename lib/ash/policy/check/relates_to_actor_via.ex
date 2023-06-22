@@ -21,7 +21,7 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
       last_relationship.destination
       |> Ash.Resource.Info.primary_key()
 
-    if to_many? do
+    if to_many? || opts[:ash_field_policy?] do
       Ash.Expr.expr(
         exists(
           ^opts[:relationship_path],

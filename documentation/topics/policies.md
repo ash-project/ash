@@ -1,6 +1,8 @@
 # Policies
 
-Policies determine what actions on a resource are permitted for a given actor.
+Policies determine what actions on a resource are permitted for a given actor, and can also filter the results of read actions to restrict the results to only records that should be visible.
+
+To restrict access to specific fields (attributes, aggregates, calculations), the section on field policies.
 
 Read and understand the [Security](/documentation/topics/security.md) guide before proceeding, which explains actors, how to set them, and other relevant configurations.
 
@@ -316,6 +318,47 @@ Resource
 ```
 
 In policies (and often any time you mean "a related thing exists where some condition is true"), it is advised to use `exists/2` when referring to relationships because of the way that the policy authorizer may mix & match your policies when building filters. This is also true when adding filters to actions. If you use `exists`, then your policies can be used in filters without excluding unnecessary data.
+
+## Field Policies
+
+Field policies allow you to authorize access to specific fields via policies scoped to fields.
+
+For example:
+
+```elixir
+field_policies do
+  field_policy :role do
+    authorize_if actor_attribute_equals(:role, :supervisor)
+  end
+end
+```
+
+If *any* field policies exist then *all* fields must be authorized by a field policy.
+If you want a "deny-list" style, then you can add policies for specific fields.
+and add a catch-all policy using the special field name `:*`. All policies that apply
+to a field must be authorized.
+
+The only exception to the above behavior is primary keys, which can always be read by everyone.
+
+Additionally, keep in mind that adding `Ash.Policy.Authorizer` will require that all actions
+pass policies. If you want to just add field policies, you will need to add a policy that allows
+all access explicitly, i.e
+
+```elixir
+policies do
+  policy always() do
+    authorize_if always()
+  end
+end
+```
+
+### Using Expressions In Field Policies
+
+Unlike in regular policies, expressions in field policies cannot refer to related entities currently (except when using exists). Instead, you will need to create aggregates or expression calculations that return the results you want to reference.
+
+In results, forbidden fields will be replaced with a special value: `%Ash.ForbiddenField{}`.
+
+When these fields are referred to in filters, they will be replaced with an expression that evaluates to `nil`. To support this behavior, only simple and filter checks are allowed in field policies.
 
 ## Debugging and Logging
 

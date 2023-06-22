@@ -1,7 +1,7 @@
 defmodule Ash.Policy.Checker do
   @moduledoc false
 
-  alias Ash.Policy.{Check, Policy}
+  alias Ash.Policy.{Check, Policy, FieldPolicy}
 
   def strict_check_all_facts(%{policies: policies} = authorizer) do
     Enum.reduce_while(policies, {:ok, authorizer, authorizer.facts}, fn policy,
@@ -16,7 +16,8 @@ defmodule Ash.Policy.Checker do
     end)
   end
 
-  defp do_strict_check_all_facts(%Policy{} = policy, authorizer, facts) do
+  defp do_strict_check_all_facts(%policy_struct{} = policy, authorizer, facts)
+       when policy_struct in [Policy, FieldPolicy] do
     policy.condition
     |> List.wrap()
     |> Enum.reduce_while({:ok, authorizer, facts}, fn {check_module, opts},

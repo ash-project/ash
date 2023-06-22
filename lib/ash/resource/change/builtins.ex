@@ -164,7 +164,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   @spec set_attribute(
           relationship :: atom,
-          (() -> term) | {:_arg, :status} | term(),
+          (-> term) | {:_arg, :status} | term(),
           opts :: Keyword.t()
         ) ::
           Ash.Resource.Change.ref()
@@ -190,7 +190,7 @@ defmodule Ash.Resource.Change.Builtins do
       change set_new_attribute(:opened_at, &DateTime.utc_now/0)
       change set_new_attribute(:status, arg(:status))
   """
-  @spec set_new_attribute(relationship :: atom, (() -> term) | {:_arg, :status} | term()) ::
+  @spec set_new_attribute(relationship :: atom, (-> term) | {:_arg, :status} | term()) ::
           Ash.Resource.Change.ref()
   def set_new_attribute(attribute, value) do
     {Ash.Resource.Change.SetAttribute, attribute: attribute, value: value, new?: true}

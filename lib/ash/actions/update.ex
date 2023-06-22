@@ -462,6 +462,7 @@ defmodule Ash.Actions.Update do
                         authorize?: authorize?,
                         tracer: tracer
                       )
+                      |> Helpers.restrict_field_access(changeset)
                     end,
                     transaction?:
                       Keyword.get(request_opts, :transaction?, true) && action.transaction?,
@@ -485,7 +486,10 @@ defmodule Ash.Actions.Update do
 
                       {:ok, updated}
                       |> add_tenant(changeset)
-                      |> manage_relationships(api, changeset, actor: actor, authorize?: authorize?)
+                      |> manage_relationships(api, changeset,
+                        actor: actor,
+                        authorize?: authorize?
+                      )
                       |> case do
                         {:ok, data, %{notifications: new_notifications}} ->
                           {:ok, data,

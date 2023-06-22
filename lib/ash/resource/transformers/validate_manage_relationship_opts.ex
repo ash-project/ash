@@ -52,7 +52,7 @@ defmodule Ash.Resource.Transformers.ValidateManagedRelationshipOpts do
           try do
             opts =
               if opts[:opts][:type] == :replace do
-                Logger.warn(
+                Logger.warning(
                   "type: :replace has been renamed to `:append_and_remove` in 2.0, and it will be removed in 2.1"
                 )
 

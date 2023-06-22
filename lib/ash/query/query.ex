@@ -216,6 +216,36 @@ defmodule Ash.Query do
   end
 
   @doc """
+  Attach a filter statement to the query labelled as user input.
+
+  Filters added as user input (or filters constructed with `Ash.Filter.parse_input`)
+  will honor any field policies on resources by replacing any references to the field
+  with `nil` in cases where the actor should not be able to see the given field.
+
+  This function does not expect the expression style filter (because an external source
+  could never reasonably provide that). Instead, use the keyword/map style syntax. For
+  example:
+
+  `expr(name == "fred")`
+
+  could be any of
+
+  - map syntax: `%{"name" => %{"eq" => "fred"}}`
+  - keyword syntax: `[name: [eq: "fred"]]`
+
+  See `Ash.Filter` for more.
+  """
+  def filter_input(query, filter) do
+    case Ash.Filter.parse_input(query.resource, filter) do
+      {:ok, filter} ->
+        do_filter(query, filter)
+
+      {:error, error} ->
+        add_error(query, :filter, error)
+    end
+  end
+
+  @doc """
   Attach a filter statement to the query.
 
   The filter is applied as an "and" to any filters currently on the query.
@@ -804,20 +834,10 @@ defmodule Ash.Query do
 
   Provide a list of field types to narrow down the returned results.
   """
-  def accessing(query, types \\ [:attributes, :relationships, :calculations, :attributes]) do
-    [
-      {:aggregates, Ash.Resource.Info.aggregates(query)},
-      {:relationships, Ash.Resource.Info.relationships(query)},
-      {:calculations, Ash.Resource.Info.calculations(query)},
-      {:attributes, Ash.Resource.Info.attributes(query)}
-    ]
-    |> Stream.flat_map(fn {type, fields} ->
-      if type in types do
-        fields
-      else
-        []
-      end
-    end)
+  def accessing(query, types \\ [:attributes, :relationships, :calculations, :aggregates]) do
+    query.resource
+    |> Ash.Resource.Info.fields(types)
+    |> Stream.reject(& &1.private?)
     |> Stream.map(& &1.name)
     |> Enum.filter(&loading?(query, &1))
   end
@@ -885,8 +905,12 @@ defmodule Ash.Query do
   end
 
   def loading?(query, item) when is_atom(item) do
-    item in List.wrap(query.select) ||
-      Keyword.has_key?(query.load || [], item) ||
+    selecting? =
+      if Ash.Resource.Info.attribute(query.resource, item) do
+        is_nil(query.select) || item in query.select
+      end
+
+    selecting? || Keyword.has_key?(query.load || [], item) ||
       Enum.any?(query.calculations, fn
         {_, %{module: Ash.Resource.Calculation.LoadRelationship, opts: opts}} ->
           opts[:relationship] == item

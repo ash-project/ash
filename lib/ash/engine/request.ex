@@ -551,75 +551,79 @@ defmodule Ash.Engine.Request do
 
     case missing_strict_check_dependencies?(authorizer, request) do
       [] ->
-        case strict_check_authorizer(authorizer, request) do
-          {:authorized, _authorizer} ->
-            {:ok, set_authorizer_state(request, authorizer, :authorized), notifications, []}
+        with {:ok, request} <- alter_filter(request, authorizer),
+             {:ok, request} <- add_calculations(request, authorizer) do
+          case strict_check_authorizer(authorizer, request) do
+            {:authorized, _authorizer} ->
+              {:ok, set_authorizer_state(request, authorizer, :authorized), notifications, []}
 
-          {:filter, authorizer_state, filter} ->
-            request
-            |> set_authorizer_state(authorizer, authorizer_state)
-            |> apply_filter(authorizer, filter, true)
-            |> case do
-              {:ok, request} ->
-                {:ok, request, notifications, []}
+            {:filter, authorizer_state, filter} ->
+              request
+              |> set_authorizer_state(authorizer, authorizer_state)
+              |> apply_filter(authorizer, filter, true)
+              |> case do
+                {:ok, request} ->
+                  {:ok, request, notifications, []}
 
-              {:ok, request, new_notifications, deps} ->
-                {:ok, request, new_notifications ++ notifications, deps}
+                {:ok, request, new_notifications, deps} ->
+                  {:ok, request, new_notifications ++ notifications, deps}
 
-              other ->
-                other
-            end
+                other ->
+                  other
+              end
 
-          {:filter, filter} ->
-            request
-            |> apply_filter(authorizer, filter, true)
-            |> case do
-              {:ok, request} ->
-                {:ok, request, notifications, []}
+            {:filter, filter} ->
+              request
+              |> apply_filter(authorizer, filter, true)
+              |> case do
+                {:ok, request} ->
+                  {:ok, request, notifications, []}
 
-              {:ok, request, new_notifications, deps} ->
-                {:ok, request, new_notifications ++ notifications, deps}
+                {:ok, request, new_notifications, deps} ->
+                  {:ok, request, new_notifications ++ notifications, deps}
 
-              other ->
-                other
-            end
+                other ->
+                  other
+              end
 
-          {:filter_and_continue, _, authorizer_state} when strict_check_only? ->
-            {:error,
-             Authorizer.exception(
-               authorizer,
-               :must_pass_strict_check,
-               authorizer_state
-             )}
+            {:filter_and_continue, _, authorizer_state} when strict_check_only? ->
+              {:error,
+               Authorizer.exception(
+                 authorizer,
+                 :must_pass_strict_check,
+                 authorizer_state
+               )}
 
-          {:filter_and_continue, filter, new_authorizer_state} ->
-            request
-            |> set_authorizer_state(authorizer, new_authorizer_state)
-            |> apply_filter(authorizer, filter)
-            |> case do
-              {:ok, request} ->
-                {:ok, request, notifications, []}
+            {:filter_and_continue, filter, new_authorizer_state} ->
+              request
+              |> set_authorizer_state(authorizer, new_authorizer_state)
+              |> apply_filter(authorizer, filter)
+              |> case do
+                {:ok, request} ->
+                  {:ok, request, notifications, []}
 
-              {:ok, request, new_notifications, deps} ->
-                {:ok, request, new_notifications ++ notifications, deps}
+                {:ok, request, new_notifications, deps} ->
+                  {:ok, request, new_notifications ++ notifications, deps}
 
-              other ->
-                other
-            end
+                other ->
+                  other
+              end
 
-          {:continue, authorizer_state} when strict_check_only? ->
-            {:error,
-             Authorizer.exception(
-               authorizer,
-               :must_pass_strict_check,
-               authorizer_state
-             )}
+            {:continue, authorizer_state} when strict_check_only? ->
+              {:error,
+               Authorizer.exception(
+                 authorizer,
+                 :must_pass_strict_check,
+                 authorizer_state
+               )}
 
-          {:continue, authorizer_state} ->
-            {:ok, set_authorizer_state(request, authorizer, authorizer_state), notifications, []}
+            {:continue, authorizer_state} ->
+              {:ok, set_authorizer_state(request, authorizer, authorizer_state), notifications,
+               []}
 
-          {:error, error} ->
-            {:error, error}
+            {:error, error} ->
+              {:error, error}
+          end
         end
 
       deps ->
@@ -640,6 +644,57 @@ defmodule Ash.Engine.Request do
         end
     end
   end
+
+  defp alter_filter(%{query: nil} = request, _), do: {:ok, request}
+
+  defp alter_filter(request, authorizer) do
+    log(request, fn -> "altering filter for #{inspect(authorizer)}" end)
+
+    authorizer_state = authorizer_state(request, authorizer)
+
+    keys = Authorizer.strict_check_context(authorizer, authorizer_state)
+
+    case Authorizer.alter_filter(
+           authorizer,
+           authorizer_state,
+           request.query.filter,
+           Map.take(request, keys)
+         ) do
+      {:ok, new_filter} ->
+        {:ok, %{request | query: %{request.query | filter: new_filter}}}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp add_calculations(request, authorizer)
+       when not is_nil(request.query) or not is_nil(request.changeset) do
+    log(request, fn -> "adding calculations for #{inspect(authorizer)}" end)
+
+    authorizer_state = authorizer_state(request, authorizer)
+
+    keys = Authorizer.strict_check_context(authorizer, authorizer_state)
+
+    case Authorizer.add_calculations(
+           authorizer,
+           request.query || request.changeset,
+           authorizer_state,
+           Map.take(request, keys)
+         ) do
+      {:ok, %Ash.Query{} = query, authorizer_state} ->
+        {:ok, %{request | query: query} |> set_authorizer_state(authorizer, authorizer_state)}
+
+      {:ok, %Ash.Changeset{} = changeset, authorizer_state} ->
+        {:ok,
+         %{request | changeset: changeset} |> set_authorizer_state(authorizer, authorizer_state)}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp add_calculations(request, _), do: {:ok, request}
 
   defp apply_filter(request, authorizer, filter, resolve_data? \\ false)
 
