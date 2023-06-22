@@ -1,4 +1,5 @@
 defmodule Ash.Test.Support.PolicyField.Ticket do
+  @moduledoc false
   use Ash.Resource,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer]

@@ -1,4 +1,5 @@
 defmodule Ash.Policy.Authorizer.Transformers.CacheFieldPolicies do
+  @moduledoc "Cache field policies for each field"
   use Spark.Dsl.Transformer
   alias Spark.Dsl.Transformer
 

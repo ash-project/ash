@@ -1,7 +1,7 @@
 defmodule Ash.Policy.Checker do
   @moduledoc false
 
-  alias Ash.Policy.{Check, Policy, FieldPolicy}
+  alias Ash.Policy.{Check, FieldPolicy, Policy}
 
   def strict_check_all_facts(%{policies: policies} = authorizer) do
     Enum.reduce_while(policies, {:ok, authorizer, authorizer.facts}, fn policy,

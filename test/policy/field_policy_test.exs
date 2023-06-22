@@ -4,7 +4,7 @@ defmodule Ash.Test.Policy.RbacTest do
 
   require Ash.Query
 
-  alias Ash.Test.Support.PolicyField.{Api, User, Ticket}
+  alias Ash.Test.Support.PolicyField.{Api, Ticket, User}
 
   setup do
     rep = Api.create!(Ash.Changeset.new(User, %{role: :representative}))

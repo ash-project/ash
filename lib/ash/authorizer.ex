@@ -53,7 +53,7 @@ defmodule Ash.Authorizer do
   end
 
   def strict_check_context(module, state) do
-    module.strict_check_context(state)
+    Enum.uniq(module.strict_check_context(state) ++ [:query, :changeset])
   end
 
   def strict_check(module, state, context) do

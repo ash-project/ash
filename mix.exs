@@ -21,6 +21,7 @@ defmodule Ash.MixProject do
       deps: deps(),
       dialyzer: [plt_add_apps: [:mix, :mnesia, :earmark, :plug]],
       included_applications: [:mnesia],
+      extra_applications: [:mnesia],
       docs: docs(),
       aliases: aliases(),
       description: @description,

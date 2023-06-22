@@ -1,4 +1,5 @@
 defmodule Ash.Policy.Authorizer.Transformers.AddMissingFieldPolicies do
+  @moduledoc "Adds field policies for any missing fields"
   use Spark.Dsl.Transformer
   import Spark.Dsl.Builder
 
@@ -12,13 +13,15 @@ defmodule Ash.Policy.Authorizer.Transformers.AddMissingFieldPolicies do
       dsl
       |> Ash.Resource.Info.fields([:aggregates, :calculations, :attributes])
       |> Enum.reject(fn
-        %Ash.Resource.Attribute{primary_key?: true} ->
+        %{private?: true} ->
+          true
+
+        %{primary_key?: true} ->
           true
 
         _ ->
           false
       end)
-      |> Enum.reject(& &1.private?)
       |> Enum.map(& &1.name)
 
     if Enum.empty?(Ash.Policy.Info.field_policies(dsl)) do

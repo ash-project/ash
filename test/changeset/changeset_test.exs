@@ -247,10 +247,12 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     test "it raises an error for a non-resource record" do
-      assert_raise ArgumentError, ~r/No such entity/, fn ->
-        %NonResource{name: "foo"}
-        |> Changeset.new()
-      end
+      assert_raise ArgumentError,
+                   ~r/`Ash.Test.Changeset.ChangesetTest.NonResource` is not a Spark DSL module/,
+                   fn ->
+                     %NonResource{name: "foo"}
+                     |> Changeset.new()
+                   end
     end
   end
 

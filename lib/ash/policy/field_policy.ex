@@ -1,4 +1,5 @@
 defmodule Ash.Policy.FieldPolicy do
+  @moduledoc false
   defstruct [
     :fields,
     :condition,

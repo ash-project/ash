@@ -549,7 +549,7 @@ defmodule Ash.Engine.Request do
   defp do_strict_check(authorizer, request, notifications \\ []) do
     strict_check_only? = request.strict_check_only?
 
-    case missing_strict_check_dependencies?(authorizer, request) do
+    case missing_strict_check_dependencies(authorizer, request) do
       [] ->
         with {:ok, request} <- alter_filter(request, authorizer),
              {:ok, request} <- add_calculations(request, authorizer) do
@@ -1396,7 +1396,7 @@ defmodule Ash.Engine.Request do
     end)
   end
 
-  defp missing_strict_check_dependencies?(authorizer, request) do
+  defp missing_strict_check_dependencies(authorizer, request) do
     authorizer
     |> Authorizer.strict_check_context(authorizer_state(request, authorizer))
     |> List.wrap()
