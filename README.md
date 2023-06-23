@@ -8,7 +8,7 @@
 ```elixir
 def deps do
   [
-    {:ash, "~> 2.10.2"}
+    {:ash, "~> 2.11.0-rc.0"}
   ]
 end
 ```
