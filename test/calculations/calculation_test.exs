@@ -248,10 +248,10 @@ defmodule Ash.Test.CalculationTest do
     end
 
     calculations do
-      calculate :active,
-                :boolean,
-                expr(is_active && user_is_active),
-                load: [:user_is_active]
+      calculate :active, :boolean do
+        calculation expr(is_active && user_is_active)
+        load [:user_is_active]
+      end
     end
 
     relationships do

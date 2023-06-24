@@ -304,7 +304,6 @@ defmodule Ash.Policy.Authorizer do
       field_policies do
         field_policy :admin_only_field do
           authorize_if actor_attribute_equals(:admin, true)
-          authorize_if
         end
       end
       """,

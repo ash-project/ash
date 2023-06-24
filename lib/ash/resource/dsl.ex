@@ -1211,7 +1211,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Calculation,
     no_depend_modules: [:calculation],
-    args: [:name, :type, :calculation],
+    args: [:name, :type, {:optional, :calculation}],
     entities: [
       arguments: [@argument]
     ],
