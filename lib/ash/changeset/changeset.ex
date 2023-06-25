@@ -1818,9 +1818,10 @@ defmodule Ash.Changeset do
 
   defp warn_on_transaction_hooks(changeset, _, type) do
     if changeset.context[:warn_on_transaction_hooks?] != false &&
-         Ash.DataLayer.in_transaction?(changeset.resource) && changeset.before_transaction != [] do
+         Ash.DataLayer.in_transaction?(changeset.resource) &&
+         (changeset.before_transaction != [] or changeset.around_transaction != []) do
       message =
-        if type == "before_transaction" do
+        if type in ["before_transaction", "around_transaction"] do
           "already"
         else
           "still"
@@ -1841,6 +1842,8 @@ defmodule Ash.Changeset do
   end
 
   defp transaction_hooks(changeset, func) do
+    warn_on_transaction_hooks(changeset, changeset.around_transaction, "around_transaction")
+
     run_around_transaction_hooks(changeset, fn changeset ->
       warn_on_transaction_hooks(changeset, changeset.before_transaction, "before_transaction")
 
