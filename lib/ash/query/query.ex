@@ -2146,7 +2146,16 @@ defmodule Ash.Query do
 
       case new_filter do
         {:ok, filter} ->
-          %{query | filter: filter}
+          case Ash.Filter.hydrate_refs(filter, %{
+                 resource: query.resource,
+                 public?: false
+               }) do
+            {:ok, result} ->
+              %{query | filter: result}
+
+            {:error, error} ->
+              add_error(query, :filter, error)
+          end
 
         {:error, error} ->
           add_error(query, :filter, error)
@@ -2183,7 +2192,16 @@ defmodule Ash.Query do
 
       case filter do
         {:ok, filter} ->
-          Map.put(query, :filter, filter)
+          case Ash.Filter.hydrate_refs(filter, %{
+                 resource: query.resource,
+                 public?: false
+               }) do
+            {:ok, result} ->
+              %{query | filter: result}
+
+            {:error, error} ->
+              add_error(query, :filter, error)
+          end
 
         {:error, error} ->
           add_error(query, :filter, error)

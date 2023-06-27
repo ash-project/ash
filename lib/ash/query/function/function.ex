@@ -15,7 +15,10 @@ defmodule Ash.Query.Function do
   @callback args() :: [arg]
   @callback new(list(term)) :: {:ok, term} | {:error, String.t() | Exception.t()}
   @callback evaluate(func :: map) :: :unknown | {:known, term}
+  @callback partial_evaluate(func) :: func when func: map
   @callback private?() :: boolean
+
+  @optional_callbacks partial_evaluate: 1
 
   def new(mod, args) do
     args = List.wrap(args)
@@ -45,10 +48,14 @@ defmodule Ash.Query.Function do
               case mod.new(casted) do
                 {:ok, function} ->
                   if Enum.any?(casted, &expr?/1) do
-                    {:ok, function}
+                    if function_exported?(mod, :partial_evaluate, 1) && match?(%^mod{}, function) do
+                      {:ok, mod.partial_evaluate(function)}
+                    else
+                      {:ok, function}
+                    end
                   else
                     case function do
-                      %mod{__predicate__?: _} ->
+                      %^mod{__predicate__?: _} ->
                         if mod.eager_evaluate?() do
                           case mod.evaluate(function) do
                             {:known, result} ->

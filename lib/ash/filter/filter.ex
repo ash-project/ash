@@ -2325,21 +2325,11 @@ defmodule Ash.Filter do
                  function_module,
                  args
                ) do
-          if is_boolean(function) do
+          if is_nil(context.resource) ||
+               Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do
             {:ok, BooleanExpression.optimized_new(:and, expression, function)}
           else
-            if is_nil(context.resource) ||
-                 Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do
-              {:ok, BooleanExpression.optimized_new(:and, expression, function)}
-            else
-              case function_module.evaluate(function) do
-                {:known, result} ->
-                  {:ok, result}
-
-                _ ->
-                  {:error, "data layer does not support the function #{inspect(function)}"}
-              end
-            end
+            {:error, "data layer does not support the function #{inspect(function)}"}
           end
         end
     end
@@ -3063,6 +3053,16 @@ defmodule Ash.Filter do
 
       other ->
         other
+    end
+  end
+
+  def do_hydrate_refs(%__MODULE__{expression: expression} = filter, context) do
+    case do_hydrate_refs(expression, context) do
+      {:ok, expression} ->
+        {:ok, %{filter | expression: expression}}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 

@@ -3,6 +3,7 @@ defmodule Ash.Query.Function.If do
   If predicate is truthy, then the second argument is returned, otherwise the third.
   """
   use Ash.Query.Function, name: :if
+  import Ash.Filter.TemplateHelpers, only: [expr?: 1]
 
   def args, do: [[:boolean, :any], [:boolean, :any, :any]]
 
@@ -38,4 +39,22 @@ defmodule Ash.Query.Function.If do
     do: {:known, when_false}
 
   def evaluate(%{arguments: [_, when_true, _]}), do: {:known, when_true}
+
+  def partial_evaluate(%{arguments: [false, _, when_false]}),
+    do: when_false
+
+  def partial_evaluate(%{arguments: [nil, _, when_false]}),
+    do: when_false
+
+  def partial_evaluate(%{arguments: [condition, when_true, _]} = fun) do
+    if expr?(condition) do
+      fun
+    else
+      when_true
+    end
+  end
+
+  def partial_evaluate(other) do
+    raise inspect(other)
+  end
 end

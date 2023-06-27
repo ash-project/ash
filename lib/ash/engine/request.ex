@@ -661,7 +661,16 @@ defmodule Ash.Engine.Request do
            Map.take(request, keys)
          ) do
       {:ok, new_filter} ->
-        {:ok, %{request | query: %{request.query | filter: new_filter}}}
+        case Ash.Filter.hydrate_refs(new_filter, %{
+               resource: request.query.resource,
+               public?: false
+             }) do
+          {:ok, result} ->
+            {:ok, %{request | query: %{request.query | filter: result}}}
+
+          {:error, error} ->
+            {:error, error}
+        end
 
       {:error, error} ->
         {:error, error}
