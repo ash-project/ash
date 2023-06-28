@@ -548,6 +548,10 @@ defmodule Ash.Actions.Helpers do
     )
   end
 
+  def select({:ok, results, instructions}, query) do
+    {:ok, select(results, query), instructions}
+  end
+
   def select({:ok, results}, query) do
     {:ok, select(results, query)}
   end

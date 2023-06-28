@@ -148,11 +148,11 @@ defmodule Ash.Actions.Update do
 
     if after_action do
       case after_action.(changeset, result) do
-        {:ok, result} -> {:ok, Helpers.select(result, changeset), instructions}
+        {:ok, result} -> {:ok, result, instructions}
         other -> other
       end
     else
-      {:ok, Helpers.select(result, changeset), instructions}
+      {:ok, result, instructions}
     end
   end
 
@@ -462,6 +462,7 @@ defmodule Ash.Actions.Update do
                         authorize?: authorize?,
                         tracer: tracer
                       )
+                      |> Helpers.select(changeset)
                       |> Helpers.restrict_field_access(changeset)
                     end,
                     transaction?:

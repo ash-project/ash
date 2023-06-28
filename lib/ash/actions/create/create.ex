@@ -518,6 +518,7 @@ defmodule Ash.Actions.Create do
                     authorize?: authorize?,
                     tracer: tracer
                   )
+                  |> Helpers.select(changeset)
                   |> Helpers.restrict_field_access(changeset)
 
                 {:error, %Ash.Changeset{} = changeset} ->
@@ -546,11 +547,11 @@ defmodule Ash.Actions.Create do
 
     if opts[:after_action] do
       case opts[:after_action].(changeset, result) do
-        {:ok, result} -> {:ok, Helpers.select(result, changeset), instructions}
+        {:ok, result} -> {:ok, result, instructions}
         other -> other
       end
     else
-      {:ok, Helpers.select(result, changeset), instructions}
+      {:ok, result, instructions}
     end
   end
 
