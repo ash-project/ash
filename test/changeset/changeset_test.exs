@@ -292,6 +292,32 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       assert {:ok, %Category{name: "foo"}} = Api.get(Category, category.id)
     end
+
+    test "it applies an around_transaction function on a changeset" do
+      change_name = fn changeset, callback ->
+        %{attributes: %{name: name}} = changeset
+
+        changeset = %{
+          changeset
+          | attributes: Map.merge(changeset.attributes, %{name: "#{name}_before"})
+        }
+
+        {:ok, result, changeset, notifications} = callback.(changeset)
+
+        result = %{result | name: "#{result.name}_after"}
+
+        {:ok, result, changeset, notifications}
+      end
+
+      changeset =
+        Category
+        |> Changeset.new(%{name: "foo"})
+        |> Changeset.around_transaction(change_name)
+
+      category = changeset |> Api.create!()
+
+      assert %Category{name: "foo_before_after"} = category
+    end
   end
 
   describe "get_attribute/2" do

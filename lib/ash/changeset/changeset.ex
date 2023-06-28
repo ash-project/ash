@@ -26,6 +26,7 @@ defmodule Ash.Changeset do
     after_transaction: [],
     arguments: %{},
     around_action: [],
+    around_transaction: [],
     attributes: %{},
     before_action: [],
     before_transaction: [],
@@ -165,6 +166,8 @@ defmodule Ash.Changeset do
   @type around_callback :: (t() -> around_result)
   @type around_action_fun :: (t, around_callback -> around_result)
 
+  @type around_transaction_fun :: (t -> {:ok, Ash.Resource.record()} | {:error, any})
+
   @type t :: %__MODULE__{
           __validated_for_action__: atom | nil,
           action: Ash.Resource.Actions.action() | nil,
@@ -175,6 +178,7 @@ defmodule Ash.Changeset do
           api: module | nil,
           arguments: %{optional(atom) => any},
           around_action: [around_action_fun | {around_action_fun, map}],
+          around_transaction: [around_transaction_fun | {around_transaction_fun, map}],
           attributes: %{optional(atom) => any},
           before_action: [before_action_fun | {around_action_fun, map}],
           before_transaction: [before_transaction_fun | {before_transaction_fun, map}],
@@ -191,7 +195,8 @@ defmodule Ash.Changeset do
             | :before_action
             | :after_action
             | :after_transaction
-            | :around_action,
+            | :around_action
+            | :around_transaction,
           relationships: %{
             optional(atom) =>
               %{optional(atom | binary) => any} | [%{optional(atom | binary) => any}]
@@ -1813,9 +1818,10 @@ defmodule Ash.Changeset do
 
   defp warn_on_transaction_hooks(changeset, _, type) do
     if changeset.context[:warn_on_transaction_hooks?] != false &&
-         Ash.DataLayer.in_transaction?(changeset.resource) && changeset.before_transaction != [] do
+         Ash.DataLayer.in_transaction?(changeset.resource) &&
+         (changeset.before_transaction != [] or changeset.around_transaction != []) do
       message =
-        if type == "before_transaction" do
+        if type in ["before_transaction", "around_transaction"] do
           "already"
         else
           "still"
@@ -1836,72 +1842,87 @@ defmodule Ash.Changeset do
   end
 
   defp transaction_hooks(changeset, func) do
-    warn_on_transaction_hooks(changeset, changeset.before_transaction, "before_transaction")
+    warn_on_transaction_hooks(changeset, changeset.around_transaction, "around_transaction")
 
-    changeset = run_before_transaction_hooks(changeset)
+    run_around_transaction_hooks(changeset, fn changeset ->
+      warn_on_transaction_hooks(changeset, changeset.before_transaction, "before_transaction")
 
-    result =
-      try do
-        func.(clear_phase(changeset))
-      rescue
-        exception ->
-          {:raise, exception, __STACKTRACE__}
-      catch
-        :exit, reason ->
-          {:exit, reason}
+      changeset = run_before_transaction_hooks(changeset)
+
+      result =
+        try do
+          func.(clear_phase(changeset))
+        rescue
+          exception ->
+            {:raise, exception, __STACKTRACE__}
+        catch
+          :exit, reason ->
+            {:exit, reason}
+        end
+
+      case result do
+        {:exit, reason} ->
+          error = Ash.Error.to_ash_error(reason)
+
+          case run_after_transactions({:error, error}, changeset) do
+            {:ok, result} ->
+              {:ok, result, %{}}
+
+            {:error, new_error} when new_error == error ->
+              exit(reason)
+
+            {:error, new_error} ->
+              exit(new_error)
+          end
+
+        {:raise, exception, stacktrace} ->
+          case run_after_transactions({:error, exception}, changeset) do
+            {:ok, result} ->
+              {:ok, result, changeset, %{}}
+
+            {:error, error} ->
+              reraise error, stacktrace
+          end
+
+        {:ok, result, changeset, notifications} ->
+          case run_after_transactions({:ok, result}, changeset) do
+            {:ok, result} ->
+              {:ok, result, changeset, notifications}
+
+            {:error, error} ->
+              {:error, error}
+          end
+
+        {:ok, result, notifications} ->
+          case run_after_transactions({:ok, result}, changeset) do
+            {:ok, result} ->
+              {:ok, result, changeset, notifications}
+
+            {:error, error} ->
+              {:error, error}
+          end
+
+        {:error, error} ->
+          case run_after_transactions({:error, error}, changeset) do
+            {:ok, result} ->
+              {:ok, result, changeset, %{}}
+
+            {:error, error} ->
+              {:error, error}
+          end
       end
+    end)
+  end
 
-    case result do
-      {:exit, reason} ->
-        error = Ash.Error.to_ash_error(reason)
+  defp run_around_transaction_hooks(%{around_transaction: []} = changeset, func),
+    do: func.(changeset)
 
-        case run_after_transactions({:error, error}, changeset) do
-          {:ok, result} ->
-            {:ok, result, %{}}
-
-          {:error, new_error} when new_error == error ->
-            exit(reason)
-
-          {:error, new_error} ->
-            exit(new_error)
-        end
-
-      {:raise, exception, stacktrace} ->
-        case run_after_transactions({:error, exception}, changeset) do
-          {:ok, result} ->
-            {:ok, result, changeset, %{}}
-
-          {:error, error} ->
-            reraise error, stacktrace
-        end
-
-      {:ok, result, changeset, notifications} ->
-        case run_after_transactions({:ok, result}, changeset) do
-          {:ok, result} ->
-            {:ok, result, changeset, notifications}
-
-          {:error, error} ->
-            {:error, error}
-        end
-
-      {:ok, result, notifications} ->
-        case run_after_transactions({:ok, result}, changeset) do
-          {:ok, result} ->
-            {:ok, result, changeset, notifications}
-
-          {:error, error} ->
-            {:error, error}
-        end
-
-      {:error, error} ->
-        case run_after_transactions({:error, error}, changeset) do
-          {:ok, result} ->
-            {:ok, result, changeset, %{}}
-
-          {:error, error} ->
-            {:error, error}
-        end
-    end
+  defp run_around_transaction_hooks(%{around_transaction: [around | rest]} = changeset, func) do
+    changeset
+    |> set_phase(:around_transaction)
+    |> around.(fn changeset ->
+      run_around_transaction_hooks(%{changeset | around_transaction: rest}, func)
+    end)
   end
 
   def run_before_transaction_hooks(changeset) do
@@ -3619,25 +3640,29 @@ defmodule Ash.Changeset do
     IO.puts("first around: before")
     result = callback.(changeset)
     IO.puts("first around: after")
+
+    result
   end)
   |> Ash.Changeset.around_action(fn changeset, callback ->
     IO.puts("second around: before")
     result = callback.(changeset)
     IO.puts("second around: after")
+
+    result
   end)
   |> Ash.Changeset.before_action(fn changeset ->
     IO.puts("first before")
     changeset
-  end)
+  end, append?: true)
   |> Ash.Changeset.before_action(fn changeset ->
     IO.puts("second before")
     changeset
-  end)
+  end, append?: true)
   |> Ash.Changeset.after_action(fn changeset, result ->
     IO.puts("first after")
     {:ok, result}
   end)
-  |> Ash.Changeset.after_action(fn changeset ->
+  |> Ash.Changeset.after_action(fn changeset, result ->
     IO.puts("second after")
     {:ok, result}
   end)
@@ -3667,6 +3692,78 @@ defmodule Ash.Changeset do
   @spec around_action(t(), around_action_fun()) :: t()
   def around_action(changeset, func) do
     %{changeset | around_action: changeset.around_action ++ [func]}
+  end
+
+  @doc """
+  Adds an around_transaction hook to the changeset.
+
+  Your function will get the changeset, and a callback that must be called with a changeset (that may be modified).
+  The callback will return `{:ok, result}` or `{:error, error}`. You can modify these values, but the return value
+  must be one of those types.
+
+  The around_transaction calls happen first, and then (after they each resolve their callbacks) the `before_transaction`
+  hooks are called, followed by the action hooks and then the `after_transaction` hooks being run.
+  Then, the code that appeared *after* the callbacks were called is then run.
+
+  For example:
+  ```elixir
+  changeset
+  |> Ash.Changeset.around_transaction(fn changeset, callback ->
+    IO.puts("first around: before")
+    result = callback.(changeset)
+    IO.puts("first around: after")
+
+    result
+  end)
+  |> Ash.Changeset.around_transaction(fn changeset, callback ->
+    IO.puts("second around: before")
+    result = callback.(changeset)
+    IO.puts("second around: after")
+
+    result
+  end)
+  |> Ash.Changeset.before_transaction(fn changeset ->
+    IO.puts("first before")
+    changeset
+  end, append?: true)
+  |> Ash.Changeset.before_transaction(fn changeset ->
+    IO.puts("second before")
+    changeset
+  end, append?: true)
+  |> Ash.Changeset.after_transaction(fn changeset, result ->
+    IO.puts("first after")
+    result
+  end)
+  |> Ash.Changeset.after_transaction(fn changeset, result ->
+    IO.puts("second after")
+    result
+  end)
+  ```
+
+  This would print:
+  ```
+  first around: before
+  second around: before
+  first before
+  second before
+               <-- action hooks happens here
+  first after
+  second after
+  second around: after <-- Notice that because of the callbacks, the after of the around hooks is reversed from the before
+  first around: after
+  ```
+
+  Warning: using this without understanding how it works can cause big problems.
+  You *must* call the callback function that is provided to your hook, and the return value must
+  contain the same structure that was given to you, i.e `{:ok, result_of_action}`.
+
+  You can almost always get the same effect by using `before_transaction`, setting some context on the changeset
+  and reading it out in an `after_transaction` hook.
+  """
+
+  @spec around_transaction(t(), around_transaction_fun()) :: t()
+  def around_transaction(changeset, func) do
+    %{changeset | around_transaction: changeset.around_transaction ++ [func]}
   end
 
   @doc """
@@ -3929,7 +4026,7 @@ defmodule Ash.Changeset do
   defp set_phase(changeset, phase) when changeset.phase == phase, do: changeset
 
   defp set_phase(changeset, phase)
-       when phase in ~w[validate before_action after_action before_transaction after_transaction around_action]a,
+       when phase in ~w[validate before_action after_action before_transaction after_transaction around_action around_transaction]a,
        do: %{changeset | phase: phase}
 
   defp clear_phase(changeset), do: %{changeset | phase: :validate}
