@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.11.0-rc.2](https://github.com/ash-project/ash/compare/v2.11.0-rc.1...v2.11.0-rc.2) (2023-06-28)
+
+
+
+
+### Features:
+
+* Adds Ash.Changeset around_transaction (#632)
+
+### Bug Fixes:
+
+* select after setting notification data
+
+### Improvements:
+
+* support partial eager evaluation of functions
+
 ## [v2.11.0-rc.1](https://github.com/ash-project/ash/compare/v2.11.0-rc.0...v2.11.0-rc.1) (2023-06-24)
 
 
