@@ -435,7 +435,9 @@ defmodule Ash.Actions.Helpers do
        )}
     else
       query =
-        Ash.Query.load(changeset.resource, changeset.load)
+        changeset.resource
+        |> Ash.Query.load(changeset.load)
+        |> select_selected(result)
 
       case api.load(result, query, opts) do
         {:ok, result} ->
@@ -458,7 +460,9 @@ defmodule Ash.Actions.Helpers do
       {:ok, result, %{set_keys: %{notification_data: result}}}
     else
       query =
-        Ash.Query.load(changeset.resource, changeset.load)
+        changeset.resource
+        |> Ash.Query.load(changeset.load)
+        |> select_selected(result)
 
       case api.load(result, query, opts) do
         {:ok, result} ->
@@ -471,6 +475,16 @@ defmodule Ash.Actions.Helpers do
   end
 
   def load(other, _, _, _), do: other
+
+  defp select_selected(query, result) do
+    select =
+      query.resource
+      |> Ash.Resource.Info.attributes()
+      |> Enum.filter(&Ash.Resource.selected?(result, &1.name))
+      |> Enum.map(&(&1.name))
+
+    Ash.Query.ensure_selected(query, select)
+  end
 
   def restrict_field_access({:ok, record, instructions}, query_or_changeset) do
     {:ok, restrict_field_access(record, query_or_changeset), instructions}
