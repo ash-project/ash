@@ -6,7 +6,7 @@ defmodule Ash.Resource.Calculation.Builtins do
 
   ## Examples
 
-      calculate :full_name, concat([:first_name, :last_name], " ")
+      calculate :full_name, :string, concat([:first_name, :last_name], " ")
   """
   @spec concat(keys :: list(atom), separator :: String.t()) :: Ash.Resource.Calculation.ref()
   def concat(keys, separator \\ "") do
