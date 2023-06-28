@@ -1732,6 +1732,7 @@ defmodule Ash.Actions.Load do
 
   defp get_query(query, relationship, source_data, source_attribute) do
     {offset, limit} = offset_and_limit(query)
+    query = Ash.Query.ensure_selected(query, Ash.Actions.Read.source_fields(query))
 
     cond do
       lateral_join?(query, relationship, source_data) ->

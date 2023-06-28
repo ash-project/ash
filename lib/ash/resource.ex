@@ -57,7 +57,6 @@ defmodule Ash.Resource do
         @impl Ash.Type
         def load(record, load, _constraints, %{api: api} = context) do
           opts = context |> Map.take([:actor, :authorize?, :tenant, :tracer]) |> Map.to_list()
-
           api.load(record, load, opts)
         end
 

@@ -1087,21 +1087,8 @@ defmodule Ash.Actions.Read do
                 List.wrap(select)
               end)
 
-            ash_query.load
-            |> Enum.map(fn
-              {key, _} ->
-                key
-
-              key ->
-                key
-            end)
-            |> Enum.flat_map(fn key ->
-              if relationship = Ash.Resource.Info.relationship(ash_query.resource, key) do
-                [relationship.source_attribute]
-              else
-                []
-              end
-            end)
+            ash_query
+            |> source_fields()
             |> Enum.concat(calc_selects)
             |> Enum.concat(query_selects)
             |> then(fn fields ->
@@ -1393,27 +1380,9 @@ defmodule Ash.Actions.Read do
   end
 
   defp loaded_query(query, calculations_at_runtime) do
-    query = load_calc_requirements(query, calculations_at_runtime)
-
-    query.load
-    |> Enum.reduce(query, fn
-      {key, _}, query when is_atom(key) ->
-        if relationship = Ash.Resource.Info.relationship(query.resource, key) do
-          Ash.Query.ensure_selected(query, relationship.source_attribute)
-        else
-          query
-        end
-
-      key, query when is_atom(key) ->
-        if relationship = Ash.Resource.Info.relationship(query.resource, key) do
-          Ash.Query.ensure_selected(query, relationship.source_attribute)
-        else
-          query
-        end
-
-      _, _ ->
-        query
-    end)
+    query
+    |> load_calc_requirements(calculations_at_runtime)
+    |> Ash.Query.ensure_selected(source_fields(query))
   end
 
   defp load_calc_requirements(query, unchecked_calcs, checked \\ [])
@@ -1497,6 +1466,15 @@ defmodule Ash.Actions.Read do
   defp remove_already_selected(fields, initial_data) do
     Enum.reject(fields, fn field ->
       Enum.all?(initial_data, &Ash.Resource.selected?(&1, field))
+    end)
+  end
+
+  @doc false
+  def source_fields(query) do
+    query
+    |> Ash.Query.accessing([:relationships])
+    |> Enum.map(fn name ->
+      Ash.Resource.Info.relationship(query.resource, name).source_attribute
     end)
   end
 

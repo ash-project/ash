@@ -481,7 +481,7 @@ defmodule Ash.Actions.Helpers do
       query.resource
       |> Ash.Resource.Info.attributes()
       |> Enum.filter(&Ash.Resource.selected?(result, &1.name))
-      |> Enum.map(&(&1.name))
+      |> Enum.map(& &1.name)
 
     Ash.Query.ensure_selected(query, select)
   end
