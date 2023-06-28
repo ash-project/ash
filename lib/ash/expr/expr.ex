@@ -84,7 +84,7 @@ defmodule Ash.Expr do
     end
   end
 
-  @operator_symbols Ash.Query.Operator.operator_symbols()
+  @operator_symbols Ash.Query.Operator.operator_symbols() -- [:is_nil]
 
   @doc false
   def do_expr(expr, escape? \\ true)

@@ -27,7 +27,7 @@ The following operators are available and they behave the same as they do in Eli
 - `<>`
 - `||`
 - `&&`
-- `is_nil` | Custom, accepts a boolean on the right side i.e `x is_nil true` or `x is_nil false`.
+- `is_nil` | Only works as an operator in maps/keyword list syntax. i.e `[x: [is_nil: true]]`
 
 ## Functions
 
