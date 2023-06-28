@@ -10,10 +10,17 @@ defmodule Ash.Error.Query.InvalidFilterValue do
     def code(_), do: "invalid_filter_value"
 
     def message(%{value: value, message: message, context: context}) when not is_nil(context) do
+      text =
+        if context do
+          "Invalid filter value `#{inspect(value)}` supplied in `#{inspect(context)}`"
+        else
+          "Invalid filter value `#{inspect(value)}`"
+        end
+
       if message do
-        "Invalid filter value `#{inspect(value)}` supplied in `#{inspect(context)}`: " <> message
+        text <> ": " <> message
       else
-        "Invalid filter value `#{inspect(value)}` supplied in `#{inspect(context)}`."
+        text
       end
     end
 

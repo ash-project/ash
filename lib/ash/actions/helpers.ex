@@ -426,12 +426,16 @@ defmodule Ash.Actions.Helpers do
 
   def load({:ok, result, instructions}, changeset, api, opts) do
     if changeset.load in [nil, []] do
-      {:ok, result, instructions}
+      {:ok, result,
+       Map.update(
+         instructions,
+         :set_keys,
+         %{notification_data: result},
+         &Map.put(&1, :notification_data, result)
+       )}
     else
       query =
-        changeset.resource
-        |> Ash.Query.select([])
-        |> Ash.Query.load(changeset.load)
+        Ash.Query.load(changeset.resource, changeset.load)
 
       case api.load(result, query, opts) do
         {:ok, result} ->
@@ -451,12 +455,10 @@ defmodule Ash.Actions.Helpers do
 
   def load({:ok, result}, changeset, api, opts) do
     if changeset.load in [nil, []] do
-      {:ok, result}
+      {:ok, result, %{set_keys: %{notification_data: result}}}
     else
       query =
-        changeset.resource
-        |> Ash.Query.select([])
-        |> Ash.Query.load(changeset.load)
+        Ash.Query.load(changeset.resource, changeset.load)
 
       case api.load(result, query, opts) do
         {:ok, result} ->
