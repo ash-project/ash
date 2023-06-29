@@ -112,7 +112,7 @@ defmodule Ash.Resource.Validation.Compare do
       :greater_than_or_equal_to,
       :less_than_or_equal_to
     ])
-    |> Enum.map(fn {key, _value} ->
+    |> Enum.map_join(" and ", fn {key, _value} ->
       case key do
         :greater_than ->
           "must be greater than %{greater_than}"
@@ -127,6 +127,5 @@ defmodule Ash.Resource.Validation.Compare do
           "must be less than or equal to %{less_than_or_equal_to}"
       end
     end)
-    |> Enum.join(" and ")
   end
 end
