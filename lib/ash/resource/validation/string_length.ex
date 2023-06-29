@@ -55,13 +55,7 @@ defmodule Ash.Resource.Validation.StringLength do
     if String.length(value) == exact do
       :ok
     else
-      {:error,
-       InvalidAttribute.exception(
-         value: value,
-         field: opts[:attribute],
-         message: "must have length of exactly %{exact}",
-         vars: [exact: exact]
-       )}
+      {:error, exception(value, opts)}
     end
   end
 
@@ -71,13 +65,7 @@ defmodule Ash.Resource.Validation.StringLength do
     if string_length >= min and string_length <= max do
       :ok
     else
-      {:error,
-       InvalidAttribute.exception(
-         value: value,
-         field: opts[:attribute],
-         message: "must have length of between %{min} and %{max}",
-         vars: [min: min, max: max]
-       )}
+      {:error, exception(value, opts)}
     end
   end
 
@@ -85,13 +73,7 @@ defmodule Ash.Resource.Validation.StringLength do
     if String.length(value) >= min do
       :ok
     else
-      {:error,
-       InvalidAttribute.exception(
-         value: value,
-         field: opts[:attribute],
-         message: "must have length of at least %{min}",
-         vars: [min: min]
-       )}
+      {:error, exception(value, opts)}
     end
   end
 
@@ -99,13 +81,28 @@ defmodule Ash.Resource.Validation.StringLength do
     if String.length(value) <= max do
       :ok
     else
-      {:error,
-       InvalidAttribute.exception(
-         value: value,
-         field: opts[:attribute],
-         message: "must have length of no more than %{max}",
-         vars: [max: max]
-       )}
+      {:error, exception(value, opts)}
     end
   end
+
+  defp exception(value, opts) do
+    [value: value, field: opts[:attribute]]
+    |> with_description(opts)
+    |> InvalidAttribute.exception()
+  end
+
+  @impl true
+  def describe(%{exact: exact}),
+    do: [message: "must have length of exactly %{exact}", vars: [exact: exact]]
+
+  def describe(%{min: min, max: max}),
+    do: [message: "must have length of between %{min} and %{max}", vars: [min: min, max: max]]
+
+  def describe(%{min: min}),
+    do: [message: "must have length of at least %{min}", vars: [min: min]]
+
+  def describe(%{max: max}),
+    do: [message: "must have length of no more than %{max}", vars: [max: max]]
+
+  def describe(_opts), do: [message: inspect(__MODULE__), vars: []]
 end

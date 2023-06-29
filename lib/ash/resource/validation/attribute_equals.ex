@@ -34,14 +34,19 @@ defmodule Ash.Resource.Validation.AttributeEquals do
 
     if value != opts[:value] do
       {:error,
-       InvalidAttribute.exception(
-         value: value,
-         field: opts[:attribute],
-         message: "must equal %{value}",
-         vars: [field: opts[:attribute], value: opts[:value]]
-       )}
+       [field: opts[:attribute], value: value]
+       |> with_description(opts)
+       |> InvalidAttribute.exception()}
     else
       :ok
     end
+  end
+
+  @impl true
+  def describe(opts) do
+    [
+      message: "must equal %{value}",
+      vars: [field: opts[:attribute], value: opts[:value]]
+    ]
   end
 end

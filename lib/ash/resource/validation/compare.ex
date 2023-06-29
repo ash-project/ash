@@ -39,42 +39,22 @@ defmodule Ash.Resource.Validation.Compare do
               {:greater_than, attribute} ->
                 if Comp.greater_than?(value, attribute_value(changeset, attribute)),
                   do: :ok,
-                  else:
-                    invalid_attribute_error(
-                      Keyword.put(opts, :value, attribute),
-                      value,
-                      "must be greater than %{value}"
-                    )
+                  else: invalid_attribute_error(opts, value)
 
               {:greater_than_or_equal_to, attribute} ->
                 if Comp.greater_or_equal?(value, attribute_value(changeset, attribute)),
                   do: :ok,
-                  else:
-                    invalid_attribute_error(
-                      Keyword.put(opts, :value, attribute),
-                      value,
-                      "must be greater than or equal to %{value}"
-                    )
+                  else: invalid_attribute_error(opts, value)
 
               {:less_than, attribute} ->
                 if Comp.less_than?(value, attribute_value(changeset, attribute)),
                   do: :ok,
-                  else:
-                    invalid_attribute_error(
-                      Keyword.put(opts, :value, attribute),
-                      value,
-                      "must be less than %{value}"
-                    )
+                  else: invalid_attribute_error(opts, value)
 
               {:less_than_or_equal_to, attribute} ->
                 if Comp.less_or_equal?(value, attribute_value(changeset, attribute)),
                   do: :ok,
-                  else:
-                    invalid_attribute_error(
-                      Keyword.put(opts, :value, attribute),
-                      value,
-                      "must be less than or equal to %{value}"
-                    )
+                  else: invalid_attribute_error(opts, value)
 
               true ->
                 :ok
@@ -87,6 +67,24 @@ defmodule Ash.Resource.Validation.Compare do
     end
   end
 
+  @impl true
+  def describe(opts) do
+    [
+      vars: [
+        value:
+          case opts[:value] do
+            fun when is_function(fun, 0) -> fun.()
+            v -> v
+          end,
+        greater_than: opts[:greater_than],
+        less_than: opts[:less_than],
+        greater_than_or_equal_to: opts[:greater_than_or_equal_to],
+        less_than_or_equal_to: opts[:less_than_or_equal_to]
+      ],
+      message: opts[:message] || message(opts)
+    ]
+  end
+
   defp attribute_value(_changeset, attribute) when is_function(attribute, 0) do
     attribute.()
   end
@@ -96,23 +94,39 @@ defmodule Ash.Resource.Validation.Compare do
 
   defp attribute_value(_, attribute), do: attribute
 
-  defp invalid_attribute_error(opts, attribute_value, message) do
+  defp invalid_attribute_error(opts, attribute_value) do
     {:error,
-     InvalidAttribute.exception(
+     [
        field: opts[:attribute],
-       message: opts[:message] || message,
-       value: attribute_value,
-       vars: [
-         value:
-           case opts[:value] do
-             fun when is_function(fun, 0) -> fun.()
-             v -> v
-           end,
-         greater_than: opts[:greater_than],
-         less_than: opts[:less_than],
-         greater_than_or_equal_to: opts[:greater_than_or_equal_to],
-         less_than_or_equal_to: opts[:less_than_or_equal_to]
-       ]
-     )}
+       value: attribute_value
+     ]
+     |> with_description(opts)
+     |> InvalidAttribute.exception()}
+  end
+
+  defp message(opts) do
+    opts
+    |> Keyword.take([
+      :greater_than,
+      :less_than,
+      :greater_than_or_equal_to,
+      :less_than_or_equal_to
+    ])
+    |> Enum.map(fn {key, _value} ->
+      case key do
+        :greater_than ->
+          "must be greater than %{greater_than}"
+
+        :less_than ->
+          "must be less than %{less_than}"
+
+        :greater_than_or_equal_to ->
+          "must be greater than or equal to %{greater_than_or_equal_to}"
+
+        :less_than_or_equal_to ->
+          "must be less than or equal to %{less_than_or_equal_to}"
+      end
+    end)
+    |> Enum.join(" and ")
   end
 end

@@ -1,8 +1,6 @@
 defmodule Ash.Resource.Validation.Negate do
   @moduledoc false
 
-  alias Ash.Error.Changes.InvalidAttribute
-
   @opt_schema [
     validation: [
       type: Ash.Resource.Validation.validation_type(),
@@ -12,6 +10,7 @@ defmodule Ash.Resource.Validation.Negate do
   ]
 
   use Ash.Resource.Validation
+  alias Ash.Error.Changes.InvalidAttribute
 
   @impl true
   def init(opts) do
@@ -33,10 +32,20 @@ defmodule Ash.Resource.Validation.Negate do
 
       :ok ->
         {:error,
-         InvalidAttribute.exception(
-           message: "must not pass validation %{validation}",
-           vars: [validation: opts[:validation]]
-         )}
+         opts
+         |> describe()
+         |> InvalidAttribute.exception()}
     end
+  end
+
+  @impl true
+  def describe(opts) do
+    {validation, validation_opts} = opts[:validation]
+    [message: message, vars: vars] = validation.describe(validation_opts)
+
+    [
+      message: "must not pass validation: \"#{message}\"",
+      vars: vars
+    ]
   end
 end
