@@ -457,13 +457,6 @@ defmodule Ash.Actions.Update do
                             {:error, changeset}
                           end
                       end
-                      |> Helpers.load(changeset, api,
-                        actor: actor,
-                        authorize?: authorize?,
-                        tracer: tracer
-                      )
-                      |> Helpers.select(changeset)
-                      |> Helpers.restrict_field_access(changeset)
                     end,
                     transaction?:
                       Keyword.get(request_opts, :transaction?, true) && action.transaction?,
@@ -502,7 +495,14 @@ defmodule Ash.Actions.Update do
                     else
                       {:ok, updated, instructions}
                     end
+                    |> Helpers.load(changeset, api,
+                      actor: actor,
+                      authorize?: authorize?,
+                      tracer: tracer
+                    )
                     |> run_after_action(changeset, after_action)
+                    |> Helpers.select(changeset)
+                    |> Helpers.restrict_field_access(changeset)
 
                   {:error, %Ash.Changeset{} = changeset} ->
                     {:error, changeset.errors, %{set: %{changeset: changeset}}}

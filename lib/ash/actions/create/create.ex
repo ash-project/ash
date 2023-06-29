@@ -508,15 +508,15 @@ defmodule Ash.Actions.Create do
                   else
                     {:ok, created, instructions}
                   end
-                  |> run_after_action(changeset,
-                    after_action: after_action,
-                    actor: actor,
-                    authorize?: authorize?
-                  )
                   |> Helpers.load(changeset, api,
                     actor: actor,
                     authorize?: authorize?,
                     tracer: tracer
+                  )
+                  |> run_after_action(changeset,
+                    after_action: after_action,
+                    actor: actor,
+                    authorize?: authorize?
                   )
                   |> Helpers.select(changeset)
                   |> Helpers.restrict_field_access(changeset)
