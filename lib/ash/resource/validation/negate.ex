@@ -16,6 +16,7 @@ defmodule Ash.Resource.Validation.Negate do
   def init(opts) do
     with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @opt_schema),
          {validation, validation_opts} = opts[:validation],
+         {:module, validation} <- Code.ensure_compiled(validation),
          {:ok, validation_opts} <- validation.init(validation_opts) do
       opts = Keyword.put(opts, :validation, {validation, validation_opts})
       {:ok, opts}
