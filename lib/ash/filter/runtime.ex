@@ -56,7 +56,14 @@ defmodule Ash.Filter.Runtime do
       |> Enum.filter(& &1)
       |> Enum.reject(&Ash.Resource.loaded?(records, &1))
 
-    records = api.load!(records, refs_to_load)
+    records =
+      case refs_to_load do
+        [] ->
+          records
+
+        refs_to_load ->
+          api.load!(records, refs_to_load)
+      end
 
     filter
     |> Ash.Filter.relationship_paths(true)
