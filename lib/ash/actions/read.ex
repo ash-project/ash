@@ -1431,10 +1431,15 @@ defmodule Ash.Actions.Read do
           end)
           |> Enum.reduce(loaded, fn
             key, query when is_atom(key) ->
-              if relationship = Ash.Resource.Info.relationship(query.resource, key) do
-                Ash.Query.ensure_selected(query, relationship.source_attribute)
-              else
-                query
+              cond do
+                relationship = Ash.Resource.Info.relationship(query.resource, key) ->
+                  Ash.Query.ensure_selected(query, relationship.source_attribute)
+
+                Ash.Resource.Info.attribute(query.resource, key) ->
+                  Ash.Query.ensure_selected(query, key)
+
+                true ->
+                  query
               end
 
             _, query ->
