@@ -65,7 +65,7 @@ defmodule Ash.Resource.Validation.Present do
         if count == 1 do
           attribute_error(changeset, opts, count, "must not be present")
         else
-          changes_error(opts, count, "at least %{at_most} of %{keys} must be present")
+          changes_error(opts, count, "at most %{at_most} of %{keys} must be present")
         end
 
       true ->
