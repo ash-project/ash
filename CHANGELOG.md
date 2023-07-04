@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.11.0](https://github.com/ash-project/ash/compare/v2.11.0-rc.3...v2.11.0) (2023-07-04)
+
+
+
+
+### Bug Fixes:
+
+* don't loan unless we need to for runtime filters
+
 ## [v2.11.0-rc.3](https://github.com/ash-project/ash/compare/v2.11.0-rc.2...v2.11.0-rc.3) (2023-06-29)
 
 
