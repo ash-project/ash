@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.11.1](https://github.com/ash-project/ash/compare/v2.11.0...v2.11.1) (2023-07-04)
+
+
+
+
+### Bug Fixes:
+
+* select attributes in load statement
+
 ## [v2.11.0](https://github.com/ash-project/ash/compare/v2.11.0-rc.3...v2.11.0) (2023-07-04)
 
 
