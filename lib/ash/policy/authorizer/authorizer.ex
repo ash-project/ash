@@ -530,9 +530,10 @@ defmodule Ash.Policy.Authorizer do
         {%{expr | expression: not_expr}, acc}
 
       %Ash.Query.Parent{expr: expr} = this ->
+        original_stack = acc.stack
         {expr, acc} = replace_refs(expr, %{acc | stack: Enum.drop(acc.stack, 1)})
 
-        {%{this | expr: expr}, acc}
+        {%{this | expr: expr}, %{acc | stack: original_stack}}
 
       %Ash.Query.Exists{expr: expr, at_path: at_path, path: path} = exists ->
         full_path = at_path ++ path
@@ -545,7 +546,7 @@ defmodule Ash.Policy.Authorizer do
             | stack: [{resource, current_path ++ full_path, action} | acc.stack]
           })
 
-        {%{exists | expr: expr}, acc}
+        {%{exists | expr: expr}, %{acc | stack: tl(acc.stack)}}
 
       %{__operator__?: true, left: left, right: right} = op ->
         {left, acc} = replace_refs(left, acc)
