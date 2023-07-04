@@ -132,7 +132,6 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     assert post.account_id == account.id
   end
 
-  @tag :focus
   test "relate_actor change with field when field is nil" do
     actor =
       Author
