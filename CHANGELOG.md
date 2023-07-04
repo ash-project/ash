@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.11.2](https://github.com/ash-project/ash/compare/v2.11.1...v2.11.2) (2023-07-04)
+
+
+
+
+### Bug Fixes:
+
+* return accumulator to correct state after altering exists
+
+* typo in at_most validation message (#640)
+
 ## [v2.11.1](https://github.com/ash-project/ash/compare/v2.11.0...v2.11.1) (2023-07-04)
 
 
