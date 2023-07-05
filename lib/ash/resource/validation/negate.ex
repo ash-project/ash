@@ -23,8 +23,13 @@ defmodule Ash.Resource.Validation.Negate do
       {:ok, opts}
     else
       false ->
-        {:error,
-         "#{opts[:validation]} must implement `describe/1` function to be used in #{__MODULE__}"}
+        module =
+          case opts[:validation] do
+            {module, _opts} -> module
+            module -> module
+          end
+
+        {:error, "#{module} must implement `describe/1` function to be used in #{__MODULE__}"}
 
       error ->
         error
