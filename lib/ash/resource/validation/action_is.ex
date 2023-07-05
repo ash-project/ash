@@ -9,7 +9,14 @@ defmodule Ash.Resource.Validation.ActionIs do
     else
       # We use "unknown" here because it doesn't make sense to surface
       # this error to clients potentially (and this should really only be used as a condition anyway)
-      {:error, Ash.Error.Unknown.UnknownError.exception(error: "action must be #{opts[:action]}")}
+      [message: message, vars: vars] = describe(opts)
+
+      {:error, Ash.Error.Unknown.UnknownError.exception(error: message, vars: vars)}
     end
+  end
+
+  @impl true
+  def describe(opts) do
+    [message: "must be %{action}", vars: %{action: opts[:action]}]
   end
 end

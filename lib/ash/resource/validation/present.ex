@@ -40,32 +40,31 @@ defmodule Ash.Resource.Validation.Present do
     cond do
       opts[:exactly] && present != opts[:exactly] ->
         if opts[:exactly] == 0 do
-          changes_error(opts, count, "must be absent")
+          changes_error(opts, count)
         else
           if count == 1 do
-            attribute_error(changeset, opts, count, "must be present")
+            attribute_error(changeset, opts, count)
           else
             attribute_error(
               changeset,
               opts,
-              count,
-              "exactly %{exactly} of %{keys} must be present"
+              count
             )
           end
         end
 
       opts[:at_least] && present < opts[:at_least] ->
         if count == 1 do
-          attribute_error(changeset, opts, count, "must be present")
+          attribute_error(changeset, opts, count)
         else
-          changes_error(opts, count, "at least %{at_least} of %{keys} must be present")
+          changes_error(opts, count)
         end
 
       opts[:at_most] && present > opts[:at_most] ->
         if count == 1 do
-          attribute_error(changeset, opts, count, "must not be present")
+          attribute_error(changeset, opts, count)
         else
-          changes_error(opts, count, "at most %{at_most} of %{keys} must be present")
+          changes_error(opts, count)
         end
 
       true ->
@@ -73,26 +72,40 @@ defmodule Ash.Resource.Validation.Present do
     end
   end
 
-  defp changes_error(opts, _count, message) do
-    {:error,
-     InvalidChanges.exception(
-       fields: opts[:attributes],
-       message: message,
-       vars: opts
-     )}
+  @impl true
+  def describe(opts) do
+    [vars: opts, message: message(opts)]
   end
 
-  defp attribute_error(changeset, opts, _count, message) do
+  defp message(opts) do
+    cond do
+      opts[:exactly] == 0 -> "must be absent"
+      length(opts[:attributes]) == 1 and not is_nil(opts[:at_most]) -> "must not be present"
+      length(opts[:attributes]) == 1 -> "must be present"
+      not is_nil(opts[:exactly]) -> "exactly %{exactly} of %{keys} must be present"
+      not is_nil(opts[:at_least]) -> "at least %{at_least} of %{keys} must be present"
+      not is_nil(opts[:at_most]) -> "at most %{at_most} of %{keys} must be present"
+    end
+  end
+
+  defp changes_error(opts, _count) do
+    {:error,
+     [fields: opts[:attributes]]
+     |> with_description(opts)
+     |> InvalidChanges.exception()}
+  end
+
+  defp attribute_error(changeset, opts, _count) do
     {:error,
      opts[:attributes]
      |> List.wrap()
      |> Enum.map(fn attribute ->
-       InvalidAttribute.exception(
+       [
          field: attribute,
-         value: Ash.Changeset.get_attribute(changeset, attribute),
-         message: message,
-         vars: opts
-       )
+         value: Ash.Changeset.get_attribute(changeset, attribute)
+       ]
+       |> with_description(opts)
+       |> InvalidAttribute.exception()
      end)}
   end
 

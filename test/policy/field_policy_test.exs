@@ -1,4 +1,4 @@
-defmodule Ash.Test.Policy.RbacTest do
+defmodule Ash.Test.Policy.FieldPolicyTest do
   @doc false
   use ExUnit.Case
 

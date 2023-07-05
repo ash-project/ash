@@ -4,6 +4,7 @@ defmodule Ash.Resource.Validation.Confirm do
   alias Ash.Changeset
   alias Ash.Error.Changes.InvalidAttribute
 
+  @impl true
   def init(opts) do
     case opts[:field] do
       nil ->
@@ -26,6 +27,7 @@ defmodule Ash.Resource.Validation.Confirm do
     end
   end
 
+  @impl true
   def validate(changeset, opts) do
     confirmation_value =
       Changeset.get_argument(changeset, opts[:confirmation]) ||
@@ -39,11 +41,17 @@ defmodule Ash.Resource.Validation.Confirm do
       :ok
     else
       {:error,
-       InvalidAttribute.exception(
-         field: opts[:confirmation],
-         value: confirmation_value,
-         message: "confirmation did not match value"
-       )}
+       [field: opts[:confirmation], value: confirmation_value]
+       |> with_description(opts)
+       |> InvalidAttribute.exception()}
     end
+  end
+
+  @impl true
+  def describe(_opts) do
+    [
+      message: "confirmation did not match value",
+      vars: []
+    ]
   end
 end
