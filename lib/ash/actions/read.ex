@@ -336,8 +336,6 @@ defmodule Ash.Actions.Read do
                      %{valid?: true} = query <-
                        handle_attribute_multitenancy(query),
                      :ok <- validate_multitenancy(query),
-                     {%{valid?: true} = query, before_notifications} <-
-                       run_before_action(query),
                      {:ok, initial_query, query, page_opts} <-
                        paginate(query, action, page: request_opts[:page]),
                      page_opts <- page_opts && Keyword.delete(page_opts, :filter),
@@ -362,7 +360,7 @@ defmodule Ash.Actions.Read do
                      query_opts: query_opts
                    }),
                    %{
-                     notifications: before_notifications
+                     notifications: []
                    }}
                 else
                   %{valid?: false} = query ->
@@ -378,6 +376,19 @@ defmodule Ash.Actions.Read do
             end
           ),
         authorize?: !Keyword.has_key?(request_opts, :initial_data),
+        intermediate_data:
+          Request.resolve([path ++ [:fetch, :query]], fn data ->
+            data
+            |> get_in(path ++ [:fetch, :query])
+            |> run_before_action()
+            |> case do
+              {%{valid?: true} = query, before_notifications} ->
+                {:ok, query, %{notifications: before_notifications}}
+
+              {%{errors: errors}, _} ->
+                {:error, errors}
+            end
+          end),
         data: data_field(request_opts, path, error_path),
         path: path ++ [:fetch],
         async?: !Keyword.has_key?(request_opts, :initial_data),
@@ -1000,9 +1011,9 @@ defmodule Ash.Actions.Read do
 
   defp data_field(request_opts, path, error_path) do
     Request.resolve(
-      [path ++ [:fetch, :query]],
+      [path ++ [:fetch, :query], path ++ [:fetch, :intermediate_data]],
       fn data ->
-        ash_query = get_in(data, path ++ [:fetch, :query])
+        ash_query = get_in(data, path ++ [:fetch, :intermediate_data])
         # We don't care if this specific request is authorizing
         # or the actor of this request, we care if the whole operation
         actor = request_opts[:actor]
@@ -1228,20 +1239,6 @@ defmodule Ash.Actions.Read do
              }}
 
           true ->
-            query =
-              initial_query
-              |> Ash.Query.unset([
-                :filter,
-                :aggregates,
-                :sort,
-                :limit,
-                :offset,
-                :distinct,
-                :select
-              ])
-              |> Ash.Query.set_context(%{action: ash_query.action})
-              |> Ash.Query.data_layer_query(only_validate_filter?: true)
-
             ash_query =
               if ash_query.select || calculations_at_runtime == [] do
                 ash_query
@@ -1263,8 +1260,20 @@ defmodule Ash.Actions.Read do
                 end
               end)
 
-            with %{valid?: true} <- ash_query,
-                 {:ok, query} <- query,
+            with {:ok, query} <-
+                   initial_query
+                   |> Ash.Query.unset([
+                     :filter,
+                     :aggregates,
+                     :sort,
+                     :limit,
+                     :offset,
+                     :distinct,
+                     :select
+                   ])
+                   |> Map.put(:context, ash_query.context)
+                   |> Ash.Query.set_context(%{action: ash_query.action})
+                   |> Ash.Query.data_layer_query(only_validate_filter?: true),
                  {:ok, filter} <-
                    filter_with_related(
                      Enum.map(filter_requests, & &1.path),
