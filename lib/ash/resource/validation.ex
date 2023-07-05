@@ -44,6 +44,8 @@ defmodule Ash.Resource.Validation do
   @callback validate(Ash.Changeset.t(), Keyword.t()) :: :ok | {:error, term}
   @callback describe(Keyword.t()) :: [message: String.t(), vars: Keyword.t()]
 
+  @optional_callbacks describe: 1
+
   @validation_type {:spark_function_behaviour, Ash.Resource.Validation,
                     Ash.Resource.Validation.Builtins, {Ash.Resource.Validation.Function, 1}}
 
@@ -104,11 +106,13 @@ defmodule Ash.Resource.Validation do
 
       defoverridable init: 1
 
-      def describe(opts), do: [message: inspect(__MODULE__), vars: []]
-
-      defoverridable describe: 1
-
-      def with_description(keyword, opts), do: keyword ++ describe(opts)
+      defp with_description(keyword, opts) do
+        if Kernel.function_exported?(__MODULE__, :describe, 1) do
+          keyword ++ apply(__MODULE__, :describe, [opts])
+        else
+          keyword
+        end
+      end
     end
   end
 

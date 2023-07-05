@@ -18,6 +18,16 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
 
     @impl true
     def validate(_, _), do: {:error, :some_error}
+
+    @impl true
+    def describe(opts), do: [message: "Custom validation error message", vars: []]
+  end
+
+  defmodule CustomValidationNoDescribe do
+    use Ash.Resource.Validation
+
+    @impl true
+    def validate(_, _), do: {:error, :some_error}
   end
 
   describe "Negate validation" do
@@ -45,6 +55,13 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
       changeset = Post |> Ash.Changeset.new(%{status: :valid})
 
       assert :ok = Negate.validate(changeset, opts)
+    end
+
+    test "returns error on init if validation do not export `describe/1`" do
+      expected_message =
+        "#{CustomValidationNoDescribe} must implement `describe/1` function to be used in #{Negate}"
+
+      {:error, ^expected_message} = Negate.init(validation: CustomValidationNoDescribe)
     end
   end
 end
