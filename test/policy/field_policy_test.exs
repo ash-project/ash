@@ -36,7 +36,12 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
     } do
       assert %Ash.ForbiddenField{field: :internal_status, type: :attribute} ==
                Ticket
-               |> Ash.Changeset.for_create(:create, %{representative_id: rep.id, reporter_id: user.id, internal_status: :new} , authorize?: true, actor: user)
+               |> Ash.Changeset.for_create(
+                 :create,
+                 %{representative_id: rep.id, reporter_id: user.id, internal_status: :new},
+                 authorize?: true,
+                 actor: user
+               )
                |> Api.create!(authorize?: true, actor: user)
                |> Map.get(:internal_status)
     end

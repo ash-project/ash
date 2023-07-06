@@ -470,7 +470,7 @@ defmodule Ash.Changeset do
     changeset.resource
     |> Ash.Query.new()
     |> Ash.Query.load(changeset.load)
-    |> Ash.Query.select(changeset.select)
+    |> Map.put(:select, changeset.select)
     |> Ash.Query.accessing(types)
   end
 
