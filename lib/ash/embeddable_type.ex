@@ -373,20 +373,13 @@ defmodule Ash.EmbeddableType do
         else
           pkey =
             Enum.into(pkey_fields, %{}, fn pkey_field ->
-              case fetch_key(new_uncasted_value, pkey_field) do
-                :error ->
-                  {pkey_field, :error}
-
-                {:ok, value} ->
-                  attribute = Ash.Resource.Info.attribute(__MODULE__, pkey_field)
-
-                  case Ash.Type.cast_input(attribute.type, value, attribute.constraints) do
-                    {:ok, casted} ->
-                      {pkey_field, casted}
-
-                    _ ->
-                      {pkey_field, :error}
-                  end
+              with {:ok, value} <- fetch_key(new_uncasted_value, pkey_field),
+                   attribute <- Ash.Resource.Info.attribute(__MODULE__, pkey_field),
+                   {:ok, casted} <-
+                     Ash.Type.cast_input(attribute.type, value, attribute.constraints) do
+                {pkey_field, casted}
+              else
+                _ -> {pkey_field, :error}
               end
             end)
 

@@ -377,4 +377,106 @@ defmodule Ash.Type.Union do
       :error
     end
   end
+
+  @impl true
+  def handle_change(nil, %Ash.Union{type: type_name, value: new_value}, constraints) do
+    with {:ok, type_configs} <- Keyword.fetch(constraints, :types),
+         {:ok, type_config} <- Keyword.fetch(type_configs, type_name),
+         {:ok, type} <- Keyword.fetch(type_config, :type),
+         type_constraints <- Keyword.get(type_config, :constraints, []),
+         {:ok, new_value} <- type.handle_change(nil, new_value, type_constraints) do
+      {:ok, %Ash.Union{type: type_name, value: new_value}}
+    end
+  end
+
+  def handle_change(%Ash.Union{type: type_name, value: old_value}, nil, constraints) do
+    with {:ok, type_configs} <- Keyword.fetch(constraints, :types),
+         {:ok, type_config} <- Keyword.fetch(type_configs, type_name),
+         {:ok, type} <- Keyword.fetch(type_config, :type),
+         type_constraints <- Keyword.get(type_config, :constraints, []),
+         {:ok, new_value} <- type.handle_change(old_value, nil, type_constraints) do
+      {:ok, %Ash.Union{type: type_name, value: new_value}}
+    end
+  end
+
+  def handle_change(
+        %Ash.Union{type: type_name, value: old_value},
+        %Ash.Union{type: type_name, value: new_value},
+        constraints
+      ) do
+    with {:ok, type_configs} <- Keyword.fetch(constraints, :types),
+         {:ok, type_config} <- Keyword.fetch(type_configs, type_name),
+         {:ok, type} <- Keyword.fetch(type_config, :type),
+         type_constraints <- Keyword.get(type_config, :constraints, []),
+         {:ok, new_value} <- type.handle_change(old_value, new_value, type_constraints) do
+      {:ok, %Ash.Union{type: type_name, value: new_value}}
+    end
+  end
+
+  def handle_change(
+        %Ash.Union{},
+        %Ash.Union{type: type_name, value: new_value},
+        constraints
+      ) do
+    with {:ok, type_configs} <- Keyword.fetch(constraints, :types),
+         {:ok, type_config} <- Keyword.fetch(type_configs, type_name),
+         {:ok, type} <- Keyword.fetch(type_config, :type),
+         type_constraints <- Keyword.get(type_config, :constraints, []),
+         {:ok, new_value} <- type.handle_change(nil, new_value, type_constraints) do
+      {:ok, %Ash.Union{type: type_name, value: new_value}}
+    end
+  end
+
+  @impl true
+  def prepare_change(_old_value, nil, _constraints), do: {:ok, nil}
+
+  def prepare_change(nil, new_value, constraints) do
+    case cast_input(new_value, constraints) do
+      {:ok, %Ash.Union{type: type_name, value: value}} ->
+        do_prepare_change(type_name, nil, value, constraints)
+
+      {:error, _} ->
+        {:ok, new_value}
+    end
+  end
+
+  def prepare_change(%Ash.Union{type: type_name, value: old_value}, new_value, constraints)
+      when is_map(new_value) do
+    constraints
+    |> Keyword.get(:types, [])
+    |> Keyword.get(type_name, [])
+    |> Map.new()
+    |> case do
+      %{tag: field, tag_value: tag} ->
+        if new_value[field] == tag || new_value[to_string(field)] == tag,
+          do: do_prepare_change(type_name, old_value, new_value, constraints),
+          else: {:ok, new_value}
+
+      _ ->
+        {:ok, new_value}
+    end
+  end
+
+  def prepare_change(%Ash.Union{type: type_name, value: old_value}, new_value, constraints) do
+    case cast_input(new_value, constraints) do
+      {:ok, %Ash.Union{type: ^type_name, value: value}} ->
+        do_prepare_change(type_name, old_value, value, constraints)
+
+      {:ok, %Ash.Union{type: other_type, value: value}} ->
+        do_prepare_change(other_type, nil, value, constraints)
+
+      {:error, _} ->
+        {:ok, new_value}
+    end
+  end
+
+  defp do_prepare_change(type_name, old_value, new_value, constraints) do
+    with {:ok, type_configs} <- Keyword.fetch(constraints, :types),
+         {:ok, type_config} <- Keyword.fetch(type_configs, type_name),
+         {:ok, type} <- Keyword.fetch(type_config, :type),
+         type_constraints <- Keyword.get(type_config, :constraints, []),
+         {:ok, value} <- type.prepare_change(old_value, new_value, type_constraints) do
+      {:ok, %Ash.Union{type: type_name, value: value}}
+    end
+  end
 end
