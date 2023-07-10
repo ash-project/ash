@@ -20,6 +20,17 @@ defmodule Ash.Test.Support.PolicyField.User do
     end
   end
 
+  relationships do
+    has_many :tickets, Ash.Test.Support.PolicyField.Ticket do
+      source_attribute :id
+      destination_attribute :reporter_id
+    end
+  end
+
+  aggregates do
+    count :ticket_count, :tickets
+  end
+
   policies do
     policy always() do
       authorize_if always()
@@ -29,6 +40,10 @@ defmodule Ash.Test.Support.PolicyField.User do
   field_policies do
     field_policy :role do
       authorize_if actor_attribute_equals(:role, :representative)
+    end
+
+    field_policy :ticket_count do
+      authorize_if actor_attribute_equals(:role, :reporter)
     end
   end
 end

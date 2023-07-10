@@ -531,7 +531,7 @@ defmodule Ash.Actions.Helpers do
   end
 
   defp replace_dynamic_loads(record, field, type, %Ash.Changeset{} = changeset)
-       when type in [:attribute, :calculation] do
+       when type in [:attribute, :calculation, :aggregate] do
     query =
       changeset.resource
       |> Ash.Query.new()
@@ -541,7 +541,7 @@ defmodule Ash.Actions.Helpers do
   end
 
   defp replace_dynamic_loads(record, field, type, query)
-       when type in [:attribute, :calculation] do
+       when type in [:attribute, :calculation, :aggregate] do
     query.calculations
     |> Enum.reduce(
       record,
