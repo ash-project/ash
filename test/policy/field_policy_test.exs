@@ -61,7 +61,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
     test "can load a resource with a forbidden aggregate", %{
       representative: representative
     } do
-      assert %Ash.ForbiddenField{field: :role, type: :aggregate} ==
+      assert %Ash.ForbiddenField{field: :ticket_count, type: :aggregate} ==
                User
                |> Ash.Query.for_read(:read, authorize?: true, actor: representative)
                |> Ash.Query.filter(id == ^representative.id)
