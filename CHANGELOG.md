@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.11.4](https://github.com/ash-project/ash/compare/v2.11.3...v2.11.4) (2023-07-10)
+
+
+
+
+### Bug Fixes:
+
+* add `handle_change/3` and `prepare_change/3` to `Ash.Type.Union` (#642)
+
 ## [v2.11.3](https://github.com/ash-project/ash/compare/v2.11.2...v2.11.3) (2023-07-06)
 
 
