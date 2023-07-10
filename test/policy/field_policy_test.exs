@@ -25,7 +25,8 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
 
   describe "introspection" do
     test "introspection returns field policies" do
-      assert [%Ash.Policy.FieldPolicy{}] = Ash.Policy.Info.field_policies(User)
+      assert [%Ash.Policy.FieldPolicy{}, %Ash.Policy.FieldPolicy{}] =
+               Ash.Policy.Info.field_policies(User)
     end
   end
 
@@ -55,6 +56,18 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.filter(id == ^representative.id)
                |> Api.read_one!(authorize?: true, actor: representative)
                |> Map.get(:role)
+    end
+
+    test "can load a resource with a forbidden aggregate", %{
+      representative: representative
+    } do
+      assert %Ash.ForbiddenField{field: :role, type: :aggregate} ==
+               User
+               |> Ash.Query.for_read(:read, authorize?: true, actor: representative)
+               |> Ash.Query.filter(id == ^representative.id)
+               |> Ash.Query.load([:ticket_count])
+               |> Api.read_one!(authorize?: true, actor: representative)
+               |> Map.get(:ticket_count)
     end
 
     test "when reading as a user that cant see the field, its value is not displayed", %{
