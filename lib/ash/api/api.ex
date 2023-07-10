@@ -1923,7 +1923,7 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec bulk_create!(Ash.Api.t(), [map], Ash.Resource.t(), atom, Keyword.t()) ::
+  @spec bulk_create!(Ash.Api.t(), Enumerable.t(map), Ash.Resource.t(), atom, Keyword.t()) ::
           Ash.BulkResult.t() | no_return
   def bulk_create!(api, inputs, resource, action, opts) do
     api
@@ -1954,7 +1954,8 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec bulk_create(Ash.Api.t(), [map], Ash.Resource.t(), atom, Keyword.t()) :: Ash.BulkResult.t()
+  @spec bulk_create(Ash.Api.t(), Enumerable.t(map), Ash.Resource.t(), atom, Keyword.t()) ::
+          Ash.BulkResult.t()
   def bulk_create(api, inputs, resource, action, opts) do
     case inputs do
       [] ->
