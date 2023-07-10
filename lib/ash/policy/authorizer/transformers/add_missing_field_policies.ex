@@ -41,7 +41,7 @@ defmodule Ash.Policy.Authorizer.Transformers.AddMissingFieldPolicies do
         fields =
           policy.fields
           |> Enum.reject(&(&1 == :*))
-          |> Enum.concat(non_pkey_fields || [])
+          |> Enum.concat(non_pkey_fields)
 
         Transformer.replace_entity(dsl, [:field_policies], %{policy | fields: fields})
       else
