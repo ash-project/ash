@@ -23,7 +23,10 @@ defmodule Ash.Type.UUID do
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(value, _) when is_binary(value) do
-    Ecto.Type.cast(Ecto.UUID, String.trim(value))
+    case String.valid?(value) do
+      true -> Ecto.Type.cast(Ecto.UUID, String.trim(value))
+      false -> Ecto.Type.cast(Ecto.UUID, value)
+    end
   end
 
   def cast_input(value, _) do
