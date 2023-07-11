@@ -172,7 +172,7 @@ defmodule Ash.Error.Forbidden.Policy do
   defp action_name(name), do: name
 
   defp relevant?(policy, facts) do
-    Enum.all?(policy.condition, fn condition ->
+    Enum.all?(policy.condition || [], fn condition ->
       Policy.fetch_fact(facts, condition) == {:ok, true}
     end)
   end

@@ -1027,19 +1027,63 @@ defmodule Ash.Actions.Read do
         can_be_in_query? =
           not Keyword.has_key?(request_opts, :initial_data) && !ash_query.action.manual
 
+        should_be_in_query? =
+          Ash.DataLayer.data_layer_can?(ash_query.resource, :expression_calculation) &&
+            !request_opts[:initial_data]
+
         {calculations_in_query, calculations_at_runtime} =
-          if Ash.DataLayer.data_layer_can?(ash_query.resource, :expression_calculation) &&
-               !request_opts[:initial_data] do
-            ash_query.calculations
-            |> Map.values()
-            |> Enum.split_with(fn calculation ->
-              :erlang.function_exported(calculation.module, :expression, 2)
-            end)
-          else
-            {[], Map.values(ash_query.calculations)}
-          end
+          ash_query.calculations
+          |> Map.values()
+          |> Enum.reduce({[], []}, fn calculation, {in_query, at_runtime} ->
+            case Ash.Expr.eval(
+                   calculation.module.expression(calculation.opts, calculation.context),
+                   resource: ash_query.resource
+                 ) do
+              {:ok, result} ->
+                {in_query,
+                 [
+                   %{
+                     calculation
+                     | module: Ash.Resource.Calculation.Expression,
+                       opts: [expr: result]
+                   }
+                   | at_runtime
+                 ]}
+
+              _ ->
+                if should_be_in_query? &&
+                     :erlang.function_exported(calculation.module, :expression, 2) do
+                  {[calculation | in_query], at_runtime}
+                else
+                  {in_query, [calculation | at_runtime]}
+                end
+            end
+          end)
 
         current_calculations = Map.keys(ash_query.calculations)
+
+        # Deselect fields that we know statically cannot be seen
+        # The field may be reselected later as a calculation dependency
+        # this is an optimization not a guarantee
+        ash_query =
+          calculations_at_runtime
+          |> Enum.reduce([], fn
+            %{
+              name: {:__ash_fields_are_visible__, fields},
+              module: Ash.Resource.Calculation.Expression,
+              opts: opts
+            },
+            deselect_fields ->
+              if opts[:expr] == false do
+                deselect_fields ++ fields
+              else
+                deselect_fields
+              end
+
+            _, deselect_fields ->
+              deselect_fields
+          end)
+          |> then(&Ash.Query.deselect(ash_query, &1))
 
         ash_query = loaded_query(ash_query, calculations_at_runtime)
 

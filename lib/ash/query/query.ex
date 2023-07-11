@@ -845,6 +845,8 @@ defmodule Ash.Query do
   @doc """
   Ensure the the specified attributes are `nil` in the query results.
   """
+  def deselect(query, []), do: to_query(query)
+
   def deselect(query, fields) do
     query = to_query(query)
 

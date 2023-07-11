@@ -22,8 +22,13 @@ defmodule Ash.Expr do
   Evaluate an expression. This function only works if you have no references, or if you provide the `record` option.
   """
   def eval(expression, opts \\ []) do
+    context =
+      opts[:context]
+      |> Kernel.||(%{})
+      |> Map.put_new(:resource, opts[:resource])
+
     expression
-    |> Ash.Filter.hydrate_refs(opts[:context] || %{})
+    |> Ash.Filter.hydrate_refs(context)
     |> case do
       {:ok, hydrated} ->
         eval_hydrated(hydrated, opts)
