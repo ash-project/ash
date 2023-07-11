@@ -12,7 +12,8 @@ defmodule Ash.Policy.Authorizer.Transformers.CacheFieldPolicies do
       |> Enum.reduce(%{}, fn field_policy, acc ->
         field_policy.fields
         |> Enum.reduce(acc, fn field, acc ->
-          Map.update(acc, field, [field_policy], &[field_policy | &1])
+          # we need to retain the order of field policies here!
+          Map.update(acc, field, [field_policy], &(&1 ++ [field_policy]))
         end)
       end)
 

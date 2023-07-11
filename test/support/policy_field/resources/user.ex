@@ -16,7 +16,7 @@ defmodule Ash.Test.Support.PolicyField.User do
     uuid_primary_key :id
 
     attribute :role, :atom do
-      constraints one_of: [:user, :representative]
+      constraints one_of: [:user, :representative, :admin]
     end
   end
 
@@ -38,6 +38,10 @@ defmodule Ash.Test.Support.PolicyField.User do
   end
 
   field_policies do
+    field_policy_bypass :* do
+      authorize_if actor_attribute_equals(:role, :admin)
+    end
+
     field_policy :role do
       authorize_if actor_attribute_equals(:role, :representative)
     end

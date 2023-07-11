@@ -9,10 +9,12 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
   setup do
     rep = Api.create!(Ash.Changeset.new(User, %{role: :representative}))
     user = Api.create!(Ash.Changeset.new(User, %{role: :user}))
+    admin = Api.create!(Ash.Changeset.new(User, %{role: :admin}))
     other_user = Api.create!(Ash.Changeset.new(User, %{role: :user}))
 
     [
       user: user,
+      admin: admin,
       representative: rep,
       ticket:
         Api.create!(Ash.Changeset.new(Ticket, %{representative_id: rep.id, reporter_id: user.id})),
@@ -25,7 +27,11 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
 
   describe "introspection" do
     test "introspection returns field policies" do
-      assert [%Ash.Policy.FieldPolicy{}, %Ash.Policy.FieldPolicy{}] =
+      assert [
+               %Ash.Policy.FieldPolicy{bypass?: true},
+               %Ash.Policy.FieldPolicy{bypass?: false},
+               %Ash.Policy.FieldPolicy{bypass?: false}
+             ] =
                Ash.Policy.Info.field_policies(User)
     end
   end
@@ -55,6 +61,18 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.for_read(:read, authorize?: true, actor: representative)
                |> Ash.Query.filter(id == ^representative.id)
                |> Api.read_one!(authorize?: true, actor: representative)
+               |> Map.get(:role)
+    end
+
+    test "bypasses take priority over subsequent policies", %{
+      representative: representative,
+      admin: admin
+    } do
+      assert :representative ==
+               User
+               |> Ash.Query.for_read(:read, authorize?: true, actor: admin)
+               |> Ash.Query.filter(id == ^representative.id)
+               |> Api.read_one!(authorize?: true, actor: admin)
                |> Map.get(:role)
     end
 

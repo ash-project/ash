@@ -262,6 +262,14 @@ defmodule Ash.Policy.Authorizer do
     ]
   }
 
+  @field_policy_bypass %{
+    @field_policy
+    | name: :field_policy_bypass,
+      auto_set_fields: [bypass?: true],
+      describe:
+        "A field policy that, if passed, will skip all following field policies for that field or fields. If failed, field authorization moves on to the next policy"
+  }
+
   @field_policies %Spark.Dsl.Section{
     name: :field_policies,
     imports: [
@@ -321,6 +329,7 @@ defmodule Ash.Policy.Authorizer do
       """
     ],
     entities: [
+      @field_policy_bypass,
       @field_policy
     ]
   }
@@ -619,7 +628,14 @@ defmodule Ash.Policy.Authorizer do
       end
 
     {expr, authorizer} =
-      case strict_check_result(%{authorizer | policies: policies}) do
+      case strict_check_result(
+             %{
+               authorizer
+               | policies: policies
+             },
+             for_fields: [field],
+             context_description: "accessing field in filter"
+           ) do
         {:authorized, authorizer} ->
           {true, authorizer}
 
@@ -669,27 +685,23 @@ defmodule Ash.Policy.Authorizer do
           Ash.Changeset.accessing(changeset, [:attributes, :calculations, :aggregates])
       end
 
-    query_or_changeset.resource
-    |> Ash.Policy.Info.field_policies()
-    |> Enum.filter(fn policy ->
-      Enum.any?(policy.fields, &(&1 in accessing_fields))
+    accessing_fields
+    |> Enum.group_by(fn field ->
+      Ash.Policy.Info.field_policies_for_field(query_or_changeset.resource, field)
     end)
-    |> Enum.reduce(%{}, fn field_policy, acc ->
-      field_policy.fields
-      |> Enum.reduce(%{}, fn field, acc ->
-        Map.update(acc, field, [field_policy], &[field_policy | &1])
-      end)
-      |> Enum.reduce(acc, fn {field, field_policies}, acc ->
-        Map.update(acc, field_policies, [field], &[field | &1])
-      end)
-      |> Map.new(fn {key, value} ->
-        {key, Enum.uniq(value)}
-      end)
-    end)
+    # primary key doesn't have policies on it, and so is nil here
+    |> Map.drop([nil, []])
     |> Enum.reduce({query_or_changeset, authorizer}, fn {policies, fields},
                                                         {query_or_changeset, authorizer} ->
       {expr, authorizer} =
-        case strict_check_result(%{authorizer | policies: policies}) do
+        case strict_check_result(
+               %{
+                 authorizer
+                 | policies: policies
+               },
+               for_fields: fields,
+               context_description: "selecting or loading fields"
+             ) do
           {:authorized, authorizer} ->
             {true, authorizer}
 
@@ -1126,7 +1138,7 @@ defmodule Ash.Policy.Authorizer do
     end
   end
 
-  defp strict_check_result(authorizer) do
+  defp strict_check_result(authorizer, opts \\ []) do
     case Checker.strict_check_scenarios(authorizer) do
       {:ok, true, authorizer} ->
         {:authorized, authorizer}
@@ -1136,6 +1148,8 @@ defmodule Ash.Policy.Authorizer do
          Ash.Error.Forbidden.Policy.exception(
            facts: authorizer.facts,
            policies: authorizer.policies,
+           context_description: opts[:context_description],
+           for_fields: opts[:for_fields],
            resource: Map.get(authorizer, :resource),
            action: Map.get(authorizer, :action),
            scenarios: []
@@ -1158,6 +1172,8 @@ defmodule Ash.Policy.Authorizer do
          Ash.Error.Forbidden.Policy.exception(
            facts: authorizer.facts,
            policies: authorizer.policies,
+           context_description: opts[:context_description],
+           for_fields: opts[:for_fields],
            resource: Map.get(authorizer, :resource),
            action: Map.get(authorizer, :action),
            scenarios: []

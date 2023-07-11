@@ -13,6 +13,8 @@ defmodule Ash.Error.Forbidden.Policy do
       filter: nil,
       policy_breakdown?: false,
       must_pass_strict_check?: false,
+      for_fields: nil,
+      context_description: nil,
       policies: [],
       resource: nil,
       action: nil,
@@ -79,7 +81,11 @@ defmodule Ash.Error.Forbidden.Policy do
                 facts,
                 filter,
                 policies,
-                Keyword.put(opts, :must_pass_strict_check?, must_pass_strict_check?)
+                Keyword.merge(opts,
+                  must_pass_strict_check?: must_pass_strict_check?,
+                  context_description: error.context_description,
+                  for_fields: error.for_fields
+                )
               )
           end)
           |> Enum.intersperse("\n\n")
@@ -114,11 +120,26 @@ defmodule Ash.Error.Forbidden.Policy do
         ""
       end
 
+    policy_context_description =
+      cond do
+        opts[:for_fields] && opts[:context_description] ->
+          " for #{opts[:context_description]} fields: #{inspect(opts[:for_fields])} "
+
+        opts[:for_fields] ->
+          " for fields: #{inspect(opts[:for_fields])} "
+
+        opts[:context_description] ->
+          " for #{opts[:context_description]}:"
+
+        true ->
+          ""
+      end
+
     policy_breakdown_title =
       if Keyword.get(opts, :help_text?, true) do
-        ["Policy Breakdown", @help_text]
+        ["Policy Breakdown#{policy_context_description}", @help_text]
       else
-        "Policy Breakdown"
+        "Policy Breakdown#{policy_context_description}"
       end
 
     policy_explanation =

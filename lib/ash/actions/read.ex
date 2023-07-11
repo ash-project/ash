@@ -1035,24 +1035,27 @@ defmodule Ash.Actions.Read do
           ash_query.calculations
           |> Map.values()
           |> Enum.reduce({[], []}, fn calculation, {in_query, at_runtime} ->
-            case Ash.Expr.eval(
-                   calculation.module.expression(calculation.opts, calculation.context),
-                   resource: ash_query.resource
-                 ) do
-              {:ok, result} ->
-                {in_query,
-                 [
-                   %{
-                     calculation
-                     | module: Ash.Resource.Calculation.Expression,
-                       opts: [expr: result]
-                   }
-                   | at_runtime
-                 ]}
+            has_expression? = :erlang.function_exported(calculation.module, :expression, 2)
 
+            with true <- has_expression?,
+                 {:ok, result} <-
+                   Ash.Expr.eval(
+                     calculation.module.expression(calculation.opts, calculation.context),
+                     resource: ash_query.resource
+                   ) do
+              {in_query,
+               [
+                 %{
+                   calculation
+                   | module: Ash.Resource.Calculation.Expression,
+                     opts: [expr: result]
+                 }
+                 | at_runtime
+               ]}
+            else
               _ ->
                 if should_be_in_query? &&
-                     :erlang.function_exported(calculation.module, :expression, 2) do
+                     has_expression? do
                   {[calculation | in_query], at_runtime}
                 else
                   {in_query, [calculation | at_runtime]}
@@ -1083,7 +1086,9 @@ defmodule Ash.Actions.Read do
             _, deselect_fields ->
               deselect_fields
           end)
-          |> then(&Ash.Query.deselect(ash_query, &1))
+          |> then(fn fields ->
+            unload_forbidden_fields(ash_query, fields)
+          end)
 
         ash_query = loaded_query(ash_query, calculations_at_runtime)
 
@@ -2105,6 +2110,81 @@ defmodule Ash.Actions.Read do
                 "only attribute & aggregate deps should remain at this point, got #{inspect(other)} on #{inspect(query.resource)}"
         end
     end)
+  end
+
+  defp unload_forbidden_fields(ash_query, fields) do
+    fields
+    |> Enum.group_by(fn field ->
+      cond do
+        Ash.Resource.Info.attribute(ash_query.resource, field) ->
+          :attribute
+
+        Ash.Resource.Info.aggregate(ash_query.resource, field) ->
+          :aggregate
+
+        Ash.Resource.Info.calculation(ash_query.resource, field) ->
+          :calculation
+      end
+    end)
+    |> Enum.reduce(ash_query, fn
+      {:attribute, fields}, ash_query ->
+        ash_query
+        |> Ash.Query.deselect(fields)
+        |> unload_attribute_calculations(fields)
+
+      {:aggregate, fields}, ash_query ->
+        unload_aggregates(ash_query, fields)
+
+      {:calculation, fields}, ash_query ->
+        unload_calculations(ash_query, fields)
+    end)
+  end
+
+  defp unload_aggregates(ash_query, fields) do
+    drop =
+      ash_query.aggregates
+      |> Enum.flat_map(fn {name, %{agg_name: agg_name}} ->
+        if agg_name in fields do
+          [name]
+        else
+          []
+        end
+      end)
+
+    %{ash_query | aggregates: Map.drop(ash_query.aggregates, drop)}
+  end
+
+  defp unload_attribute_calculations(ash_query, fields) do
+    drop =
+      ash_query.calculations
+      |> Enum.flat_map(fn
+        {name, %{module: Ash.Resource.Calculation.LoadAttribute, opts: opts}} ->
+          if opts[:attribute] in fields do
+            [name]
+          else
+            []
+          end
+
+        _ ->
+          []
+      end)
+
+    %{ash_query | calculations: Map.drop(ash_query.calculations, drop)}
+  end
+
+  defp unload_calculations(ash_query, fields) do
+    drop =
+      ash_query.calculations
+      |> Enum.flat_map(fn
+        {name, %{calc_name: calc_name}} ->
+          if calc_name in fields do
+            [name]
+          else
+            []
+          end
+      end)
+
+    %{ash_query | calculations: Map.drop(ash_query.calculations, drop)}
   end
 
   defp has_key?(value, key) when is_map(value) do

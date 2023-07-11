@@ -287,7 +287,7 @@ defmodule Ash.Policy.Policy do
 
   defp compile_policy_expression(
          [
-           %__MODULE__{condition: condition, policies: policies, bypass?: bypass?} | rest
+           %{condition: condition, policies: policies, bypass?: bypass?} | rest
          ],
          authorizer
        ) do

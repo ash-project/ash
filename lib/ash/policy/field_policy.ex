@@ -5,7 +5,8 @@ defmodule Ash.Policy.FieldPolicy do
     :condition,
     :policies,
     :description,
-    :__identifier__
+    :__identifier__,
+    bypass?: false
   ]
 
   @type t :: %__MODULE__{}
@@ -15,7 +16,12 @@ defmodule Ash.Policy.FieldPolicy do
     if Enum.empty?(field_policy.policies) do
       {:error, "Field policies must have at least one check."}
     else
-      {:ok, %{field_policy | policies: Enum.map(field_policy.policies, &set_field_policy_opt/1)}}
+      {:ok,
+       %{
+         field_policy
+         | policies: Enum.map(field_policy.policies, &set_field_policy_opt/1),
+           condition: field_policy.condition || []
+       }}
     end
   end
 

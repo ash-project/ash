@@ -548,24 +548,33 @@ defmodule Ash.Actions.Helpers do
       query.calculations,
       record,
       fn
-        {key, %{module: Ash.Resource.Calculation.LoadAttribute, opts: opts}}, record ->
+        {key, %{module: Ash.Resource.Calculation.LoadAttribute, opts: opts, load: load}},
+        record ->
           if type == :attribute && opts[:attribute] == field do
-            Map.update!(
-              record,
-              :calculations,
-              &Map.put(&1, key, %Ash.ForbiddenField{field: field, type: type})
-            )
+            if load do
+              Map.put(record, load, %Ash.ForbiddenField{field: load, type: type})
+            else
+              Map.update!(
+                record,
+                :calculations,
+                &Map.put(&1, key, %Ash.ForbiddenField{field: field, type: type})
+              )
+            end
           else
             record
           end
 
-        {key, %{calc_name: calc_name}}, record ->
+        {key, %{calc_name: calc_name, load: load}}, record ->
           if calc_name == field and type == :calculation do
-            Map.update!(
-              record,
-              :calculations,
-              &Map.put(&1, key, %Ash.ForbiddenField{field: field, type: type})
-            )
+            if load do
+              Map.put(record, load, %Ash.ForbiddenField{field: load, type: type})
+            else
+              Map.update!(
+                record,
+                :calculations,
+                &Map.put(&1, key, %Ash.ForbiddenField{field: field, type: type})
+              )
+            end
           else
             record
           end
