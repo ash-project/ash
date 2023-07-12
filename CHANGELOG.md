@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.11.6](https://github.com/ash-project/ash/compare/v2.11.5...v2.11.6) (2023-07-12)
+
+
+
+
+### Improvements:
+
+* add `at/2` function
+
 ## [v2.11.5](https://github.com/ash-project/ash/compare/v2.11.4...v2.11.5) (2023-07-12)
 
 
