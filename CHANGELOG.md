@@ -5,6 +5,29 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.11.5](https://github.com/ash-project/ash/compare/v2.11.4...v2.11.5) (2023-07-12)
+
+
+
+
+### Bug Fixes:
+
+* incorrect error for casting binary UUID (#653)
+
+* fix and improve policy breakdown logs
+
+* incorrect typespec for `bulk_create/5`. (#646)
+
+### Improvements:
+
+* add `string_split` expression
+
+* add field_policy_bypass
+
+* optimize field selection/loading when possible
+
+* deselect fields we know statically are not visible
+
 ## [v2.11.4](https://github.com/ash-project/ash/compare/v2.11.3...v2.11.4) (2023-07-10)
 
 
