@@ -109,11 +109,21 @@ defmodule Ash.Query.Function do
       {%{__predicate__?: _} = arg, _}, {:ok, args} ->
         {:cont, {:ok, [arg | args]}}
 
+      {arg, {type, constraints}}, {:ok, args} when type != :array ->
+        if expr?(arg) do
+          {:cont, {:ok, [arg | args]}}
+        else
+          case Ash.Query.Type.try_cast(arg, type, constraints) do
+            {:ok, value} -> {:cont, {:ok, [value | args]}}
+            :error -> {:halt, :error}
+          end
+        end
+
       {arg, type}, {:ok, args} ->
         if expr?(arg) do
           {:cont, {:ok, [arg | args]}}
         else
-          case Ash.Query.Type.try_cast(arg, type) do
+          case Ash.Query.Type.try_cast(arg, type, []) do
             {:ok, value} -> {:cont, {:ok, [value | args]}}
             :error -> {:halt, :error}
           end

@@ -220,12 +220,19 @@ defmodule Ash.Test.GeneratorTest do
   end
 
   describe "built in generators" do
-    for type <- Enum.uniq(Ash.Type.builtin_types()) do
+    for type <- Enum.uniq(Ash.Type.builtin_types()), type != Ash.Type.Keyword do
       Code.ensure_compiled!(type)
       has_generator? = function_exported?(type, :generator, 1)
 
       for type <- [{:array, type}, type] do
-        constraints = Spark.OptionsHelpers.validate!([], Ash.Type.constraints(type))
+        constraints =
+          case type do
+            {:array, type} ->
+              [items: Spark.OptionsHelpers.validate!([], Ash.Type.constraints(type))]
+
+            type ->
+              Spark.OptionsHelpers.validate!([], Ash.Type.constraints(type))
+          end
 
         if has_generator? do
           test "#{inspect(type)} type can be generated" do

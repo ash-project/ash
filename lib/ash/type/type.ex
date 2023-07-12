@@ -26,6 +26,7 @@ defmodule Ash.Type do
 
   @builtin_short_names [
                          map: "Ash.Type.Map",
+                         keyword: "Ash.Type.Keyword",
                          term: "Ash.Type.Term",
                          atom: "Ash.Type.Atom",
                          string: "Ash.Type.String",

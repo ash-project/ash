@@ -123,7 +123,10 @@ defmodule Ash.Query.Operator do
     end
   end
 
-  defp try_cast(%Ref{attribute: %{type: type}} = left, right, [:any, {:array, :same}]) do
+  defp try_cast(%Ref{attribute: %{type: type}} = left, right, [
+         :any,
+         {:array, :same}
+       ]) do
     case right do
       # TODO: app level type compatibility?
       %Ref{attribute: %{type: {:array, _type}}} ->
@@ -143,7 +146,11 @@ defmodule Ash.Query.Operator do
     end
   end
 
-  defp try_cast(left, %Ref{attribute: %{type: {:array, type}}} = right, [:any, {:array, :same}]) do
+  defp try_cast(
+         left,
+         %Ref{attribute: %{type: {:array, type}}} = right,
+         [:any, {:array, :same}]
+       ) do
     case Ash.Query.Type.try_cast(left, type) do
       {:ok, new_left} ->
         {:ok, new_left, right}
@@ -216,6 +223,20 @@ defmodule Ash.Query.Operator do
 
   defp cast_one(value, :any) do
     {:ok, value}
+  end
+
+  defp cast_one(value, {type, constraints}) do
+    if Ash.Filter.TemplateHelpers.expr?(value) do
+      {:ok, value}
+    else
+      case Ash.Query.Type.try_cast(value, type, constraints) do
+        {:ok, casted} ->
+          {:ok, casted}
+
+        _ ->
+          {:error, "Could not cast #{inspect(value)} as #{inspect(type)}"}
+      end
+    end
   end
 
   defp cast_one(value, type) do

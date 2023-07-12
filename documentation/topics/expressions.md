@@ -43,6 +43,9 @@ The following functions are built in:
 - `type/2` | Cast a given value to a specific type, i.e `type(^arg(:id), :uuid)` or `type(integer_field, :string)`
 - `string_join/1` | Concatenates a list of strings, and ignores any nil values
 - `string_join/2` | As above, but with a joiner
+- `string_split/1` | Splits a string on spaces
+- `string_split/2` | As above, but with a specific delimiter
+- `string_split/3` | As above, but with options. See the function for the available options.
 
 ## Sub-expressions
 

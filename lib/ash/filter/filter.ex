@@ -28,6 +28,7 @@ defmodule Ash.Filter do
     Length,
     Now,
     StringJoin,
+    StringSplit,
     Today,
     Type
   }
@@ -58,7 +59,8 @@ defmodule Ash.Filter do
     Now,
     Today,
     Type,
-    StringJoin
+    StringJoin,
+    StringSplit
   ]
 
   @operators [
