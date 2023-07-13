@@ -1038,6 +1038,12 @@ defmodule Ash.Api do
   @doc "Get the avg of a given field from the given query"
   @callback avg(Ash.Query.t(), field :: atom, opts :: Keyword.t()) ::
               {:ok, term} | {:error, Ash.Error.t()}
+  @doc "Wether or not the given query would return any results"
+  @callback exists(Ash.Query.t(), opts :: Keyword.t()) ::
+              {:ok, boolean} | {:error, Ash.Error.t()}
+  @doc "Wether or not the given query would return any results, raising any errors"
+  @callback exists?(Ash.Query.t(), opts :: Keyword.t()) ::
+              boolean | no_return
   @doc "Get the avg of a given field from the given query, raising any errors"
   @callback avg!(Ash.Query.t(), field :: atom, opts :: Keyword.t()) :: term | no_return
   @doc "Get list of a given field from the given query"

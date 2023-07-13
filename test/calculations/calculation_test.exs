@@ -9,22 +9,22 @@ defmodule Ash.Test.CalculationTest do
       data_layer: Ash.DataLayer.Ets
 
     ets do
-      private? true
+      private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      defaults([:create, :read, :update, :destroy])
     end
 
     relationships do
       belongs_to :source, Ash.Test.CalculationTest.User do
-        allow_nil? false
-        primary_key? true
+        allow_nil?(false)
+        primary_key?(true)
       end
 
       belongs_to :target, Ash.Test.CalculationTest.User do
-        allow_nil? false
-        primary_key? true
+        allow_nil?(false)
+        primary_key?(true)
       end
     end
   end
@@ -224,38 +224,38 @@ defmodule Ash.Test.CalculationTest do
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      defaults([:create, :read, :update, :destroy])
     end
 
     ets do
-      private? true
+      private?(true)
     end
 
     aggregates do
       first :user_is_active, :user, :is_active do
-        default false
+        default(false)
       end
     end
 
     attributes do
-      uuid_primary_key :id
-      attribute :name, :string
+      uuid_primary_key(:id)
+      attribute(:name, :string)
 
       attribute :is_active, :boolean do
-        allow_nil? false
-        default false
+        allow_nil?(false)
+        default(false)
       end
     end
 
     calculations do
       calculate :active, :boolean do
-        calculation expr(is_active && user_is_active)
-        load [:user_is_active]
+        calculation(expr(is_active && user_is_active))
+        load([:user_is_active])
       end
     end
 
     relationships do
-      belongs_to :user, Ash.Test.CalculationTest.User
+      belongs_to(:user, Ash.Test.CalculationTest.User)
     end
   end
 
@@ -268,138 +268,154 @@ defmodule Ash.Test.CalculationTest do
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      defaults([:create, :read, :update, :destroy])
 
       read :paginated do
         pagination do
-          keyset? true
-          default_limit 10
+          keyset?(true)
+          default_limit(10)
         end
       end
     end
 
     attributes do
-      uuid_primary_key :id
-      attribute :first_name, :string
-      attribute :last_name, :string
-      attribute :prefix, :string
-      attribute :special, :boolean
-      attribute :is_active, :boolean
+      uuid_primary_key(:id)
+      attribute(:first_name, :string)
+      attribute(:last_name, :string)
+      attribute(:prefix, :string)
+      attribute(:special, :boolean)
+      attribute(:is_active, :boolean)
     end
 
     calculations do
-      calculate :active, :boolean, expr(is_active)
+      calculate(:active, :boolean, expr(is_active))
 
       calculate :full_name, :string, {Concat, keys: [:first_name, :last_name]} do
-        select [:first_name, :last_name]
+        select([:first_name, :last_name])
         # We currently need to use the [allow_empty?: true, trim?: false] constraints here.
         # As it's an empty string, the separator would otherwise be trimmed and set to `nil`.
-        argument :separator, :string,
+        argument(:separator, :string,
           default: " ",
           constraints: [allow_empty?: true, trim?: false]
+        )
       end
 
       calculate :full_name_with_select, :string, FullNameWithSelect do
         # We currently need to use the [allow_empty?: true, trim?: false] constraints here.
         # As it's an empty string, the separator would otherwise be trimmed and set to `nil`.
-        argument :separator, :string,
+        argument(:separator, :string,
           default: " ",
           constraints: [allow_empty?: true, trim?: false]
+        )
       end
 
-      calculate :best_friends_best_friends_first_name, :string, BestFriendsBestFriendsFirstName
+      calculate(:best_friends_best_friends_first_name, :string, BestFriendsBestFriendsFirstName)
 
-      calculate :best_friends_first_name_plus_stuff,
-                :string,
-                BestFriendsFirstNamePlusStuff
+      calculate(
+        :best_friends_first_name_plus_stuff,
+        :string,
+        BestFriendsFirstNamePlusStuff
+      )
 
-      calculate :full_name_plus_first_name, :string, FullNamePlusFirstName
+      calculate(:full_name_plus_first_name, :string, FullNamePlusFirstName)
 
-      calculate :full_name_plus_full_name,
-                :string,
-                {ConcatWithLoad, keys: [:full_name, :full_name]}
+      calculate(
+        :full_name_plus_full_name,
+        :string,
+        {ConcatWithLoad, keys: [:full_name, :full_name]}
+      )
 
-      calculate :full_name_plus_full_name_plus_full_name,
-                :string,
-                {ConcatWithLoad, keys: [:full_name, :full_name_plus_full_name]}
+      calculate(
+        :full_name_plus_full_name_plus_full_name,
+        :string,
+        {ConcatWithLoad, keys: [:full_name, :full_name_plus_full_name]}
+      )
 
-      calculate :slug, :string, expr(full_name <> "123")
-      calculate :friends_names, :string, FriendsNames
+      calculate(:slug, :string, expr(full_name <> "123"))
+      calculate(:friends_names, :string, FriendsNames)
 
-      calculate :expr_full_name, :string, expr(first_name <> " " <> last_name)
+      calculate(:expr_full_name, :string, expr(first_name <> " " <> last_name))
 
-      calculate :string_join_full_name,
-                :string,
-                expr(string_join([first_name, last_name], " "))
+      calculate(
+        :string_join_full_name,
+        :string,
+        expr(string_join([first_name, last_name], " "))
+      )
 
-      calculate :best_friends_name, :string, BestFriendsName
+      calculate(:best_friends_name, :string, BestFriendsName)
 
       calculate :names_of_best_friends_of_me, :string, NamesOfBestFriendsOfMe do
-        argument :only_special, :boolean, default: false
+        argument(:only_special, :boolean, default: false)
       end
 
-      calculate :name_with_users_name, :string, NameWithUsersName
+      calculate(:name_with_users_name, :string, NameWithUsersName)
 
       calculate :full_name_with_salutation,
                 :string,
                 expr(^arg(:salutation) <> " " <> conditional_full_name) do
-        argument :salutation, :string, allow_nil?: false
-        load [:conditional_full_name]
+        argument(:salutation, :string, allow_nil?: false)
+        load([:conditional_full_name])
       end
 
-      calculate :conditional_full_name,
-                :string,
-                expr(
-                  if(
-                    not is_nil(first_name) and not is_nil(last_name),
-                    first_name <> " " <> last_name,
-                    "(none)"
-                  )
-                )
+      calculate(
+        :conditional_full_name,
+        :string,
+        expr(
+          if(
+            not is_nil(first_name) and not is_nil(last_name),
+            first_name <> " " <> last_name,
+            "(none)"
+          )
+        )
+      )
 
-      calculate :conditional_full_name_block,
-                :string,
-                expr(
-                  if not is_nil(first_name) and not is_nil(last_name) do
-                    first_name <> " " <> last_name
-                  else
-                    "(none)"
-                  end
-                )
+      calculate(
+        :conditional_full_name_block,
+        :string,
+        expr(
+          if not is_nil(first_name) and not is_nil(last_name) do
+            first_name <> " " <> last_name
+          else
+            "(none)"
+          end
+        )
+      )
 
-      calculate :conditional_full_name_cond,
-                :string,
-                expr(
-                  cond do
-                    not is_nil(first_name) and not is_nil(last_name) ->
-                      first_name <> " " <> last_name
+      calculate(
+        :conditional_full_name_cond,
+        :string,
+        expr(
+          cond do
+            not is_nil(first_name) and not is_nil(last_name) ->
+              first_name <> " " <> last_name
 
-                    not is_nil(first_name) ->
-                      first_name
+            not is_nil(first_name) ->
+              first_name
 
-                    true ->
-                      "(none)"
-                  end
-                )
+            true ->
+              "(none)"
+          end
+        )
+      )
     end
 
     aggregates do
-      first :best_friends_first_name, :best_friend, :first_name
+      first(:best_friends_first_name, :best_friend, :first_name)
     end
 
     relationships do
-      belongs_to :best_friend, __MODULE__
+      belongs_to(:best_friend, __MODULE__)
 
       has_many :best_friends_of_me, __MODULE__ do
-        destination_attribute :best_friend_id
+        destination_attribute(:best_friend_id)
       end
 
-      has_many :role, Ash.Test.CalculationTest.Role
+      has_many(:role, Ash.Test.CalculationTest.Role)
 
       many_to_many :friends, __MODULE__ do
-        through FriendLink
-        destination_attribute_on_join_resource :target_id
-        source_attribute_on_join_resource :source_id
+        through(FriendLink)
+        destination_attribute_on_join_resource(:target_id)
+        source_attribute_on_join_resource(:source_id)
       end
     end
   end
@@ -427,28 +443,28 @@ defmodule Ash.Test.CalculationTest do
       data_layer: Ash.DataLayer.Ets
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      defaults([:create, :read, :update, :destroy])
     end
 
     ets do
-      private? true
+      private?(true)
     end
 
     attributes do
-      uuid_primary_key :id
+      uuid_primary_key(:id)
     end
 
     calculations do
-      calculate :active, :boolean, ActorActive
+      calculate(:active, :boolean, ActorActive)
     end
 
     relationships do
       belongs_to :user, User do
-        attribute_writable? true
+        attribute_writable?(true)
       end
 
       belongs_to :role, Role do
-        attribute_writable? true
+        attribute_writable?(true)
       end
     end
   end
@@ -458,10 +474,10 @@ defmodule Ash.Test.CalculationTest do
     use Ash.Registry
 
     entries do
-      entry User
-      entry FriendLink
-      entry Role
-      entry Actor
+      entry(User)
+      entry(FriendLink)
+      entry(Role)
+      entry(Actor)
     end
   end
 
@@ -470,7 +486,7 @@ defmodule Ash.Test.CalculationTest do
     use Ash.Api
 
     resources do
-      registry Registry
+      registry(Registry)
     end
   end
 

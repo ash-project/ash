@@ -43,7 +43,7 @@ defmodule Ash.Resource.Aggregate do
       type:
         {:or,
          [
-           {:in, [:count, :first, :sum, :list, :avg, :max, :min, :custom]},
+           {:in, [:count, :first, :sum, :list, :avg, :max, :min, :exists, :custom]},
            {:tuple, [{:in, [:custom]}, Ash.OptionsHelpers.ash_type()]}
          ]},
       doc: "The kind of the aggregate",

@@ -21,7 +21,7 @@ defmodule Ash.Query.Aggregate do
 
   @type t :: %__MODULE__{}
 
-  @kinds [:count, :first, :sum, :list, :max, :min, :avg, :custom]
+  @kinds [:count, :first, :sum, :list, :max, :min, :avg, :exists, :custom]
   @type kind :: unquote(Enum.reduce(@kinds, &{:|, [], [&1, &2]}))
 
   alias Ash.Engine.Request
@@ -192,7 +192,7 @@ defmodule Ash.Query.Aggregate do
          {:ok, attribute_type} <- attribute_type,
          :ok <- validate_path(resource, List.wrap(relationship)),
          {:ok, type} <- get_type(kind, type, attribute_type),
-         {:ok, query} <- validate_query(query) do
+         {:ok, query} <- validate_query(resource, query) do
       {:ok,
        %__MODULE__{
          name: name,
@@ -272,12 +272,17 @@ defmodule Ash.Query.Aggregate do
   def default_value(:max), do: nil
   def default_value(:min), do: nil
   def default_value(:avg), do: nil
+  def default_value(:exists), do: nil
   def default_value(:list), do: []
   def default_value(:custom), do: nil
 
-  defp validate_query(nil), do: {:ok, nil}
+  defp validate_query(_resource, nil), do: {:ok, nil}
 
-  defp validate_query(query) do
+  defp validate_query(resource, build_opts) when is_list(build_opts) do
+    {:ok, Ash.Query.build(resource, build_opts)}
+  end
+
+  defp validate_query(_resource, %Ash.Query{} = query) do
     cond do
       query.load != [] ->
         {:error, "Cannot load in an aggregate"}
@@ -296,6 +301,7 @@ defmodule Ash.Query.Aggregate do
   @doc false
   def kind_to_type({:custom, type}, _attribute_type), do: {:ok, type}
   def kind_to_type(:count, _attribute_type), do: {:ok, Ash.Type.Integer}
+  def kind_to_type(:exists, _attribute_type), do: {:ok, Ash.Type.Boolean}
   def kind_to_type(kind, nil), do: {:error, "Must provide field type for #{kind}"}
   def kind_to_type(:avg, _attribute_type), do: {:ok, :float}
 

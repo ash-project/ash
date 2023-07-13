@@ -123,6 +123,60 @@ defmodule Ash.Api.Interface do
         end
       end
 
+      def exists?(query, opts \\ []) do
+        query = Ash.Query.to_query(query)
+
+        opts =
+          if query.action do
+            Keyword.put(opts, :read_action, query.action.name)
+          else
+            opts
+          end
+
+        {aggregate_opts, opts} = split_aggregate_opts(opts)
+
+        case Ash.Query.Aggregate.new(query.resource, :exists, :exists, aggregate_opts) do
+          {:ok, aggregate} ->
+            case Api.aggregate(__MODULE__, query, aggregate, opts) do
+              {:ok, %{exists: exists}} ->
+                exists
+
+              {:error, error} ->
+                raise Ash.Error.to_error_class(error)
+            end
+
+          {:error, error} ->
+            raise Ash.Error.to_error_class(error)
+        end
+      end
+
+      def exists(query, opts \\ []) do
+        query = Ash.Query.to_query(query)
+
+        opts =
+          if query.action do
+            Keyword.put(opts, :read_action, query.action.name)
+          else
+            opts
+          end
+
+        {aggregate_opts, opts} = split_aggregate_opts(opts)
+
+        case Ash.Query.Aggregate.new(query.resource, :exists, :exists, aggregate_opts) do
+          {:ok, aggregate} ->
+            case Api.aggregate(__MODULE__, query, aggregate, opts) do
+              {:ok, %{exists: exists}} ->
+                {:ok, exists}
+
+              {:error, error} ->
+                {:error, Ash.Error.to_error_class(error)}
+            end
+
+          {:error, error} ->
+            {:error, Ash.Error.to_error_class(error)}
+        end
+      end
+
       for kind <- [:first, :sum, :list, :max, :min, :avg] do
         def unquote(kind)(query, field, opts \\ []) do
           query = Ash.Query.to_query(query)

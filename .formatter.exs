@@ -85,6 +85,8 @@ spark_locals_without_parens = [
   entry: 2,
   error_handler: 1,
   event: 1,
+  exists: 2,
+  exists: 3,
   field: 1,
   field_policy: 1,
   field_policy: 2,

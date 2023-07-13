@@ -1063,6 +1063,26 @@ defmodule Ash.Resource.Dsl do
     auto_set_fields: [kind: :avg]
   }
 
+  @exists %Spark.Dsl.Entity{
+    name: :exists,
+    describe: """
+    Declares a named `exists` aggregate on the resource
+
+    Supports `filter`, but not `sort` (because that wouldn't affect if something exists)
+
+    See the [aggregates guide](/documentation/topics/aggregates.md) for more.
+    """,
+    examples: [
+      """
+      exists :has_ticket, :assigned_tickets
+      """
+    ],
+    target: Ash.Resource.Aggregate,
+    args: [:name, :relationship_path],
+    schema: Keyword.drop(Ash.Resource.Aggregate.schema(), [:sort, :field]),
+    auto_set_fields: [kind: :exists]
+  }
+
   @custom %Spark.Dsl.Entity{
     name: :custom,
     describe: """
@@ -1148,6 +1168,7 @@ defmodule Ash.Resource.Dsl do
     imports: [Ash.Filter.TemplateHelpers],
     entities: [
       @count,
+      @exists,
       @first,
       @sum,
       @list,

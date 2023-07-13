@@ -207,6 +207,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:aggregate, :max}), do: true
   def can?(_, {:aggregate, :min}), do: true
   def can?(_, {:aggregate, :avg}), do: true
+  def can?(_, {:aggregate, :exists}), do: true
   def can?(_, :create), do: true
   def can?(_, :read), do: true
   def can?(_, :update), do: true
@@ -233,6 +234,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:query_aggregate, :max}), do: true
   def can?(_, {:query_aggregate, :min}), do: true
   def can?(_, {:query_aggregate, :avg}), do: true
+  def can?(_, {:query_aggregate, :exists}), do: true
   def can?(_, {:sort, _}), do: true
   def can?(_, _), do: false
 
@@ -493,6 +495,15 @@ defmodule Ash.DataLayer.Ets do
           |> Enum.count()
         else
           Enum.count(records, &(not is_nil(Map.get(&1, field))))
+        end
+
+      :exists ->
+        case records do
+          [] ->
+            false
+
+          _ ->
+            true
         end
 
       :first ->
