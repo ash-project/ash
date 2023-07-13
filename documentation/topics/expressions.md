@@ -46,7 +46,7 @@ The following functions are built in:
 - `string_split/1` | Splits a string on spaces
 - `string_split/2` | As above, but with a specific delimiter
 - `string_split/3` | As above, but with options. See the function for the available options.
-- `at/2` | Get an element from a list, i.e `get(list, 1)`
+- `at/2` | Get an element from a list, i.e `at(list, 1)`
 
 ## Sub-expressions
 
