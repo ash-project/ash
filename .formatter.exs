@@ -179,6 +179,8 @@ spark_locals_without_parens = [
   require_actor?: 1,
   require_attributes: 1,
   required?: 1,
+  resource: 1,
+  resource: 2,
   returns: 1,
   run: 1,
   run_flow: 2,

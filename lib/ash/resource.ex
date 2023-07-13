@@ -32,6 +32,36 @@ defmodule Ash.Resource do
     end
   end
 
+  @impl true
+  def verify(module, opts) do
+    if Application.get_env(:ash, :validate_api_resource_inclusion?, true) &&
+         Keyword.get(opts, :validate_api_inclusion?, true) && !Ash.Resource.Info.embedded?(module) do
+      otp_app = Mix.Project.config()[:app]
+
+      apis =
+        Application.get_env(otp_app, :ash_apis, [])
+
+      contained_in_api =
+        apis
+        |> Enum.flat_map(&Ash.Api.Info.resources/1)
+        |> Enum.any?(&(&1 == module))
+
+      if !contained_in_api do
+        IO.warn("""
+        Resource #{inspect(module)} is not present in any known Ash.Api module.
+
+        Api modules checked: #{inspect(apis)}
+
+        To resolve this warning, do one of the following.
+
+        1. Add the resource to one of your configured api modules.
+        2. Add the option `validate_api_inclusion?: true` to `use Ash.Resource`
+        3. Configure all resources not to warn, with `config :ash, :validate_api_resource_inclusion?, false`
+        """)
+      end
+    end
+  end
+
   @doc false
   @impl Spark.Dsl
   def handle_opts(opts) do

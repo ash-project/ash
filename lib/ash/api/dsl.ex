@@ -81,6 +81,28 @@ defmodule Ash.Api.Dsl do
     ]
   }
 
+  defmodule Ash.Api.ResourceReference do
+    @moduledoc "A resource reference in an api"
+    defstruct [:resource]
+  end
+
+  @resource %Spark.Dsl.Entity{
+    name: :resource,
+    describe: "A resource present in the API",
+    examples: [
+      "resource Foo"
+    ],
+    target: Ash.Api.ResourceReference,
+    args: [:resource],
+    no_depend_modules: [:resource],
+    schema: [
+      resource: [
+        type: {:spark, Ash.Resource},
+        required: true
+      ]
+    ]
+  }
+
   @resources %Spark.Dsl.Section{
     name: :resources,
     describe: "List the resources present in this API",
@@ -90,6 +112,9 @@ defmodule Ash.Api.Dsl do
         registry MyApp.Registry
       en
       """
+    ],
+    entities: [
+      @resource
     ],
     schema: [
       allow: [

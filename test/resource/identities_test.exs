@@ -89,14 +89,14 @@ defmodule Ash.Test.Resource.IdentitiesTest do
                          read :read do
                            primary? true
                          end
-
-                         relationships do
-                           belongs_to :site, Site
-                         end
                        end
 
                        identities do
                          identity :name_site, [:naem, :site]
+                       end
+
+                       relationships do
+                         belongs_to :site, Site
                        end
                      end
                    end

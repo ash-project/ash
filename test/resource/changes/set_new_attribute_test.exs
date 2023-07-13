@@ -15,10 +15,8 @@ defmodule Ash.Test.Resource.Changes.SetNewAttributeTest do
     actions do
       defaults [:read]
 
-      actions do
-        create :create do
-          change set_new_attribute(:name, "default_name")
-        end
+      create :create do
+        change set_new_attribute(:name, "default_name")
       end
     end
   end

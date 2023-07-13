@@ -26,4 +26,6 @@ if Mix.env() == :test do
     Ash.Test.Support.PolicyComplex.Api,
     Ash.Test.Support.PolicySimple.Api
   ]
+
+  config :ash, :validate_api_resource_inclusion?, false
 end

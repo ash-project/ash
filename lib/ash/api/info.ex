@@ -12,11 +12,19 @@ defmodule Ash.Api.Info do
   """
   @spec resources(Ash.Api.t()) :: list(Ash.Resource.t())
   def resources(api) do
-    if registry = registry(api) do
-      Ash.Registry.Info.entries(registry)
-    else
-      []
-    end
+    registry_resources =
+      if registry = registry(api) do
+        Ash.Registry.Info.entries(registry)
+      else
+        []
+      end
+
+    api_resources =
+      api
+      |> Extension.get_entities([:resources])
+      |> Enum.map(& &1.resource)
+
+    registry_resources ++ api_resources
   end
 
   def find_manage_relationships_with_identity_not_configured(otp_app) do
@@ -95,15 +103,13 @@ defmodule Ash.Api.Info do
         # I guess I have to do this because the module name is dynamic?
         # Still, seems pretty strange. This works, at least.
         Kernel.LexicalTracker.remote_dispatch(__ENV__.lexical_tracker, unquote(api), :compile)
+      end
 
-        for entry <- Ash.Registry.Info.entries(registry) do
-          Code.ensure_compiled!(entry)
-          # same note as above
-          Kernel.LexicalTracker.remote_dispatch(__ENV__.lexical_tracker, entry, :compile)
-          entry
-        end
-      else
-        []
+      for resource <- Ash.Api.Info.resources(unquote(api)) do
+        Code.ensure_compiled!(resource)
+        # same note as above
+        Kernel.LexicalTracker.remote_dispatch(__ENV__.lexical_tracker, resource, :compile)
+        resource
       end
     end
   end
