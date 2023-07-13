@@ -52,10 +52,14 @@ defmodule Ash.Resource do
 
         Api modules checked: #{inspect(apis)}
 
+        We check the following configuration for api modules:
+
+           config :#{otp_app}, ash_apis: #{inspect(apis)}
+
         To resolve this warning, do one of the following.
 
         1. Add the resource to one of your configured api modules.
-        2. Add the option `validate_api_inclusion?: true` to `use Ash.Resource`
+        2. Add the option `validate_api_inclusion?: false` to `use Ash.Resource`
         3. Configure all resources not to warn, with `config :ash, :validate_api_resource_inclusion?, false`
         """)
       end
