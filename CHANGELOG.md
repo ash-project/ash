@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.11.8](https://github.com/ash-project/ash/compare/v2.11.7...v2.11.8) (2023-07-13)
+
+
+
+
+### Improvements:
+
+* add `ForbiddenField` exception
+
+* warn on api missing from config
+
+* support resources directly in API modules
+
+* compile time warning on resources not detected in any apis
+
 ## [v2.11.7](https://github.com/ash-project/ash/compare/v2.11.6...v2.11.7) (2023-07-13)
 
 
