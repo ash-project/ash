@@ -36,7 +36,14 @@ defmodule Ash.Api do
   Additionally, you can define a `code_interface` on each resource. See the code interface guide for more.
   """
 
-  use Spark.Dsl, default_extensions: [extensions: [Ash.Api.Dsl]]
+  use Spark.Dsl,
+    default_extensions: [extensions: [Ash.Api.Dsl]],
+    opt_schema: [
+      validate_config_inclusion?: [
+        type: :boolean,
+        default: true
+      ]
+    ]
 
   import Spark.OptionsHelpers, only: [merge_schemas: 3]
 
@@ -1395,6 +1402,36 @@ defmodule Ash.Api do
   def handle_opts(_) do
     quote do
       @behaviour Ash.Api
+    end
+  end
+
+  @impl true
+  def verify(module, opts) do
+    if Application.get_env(:ash, :validate_api_config_inclusion?, true) &&
+         Keyword.get(opts, :validate_config_inclusion?, true) do
+      otp_app = Mix.Project.config()[:app]
+
+      apis =
+        Application.get_env(otp_app, :ash_apis, [])
+
+      if module not in apis do
+        IO.warn("""
+        Api #{inspect(module)} is not present in
+
+            config :#{otp_app}, ash_apis: #{inspect(apis)}.
+
+
+        To resolve this warning, do one of the following.
+
+        1. Add the api to your configured api modules. The following snippet can be used.
+
+            config :#{otp_app}, ash_apis: #{inspect(apis ++ [module])}
+
+        2. Add the option `validate_config_inclusion?: false` to `use Ash.Api`
+
+        3. Configure all apis not to warn, with `config :ash, :validate_api_config_inclusion?, false`
+        """)
+      end
     end
   end
 

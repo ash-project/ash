@@ -61,7 +61,7 @@ defmodule Ash.EmbeddableType do
 
   defmodule ShadowApi do
     @moduledoc false
-    use Ash.Api
+    use Ash.Api, validate_config_inclusion?: false
 
     resources do
       allow_unregistered?(true)

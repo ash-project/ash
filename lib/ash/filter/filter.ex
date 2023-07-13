@@ -192,7 +192,7 @@ defmodule Ash.Filter do
   # Used for fetching related data in filters, which will have already had authorization rules applied
   defmodule ShadowApi do
     @moduledoc false
-    use Ash.Api
+    use Ash.Api, validate_config_inclusion?: false
 
     resources do
       allow_unregistered?(true)

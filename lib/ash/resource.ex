@@ -17,6 +17,12 @@ defmodule Ash.Resource do
     default_extensions: [
       data_layer: Ash.DataLayer.Simple,
       extensions: [Ash.Resource.Dsl]
+    ],
+    opt_schema: [
+      validate_api_inclusion?: [
+        type: :boolean,
+        default: true
+      ]
     ]
 
   @doc false
