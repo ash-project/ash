@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.11.7](https://github.com/ash-project/ash/compare/v2.11.6...v2.11.7) (2023-07-13)
+
+
+
+
+### Improvements:
+
+* `exists` type aggregate
+
 ## [v2.11.6](https://github.com/ash-project/ash/compare/v2.11.5...v2.11.6) (2023-07-12)
 
 
