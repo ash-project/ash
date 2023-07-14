@@ -2793,7 +2793,8 @@ defmodule Ash.Changeset do
 
           if Enum.any?(
                List.wrap(input),
-               &(is_struct(&1) && &1.__struct__ != relationship.destination)
+               &(is_struct(&1) && Ash.Resource.Info.resource?(&1.__struct__) &&
+                   &1.__struct__ != relationship.destination)
              ) do
             add_error(
               changeset,
