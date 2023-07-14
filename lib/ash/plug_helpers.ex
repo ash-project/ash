@@ -123,11 +123,10 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     ## Example
 
-        iex> tenant = build_tenant(%{name: "Deliver-yesterday"})
-        ...> conn = build_conn() |> set_tenant(tenant)
-        %Plug.Conn{private: %{ash: %{tenant: %{name: "Deliver-yesterday"}}}} = conn
+        iex> conn = build_conn() |> set_tenant("my-tenant")
+        %Plug.Conn{private: %{ash: %{tenant: "my-tenant}}} = conn
     """
-    @spec set_tenant(Conn.t(), Ash.Resource.record()) :: Conn.t()
+    @spec set_tenant(Conn.t(), String.t()) :: Conn.t()
     def set_tenant(conn, tenant) do
       ash_private =
         conn.private
@@ -157,15 +156,13 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     ## Example
 
-        iex> tenant = build_tenant(%{name: "Deliver-yesterday"})
-        ...> conn = build_conn() |> put_private(:ash, %{tenant: tenant})
+        iex> conn = build_conn() |> put_private(:ash, %{tenant: "my-tenant"})
         ...> tenant = get_tenant(conn)
-        %{name: "Deliver-yesterday"} = tenant
+        "my_tenant" = tenant
 
-        iex> tenant = build_tenant(%{name: "Deliver-yesterday"})
-        ...> conn = build_conn() |> assign(:tenant, tenant)
+        iex> conn = build_conn() |> assign(:tenant, "my-tenant")
         ...> tenant = get_tenant(conn)
-        %{name: "Deliver-yesterday"} = tenant
+        "my_tenant" = tenant
     """
     @spec get_tenant(Conn.t()) :: nil | Ash.Resource.record()
     def get_tenant(%{assigns: %{tenant: tenant}}) when not is_nil(tenant) do
