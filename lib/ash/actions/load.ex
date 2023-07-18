@@ -1388,6 +1388,7 @@ defmodule Ash.Actions.Load do
       end
 
     if action.manual do
+      raise_if_parent_expr!(relationship, "manual actions")
       false
     else
       {offset, limit} = offset_and_limit(query)
@@ -1398,27 +1399,57 @@ defmodule Ash.Actions.Load do
 
       cond do
         is_many_to_many_not_unique_on_join?(relationship) ->
+          raise_if_parent_expr!(
+            relationship,
+            "many to many relationships that don't have unique constraints on their join resource attributes"
+          )
+
           false
 
         limit == 1 && is_nil(relationship.context) && is_nil(relationship.filter) &&
           is_nil(relationship.sort) && relationship.type != :many_to_many ->
-          false
+          has_parent_expr?(relationship)
 
         limit == 1 && (source_data == :unknown || Enum.count_until(source_data, 2) == 1) &&
             relationship.type != :many_to_many ->
-          false
+          has_parent_expr?(relationship)
 
         true ->
           lateral_join =
-            (limit || offset || relationship.type == :many_to_many) &&
-              Ash.DataLayer.data_layer_can?(
-                relationship.source,
-                {:lateral_join, resources}
-              )
+            ((limit || offset || relationship.type == :many_to_many) &&
+               Ash.DataLayer.data_layer_can?(
+                 relationship.source,
+                 {:lateral_join, resources}
+               )) || has_parent_expr?(relationship)
 
           !!lateral_join
       end
     end
+  end
+
+  defp raise_if_parent_expr!(relationship, reason) do
+    if has_parent_expr?(relationship) do
+      raise ArgumentError, "Found `parent_expr` in unsupported context: #{reason}"
+    end
+  end
+
+  defp has_parent_expr?(%{filter: filter}, depth \\ 0) do
+    not is_nil(
+      Ash.Filter.find(filter, fn
+        %Ash.Query.Exists{expr: expr} ->
+          has_parent_expr?(expr, depth + 1)
+
+        %Ash.Query.Parent{expr: expr} ->
+          if depth == 0 do
+            true
+          else
+            has_parent_expr?(expr, depth - 1)
+          end
+
+        _ ->
+          false
+      end)
+    )
   end
 
   defp is_many_to_many_not_unique_on_join?(%{type: :many_to_many} = relationship) do
