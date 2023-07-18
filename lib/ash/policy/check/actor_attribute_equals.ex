@@ -15,7 +15,8 @@ defmodule Ash.Policy.Check.ActorAttributeEquals do
          {:ok, desired_value} <- Map.fetch(opts, :value) do
       Comp.equal?(actor_value, desired_value)
     else
-      false
+      _ ->
+        false
     end
   end
 end
