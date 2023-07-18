@@ -1,6 +1,12 @@
 defmodule Ash.Test.Flow.ChildResource do
+  @moduledoc false
   use Ash.Resource,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    data_layer: Ash.DataLayer.Ets
+
+  ets do
+    private? true
+  end
 
   actions do
     create :create do

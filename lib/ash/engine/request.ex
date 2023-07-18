@@ -1016,10 +1016,7 @@ defmodule Ash.Engine.Request do
     # Don't honor requests for special fields until the request is authorized
     if field in [
          :data,
-         :query,
-         :changeset,
          :authorized?,
-         :data_layer_query,
          :authorization_filter
        ] and not authorized? and
          not internal? do
@@ -1063,6 +1060,11 @@ defmodule Ash.Engine.Request do
     with {:ok, new_request, notifications, []} <-
            try_resolve(request, deps, internal?) do
       resolver_context = resolver_context(new_request, deps)
+
+      # if field == :intermediate_data do
+      #   IO.inspect("YOU!")
+      #   IO.inspect(result)
+      # end
 
       log(request, fn -> "resolving #{field}" end)
 

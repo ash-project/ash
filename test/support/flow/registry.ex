@@ -5,7 +5,5 @@ defmodule Ash.Test.Flow.Registry do
   entries do
     entry(Ash.Test.Flow.User)
     entry(Ash.Test.Flow.Org)
-    entry Ash.Test.Flow.ParentResource
-    entry Ash.Test.Flow.ChildResource
   end
 end

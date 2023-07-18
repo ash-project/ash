@@ -4,5 +4,6 @@ defmodule Ash.Test.Flow.Api do
 
   resources do
     registry Ash.Test.Flow.Registry
+    allow_unregistered? true
   end
 end
