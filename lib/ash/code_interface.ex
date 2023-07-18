@@ -550,7 +550,7 @@ defmodule Ash.CodeInterface do
 
             :update ->
               subject = quote do: changeset
-              subject_args = quote do: [record]
+              subject_args = quote do: [%{__struct__: unquote(resource)} = record]
 
               resolve_subject =
                 quote do
@@ -569,7 +569,7 @@ defmodule Ash.CodeInterface do
 
             :destroy ->
               subject = quote do: changeset
-              subject_args = quote do: [record]
+              subject_args = quote do: [%{__struct__: unquote(resource)} = record]
 
               resolve_subject =
                 quote do

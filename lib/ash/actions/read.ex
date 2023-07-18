@@ -1120,6 +1120,7 @@ defmodule Ash.Actions.Read do
           calculation_dependency_requests(
             ash_query,
             calculation_dependencies,
+            calculations_at_runtime,
             request_opts,
             path,
             error_path,
@@ -1640,6 +1641,7 @@ defmodule Ash.Actions.Read do
   defp calculation_dependency_requests(
          query,
          calculation_deps,
+         runtime_calculations,
          request_opts,
          path,
          error_path,
@@ -1679,12 +1681,12 @@ defmodule Ash.Actions.Read do
             []
 
           :calculation ->
-            relationship_path = Enum.map(dep.path, &elem(&1, 0))
+            if dep.path == [] && calculation_in_runtime_calcs?(dep, runtime_calculations) do
+              relationship_path = Enum.map(dep.path, &elem(&1, 0))
 
-            actual_data_path =
-              path ++ [:calculation_results, {dep.calculation.name, dep.calculation.load}]
+              actual_data_path =
+                path ++ [:calculation_results, {dep.calculation.name, dep.calculation.load}]
 
-            if dep.path == [] do
               [
                 Request.new(
                   resource: query.resource,
@@ -1931,6 +1933,16 @@ defmodule Ash.Actions.Read do
             ]
         end
       end
+    end)
+  end
+
+  def calculation_in_runtime_calcs?(dep, runtime_calculations) do
+    Enum.any?(runtime_calculations, fn runtime_calc ->
+      dep.calculation.load == runtime_calc.load and
+        dep.calculation.module == runtime_calc.module and
+        dep.calculation.name == runtime_calc.name and
+        clean_calc_context(dep.calculation) ==
+          clean_calc_context(runtime_calc)
     end)
   end
 
