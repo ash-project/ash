@@ -1536,8 +1536,21 @@ defmodule Ash.Actions.Read do
   def source_fields(query) do
     query
     |> Ash.Query.accessing([:relationships])
-    |> Enum.map(fn name ->
-      Ash.Resource.Info.relationship(query.resource, name).source_attribute
+    |> Enum.flat_map(fn name ->
+      case Ash.Resource.Info.relationship(query.resource, name) do
+        %{no_attributes?: true} ->
+          []
+
+        %{manual: impl, source_attribute: source_attribute} when not is_nil(impl) ->
+          if Ash.Resource.Info.attribute(query.resource, source_attribute) do
+            [source_attribute]
+          else
+            []
+          end
+
+        %{source_attribute: source_attribute} ->
+          [source_attribute]
+      end
     end)
   end
 
