@@ -25,6 +25,9 @@ defmodule Ash.Actions.Sort do
         else
           {key, {:asc, val}}
         end
+
+      val ->
+        {val, :asc}
     end)
     |> Enum.reduce({[], []}, fn
       {field, {inner_order, _} = order}, {sorts, errors} when inner_order in @sort_orders ->
@@ -268,15 +271,34 @@ defmodule Ash.Actions.Sort do
     |> Enum.flat_map(fn {_, records} ->
       runtime_sort(records, rest, Keyword.put(opts, :rekey?, false))
     end)
-    |> tap(fn new_results ->
-      if opts[:rekey?] do
-        Enum.map(new_results, fn new_result ->
-          Enum.find(results, fn result ->
-            resource.primary_key_matches?(new_result, result)
-          end)
-        end)
-      end
+    |> maybe_rekey(results, resource, Keyword.get(opts, :rekey?, true))
+  end
+
+  defp maybe_rekey(new_results, results, resource, true) do
+    Enum.map(new_results, fn new_result ->
+      Enum.find(results, fn result ->
+        resource.primary_key_matches?(new_result, result)
+      end)
     end)
+  end
+
+  defp maybe_rekey(new_results, _, _, _), do: new_results
+
+  def runtime_distinct(results, sort, opts \\ [])
+  def runtime_distinct([], _empty, _), do: []
+  def runtime_distinct(results, empty, _) when empty in [nil, []], do: results
+  def runtime_distinct([single_result], _, _), do: [single_result]
+
+  def runtime_distinct([%resource{} | _] = results, [{field, direction} | rest], opts) do
+    results
+    |> load_field(field, resource, opts)
+    |> Enum.group_by(&resolve_field(&1, field, resource, api: opts))
+    |> sort_by(fn {key, _value} -> key end, direction)
+    |> Enum.map(fn {_key, [first | _]} ->
+      first
+    end)
+    |> runtime_distinct(rest, Keyword.put(opts, :rekey?, false))
+    |> maybe_rekey(results, resource, Keyword.get(opts, :rekey?, true))
   end
 
   defp load_field(records, field, resource, opts) do

@@ -2311,9 +2311,16 @@ defmodule Ash.Query do
   @spec distinct(t() | Ash.Resource.t(), Ash.Sort.t()) :: t()
   def distinct(query, distincts) do
     query = to_query(query)
+    distincts = List.wrap(distincts)
 
     if Ash.DataLayer.data_layer_can?(query.resource, :distinct) do
-      %{query | distinct: List.wrap(query.distinct) ++ List.wrap(distincts)}
+      case Sort.process(query.resource, distincts, query.aggregates, query.context) do
+        {:ok, distincts} ->
+          %{query | distinct: List.wrap(query.distinct) ++ List.wrap(distincts)}
+
+        {:error, error} ->
+          add_error(query, :distinct, error)
+      end
     else
       add_error(query, :distinct, "Data layer does not support distincting")
     end

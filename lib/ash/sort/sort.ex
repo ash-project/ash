@@ -11,7 +11,16 @@ defmodule Ash.Sort do
   @type sort_order ::
           :asc | :desc | :asc_nils_first | :asc_nils_last | :desc_nils_first | :desc_nils_last
 
-  @type t :: list(atom | {atom, sort_order} | {atom, {sort_order, Keyword.t() | map}}) | atom
+  @type sort_item ::
+          atom
+          | {atom, sort_order}
+          | %Ash.Query.Calculation{}
+          | {%Ash.Query.Calculation{}, sort_order}
+          | {atom, {sort_order, Keyword.t() | map}}
+
+  @type t ::
+          list(sort_item)
+          | sort_item
 
   alias Ash.Error.Query.{InvalidSortOrder, NoSuchAttribute}
 

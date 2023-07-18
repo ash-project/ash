@@ -71,6 +71,7 @@ defmodule Ash.DataLayer.Ets do
       :sort,
       :tenant,
       :api,
+      :distinct,
       calculations: [],
       aggregates: [],
       relationships: %{},
@@ -217,6 +218,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :limit), do: true
   def can?(_, :offset), do: true
   def can?(_, :boolean_filter), do: true
+  def can?(_, :distinct), do: true
   def can?(_, :transact), do: false
   def can?(_, {:filter_expr, _}), do: true
 
@@ -289,6 +291,12 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
+  def distinct(query, distinct, _resource) do
+    {:ok, %{query | distinct: distinct}}
+  end
+
+  @doc false
+  @impl true
   def run_aggregate_query(%{api: api} = query, aggregates, resource) do
     case run_query(query, resource) do
       {:ok, results} ->
@@ -330,6 +338,7 @@ defmodule Ash.DataLayer.Ets do
           offset: offset,
           limit: limit,
           sort: sort,
+          distinct: distinct,
           tenant: tenant,
           calculations: calculations,
           aggregates: aggregates,
@@ -341,17 +350,15 @@ defmodule Ash.DataLayer.Ets do
          {:ok, records} <- do_add_aggregates(records, api, resource, aggregates),
          {:ok, records} <-
            filter_matches(records, filter, api),
+         records <- Sort.runtime_sort(records, sort, api: api),
+         records <- Sort.runtime_distinct(records, distinct, api: api),
+         records <- Enum.drop(records, offset || []),
          {:ok, records} <-
            do_add_calculations(records, resource, calculations, api) do
-      offset_records =
-        records
-        |> Sort.runtime_sort(sort, api: api)
-        |> Enum.drop(offset || 0)
-
       if limit do
-        {:ok, Enum.take(offset_records, limit)}
+        {:ok, Enum.take(records, limit)}
       else
-        {:ok, offset_records}
+        {:ok, records}
       end
     else
       {:error, error} ->
