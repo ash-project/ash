@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.11.11](https://github.com/ash-project/ash/compare/v2.11.10...v2.11.11) (2023-07-18)
+
+
+
+
+### Bug Fixes:
+
+* only depend on calcs in runtime calcs
+
+### Improvements:
+
+* support distincting on calculations
+
+* support distinct in ets data layer for testing
+
 ## [v2.11.10](https://github.com/ash-project/ash/compare/v2.11.9...v2.11.10) (2023-07-18)
 
 
