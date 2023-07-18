@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.11.10](https://github.com/ash-project/ash/compare/v2.11.9...v2.11.10) (2023-07-18)
+
+
+
+
+### Bug Fixes:
+
+* handle manual relationships where source field doesn't exist
+
 ## [v2.11.9](https://github.com/ash-project/ash/compare/v2.11.8...v2.11.9) (2023-07-18)
 
 
