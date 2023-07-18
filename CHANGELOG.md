@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.11.9](https://github.com/ash-project/ash/compare/v2.11.8...v2.11.9) (2023-07-18)
+
+
+
+
+### Bug Fixes:
+
+* only error on incorrect destination managed relationships when they are resources
+
+### Improvements:
+
+* support the `-` unary operator
+
 ## [v2.11.8](https://github.com/ash-project/ash/compare/v2.11.7...v2.11.8) (2023-07-13)
 
 
