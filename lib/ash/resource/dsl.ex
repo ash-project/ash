@@ -273,6 +273,41 @@ defmodule Ash.Resource.Dsl do
     args: [:name, :destination]
   }
 
+  @poly_belongs_to %Spark.Dsl.Entity{
+    name: :poly_belongs_to,
+    describe: """
+    Declares a `poly_belongs_to` relationship, which is the polymorphic version of `belongs_to`.
+
+    This relationship follows the same pattern as `belongs_to`, but rather than taking a single resource type, accepts a map of resources to stable type names, any of which may be used.
+
+    The presence of this relationship by default creates two fields on the defining resource:
+
+    - :"\#{name}_type", which may be modified with `type_attribute :new_name`, or disabled with `define_type? false`
+    - :"\#{name}_id", which may be modified with `source_attribute :new_name`, or disabled with `define_attribute? false`
+
+    See the [relationships guide](/documentation/topics/relationships.md) for more.
+    """,
+    examples: [
+      """
+      # In a resource called `LoginEntry`
+      poly_belongs_to :parent do
+        types %{
+          App.Manager => "manager",
+          App.Employee => "employee",
+          App.Customer => "customer"
+        }
+        type_attribute :parent_type
+        source_attribute :parent_id
+        destination_attribute :id
+      end
+      """
+    ],
+    no_depend_modules: [:destination],
+    target: Ash.Resource.Relationships.PolyBelongsTo,
+    schema: Ash.Resource.Relationships.PolyBelongsTo.opt_schema(),
+    args: [:name]
+  }
+
   @relationships %Spark.Dsl.Section{
     name: :relationships,
     describe: """
@@ -325,7 +360,8 @@ defmodule Ash.Resource.Dsl do
       @has_one,
       @has_many,
       @many_to_many,
-      @belongs_to
+      @belongs_to,
+      @poly_belongs_to
     ]
   }
 
