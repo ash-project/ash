@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.12.1](https://github.com/ash-project/ash/compare/v2.12.0...v2.12.1) (2023-07-19)
+
+
+
+
+### Improvements:
+
+* support `distinct_sort` in `Query.build/2`
+
+* inspect `distinct_sort`
+
 ## [v2.12.0](https://github.com/ash-project/ash/compare/v2.11.11...v2.12.0) (2023-07-19)
 
 
