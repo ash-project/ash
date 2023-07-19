@@ -1061,11 +1061,6 @@ defmodule Ash.Engine.Request do
            try_resolve(request, deps, internal?) do
       resolver_context = resolver_context(new_request, deps)
 
-      # if field == :intermediate_data do
-      #   IO.inspect("YOU!")
-      #   IO.inspect(result)
-      # end
-
       log(request, fn -> "resolving #{field}" end)
 
       # Currently, only the `data` field is resolved asynchronously
