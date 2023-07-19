@@ -12,7 +12,7 @@ defmodule Ash.Policy.Check.ActorAttributeEquals do
 
   def match?(actor, _context, opts) do
     with {:ok, actor_value} <- Map.fetch(actor, opts[:attribute]),
-         {:ok, desired_value} <- Map.fetch(opts, :value) do
+         {:ok, desired_value} <- Keyword.fetch(opts, :value) do
       Comp.equal?(actor_value, desired_value)
     else
       _ ->

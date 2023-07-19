@@ -1,4 +1,4 @@
-defmodule Ash.Test.Sort.SortTest do
+defmodule Ash.Test.Sort.DistinctTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
