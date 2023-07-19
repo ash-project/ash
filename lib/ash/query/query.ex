@@ -1661,6 +1661,10 @@ defmodule Ash.Query do
       type: :any,
       doc: "A sort list or keyword"
     ],
+    distinct_sort: [
+      type: :any,
+      doc: "A distinct_sort list or keyword"
+    ],
     limit: [
       type: :integer,
       doc: "A limit to apply"
@@ -1738,6 +1742,9 @@ defmodule Ash.Query do
 
       {:sort, value}, query ->
         sort(query, value)
+
+      {:distinct_sort, value}, query ->
+        distinct_sort(query, value)
 
       {:limit, value}, query ->
         limit(query, value)
