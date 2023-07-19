@@ -333,4 +333,19 @@ defmodule Ash.Resource.Validation.Builtins do
   def argument_equals(argument, value) do
     {Validation.ArgumentEquals, argument: argument, value: value}
   end
+
+  @doc """
+  Validates that an argument is being changed to one of a set of specific values, or is in the the given list if it is not being changed.
+
+  ## Examples
+
+      validate argument_in(:state, [1, 2, 3])
+
+      # Or to only check for changing to a something in a given list
+      validate argument_in(:state, [1, 2, 3]), where: [changing(:state)]
+  """
+  @spec argument_in(argument :: atom, list :: [term]) :: Validation.ref()
+  def argument_in(argument, list) do
+    {Validation.ArgumentIn, argument: argument, list: list}
+  end
 end
