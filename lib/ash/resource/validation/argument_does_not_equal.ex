@@ -1,5 +1,9 @@
-defmodule Ash.Resource.Validation.ArgumentEquals do
+defmodule Ash.Resource.Validation.ArgumentDoesNotEqual do
   @moduledoc false
+
+  use Ash.Resource.Validation
+
+  alias Ash.Error.Changes.InvalidArgument
 
   @opt_schema [
     argument: [
@@ -10,12 +14,9 @@ defmodule Ash.Resource.Validation.ArgumentEquals do
     value: [
       type: :any,
       required: true,
-      doc: "The value the argument must equal"
+      doc: "The value the argument must not equal"
     ]
   ]
-
-  use Ash.Resource.Validation
-  alias Ash.Error.Changes.InvalidArgument
 
   @impl true
   def init(opts) do
@@ -32,7 +33,7 @@ defmodule Ash.Resource.Validation.ArgumentEquals do
   def validate(changeset, opts) do
     value = Ash.Changeset.get_argument(changeset, opts[:argument])
 
-    if value != opts[:value] do
+    if value == opts[:value] do
       {:error,
        [field: opts[:argument], value: value]
        |> with_description(opts)
@@ -45,7 +46,7 @@ defmodule Ash.Resource.Validation.ArgumentEquals do
   @impl true
   def describe(opts) do
     [
-      message: "must equal %{value}",
+      message: "must not equal %{value}",
       vars: [field: opts[:argument], value: opts[:value]]
     ]
   end
