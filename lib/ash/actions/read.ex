@@ -1366,6 +1366,8 @@ defmodule Ash.Actions.Read do
                  {:ok, query} <-
                    Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource),
                  {:ok, query} <-
+                   Ash.DataLayer.distinct_sort(query, ash_query.distinct_sort, ash_query.resource),
+                 {:ok, query} <-
                    Ash.DataLayer.distinct(query, ash_query.distinct, ash_query.resource),
                  {:ok, count} <-
                    fetch_count(

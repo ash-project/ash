@@ -81,6 +81,8 @@ defmodule Ash.DataLayer do
               {:ok, data_layer_query()} | {:error, term}
   @callback sort(data_layer_query(), Ash.Sort.t(), resource :: Ash.Resource.t()) ::
               {:ok, data_layer_query()} | {:error, term}
+  @callback distinct_sort(data_layer_query(), Ash.Sort.t(), resource :: Ash.Resource.t()) ::
+              {:ok, data_layer_query()} | {:error, term}
   @callback distinct(data_layer_query(), list(atom), resource :: Ash.Resource.t()) ::
               {:ok, data_layer_query()} | {:error, term}
   @callback limit(
@@ -206,6 +208,7 @@ defmodule Ash.DataLayer do
                       destroy: 2,
                       filter: 3,
                       sort: 3,
+                      distinct_sort: 3,
                       select: 3,
                       limit: 3,
                       offset: 3,
@@ -413,12 +416,23 @@ defmodule Ash.DataLayer do
     end
   end
 
-  @spec distinct(data_layer_query(), list(atom) | nil, Ash.Resource.t()) ::
+  @spec distinct(data_layer_query(), Ash.Sort.t(), Ash.Resource.t()) ::
           {:ok, data_layer_query()} | {:error, term}
   def distinct(query, distinct, resource) do
     if can?(:distinct, resource) && distinct do
       data_layer = Ash.DataLayer.data_layer(resource)
       data_layer.distinct(query, distinct, resource)
+    else
+      {:ok, query}
+    end
+  end
+
+  @spec distinct_sort(data_layer_query(), Ash.Sort.t(), Ash.Resource.t()) ::
+          {:ok, data_layer_query()} | {:error, term}
+  def distinct_sort(query, sort, resource) do
+    if can?(:distinct_sort, resource) && sort do
+      data_layer = Ash.DataLayer.data_layer(resource)
+      data_layer.distinct_sort(query, sort, resource)
     else
       {:ok, query}
     end

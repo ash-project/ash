@@ -72,6 +72,7 @@ defmodule Ash.DataLayer.Ets do
       :tenant,
       :api,
       :distinct,
+      :distinct_sort,
       calculations: [],
       aggregates: [],
       relationships: %{},
@@ -191,6 +192,7 @@ defmodule Ash.DataLayer.Ets do
     not private?(resource)
   end
 
+  def can?(_, :distinct_sort), do: true
   def can?(_, :bulk_create), do: true
   def can?(_, :composite_primary_key), do: true
   def can?(_, :expression_calculation), do: true
@@ -295,6 +297,11 @@ defmodule Ash.DataLayer.Ets do
     {:ok, %{query | distinct: distinct}}
   end
 
+  @impl true
+  def distinct_sort(query, distinct_sort, _resource) do
+    {:ok, %{query | distinct_sort: distinct_sort}}
+  end
+
   @doc false
   @impl true
   def run_aggregate_query(%{api: api} = query, aggregates, resource) do
@@ -339,6 +346,7 @@ defmodule Ash.DataLayer.Ets do
           limit: limit,
           sort: sort,
           distinct: distinct,
+          distinct_sort: distinct_sort,
           tenant: tenant,
           calculations: calculations,
           aggregates: aggregates,
@@ -350,8 +358,9 @@ defmodule Ash.DataLayer.Ets do
          {:ok, records} <- do_add_aggregates(records, api, resource, aggregates),
          {:ok, records} <-
            filter_matches(records, filter, api),
-         records <- Sort.runtime_sort(records, sort, api: api),
+         records <- Sort.runtime_sort(records, distinct_sort || sort, api: api),
          records <- Sort.runtime_distinct(records, distinct, api: api),
+         records <- Sort.runtime_sort(records, sort, api: api),
          records <- Enum.drop(records, offset || []),
          {:ok, records} <-
            do_add_calculations(records, resource, calculations, api) do

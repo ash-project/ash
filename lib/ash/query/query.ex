@@ -54,6 +54,7 @@ defmodule Ash.Query do
     phase: :preparing,
     select: nil,
     sort: [],
+    distinct_sort: [],
     valid?: true
   ]
 
@@ -2326,6 +2327,48 @@ defmodule Ash.Query do
     end
   end
 
+  @doc """
+  Set a sort to determine how distinct records are selected.
+
+  If none is set, any sort applied to the query will be used.
+
+  This is useful if you want to control how the `distinct` records
+  are selected without affecting (necessarily, it may affect it if
+  there is no sort applied) the overall sort of the query
+  """
+  @spec distinct_sort(t() | Ash.Resource.t(), Ash.Sort.t()) :: t()
+  def distinct_sort(query, sorts, opts \\ []) do
+    query = to_query(query)
+
+    if sorts == [] || sorts == nil do
+      query
+    else
+      if Ash.DataLayer.data_layer_can?(query.resource, :distinct_sort) do
+        if opts[:prepend?] && query.distinct_sort != [] do
+          query_sort = query.distinct_sort
+
+          query
+          |> Map.put(:distinct_sort, [])
+          |> distinct_sort(sorts)
+          |> distinct_sort(query_sort)
+        else
+          sorts
+          |> List.wrap()
+          |> Enum.reduce(query, fn
+            {sort, direction}, query ->
+              %{query | distinct_sort: query.distinct_sort ++ [{sort, direction}]}
+
+            sort, query ->
+              %{query | distinct_sort: query.distinct_sort ++ [{sort, :asc}]}
+          end)
+          |> validate_sort()
+        end
+      else
+        add_error(query, :distinct_sort, "Data layer does not support distinct sorting")
+      end
+    end
+  end
+
   @spec unset(Ash.Resource.t() | t(), atom | [atom]) :: t()
   def unset(query, keys) when is_list(keys) do
     query = to_query(query)
@@ -2404,6 +2447,8 @@ defmodule Ash.Query do
            add_aggregates(query, ash_query, aggregates),
          {:ok, query} <-
            Ash.DataLayer.sort(query, ash_query.sort, resource),
+         {:ok, query} <-
+           Ash.DataLayer.distinct_sort(query, ash_query.distinct_sort, resource),
          {:ok, query} <- maybe_filter(query, ash_query, opts),
          {:ok, query} <- Ash.DataLayer.distinct(query, ash_query.distinct, resource),
          {:ok, query} <-

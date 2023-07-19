@@ -23,6 +23,7 @@ defmodule Ash.Test.Sort.SortTest do
 
     calculations do
       calculate :first_title_word, :string, expr(at(string_split(title, " ", trim?: true), 0))
+      calculate :second_title_word, :string, expr(at(string_split(title, " ", trim?: true), 1))
     end
   end
 
@@ -59,6 +60,20 @@ defmodule Ash.Test.Sort.SortTest do
     assert [_] =
              Post
              |> Ash.Query.distinct(:first_title_word)
+             |> Api.read!()
+  end
+
+  test "distinct_sort calculation works" do
+    assert [%{title: "fred armisen"}] =
+             Post
+             |> Ash.Query.distinct(:first_title_word)
+             |> Ash.Query.distinct_sort(:second_title_word)
+             |> Api.read!()
+
+    assert [%{title: "fred weasley"}] =
+             Post
+             |> Ash.Query.distinct(:first_title_word)
+             |> Ash.Query.distinct_sort(second_title_word: :desc)
              |> Api.read!()
   end
 end
