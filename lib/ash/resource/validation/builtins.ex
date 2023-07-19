@@ -303,4 +303,19 @@ defmodule Ash.Resource.Validation.Builtins do
       present(attributes, new_opts)
     end
   end
+
+  @doc """
+  Validates that an argument is being changed to a specific value, or equals the given value if it is not being changed.
+
+  ## Examples
+
+      validate argument_equals(:admin, true)
+
+      # Or to only check for changing to a given value
+      validate argument_equals(:admin, true), where: [changing(:admin)]
+  """
+  @spec argument_equals(argument :: atom, value :: term) :: Validation.ref()
+  def argument_equals(argument, value) do
+    {Validation.ArgumentEquals, argument: argument, value: value}
+  end
 end
