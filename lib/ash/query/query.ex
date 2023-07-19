@@ -131,6 +131,7 @@ defmodule Ash.Query do
       }
 
       sort? = query.sort != []
+      distinct_sort? = query.distinct_sort != []
       load? = query.load != []
       aggregates? = query.aggregates != %{}
       calculations? = query.calculations != %{}
@@ -151,6 +152,7 @@ defmodule Ash.Query do
           arguments(query, opts),
           or_empty(concat("filter: ", to_doc(query.filter, opts)), filter?),
           or_empty(concat("sort: ", to_doc(query.sort, opts)), sort?),
+          or_empty(concat("distinct_sort: ", to_doc(query.distinct_sort, opts)), distinct_sort?),
           or_empty(concat("limit: ", to_doc(query.limit, opts)), limit?),
           or_empty(concat("offset: ", to_doc(query.offset, opts)), offset?),
           or_empty(concat("load: ", to_doc(query.load, opts)), load?),
