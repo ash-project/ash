@@ -5,6 +5,27 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.12.0](https://github.com/ash-project/ash/compare/v2.11.11...v2.12.0) (2023-07-19)
+
+
+
+
+### Features:
+
+* validate argument equality (#659)
+
+### Bug Fixes:
+
+* `Keyword.fetch` on keywords, fix test name
+
+* allow the query & related fields to be read before authorization status is complete
+
+### Improvements:
+
+* support `distinct_sort`
+
+* use `Comp.equal?` for `actor_attribute_equals` check
+
 ## [v2.11.11](https://github.com/ash-project/ash/compare/v2.11.10...v2.11.11) (2023-07-18)
 
 
