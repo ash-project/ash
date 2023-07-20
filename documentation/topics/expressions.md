@@ -127,7 +127,7 @@ That code *seems* like it ought to produce a filter over `Post` that would give 
 Lets rewrite the above using exists:
 ```elixir
 def has_comment_with_more_points_than(query, score) do
-  Ash.Query.filter(Post, exists(comments, points > 10))
+  Ash.Query.filter(Post, exists(comments, points > ^score))
 end
 
 def has_comment_tagged(query, tag) do
@@ -135,7 +135,7 @@ def has_comment_tagged(query, tag) do
 end
 
 Post
-|> has_comment_with_more_points_than(query, 10)
+|> has_comment_with_more_points_than(query, ^score)
 |> has_comment_tagged("elixir")
 ```
 
