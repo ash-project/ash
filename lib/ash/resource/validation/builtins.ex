@@ -305,6 +305,21 @@ defmodule Ash.Resource.Validation.Builtins do
   end
 
   @doc """
+  Validates that an argument is not being changed to a specific value, or does not equal the given value if it is not being changed.
+
+  ## Examples
+
+      validate argument_does_not_equal(:admin, true)
+
+      # Or to only check for changing to a given value
+      validate argument_does_not_equal(:admin, true), where: [changing(:admin)]
+  """
+  @spec argument_does_not_equal(argument :: atom, value :: term) :: Validation.ref()
+  def argument_does_not_equal(argument, value) do
+    {Validation.ArgumentDoesNotEqual, argument: argument, value: value}
+  end
+
+  @doc """
   Validates that an argument is being changed to a specific value, or equals the given value if it is not being changed.
 
   ## Examples
@@ -317,5 +332,20 @@ defmodule Ash.Resource.Validation.Builtins do
   @spec argument_equals(argument :: atom, value :: term) :: Validation.ref()
   def argument_equals(argument, value) do
     {Validation.ArgumentEquals, argument: argument, value: value}
+  end
+
+  @doc """
+  Validates that an argument is being changed to one of a set of specific values, or is in the the given list if it is not being changed.
+
+  ## Examples
+
+      validate argument_in(:state, [1, 2, 3])
+
+      # Or to only check for changing to a something in a given list
+      validate argument_in(:state, [1, 2, 3]), where: [changing(:state)]
+  """
+  @spec argument_in(argument :: atom, list :: [term]) :: Validation.ref()
+  def argument_in(argument, list) do
+    {Validation.ArgumentIn, argument: argument, list: list}
   end
 end
