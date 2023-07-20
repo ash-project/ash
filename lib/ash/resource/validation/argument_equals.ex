@@ -30,7 +30,7 @@ defmodule Ash.Resource.Validation.ArgumentEquals do
 
   @impl true
   def validate(changeset, opts) do
-    value = Ash.Changeset.get_attribute(changeset, opts[:argument])
+    value = Ash.Changeset.get_argument(changeset, opts[:argument])
 
     if value != opts[:value] do
       {:error,
