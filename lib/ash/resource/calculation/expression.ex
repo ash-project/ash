@@ -41,6 +41,7 @@ defmodule Ash.Resource.Calculation.Expression do
         {:ok, expression} ->
           case Ash.Expr.eval_hydrated(expression, record: record, resource: resource) do
             {:ok, value} ->
+              value = try_cast_stored(value, context[:ash][:type], context[:ash][:constraints])
               {:cont, {:ok, [value | values]}}
 
             :unknown ->
@@ -63,6 +64,15 @@ defmodule Ash.Resource.Calculation.Expression do
 
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  def try_cast_stored(value, nil, _constraints), do: value
+
+  def try_cast_stored(value, type, constraints) do
+    case Ash.Type.cast_stored(type, value, constraints || []) do
+      {:ok, value} -> value
+      _ -> value
     end
   end
 
