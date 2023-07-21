@@ -5,6 +5,29 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.13.0](https://github.com/ash-project/ash/compare/v2.12.1...v2.13.0) (2023-07-21)
+
+
+
+
+### Features:
+
+* validate arg (#662)
+
+* validate argument unequality
+
+* validate argument in
+
+### Bug Fixes:
+
+* try to cast_stored expression calculation results
+
+* read argument value in `ArgumentEquals` validation (#664)
+
+### Improvements:
+
+* add aggregate context when adding aggregates
+
 ## [v2.12.1](https://github.com/ash-project/ash/compare/v2.12.0...v2.12.1) (2023-07-19)
 
 
