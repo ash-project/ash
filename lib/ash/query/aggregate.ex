@@ -14,6 +14,7 @@ defmodule Ash.Query.Aggregate do
     :load,
     :read_action,
     :agg_name,
+    context: %{},
     authorize?: true,
     uniq?: false,
     filterable?: true

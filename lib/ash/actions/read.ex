@@ -1349,7 +1349,11 @@ defmodule Ash.Actions.Read do
                      query,
                      ash_query,
                      aggregates_in_query,
-                     Map.get(data, :aggregate, %{})
+                     Map.get(data, :aggregate, %{}),
+                     actor,
+                     authorize?,
+                     ash_query.tenant,
+                     request_opts[:tracer]
                    ),
                  {:ok, query} <-
                    add_calculations(
@@ -3310,7 +3314,16 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp add_aggregates(data_layer_query, query, aggregates_to_add, aggregate_filters) do
+  defp add_aggregates(
+         data_layer_query,
+         query,
+         aggregates_to_add,
+         aggregate_filters,
+         actor,
+         authorize?,
+         tenant,
+         tracer
+       ) do
     aggregates_to_add =
       Enum.into(aggregates_to_add, %{}, fn aggregate ->
         {aggregate.name, aggregate}
@@ -3329,6 +3342,7 @@ defmodule Ash.Actions.Read do
         end
       end)
       |> Map.values()
+      |> Enum.map(&add_calc_context(&1, actor, authorize?, tenant, tracer))
 
     Ash.DataLayer.add_aggregates(data_layer_query, aggregates, query.resource)
   end
