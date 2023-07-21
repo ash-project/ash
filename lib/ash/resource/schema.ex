@@ -103,19 +103,22 @@ defmodule Ash.Schema do
           Module.register_attribute(__MODULE__, struct_fields_name, accumulate: true)
           Enum.each(struct_fields, &Module.put_attribute(__MODULE__, struct_fields_name, &1))
         end
-      end
-    else
-      quote unquote: false do
-        alias Ash.Query.Aggregate
-        use Ecto.Schema
-        @primary_key false
-        after_compile = @after_compile -- [{__MODULE__, :__after_compile__}]
+
+        after_compile =
+          @after_compile -- [{Ecto.Schema, :__after_compile__}]
+
         Module.delete_attribute(__MODULE__, :after_compile)
         Module.register_attribute(__MODULE__, :after_compile, accumulate: true)
 
         for compile_hook <- after_compile do
           @after_compile compile_hook
         end
+      end
+    else
+      quote unquote: false do
+        alias Ash.Query.Aggregate
+        use Ecto.Schema
+        @primary_key false
 
         schema Ash.DataLayer.source(__MODULE__) do
           for attribute <- Ash.Resource.Info.attributes(__MODULE__),
@@ -244,6 +247,16 @@ defmodule Ash.Schema do
           Module.delete_attribute(__MODULE__, struct_fields_name)
           Module.register_attribute(__MODULE__, struct_fields_name, accumulate: true)
           Enum.each(struct_fields, &Module.put_attribute(__MODULE__, struct_fields_name, &1))
+        end
+
+        after_compile =
+          @after_compile -- [{Ecto.Schema, :__after_compile__}]
+
+        Module.delete_attribute(__MODULE__, :after_compile)
+        Module.register_attribute(__MODULE__, :after_compile, accumulate: true)
+
+        for compile_hook <- after_compile do
+          @after_compile compile_hook
         end
       end
     end
