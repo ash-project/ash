@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.13.2](https://github.com/ash-project/ash/compare/v2.13.1...v2.13.2) (2023-07-22)
+
+
+
+
+### Bug Fixes:
+
+* before/after batch callbacks are no longer broken
+
 ## [v2.13.1](https://github.com/ash-project/ash/compare/v2.13.0...v2.13.1) (2023-07-21)
 
 
