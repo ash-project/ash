@@ -536,7 +536,6 @@ defmodule Ash.Actions.Create.Bulk do
          opts
        ) do
     all_changes
-    |> Enum.with_index()
     |> Enum.filter(fn
       {%{change: {module, _opts}}, _} ->
         function_exported?(module, :before_batch, 3)
@@ -1012,7 +1011,6 @@ defmodule Ash.Actions.Create.Bulk do
       end)
 
     all_changes
-    |> Enum.with_index()
     |> Enum.filter(fn
       {%{change: {module, _opts}}, _} ->
         function_exported?(module, :after_batch, 3)
@@ -1033,7 +1031,7 @@ defmodule Ash.Actions.Create.Bulk do
         end)
 
       matches =
-        Enum.map(matches, fn match ->
+        Enum.map(matches, fn {:ok, match} ->
           {changesets_by_index[match.__metadata__.bulk_create_index], match}
         end)
 

@@ -2,6 +2,36 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  defmodule AddAfterToTitle do
+    use Ash.Resource.Change
+
+    def change(changeset, _, %{bulk?: true}) do
+      changeset
+    end
+
+    def after_batch(results, _, _) do
+      Stream.map(results, fn {_changeset, result} ->
+        {:ok, %{result | title: result.title <> "_after"}}
+      end)
+    end
+  end
+
+  defmodule AddBeforeToTitle do
+    use Ash.Resource.Change
+
+    def change(changeset, _, %{bulk?: true}) do
+      changeset
+    end
+
+    def before_batch(changesets, _, _) do
+      changesets
+      |> Stream.map(fn changeset ->
+        title = Ash.Changeset.get_attribute(changeset, :title)
+        Ash.Changeset.force_change_attribute(changeset, :title, "before_" <> title)
+      end)
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -26,6 +56,11 @@ defmodule Ash.Test.Actions.BulkCreateTest do
         change after_action(fn _changeset, result ->
                  {:ok, %{result | title: result.title <> "_stuff"}}
                end)
+      end
+
+      create :create_with_after_batch do
+        change AddAfterToTitle
+        change AddBeforeToTitle
       end
 
       create :create_with_after_transaction do
@@ -92,6 +127,19 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   test "runs changes" do
     assert %Ash.BulkResult{records: [%{title: "title1_stuff"}, %{title: "title2_stuff"}]} =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create_with_change,
+               return_records?: true,
+               sorted?: true
+             )
+  end
+
+  test "runs after batch hooks" do
+    assert %Ash.BulkResult{
+             records: [%{title: "before_title1_after"}, %{title: "before_title2_after"}]
+           } =
+             Api.bulk_create!(
+               [%{title: "title1"}, %{title: "title2"}],
+               Post,
+               :create_with_after_batch,
                return_records?: true,
                sorted?: true
              )
