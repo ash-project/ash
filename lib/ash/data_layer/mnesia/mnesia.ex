@@ -76,7 +76,17 @@ defmodule Ash.DataLayer.Mnesia do
 
   defmodule Query do
     @moduledoc false
-    defstruct [:api, :resource, :filter, :limit, :sort, relationships: %{}, offset: 0]
+    defstruct [
+      :api,
+      :resource,
+      :filter,
+      :limit,
+      :sort,
+      relationships: %{},
+      offset: 0,
+      aggregates: [],
+      calculations: []
+    ]
   end
 
   @deprecated "use Ash.DataLayer.Mnesia.Info.table/1 instead"
@@ -96,10 +106,23 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, :filter), do: true
   def can?(_, {:filter_relationship, _}), do: true
   def can?(_, {:query_aggregate, :count}), do: true
+  def can?(_, :expression_calculation), do: true
+  def can?(_, :expression_calculation_sort), do: true
   def can?(_, :limit), do: true
   def can?(_, :offset), do: true
   def can?(_, :boolean_filter), do: true
   def can?(_, :transact), do: true
+  def can?(_, :aggregate_filter), do: true
+  def can?(_, :aggregate_sort), do: true
+  def can?(_, {:aggregate_relationship, _}), do: true
+  def can?(_, {:aggregate, :count}), do: true
+  def can?(_, {:aggregate, :first}), do: true
+  def can?(_, {:aggregate, :sum}), do: true
+  def can?(_, {:aggregate, :list}), do: true
+  def can?(_, {:aggregate, :max}), do: true
+  def can?(_, {:aggregate, :min}), do: true
+  def can?(_, {:aggregate, :avg}), do: true
+  def can?(_, {:aggregate, :exists}), do: true
 
   def can?(_, {:join, resource}) do
     # This is to ensure that these can't join, which is necessary for testing
@@ -154,23 +177,44 @@ defmodule Ash.DataLayer.Mnesia do
 
   @doc false
   @impl true
+  def add_aggregate(query, aggregate, _),
+    do: {:ok, %{query | aggregates: [aggregate | query.aggregates]}}
+
+  @doc false
+  @impl true
+  def add_calculation(query, calculation, _, _),
+    do: {:ok, %{query | calculations: [calculation | query.calculations]}}
+
+  @doc false
+  @impl true
   def run_aggregate_query(%{api: api} = query, aggregates, resource) do
     case run_query(query, resource) do
       {:ok, results} ->
         Enum.reduce_while(aggregates, {:ok, %{}}, fn
-          %{kind: :count, name: name, query: query}, {:ok, acc} ->
-            api
-            |> Ash.Filter.Runtime.filter_matches(results, Map.get(query || %{}, :filter))
+          %{
+            kind: kind,
+            name: name,
+            query: query,
+            field: field,
+            resource: resource,
+            uniq?: uniq?,
+            default_value: default_value
+          },
+          {:ok, acc} ->
+            results
+            |> filter_matches(Map.get(query || %{}, :filter), api)
             |> case do
               {:ok, matches} ->
-                {:cont, {:ok, Map.put(acc, name, Enum.count(matches))}}
+                field = field || Enum.at(Ash.Resource.Info.primary_key(resource), 0)
+
+                value =
+                  Ash.DataLayer.Ets.aggregate_value(matches, kind, field, uniq?, default_value)
+
+                {:cont, {:ok, Map.put(acc, name, value)}}
 
               {:error, error} ->
                 {:halt, {:error, error}}
             end
-
-          _, _ ->
-            {:halt, {:error, "unsupported aggregate"}}
         end)
 
       {:error, error} ->
@@ -193,52 +237,44 @@ defmodule Ash.DataLayer.Mnesia do
           resource: resource,
           filter: filter,
           offset: offset,
+          calculations: calculations,
           limit: limit,
-          sort: sort
+          sort: sort,
+          aggregates: aggregates
         },
         _resource
       ) do
-    records =
-      Mnesia.transaction(fn ->
-        Mnesia.select(table(resource), [{:_, [], [:"$_"]}])
-      end)
+    with {:atomic, records} <-
+           Mnesia.transaction(fn ->
+             Mnesia.select(table(resource), [{:_, [], [:"$_"]}])
+           end),
+         {:ok, records} <-
+           records |> Enum.map(&elem(&1, 2)) |> Ash.DataLayer.Ets.cast_records(resource),
+         {:ok, filtered} <- filter_matches(records, filter, api),
+         offset_records <-
+           filtered |> Sort.runtime_sort(sort, api: api) |> Enum.drop(offset || 0),
+         limited_records <- do_limit(offset_records, limit),
+         {:ok, records} <-
+           Ash.DataLayer.Ets.do_add_aggregates(limited_records, api, resource, aggregates),
+         {:ok, records} <-
+           Ash.DataLayer.Ets.do_add_calculations(records, resource, calculations, api) do
+      {:ok, records}
+    else
+      {:error, error} ->
+        {:error, error}
 
-    case records do
       {:aborted, reason} ->
         {:error, reason}
-
-      {:atomic, records} ->
-        records
-        |> Enum.map(&elem(&1, 2))
-        |> Ash.DataLayer.Ets.cast_records(resource)
-        |> case do
-          {:ok, records} ->
-            api
-            |> Ash.Filter.Runtime.filter_matches(records, filter)
-            |> case do
-              {:ok, filtered} ->
-                offset_records =
-                  filtered
-                  |> Sort.runtime_sort(sort, api: api)
-                  |> Enum.drop(offset || 0)
-
-                limited_records =
-                  if limit do
-                    Enum.take(offset_records, limit)
-                  else
-                    offset_records
-                  end
-
-                {:ok, limited_records}
-
-              {:error, error} ->
-                {:error, error}
-            end
-
-          {:error, error} ->
-            {:error, error}
-        end
     end
+  end
+
+  defp do_limit(records, nil), do: records
+  defp do_limit(records, limit), do: Enum.take(records, limit)
+
+  defp filter_matches(records, nil, _api), do: {:ok, records}
+
+  defp filter_matches(records, filter, api) do
+    Ash.Filter.Runtime.filter_matches(api, records, filter)
   end
 
   @doc false
@@ -416,7 +452,7 @@ defmodule Ash.DataLayer.Mnesia do
         {:error, Ash.Error.to_ash_error(reason, stacktrace)}
 
       {:aborted, reason} ->
-        {:error, reason}
+        {:error, Ash.Error.to_ash_error(Exception.format_exit(reason))}
     end
   end
 

@@ -308,7 +308,15 @@ defmodule Ash.DataLayer.Ets do
     case run_query(query, resource) do
       {:ok, results} ->
         Enum.reduce_while(aggregates, {:ok, %{}}, fn
-          %{kind: kind, name: name, query: query, field: field, resource: resource, uniq?: uniq?},
+          %{
+            kind: kind,
+            name: name,
+            query: query,
+            field: field,
+            resource: resource,
+            uniq?: uniq?,
+            default_value: default_value
+          },
           {:ok, acc} ->
             results
             |> filter_matches(Map.get(query || %{}, :filter), api)
@@ -316,7 +324,7 @@ defmodule Ash.DataLayer.Ets do
               {:ok, matches} ->
                 field = field || Enum.at(Ash.Resource.Info.primary_key(resource), 0)
 
-                value = aggregate_value(matches, kind, field, uniq?)
+                value = aggregate_value(matches, kind, field, uniq?, default_value)
                 {:cont, {:ok, Map.put(acc, name, value)}}
 
               {:error, error} ->
@@ -355,29 +363,29 @@ defmodule Ash.DataLayer.Ets do
         _resource
       ) do
     with {:ok, records} <- get_records(resource, tenant),
-         {:ok, records} <- do_add_aggregates(records, api, resource, aggregates),
          {:ok, records} <-
            filter_matches(records, filter, api),
          records <- Sort.runtime_sort(records, distinct_sort || sort, api: api),
          records <- Sort.runtime_distinct(records, distinct, api: api),
          records <- Sort.runtime_sort(records, sort, api: api),
          records <- Enum.drop(records, offset || []),
+         records <- do_limit(records, limit),
+         {:ok, records} <- do_add_aggregates(records, api, resource, aggregates),
          {:ok, records} <-
            do_add_calculations(records, resource, calculations, api) do
-      if limit do
-        {:ok, Enum.take(records, limit)}
-      else
-        {:ok, records}
-      end
+      {:ok, records}
     else
       {:error, error} ->
         {:error, Ash.Error.to_ash_error(error)}
     end
   end
 
-  defp do_add_calculations(records, _resource, [], _api), do: {:ok, records}
+  defp do_limit(records, nil), do: records
+  defp do_limit(records, limit), do: Enum.take(records, limit)
 
-  defp do_add_calculations(records, resource, calculations, api) do
+  def do_add_calculations(records, _resource, [], _api), do: {:ok, records}
+
+  def do_add_calculations(records, resource, calculations, api) do
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
       calculations
       |> Enum.reduce_while({:ok, record}, fn calculation, {:ok, record} ->
@@ -440,9 +448,10 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp do_add_aggregates(records, _api, _resource, []), do: {:ok, records}
+  @doc false
+  def do_add_aggregates(records, _api, _resource, []), do: {:ok, records}
 
-  defp do_add_aggregates(records, api, _resource, aggregates) do
+  def do_add_aggregates(records, api, _resource, aggregates) do
     # TODO support crossing apis by getting the destination api, and set destination query context.
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
       aggregates
@@ -456,7 +465,8 @@ defmodule Ash.DataLayer.Ets do
             query: query,
             name: name,
             load: load,
-            uniq?: uniq?
+            uniq?: uniq?,
+            default_value: default_value
           },
           {:ok, record} ->
             with {:ok, loaded_record} <-
@@ -466,7 +476,7 @@ defmodule Ash.DataLayer.Ets do
                    filter_matches(related, query.filter, api) do
               field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
 
-              value = aggregate_value(filtered, kind, field, uniq?)
+              value = aggregate_value(filtered, kind, field, uniq?, default_value)
 
               {:cont, {:ok, Map.put(record, load || name, value)}}
             else
@@ -500,7 +510,8 @@ defmodule Ash.DataLayer.Ets do
     [{key, relationship_path_to_load(rest, leaf)}]
   end
 
-  defp aggregate_value(records, kind, field, uniq?) do
+  @doc false
+  def aggregate_value(records, kind, field, uniq?, default) do
     case kind do
       :count ->
         if uniq? do
@@ -525,7 +536,7 @@ defmodule Ash.DataLayer.Ets do
       :first ->
         case records do
           [] ->
-            nil
+            default
 
           [record | _rest] ->
             Map.get(record, field)

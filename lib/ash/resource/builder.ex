@@ -51,7 +51,13 @@ defmodule Ash.Resource.Builder do
           {:ok, Ash.Resource.Actions.action()} | {:error, term}
   def build_action(type, name, opts \\ []) do
     with {:ok, opts} <-
-           handle_nested_builders(opts, [:changes, :arguments, :metadata, :pagination]) do
+           handle_nested_builders(opts, [
+             :changes,
+             :arguments,
+             :metadata,
+             :pagination,
+             :preparations
+           ]) do
       Transformer.build_entity(
         Ash.Resource.Dsl,
         [:actions],
@@ -490,6 +496,61 @@ defmodule Ash.Resource.Builder do
       [:calculations],
       :calculate,
       Keyword.merge(opts, name: name, type: type, calculation: calculation)
+    )
+  end
+
+  @doc """
+  Builds and adds an aggregate unless an aggregate with that name already exists
+  """
+  @spec add_new_aggregate(
+          Spark.Dsl.Builder.input(),
+          name :: atom,
+          kind :: Ash.Query.Aggregate.kind(),
+          relationship_path :: atom | [atom],
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder add_new_aggregate(dsl_state, name, kind, relationship_path, opts \\ []) do
+    if Ash.Resource.Info.aggregate(dsl_state, name) do
+      {:ok, dsl_state}
+    else
+      add_calculation(dsl_state, name, kind, relationship_path, opts)
+    end
+  end
+
+  @doc """
+  Builds and adds an aggregate to a resource
+  """
+  @spec add_aggregate(
+          Spark.Dsl.Builder.input(),
+          name :: atom,
+          kind :: Ash.Query.Aggregate.kind(),
+          relationship_path :: atom | [atom],
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder add_aggregate(dsl_state, name, kind, relationship_path, opts \\ []) do
+    with {:ok, aggregate} <- build_aggregate(name, kind, relationship_path, opts) do
+      Transformer.add_entity(dsl_state, [:aggregates], aggregate)
+    end
+  end
+
+  @doc """
+  Builds a calculation with the given name, type, and options
+  """
+  @spec build_aggregate(
+          name :: atom,
+          kind :: Ash.Query.Aggregate.kind(),
+          relationship_path :: atom | [atom],
+          opts :: Keyword.t()
+        ) ::
+          {:ok, Ash.Resource.Aggregate.t()} | {:error, term}
+  def build_aggregate(name, kind, relationship_path, opts \\ []) do
+    Transformer.build_entity(
+      Ash.Resource.Dsl,
+      [:aggregates],
+      kind,
+      Keyword.merge(opts, name: name, relationship_path: List.wrap(relationship_path))
     )
   end
 end
