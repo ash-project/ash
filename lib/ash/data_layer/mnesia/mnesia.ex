@@ -451,6 +451,12 @@ defmodule Ash.DataLayer.Mnesia do
       {:aborted, {reason, stacktrace}} when is_exception(reason) ->
         {:error, Ash.Error.to_ash_error(reason, stacktrace)}
 
+      {:aborted, %Ash.Changeset{} = changeset} ->
+        {:error, changeset}
+
+      {:aborted, %Ash.Query{} = query} ->
+        {:error, query}
+
       {:aborted, reason} ->
         {:error, Ash.Error.to_ash_error(Exception.format_exit(reason))}
     end
