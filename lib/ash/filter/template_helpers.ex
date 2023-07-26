@@ -47,6 +47,9 @@ defmodule Ash.Filter.TemplateHelpers do
   @doc "A helper for creating a reference"
   def ref(name), do: {:_ref, [], name}
 
+  @doc "A helper for creating a parent reference"
+  def parent(expr), do: {:_parent, [], expr}
+
   @doc "A helper for creating a reference to a related path"
   def ref(path, name), do: {:_ref, path, name}
 

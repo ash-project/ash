@@ -189,6 +189,11 @@ defmodule Ash.Test.Actions.LoadTest do
         api(Ash.Test.Actions.LoadTest.Api2)
       end
 
+      has_many :posts_with_same_title, __MODULE__ do
+        no_attributes? true
+        filter expr(parent(title) == title and parent(id) != id)
+      end
+
       many_to_many(:categories, Ash.Test.Actions.LoadTest.Category,
         through: Ash.Test.Actions.LoadTest.PostCategory,
         destination_attribute_on_join_resource: :category_id,
@@ -342,6 +347,29 @@ defmodule Ash.Test.Actions.LoadTest do
                post1
                |> Api.load!(:posts_in_same_category)
                |> Map.get(:posts_in_same_category)
+    end
+
+    test "parent expressions can be used for complex constraints" do
+      post1 =
+        Post
+        |> new(%{title: "post1", category: "foo"})
+        |> Api.create!()
+
+      post1_same =
+        Post
+        |> new(%{title: "post1", category: "bar"})
+        |> Api.create!()
+
+      Post
+      |> new(%{title: "post2", category: "baz"})
+      |> Api.create!()
+
+      post1_same_id = post1_same.id
+
+      assert [%{id: ^post1_same_id}] =
+               post1
+               |> Api.load!(:posts_with_same_title)
+               |> Map.get(:posts_with_same_title)
     end
 
     test "it allows loading through manual relationships" do

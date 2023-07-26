@@ -98,6 +98,12 @@ defmodule Ash.Schema do
             )
           end
 
+          Module.put_attribute(
+            __MODULE__,
+            :ash_struct_fields,
+            {:__lateral_join_source__, nil}
+          )
+
           struct_fields = Module.get_attribute(__MODULE__, :ash_struct_fields)
           Module.delete_attribute(__MODULE__, struct_fields_name)
           Module.register_attribute(__MODULE__, struct_fields_name, accumulate: true)
@@ -241,6 +247,12 @@ defmodule Ash.Schema do
               {calculation.name, %Ash.NotLoaded{type: :calculation, field: calculation.name}}
             )
           end
+
+          Module.put_attribute(
+            __MODULE__,
+            :ash_struct_fields,
+            {:__lateral_join_source__, nil}
+          )
 
           struct_fields = Module.get_attribute(__MODULE__, :ash_struct_fields)
 

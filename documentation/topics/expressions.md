@@ -52,7 +52,7 @@ The following functions are built in:
 
 - `exists/2` | `exists(foo.bar, name == "fred")` takes an expression scoped to the destination resource, and checks if any related entry matches. See the section on `exists` below.
 - `path.exists/2` | Same as `exists` but the source of the relationship is itself a nested relationship. See the section on `exists` below.
-- `parent/1` | Allows an expression scoped to a resource to refer to the "outer" context.
+- `parent/1` | Allows an expression scoped to a resource to refer to the "outer" context. Used in relationship filters and `exists`
 
 ## DateTime Functions
 
@@ -150,6 +150,19 @@ Ash.Query.filter(Post, author.exists(roles, name == :admin) and author.active)
 ```
 
 While the above is not common, it can be useful in some specific circumstances, and is used under the hood by the policy authorizer when combining the filters of various resources to create a single filter.
+
+## Relationship Filters
+
+When filtering relationships, you can use the `parent/1` function to scope a part of the expression to "source" of the join. This allows for very expressive relationships! Keep in mind, however, that if you want to update and/or manage these relationships, you'll have to make sure that any attributes that make these things actually related are properly set.
+
+```elixir
+has_many :descendents, __MODULE__ do
+  description "All descendents in the same tree"
+  no_attributes? true # this says that there is no matching source_attribute and destination_attribute on this relationship
+  # This is an example using postgres' ltree extension.
+  filter expr(tree_id == parent(tree_id) and fragment("? @> ?", parent(path), path))
+end
+```
 
 ## Portability
 

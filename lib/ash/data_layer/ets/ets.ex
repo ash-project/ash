@@ -1,5 +1,6 @@
 defmodule Ash.DataLayer.Ets do
   @behaviour Ash.DataLayer
+  require Ash.Query
 
   @ets %Spark.Dsl.Section{
     name: :ets,
@@ -188,11 +189,9 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
-  def can?(resource, :async_engine) do
-    not private?(resource)
-  end
-
   def can?(_, :distinct_sort), do: true
+  def can?(resource, :async_engine), do: not private?(resource)
+  def can?(_, {:lateral_join, _}), do: true
   def can?(_, :bulk_create), do: true
   def can?(_, :composite_primary_key), do: true
   def can?(_, :expression_calculation), do: true
@@ -360,11 +359,12 @@ defmodule Ash.DataLayer.Ets do
           aggregates: aggregates,
           api: api
         },
-        _resource
+        _resource,
+        parent \\ nil
       ) do
     with {:ok, records} <- get_records(resource, tenant),
          {:ok, records} <-
-           filter_matches(records, filter, api),
+           filter_matches(records, filter, api, parent),
          records <- Sort.runtime_sort(records, distinct_sort || sort, api: api),
          records <- Sort.runtime_distinct(records, distinct, api: api),
          records <- Sort.runtime_sort(records, sort, api: api),
@@ -382,6 +382,151 @@ defmodule Ash.DataLayer.Ets do
 
   defp do_limit(records, nil), do: records
   defp do_limit(records, limit), do: Enum.take(records, limit)
+
+  @impl true
+  def prefer_lateral_join_for_many_to_many?, do: false
+
+  @impl true
+  def run_query_with_lateral_join(
+        query,
+        root_data,
+        _destination_resource,
+        [{source_query, source_attribute, destination_attribute, relationship}]
+      ) do
+    source_attributes = Enum.map(root_data, &Map.get(&1, source_attribute))
+
+    source_query
+    |> Ash.Query.filter(ref(^source_attribute) in ^source_attributes)
+    |> Ash.Query.set_context(%{private: %{internal?: true}})
+    |> Ash.Query.unset(:load)
+    |> Ash.Query.unset(:select)
+    |> query.api.read(authorize?: false)
+    |> case do
+      {:error, error} ->
+        {:error, error}
+
+      {:ok, root_data} ->
+        root_data
+        |> Enum.reduce_while({:ok, []}, fn parent, {:ok, results} ->
+          new_filter =
+            if Map.get(relationship, :no_attributes?) do
+              query.filter
+            else
+              Ash.Filter.add_to_filter(query.filter, [
+                {destination_attribute, Map.get(parent, source_attribute)}
+              ])
+            end
+
+          query = %{query | filter: new_filter}
+
+          case run_query(query, relationship.source, parent) do
+            {:ok, new_results} ->
+              new_results =
+                Enum.map(
+                  new_results,
+                  &Map.put(&1, :__lateral_join_source__, Map.get(parent, source_attribute))
+                )
+
+              {:cont, {:ok, new_results ++ results}}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+        end)
+        |> case do
+          {:ok, results} ->
+            {:ok, results}
+
+          {:error, error} ->
+            {:error, error}
+        end
+    end
+  end
+
+  def run_query_with_lateral_join(query, root_data, _destination_resource, [
+        {source_query, source_attribute, source_attribute_on_join_resource, relationship},
+        {through_query, destination_attribute_on_join_resource, destination_attribute,
+         _through_relationship}
+      ]) do
+    source_attributes = Enum.map(root_data, &Map.get(&1, source_attribute))
+
+    source_query
+    |> Ash.Query.unset(:load)
+    |> Ash.Query.filter(ref(^source_attribute) in ^source_attributes)
+    |> Ash.Query.set_context(%{private: %{internal?: true}})
+    |> query.api.read(authorize?: false)
+    |> case do
+      {:error, error} ->
+        {:error, error}
+
+      {:ok, root_data} ->
+        root_data
+        |> Enum.reduce_while({:ok, []}, fn parent, {:ok, results} ->
+          through_query
+          |> Ash.Query.filter(
+            ref(^source_attribute_on_join_resource) ==
+              ^Map.get(parent, source_attribute)
+          )
+          |> Ash.Query.set_context(%{private: %{internal?: true}})
+          |> query.api.read(authorize?: false)
+          |> case do
+            {:ok, join_data} ->
+              join_attrs =
+                Enum.map(join_data, &Map.get(&1, destination_attribute_on_join_resource))
+
+              new_filter =
+                if is_nil(query.filter) do
+                  Ash.Filter.parse!(query.resource, [
+                    {destination_attribute, [in: join_attrs]}
+                  ])
+                else
+                  Ash.Filter.add_to_filter(query.filter, [
+                    {destination_attribute, [in: join_attrs]}
+                  ])
+                end
+
+              query = %{query | filter: new_filter}
+
+              case run_query(query, relationship.source, parent) do
+                {:ok, new_results} ->
+                  new_results =
+                    Enum.flat_map(new_results, fn result ->
+                      join_data
+                      |> Enum.flat_map(fn join_row ->
+                        if Map.get(join_row, destination_attribute_on_join_resource) ==
+                             Map.get(result, destination_attribute) do
+                          [
+                            Map.put(
+                              result,
+                              :__lateral_join_source__,
+                              Map.get(join_row, source_attribute_on_join_resource)
+                            )
+                          ]
+                        else
+                          []
+                        end
+                      end)
+                    end)
+
+                  {:cont, {:ok, new_results ++ results}}
+
+                {:error, error} ->
+                  {:halt, {:error, error}}
+              end
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+        end)
+        |> case do
+          {:ok, results} ->
+            {:ok, results}
+
+          {:error, error} ->
+            {:error, error}
+        end
+    end
+  end
 
   def do_add_calculations(records, _resource, [], _api), do: {:ok, records}
 
@@ -679,10 +824,11 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp filter_matches(records, nil, _api), do: {:ok, records}
+  defp filter_matches(records, filter, api, parent \\ nil)
+  defp filter_matches(records, nil, _api, _parent), do: {:ok, records}
 
-  defp filter_matches(records, filter, api) do
-    Ash.Filter.Runtime.filter_matches(api, records, filter)
+  defp filter_matches(records, filter, api, parent) do
+    Ash.Filter.Runtime.filter_matches(api, records, filter, parent: parent)
   end
 
   @doc false

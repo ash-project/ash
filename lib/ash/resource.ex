@@ -417,6 +417,7 @@ defmodule Ash.Resource do
       :__meta__,
       :__metadata__,
       :__order__,
+      :__lateral_join_source__,
       :*,
       :calculations,
       :aggregates,

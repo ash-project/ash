@@ -1126,7 +1126,7 @@ defmodule Ash.Filter do
     relationship.destination
     |> Ash.Query.set_context(relationship.context)
     |> Ash.Query.sort(relationship.sort, prepend?: true)
-    |> Ash.Query.do_filter(relationship.filter)
+    |> Ash.Query.do_filter(relationship.filter, parent_stack: relationship.source)
     |> Ash.Query.for_read(action, %{},
       actor: actor,
       authorize?: true,
@@ -1664,7 +1664,7 @@ defmodule Ash.Filter do
     relationship.destination
     |> Ash.Query.new(api)
     |> Ash.Query.do_filter(filter)
-    |> Ash.Query.do_filter(relationship.filter)
+    |> Ash.Query.do_filter(relationship.filter, parent_stack: relationship.source)
     |> Ash.Query.sort(relationship.sort, prepend?: true)
     |> Ash.Query.set_context(relationship.context)
     |> filter_related_in(relationship, :lists.droplast(path), api, data)
@@ -2724,6 +2724,13 @@ defmodule Ash.Filter do
     end
   end
 
+  defp resolve_call(
+         %Call{name: :parent, args: [arg], relationship_path: []},
+         context
+       ) do
+    do_hydrate_refs(%Ash.Query.Parent{expr: arg}, context)
+  end
+
   defp resolve_call(%Call{name: name, args: args} = call, context) do
     could_be_calculation? = Enum.count(args) == 1 && Keyword.keyword?(Enum.at(args, 0))
 
@@ -3017,6 +3024,10 @@ defmodule Ash.Filter do
   end
 
   def do_hydrate_refs(%Ash.Query.Parent{expr: expr} = this, context) do
+    if !Map.has_key?(context, :parent_stack) || context.parent_stack in [[], nil] do
+      raise "Attempted to use parent expression without a known parent: #{inspect(this)}"
+    end
+
     context =
       %{
         context
@@ -3173,25 +3184,14 @@ defmodule Ash.Filter do
       %{__function__?: true, arguments: args} = func ->
         %{func | arguments: Enum.map(args, &move_to_relationship_path(&1, relationship_path))}
 
-      %Ash.Query.Exists{expr: expr} = exists ->
-        %{
-          exists
-          | at_path: relationship_path ++ exists.at_path,
-            expr:
-              map(expr, fn
-                %Ash.Query.Parent{} = this ->
-                  move_to_relationship_path(this, relationship_path)
+      %Ash.Query.Exists{} = exists ->
+        %{exists | at_path: relationship_path ++ exists.at_path}
 
-                other ->
-                  other
-              end)
-        }
+      # %Ash.Query.Parent{expr: expr} = this ->
+      #   %{this | expr: move_to_relationship_path(expr, relationship_path)}
 
-      %Ash.Query.Parent{expr: expr} = this ->
-        %{this | expr: move_to_relationship_path(expr, relationship_path)}
-
-      %Call{args: args} = call ->
-        %{call | args: Enum.map(args, &move_to_relationship_path(&1, relationship_path))}
+      %Call{name: :exists, relationship_path: call_path} = call ->
+        %{call | relationship_path: relationship_path ++ call_path}
 
       %__MODULE__{expression: expression} = filter ->
         %{filter | expression: move_to_relationship_path(expression, relationship_path)}

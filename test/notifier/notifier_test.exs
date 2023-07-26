@@ -258,13 +258,21 @@ defmodule Ash.Test.NotifierTest do
         |> Ash.Changeset.new(%{name: "foo"})
         |> Api.create!()
 
-      Post
-      |> Ash.Changeset.new(%{name: "foo"})
-      |> Ash.Changeset.manage_relationship(:related_posts, [post], type: :append_and_remove)
-      |> Api.create!()
-      |> Ash.Changeset.new(%{})
-      |> Ash.Changeset.manage_relationship(:related_posts, [], type: :append_and_remove)
-      |> Api.update!()
+      assert %{related_posts: [_]} =
+               post =
+               Post
+               |> Ash.Changeset.new(%{name: "foo"})
+               |> Ash.Changeset.manage_relationship(:related_posts, [post],
+                 type: :append_and_remove
+               )
+               |> Api.create!()
+               |> Api.load!(:related_posts)
+
+      assert %{related_posts: []} =
+               post
+               |> Ash.Changeset.new(%{})
+               |> Ash.Changeset.manage_relationship(:related_posts, [], type: :append_and_remove)
+               |> Api.update!()
 
       assert_receive {:notification, %{action: %{type: :destroy}, resource: PostLink}}
     end

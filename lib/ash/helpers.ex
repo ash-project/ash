@@ -87,7 +87,8 @@ defmodule Ash.Helpers do
   end
 
   @doc false
-  def deep_merge_maps(left, right) when is_map(left) and is_map(right) do
+  def deep_merge_maps(left, right)
+      when is_map(left) and is_map(right) and not is_struct(left) and not is_struct(right) do
     Map.merge(left, right, fn _, left, right ->
       deep_merge_maps(left, right)
     end)

@@ -1362,11 +1362,7 @@ defmodule Ash.Actions.Read do
                      calculations_in_query
                    ),
                  {:ok, query} <-
-                   Ash.DataLayer.filter(
-                     query,
-                     filter,
-                     ash_query.resource
-                   ),
+                   data_layer_filter(query, filter, ash_query),
                  {:ok, query} <-
                    Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource),
                  {:ok, query} <-
@@ -1441,6 +1437,14 @@ defmodule Ash.Actions.Read do
             end
         end
       end
+    )
+  end
+
+  defp data_layer_filter(query, filter, ash_query) do
+    Ash.DataLayer.filter(
+      query,
+      filter,
+      ash_query.resource
     )
   end
 

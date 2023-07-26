@@ -85,6 +85,7 @@ defmodule Ash.DataLayer do
               {:ok, data_layer_query()} | {:error, term}
   @callback distinct(data_layer_query(), list(atom), resource :: Ash.Resource.t()) ::
               {:ok, data_layer_query()} | {:error, term}
+  @callback prefer_lateral_join_for_many_to_many?() :: boolean
   @callback limit(
               data_layer_query(),
               limit :: non_neg_integer(),
@@ -217,6 +218,7 @@ defmodule Ash.DataLayer do
                       upsert: 3,
                       functions: 1,
                       in_transaction?: 1,
+                      prefer_lateral_join_for_many_to_many?: 0,
                       add_aggregate: 3,
                       add_aggregates: 3,
                       add_calculation: 4,
@@ -230,6 +232,16 @@ defmodule Ash.DataLayer do
   @spec data_layer(Ash.Resource.t() | Spark.Dsl.t()) :: Ash.DataLayer.t() | nil
   def data_layer(resource) do
     Extension.get_persisted(resource, :data_layer)
+  end
+
+  @doc "Wether or not lateral joins should be used for many to many relationships by default"
+  @spec prefer_lateral_join_for_many_to_many?(Ash.DataLayer.t()) :: boolean
+  def prefer_lateral_join_for_many_to_many?(data_layer) do
+    if function_exported?(data_layer, :prefer_lateral_join_for_many_to_many?, 0) do
+      data_layer.prefer_lateral_join_for_many_to_many?()
+    else
+      true
+    end
   end
 
   @doc "Whether or not the data layer supports a specific feature"

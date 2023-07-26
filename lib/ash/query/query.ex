@@ -2137,14 +2137,22 @@ defmodule Ash.Query do
   end
 
   @doc false
-  def do_filter(query, %Ash.Filter{} = filter) do
+  def do_filter(query, filter, opts \\ [])
+
+  def do_filter(query, %Ash.Filter{} = filter, opts) do
     query = to_query(query)
 
     if Ash.DataLayer.data_layer_can?(query.resource, :filter) do
       new_filter =
         case query.filter do
           nil ->
-            Ash.Filter.parse(query.resource, filter, query.aggregates, query.calculations)
+            Ash.Filter.parse(
+              query.resource,
+              filter,
+              query.aggregates,
+              query.calculations,
+              with_parent_stack(%{}, opts)
+            )
 
           existing_filter ->
             Ash.Filter.add_to_filter(
@@ -2152,16 +2160,21 @@ defmodule Ash.Query do
               filter,
               :and,
               query.aggregates,
-              query.calculations
+              query.calculations,
+              with_parent_stack(%{}, opts)
             )
         end
 
       case new_filter do
         {:ok, filter} ->
-          case Ash.Filter.hydrate_refs(filter, %{
-                 resource: query.resource,
-                 public?: false
-               }) do
+          case Ash.Filter.hydrate_refs(
+                 filter,
+                 %{
+                   resource: query.resource,
+                   public?: false
+                 }
+                 |> with_parent_stack(opts)
+               ) do
             {:ok, result} ->
               %{query | filter: result}
 
@@ -2177,10 +2190,10 @@ defmodule Ash.Query do
     end
   end
 
-  def do_filter(query, nil), do: to_query(query)
-  def do_filter(query, []), do: to_query(query)
+  def do_filter(query, nil, _opts), do: to_query(query)
+  def do_filter(query, [], _opts), do: to_query(query)
 
-  def do_filter(query, statement) do
+  def do_filter(query, statement, opts) do
     query = to_query(query)
 
     if Ash.DataLayer.data_layer_can?(query.resource, :filter) do
@@ -2191,23 +2204,29 @@ defmodule Ash.Query do
             statement,
             :and,
             query.aggregates,
-            query.calculations
+            query.calculations,
+            with_parent_stack(%{}, opts)
           )
         else
           Ash.Filter.parse(
             query.resource,
             statement,
             query.aggregates,
-            query.calculations
+            query.calculations,
+            with_parent_stack(%{}, opts)
           )
         end
 
       case filter do
         {:ok, filter} ->
-          case Ash.Filter.hydrate_refs(filter, %{
-                 resource: query.resource,
-                 public?: false
-               }) do
+          case Ash.Filter.hydrate_refs(
+                 filter,
+                 %{
+                   resource: query.resource,
+                   public?: false
+                 }
+                 |> with_parent_stack(opts)
+               ) do
             {:ok, result} ->
               %{query | filter: result}
 
@@ -2220,6 +2239,16 @@ defmodule Ash.Query do
       end
     else
       add_error(query, :filter, "Data layer does not support filtering")
+    end
+  end
+
+  defp with_parent_stack(context, opts) do
+    if opts[:parent_stack] do
+      parent_stack = List.wrap(opts[:parent_stack])
+
+      Map.update(context, :parent_stack, parent_stack, &(parent_stack ++ &1))
+    else
+      context
     end
   end
 

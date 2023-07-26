@@ -281,14 +281,16 @@ defmodule Ash.Filter.Runtime do
         %resource{} ->
           Ash.Filter.hydrate_refs(expression, %{
             resource: resource,
-            public?: false
+            public?: false,
+            parent_stack: parent_stack(parent)
           })
 
         _ ->
           if resource do
             Ash.Filter.hydrate_refs(expression, %{
               resource: resource,
-              public?: false
+              public?: false,
+              parent_stack: parent_stack(parent)
             })
           else
             {:ok, expression}
@@ -657,14 +659,16 @@ defmodule Ash.Filter.Runtime do
           %resource{} ->
             Ash.Filter.hydrate_refs(expression, %{
               resource: resource,
-              public?: false
+              public?: false,
+              parent_stack: parent_stack(parent)
             })
 
           _ ->
             if resource do
               Ash.Filter.hydrate_refs(expression, %{
                 resource: resource,
-                public?: false
+                public?: false,
+                parent_stack: parent_stack(parent)
               })
             else
               {:ok, expression}
@@ -941,4 +945,7 @@ defmodule Ash.Filter.Runtime do
         end
     end
   end
+
+  defp parent_stack(nil), do: []
+  defp parent_stack(%resource{}), do: [resource]
 end

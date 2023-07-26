@@ -142,7 +142,7 @@ defmodule Ash.Actions.Load do
 
   defp attach_to_many_loads(
          value,
-         %{name: name, no_attributes?: true},
+         %{name: name, no_attributes?: true} = relationship,
          data,
          lead_path
        ) do
@@ -158,9 +158,55 @@ defmodule Ash.Actions.Load do
           value |> Map.values() |> List.flatten()
       end
 
-    map_or_update(data, lead_path, fn record ->
-      Map.put(record, name, value)
-    end)
+    if has_parent_expr?(relationship) do
+      case relationship_type_with_non_simple_equality(relationship) do
+        :error ->
+          map_or_update(data, lead_path, fn record ->
+            source_value = Map.get(record, relationship.source_attribute)
+
+            Map.put(
+              record,
+              name,
+              Enum.filter(value, fn
+                %{__lateral_join_source__: destination_value}
+                when not is_nil(destination_value) ->
+                  destination_value == source_value
+
+                _ ->
+                  # handle backwards compatibility on join
+                  # data layers should now all be setting `__lateral_join_source__` for any
+                  # lateral joins
+                  true
+              end)
+            )
+          end)
+
+        {:ok, type} ->
+          map_or_update(data, lead_path, fn record ->
+            source_value = Map.get(record, relationship.source_attribute)
+
+            Map.put(
+              record,
+              name,
+              Enum.filter(value, fn
+                %{__lateral_join_source__: destination_value}
+                when not is_nil(destination_value) ->
+                  Ash.Type.equal?(type, destination_value, source_value)
+
+                _ ->
+                  # handle backwards compatibility on join
+                  # data layers should now all be setting `__lateral_join_source__` for any
+                  # lateral joins
+                  true
+              end)
+            )
+          end)
+      end
+    else
+      map_or_update(data, lead_path, fn record ->
+        Map.put(record, name, value)
+      end)
+    end
   end
 
   defp attach_to_many_loads(value, last_relationship, data, lead_path)
@@ -222,43 +268,75 @@ defmodule Ash.Actions.Load do
   end
 
   defp attach_to_many_loads(value, last_relationship, data, lead_path) do
-    if Ash.Resource.Info.primary_key_simple_equality?(last_relationship.destination) do
-      values = Enum.group_by(value, &Map.get(&1, last_relationship.destination_attribute))
+    case relationship_type_with_non_simple_equality(last_relationship) do
+      :error ->
+        values =
+          Enum.group_by(value, fn
+            %{__lateral_join_source__: lateral_join_source}
+            when not is_nil(lateral_join_source) ->
+              lateral_join_source
 
-      map_or_update(data, lead_path, fn record ->
-        source_key = Map.get(record, last_relationship.source_attribute)
-        related_records = Map.get(values, source_key, [])
-        Map.put(record, last_relationship.name, related_records)
-      end)
-    else
-      destination_attribute = last_relationship.destination_attribute
-
-      type =
-        Ash.Resource.Info.attribute(last_relationship.destination, destination_attribute).type
-
-      map_or_update(data, lead_path, fn record ->
-        source_key = Map.get(record, last_relationship.source_attribute)
-
-        related_records =
-          Enum.filter(value, fn maybe_related ->
-            Ash.Type.equal?(
-              type,
-              Map.get(maybe_related, destination_attribute),
-              source_key
-            )
+            record ->
+              Map.get(record, last_relationship.destination_attribute)
           end)
 
-        Map.put(record, last_relationship.name, related_records)
-      end)
+        map_or_update(data, lead_path, fn record ->
+          source_key = Map.get(record, last_relationship.source_attribute)
+          related_records = Map.get(values, source_key, [])
+          Map.put(record, last_relationship.name, related_records)
+        end)
+
+      {:ok, type} ->
+        destination_attribute = last_relationship.destination_attribute
+
+        map_or_update(data, lead_path, fn record ->
+          source_key = Map.get(record, last_relationship.source_attribute)
+
+          related_records =
+            Enum.filter(value, fn
+              %{__lateral_join_source__: lateral_join_source}
+              when not is_nil(lateral_join_source) ->
+                lateral_join_source
+
+              maybe_related ->
+                Ash.Type.equal?(
+                  type,
+                  Map.get(maybe_related, destination_attribute),
+                  source_key
+                )
+            end)
+
+          Map.put(record, last_relationship.name, related_records)
+        end)
     end
   end
 
-  defp attach_to_one_loads(value, %{name: name, no_attributes?: true}, data, lead_path) do
+  defp attach_to_one_loads(
+         value,
+         %{name: name, no_attributes?: true} = relationship,
+         data,
+         lead_path
+       ) do
     map_or_update(data, lead_path, fn record ->
       if is_map(data) do
         Map.put(record, name, value |> List.wrap() |> Enum.at(0) |> elem(1))
       else
-        Map.put(record, name, value |> List.wrap() |> Enum.at(0))
+        source_value = Map.get(record, relationship.source_attribute)
+
+        case relationship_type_with_non_simple_equality(relationship) do
+          {:ok, type} ->
+            case value do
+              %{__lateral_join_source__: destination_value} when not is_nil(destination_value) ->
+                Ash.Type.equal?(
+                  type,
+                  source_value,
+                  destination_value
+                )
+
+              value ->
+                Map.put(record, name, value |> List.wrap() |> Enum.at(0))
+            end
+        end
       end
     end)
   end
@@ -324,20 +402,35 @@ defmodule Ash.Actions.Load do
         Map.put(record, last_relationship.name, related_record)
       end)
     else
-      map_or_update(data, lead_path, fn record ->
-        source_key = Map.get(record, last_relationship.source_attribute)
+      case relationship_type_with_non_simple_equality(last_relationship) do
+        :error ->
+          map_or_update(data, lead_path, fn record ->
+            source_key = Map.get(record, last_relationship.source_attribute)
 
-        related_record =
-          Enum.find(value, fn maybe_related ->
-            Ash.Type.equal?(
-              type,
-              Map.get(maybe_related, destination_attribute),
-              source_key
-            )
+            related_record =
+              Enum.find(value, fn maybe_related ->
+                Map.get(maybe_related, destination_attribute) == source_key
+              end)
+
+            Map.put(record, last_relationship.name, related_record)
           end)
 
-        Map.put(record, last_relationship.name, related_record)
-      end)
+        {:ok, type} ->
+          map_or_update(data, lead_path, fn record ->
+            source_key = Map.get(record, last_relationship.source_attribute)
+
+            related_record =
+              Enum.find(value, fn maybe_related ->
+                Ash.Type.equal?(
+                  type,
+                  Map.get(maybe_related, destination_attribute),
+                  source_key
+                )
+              end)
+
+            Map.put(record, last_relationship.name, related_record)
+          end)
+      end
     end
   end
 
@@ -349,53 +442,75 @@ defmodule Ash.Actions.Load do
       |> Map.get(join_path, %{})
       |> Map.get(:data, [])
 
-    source_attribute_on_join_resource_type =
-      Ash.Resource.Info.attribute(
-        last_relationship.through,
-        last_relationship.source_attribute_on_join_resource
-      ).type
-
-    destination_attribute_on_join_resource_type =
-      Ash.Resource.Info.attribute(
-        last_relationship.through,
-        last_relationship.destination_attribute_on_join_resource
-      ).type
+    join_relationship =
+      Ash.Resource.Info.relationship(
+        last_relationship.source,
+        last_relationship.join_relationship
+      )
 
     map_or_update(data, lead_path, fn record ->
       source_value = Map.get(record, last_relationship.source_attribute)
 
       join_values =
-        join_data
-        |> Enum.filter(fn join_row ->
-          Ash.Type.equal?(
-            source_attribute_on_join_resource_type,
-            Map.get(join_row, last_relationship.source_attribute_on_join_resource),
-            source_value
-          )
-        end)
-        |> Enum.map(&Map.get(&1, last_relationship.destination_attribute_on_join_resource))
-
-      related_records =
-        value
-        |> Enum.filter(fn
-          %{__lateral_join_source__: join_value} ->
-            Ash.Type.equal?(
-              destination_attribute_on_join_resource_type,
-              source_value,
-              join_value
-            )
-
-          value ->
-            destination_value = Map.get(value, last_relationship.destination_attribute)
-
-            Enum.any?(join_values, fn join_value ->
+        case relationship_type_with_non_simple_equality(join_relationship) do
+          {:ok, type} ->
+            join_data
+            |> Enum.filter(fn join_row ->
               Ash.Type.equal?(
-                destination_attribute_on_join_resource_type,
-                destination_value,
-                join_value
+                type,
+                Map.get(join_row, last_relationship.source_attribute_on_join_resource),
+                source_value
               )
             end)
-        end)
+            |> Enum.map(&Map.get(&1, last_relationship.destination_attribute_on_join_resource))
+
+          :error ->
+            join_data
+            |> Enum.filter(fn join_row ->
+              Map.get(join_row, last_relationship.source_attribute_on_join_resource) ==
+                source_value
+            end)
+            |> Enum.map(&Map.get(&1, last_relationship.destination_attribute_on_join_resource))
+        end
+
+      related_records =
+        case relationship_type_with_non_simple_equality(last_relationship) do
+          {:ok, type} ->
+            value
+            |> Enum.filter(fn
+              %{__lateral_join_source__: join_value} when not is_nil(join_value) ->
+                Ash.Type.equal?(
+                  type,
+                  source_value,
+                  join_value
+                )
+
+              value ->
+                destination_value = Map.get(value, last_relationship.destination_attribute)
+
+                Enum.any?(join_values, fn join_value ->
+                  Ash.Type.equal?(
+                    type,
+                    destination_value,
+                    join_value
+                  )
+                end)
+            end)
+
+          :error ->
+            value
+            |> Enum.filter(fn
+              %{__lateral_join_source__: join_value} when not is_nil(join_value) ->
+                source_value == join_value
+
+              value ->
+                destination_value = Map.get(value, last_relationship.destination_attribute)
+
+                Enum.any?(join_values, fn join_value ->
+                  join_value == destination_value
+                end)
+            end)
+        end
 
       Map.put(record, last_relationship.name, related_records)
     end)
@@ -1297,7 +1412,7 @@ defmodule Ash.Actions.Load do
 
                 authorization_filter ->
                   base_query
-                  |> Ash.Query.do_filter(authorization_filter)
+                  |> Ash.Query.do_filter(authorization_filter, parent_stack: relationship.source)
               end
 
             source_data = get_in(data, parent_data_path)
@@ -1388,6 +1503,7 @@ defmodule Ash.Actions.Load do
       end
 
     if action.manual do
+      raise_if_parent_expr!(relationship, "manual actions")
       false
     else
       {offset, limit} = offset_and_limit(query)
@@ -1398,27 +1514,70 @@ defmodule Ash.Actions.Load do
 
       cond do
         is_many_to_many_not_unique_on_join?(relationship) ->
+          raise_if_parent_expr!(
+            relationship,
+            "many to many relationships that don't have unique constraints on their join resource attributes"
+          )
+
           false
 
         limit == 1 && is_nil(relationship.context) && is_nil(relationship.filter) &&
           is_nil(relationship.sort) && relationship.type != :many_to_many ->
-          false
+          has_parent_expr?(relationship)
 
         limit == 1 && (source_data == :unknown || Enum.count_until(source_data, 2) == 1) &&
             relationship.type != :many_to_many ->
-          false
+          has_parent_expr?(relationship)
 
         true ->
-          lateral_join =
-            (limit || offset || relationship.type == :many_to_many) &&
-              Ash.DataLayer.data_layer_can?(
-                relationship.source,
-                {:lateral_join, resources}
-              )
+          if has_parent_expr?(relationship) do
+            true
+          else
+            lateral_join =
+              (limit || offset || relationship.type == :many_to_many) &&
+                Ash.DataLayer.data_layer_can?(
+                  relationship.source,
+                  {:lateral_join, resources}
+                )
 
-          !!lateral_join
+            Ash.DataLayer.prefer_lateral_join_for_many_to_many?(
+              Ash.DataLayer.data_layer(relationship.source)
+            ) and !!lateral_join
+          end
       end
     end
+  end
+
+  defp raise_if_parent_expr!(relationship, reason) do
+    if has_parent_expr?(relationship) do
+      raise ArgumentError, "Found `parent_expr` in unsupported context: #{reason}"
+    end
+  end
+
+  defp has_parent_expr?(%{filter: filter}, depth \\ 0) do
+    not is_nil(
+      Ash.Filter.find(filter, fn
+        %Ash.Query.Call{name: :parent, args: [expr]} ->
+          if depth == 0 do
+            true
+          else
+            has_parent_expr?(expr, depth - 1)
+          end
+
+        %Ash.Query.Exists{expr: expr} ->
+          has_parent_expr?(expr, depth + 1)
+
+        %Ash.Query.Parent{expr: expr} ->
+          if depth == 0 do
+            true
+          else
+            has_parent_expr?(expr, depth - 1)
+          end
+
+        _ ->
+          false
+      end)
+    )
   end
 
   defp is_many_to_many_not_unique_on_join?(%{type: :many_to_many} = relationship) do
@@ -1510,12 +1669,13 @@ defmodule Ash.Actions.Load do
               }
             })
             |> Ash.Query.set_context(relationship.context)
-            |> Ash.Query.do_filter(relationship.filter)
+            |> Ash.Query.do_filter(relationship.filter, parent_stack: relationship.source)
             |> Ash.Query.sort(relationship.sort, prepend?: true)
             |> remove_relationships_from_load()
             |> read(relationship.read_action, request_opts)
 
-          lateral_join?(query, relationship, source_data) && (limit || offset) ->
+          lateral_join?(query, relationship, source_data) &&
+              (limit || offset || has_parent_expr?(relationship)) ->
             query
             |> Ash.Query.set_context(%{
               data_layer: %{
@@ -1528,7 +1688,7 @@ defmodule Ash.Actions.Load do
               }
             })
             |> Ash.Query.set_context(relationship.context)
-            |> Ash.Query.do_filter(relationship.filter)
+            |> Ash.Query.do_filter(relationship.filter, parent_stack: relationship.source)
             |> Ash.Query.sort(relationship.sort, prepend?: true)
             |> remove_relationships_from_load()
             |> read(relationship.read_action, request_opts)
@@ -1549,7 +1709,7 @@ defmodule Ash.Actions.Load do
           true ->
             query
             |> Ash.Query.set_context(relationship.context)
-            |> Ash.Query.do_filter(relationship.filter)
+            |> Ash.Query.do_filter(relationship.filter, parent_stack: relationship.source)
             |> Ash.Query.sort(relationship.sort, prepend?: true)
             |> remove_relationships_from_load()
             |> read(
@@ -1582,7 +1742,7 @@ defmodule Ash.Actions.Load do
        ) do
     query
     |> Ash.Query.set_context(relationship.context)
-    |> Ash.Query.do_filter(relationship.filter)
+    |> Ash.Query.do_filter(relationship.filter, parent_stack: relationship.source)
     |> Ash.Query.sort(relationship.sort, prepend?: true)
     |> remove_relationships_from_load()
     |> read(relationship.read_action, request_opts)
@@ -1594,11 +1754,14 @@ defmodule Ash.Actions.Load do
 
             join_data = get_in(data, join_request_path ++ [:data])
 
-            destination_attribute_on_join_resource_type =
-              Ash.Resource.Info.attribute(
-                relationship.through,
-                relationship.destination_attribute_on_join_resource
-              ).type
+            equality =
+              case relationship_type_with_non_simple_equality(relationship) do
+                {:ok, type} ->
+                  &equal_by_type(type, &1, &2)
+
+                :error ->
+                  &(&1 == &2)
+              end
 
             join_data
             |> Enum.uniq_by(
@@ -1612,8 +1775,7 @@ defmodule Ash.Actions.Load do
               group =
                 Enum.map(group, fn join_row ->
                   Enum.find_value(results, fn {record, index} ->
-                    if Ash.Type.equal?(
-                         destination_attribute_on_join_resource_type,
+                    if equality.(
                          Map.get(join_row, relationship.destination_attribute_on_join_resource),
                          Map.get(record, relationship.destination_attribute)
                        ) do
@@ -1639,6 +1801,7 @@ defmodule Ash.Actions.Load do
               end
             end)
           else
+            # TODO: This needs to support `Ash.Type.equal?`
             results
             |> Enum.with_index()
             |> Enum.group_by(fn {record, _i} ->
@@ -1687,6 +1850,31 @@ defmodule Ash.Actions.Load do
       No read action for loaded resource: #{query.resource}
       """
     end
+  end
+
+  defp relationship_type_with_non_simple_equality(relationship) do
+    with :error <-
+           type_without_simple_equality(relationship.source, relationship.source_attribute) do
+      type_without_simple_equality(relationship.destination, relationship.destination_attribute)
+    end
+  end
+
+  defp type_without_simple_equality(resource, attribute) do
+    case Ash.Resource.Info.attribute(resource, attribute) do
+      %{type: type} ->
+        if Ash.Type.simple_equality?(type) do
+          :error
+        else
+          {:ok, type}
+        end
+
+      _ ->
+        :error
+    end
+  end
+
+  defp equal_by_type(type, l, r) do
+    Ash.Type.equal?(type, l, r)
   end
 
   defp remove_relationships_from_load(query) do
