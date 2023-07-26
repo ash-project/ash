@@ -268,4 +268,9 @@ defmodule Ash.Policy.Check.Builtins do
   def changing_relationships(relationships) do
     {Ash.Policy.Check.ChangingRelationships, relationships: relationships}
   end
+
+  @doc "Applies an expression as a check"
+  def check_expr(expr) do
+    {Ash.Policy.Check.Expr, expr: expr}
+  end
 end
