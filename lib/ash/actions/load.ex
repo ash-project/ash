@@ -336,6 +336,16 @@ defmodule Ash.Actions.Load do
               value ->
                 Map.put(record, name, value |> List.wrap() |> Enum.at(0))
             end
+
+          :error ->
+            case value do
+              %{__lateral_join_source__: destination_value} when not is_nil(destination_value) ->
+                source_value ==
+                  destination_value
+
+              value ->
+                Map.put(record, name, value |> List.wrap() |> Enum.at(0))
+            end
         end
       end
     end)

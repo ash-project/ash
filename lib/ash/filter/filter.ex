@@ -3025,24 +3025,24 @@ defmodule Ash.Filter do
 
   def do_hydrate_refs(%Ash.Query.Parent{expr: expr} = this, context) do
     if !Map.has_key?(context, :parent_stack) || context.parent_stack in [[], nil] do
-      raise "Attempted to use parent expression without a known parent: #{inspect(this)}"
-    end
+      {:ok, this}
+    else
+      context =
+        %{
+          context
+          | resource: hd(context.parent_stack),
+            root_resource: hd(context.parent_stack),
+            parent_stack: tl(context.parent_stack)
+        }
+        |> Map.put(:relationship_path, [])
 
-    context =
-      %{
-        context
-        | resource: hd(context.parent_stack),
-          root_resource: hd(context.parent_stack),
-          parent_stack: tl(context.parent_stack)
-      }
-      |> Map.put(:relationship_path, [])
+      case do_hydrate_refs(expr, context) do
+        {:ok, expr} ->
+          {:ok, %{this | expr: expr}}
 
-    case do_hydrate_refs(expr, context) do
-      {:ok, expr} ->
-        {:ok, %{this | expr: expr}}
-
-      other ->
-        other
+        other ->
+          other
+      end
     end
   end
 
