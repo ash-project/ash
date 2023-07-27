@@ -47,6 +47,8 @@ The following functions are built in:
 - `string_split/2` | As above, but with a specific delimiter
 - `string_split/3` | As above, but with options. See the function for the available options.
 - `at/2` | Get an element from a list, i.e `at(list, 1)`
+- `round/1` | Round a float, decimal or int to 0 precision, i.e `round(num)`
+- `round/2` | Round a float, decimal or int to the provided precision or less, i.e `round(1.1234, 3) == 1.1234` and `round(1.12, 3) == 1.12`
 
 ## Sub-expressions
 
