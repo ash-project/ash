@@ -20,8 +20,9 @@ defmodule Ash.Error.Exception do
                        class: unquote(opts)[:class]
                      ]
 
-      @impl Exception
+      def new(opts), do: exception(opts)
 
+      @impl Exception
       def message(%{vars: vars} = exception) do
         string = Ash.ErrorKind.message(exception)
 

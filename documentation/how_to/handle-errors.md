@@ -55,6 +55,25 @@ rescue
         ...handle specific error you found
     end
 end
-
 ```
 
+## Generating Errors
+
+When returning errors in your application, your best bet will be to return a built in error. These are all modules under `Ash.Error.*`. You can create a new one with `error.new(options)`, and the options are documented in each exception. This documentation is missing in some cases. Go to the source code of the exception to see its special options. All of them support the `vars` option, which are values to be interpolated into the message, useful for things like translation.
+
+For example:
+```elixir
+def change(changeset, _, _) do
+  if some_condition(changeset) do
+    error = Ash.Error.Changes.Required.new(
+      field: :foo, 
+      type: :attribute, 
+      resource: changeset.resource
+    )
+
+    Ash.Changeset.add_error(changeset, error)
+  else
+    changeset
+  end
+end
+```
