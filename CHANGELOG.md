@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.13.3](https://github.com/ash-project/ash/compare/v2.13.2...v2.13.3) (2023-08-01)
+
+
+
+
+### Bug Fixes:
+
+* handle changeset errors in mnesia transactions
+
+* fix builder for action preparations
+
+### Improvements:
+
+* validate resourcesin apis
+
+* added `round/1` and `round/2` to expressions
+
+* add `new/1` to all ash errors, because its nicer
+
+* allow for `parent/1` expressions to be resolved "later"
+
+* support `parent/1` in relationships
+
+* enrich mnesdia data layer
+
 ## [v2.13.2](https://github.com/ash-project/ash/compare/v2.13.1...v2.13.2) (2023-07-22)
 
 
