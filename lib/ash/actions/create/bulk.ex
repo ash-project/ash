@@ -1213,6 +1213,8 @@ defmodule Ash.Actions.Create.Bulk do
             changeset.context
           )
 
+        {:ok, change_opts} = module.init(change_opts)
+
         module.change(changeset, change_opts, Map.put(context, :bulk?, true))
       end)
     end

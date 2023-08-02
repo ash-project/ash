@@ -65,7 +65,7 @@ defmodule Ash.Registry.ResourceValidations.Verifiers.ValidateRelatedResourceIncl
             """
           else
             raise """
-            Resource `#{inspect(relationship.destination)}` in relationship `:#{relationship.name}` #{message}. Please do one of the following
+            Resource `#{inspect(relationship.destination)}` in relationship `#{relationship.source}.#{relationship.name}` #{message}. Please do one of the following
 
             1. add the resource to the registry `#{inspect(registry(relationship, dsl))}`
             2. configure a different api

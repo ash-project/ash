@@ -52,6 +52,14 @@ defmodule Ash.Test.Actions.BulkCreateTest do
         end
       end
 
+      create :create_with_argument do
+        argument :a_title, :string do
+          allow_nil? false
+        end
+
+        change set_attribute(:title, arg(:a_title))
+      end
+
       create :create_with_after_action do
         change after_action(fn _changeset, result ->
                  {:ok, %{result | title: result.title <> "_stuff"}}
@@ -127,6 +135,17 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   test "runs changes" do
     assert %Ash.BulkResult{records: [%{title: "title1_stuff"}, %{title: "title2_stuff"}]} =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create_with_change,
+               return_records?: true,
+               sorted?: true
+             )
+  end
+
+  test "accepts arguments" do
+    assert %Ash.BulkResult{records: [%{title: "title1"}, %{title: "title2"}]} =
+             Api.bulk_create!(
+               [%{a_title: "title1"}, %{a_title: "title2"}],
+               Post,
+               :create_with_argument,
                return_records?: true,
                sorted?: true
              )
