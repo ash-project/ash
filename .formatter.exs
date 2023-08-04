@@ -102,6 +102,7 @@ spark_locals_without_parens = [
   forbid_if: 2,
   forbid_unless: 1,
   forbid_unless: 2,
+  from_many?: 1,
   generated?: 1,
   get?: 1,
   get_by: 1,
