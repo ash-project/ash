@@ -10,7 +10,25 @@ defmodule Ash.Error.Changes.InvalidChanges do
     def code(_), do: "invalid_attribute"
 
     def message(error) do
-      "#{for_fields(error)}#{do_message(error)}"
+      case for_fields(error) do
+        "" ->
+          case do_message(error) do
+            "" ->
+              "something went wrong"
+
+            message ->
+              message
+          end
+
+        fields ->
+          case do_message(error) do
+            "" ->
+              "#{fields}: invalid"
+
+            message ->
+              "#{fields}: #{message}"
+          end
+      end
     end
 
     defp for_fields(%{fields: fields}) when not is_nil(fields) do
@@ -20,9 +38,9 @@ defmodule Ash.Error.Changes.InvalidChanges do
     defp for_fields(_), do: ""
 
     defp do_message(%{message: message}) when not is_nil(message) do
-      ": #{message}."
+      message
     end
 
-    defp do_message(_), do: "."
+    defp do_message(_), do: ""
   end
 end
