@@ -19,6 +19,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :violation_message,
     :manual,
     :writable?,
+    from_many?: false,
     no_attributes?: false,
     could_be_related_at_creation?: false,
     validate_destination_attribute?: true,
@@ -34,6 +35,7 @@ defmodule Ash.Resource.Relationships.HasOne do
           source: Ash.Resource.t(),
           name: atom,
           filterable?: boolean,
+          from_many?: boolean,
           read_action: atom,
           no_attributes?: boolean,
           writable?: boolean,
@@ -62,6 +64,14 @@ defmodule Ash.Resource.Relationships.HasOne do
                       default: true,
                       doc: """
                       Marks the relationship as required. Has no effect on validations, but can inform extensions that there will always be a related entity.
+                      """
+                    ],
+                    from_many?: [
+                      type: :boolean,
+                      default: false,
+                      doc: """
+                      Set to `true` if this relationship is actually a `has_many` relationship with only a single match.
+                      This will allow data layers that do joining under the hood to properly do deduplication when necessary.
                       """
                     ]
                   ],
