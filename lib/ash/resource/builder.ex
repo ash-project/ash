@@ -285,6 +285,20 @@ defmodule Ash.Resource.Builder do
   end
 
   @doc """
+  Builds a calculation argument
+  """
+  @spec build_calculation_argument(name :: atom, type :: Ash.Type.t(), opts :: Keyword.t()) ::
+          {:ok, Ash.Resource.Actions.Argument.t()} | {:error, term}
+  def build_calculation_argument(name, type, opts \\ []) do
+    Transformer.build_entity(
+      Ash.Resource.Dsl,
+      [:calculations, :calculate],
+      :argument,
+      Keyword.merge(opts, name: name, type: type)
+    )
+  end
+
+  @doc """
   Builds an action metadata
   """
   @spec build_action_metadata(name :: atom, type :: Ash.Type.t(), opts :: Keyword.t()) ::
@@ -473,7 +487,8 @@ defmodule Ash.Resource.Builder do
         ) ::
           Spark.Dsl.Builder.result()
   defbuilder add_calculation(dsl_state, name, type, calculation, opts \\ []) do
-    with {:ok, calculation} <- build_calculation(name, type, calculation, opts) do
+    with {:ok, opts} <- handle_nested_builders(opts, [:arguments]),
+         {:ok, calculation} <- build_calculation(name, type, calculation, opts) do
       Transformer.add_entity(dsl_state, [:calculations], calculation)
     end
   end

@@ -56,7 +56,10 @@ defmodule Ash.Query.Call do
     defp do_inspect(call, inspect_opts) do
       if call.operator? do
         concat([
-          to_doc(Enum.at(call.args, 0), inspect_opts),
+          to_doc(
+            Enum.at(call.args, 0),
+            inspect_opts
+          ),
           " ",
           to_string(call.name),
           " ",

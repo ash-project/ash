@@ -616,14 +616,22 @@ defmodule Ash.DataLayer.Ets do
           {:ok, record} ->
             with {:ok, loaded_record} <-
                    api.load(record, relationship_path_to_load(relationship_path, field)),
-                 related <- Ash.Filter.Runtime.get_related(loaded_record, relationship_path),
+                 related <-
+                   Ash.Filter.Runtime.get_related(loaded_record, relationship_path),
                  {:ok, filtered} <-
-                   filter_matches(related, query.filter, api) do
+                   filter_matches(related, query.filter, api),
+                 sorted <-
+                   Sort.runtime_sort(filtered, query.sort, api: api) do
               field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
 
-              value = aggregate_value(filtered, kind, field, uniq?, default_value)
+              value =
+                aggregate_value(sorted, kind, field, uniq?, default_value)
 
-              {:cont, {:ok, Map.put(record, load || name, value)}}
+              if load do
+                {:cont, {:ok, Map.put(record, load, value)}}
+              else
+                {:cont, {:ok, Map.update!(record, :aggregates, &Map.put(&1, name, value))}}
+              end
             else
               other ->
                 {:halt, other}

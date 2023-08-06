@@ -224,8 +224,8 @@ defmodule Ash.DataLayer.Mnesia do
       {:error, error} ->
         {:error, Ash.Error.to_ash_error(error)}
 
-      other ->
-        other
+      {:aborted, error} ->
+        {:error, error}
     end
   end
 
@@ -458,7 +458,11 @@ defmodule Ash.DataLayer.Mnesia do
         {:error, query}
 
       {:aborted, reason} ->
-        {:error, Ash.Error.to_ash_error(Exception.format_exit(reason))}
+        if Ash.Error.ash_error?(reason) do
+          {:error, reason}
+        else
+          {:error, Ash.Error.to_ash_error(Exception.format_exit(reason))}
+        end
     end
   end
 

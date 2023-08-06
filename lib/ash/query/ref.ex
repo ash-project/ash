@@ -22,6 +22,19 @@ defmodule Ash.Query.Ref do
               })
           end
 
+        %Ash.Query.Aggregate{} ->
+          case Map.drop(ref.attribute.context || %{}, [:context, :ash]) do
+            empty when empty == %{} ->
+              inspect_ref(ref)
+
+            args ->
+              inspect(%Ash.Query.Call{
+                name: ref.attribute.name,
+                relationship_path: ref.relationship_path,
+                args: [args]
+              })
+          end
+
         _ ->
           inspect_ref(ref)
       end

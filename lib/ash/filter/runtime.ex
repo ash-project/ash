@@ -44,6 +44,10 @@ defmodule Ash.Filter.Runtime do
     refs_to_load =
       refs_to_load
       |> Enum.map(fn
+        %{attribute: %struct{} = attr}
+        when struct in [Ash.Query.Calculation, Ash.Query.Aggregate] ->
+          attr
+
         %{attribute: %{name: name}} ->
           name
 
@@ -224,6 +228,10 @@ defmodule Ash.Filter.Runtime do
       refs_to_load =
         refs_to_load
         |> Enum.map(fn
+          %{attribute: %struct{} = attr}
+          when struct in [Ash.Query.Calculation, Ash.Query.Aggregate] ->
+            attr
+
           %{attribute: %{name: name}} ->
             name
 
@@ -685,6 +693,7 @@ defmodule Ash.Filter.Runtime do
       # As it stands now, it will evaluate the calculation
       # once per expanded result. I'm not sure what that will
       # look like though.
+
       case module.calculate([record], opts, context) do
         [result] ->
           {:ok, result}
@@ -698,11 +707,39 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  defp resolve_ref(%Ash.Query.Ref{attribute: attribute}, nil, _, _resource),
-    do: :unknown |> or_default(attribute)
-
   defp resolve_ref(_ref, nil, _, _resource) do
     :unknown
+  end
+
+  defp resolve_ref(
+         %Ash.Query.Ref{
+           relationship_path: [],
+           attribute: %Ash.Query.Aggregate{
+             load: load,
+             name: name
+           }
+         },
+         record,
+         _parent,
+         _resource
+       ) do
+    if load do
+      case Map.get(record, load) do
+        %Ash.NotLoaded{} ->
+          :unknown
+
+        other ->
+          {:ok, other}
+      end
+    else
+      case Map.fetch(record.aggregates, name) do
+        {:ok, value} ->
+          {:ok, value}
+
+        :error ->
+          :unknown
+      end
+    end
   end
 
   defp resolve_ref(
@@ -726,9 +763,6 @@ defmodule Ash.Filter.Runtime do
       [] ->
         {:ok, nil}
 
-      [record] ->
-        {:ok, Map.get(record, name)}
-
       [%struct{} = record] ->
         if Spark.Dsl.is?(struct, Ash.Resource) do
           if Ash.Resource.Info.attribute(struct, name) do
@@ -747,6 +781,9 @@ defmodule Ash.Filter.Runtime do
         else
           {:ok, Map.get(record, name)}
         end
+
+      [record] ->
+        {:ok, Map.get(record, name)}
 
       %struct{} = record ->
         if Spark.Dsl.is?(struct, Ash.Resource) do
@@ -775,7 +812,8 @@ defmodule Ash.Filter.Runtime do
 
   defp resolve_ref(_value, _record, _, _), do: :unknown
 
-  defp or_default(:unknown, %Ash.Resource.Aggregate{default: default}) when not is_nil(default) do
+  defp or_default({:ok, nil}, %Ash.Resource.Aggregate{default: default})
+       when not is_nil(default) do
     if is_function(default) do
       {:ok, default.()}
     else
@@ -783,7 +821,7 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  defp or_default({:ok, nil}, %Ash.Resource.Aggregate{default: default})
+  defp or_default({:ok, nil}, %Ash.Query.Aggregate{default_value: default})
        when not is_nil(default) do
     if is_function(default) do
       {:ok, default.()}

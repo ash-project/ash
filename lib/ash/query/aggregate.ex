@@ -167,10 +167,10 @@ defmodule Ash.Query.Aggregate do
       raise ArgumentError, "Must supply implementation when building a `custom` aggregate"
     end
 
+    related = Ash.Resource.Info.related(resource, relationship)
+
     attribute_type =
       if field do
-        related = Ash.Resource.Info.related(resource, relationship)
-
         case Ash.Resource.Info.field(related, field) do
           %{type: type} ->
             {:ok, type}
@@ -193,7 +193,7 @@ defmodule Ash.Query.Aggregate do
          {:ok, attribute_type} <- attribute_type,
          :ok <- validate_path(resource, List.wrap(relationship)),
          {:ok, type} <- get_type(kind, type, attribute_type),
-         {:ok, query} <- validate_query(resource, query) do
+         {:ok, query} <- validate_query(related, query) do
       {:ok,
        %__MODULE__{
          name: name,

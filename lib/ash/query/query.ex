@@ -1236,6 +1236,17 @@ defmodule Ash.Query do
           )
         )
 
+      match?(%{__struct__: Ash.Query.Aggregate}, field) ->
+        Map.update!(
+          query,
+          :aggregates,
+          &Map.put(
+            &1,
+            field.name,
+            field
+          )
+        )
+
       Ash.Resource.Info.attribute(query.resource, field) ->
         ensure_selected(query, field)
 

@@ -37,16 +37,16 @@ defmodule Ash.Test.Support.PolicySimple.Post do
 
     create :create do
       primary? true
-      argument(:author, :uuid)
-      change(manage_relationship(:author, type: :append_and_remove))
+      argument :author, :uuid
+      change manage_relationship(:author, type: :append_and_remove)
 
-      argument(:organization, :uuid)
-      change(manage_relationship(:organization, type: :append_and_remove))
+      argument :organization, :uuid
+      change manage_relationship(:organization, type: :append_and_remove)
     end
   end
 
   relationships do
-    belongs_to(:organization, Ash.Test.Support.PolicySimple.Organization)
-    belongs_to(:author, Ash.Test.Support.PolicySimple.User)
+    belongs_to :organization, Ash.Test.Support.PolicySimple.Organization
+    belongs_to :author, Ash.Test.Support.PolicySimple.User
   end
 end
