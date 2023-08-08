@@ -814,15 +814,15 @@ defmodule Ash.Filter do
   defp simple_eq?(_, _), do: false
 
   def find_value(expr, pred) do
-    do_find(expr, pred, true, true)
+    do_find(expr, pred, true, true, true)
   end
 
   @doc "Find an expression inside of a filter that matches the provided predicate"
-  def find(expr, pred, ors? \\ true) do
-    do_find(expr, pred, false, ors?)
+  def find(expr, pred, ors? \\ true, ands? \\ true) do
+    do_find(expr, pred, false, ors?, ands?)
   end
 
-  defp do_find(expr, pred, value?, ors?) do
+  defp do_find(expr, pred, value?, ors?, ands?) do
     if value = pred.(expr) do
       if value? do
         value
@@ -832,26 +832,31 @@ defmodule Ash.Filter do
     else
       case expr do
         %__MODULE__{expression: expression} ->
-          find(expression, pred, ors?)
+          find(expression, pred, ors?, ands?)
 
         %Not{expression: expression} ->
-          find(expression, pred, ors?)
+          find(expression, pred, ors?, ands?)
 
         %BooleanExpression{op: op, left: left, right: right} ->
-          if op == :or && !ors? do
-            nil
-          else
-            find(left, pred, ors?) || find(right, pred, ors?)
+          cond do
+            op == :ors && !ors? ->
+              nil
+
+            op == :ands && !ands? ->
+              nil
+
+            true ->
+              find(left, pred, ors?, ands?) || find(right, pred, ors?, ands?)
           end
 
         %Call{args: arguments} ->
-          Enum.find(arguments, &find(&1, pred, ors?))
+          Enum.find(arguments, &find(&1, pred, ors?, ands?))
 
         %{__operator__?: true, left: left, right: right} ->
-          find(left, pred, ors?) || find(right, pred, ors?)
+          find(left, pred, ors?, ands?) || find(right, pred, ors?, ands?)
 
         %{__function__?: true, arguments: arguments} ->
-          Enum.find(arguments, &find(&1, pred, ors?))
+          Enum.find(arguments, &find(&1, pred, ors?, ands?))
 
         _ ->
           nil

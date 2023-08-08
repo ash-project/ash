@@ -238,6 +238,21 @@ defmodule Ash.Test.Filter.FilterTest do
       assert stringified_query =~ ~S(title in ["bar", "baz", "foo"])
     end
 
+    test "in across ands in ors isn't optimized" do
+      stringified_query =
+        Post
+        |> Ash.Query.filter(
+          title == "foo" or
+            (title == "bar" and points == 5) or
+            (title == "baz" and points == 10)
+        )
+        |> inspect()
+
+        assert stringified_query =~ ~S(title == "foo")
+        assert stringified_query =~ ~S(title == "bar")
+        assert stringified_query =~ ~S(title == "baz")
+    end
+
     test "in with non-equality simplifies to `in`" do
       stringified_query =
         Post
