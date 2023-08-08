@@ -5,6 +5,29 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.13.4](https://github.com/ash-project/ash/compare/v2.13.3...v2.13.4) (2023-08-08)
+
+
+
+
+### Bug Fixes:
+
+* don't optimized in/== predicates across incorrect boolean expressions
+
+* various fixes with runtime evaluation of aggregates
+
+* handle mnesia transaction errors properly
+
+* fix badly formatted error message
+
+* better error message in `validate_related_resource_inclusion`
+
+### Improvements:
+
+* add `from_many?` option to `has_one`
+
+* initialize change opts in bulk actions
+
 ## [v2.13.3](https://github.com/ash-project/ash/compare/v2.13.2...v2.13.3) (2023-08-01)
 
 
