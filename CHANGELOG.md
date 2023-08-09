@@ -5,6 +5,833 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.0](https://github.com/ash-project/ash/compare/v2.13.4...v2.14.0) (2023-08-09)
+
+
+
+
+### Features:
+
+* validate arg (#662)
+
+* validate argument unequality
+
+* validate argument in
+
+* validate argument equality (#659)
+
+* Adds Ash.Changeset around_transaction (#632)
+
+* add `field_policies`
+
+* generate some action helpers with code interface (#614)
+
+* `attribute_in/2` builtin validation
+
+* add `Api.stream!/1`
+
+* add `fields/1` and `public_fields/1` to Ash.Resource.Info (#569)
+
+* initial (and slightly experimental) Api.aggregate support
+
+* add `this/1` for use inside `exists/2` (and other places eventually)
+
+### Bug Fixes:
+
+* optimized boolean expression building typo
+
+* don't optimized in/== predicates across incorrect boolean expressions
+
+* various fixes with runtime evaluation of aggregates
+
+* handle mnesia transaction errors properly
+
+* fix badly formatted error message
+
+* better error message in `validate_related_resource_inclusion`
+
+* handle changeset errors in mnesia transactions
+
+* fix builder for action preparations
+
+* before/after batch callbacks are no longer broken
+
+* try to cast_stored expression calculation results
+
+* read argument value in `ArgumentEquals` validation (#664)
+
+* `Keyword.fetch` on keywords, fix test name
+
+* allow the query & related fields to be read before authorization status is complete
+
+* only depend on calcs in runtime calcs
+
+* handle manual relationships where source field doesn't exist
+
+* only error on incorrect destination managed relationships when they are resources
+
+* incorrect error for casting binary UUID (#653)
+
+* fix and improve policy breakdown logs
+
+* incorrect typespec for `bulk_create/5`. (#646)
+
+* add `handle_change/3` and `prepare_change/3` to `Ash.Type.Union` (#642)
+
+* properly detect selected attributes for changeset field policies
+
+* run before_action after authorization
+
+* return accumulator to correct state after altering exists
+
+* typo in at_most validation message (#640)
+
+* select attributes in load statement
+
+* don't loan unless we need to for runtime filters
+
+* load after all hooks have completed
+
+* don't allow `is_nil` as an expression operator
+
+* proper source field loading on related data
+
+* reselect all selected attributes on action loading
+
+* don't deselect fields on loading for changesets
+
+* select after setting notification data
+
+* fix field policy expressions
+
+* handle various inconsistencies in runtime expression runner
+
+* check paginability before streaming
+
+* properly set notification_data from loaded record
+
+* properly handle lazy loaded many to many relationships
+
+* remove duplicate doc for `authorize?` in `Query.for_read_opts` (#623)
+
+* set notification data with loaded result
+
+* honor `not_found_error?: true` opt in code interface get actions (#620)
+
+* typo on keyset refactor
+
+* ensure attributes for keyset pagination are selected
+
+* can_load?/1 -> can_load?/2
+
+* handle new load calculations in nested `loading?` checks
+
+* don't load `nil` values for runtime types
+
+* properly set `upsert_keys` on bulk upserts
+
+* continue refactor in code interface (#611)
+
+* honor query limit when streaming
+
+* refactor out some repetition in code interface (#609)
+
+* properly handle loading through list types
+
+* handle api missing in code interface calls
+
+* pass empty select statement when loading on changesets
+
+* fixes for loading through attributes
+
+* drop proper opts keys when calling api in code interface (#608)
+
+* remove validation that was breaking real design patterns
+
+* various fixes to data loading
+
+* properly set tenant on nested calculation loads
+
+* properly set calc_name to resource calculation name on aliased calc loads
+
+* check correct calculation dependency for relationship
+
+* don't use `to_string` on the calculation names
+
+* don't need to check current aggs/calcs in filters anymore
+
+* set query tenant on calc dep loads
+
+* copy tenant to step on flow build (#603)
+
+* ensure add_tenant/1 checks the correctkey (#601)
+
+* properly chain batch to each change in bulk creates
+
+* properly handle failed bulk creates with no errors
+
+* also do not autogenerate values for optional fields that have a generator (#599)
+
+* rename few error files to match module names (#597)
+
+* Only create values for attributes that did not get a generator (#595)
+
+* remove field name from string length error message (#594)
+
+* remove field name from string length error message
+
+* remove old unused `Error.Changes.UnknownError`
+
+* do not capitalize ash error messages
+
+* change error kind code for `Ash.Error.Forbidden.Policy`
+
+* properly load aggregates required for keyset pagination
+
+* properly load depended on source attributes
+
+* handle pre-hydrated predicates in expressions
+
+* handle `nil` errors on bulk creates
+
+* add `:forbidden` to `error_class`, lowercase code for `Forbidden` (#589)
+
+* proper required value validations in bulk creates
+
+* don't use error count in place of errors
+
+* properly manage relationships on bulk creates
+
+* validations could undo certain changeset changes in bulk creates
+
+* properly upsert on non batchable rows
+
+* properly honor the `return_errors?` option
+
+* properly wrap errored changesets in bulk creates
+
+* don't notify unless `notify?: true` in bulk creates
+
+* properly wrap errored changesets in `{:error` in bulk creates
+
+* swap `Exception.exception?` for `Kernel.is_exception` (#584)
+
+* accidental variable shadowing in calculation loading.
+
+* add missing batch_size opt for bulk_create (#581)
+
+* errors on casting arrays of unions in newtypes
+
+* don't require `{:data_layer, *}` for custom locks
+
+* don't use `:map` as storage type for `Map`
+
+* user proper upsert identity for bulk operations
+
+* ecto type of map is just `:map`
+
+* unbound variable in schema definition
+
+* fix dialyzer
+
+* proper return value for synthesized bulk creates
+
+* assorted bulk create fixes
+
+* set upsert context from action on create changesets
+
+* handle invalid input in basic actions
+
+* handle map relationship data in lateral join
+
+* proper source path for lateral joined relationships
+
+* set flow argument defaults
+
+* handle join relationship in different api
+
+* don't warn on being managed from attribute changing
+
+* don't initially require attributes for belongs to relationships being managed
+
+* simple equality filter should not traverse `or`s
+
+* more fixes to optimized boolean filter building
+
+* don't optimize across `or` boundaries
+
+* handle calculation deps w/ multiple nested relationship paths
+
+* only do tenant things in ETS if strategy is `:context`
+
+* add the spark function version of calculations
+
+* proper error message on invalid inline function calculation
+
+* Add tenant attribute to identity attributes on upserts (#565)
+
+* properly require attributes on creates
+
+* don't require values if a changeset result has been set
+
+* properly return errors on invalid calculation arguments
+
+* user unpaginated_read for `read_one`
+
+* handle strings better in refs
+
+* consider strings in `ref`
+
+* various ash flow return value fixes
+
+* Fix set_new_attribute by adding missing option to set_attribute (#553)
+
+* show context on all errors
+
+* include error context in top level of errors
+
+* properly handle nested calculation selects
+
+* fix typespecs and `not_found_error?` code interface option
+
+* typespec support `Expr.t()` in calculation builder
+
+* remove bad default for struct constraint
+
+* use values when already loading aggregates
+
+* use proper arguments for aggregating queries
+
+* datetime_add was actually datetime_subtract in elixir
+
+* prevent exception when describing some checks (#531)
+
+* properly handle multi-resource transaction return values
+
+* various fixes in aggregate authorization behavior
+
+* use builtin short names for builtin type helper
+
+* properly set builtin types
+
+* remove pre_flight expression checking
+
+* properly return `false` on forbidden errors
+
+* add `actor` back to transaction metadata
+
+* calc loading in keyset pagination
+
+* properly handle allow_nil fields in keyset pagination
+
+* don't reselect fields automatically
+
+* ensure data layer is compiled
+
+* only use `resource_to_query/2`
+
+* support `nil` values in `dump_to_native`
+
+* properly support calc expansion in policies
+
+* support `nil` cast for resource type
+
+* allow argument references in policies
+
+* properly handle list args for functions
+
+* set query context from `before_action` hooks into initial query
+
+* set context into `initial_query`
+
+* make resource diagram task recursive
+
+* use `private.internal?` to bypass require_actor?
+
+* properly call `run_aggregate_query_with_lateral_join`
+
+* don't overwrite keyset when loading data
+
+* properly return `{:ok, page}` in all cases
+
+* authorize?: true by default on flows, pass actor through
+
+* pass actor into engine
+
+* properly handle optional args in code interface
+
+* handle cases where union type is already atom
+
+* various union fixes
+
+* make `depend_on_resources` more reliable
+
+* use `load/3` for builtin concat calc
+
+* fix non-optional pagination
+
+* pagination behavior is incorrect
+
+* `nil` as page_opts is acceptable
+
+* fix aggregate.uniq?
+
+* Type error: Suggest custom short type names as well (#508)
+
+* handle `{:ref, ...}` tuple in static syntax
+
+* various fast follows to api aggregate functions
+
+* pattern match problem in aggregate action
+
+* properly handle nested array type constraint validation
+
+* load lazily after action when results are set
+
+* fix typespec for `Ash.set_tenant/1`
+
+* set proper query aggregate when fetching aggregate values
+
+* use destination query for aggregates, join auth to come later
+
+* check `changeset.valid?` properly on destroys
+
+* properly halt on action errors in `before_action` hooks
+
+* properly surface errors from embedded attributes
+
+* use original pkey for ets upsert lookup
+
+* properly prepend the prefix to the topic
+
+* properly load depended on aggregates
+
+* properly handle functional manual creates
+
+* Use proper options in `confirm` change.
+
+* only pass action name in Ash.Changeset.for_action (#476)
+
+* properly set the context option on changesets
+
+* return proper value from validation
+
+* don't depend on check modules at compile time
+
+* set interface args to empty list by default
+
+* properly zip calculation results with primary keys
+
+* more fixes for synonymous relationship paths
+
+* stop seeing incorrect relationships as synonymous
+
+* various filter & expression fixes
+
+* handle aggregate defaults when evaluating expressions
+
+* remove all URI encoding/decoding from core for keysets
+
+* various fixes to expression syntax
+
+* encode the keyset for display in a URI automatically
+
+* fix authorize? method (#472)
+
+* calculations depending on aggregates were not including those dependencies properly
+
+* load types marked with `cast_in_query? false` at runtime
+
+* proper support for nested expressions in calculations
+
+* typo in `cast_in_query?`
+
+* allow lists in expr syntax
+
+* calculation builder using wrong builder
+
+* handle `nil` constraints in array
+
+* only start transactions for resources not already in one
+
+* import builtins at the action level, not the section level
+
+* fix broken default behavior around managing relationships.
+
+* properly include module in doc links
+
+* add test for string generator, and fix it
+
+* only allow `nil` in appropriate circumstances in generator
+
+* respect selects in related_query (#464)
+
+* use action name not struct for embedded generators
+
+* use create generators for embedded types
+
+* support dependencies on pruned branch steps
+
+* ensure type compiled for generator
+
+* transaction steps use `failure_mode: :stop`
+
+* depend on latest spark
+
+* different formats for extensions
+
+* don't lock specific nimble options version
+
+* more matching fixes on manual relationships
+
+* handle manual relationship load results when building query
+
+### Improvements:
+
+* add `from_many?` option to `has_one`
+
+* initialize change opts in bulk actions
+
+* validate resourcesin apis
+
+* added `round/1` and `round/2` to expressions
+
+* add `new/1` to all ash errors, because its nicer
+
+* allow for `parent/1` expressions to be resolved "later"
+
+* support `parent/1` in relationships
+
+* enrich mnesdia data layer
+
+* remove ecto after compile hook
+
+* add aggregate context when adding aggregates
+
+* support `distinct_sort` in `Query.build/2`
+
+* inspect `distinct_sort`
+
+* support `distinct_sort`
+
+* use `Comp.equal?` for `actor_attribute_equals` check
+
+* support distincting on calculations
+
+* support distinct in ets data layer for testing
+
+* support the `-` unary operator
+
+* add `ForbiddenField` exception
+
+* warn on api missing from config
+
+* support resources directly in API modules
+
+* compile time warning on resources not detected in any apis
+
+* `exists` type aggregate
+
+* add `at/2` function
+
+* add `string_split` expression
+
+* add field_policy_bypass
+
+* optimize field selection/loading when possible
+
+* deselect fields we know statically are not visible
+
+* Add `Negate` validation (#636)
+
+* better behavior for invalid filter value errors
+
+* support partial eager evaluation of functions
+
+* support specifying calculation as an option
+
+* fix loading w/ only nil values
+
+* add verifier for identity fields. (#626)
+
+* adds verifier for identity fields.
+
+* fix problems w/ nested loads using relationship load calcs
+
+* add support for generic actions in `api.can` (#617)
+
+* properly pass calculation args in keyset filters
+
+* better keyset pagination behavior on first and last pages
+
+* optimize `LoadRelationship` calculation
+
+* `Ash.Query.accessing/2` to get a list of fields being accessed
+
+* builting `LoadAttribute` and `LoadRelationship` calculations
+
+* warn on invalid/impossible policies
+
+* support loading through types
+
+* properly set tenant from initial data
+
+* handle `nil`s in memory the same way sql would have
+
+* support `changeset.load`
+
+* verify reserved calc names, support `as` input
+
+* make `loading?/2` smarter
+
+* better support for multiple code interfaces w/ same name
+
+* handle bulk transaction errors better
+
+* add unavailable error
+
+* add `get_and_lock/1` builtin change
+
+* Ash.Type.Module: Add `:module` type. (#578)
+
+* handle ci strings in `cast_stored`
+
+* better default overflow logic
+
+* custom stale record error
+
+* optimistic locking via `changeset.filters`
+
+* support bulk upserts
+
+* bulk create improvements, docs
+
+* finishing initial touches on bulk actions
+
+* bulk create actions
+
+* initial support for basic actions
+
+* better messages for missed notifications
+
+* retain stacktraces from task errors
+
+* error if relationship.api is not an Ash.Api
+
+* more typespec fixes
+
+* support lock option on read
+
+* data layer can? might get a dsl, not a resource
+
+* introduce basic locking
+
+* include resource validations by default
+
+* validate explicit api configurations, with good error messages
+
+* Add upserts option to flow's create step (#566)
+
+* Change storage type of Ash.Type.Term to :binary (#561)
+
+* automatically gather up notifications
+
+* add build_action_metadata to resource builder
+
+* add `Ash.merge_context/1` and `Ash.update_context/1`
+
+* add constraints to maps (#556)
+
+* validate returnable steps in flow returns
+
+* update touched_resources logic
+
+* Add :field option to relate_actor change (#546)
+
+* thread context through when loading data
+
+* update spark to fix deeply nested DSLs
+
+* read_uses_flow?: Build stub for `Ash.Actions.Flows.Read`.
+
+* properly set related resource
+
+* simpler required attributes behavior
+
+* add :subfield option to relates_to_actor_via (#540)
+
+* add `accessing_from/2` builtin check
+
+* rewrite calculation loader
+
+* add `{set,update,get}_context` to `Ash.PlugHelpers` (#534)
+
+* improve compile times with ðª
+
+* fix action typespecs
+
+* add option `set_when_nil?` to builtin change `set_attribute` (#528)
+
+* add `update_actor` to `Ash.Plughelpers` (#532)
+
+* add `skip_global_validations?` option for actions
+
+* Add `get_by` option to read actions. (#530)
+
+* builder & typespec improvements
+
+* better resource detection of transactions in `Ash.Flow`
+
+* better formatting for branches in flow charts
+
+* add `:read_action` and `:authorize?` configurations for resource aggregates
+
+* Add `before_action/1` and `after_action/1` to `Ash.Resource.Preparations.Builtins`. (#526)
+
+* add `Ash.Type.NewType`
+
+* add `:unknown` for all potential facts
+
+* optimize policy check running with laziness
+
+* don't select when running policy queries
+
+* Add builtin changes for lifecycle hooks. (#523)
+
+* add `Api.can?` and `Api.can`
+
+* add `delay_global_validations?` action option
+
+* add new date expressions
+
+* introduce `reselect_all?` option for loading
+
+* support record's as calculate arguments
+
+* include actor in all calculation context
+
+* don't eager load sort data
+
+* Implement string_join expr function (#515)
+
+* add `force` variations of set arguments
+
+* Add error message when page is added but pagination is not enabled (#511)
+
+* add union type and some tests around it
+
+* add union short name
+
+* add union type
+
+* better operator type casting and expression fixes
+
+* add warning on usage of transaction hooks when in a surrounding transaction
+
+* add before_transaction and after_transaction
+
+* support uniq? for `count`/`list` attributes
+
+* update spark for latest doc improvements
+
+* better description of `action_type` check
+
+* add more builders
+
+* stop running preparations if one of them returns an error
+
+* registry resource validations transformers -> verifiers
+
+* better error message on unknown relationship
+
+* no async loads except when loading on initial data
+
+* support length constraints on array embeds
+
+* simplify aggregate loading, fix bug with auth query resource
+
+* support `{:ignore, changeset}` from error handlers
+
+* add read action metadata
+
+* upgrade to latest spark for compile time improvements
+
+* improve compile times by reorienting some compile deps
+
+* add relationships to underlying ecto schemas for better escape hatches
+
+* reselect explicitly selected queries on reload
+
+* include value in invalid error messages
+
+* cleaner inspect for calculations
+
+* add `set_result` for conditional manual actions/caching
+
+* update docs to new links formats for ash_hq (#483)
+
+* add nil return type to api get/3, read_one/2 and read_one!/2 (#482)
+
+* don't load dependencies for calcs in query
+
+* add `action_is/1` builtin validation
+
+* more compile time optimizations
+
+* add `Api.calculate/3` and `define_calculation` code interface builder
+
+* rename `this` to `parent` for clarity
+
+* warn on potentially incompatible relationship attributes
+
+* add `default_belongs_to_type` configuration
+
+* loading an attribute is now equivalent to `ensure_selected`
+
+* support module attributes in exprs
+
+* Add Ash.Error.Invalid.TenantRequired error (#471)
+
+* add constraints to query calculations
+
+* cast_in_query? takes constraints
+
+* support for calculations in aggregate fields
+
+* add `simple_notifiers` as a compile time optimization
+
+* add calculations to builder
+
+* fix tests to handle new defaults
+
+* optimize strict checks
+
+* fix decimal generator to only compare with floats at generation
+
+* filter min_length strings in generators
+
+* update spark
+
+* better expression detection
+
+* more dependable notifications, support custom notifications better
+
+* add more transaction types
+
+* add `:struct` (`Ash.Type.struct`) type
+
+* replace doc links in sidebar also
+
+* better doc replacement behavior
+
+* dep updates & new aggregate types avg/min/max/custom
+
+* only set `defaults` when attribute is actually set
+
+* Pass context into query and changeset for_... functions. (#460)
+
+* set context once, early
+
 ## [v2.13.4](https://github.com/ash-project/ash/compare/v2.13.3...v2.13.4) (2023-08-08)
 
 
