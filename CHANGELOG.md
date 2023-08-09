@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.0](https://github.com/ash-project/ash/compare/v2.13.4...v2.14.0) (2023-08-09)
+
+
+
+
+### Bug Fixes:
+
+* optimized boolean expression building typo
+
 ## [v2.13.4](https://github.com/ash-project/ash/compare/v2.13.3...v2.13.4) (2023-08-08)
 
 
