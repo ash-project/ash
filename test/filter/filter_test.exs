@@ -248,9 +248,9 @@ defmodule Ash.Test.Filter.FilterTest do
         )
         |> inspect()
 
-        assert stringified_query =~ ~S(title == "foo")
-        assert stringified_query =~ ~S(title == "bar")
-        assert stringified_query =~ ~S(title == "baz")
+      assert stringified_query =~ ~S(title == "foo")
+      assert stringified_query =~ ~S(title == "bar")
+      assert stringified_query =~ ~S(title == "baz")
     end
 
     test "in with non-equality simplifies to `in`" do
