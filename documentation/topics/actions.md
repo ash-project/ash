@@ -95,7 +95,7 @@ Now, whatever code I had that would have called `top_tickets/1` can now call `He
 
 ```elixir
 Ticket
-|> Ash.Query.for_read(:top)
+|> Ash.Query.for_read(:top, %{user_id: user.id})
 |> Ash.Query.filter(opened_at > ago(10, :minute))
 |> Helpdesk.Support.read!()
 ```
@@ -134,7 +134,7 @@ The following steps are performed when you call `Ash.Query.for_read/4`.
 
 - [Gather Process Context](/documentation/topics/store-context-in-process.md)
 - Cast input arguments - `d:Ash.Resource.Dsl.actions.read.argument`
-- Set default argument values - `d:Ash.Resource.Dsl.actions.read.argument|default` 
+- Set default argument values - `d:Ash.Resource.Dsl.actions.read.argument|default`
 - Add errors for missing required arguments | `d:Ash.Resource.Dsl.actions.read.argument|allow_nil?`
 - Run query preparations | `d:Ash.Resource.Dsl.actions.read.prepare`
 - Add action filter | `d:Ash.Resource.Dsl.actions.read|filter`
@@ -239,7 +239,8 @@ action :hello, :string do
 end
 ```
 
-The benefit of using generic actions instead of defining normal functions: 
+The benefit of using generic actions instead of defining normal functions:
+
 - They can be used with api extensions
 - They support Ash authorization patterns (i.e policies)
 - They be included in the code interface of a resource
