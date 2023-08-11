@@ -514,15 +514,21 @@ defmodule Ash.Policy.Authorizer do
         authorizer,
         context
       ) do
-    {expr, _acc} =
-      replace_refs(expression, %{
-        stack: [{resource, [], context.query.action}],
-        authorizers: %{{resource, context.query.action} => authorizer},
-        verbose?: authorizer.verbose?,
-        actor: authorizer.actor
-      })
+    case Ash.Policy.Info.field_policies(resource) do
+      [] ->
+        {:ok, filter}
 
-    {:ok, %{filter | expression: expr}}
+      _ ->
+        {expr, _acc} =
+          replace_refs(expression, %{
+            stack: [{resource, [], context.query.action}],
+            authorizers: %{{resource, context.query.action} => authorizer},
+            verbose?: authorizer.verbose?,
+            actor: authorizer.actor
+          })
+
+        {:ok, %{filter | expression: expr}}
+    end
   end
 
   def alter_filter(filter, _, _), do: {:ok, filter}

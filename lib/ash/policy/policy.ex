@@ -105,6 +105,7 @@ defmodule Ash.Policy.Policy do
 
   def at_least_one_policy_expression(policies, authorizer) do
     policies
+    |> List.wrap()
     |> Enum.reduce({[], authorizer}, fn
       policy, {condition_exprs, authorizer} when is_list(condition_exprs) ->
         case condition_expression(policy.condition, authorizer) do
