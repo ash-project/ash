@@ -230,7 +230,17 @@ defmodule Ash.Type.Union do
             value
           end
 
-        if (Map.get(value, config[:tag]) || Map.get(value, to_string(config[:tag]))) == tag_value do
+        their_tag_value =
+          Map.get(value, config[:tag], Map.get(value, to_string(config[:tag])))
+
+        tags_equal? =
+          if is_atom(tag_value) do
+            their_tag_value == tag_value || their_tag_value == to_string(tag_value)
+          else
+            their_tag_value == tag_value
+          end
+
+        if tags_equal? do
           case Ash.Type.cast_input(type, value, config[:constraints] || []) do
             {:ok, value} ->
               case Ash.Type.apply_constraints(type, value, config[:constraints]) do

@@ -146,7 +146,7 @@ defmodule Ash.Resource.Info do
   The short_name of the resource
   """
   # sobelow_skip ["DOS.StringToAtom"]
-  @spec short_name(Spark.Dsl.t() | Ash.Resource.t()) :: String.t() | nil
+  @spec short_name(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
   def short_name(resource) when is_map(resource) do
     Extension.get_opt(resource, [:resource], :short_name, nil) ||
       resource
@@ -159,6 +159,13 @@ defmodule Ash.Resource.Info do
 
   def short_name(resource) do
     Extension.get_opt(resource, [:resource], :short_name, nil) || resource.default_short_name()
+  end
+
+  @doc """
+  The plural_name of the resource
+  """
+  def plural_name(resource) do
+    Extension.get_opt(resource, [:resource], :plural_name, nil)
   end
 
   @doc """

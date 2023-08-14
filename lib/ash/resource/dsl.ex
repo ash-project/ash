@@ -787,6 +787,12 @@ defmodule Ash.Resource.Dsl do
         See the [monitoring guide](/documentation/topics/monitoring.md) for more.
         """
       ],
+      plural_name: [
+        type: :atom,
+        doc: """
+        A pluralized version of the resource short_name. May be used by generators or automated tooling.
+        """
+      ],
       simple_notifiers: [
         type: {:list, :module},
         doc:

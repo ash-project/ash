@@ -155,6 +155,7 @@ spark_locals_without_parens = [
   pagination: 0,
   pagination: 1,
   parse_attribute: 1,
+  plural_name: 1,
   policy: 1,
   policy: 2,
   pre_check_with: 1,
