@@ -6,21 +6,37 @@ defmodule Ash.Mix.Tasks.Helpers do
   @doc """
   Gets all extensions in use by the current project's apis and resources
   """
-  def extensions!(argv \\ []) do
-    apis = Ash.Mix.Tasks.Helpers.apis!(argv)
+  def extensions!(argv, opts \\ []) do
+    if opts[:in_use?] do
+      apis = Ash.Mix.Tasks.Helpers.apis!(argv)
 
-    resource_extensions =
-      apis
-      |> Enum.flat_map(&Ash.Api.Info.resources/1)
-      |> all_extensions()
+      resource_extensions =
+        apis
+        |> Enum.flat_map(&Ash.Api.Info.resources/1)
+        |> all_extensions()
 
-    Enum.uniq(all_extensions(apis) ++ resource_extensions)
+      Enum.uniq(all_extensions(apis) ++ resource_extensions)
+    else
+      Application.loaded_applications()
+      |> Enum.map(&elem(&1, 0))
+      |> Enum.flat_map(&elem(:application.get_key(&1, :modules), 1))
+      |> Stream.chunk_every(100)
+      # This takes a while, but it doesn't when we split up the work
+      |> Task.async_stream(fn modules ->
+        modules
+        |> Enum.filter(&Spark.implements_behaviour?(&1, Spark.Dsl.Extension))
+        |> Enum.uniq()
+      end)
+      # we're assuming no failures
+      |> Stream.flat_map(&elem(&1, 1))
+      |> Enum.uniq()
+    end
   end
 
   @doc """
   Get all apis for the current project and ensure they are compiled.
   """
-  def apis!(argv \\ []) do
+  def apis!(argv) do
     {opts, _} = OptionParser.parse!(argv, strict: [apis: :string])
 
     apis =
@@ -83,5 +99,14 @@ defmodule Ash.Mix.Tasks.Helpers do
       {:error, error} ->
         Mix.raise("Could not load #{inspect(api)}, error: #{inspect(error)}. ")
     end
+  end
+
+  defp all_loaded do
+    :code.all_loaded()
+    |> Enum.filter(fn
+      {mod, _} when is_atom(mod) -> true
+      _ -> false
+    end)
+    |> Enum.map(&elem(&1, 0))
   end
 end
