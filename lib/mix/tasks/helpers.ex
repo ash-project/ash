@@ -100,13 +100,4 @@ defmodule Ash.Mix.Tasks.Helpers do
         Mix.raise("Could not load #{inspect(api)}, error: #{inspect(error)}. ")
     end
   end
-
-  defp all_loaded do
-    :code.all_loaded()
-    |> Enum.filter(fn
-      {mod, _} when is_atom(mod) -> true
-      _ -> false
-    end)
-    |> Enum.map(&elem(&1, 0))
-  end
 end
