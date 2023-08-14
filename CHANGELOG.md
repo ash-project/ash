@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.1](https://github.com/ash-project/ash/compare/v2.14.0...v2.14.1) (2023-08-14)
+
+
+
+
+### Bug Fixes:
+
+* handle atomic/string union type identifiers better
+
+* handle empty field policy lists better internally
+
+### Improvements:
+
+* add initial implementation of new mix tasks
+
+* add plural_name
+
 ## [v2.14.0](https://github.com/ash-project/ash/compare/v2.13.4...v2.14.0) (2023-08-09)
 
 
