@@ -234,10 +234,15 @@ defmodule Ash.Type.Union do
           Map.get(value, config[:tag], Map.get(value, to_string(config[:tag])))
 
         tags_equal? =
-          if is_atom(tag_value) do
-            their_tag_value == tag_value || their_tag_value == to_string(tag_value)
-          else
-            their_tag_value == tag_value
+          cond do
+            is_atom(tag_value) ->
+              their_tag_value == tag_value || their_tag_value == to_string(tag_value)
+
+            is_binary(tag_value) && is_atom(their_tag_value) ->
+              their_tag_value == tag_value || to_string(their_tag_value) == tag_value
+
+            true ->
+              their_tag_value == tag_value
           end
 
         if tags_equal? do
@@ -253,11 +258,11 @@ defmodule Ash.Type.Union do
                     }}}
 
                 {:error, other} ->
-                  {:halt, {:error, "is not a valid #{type_name}: #{inspect(other)}"}}
+                  {:halt, {:expose_error, other}}
               end
 
             {:error, other} ->
-              {:halt, {:error, "is not a valid #{type_name}: #{inspect(other)}"}}
+              {:halt, {:expose_error, other}}
 
             :error ->
               {:halt, {:error, "is not a valid #{type_name}"}}
@@ -301,6 +306,9 @@ defmodule Ash.Type.Union do
 
       {:error, errors} ->
         {:error, error_message(errors)}
+
+      {:expose_error, errors} ->
+        {:error, errors}
 
       {:ok, value} ->
         {:ok, value}

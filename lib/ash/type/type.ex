@@ -455,10 +455,10 @@ defmodule Ash.Type do
                   |> Ash.Error.flatten_preserving_keywords()
                   |> Enum.map(fn
                     message when is_binary(message) ->
-                      [message: message, index: index]
+                      [message: message, index: index, path: [index]]
 
                     keyword ->
-                      Keyword.put(keyword, :index, index)
+                      Keyword.merge(keyword, index: index, path: [index])
                   end)
 
                 {:halt, {:error, errors}}
