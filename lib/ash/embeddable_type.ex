@@ -111,20 +111,17 @@ defmodule Ash.EmbeddableType do
     vars
     |> Keyword.put(:field, field)
     |> Keyword.put(:message, message)
-    |> add_index()
   end
 
   defp do_handle_errors(%{message: message, vars: vars, field: field}) do
     vars
     |> Keyword.put(:message, message)
     |> Keyword.put(:field, field)
-    |> add_index()
   end
 
   defp do_handle_errors(%{message: message, vars: vars}) do
     vars
     |> Keyword.put(:message, message)
-    |> add_index()
   end
 
   defp do_handle_errors(%{field: field} = exception) do
@@ -141,20 +138,6 @@ defmodule Ash.EmbeddableType do
 
   defp do_handle_errors(_error) do
     [message: "Something went wrong"]
-  end
-
-  defp add_index(opts) do
-    opts
-    # cond do
-    #   opts[:index] && opts[:field] ->
-    #     Keyword.put(opts, :field, "#{opts[:field]}[#{opts[:index]}]")
-
-    #   opts[:index] ->
-    #     Keyword.put(opts, :field, "[#{opts[:index]}]")
-
-    #   true ->
-    #     opts
-    # end
   end
 
   defmacro single_embed_implementation do
@@ -625,7 +608,9 @@ defmodule Ash.EmbeddableType do
                           error
                           |> Ash.EmbeddableType.handle_errors()
                           |> Enum.map(fn keyword ->
-                            Keyword.put(keyword, :index, index)
+                            keyword
+                            |> Keyword.put(:index, index)
+                            |> Keyword.update(:path, [index], &[index | &1])
                           end)
 
                         {:halt, {:error, errors}}

@@ -519,7 +519,7 @@ defmodule Ash.Error do
 
               class_error ->
                 breadcrumb(class_error.error_context) <>
-                  "* #{Exception.message(class_error)}"
+                  "* #{Exception.message(class_error)}" <> path(class_error)
             end)
         end
       end)

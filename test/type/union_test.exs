@@ -28,6 +28,39 @@ defmodule Ash.Test.Type.UnionTest do
     end
   end
 
+  defmodule Example do
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      defaults [:create, :read, :update, :destroy]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :things, {:array, :union} do
+        constraints items: [
+                      types: [
+                        foo: [
+                          type: Foo,
+                          tag: :type,
+                          tag_value: :foo
+                        ],
+                        bar: [
+                          type: Bar,
+                          tag: :type,
+                          tag_value: :bar
+                        ]
+                      ]
+                    ]
+      end
+    end
+  end
+
   test "it handles simple types" do
     constraints = [
       types: [
@@ -107,7 +140,26 @@ defmodule Ash.Test.Type.UnionTest do
     assert {:ok, [%Ash.Union{value: %{type: "foo", foo: "foo"}, type: :foo}]} =
              Ash.Type.cast_input(type, [%{type: :foo, foo: "foo"}], constraints)
 
-    # assert {:ok, [%Ash.Union{value: %{type: "foo", foo: "foo"}, type: :foo}]} =
-    Ash.Type.cast_input(type, [%{type: :foo, foo: "bar"}], constraints) |> IO.inspect()
+    assert {:error,
+            [
+              error
+            ]} =
+             Ash.Type.cast_input(type, [%{type: :foo, foo: "bar"}], constraints)
+
+    for {key, val} <- [
+          message: "must match the pattern %{regex}",
+          field: :foo,
+          regex: "~r/foo/",
+          index: 0,
+          path: [0]
+        ] do
+      assert error[key] == val
+    end
+  end
+
+  test "it handles paths on a resource" do
+    Example
+    |> Ash.Changeset.for_create(:create, %{things: [%{type: :foo, foo: "bar"}]})
+    |> Ash.Test.AnyApi.create()
   end
 end

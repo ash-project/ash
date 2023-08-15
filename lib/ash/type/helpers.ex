@@ -71,7 +71,7 @@ defmodule Ash.Type.Helpers do
               keyword
               |> Keyword.put(
                 :message,
-                add_index(keyword[:message], keyword)
+                keyword[:message]
               )
               |> Keyword.put(:field, attribute.name)
             ]
@@ -79,10 +79,12 @@ defmodule Ash.Type.Helpers do
           fields ->
             Enum.map(
               fields,
-              &Keyword.merge(message,
-                field: attribute.name,
-                message: add_index(add_field(keyword[:message], "#{&1}"), keyword)
-              )
+              fn field ->
+                keyword
+                |> Keyword.put(:field, field)
+                |> Keyword.delete(:fields)
+                |> Keyword.update(:path, [attribute.name], &[attribute.name | &1])
+              end
             )
         end
 
@@ -90,24 +92,18 @@ defmodule Ash.Type.Helpers do
         [[field: attribute.name, message: message]]
 
       value when is_exception(value) ->
-        value
-        |> Ash.Error.to_ash_error()
-        |> Map.put(:field, attribute.name)
+        exception =
+          value
+          |> Ash.Error.to_ash_error()
+
+        if Map.get(exception, :field) || Map.get(exception, :fields) do
+          Ash.Error.set_path(exception, attribute.name)
+        else
+          Map.put(exception, :field, attribute.name)
+        end
 
       _ ->
         [[field: attribute.name]]
-    end
-  end
-
-  defp add_field(message, field) do
-    "at field #{field} " <> (message || "")
-  end
-
-  defp add_index(message, opts) do
-    if opts[:index] do
-      "at index #{opts[:index]} " <> (message || "")
-    else
-      message
     end
   end
 end

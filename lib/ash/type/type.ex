@@ -446,7 +446,8 @@ defmodule Ash.Type do
           |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
             case cast_input(type, item, single_constraints) do
               :error ->
-                {:halt, {:error, message: "invalid value at %{index}", index: index}}
+                {:halt,
+                 {:error, message: "invalid value at %{index}", index: index, path: [index]}}
 
               {:error, keyword} ->
                 errors =
@@ -458,7 +459,9 @@ defmodule Ash.Type do
                       [message: message, index: index, path: [index]]
 
                     keyword ->
-                      Keyword.merge(keyword, index: index, path: [index])
+                      keyword
+                      |> Keyword.put(:index, index)
+                      |> Keyword.update(:path, [index], &[index | &1])
                   end)
 
                 {:halt, {:error, errors}}

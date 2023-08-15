@@ -117,15 +117,15 @@ defmodule Type.MapTest do
 
     assert [
              %Ash.Error.Changes.InvalidAttribute{
-               field: :metadata,
-               message: "at field foo field must be present",
+               field: :foo,
+               message: "field must be present",
                private_vars: nil,
                value: %{bar: 1},
                changeset: nil,
                query: nil,
                error_context: [],
-               vars: [field: :metadata, message: "at field foo field must be present"],
-               path: []
+               vars: [field: :foo, message: "field must be present", path: [:metadata]],
+               path: [:metadata]
              }
            ] = changeset.errors
   end
@@ -141,18 +141,19 @@ defmodule Type.MapTest do
 
     assert [
              %Ash.Error.Changes.InvalidAttribute{
-               field: :metadata,
-               message: "at field bar must be more than or equal to %{min}",
+               field: :bar,
+               message: "must be more than or equal to %{min}",
                private_vars: nil,
                value: %{bar: -1, foo: "hello"},
                changeset: nil,
                query: nil,
                error_context: [],
                vars: [
-                 field: :metadata,
-                 message: "at field bar must be more than or equal to %{min}"
+                 field: :bar,
+                 message: "must be more than or equal to %{min}",
+                 path: [:metadata]
                ],
-               path: []
+               path: [:metadata]
              }
            ] = changeset.errors
   end
@@ -194,15 +195,15 @@ defmodule Type.MapTest do
 
     assert [
              %Ash.Error.Changes.InvalidAttribute{
-               field: :metadata,
-               message: "at field foo value must not be nil",
+               field: :foo,
+               message: "value must not be nil",
                private_vars: nil,
                value: %{:bar => "2", "foo" => ""},
                changeset: nil,
                query: nil,
                error_context: [],
-               vars: [field: :metadata, message: "at field foo value must not be nil"],
-               path: []
+               vars: [field: :foo, message: "value must not be nil", path: [:metadata]],
+               path: [:metadata]
              }
            ] = changeset.errors
   end
