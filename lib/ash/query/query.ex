@@ -176,16 +176,26 @@ defmodule Ash.Query do
         else
           arg_string =
             query.action.arguments
-            |> Map.new(fn argument ->
-              if argument.sensitive? do
-                {argument.name, "**redacted**"}
-              else
-                {argument.name, Ash.Query.get_argument(query, argument.name)}
+            |> Enum.reduce(%{}, fn argument, acc ->
+              case Ash.Query.fetch_argument(query, argument.name) do
+                {:ok, value} ->
+                  if argument.sensitive? do
+                    Map.put(acc, argument.name, "**redacted**")
+                  else
+                    Map.put(acc, argument.name, value)
+                  end
+
+                :error ->
+                  acc
               end
             end)
             |> to_doc(opts)
 
-          concat(["arguments: ", arg_string])
+          if arg_string == %{} do
+            empty()
+          else
+            concat(["arguments: ", arg_string])
+          end
         end
       else
         empty()
@@ -376,10 +386,12 @@ defmodule Ash.Query do
 
     {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
 
+
     query =
       query
       |> Map.put(:params, Map.merge(query.params, Map.new(args)))
       |> set_context(Keyword.get(opts, :context, %{}))
+
 
     action = Ash.Resource.Info.action(query.resource, action_name, :read)
 
