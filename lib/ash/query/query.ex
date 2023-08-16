@@ -174,7 +174,7 @@ defmodule Ash.Query do
         if is_nil(query.action) || Enum.empty?(query.action.arguments) do
           empty()
         else
-          arg_string =
+          args =
             query.action.arguments
             |> Enum.reduce(%{}, fn argument, acc ->
               case Ash.Query.fetch_argument(query, argument.name) do
@@ -189,12 +189,11 @@ defmodule Ash.Query do
                   acc
               end
             end)
-            |> to_doc(opts)
 
-          if arg_string == %{} do
+          if args == %{} do
             empty()
           else
-            concat(["arguments: ", arg_string])
+            concat(["arguments: ", to_doc(args, opts)])
           end
         end
       else
@@ -386,12 +385,10 @@ defmodule Ash.Query do
 
     {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
 
-
     query =
       query
       |> Map.put(:params, Map.merge(query.params, Map.new(args)))
       |> set_context(Keyword.get(opts, :context, %{}))
-
 
     action = Ash.Resource.Info.action(query.resource, action_name, :read)
 
