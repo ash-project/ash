@@ -38,6 +38,7 @@ defmodule Ash.Query do
     :tenant,
     :timeout,
     :lock,
+    invalid_keys: MapSet.new(),
     load_through: %{},
     action_failed?: false,
     after_action: [],
@@ -479,14 +480,18 @@ defmodule Ash.Query do
           query
 
         _ ->
-          add_error(
-            query,
-            Required.exception(
-              resource: query.resource,
-              field: argument.name,
-              type: :argument
+          if argument.name in query.invalid_keys do
+            add_error(
+              query,
+              Required.exception(
+                resource: query.resource,
+                field: argument.name,
+                type: :argument
+              )
             )
-          )
+          else
+            query
+          end
       end
     end)
   end
@@ -1556,6 +1561,8 @@ defmodule Ash.Query do
   end
 
   defp add_invalid_errors(value, query, argument, error) do
+    query = %{query | invalid_keys: MapSet.put(query.invalid_keys, argument.name)}
+
     messages =
       if Keyword.keyword?(error) do
         [error]
