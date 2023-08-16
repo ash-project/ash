@@ -12,6 +12,20 @@ defmodule Ash.Test.Resource.AggregatesTest do
       uuid_primary_key :id
       attribute :post_id, :uuid
     end
+
+    relationships do
+      has_many :likes, Like, destination_attribute: :comment_id
+    end
+  end
+
+  defmodule Like do
+    @moduledoc false
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    attributes do
+      uuid_primary_key :id
+      attribute :comment_id, :uuid
+    end
   end
 
   defmacrop defposts(do: body) do
@@ -35,7 +49,6 @@ defmodule Ash.Test.Resource.AggregatesTest do
         aggregates do
           count :count_of_comments, :comments
           count :another_count_but_private, :comments, private?: true
-          sum :sum_of_comment_likes, :comments, :likes
         end
 
         relationships do
@@ -55,19 +68,11 @@ defmodule Ash.Test.Resource.AggregatesTest do
                  kind: :count,
                  relationship_path: [:comments],
                  private?: true
-               },
-               %Ash.Resource.Aggregate{
-                 field: :likes,
-                 kind: :sum,
-                 name: :sum_of_comment_likes,
-                 private?: false,
-                 relationship_path: [:comments]
                }
              ] = Ash.Resource.Info.aggregates(Post)
 
       assert [
-               %Aggregate{name: :count_of_comments},
-               %Aggregate{name: :sum_of_comment_likes}
+               %Aggregate{name: :count_of_comments}
              ] = Ash.Resource.Info.public_aggregates(Post)
 
       assert %Aggregate{name: :another_count_but_private} =
@@ -92,6 +97,20 @@ defmodule Ash.Test.Resource.AggregatesTest do
       assert [
                %Ash.Resource.Aggregate{description: "require one of name/contents"}
              ] = Ash.Resource.Info.aggregates(Post)
+    end
+
+    test "aggregates field should be calculation or attribute on the resource" do
+      assert_raise Spark.Error.DslError, fn ->
+        defposts do
+          aggregates do
+            sum :sum_of_comment_likes, :comments, :likes
+          end
+
+          relationships do
+            has_many :comments, Comment, destination_attribute: :post_id
+          end
+        end
+      end
     end
   end
 end

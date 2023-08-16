@@ -7,21 +7,27 @@ defmodule Ash.Resource.Verifiers.EnsureAggregateFieldIsAttributeOrCalculation do
   def verify(dsl) do
     aggregates = Ash.Resource.Info.aggregates(dsl)
 
-    for %{name: name, relationship_path: paths} <- aggregates do
-      case Ash.Resource.Info.related(dsl, paths) do
-        nil ->
-          nil
+    for %{field: field, relationship_path: paths} <- aggregates do
+      cond do
+        is_nil(field) ->
+          :ok
 
-        destination ->
-          attribute = Ash.Resource.Info.attribute(destination, name)
-          calculation = Ash.Resource.Info.calculation(destination, name)
+        true ->
+          case Ash.Resource.Info.related(dsl, paths) do
+            nil ->
+              :ok
 
-          if !attribute and !calculation do
-            raise Spark.Error.DslError,
-              module: Spark.Dsl.Verifier.get_persisted(dsl, :module),
-              message:
-                "All aggregates keys must be attributes or calculations. Got: #{inspect(name)}",
-              path: [:aggregates, name]
+            destination ->
+              attribute = Ash.Resource.Info.attribute(destination, field)
+              calculation = Ash.Resource.Info.calculation(destination, field)
+
+              if !attribute and !calculation do
+                raise Spark.Error.DslError,
+                  module: Spark.Dsl.Verifier.get_persisted(dsl, :module),
+                  message:
+                    "All aggregates fields must be attributes or calculations. Got: #{inspect(field)}",
+                  path: [:aggregates, field]
+              end
           end
       end
     end
