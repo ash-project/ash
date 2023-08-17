@@ -5,6 +5,33 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.2](https://github.com/ash-project/ash/compare/v2.14.1...v2.14.2) (2023-08-17)
+
+
+
+
+### Bug Fixes:
+
+* Enum types only have `storage_type/0` still
+
+* inspecting a query now only shows arguments explicitly set
+
+* don't set attributes or arguments to invalid values
+
+### Improvements:
+
+* storage_type/0 -> storage_type/1
+
+* Ash.Resource.Calculation: set struct defaults. (#673)
+
+* track invalid keys, don't add required errors for them
+
+* properly set path into error instead of on error messages
+
+* expose union errors with path when tag is set
+
+* find all installed extensions by default
+
 ## [v2.14.1](https://github.com/ash-project/ash/compare/v2.14.0...v2.14.1) (2023-08-14)
 
 
