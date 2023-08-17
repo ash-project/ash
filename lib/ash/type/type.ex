@@ -147,6 +147,7 @@ defmodule Ash.Type do
           authorize?: boolean | nil
         }
 
+  @callback storage_type() :: Ecto.Type.t()
   @callback storage_type(constraints) :: Ecto.Type.t()
   @doc """
   Useful for typed data layers (like ash_postgres) to instruct them not to attempt to cast input values.
@@ -203,6 +204,7 @@ defmodule Ash.Type do
               {:ok, list(term)} | {:error, Ash.Error.t()}
 
   @optional_callbacks [
+    storage_type: 0,
     cast_stored_array: 2,
     generator: 1,
     cast_input_array: 2,
@@ -1111,6 +1113,7 @@ defmodule Ash.Type do
           raise "Must only define storage_type/0 or storage_type/1 but not both"
 
         Module.defines?(__MODULE__, {:storage_type, 0}) ->
+          @impl Ash.Type
           def storage_type(_constraints), do: storage_type()
 
         true ->
