@@ -46,7 +46,7 @@ defmodule Ash.Type.Enum do
       def values, do: @values
 
       @impl Ash.Type
-      def storage_type, do: :string
+      def storage_type(_), do: :string
 
       @impl Ash.Type
       def generator(_constraints) do
@@ -120,7 +120,7 @@ defmodule Ash.Type.Enum do
           :error
       end
 
-      defoverridable storage_type: 0
+      defoverridable storage_type: 1
     end
   end
 end

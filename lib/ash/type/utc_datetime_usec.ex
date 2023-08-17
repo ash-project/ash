@@ -9,7 +9,7 @@ defmodule Ash.Type.UtcDatetimeUsec do
   @beginning_of_day Time.new!(0, 0, 0)
 
   @impl true
-  def storage_type, do: :utc_datetime_usec
+  def storage_type(_), do: :utc_datetime_usec
 
   @impl true
   def generator(_constraints) do

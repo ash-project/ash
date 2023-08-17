@@ -22,7 +22,7 @@ defmodule Ash.Type.Module do
   use Ash.Type
 
   @impl true
-  def storage_type, do: :string
+  def storage_type(_), do: :string
 
   @impl true
   def constraints, do: @constraints

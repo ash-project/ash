@@ -109,7 +109,7 @@ defmodule Ash.Type.Union do
 
   ## Find the minimal supported type?
   @impl true
-  def storage_type, do: :map
+  def storage_type(_), do: :map
 
   @impl true
   def load(unions, load, constraints, context) do

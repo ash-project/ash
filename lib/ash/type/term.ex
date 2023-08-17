@@ -7,7 +7,7 @@ defmodule Ash.Type.Term do
   use Ash.Type
 
   @impl true
-  def storage_type, do: :binary
+  def storage_type(_), do: :binary
 
   @impl true
   def cast_input(value, _), do: {:ok, value}

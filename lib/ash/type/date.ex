@@ -7,7 +7,7 @@ defmodule Ash.Type.Date do
   use Ash.Type
 
   @impl true
-  def storage_type, do: :date
+  def storage_type(_), do: :date
 
   @impl true
   def generator(_constraints) do

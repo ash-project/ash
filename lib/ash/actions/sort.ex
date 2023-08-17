@@ -119,7 +119,7 @@ defmodule Ash.Actions.Sort do
 
           !Ash.DataLayer.data_layer_can?(
             resource,
-            {:sort, Ash.Type.storage_type(attribute.type)}
+            {:sort, Ash.Type.storage_type(attribute.type, attribute.constraints)}
           ) ->
             {sorts,
              [
@@ -191,7 +191,8 @@ defmodule Ash.Actions.Sort do
         if Ash.DataLayer.data_layer_can?(resource, :aggregate_sort) &&
              Ash.DataLayer.data_layer_can?(
                resource,
-               {:sort, Ash.Type.storage_type(type)}
+               # do we need to get actual constraints for aggregates here?
+               {:sort, Ash.Type.storage_type(type, [])}
              ) do
           {sorts ++ [{field, order}], errors}
         else

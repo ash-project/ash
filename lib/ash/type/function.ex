@@ -19,7 +19,7 @@ defmodule Ash.Type.Function do
   ]
 
   @impl true
-  def storage_type, do: :binary
+  def storage_type(_), do: :binary
 
   @impl true
   def constraints, do: @constraints

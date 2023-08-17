@@ -256,8 +256,8 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
-      def storage_type do
-        unquote(subtype_of).storage_type()
+      def storage_type(constraints) do
+        unquote(subtype_of).storage_type(constraints)
       end
 
       @impl Ash.Type

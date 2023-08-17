@@ -145,7 +145,7 @@ defmodule Ash.EmbeddableType do
     quote location: :keep do
       alias Ash.EmbeddableType.ShadowApi
 
-      def storage_type, do: :map
+      def storage_type(_), do: :map
 
       def cast_input(%{__struct__: __MODULE__} = input, _constraints), do: {:ok, input}
 

@@ -7,7 +7,7 @@ defmodule Ash.Type.NaiveDatetime do
   use Ash.Type
 
   @impl true
-  def storage_type, do: :naive_datetime
+  def storage_type(_), do: :naive_datetime
 
   @impl true
   def generator(_constraints) do

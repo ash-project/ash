@@ -8,7 +8,7 @@ defmodule Ash.Type.UrlEncodedBinary do
   use Ash.Type
 
   @impl true
-  def storage_type, do: :binary
+  def storage_type(_), do: :binary
 
   @impl true
   def generator(_constraints) do

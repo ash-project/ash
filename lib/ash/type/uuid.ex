@@ -8,7 +8,7 @@ defmodule Ash.Type.UUID do
   use Ash.Type
 
   @impl true
-  def storage_type, do: :uuid
+  def storage_type(_), do: :uuid
 
   @impl true
   def generator(_constraints) do

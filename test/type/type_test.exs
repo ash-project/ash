@@ -7,7 +7,7 @@ defmodule Ash.Test.Type.TypeTest do
     @moduledoc false
     use Ash.Type
 
-    def storage_type, do: :string
+    def storage_type(_), do: :string
 
     def constraints do
       [

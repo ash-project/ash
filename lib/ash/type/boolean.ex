@@ -7,7 +7,7 @@ defmodule Ash.Type.Boolean do
   use Ash.Type
 
   @impl true
-  def storage_type, do: :boolean
+  def storage_type(_), do: :boolean
 
   @impl true
   def generator(_constraints) do

@@ -88,7 +88,7 @@ defmodule Ash.Resource do
         use Ash.Type
 
         @impl true
-        def storage_type, do: :map
+        def storage_type(_), do: :map
 
         @impl Ash.Type
         def cast_input(nil, _), do: {:ok, nil}

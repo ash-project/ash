@@ -97,7 +97,7 @@ defmodule Ash.Type do
     use Ash.Type
 
     @impl Ash.Type
-    def storage_type, do: :float
+    def storage_type(_), do: :float
 
     @impl Ash.Type
     def cast_input(value, _) do
@@ -147,7 +147,7 @@ defmodule Ash.Type do
           authorize?: boolean | nil
         }
 
-  @callback storage_type() :: Ecto.Type.t()
+  @callback storage_type(constraints) :: Ecto.Type.t()
   @doc """
   Useful for typed data layers (like ash_postgres) to instruct them not to attempt to cast input values.
 
@@ -354,8 +354,9 @@ defmodule Ash.Type do
   Returns the *underlying* storage type (the underlying type of the *ecto type* of the *ash type*)
   """
   @spec storage_type(t()) :: Ecto.Type.t()
-  def storage_type({:array, type}), do: {:array, type.storage_type()}
-  def storage_type(type), do: type.storage_type()
+  def storage_type(type, constraints \\ [])
+  def storage_type({:array, type}, constraints), do: {:array, storage_type(type, constraints)}
+  def storage_type(type, constraints), do: type.storage_type(constraints)
 
   @doc """
   Returns the ecto compatible type for an Ash.Type.
@@ -919,8 +920,8 @@ defmodule Ash.Type do
         end
 
         @impl true
-        def type(_) do
-          @parent.storage_type()
+        def type(constraints) do
+          @parent.storage_type(constraints)
         end
 
         @impl true
@@ -1102,6 +1103,18 @@ defmodule Ash.Type do
 
         @impl true
         def equal?(left, right), do: left == right
+      end
+
+      cond do
+        Module.defines?(__MODULE__, {:storage_type, 0}) &&
+            Module.defines?(__MODULE__, {:storage_type, 1}) ->
+          raise "Must only define storage_type/0 or storage_type/1 but not both"
+
+        Module.defines?(__MODULE__, {:storage_type, 0}) ->
+          def storage_type(_constraints), do: storage_type()
+
+        true ->
+          :ok
       end
 
       unless Module.defines?(__MODULE__, {:can_load?, 1}, :def) do

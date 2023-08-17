@@ -21,7 +21,7 @@ defmodule Ash.Type.Integer do
   use Ash.Type
 
   @impl true
-  def storage_type, do: :integer
+  def storage_type(_), do: :integer
 
   @impl true
   def generator(constraints) do

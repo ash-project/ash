@@ -7,7 +7,7 @@ defmodule Ash.Type.Time do
   use Ash.Type
 
   @impl true
-  def storage_type, do: :time
+  def storage_type(_), do: :time
 
   @impl true
   def generator(_constraints) do

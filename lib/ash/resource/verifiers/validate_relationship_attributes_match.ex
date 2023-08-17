@@ -58,7 +58,7 @@ defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributesMatch do
     Types are considered compatible if:
 
     1. They are exactly the same
-    2. Their `storage_type/0` callback returns the same value
+    2. Their `storage_type/1` callback returns the same value
     3. The storage types are `:text` and `:string`
     4. The relationship has `validate_destination_attribute?` set to `false`.
     5. They are explicitly configured as compatible. To do so in this instance, add it to your config like so:
@@ -71,9 +71,12 @@ defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributesMatch do
     """
   end
 
-  defp compatible_types?(%{type: source}, %{type: dest}) do
-    left_storage_type = Ash.Type.storage_type(source)
-    right_storage_type = Ash.Type.storage_type(dest)
+  defp compatible_types?(%{type: source, constraints: source_constraints}, %{
+         type: dest,
+         constraints: dest_constraints
+       }) do
+    left_storage_type = Ash.Type.storage_type(source, source_constraints)
+    right_storage_type = Ash.Type.storage_type(dest, dest_constraints)
 
     cond do
       source == dest ->

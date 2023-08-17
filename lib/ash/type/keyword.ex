@@ -67,7 +67,7 @@ defmodule Ash.Type.Keyword do
   def constraints, do: @constraints
 
   @impl true
-  def storage_type, do: :map
+  def storage_type(_), do: :map
 
   @impl true
   def cast_input("", _), do: {:ok, nil}

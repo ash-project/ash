@@ -22,7 +22,7 @@ defmodule Ash.Type.Float do
   use Ash.Type
 
   @impl true
-  def storage_type, do: :float
+  def storage_type(_), do: :float
 
   @impl true
   def generator(constraints) do

@@ -58,7 +58,7 @@ defmodule Ash.Type.Decimal do
   end
 
   @impl true
-  def storage_type, do: :decimal
+  def storage_type(_), do: :decimal
 
   @impl true
   def constraints, do: @constraints
