@@ -1,19 +1,17 @@
 defmodule Ash.Resource.Calculation do
   @moduledoc "Represents a named calculation on a resource"
 
-  defstruct [
-    :name,
-    :type,
-    :calculation,
-    :arguments,
-    :description,
-    :constraints,
-    :private?,
-    :allow_nil?,
-    :select,
-    :load,
-    filterable?: true
-  ]
+  defstruct allow_nil?: true,
+            arguments: [],
+            calculation: nil,
+            constraints: [],
+            description: nil,
+            filterable?: true,
+            load: [],
+            name: nil,
+            private?: false,
+            select: [],
+            type: nil
 
   @schema [
     name: [
@@ -81,56 +79,20 @@ defmodule Ash.Resource.Calculation do
   ]
 
   @type t :: %__MODULE__{
+          allow_nil?: boolean,
+          arguments: [__MODULE__.Argument.t()],
+          calculation: module | {module, keyword},
+          constraints: keyword,
+          description: nil | String.t(),
+          filterable?: boolean,
+          load: keyword,
           name: atom(),
-          calculation: {:ok, {atom(), any()}} | {:error, String.t()},
-          arguments: list(any()),
-          description: String.t() | nil,
           private?: boolean,
-          allow_nil?: boolean
+          select: keyword,
+          type: nil | Ash.Type.t()
         }
 
   @type ref :: {module(), Keyword.t()} | module()
-
-  defmodule Argument do
-    @moduledoc "An argument to a calculation"
-    defstruct [:name, :type, :default, :allow_nil?, :constraints, :allow_expr?]
-
-    @schema [
-      name: [
-        type: :atom,
-        required: true,
-        doc: "The name of the argument"
-      ],
-      type: [
-        type: Ash.OptionsHelpers.ash_type(),
-        required: true,
-        doc: "The type of the argument. See `Ash.Type` for more."
-      ],
-      default: [
-        type: {:or, [{:mfa_or_fun, 0}, :literal]},
-        required: false,
-        doc: "A default value to use for the argument if not provided"
-      ],
-      allow_nil?: [
-        type: :boolean,
-        default: true,
-        doc: "Whether or not the argument value may be nil (or may be not provided)"
-      ],
-      allow_expr?: [
-        type: :boolean,
-        default: false,
-        doc: "Allow passing expressions as argument values. Expressions cannot be type validated."
-      ],
-      constraints: [
-        type: :keyword_list,
-        default: [],
-        doc:
-          "Constraints to provide to the type when casting the value. See the type's documentation and `Ash.Type` for more."
-      ]
-    ]
-
-    def schema, do: @schema
-  end
 
   def schema, do: @schema
 
