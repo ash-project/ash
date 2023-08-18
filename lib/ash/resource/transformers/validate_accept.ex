@@ -114,21 +114,12 @@ defmodule Ash.Resource.Transformers.ValidateAccept do
     ""
   end
 
-  defp message(keys, message, path)
-       when is_nil(path) or path == [] do
-    "#{get_message(keys, message)}"
-  end
-
   defp message(keys, message, path) do
     dsl_path = Enum.join(path, " -> ")
     "#{dsl_path}:\n  #{get_message(keys, message)}"
   end
 
-  defp get_message(keys, message) when is_binary(message) do
-    "#{inspect(keys)} #{message}"
-  end
-
   defp get_message(keys, message) do
-    "#{inspect(keys)} #{inspect(message)}"
+    "#{inspect(keys)} #{message}"
   end
 end
