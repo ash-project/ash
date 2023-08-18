@@ -1,20 +1,26 @@
 defmodule Ash.Query.Operator.Basic do
+  require Decimal
+
   @operators [
     plus: [
       symbol: :+,
-      no_nils: true
+      no_nils: true,
+      evaluate_types: :numbers
     ],
     times: [
       symbol: :*,
-      no_nils: true
+      no_nils: true,
+      evaluate_types: :numbers
     ],
     minus: [
       symbol: :-,
-      no_nils: true
+      no_nils: true,
+      evaluate_types: :numbers
     ],
     div: [
       symbol: :/,
-      no_nils: true
+      no_nils: true,
+      evaluate_types: :numbers
     ],
     concat: [
       symbol: :<>,
@@ -110,15 +116,28 @@ defmodule Ash.Query.Operator.Basic do
           {:known, Comp.greater_or_equal?(left, right)}
         end
 
-        defp do_evaluate(op, left, right) do
-          if Decimal.is_decimal(left) || Decimal.is_decimal(right) do
-            case op do
-              :+ -> {:known, Decimal.add(to_decimal(left), to_decimal(right))}
-              :* -> {:known, Decimal.mult(to_decimal(left), to_decimal(right))}
-              :- -> {:known, Decimal.sub(to_decimal(left), to_decimal(right))}
-              :/ -> {:known, Decimal.div(to_decimal(left), to_decimal(right))}
-            end
-          else
+        defp do_evaluate(op, left, right)
+             when Decimal.is_decimal(left) or Decimal.is_decimal(right) do
+          case op do
+            :+ -> {:known, Decimal.add(to_decimal(left), to_decimal(right))}
+            :* -> {:known, Decimal.mult(to_decimal(left), to_decimal(right))}
+            :- -> {:known, Decimal.sub(to_decimal(left), to_decimal(right))}
+            :/ -> {:known, Decimal.div(to_decimal(left), to_decimal(right))}
+          end
+        end
+
+        if unquote(opts[:evaluate_types]) == :numbers do
+          defp do_evaluate(op, left, right)
+               when not ((is_integer(left) or is_float(left)) and
+                           (is_integer(right) or is_float(right))) do
+            :unknown
+          end
+
+          defp do_evaluate(op, left, right) do
+            {:known, apply(Kernel, unquote(opts[:symbol]), [left, right])}
+          end
+        else
+          defp do_evaluate(op, left, right) do
             {:known, apply(Kernel, unquote(opts[:symbol]), [left, right])}
           end
         end
