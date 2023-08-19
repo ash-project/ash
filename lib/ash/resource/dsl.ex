@@ -168,7 +168,8 @@ defmodule Ash.Resource.Dsl do
       @update_timestamp,
       @integer_primary_key,
       @uuid_primary_key
-    ]
+    ],
+    patchable?: true
   }
 
   @has_one %Spark.Dsl.Entity{
