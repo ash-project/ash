@@ -900,6 +900,8 @@ defmodule Ash.Api do
   def run_action(api, input, opts \\ []) do
     case Spark.OptionsHelpers.validate(opts, @run_action_opts) do
       {:ok, opts} ->
+        input = %{input | api: api}
+
         Ash.Actions.Action.run(api, input, opts)
 
       {:error, error} ->
