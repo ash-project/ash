@@ -360,6 +360,12 @@ defmodule Ash.Actions.Helpers do
         nil ->
           {:cont, {:ok, record}}
 
+        %Ash.NotLoaded{} ->
+          {:cont, {:ok, record}}
+
+        %Ash.ForbiddenField{} ->
+          {:cont, {:ok, record}}
+
         value ->
           case Ash.Type.cast_stored(
                  attr.type,
