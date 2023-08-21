@@ -248,7 +248,7 @@ defmodule Ash.Type.Union do
         if tags_equal? do
           case Ash.Type.cast_input(type, value, config[:constraints] || []) do
             {:ok, value} ->
-              case Ash.Type.apply_constraints(type, value, config[:constraints]) do
+              case Ash.Type.apply_constraints(type, value, config[:constraints] || []) do
                 {:ok, value} ->
                   {:halt,
                    {:ok,
@@ -278,7 +278,7 @@ defmodule Ash.Type.Union do
         else
           case Ash.Type.cast_input(type, value, config[:constraints] || []) do
             {:ok, value} ->
-              case Ash.Type.apply_constraints(type, value, config[:constraints]) do
+              case Ash.Type.apply_constraints(type, value, config[:constraints] || []) do
                 {:ok, value} ->
                   {:halt,
                    {:ok,
