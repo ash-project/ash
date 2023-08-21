@@ -86,7 +86,9 @@ defmodule Ash.Test.Policy.ComplexTest do
 
     assert [] =
              Post
-             |> Ash.Query.filter(comments.text == "comment by a friend of a friend on my post")
+             |> Ash.Query.filter_input(
+               comments: [text: "comment by a friend of a friend on my post"]
+             )
              |> Api.read!(actor: me)
   end
 
