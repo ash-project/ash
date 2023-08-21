@@ -481,6 +481,8 @@ defmodule Ash.Query do
 
         _ ->
           if argument.name in query.invalid_keys do
+            query
+          else
             add_error(
               query,
               Required.exception(
@@ -489,8 +491,6 @@ defmodule Ash.Query do
                 type: :argument
               )
             )
-          else
-            query
           end
       end
     end)
