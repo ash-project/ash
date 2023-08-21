@@ -146,6 +146,7 @@ defmodule Ash.Expr do
     Enum.map(value, &do_expr(&1, escape?))
   end
 
+    {:%{}, [], Enum.map(keys, &do_expr(&1, escape?))}
   def do_expr({{:., _, [_, _]} = left, _, args}, escape?) do
     args = Enum.map(args, &do_expr(&1, false))
 
