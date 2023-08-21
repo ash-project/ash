@@ -3395,7 +3395,10 @@ defmodule Ash.Actions.Read do
   defp filter_with_related(relationship_filter_paths, filter_expr, data, prefix) do
     paths_to_global_filter_on =
       filter_expr
-      |> Ash.Filter.relationship_paths(true)
+      |> Ash.Filter.list_refs()
+      |> Enum.filter(& &1.input?)
+      |> Enum.map(& &1.relationship_path)
+      |> Enum.uniq()
       |> Enum.filter(&([:data, :filter, prefix ++ &1] in relationship_filter_paths))
 
     paths_to_global_filter_on

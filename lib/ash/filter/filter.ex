@@ -96,24 +96,36 @@ defmodule Ash.Filter do
   @moduledoc """
   The representation of a filter in Ash.
 
+  ## Security Concerns
+
+  If you are using a map with string keys, it is likely that you are parsing
+  input. It is important to note that, instead of passing a filter supplied from
+  an external source directly to `Ash.Query.filter/2`, you should call
+  `Ash.Filter.parse_input/2`.  This ensures that the filter only uses public
+  attributes, relationships, aggregates and calculations, honors field policies
+  and any policies on related resources.
+
   ## Filter Templates
 
-  To see the available templates, see `Ash.Filter.TemplateHelpers`.
-  You can pass a filter template to `build_filter_from_template/2` with an actor, and it will return the new result
+  To see the available templates, see `Ash.Filter.TemplateHelpers`.  You can
+  pass a filter template to `build_filter_from_template/2` with an actor, and it
+  will return the new result
 
-  Additionally, you can ask if the filter template contains an actor reference via `template_references_actor?/1`
+  Additionally, you can ask if the filter template contains an actor reference
+  via `template_references_actor?/1`
 
   ## Writing a filter
 
   ### Built In Predicates
 
   #{Enum.map_join(@operators, "\n", &"* `#{&1.operator()}`")}
-  #{Enum.map_join(@operator_aliases, "\n", fn {key, val} -> "* `#{key}` (alias for `#{val.operator()}`)" end)}
+  #{Enum.map_join(@operator_aliases, "\n", fn {key, val} -> "* `#{key}` (alias
+  for `#{val.operator()}`)" end)}
 
   ### BooleanExpression syntax
 
-  The expression syntax ultimately just builds the keyword list style filter, but with lots of conveniences that
-  would be very annoying to do manually.
+  The expression syntax ultimately just builds the keyword list style filter,
+  but with lots of conveniences that would be very annoying to do manually.
 
   Examples
 
@@ -126,16 +138,20 @@ defmodule Ash.Filter do
 
   ### Keyword list syntax
 
-  A filter is a nested keyword list (with some exceptions, like `true` for everything and `false` for nothing).
+  A filter is a nested keyword list (with some exceptions, like `true` for
+  everything and `false` for nothing).
 
-  The key is the "predicate" (or "condition") and the value is the parameter. You can use `and` and `or` to create
-  nested filters. Data layers can expose custom predicates. Eventually, you will be able to define your own custom
-  predicates, which will be a mechanism for you to attach complex filters supported by the data layer to your queries.
+  The key is the "predicate" (or "condition") and the value is the parameter.
+  You can use `and` and `or` to create nested filters. Data layers can expose
+  custom predicates. Eventually, you will be able to define your own custom
+  predicates, which will be a mechanism for you to attach complex filters
+  supported by the data layer to your queries.
 
-  ** Important **
-  In a given keyword list, all predicates are considered to be "ands". So `[or: [first_name: "Tom", last_name: "Bombadil"]]` doesn't
-  mean 'First name == "tom" or last_name == "bombadil"'. To say that, you want to provide a list of filters,
-  like so: `[or: [[first_name: "Tom"], [last_name: "Bombadil"]]]`
+  ** Important ** In a given keyword list, all predicates are considered to be
+  "ands". So `[or: [first_name: "Tom", last_name: "Bombadil"]]` doesn't mean
+  'First name == "tom" or last_name == "bombadil"'. To say that, you want to
+  provide a list of filters, like so: `[or: [[first_name: "Tom"], [last_name:
+  "Bombadil"]]]`
 
   Some example filters:
 
@@ -155,12 +171,8 @@ defmodule Ash.Filter do
 
   ### Other formats
 
-  Maps are also accepted, as are maps with string keys. Technically, a list of `[{"string_key", value}]` would also work.
-  If you are using a map with string keys, it is likely that you are parsing input. It is important to note that, before
-  passing a filter supplied from an external source directly to `Ash.Query.filter/2`, you should first call `Ash.Filter.parse_input/2`
-  (or `Ash.Filter.parse_input/4` if your query has aggregates/calculations in it). This ensures that the filter only uses public attributes,
-  relationships, aggregates and calculations. You may additionally wish to pass in the query context, in the case that you have calculations
-  that use the provided context.
+  Maps are also accepted, as are maps with string keys. Technically, a list of
+  `[{"string_key", value}]` would also work.
   """
 
   @builtin_operators Enum.map(@operators, &{&1.operator(), &1}) ++ @operator_aliases
@@ -204,7 +216,8 @@ defmodule Ash.Filter do
   end
 
   @doc """
-  Parses a filter statement, accepting only public attributes/relationships
+  Parses a filter statement, accepting only public attributes/relationships,
+  honoring field policies & related resource policies.
 
   See `parse/2` for more
   """
@@ -238,7 +251,8 @@ defmodule Ash.Filter do
   end
 
   @doc """
-  Parses a filter statement, accepting only public attributes/relationships, raising on errors.
+  Parses a filter statement, accepting only public attributes/relationships,
+  honoring field policies & related resource policies, raising on errors.
 
   See `parse_input/2` for more
   """
@@ -1070,14 +1084,18 @@ defmodule Ash.Filter do
   def read_requests(_, nil, _, _, _), do: {:ok, []}
 
   def read_requests(api, %{resource: resource} = filter, request_path, actor, tenant) do
-    paths_with_refs = relationship_paths(filter, true, true)
+    paths_with_refs =
+      filter
+      |> relationship_paths(true, true)
+      |> Enum.map(fn {path, refs} ->
+        {path, Enum.filter(refs, &(&1 && &1.input?))}
+      end)
+      |> Enum.reject(fn {path, refs} -> path == [] || refs == [] end)
 
     refs = group_refs_by_all_paths(paths_with_refs)
 
     paths_with_refs
     |> Enum.map(&elem(&1, 0))
-    |> Enum.uniq()
-    |> Enum.reject(&(&1 == []))
     |> Enum.reduce_while({:ok, []}, fn path, {:ok, requests} ->
       last_relationship =
         Enum.reduce(path, nil, fn

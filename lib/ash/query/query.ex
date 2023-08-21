@@ -249,6 +249,8 @@ defmodule Ash.Query do
   See `Ash.Filter` for more.
   """
   def filter_input(query, filter) do
+    query = to_query(query)
+
     case Ash.Filter.parse_input(query.resource, filter) do
       {:ok, filter} ->
         do_filter(query, filter)
