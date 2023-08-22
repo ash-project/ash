@@ -118,20 +118,14 @@ defmodule Ash.Resource.Validation do
 
   @doc false
   def transform(%{validation: {module, opts}, where: where} = validation) do
-    case module.init(opts) do
-      {:ok, opts} ->
-        {:ok,
-         %{
-           validation
-           | validation: {module, opts},
-             module: module,
-             opts: opts,
-             where: List.wrap(where)
-         }}
-
-      {:error, error} ->
-        {:error, error}
-    end
+    {:ok,
+     %{
+       validation
+       | validation: {module, opts},
+         module: module,
+         opts: opts,
+         where: List.wrap(where)
+     }}
   end
 
   def opt_schema, do: @schema

@@ -1431,7 +1431,12 @@ defmodule Ash.Changeset do
              changeset.context
            )
 
-         module.validate(changeset, opts) == :ok
+         with {:ok, opts} <- module.init(opts) do
+           module.validate(changeset, opts) == :ok
+         else
+           _ ->
+             false
+         end
        end) do
       Ash.Tracer.span :validation, "validate: #{inspect(validation.module)}", tracer do
         Ash.Tracer.telemetry_span [:ash, :validation], %{
@@ -1448,7 +1453,10 @@ defmodule Ash.Changeset do
               changeset.context
             )
 
-          case validation.module.validate(changeset, opts) do
+          with {:ok, opts} <- validation.module.init(opts),
+               :ok <- validation.module.validate(changeset, opts) do
+            changeset
+          else
             :ok ->
               changeset
 
