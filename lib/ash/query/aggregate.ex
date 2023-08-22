@@ -128,7 +128,7 @@ defmodule Ash.Query.Aggregate do
         name,
         kind,
         opts[:path] || [],
-        opts[:query],
+        opts[:query] || Ash.Query.new(Ash.Resource.Info.related(resource, opts[:path] || [])),
         opts[:field],
         opts[:default],
         Keyword.get(opts, :filterable?, true),
@@ -280,7 +280,13 @@ defmodule Ash.Query.Aggregate do
   defp validate_query(_resource, nil), do: {:ok, nil}
 
   defp validate_query(resource, build_opts) when is_list(build_opts) do
-    {:ok, Ash.Query.build(resource, build_opts)}
+    case Ash.Query.build(resource, build_opts) do
+      %{valid?: true} = query ->
+        {:ok, query}
+
+      %{valid?: false} = query ->
+        {:error, query.errors}
+    end
   end
 
   defp validate_query(_resource, %Ash.Query{} = query) do

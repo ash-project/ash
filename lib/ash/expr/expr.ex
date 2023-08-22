@@ -147,7 +147,17 @@ defmodule Ash.Expr do
   end
 
   def do_expr({:%{}, _, keys}, escape?) do
-    {:%{}, [], Enum.map(keys, &do_expr(&1, escape?))}
+    {:%{}, [],
+     Enum.map(keys, fn {key, value} -> {do_expr(key, escape?), do_expr(value, escape?)} end)}
+  end
+
+  # def do_expr({{:., _, [at_path, agg]}, _, [path, expr]}, escape?)
+  #     when agg in @inline_aggregates do
+  #   expr_with_at_path(path, at_path, expr, Ash.Query.InlineAggregate, escape?)
+  # end
+
+  def do_expr({{:., _, [at_path, :exists]}, _, [path, expr]}, escape?) do
+    expr_with_at_path(path, at_path, expr, Ash.Query.Exists, escape?)
   end
 
   def do_expr({{:., _, [_, _]} = left, _, args}, escape?) do
@@ -254,7 +264,7 @@ defmodule Ash.Expr do
     soft_escape(%Ash.Query.Call{name: op, args: args, operator?: true}, escape?)
   end
 
-  def do_expr({:parent_expr, _, [expr]}, escape?) do
+  def do_expr({parent, _, [expr]}, escape?) when parent in [:parent, :source, :parent_expr] do
     expr = do_expr(expr, escape?)
 
     soft_escape(
@@ -266,37 +276,7 @@ defmodule Ash.Expr do
   end
 
   def do_expr({:exists, _, [path, original_expr]}, escape?) do
-    expr = do_expr(original_expr, escape?)
-
-    path =
-      case path do
-        {:^, _, [value]} ->
-          value
-
-        {:., _, [left, right]} ->
-          ref = do_ref(left, right)
-          ref.relationship_path ++ [ref.attribute]
-
-        {{:., _, [left, right]}, _, _} ->
-          ref = do_ref(left, right)
-          ref.relationship_path ++ [ref.attribute]
-
-        {atom, _, _} when is_atom(atom) ->
-          [atom]
-
-        path when is_list(path) ->
-          path
-
-        other ->
-          raise "Invalid value used in the first argument in exists, i.e exists(#{Macro.to_string(other)}, #{Macro.to_string(expr)})"
-      end
-
-    soft_escape(
-      quote do
-        Ash.Query.Exists.new(unquote(path), unquote(expr))
-      end,
-      escape?
-    )
+    expr_with_at_path(path, [], original_expr, Ash.Query.Exists, escape?)
   end
 
   def do_expr({left, _, [{op, _, [right]}]}, escape?)
@@ -347,6 +327,67 @@ defmodule Ash.Expr do
   def do_expr({left, _, _}, escape?) when is_tuple(left), do: do_expr(left, escape?)
 
   def do_expr(other, _), do: other
+
+  defp expr_with_at_path(path, at_path, expr, struct, escape?) do
+    expr = do_expr(expr, escape?)
+
+    path =
+      case path do
+        {:^, _, [value]} ->
+          value
+
+        {:., _, [left, right]} ->
+          ref = do_ref(left, right)
+          ref.relationship_path ++ [ref.attribute]
+
+        {{:., _, [left, right]}, _, _} ->
+          ref = do_ref(left, right)
+          ref.relationship_path ++ [ref.attribute]
+
+        {atom, _, _} when is_atom(atom) ->
+          [atom]
+
+        path when is_list(path) ->
+          path
+
+        other ->
+          raise "Invalid value used in the first argument in exists, i.e exists(#{Macro.to_string(other)}, #{Macro.to_string(expr)})"
+      end
+
+    at_path =
+      case at_path do
+        {:^, _, [value]} ->
+          value
+
+        {:., _, [left, right]} ->
+          ref = do_ref(left, right)
+          ref.relationship_path ++ [ref.attribute]
+
+        {{:., _, [left, right]}, _, _} ->
+          ref = do_ref(left, right)
+          ref.relationship_path ++ [ref.attribute]
+
+        {atom, _, _} when is_atom(atom) ->
+          [atom]
+
+        path when is_list(path) ->
+          path
+
+        other ->
+          raise "Invalid value used in the first argument in exists, i.e exists(#{Macro.to_string(other)}, #{Macro.to_string(at_path)})"
+      end
+
+    soft_escape(
+      quote do
+        unquote(struct).new(
+          unquote(path),
+          unquote(expr),
+          unquote(at_path)
+        )
+      end,
+      escape?
+    )
+  end
 
   defp cond_to_if_tree([{condition, result}]) do
     {:if, [], [cond_condition(condition), [do: result]]}

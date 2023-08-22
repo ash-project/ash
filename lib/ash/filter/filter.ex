@@ -69,6 +69,8 @@ defmodule Ash.Filter do
     StringSplit
   ]
 
+  @inline_aggregates [:count, :first, :sum, :list, :max, :min, :avg, :custom_aggregate]
+
   @operators [
                Ash.Query.Operator.IsNil,
                Eq,
@@ -984,7 +986,7 @@ defmodule Ash.Filter do
             (relationship_path in [nil, []] and ref_relationship_path in [nil, []]) ||
             relationship_path == ref_relationship_path
 
-        _ ->
+        _ref ->
           false
       end)
 
@@ -1998,6 +2000,11 @@ defmodule Ash.Filter do
       value when is_list(value) ->
         Enum.flat_map(value, &do_list_refs(&1, true))
 
+      value when is_map(value) and not is_struct(value) ->
+        Enum.flat_map(value, fn {key, value} ->
+          do_list_refs(key, true) ++ do_list_refs(value, true)
+        end)
+
       %Ash.Query.Exists{at_path: at_path, path: path, expr: expr} ->
         parent_refs_inside_of_exists =
           flat_map(expr, fn
@@ -2718,37 +2725,6 @@ defmodule Ash.Filter do
     end
   end
 
-  defp resolve_call(%Call{name: :exists, args: [path_arg, expr_arg]} = call, context) do
-    with {:ok, path} <- refs_to_path(path_arg),
-         context <-
-           %{
-             context
-             | resource:
-                 Ash.Resource.Info.related(
-                   context.resource,
-                   call.relationship_path ++ path
-                 ),
-               relationship_path: []
-           }
-           |> Map.update(
-             :parent_stack,
-             [context[:root_resource]],
-             &[context[:root_resource] | &1]
-           ),
-         {:ok, expr} <- hydrate_refs(expr_arg, context),
-         refs <- list_refs(expr),
-         :ok <-
-           validate_refs(refs, context.resource, call) do
-      {:ok, Ash.Query.Exists.new(path, expr, call.relationship_path)}
-    else
-      {:args, _} ->
-        {:error, NoSuchFunction.exception(name: :exists, resource: context.resource)}
-
-      other ->
-        other
-    end
-  end
-
   defp resolve_call(
          %Call{name: :parent, args: [arg], relationship_path: []},
          context
@@ -2756,14 +2732,70 @@ defmodule Ash.Filter do
     do_hydrate_refs(%Ash.Query.Parent{expr: arg}, context)
   end
 
+  defp resolve_call(%Call{name: name, args: args} = call, context)
+       when name in @inline_aggregates do
+    resource = Ash.Resource.Info.related(context.resource, call.relationship_path)
+    path = refs_to_path(Enum.at(args, 0))
+    related = Ash.Resource.Info.related(resource, path)
+    opts = Enum.at(args, 1) || []
+
+    if Keyword.keyword?(opts) do
+      kind =
+        if name == :custom_aggregate do
+          :custom
+        else
+          name
+        end
+
+      field =
+        if opts[:field] do
+          opts[:field]
+        else
+          unless kind == :custom do
+            List.first(Ash.Resource.Info.primary_key(related))
+          end
+        end
+
+      opts =
+        if field && kind != :custom do
+          attribute = Ash.Resource.Info.attribute(related, field)
+
+          if attribute do
+            {:ok, type} = Ash.Query.Aggregate.kind_to_type(kind, attribute.type)
+            Keyword.put(opts, :type, type)
+          else
+            opts
+          end
+        else
+          opts
+        end
+
+      with {:ok, agg} <-
+             Ash.Query.Aggregate.new(
+               resource,
+               to_string(System.unique_integer()),
+               kind,
+               Keyword.put(opts, :path, path)
+             ) do
+        {:ok,
+         %Ref{
+           relationship_path: call.relationship_path,
+           attribute: agg
+         }}
+      end
+    else
+      {:error, "Aggregate options must be keyword list. In: #{inspect(call)}"}
+    end
+  end
+
   defp resolve_call(%Call{name: name, args: args} = call, context) do
-    could_be_calculation? = Enum.count(args) == 1 && Keyword.keyword?(Enum.at(args, 0))
+    could_be_calculation? = Enum.count_until(args, 2) == 1 && Keyword.keyword?(Enum.at(args, 0))
 
     resource = Ash.Resource.Info.related(context.resource, call.relationship_path)
 
     context =
       Map.merge(context, %{
-        resource: Ash.Resource.Info.related(context.resource, call.relationship_path),
+        resource: resource,
         relationship_path: []
       })
 
@@ -2847,12 +2879,14 @@ defmodule Ash.Filter do
           name
       end
 
-    {:ok, relationship_path ++ [attribute]}
+    relationship_path ++ [attribute]
   end
 
-  defp refs_to_path(value) do
-    {:error, "#{inspect(value)} is not a valid path for exists/2"}
+  defp refs_to_path(list) when is_list(list) do
+    Enum.flat_map(list, fn item -> refs_to_path(item) end)
   end
+
+  defp refs_to_path(item), do: [item]
 
   defp validate_datalayer_supports_nested_expressions(args, resource) do
     if resource && Enum.any?(args, &Ash.Filter.TemplateHelpers.expr?/1) &&
@@ -3125,6 +3159,19 @@ defmodule Ash.Filter do
     end
   end
 
+  def do_hydrate_refs(map, context) when is_map(map) and not is_struct(map) do
+    map
+    |> Enum.reduce_while({:ok, %{}}, fn {key, value}, {:ok, acc} ->
+      with {:ok, key} <- do_hydrate_refs(key, context),
+           {:ok, value} <- do_hydrate_refs(value, context) do
+        {:cont, {:ok, Map.put(acc, key, value)}}
+      else
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+  end
+
   def do_hydrate_refs(%Ref{} = ref, context) do
     {:ok, %{ref | input?: ref.input? || context[:input?] || false}}
   end
@@ -3212,10 +3259,7 @@ defmodule Ash.Filter do
       %Ash.Query.Exists{} = exists ->
         %{exists | at_path: relationship_path ++ exists.at_path}
 
-      # %Ash.Query.Parent{expr: expr} = this ->
-      #   %{this | expr: move_to_relationship_path(expr, relationship_path)}
-
-      %Call{name: :exists, relationship_path: call_path} = call ->
+      %Call{relationship_path: call_path} = call ->
         %{call | relationship_path: relationship_path ++ call_path}
 
       %__MODULE__{expression: expression} = filter ->

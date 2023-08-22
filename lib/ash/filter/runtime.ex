@@ -630,6 +630,18 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
+  defp resolve_expr(map, record, parent, resource) when is_map(map) and not is_struct(map) do
+    Enum.reduce_while(map, {:ok, %{}}, fn {key, value}, {:ok, acc} ->
+      with {:ok, key} <- resolve_expr(key, record, parent, resource),
+           {:ok, value} <- resolve_expr(value, record, parent, resource) do
+        {:cont, {:ok, Map.put(acc, key, value)}}
+      else
+        other ->
+          {:halt, other}
+      end
+    end)
+  end
+
   defp resolve_expr(other, _, _, _), do: {:ok, other}
 
   defp try_cast_arguments(:var_args, args) do

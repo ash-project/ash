@@ -22,10 +22,10 @@ defmodule Ash.Filter.TemplateHelpers do
     Enum.any?(value, &expr?/1)
   end
 
-  def expr?(value) when is_map(value) do
-    value
-    |> Map.keys()
-    |> Enum.any?(&expr?/1)
+  def expr?(value) when is_map(value) and not is_struct(value) do
+    Enum.any?(value, fn {key, value} ->
+      expr?(key) || expr?(value)
+    end)
   end
 
   def expr?({left, right}) do
