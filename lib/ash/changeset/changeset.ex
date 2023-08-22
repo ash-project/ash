@@ -1431,9 +1431,10 @@ defmodule Ash.Changeset do
              changeset.context
            )
 
-         with {:ok, opts} <- module.init(opts) do
-           module.validate(changeset, opts) == :ok
-         else
+         case module.init(opts) do
+           {:ok, opts} ->
+             module.validate(changeset, opts) == :ok
+
            _ ->
              false
          end
