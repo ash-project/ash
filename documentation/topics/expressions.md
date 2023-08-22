@@ -70,6 +70,19 @@ The following functions are built in:
 - `cond` - `cond` is transformed to a series of `if` expressions under the hood
 - `item[:key] or item["key"]` - accesses keys in a map. In both cases, it prefers a matching atom key, falling back to a matching string key. This is to aid with data stores that store embeds as JSON with string keys (like AshPostgres), so that this expression behaves the same in the data layer as it does in Elixir.
 
+## Inline Aggregates
+
+Aggregates can be referenced in-line, with their relationship path specified and any options provided that match the options given to `Ash.Query.Aggregate.new/4`. For example:
+
+```elixir
+calculate :grade, :decimal, expr(
+  count(answers, query: [filter: expr(correct == true)]) /
+  count(answers, query: [filter: expr(correct == false)])
+)
+```
+
+The available aggregate kinds can also be seen in the `Ash.Query.Aggregate` module documentation.
+
 ## Templates
 
 Most of the time, when you are using an expression, you will actually be creating a `template`. In this template, you have a few references that can be used, which will be replaced when before the expression is evaluated. The following references are available. The ones that start with `^` must be imported from `Ash.Filter.TemplateHelpers`.
@@ -122,7 +135,7 @@ Post
 |> has_comment_tagged("elixir")
 ```
 
-That code *seems* like it ought to produce a filter over `Post` that would give us any post with a comment having more than 10 points, *and* with a comment tagged `elixir`. That is not the same thing as having a *single* comment that meets both those criteria. So how do we make this better? 
+That code *seems* like it ought to produce a filter over `Post` that would give us any post with a comment having more than 10 points, *and* with a comment tagged `elixir`. That is not the same thing as having a *single* comment that meets both those criteria. So how do we make this better?
 
 ##### Exists
 
