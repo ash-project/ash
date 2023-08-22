@@ -2107,6 +2107,9 @@ defmodule Ash.Actions.Read do
           |> Enum.concat([%{path: path, type: :calculation, calculation: calculation}])
         end
 
+      %Ash.Query.Aggregate{} = aggregate ->
+        [%{path: path, type: :aggregate, aggregate: aggregate}]
+
       other ->
         cond do
           Ash.Resource.Info.aggregate(query.resource, other) ->

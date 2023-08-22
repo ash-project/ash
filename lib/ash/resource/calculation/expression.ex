@@ -98,7 +98,6 @@ defmodule Ash.Resource.Calculation.Expression do
         aggs_from_this_calc =
           expression
           |> Ash.Filter.used_aggregates()
-          |> Enum.map(& &1.name)
 
         aggs_from_calcs =
           further_calculations
@@ -117,15 +116,12 @@ defmodule Ash.Resource.Calculation.Expression do
                    }
                  ) do
               {:ok, expression} ->
-                expression
-                |> Ash.Filter.used_aggregates()
-                |> Enum.map(& &1.name)
+                Ash.Filter.used_aggregates(expression)
 
               _ ->
                 []
             end
           end)
-          |> Enum.map(& &1.name)
 
         Enum.uniq(aggs_from_calcs ++ aggs_from_this_calc)
 
