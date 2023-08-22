@@ -441,54 +441,35 @@ defmodule Ash.EmbeddableType do
         end
       end
 
-      defp find_duplicates(term, unique_keys) do
+      defp find_duplicates([], _), do: nil
+      defp find_duplicates([_item], _), do: nil
+      defp find_duplicates(list, unique_keys) do
         Enum.find(unique_keys, fn unique_key ->
-          has_duplicates?(term, __MODULE__, fn item ->
-            Enum.reduce(unique_key, %{}, fn key, acc ->
-              if Map.has_key?(item, key) || Map.has_key?(item, to_string(key)) do
-                attribute = Ash.Resource.Info.attribute(__MODULE__, key)
+          attributes = Enum.map(unique_key, &Ash.Resource.Info.attribute(__MODULE__, &1))
 
-                case Ash.Type.cast_input(
-                       attribute.type,
-                       Map.get(item, key) || Map.get(item, to_string(key)),
-                       attribute.constraints
-                     ) do
-                  {:ok, value} ->
-                    Map.put(acc, key, value)
+          Enum.reduce_while(list, list, fn
+            _term, [_] ->
+              {:halt, false}
 
-                  _ ->
-                    acc
-                end
+            this, [_| rest] ->
+              has_duplicate? =
+                Enum.any?(rest, fn other ->
+                  Enum.all?(attributes, fn attribute ->
+                    this_value = Map.get(this, attribute.name)
+                    other_value = Map.get(other, attribute.name)
+
+                    not is_nil(this_value) and not is_nil(other_value) and
+                      Ash.Type.equal?(attribute.type, this_value, other_value)
+                  end)
+                end)
+
+              if has_duplicate? do
+                {:halt, true}
+              else
+                {:cont, rest}
               end
-            end)
           end)
         end)
-      end
-
-      defp has_duplicates?(list, resource, func) do
-        list
-        |> Enum.reduce_while(MapSet.new(), fn x, acc ->
-          x = func.(x)
-
-          acc
-          |> Enum.any?(fn item ->
-            Enum.all?(x, fn {key, value} ->
-              attr = Ash.Resource.Info.attribute(resource, key)
-
-              Enum.any?(acc, fn other ->
-                Ash.Type.equal?(attr.type, Map.get(other, key), value)
-              end)
-            end)
-          end)
-          |> case do
-            true ->
-              {:halt, 0}
-
-            false ->
-              {:cont, MapSet.put(acc, x)}
-          end
-        end)
-        |> is_integer()
       end
 
       def handle_change_array(nil, new_values, constraints) do
