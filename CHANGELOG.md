@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.4](https://github.com/ash-project/ash/compare/v2.14.3...v2.14.4) (2023-08-22)
+
+
+
+
+### Bug Fixes:
+
+* handle inline aggregates in calculation resolver
+
 ## [v2.14.3](https://github.com/ash-project/ash/compare/v2.14.2...v2.14.3) (2023-08-22)
 
 
