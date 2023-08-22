@@ -1216,13 +1216,31 @@ defmodule Ash.Query do
     end
   end
 
+  defp fetch_key(map, key) when is_map(map) do
+    Map.fetch(map, key)
+  end
+
+  defp fetch_key(keyword, key) do
+    if Keyword.keyword?(keyword) do
+      Keyword.fetch(keyword, key)
+    else
+      :error
+    end
+  end
+
   @doc false
   def resource_calc_to_calc(query, name, resource_calculation, args \\ %{}) do
+    {name, load} =
+      case fetch_key(args, :as) do
+        :error -> {name, name}
+        {:ok, key} -> {key, nil}
+      end
+
     with %{calculation: {module, opts}} <- resource_calculation,
          {:ok, args} <- validate_calculation_arguments(resource_calculation, args),
          {:ok, calculation} <-
            Calculation.new(
-             resource_calculation.name,
+             name,
              module,
              opts,
              {resource_calculation.type, resource_calculation.constraints},
@@ -1233,7 +1251,7 @@ defmodule Ash.Query do
       {:ok,
        select_and_load_calc(
          resource_calculation,
-         %{calculation | load: name, calc_name: resource_calculation.name},
+         %{calculation | load: load, calc_name: resource_calculation.name},
          query
        )}
     end
