@@ -127,15 +127,20 @@ defmodule Ash.Expr do
     left = do_expr(left, false)
     right = do_expr(right, false)
 
-    [left, right]
-    |> Ash.Query.Function.GetPath.new()
-    |> case do
-      {:ok, call} ->
-        soft_escape(call, escape?)
+    soft_escape(
+      quote do
+        [unquote(left), unquote(right)]
+        |> Ash.Query.Function.GetPath.new()
+        |> case do
+          {:ok, call} ->
+            call
 
-      {:error, error} ->
-        raise error
-    end
+          {:error, error} ->
+            raise error
+        end
+      end,
+      escape?
+    )
   end
 
   def do_expr({{:., _, [_, _]} = left, _, []}, escape?) do
