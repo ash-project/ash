@@ -24,7 +24,13 @@ defmodule Ash.Type.Binary do
   def cast_stored(nil, _), do: {:ok, nil}
 
   def cast_stored(value, _) do
-    Ecto.Type.load(:binary, value)
+    case Ecto.Type.load(:binary, value) do
+      {:ok, value} -> case Base.decode64(value) do
+        {:ok, value} -> {:ok, value}
+        :error -> {:ok, value}
+      end
+      :error -> :error
+    end
   end
 
   @impl true
@@ -33,4 +39,9 @@ defmodule Ash.Type.Binary do
   def dump_to_native(value, _) do
     Ecto.Type.dump(:binary, value)
   end
+
+  @impl true
+  def dump_to_embedded(nil, _), do: {:ok, nil}
+
+  def dump_to_embedded(binary, _), do: {:ok, Base.encode64(binary)}
 end
