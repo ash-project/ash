@@ -443,6 +443,7 @@ defmodule Ash.EmbeddableType do
 
       defp find_duplicates([], _), do: nil
       defp find_duplicates([_item], _), do: nil
+
       defp find_duplicates(list, unique_keys) do
         Enum.find(unique_keys, fn unique_key ->
           attributes = Enum.map(unique_key, &Ash.Resource.Info.attribute(__MODULE__, &1))
@@ -451,7 +452,7 @@ defmodule Ash.EmbeddableType do
             _term, [_] ->
               {:halt, false}
 
-            this, [_| rest] ->
+            this, [_ | rest] ->
               has_duplicate? =
                 Enum.any?(rest, fn other ->
                   Enum.all?(attributes, fn attribute ->
