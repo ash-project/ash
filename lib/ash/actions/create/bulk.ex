@@ -648,10 +648,28 @@ defmodule Ash.Actions.Create.Bulk do
     bulk_result
     |> notify(resource, action, opts)
     |> sort(opts)
+    |> ensure_records_return_type(opts)
+    |> ensure_errors_return_type(opts)
   end
 
   # for when we return a stream
   defp handle_bulk_result(stream, _, _, _), do: stream
+
+  defp ensure_records_return_type(result, opts) do
+    if opts[:return_records?] do
+      %{result | records: result.records || []}
+    else
+      %{result | records: nil}
+    end
+  end
+
+  defp ensure_errors_return_type(result, opts) do
+    if opts[:return_errors?] do
+      %{result | errors: result.errors || []}
+    else
+      %{result | errors: nil}
+    end
+  end
 
   defp sort(%{records: records} = result, opts) when is_list(records) do
     if opts[:sorted?] do

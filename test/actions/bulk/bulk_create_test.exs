@@ -165,7 +165,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   end
 
   test "will return error count" do
-    assert %Ash.BulkResult{records: [%{title: "title1_stuff"}], error_count: 1, errors: []} =
+    assert %Ash.BulkResult{records: [%{title: "title1_stuff"}], error_count: 1, errors: nil} =
              Api.bulk_create!(
                [%{title: "title1"}, %{title: %{foo: :bar}}],
                Post,

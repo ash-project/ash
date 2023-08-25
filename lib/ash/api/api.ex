@@ -1782,7 +1782,7 @@ defmodule Ash.Api do
         )
       end
 
-    if is_nil(query.action.pagination) || !query.action.pagination.keyset? do
+    if !query.action.pagination || !query.action.pagination.keyset? do
       raise Ash.Error.Invalid.NonStreamableAction,
         resource: query.resource,
         action: query.action
