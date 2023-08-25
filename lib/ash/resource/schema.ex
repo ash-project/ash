@@ -43,7 +43,8 @@ defmodule Ash.Schema do
           field(:aggregates, :map, virtual: true, default: %{})
           field(:calculations, :map, virtual: true, default: %{})
           field(:__metadata__, :map, virtual: true, default: %{}, redact: true)
-          field(:__order__, :integer, virtual: true)
+          field(:__order__, :integer, virtual: true, redact: true)
+          field(:__lateral_join_source__, :integer, virtual: true, redact: true)
 
           struct_fields_name =
             if Module.get_attribute(__MODULE__, :struct_fields) do
@@ -98,12 +99,6 @@ defmodule Ash.Schema do
             )
           end
 
-          Module.put_attribute(
-            __MODULE__,
-            :ash_struct_fields,
-            {:__lateral_join_source__, nil}
-          )
-
           struct_fields = Module.get_attribute(__MODULE__, :ash_struct_fields)
           Module.delete_attribute(__MODULE__, struct_fields_name)
           Module.register_attribute(__MODULE__, struct_fields_name, accumulate: true)
@@ -156,7 +151,8 @@ defmodule Ash.Schema do
           field(:aggregates, :map, virtual: true, default: %{})
           field(:calculations, :map, virtual: true, default: %{})
           field(:__metadata__, :map, virtual: true, default: %{}, redact: true)
-          field(:__order__, :integer, virtual: true)
+          field(:__order__, :integer, virtual: true, redact: true)
+          field(:__lateral_join_source__, :integer, virtual: true, redact: true)
 
           struct_fields_name =
             if Module.get_attribute(__MODULE__, :struct_fields) do
@@ -247,12 +243,6 @@ defmodule Ash.Schema do
               {calculation.name, %Ash.NotLoaded{type: :calculation, field: calculation.name}}
             )
           end
-
-          Module.put_attribute(
-            __MODULE__,
-            :ash_struct_fields,
-            {:__lateral_join_source__, nil}
-          )
 
           struct_fields = Module.get_attribute(__MODULE__, :ash_struct_fields)
 
