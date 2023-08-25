@@ -50,7 +50,7 @@ defmodule Ash.CodeInterface do
         field.default
       else
         if action.type == :update || (action.type == :destroy && action.soft?) do
-          if is_nil(action.update_default) do
+          if is_nil(field.update_default) do
             field.default
           else
             field.update_default
