@@ -43,6 +43,7 @@ defmodule Ash.Resource.Validation do
   @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, String.t()}
   @callback validate(Ash.Changeset.t(), Keyword.t()) :: :ok | {:error, term}
   @callback describe(Keyword.t()) :: [message: String.t(), vars: Keyword.t()]
+  @callback atomic?(Keyword.t()) :: boolean
 
   @optional_callbacks describe: 1
 
@@ -103,8 +104,7 @@ defmodule Ash.Resource.Validation do
       @behaviour Ash.Resource.Validation
 
       def init(opts), do: {:ok, opts}
-
-      defoverridable init: 1
+      def atomic?(_), do: false
 
       defp with_description(keyword, opts) do
         if Kernel.function_exported?(__MODULE__, :describe, 1) do
@@ -113,6 +113,8 @@ defmodule Ash.Resource.Validation do
           keyword
         end
       end
+
+      defoverridable init: 1, atomic?: 1
     end
   end
 

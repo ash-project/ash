@@ -975,7 +975,7 @@ defmodule Ash.Api do
           end
 
         with {:ok, expr} <- expr do
-          case Ash.Expr.eval(expr, record: record) do
+          case Ash.Expr.eval(expr, record: record, resource: resource) do
             {:ok, result} ->
               {:ok, result}
 

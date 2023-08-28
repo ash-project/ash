@@ -63,6 +63,19 @@ defmodule Ash.Resource.Change do
     ]
   end
 
+  def atomic_schema do
+    schema()
+    |> Keyword.take([:description, :where])
+    |> Keyword.put(:attribute, type: :atom, required: true, doc: "The attribute to update")
+    |> Keyword.put(:expr,
+      type: :any,
+      required: true,
+      doc: """
+      The expression to use to set the attribute
+      """
+    )
+  end
+
   @doc false
   def action_schema do
     Keyword.delete(schema(), :on)
@@ -104,12 +117,22 @@ defmodule Ash.Resource.Change do
 
   @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
   @callback change(Ash.Changeset.t(), Keyword.t(), context) :: Ash.Changeset.t()
+
+  @doc """
+  Replaces `change/3` for batch actions, allowing to optimize changes for bulk actions.
+  """
   @callback batch_change([Ash.Changeset.t()], Keyword.t(), context) ::
               Enumerable.t(Ash.Changeset.t() | Ash.Notifier.Notification.t())
 
+  @doc """
+  Runs on each batch before it is dispatched to the data layer.
+  """
   @callback before_batch([Ash.Changeset.t()], Keyword.t(), context) ::
               Enumerable.t(Ash.Changeset.t() | Ash.Notifier.Notification.t())
 
+  @doc """
+  Runs on each batch result after it is dispatched to the data layer.
+  """
   @callback after_batch(
               [{Ash.Changeset.t(), Ash.Resource.record()}],
               Keyword.t(),
@@ -126,10 +149,12 @@ defmodule Ash.Resource.Change do
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.Change
+      require Ash.Expr
 
       def init(opts), do: {:ok, opts}
+      def atomic(_opts, _context), do: :not_atomic
 
-      defoverridable init: 1
+      defoverridable init: 1, atomic: 2
     end
   end
 end

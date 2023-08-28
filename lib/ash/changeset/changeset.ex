@@ -23,6 +23,7 @@ defmodule Ash.Changeset do
     invalid_keys: MapSet.new(),
     filters: %{},
     action_failed?: false,
+    atomics: [],
     after_action: [],
     after_transaction: [],
     arguments: %{},
@@ -744,6 +745,26 @@ defmodule Ash.Changeset do
   end
 
   @doc """
+  Adds atomic changes to the changeset
+
+  i.e `Ash.Changeset.atomic(changeset, score: [Ash.Expr.expr(score + 1)])`
+  """
+  def atomic(changeset, atomics) when is_list(atomics) do
+    Enum.reduce(atomics, changeset, fn {key, value}, changeset ->
+      atomic(changeset, key, value)
+    end)
+  end
+
+  @doc """
+  Adds an atomic change to the changeset
+
+  i.e `Ash.Changeset.atomic(changeset, :score, [Ash.Expr.expr(score + 1)])`
+  """
+  def atomic(changeset, key, value) do
+    %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+  end
+
+  @doc """
   Set the result of the action. This will prevent running the underlying datalayer behavior
   """
   @spec set_result(t(), term) :: t()
@@ -1226,6 +1247,28 @@ defmodule Ash.Changeset do
       %{validation: _} = validation, changeset ->
         validate(changeset, validation, tracer, metadata, actor)
     end)
+  end
+
+  @doc false
+  def hydrate_atomic_refs(changeset, actor) do
+    %{
+      changeset
+      | atomics:
+          Enum.map(changeset.atomics, fn {key, expr} ->
+            expr =
+              Ash.Filter.build_filter_from_template(
+                expr,
+                actor,
+                changeset.arguments,
+                changeset.context
+              )
+
+            {:ok, expr} =
+              Ash.Filter.hydrate_refs(expr, %{resource: changeset.resource, public?: false})
+
+            {key, expr}
+          end)
+    }
   end
 
   @doc false

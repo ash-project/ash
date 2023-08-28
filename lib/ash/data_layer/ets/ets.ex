@@ -239,6 +239,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:query_aggregate, :avg}), do: true
   def can?(_, {:query_aggregate, :exists}), do: true
   def can?(_, {:sort, _}), do: true
+  def can?(_, {:atomic, :update}), do: true
   def can?(_, _), do: false
 
   @doc false
@@ -1033,11 +1034,11 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   def dump_to_native(record, attributes) do
     Enum.reduce_while(attributes, {:ok, %{}}, fn attribute, {:ok, attrs} ->
-      case Map.get(record, attribute.name) do
-        nil ->
-          {:cont, {:ok, Map.put(attrs, attribute.name, nil)}}
+      case Map.fetch(record, attribute.name) do
+        :error ->
+          {:cont, {:ok, attrs}}
 
-        value ->
+        {:ok, value} ->
           case Ash.Type.dump_to_native(
                  attribute.type,
                  value,
@@ -1080,10 +1081,21 @@ defmodule Ash.DataLayer.Ets do
   def update(resource, changeset, pkey \\ nil) do
     pkey = pkey || pkey_map(resource, changeset.data)
 
-    with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
-         {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
+    atomic_changes =
+      Enum.reduce_while(changeset.atomics, {:ok, %{}}, fn {key, value}, {:ok, acc} ->
+        case Ash.Expr.eval(value, resource: resource, record: changeset.data) do
+          {:ok, value} ->
+            {:cont, {:ok, Map.put(acc, key, value)}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end)
+
+    with {:ok, atomics} <- atomic_changes,
+         {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          {:ok, record} <-
-           do_update(table, {pkey, record}, resource),
+           do_update(table, {pkey, Map.merge(changeset.attributes, atomics)}, resource),
          {:ok, record} <- cast_record(record, resource) do
       new_pkey = pkey_map(resource, record)
 
@@ -1120,7 +1132,10 @@ defmodule Ash.DataLayer.Ets do
       {:ok, casted} ->
         case ETS.Set.get(table, pkey) do
           {:ok, {_key, record}} when is_map(record) ->
-            case ETS.Set.put(table, {pkey, Map.merge(record, casted)}) do
+            case ETS.Set.put(
+                   table,
+                   {pkey, Map.merge(record, casted)}
+                 ) do
               {:ok, set} ->
                 {_key, record} = ETS.Set.get!(set, pkey)
                 {:ok, record}

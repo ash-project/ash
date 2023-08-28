@@ -13,38 +13,47 @@ defmodule Ash.Actions.Update do
           | {:error, Ash.Changeset.t()}
           | {:error, term}
   def run(api, changeset, action, opts) do
-    {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
+    if changeset.atomics != [] &&
+         !Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :update}) do
+      {:error,
+       Ash.Error.Invalid.AtomicsNotSupported.exception(
+         resource: changeset.resource,
+         action_type: :update
+       )}
+    else
+      {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
 
-    Ash.Tracer.span :action,
-                    Ash.Api.Info.span_name(
-                      api,
-                      changeset.resource,
-                      action.name
-                    ),
-                    opts[:tracer] do
-      metadata = %{
-        api: api,
-        resource: changeset.resource,
-        resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-        actor: opts[:actor],
-        tenant: opts[:tenant],
-        action: action.name,
-        authorize?: opts[:authorize?]
-      }
+      Ash.Tracer.span :action,
+                      Ash.Api.Info.span_name(
+                        api,
+                        changeset.resource,
+                        action.name
+                      ),
+                      opts[:tracer] do
+        metadata = %{
+          api: api,
+          resource: changeset.resource,
+          resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+          actor: opts[:actor],
+          tenant: opts[:tenant],
+          action: action.name,
+          authorize?: opts[:authorize?]
+        }
 
-      Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
+        Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
-      Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(api), :update], metadata do
-        case do_run(api, changeset, action, opts) do
-          {:error, error} ->
-            if opts[:tracer] do
-              opts[:tracer].set_error(Ash.Error.to_error_class(error))
-            end
+        Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(api), :update], metadata do
+          case do_run(api, changeset, action, opts) do
+            {:error, error} ->
+              if opts[:tracer] do
+                opts[:tracer].set_error(Ash.Error.to_error_class(error))
+              end
 
-            {:error, error}
+              {:error, error}
 
-          other ->
-            other
+            other ->
+              other
+          end
         end
       end
     end
@@ -352,6 +361,8 @@ defmodule Ash.Actions.Update do
                   )
                   |> Ash.Changeset.with_hooks(
                     fn changeset ->
+                      changeset = Ash.Changeset.hydrate_atomic_refs(changeset, actor)
+
                       case Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
                              changeset,
                              actor,
@@ -409,7 +420,8 @@ defmodule Ash.Actions.Update do
                                       authorize?: authorize?
                                     )
 
-                                  Ash.Changeset.changing_attributes?(changeset) ->
+                                  Ash.Changeset.changing_attributes?(changeset) ||
+                                      !Enum.empty?(changeset.atomics) ->
                                     changeset =
                                       changeset
                                       |> Ash.Changeset.set_defaults(:update, true)

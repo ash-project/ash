@@ -15,7 +15,7 @@ defmodule Ash.Error.Changes.StaleRecord do
           "#{key}: #{inspect(value)}"
         end)
 
-      "record of #{inspect(error.resource)} with filter `#{filter}`"
+      "Attempted to update stale record of #{inspect(error.resource)} with filter `#{filter}`"
     end
   end
 end
