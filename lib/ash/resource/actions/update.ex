@@ -9,6 +9,7 @@ defmodule Ash.Resource.Actions.Update do
     accept: nil,
     manual: nil,
     manual?: false,
+    atomics: [],
     require_attributes: [],
     delay_global_validations?: false,
     skip_global_validations?: false,

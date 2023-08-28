@@ -5,6 +5,7 @@ defmodule Ash.Test.Actions.UpdateTest do
   import Ash.Changeset
   import Ash.Test
   require Ash.Query
+  require Ash.Expr
 
   defmodule Authorized do
     @moduledoc false
@@ -346,6 +347,23 @@ defmodule Ash.Test.Actions.UpdateTest do
         |> new(%{bio: "bio"})
         |> Api.update!(action: :only_allow_name)
       end
+    end
+  end
+
+  describe "atomics" do
+    test "atomics can be added to a changeset" do
+      author =
+        Author
+        |> new(%{name: "fred"})
+        |> Api.create!()
+
+      author =
+        author
+        |> Ash.Changeset.for_update(:only_allow_name)
+        |> Ash.Changeset.atomic(:name, Ash.Expr.expr(name <> " weasley"))
+        |> Api.update!()
+
+      assert author.name == "fred weasley"
     end
   end
 

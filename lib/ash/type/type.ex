@@ -728,19 +728,23 @@ defmodule Ash.Type do
     if is_atom(type) && :erlang.function_exported(type, :dump_to_native_array, 2) do
       type.dump_to_native_array(term, constraints)
     else
-      single_constraints = constraints[:items] || []
+      if is_nil(term) do
+        {:ok, nil}
+      else
+        single_constraints = constraints[:items] || []
 
-      term
-      |> Enum.reverse()
-      |> Enum.reduce_while({:ok, []}, fn item, {:ok, dumped} ->
-        case dump_to_native(type, item, single_constraints) do
-          :error ->
-            {:halt, :error}
+        term
+        |> Enum.reverse()
+        |> Enum.reduce_while({:ok, []}, fn item, {:ok, dumped} ->
+          case dump_to_native(type, item, single_constraints) do
+            :error ->
+              {:halt, :error}
 
-          {:ok, value} ->
-            {:cont, {:ok, [value | dumped]}}
-        end
-      end)
+            {:ok, value} ->
+              {:cont, {:ok, [value | dumped]}}
+          end
+        end)
+      end
     end
   end
 

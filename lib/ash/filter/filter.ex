@@ -226,8 +226,8 @@ defmodule Ash.Filter do
   def parse_input(
         resource,
         statement,
-        aggregates \\ %{},
-        calculations \\ %{},
+        _aggregates \\ %{},
+        _calculations \\ %{},
         context \\ %{}
       ) do
     context =
@@ -236,8 +236,6 @@ defmodule Ash.Filter do
           resource: resource,
           root_resource: resource,
           relationship_path: [],
-          aggregates: aggregates,
-          calculations: calculations,
           public?: true,
           input?: true,
           data_layer: Ash.DataLayer.data_layer(resource)
@@ -273,8 +271,8 @@ defmodule Ash.Filter do
 
   See `parse/2` for more
   """
-  def parse!(resource, statement, aggregates \\ %{}, calculations \\ %{}, context \\ %{}) do
-    case parse(resource, statement, aggregates, calculations, context) do
+  def parse!(resource, statement, _aggregates \\ %{}, _calculations \\ %{}, context \\ %{}) do
+    case parse(resource, statement, %{}, %{}, context) do
       {:ok, filter} ->
         filter
 
@@ -296,22 +294,6 @@ defmodule Ash.Filter do
   If you are trying to validate a filter supplied from an external/untrusted source,
   be sure to use `parse_input/2` instead! The only difference is that it only accepts
   filters over public attributes/relationships.
-
-  ### Aggregates and calculations
-
-  Since custom aggregates/calculations can be added to a query, and they must be explicitly loaded into
-  a query, the filter parser does not parse them by default. If you wish to support parsing filters
-  over aggregates/calculations, provide them as the third argument. The best way to do this is to build a query
-  with them added/loaded, and then use the `aggregates` and `calculations` keys on the query.
-
-  ### NOTE
-
-  A change was made recently that will automatically load any aggregates/calculations that are used in a filter, but
-  if you are using this function you still need to pass them in.
-
-  ```elixir
-  Ash.Filter.parse(MyResource, [id: 1], query.aggregates, query.calculations)
-  ```
   """
   def parse(resource, statement, aggregates \\ %{}, calculations \\ %{}, context \\ %{})
 
@@ -319,14 +301,12 @@ defmodule Ash.Filter do
     {:ok, nil}
   end
 
-  def parse(resource, statement, aggregates, calculations, original_context) do
+  def parse(resource, statement, _aggregates, _calculations, original_context) do
     context =
       Map.merge(
         %{
           resource: resource,
           relationship_path: [],
-          aggregates: aggregates,
-          calculations: calculations,
           public?: false,
           input?: false,
           root_resource: resource,
@@ -912,8 +892,8 @@ defmodule Ash.Filter do
         filter,
         resource,
         relationship_path \\ [],
-        calculations \\ %{},
-        aggregates \\ %{}
+        _calculations \\ %{},
+        _aggregates \\ %{}
       ) do
     filter
     |> list_refs()
@@ -928,18 +908,14 @@ defmodule Ash.Filter do
     |> Enum.map(& &1.attribute)
     |> calculations_used_by_calculations(
       resource,
-      relationship_path,
-      calculations,
-      aggregates
+      relationship_path
     )
   end
 
   defp calculations_used_by_calculations(
          used_calculations,
          resource,
-         relationship_path,
-         calculations,
-         aggregates
+         relationship_path
        ) do
     used_calculations
     |> Enum.flat_map(fn calculation ->
@@ -947,8 +923,6 @@ defmodule Ash.Filter do
 
       case hydrate_refs(expression, %{
              resource: resource,
-             aggregates: aggregates,
-             calculations: calculations,
              relationship_path: [],
              public?: false
            }) do
@@ -958,14 +932,10 @@ defmodule Ash.Filter do
               used_calculations(
                 expression,
                 resource,
-                relationship_path,
-                calculations,
-                aggregates
+                relationship_path
               ),
               resource,
-              relationship_path,
-              calculations,
-              aggregates
+              relationship_path
             )
 
           [calculation | with_recursive_used]
@@ -1047,7 +1017,7 @@ defmodule Ash.Filter do
   end
 
   def add_to_filter(%__MODULE__{} = base, statement, op, aggregates, calculations, context) do
-    case parse(base.resource, statement, aggregates, calculations, context) do
+    case parse(base.resource, statement, %{}, %{}, context) do
       {:ok, filter} -> add_to_filter(base, filter, op, aggregates, calculations)
       {:error, error} -> {:error, error}
     end
@@ -2253,8 +2223,6 @@ defmodule Ash.Filter do
           relationship_path: ref.relationship_path,
           resource: related,
           root_resource: context.root_resource,
-          aggregates: context.aggregates,
-          calculations: context.calculations,
           public?: context.public?
         }
 
@@ -2930,8 +2898,25 @@ defmodule Ash.Filter do
   end
 
   def do_hydrate_refs(
+        %Ref{relationship_path: relationship_path, resource: nil} = ref,
+        %{resource: resource} = context
+      )
+      when not is_nil(resource) do
+    case Ash.Resource.Info.related(resource, relationship_path || []) do
+      nil ->
+        {:error, "Invalid reference #{inspect(ref)}"}
+
+      related ->
+        do_hydrate_refs(
+          %{ref | resource: related},
+          context
+        )
+    end
+  end
+
+  def do_hydrate_refs(
         %Ref{attribute: attribute} = ref,
-        %{aggregates: aggregates, calculations: calculations} = context
+        context
       )
       when is_atom(attribute) or is_binary(attribute) do
     ref = %{ref | input?: ref.input? || context[:input?] || false}
@@ -2945,12 +2930,6 @@ defmodule Ash.Filter do
         context = %{context | resource: related}
 
         cond do
-          Map.has_key?(aggregates, attribute) ->
-            {:ok, %{ref | attribute: Map.get(aggregates, attribute), resource: related}}
-
-          Map.has_key?(calculations, attribute) ->
-            {:ok, %{ref | attribute: Map.get(calculations, attribute), resource: related}}
-
           attribute = attribute(context, attribute) ->
             {:ok, %{ref | attribute: attribute, resource: related}}
 
@@ -3116,8 +3095,6 @@ defmodule Ash.Filter do
       root_resource: new_resource,
       parent_stack: [context[:root_resource] | context[:parent_stack] || []],
       relationship_path: [],
-      aggregates: %{},
-      calculations: %{},
       public?: context[:public?],
       input?: context[:input?],
       data_layer: Ash.DataLayer.data_layer(new_resource)

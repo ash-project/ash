@@ -687,15 +687,19 @@ defmodule Ash.Filter.Runtime do
       # once per expanded result. I'm not sure what that will
       # look like though.
 
-      case module.calculate([record], opts, context) do
-        [result] ->
-          {:ok, result}
+      if record do
+        case module.calculate([record], opts, context) do
+          [result] ->
+            {:ok, result}
 
-        {:ok, [result]} ->
-          {:ok, result}
+          {:ok, [result]} ->
+            {:ok, result}
 
-        _ ->
-          {:ok, nil}
+          _ ->
+            {:ok, nil}
+        end
+      else
+        :unknown
       end
     end
   end
