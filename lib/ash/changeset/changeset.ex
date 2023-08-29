@@ -747,20 +747,20 @@ defmodule Ash.Changeset do
   @doc """
   Adds atomic changes to the changeset
 
-  i.e `Ash.Changeset.atomic(changeset, score: [Ash.Expr.expr(score + 1)])`
+  i.e `Ash.Changeset.atomic_update(changeset, score: [Ash.Expr.expr(score + 1)])`
   """
-  def atomic(changeset, atomics) when is_list(atomics) do
+  def atomic_update(changeset, atomics) when is_list(atomics) do
     Enum.reduce(atomics, changeset, fn {key, value}, changeset ->
-      atomic(changeset, key, value)
+      atomic_update(changeset, key, value)
     end)
   end
 
   @doc """
   Adds an atomic change to the changeset
 
-  i.e `Ash.Changeset.atomic(changeset, :score, [Ash.Expr.expr(score + 1)])`
+  i.e `Ash.Changeset.atomic_update(changeset, :score, [Ash.Expr.expr(score + 1)])`
   """
-  def atomic(changeset, key, value) do
+  def atomic_update(changeset, key, value) do
     %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
   end
 

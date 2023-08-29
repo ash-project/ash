@@ -3,6 +3,6 @@ defmodule Ash.Resource.Change.Atomic do
   use Ash.Resource.Change
 
   def change(changeset, opts, _) do
-    Ash.Changeset.atomic(changeset, opts[:attribute], opts[:expr])
+    Ash.Changeset.atomic_update(changeset, opts[:attribute], opts[:expr])
   end
 end

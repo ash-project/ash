@@ -121,24 +121,7 @@ defmodule Ash.Resource.Change.Builtins do
     {Ash.Resource.Change.GetAndLock, [lock: lock]}
   end
 
-  @doc """
-  Sets the attribute to the value provided.
-
-  If a zero argument function is provided, it is called to determine the value.
-
-    Use `arg(:argument_name)` to use the value of the given argument. If the argument is not supplied then nothing happens.
-
-  ## Options
-
-  #{Spark.OptionsHelpers.docs(Keyword.drop(@set_attribute_opts, [:attribute, :value]))}
-
-  ## Examples
-
-      change set_attribute(:active, false)
-      change set_attribute(:opened_at, &DateTime.utc_now/0)
-      change set_attribute(:status, arg(:status))
-      change set_attribute(:encrypted_data, arg(:data), set_when_nil?: false)
-  """
+  @doc false
   def set_attribute_opts do
     @set_attribute_opts
   end
@@ -162,6 +145,24 @@ defmodule Ash.Resource.Change.Builtins do
     {Ash.Resource.Change.Increment, opts}
   end
 
+  @doc """
+  Sets the attribute to the value provided.
+
+  If a zero argument function is provided, it is called to determine the value.
+
+  Use `arg(:argument_name)` to use the value of the given argument. If the argument is not supplied then nothing happens.
+
+  ## Options
+
+  #{Spark.OptionsHelpers.docs(Keyword.drop(@set_attribute_opts, [:attribute, :value]))}
+
+  ## Examples
+
+  change set_attribute(:active, false)
+  change set_attribute(:opened_at, &DateTime.utc_now/0)
+  change set_attribute(:status, arg(:status))
+  change set_attribute(:encrypted_data, arg(:data), set_when_nil?: false)
+  """
   @spec set_attribute(
           relationship :: atom,
           (-> term) | {:_arg, :status} | term(),
@@ -175,6 +176,14 @@ defmodule Ash.Resource.Change.Builtins do
       |> Keyword.put(:value, value)
 
     {Ash.Resource.Change.SetAttribute, opts}
+  end
+
+  @doc """
+  Updates an attribute using an expression. See `Ash.Changeset.atomic_update/3` for more.
+  """
+  @spec atomic_update(attribute :: atom, expr :: Ash.Expr.t()) :: Ash.Resource.Change.ref()
+  def atomic_update(attribute, expr) do
+    {Ash.Resource.Change.Atomic, attribute: attribute, expr: expr}
   end
 
   @doc """

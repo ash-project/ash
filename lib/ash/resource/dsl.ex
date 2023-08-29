@@ -412,24 +412,6 @@ defmodule Ash.Resource.Dsl do
     end
   end
 
-  @set %Spark.Dsl.Entity{
-    name: :set,
-    describe: """
-    Set an attribute to the result of an expression.
-
-    This as a thin wrapper over create an `Ash.Resource.Change` that defines
-    `atomic/2`.
-    """,
-    examples: [
-      "set :score, expr(score + 1)",
-      "set :title, expr(some_calc(some_arg: :foo))"
-    ],
-    target: Set,
-    schema: Ash.Resource.Change.atomic_schema(),
-    transform: {Set, :transform, []},
-    args: [:attribute, :expr]
-  }
-
   @validate %Spark.Dsl.Entity{
     name: :validate,
     describe: """
@@ -614,8 +596,7 @@ defmodule Ash.Resource.Dsl do
     entities: [
       changes: [
         @action_change,
-        @action_validate,
-        @set
+        @action_validate
       ],
       metadata: [
         @metadata
@@ -658,8 +639,7 @@ defmodule Ash.Resource.Dsl do
     entities: [
       changes: [
         @action_change,
-        @action_validate,
-        @set
+        @action_validate
       ],
       metadata: [
         @metadata

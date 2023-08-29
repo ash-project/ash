@@ -6,6 +6,23 @@ defmodule Ash do
   """
 
   @doc """
+  Converts a context map to opts to be passed into an action.
+  """
+  def context_to_opts(map, add_to \\ []) when is_map(map) do
+    add_to
+    |> add_if_present(map, :actor)
+    |> add_if_present(map, :authorize?)
+    |> add_if_present(map, :tracer)
+  end
+
+  defp add_if_present(opts, map, key) do
+    case Map.fetch(map, key) do
+      {:ok, value} -> Keyword.put(opts, key, value)
+      :error -> opts
+    end
+  end
+
+  @doc """
   Gets all of the ash context so it can be set into a new process.
 
   Use `transfer_context/1` in the new process to set the context.

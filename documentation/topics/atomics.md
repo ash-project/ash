@@ -7,7 +7,7 @@ For example:
 ```elixir
 update :increment_score do
   argument :points, :integer, allow_nil?: false
-  set :score, expr(score + ^arg(:points))
+  change atomic_update(:score, expr(score + ^arg(:points)))
 end
 ```
 
@@ -24,7 +24,7 @@ Atomics are new, and we will be progressively enhancing various features to supp
 
 ```elixir
 changeset
-|> Ash.Changeset.atomic(:score, Ash.Expr.expr(score + 1))
+|> Ash.Changeset.atomic_update(:score, Ash.Expr.expr(score + 1))
 |> Api.update!()
 ```
 

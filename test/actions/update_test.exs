@@ -360,7 +360,7 @@ defmodule Ash.Test.Actions.UpdateTest do
       author =
         author
         |> Ash.Changeset.for_update(:only_allow_name)
-        |> Ash.Changeset.atomic(:name, Ash.Expr.expr(name <> " weasley"))
+        |> Ash.Changeset.atomic_update(:name, Ash.Expr.expr(name <> " weasley"))
         |> Api.update!()
 
       assert author.name == "fred weasley"
