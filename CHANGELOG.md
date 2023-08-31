@@ -5,6 +5,35 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.5](https://github.com/ash-project/ash/compare/v2.14.4...v2.14.5) (2023-08-31)
+
+
+
+
+### Bug Fixes:
+
+* action.update_default -> field.update_default typo
+
+* ensure that errors/records return the proper value in bulk creates
+
+* properly optimized nested `get_path` calls
+
+* simplify and fix duplicate detection in embedded resources
+
+* better handling of runtime maps & lists
+
+* properly handle `as` option for calculations in calculation dependencies
+
+### Improvements:
+
+* add `Ash.context_to_opts/1-2`
+
+* add topic docs for atomics
+
+* implement atomics, expression-based changes (#682)
+
+* hide `__order__` and `__lateral_join_source__` on records
+
 ## [v2.14.4](https://github.com/ash-project/ash/compare/v2.14.3...v2.14.4) (2023-08-22)
 
 
