@@ -47,9 +47,19 @@ defmodule Ash.Query.Ref do
           name -> name
         end
 
+      name =
+        if is_binary(name) or is_atom(name) do
+          to_string(name)
+        else
+          inspect(name)
+        end
+
       case ref.relationship_path do
-        [] -> to_string(name)
-        path -> Enum.join(path, ".") <> "." <> "#{name}"
+        [] ->
+          name
+
+        path ->
+          Enum.join(path, ".") <> "." <> "#{name}"
       end
     end
   end

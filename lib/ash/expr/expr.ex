@@ -156,11 +156,6 @@ defmodule Ash.Expr do
      Enum.map(keys, fn {key, value} -> {do_expr(key, escape?), do_expr(value, escape?)} end)}
   end
 
-  # def do_expr({{:., _, [at_path, agg]}, _, [path, expr]}, escape?)
-  #     when agg in @inline_aggregates do
-  #   expr_with_at_path(path, at_path, expr, Ash.Query.InlineAggregate, escape?)
-  # end
-
   def do_expr({{:., _, [at_path, :exists]}, _, [path, expr]}, escape?) do
     expr_with_at_path(path, at_path, expr, Ash.Query.Exists, escape?)
   end

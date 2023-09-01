@@ -2741,7 +2741,7 @@ defmodule Ash.Filter do
       with {:ok, agg} <-
              Ash.Query.Aggregate.new(
                resource,
-               to_string(System.unique_integer()),
+               agg_name(field, opts),
                kind,
                Keyword.put(opts, :path, path)
              ) do
@@ -2835,6 +2835,37 @@ defmodule Ash.Filter do
             other
         end
     end
+  end
+
+  # This kind of sucks, but anonymous aggregates need consistent names currently.
+  # We may want to move this into the data layer to be responsible for setting these
+  # names
+  defp agg_name(kind, opts) do
+    opts_string =
+      opts
+      |> Keyword.take([
+        :path,
+        :query,
+        :field,
+        :default,
+        :filterable?,
+        :type,
+        :constraints,
+        :implementation,
+        :read_action,
+        :uniq?,
+        :authorize?
+      ])
+      |> Keyword.reject(fn {_key, value} -> is_nil(value) end)
+      |> case do
+        [] ->
+          ""
+
+        opts ->
+          inspect(opts)
+      end
+
+    "#{kind}(#{Enum.join(opts[:path] || [], ".")}#{opts_string})"
   end
 
   defp refs_to_path(%Ref{relationship_path: relationship_path, attribute: attribute}) do
