@@ -135,14 +135,14 @@ defmodule Ash.Page.Keyset do
   defp operator(:after, :asc_nils_first), do: {:gt, true}
   defp operator(:after, :asc_nils_last), do: {:gt, false}
   defp operator(:after, :desc), do: {:lt, true}
-  defp operator(:after, :desc_nulls_first), do: {:lt}
-  defp operator(:after, :desc_nulls_last), do: {:lt, false}
+  defp operator(:after, :desc_nils_first), do: {:lt, true}
+  defp operator(:after, :desc_nils_last), do: {:lt, false}
   defp operator(:before, :asc), do: {:lt, true}
   defp operator(:before, :asc_nils_first), do: {:lt, false}
   defp operator(:before, :asc_nils_last), do: {:lt, true}
   defp operator(:before, :desc), do: {:gt, false}
-  defp operator(:before, :desc_nulls_first), do: {:gt, false}
-  defp operator(:before, :desc_nulls_last), do: {:gt, true}
+  defp operator(:before, :desc_nils_first), do: {:gt, false}
+  defp operator(:before, :desc_nils_last), do: {:gt, true}
 
   defp zip_fields(pkey, values, acc \\ [])
   defp zip_fields([], [], acc), do: {:ok, Enum.reverse(acc)}

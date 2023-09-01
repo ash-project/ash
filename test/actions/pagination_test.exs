@@ -325,7 +325,7 @@ defmodule Ash.Actions.PaginationTest do
       assert Enum.map(second_results, & &1.name) == ~w(3 5 7 9)
     end
 
-    test "can be paged through when a non-nil value is the keyset using nils_first" do
+    test "can be paged through when a non-nil value is the keyset using asc_nils_first" do
       %{results: first_results} =
         User
         |> Ash.Query.sort(subname: :asc_nils_first, name: :asc_nils_first)
@@ -344,7 +344,26 @@ defmodule Ash.Actions.PaginationTest do
       assert Enum.map(second_results, & &1.name) == ~w(0 2 4 6 8)
     end
 
-    test "can be paged through  when a nil value is the keyset using nils_first" do
+    test "can be paged through when a non-nil value is the keyset using desc_nils_first" do
+      %{results: first_results} =
+        User
+        |> Ash.Query.sort(subname: :desc_nils_first, name: :desc_nils_first)
+        |> Api.read!(action: :keyset, page: [limit: 5])
+
+      assert Enum.map(first_results, & &1.name) == ~w(9 7 5 3 1)
+
+      keyset =
+        first_results |> List.last(first_results) |> Map.get(:__metadata__) |> Map.get(:keyset)
+
+      %{results: second_results} =
+        User
+        |> Ash.Query.sort(subname: :desc_nils_first, name: :desc_nils_first)
+        |> Api.read!(action: :keyset, page: [limit: 5, after: keyset])
+
+      assert Enum.map(second_results, & &1.name) == ~w(8 6 4 2 0)
+    end
+
+    test "can be paged through  when a nil value is the keyset using asc_nils_first" do
       %{results: first_results} =
         User
         |> Ash.Query.sort(subname: :asc_nils_first, name: :asc_nils_first)
@@ -361,6 +380,25 @@ defmodule Ash.Actions.PaginationTest do
         |> Api.read!(action: :keyset, page: [limit: 5, after: keyset])
 
       assert Enum.map(second_results, & &1.name) == ~w(2 4 6 8)
+    end
+
+    test "can be paged through  when a nil value is the keyset using desc_nils_first" do
+      %{results: first_results} =
+        User
+        |> Ash.Query.sort(subname: :desc_nils_first, name: :desc_nils_first)
+        |> Api.read!(action: :keyset, page: [limit: 6])
+
+      assert Enum.map(first_results, & &1.name) == ~w(9 7 5 3 1 8)
+
+      keyset =
+        first_results |> List.last(first_results) |> Map.get(:__metadata__) |> Map.get(:keyset)
+
+      %{results: second_results} =
+        User
+        |> Ash.Query.sort(subname: :desc_nils_first, name: :desc_nils_first)
+        |> Api.read!(action: :keyset, page: [limit: 5, after: keyset])
+
+      assert Enum.map(second_results, & &1.name) == ~w(6 4 2 0)
     end
   end
 
