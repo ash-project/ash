@@ -2738,12 +2738,14 @@ defmodule Ash.Filter do
           opts
         end
 
+      opts = Keyword.put(opts, :path, path)
+
       with {:ok, agg} <-
              Ash.Query.Aggregate.new(
                resource,
-               agg_name(field, opts),
+               agg_name(kind, opts),
                kind,
-               Keyword.put(opts, :path, path)
+               opts
              ) do
         {:ok,
          %Ref{
@@ -2844,7 +2846,6 @@ defmodule Ash.Filter do
     opts_string =
       opts
       |> Keyword.take([
-        :path,
         :query,
         :field,
         :default,
