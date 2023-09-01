@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.6](https://github.com/ash-project/ash/compare/v2.14.5...v2.14.6) (2023-09-01)
+
+
+
+
+### Bug Fixes:
+
+* give anonymous aggregates constant names
+
+* sort operator names in keyset (#684)
+
 ## [v2.14.5](https://github.com/ash-project/ash/compare/v2.14.4...v2.14.5) (2023-08-31)
 
 
