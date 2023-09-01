@@ -135,7 +135,7 @@ defmodule Ash.Page.Keyset do
   defp operator(:after, :asc_nils_first), do: {:gt, true}
   defp operator(:after, :asc_nils_last), do: {:gt, false}
   defp operator(:after, :desc), do: {:lt, true}
-  defp operator(:after, :desc_nils_first), do: {:lt}
+  defp operator(:after, :desc_nils_first), do: {:lt, true}
   defp operator(:after, :desc_nils_last), do: {:lt, false}
   defp operator(:before, :asc), do: {:lt, true}
   defp operator(:before, :asc_nils_first), do: {:lt, false}
