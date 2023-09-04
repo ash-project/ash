@@ -596,10 +596,8 @@ defmodule Ash.Changeset do
       end
 
     action =
-      case action do
-        name when is_atom(name) -> Ash.Resource.Info.action(changeset.resource, action)
-        action -> action
-      end
+      get_action_entity(changeset.resource, action) ||
+        raise_no_action(changeset.resource, action, :create)
 
     changeset
     |> set_context(%{
@@ -676,9 +674,11 @@ defmodule Ash.Changeset do
             """
       end
 
-    if changeset.valid? do
-      action = get_action_entity(changeset.resource, action_or_name)
+    action =
+      get_action_entity(changeset.resource, action_or_name) ||
+        raise_no_action(changeset.resource, action_or_name, :destroy)
 
+    if changeset.valid? do
       if action do
         if action.soft? do
           do_for_action(%{changeset | action_type: :destroy}, action, params, opts)
