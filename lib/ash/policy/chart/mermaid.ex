@@ -1,8 +1,6 @@
 defmodule Ash.Policy.Chart.Mermaid do
   @moduledoc "Generates policy mermaid charts"
 
-  # TODO: after each bypass, I think we need another
-  # at_least_one_condition
   def chart(resource) do
     policies = Ash.Policy.Info.policies(resource)
     policy_count = Enum.count(policies)

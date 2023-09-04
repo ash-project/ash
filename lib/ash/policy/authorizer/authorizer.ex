@@ -393,6 +393,17 @@ defmodule Ash.Policy.Authorizer do
     transformers: @transformers
 
   @impl true
+  def explain(dsl) do
+    """
+    ## Policies
+
+    ```mermaid
+    #{Ash.Policy.Chart.Mermaid.chart(dsl)}
+    ```
+    """
+  end
+
+  @impl true
   def exception({:changeset_doesnt_match_filter, filter}, state) do
     Ash.Error.Forbidden.Policy.exception(
       scenarios: Map.get(state, :scenarios),
