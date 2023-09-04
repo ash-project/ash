@@ -7,6 +7,69 @@ defmodule Ash.Policy.Chart.Mermaid do
     policies = Ash.Policy.Info.policies(resource)
     policy_count = Enum.count(policies)
 
+    at_least_one_policy =
+      Enum.flat_map(policies, fn policy ->
+        case Enum.reject(List.wrap(policy.condition), fn
+               %{check_module: Ash.Policy.Check.Static, check_opts: opts} ->
+                 opts[:result] == true
+
+               {Ash.Policy.Check.Static, opts} ->
+                 opts[:result] == true
+
+               _ ->
+                 false
+             end) do
+          [] ->
+            []
+
+          conditions ->
+            conditions
+            |> Enum.map(fn condition ->
+              {mod, opts} =
+                case condition do
+                  %{module: module, opts: opts} ->
+                    {module, opts}
+
+                  {module, opts} ->
+                    {module, opts}
+                end
+
+              mod.describe(opts)
+            end)
+            |> Enum.intersperse(" and ")
+            |> Enum.join()
+            |> List.wrap()
+        end
+      end)
+      |> case do
+        [one] ->
+          one
+
+        [] ->
+          nil
+
+        multiple ->
+          Enum.map_join(multiple, "\nor ", fn one ->
+            if String.contains?(one, " and ") do
+              "(#{one})"
+            else
+              one
+            end
+          end)
+      end
+
+    at_least_one_policy =
+      if at_least_one_policy do
+        """
+        subgraph at least one policy applies
+        direction TB
+        at_least_one_policy[#{quote_and_escape(at_least_one_policy)}]
+        end
+        at_least_one_policy--False-->Forbidden
+        at_least_one_policy--True-->0_conditions
+        """
+      end
+
     policy_text =
       policies
       |> Enum.with_index()
@@ -35,7 +98,7 @@ defmodule Ash.Policy.Chart.Mermaid do
 
         false_destination =
           if last_policy? do
-            "Forbidden"
+            "Authorized"
           else
             next_policy
           end
@@ -173,6 +236,7 @@ defmodule Ash.Policy.Chart.Mermaid do
 
     """
     flowchart TB
+    #{at_least_one_policy}
     #{policy_text}
     subgraph results[Results]
       Authorized([Authorized])
