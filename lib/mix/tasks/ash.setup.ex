@@ -6,6 +6,8 @@ defmodule Mix.Tasks.Ash.Setup do
 
   @shortdoc "Runs all setup tasks for any extension on any resource/api in your application."
   def run(argv) do
+    Mix.Task.run("compile")
+
     argv
     |> Ash.Mix.Tasks.Helpers.extensions!()
     |> Enum.map(fn extension ->

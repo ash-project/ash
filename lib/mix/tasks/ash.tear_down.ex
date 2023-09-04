@@ -6,6 +6,8 @@ defmodule Mix.Tasks.Ash.TearDown do
 
   @shortdoc "Runs all tear_down tasks for any extension on any resource/api in your application."
   def run(argv) do
+    Mix.Task.run("compile")
+
     argv
     |> Ash.Mix.Tasks.Helpers.extensions!()
     |> Enum.map(fn extension ->

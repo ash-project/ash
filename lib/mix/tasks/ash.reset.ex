@@ -6,6 +6,7 @@ defmodule Mix.Tasks.Ash.Reset do
 
   @shortdoc "Runs all tear down & setup tasks for any extension on any resource/api in your application."
   def run(argv) do
+    Mix.Task.run("compile")
     Mix.Task.run("ash.tear_down", argv)
     Mix.Task.run("ash.setup", argv)
   end
