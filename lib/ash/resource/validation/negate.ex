@@ -29,7 +29,8 @@ defmodule Ash.Resource.Validation.Negate do
             module -> module
           end
 
-        raise ArgumentError, "#{module} must implement `describe/1` function to be used in #{__MODULE__}"
+        raise ArgumentError,
+              "#{inspect(module)} must implement `describe/1` function to be used in #{__MODULE__}"
 
       error ->
         error
@@ -55,11 +56,13 @@ defmodule Ash.Resource.Validation.Negate do
   @impl true
   def describe(opts) do
     {validation, validation_opts} = opts[:validation]
-    [message: message, vars: vars] = validation.describe(validation_opts)
 
-    [
-      message: "must not pass validation: \"#{message}\"",
-      vars: vars
-    ]
+    case validation.describe(validation_opts) do
+      message when is_binary(message) ->
+        [message: message, vars: []]
+
+      options ->
+        [message: "must not pass validation: #{options[:message]}", vars: options[:vars] || []]
+    end
   end
 end

@@ -61,7 +61,9 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
       expected_message =
         "#{CustomValidationNoDescribe} must implement `describe/1` function to be used in #{Negate}"
 
-      {:error, ^expected_message} = Negate.init(validation: CustomValidationNoDescribe)
+      assert_raise ArgumentError, ~r/must implement `describe\/1`/, fn ->
+        Negate.init(validation: CustomValidationNoDescribe)
+      end
     end
   end
 end

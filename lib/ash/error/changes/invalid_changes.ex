@@ -2,7 +2,7 @@ defmodule Ash.Error.Changes.InvalidChanges do
   @moduledoc "Used when a change is provided that covers multiple attributes/relationships"
   use Ash.Error.Exception
 
-  def_ash_error([:fields, :message, :validation], class: :invalid)
+  def_ash_error([:fields, :message, :validation, :value], class: :invalid)
 
   defimpl Ash.ErrorKind do
     def id(_), do: Ash.UUID.generate()

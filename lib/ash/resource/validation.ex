@@ -42,7 +42,7 @@ defmodule Ash.Resource.Validation do
 
   @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, String.t()}
   @callback validate(Ash.Changeset.t(), Keyword.t()) :: :ok | {:error, term}
-  @callback describe(Keyword.t()) :: [message: String.t(), vars: Keyword.t()]
+  @callback describe(Keyword.t()) :: String.t() | [{:message, String.t()} | {:vars, Keyword.t()}]
   @callback atomic?(Keyword.t()) :: boolean
 
   @optional_callbacks describe: 1
