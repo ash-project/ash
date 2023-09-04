@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.10](https://github.com/ash-project/ash/compare/v2.14.9...v2.14.10) (2023-09-04)
+
+
+
+
+### Improvements:
+
+* raise runtime error on misuse of `negate`
+
 ## [v2.14.9](https://github.com/ash-project/ash/compare/v2.14.8...v2.14.9) (2023-09-04)
 
 
