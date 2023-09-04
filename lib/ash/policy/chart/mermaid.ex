@@ -239,8 +239,8 @@ defmodule Ash.Policy.Chart.Mermaid do
     #{at_least_one_policy}
     #{policy_text}
     subgraph results[Results]
-      Authorized([Authorized])
-      Forbidden([Forbidden])
+    Authorized([Authorized])
+    Forbidden([Forbidden])
     end
     """
     |> remove_always_links()
@@ -279,7 +279,14 @@ defmodule Ash.Policy.Chart.Mermaid do
             false_to = find_branch_to(lines, node_id, "False")
 
             if true_to && false_to && true_to == false_to do
-              {node_id, true_to}
+              phrase =
+                if false_to in ["Authorized", "Forbidden"] do
+                  ""
+                else
+                  "Or"
+                end
+
+              {node_id, true_to, phrase}
             end
 
           _ ->
@@ -291,11 +298,12 @@ defmodule Ash.Policy.Chart.Mermaid do
       nil ->
         text
 
-      {from, to} ->
+      {from, to, phrase} ->
         lines
         |> delete_branches(from, to)
-        |> Enum.concat(["#{from}--Or-->#{to}"])
+        |> Enum.concat(["#{from}--#{phrase}-->#{to}"])
         |> Enum.join("\n")
+        |> collapse_constant_nodes()
     end
   end
 
@@ -353,7 +361,8 @@ defmodule Ash.Policy.Chart.Mermaid do
   # end
 
   defp is_node?(line) do
-    not (String.contains?(line, "--True-->") or String.contains?(line, "--False-->"))
+    not (String.contains?(line, "--True-->") or String.contains?(line, "--False-->")) &&
+      String.contains?(line, "{\"")
   end
 
   defp quote_and_escape(text) do
