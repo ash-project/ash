@@ -44,6 +44,9 @@ defmodule Mix.Tasks.Ash.GeneratePolicyCharts do
     format = Keyword.get(opts, :format, "plain")
 
     resources()
+    |> Stream.filter(fn resource ->
+      Ash.Policy.Authorizer in Spark.extensions(resource)
+    end)
     |> Task.async_stream(
       fn resource ->
         source = resource.module_info(:compile)[:source]
