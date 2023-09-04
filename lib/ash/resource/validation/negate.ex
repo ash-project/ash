@@ -29,7 +29,7 @@ defmodule Ash.Resource.Validation.Negate do
             module -> module
           end
 
-        {:error, "#{module} must implement `describe/1` function to be used in #{__MODULE__}"}
+        raise ArgumentError, "#{module} must implement `describe/1` function to be used in #{__MODULE__}"
 
       error ->
         error
