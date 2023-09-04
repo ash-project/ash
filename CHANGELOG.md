@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.9](https://github.com/ash-project/ash/compare/v2.14.8...v2.14.9) (2023-09-04)
+
+
+
+
+### Bug Fixes:
+
+* compile before ash tasks
+
 ## [v2.14.8](https://github.com/ash-project/ash/compare/v2.14.7...v2.14.8) (2023-09-04)
 
 
