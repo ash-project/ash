@@ -7,60 +7,6 @@ defmodule Ash.Policy.Chart.Mermaid do
     policies = Ash.Policy.Info.policies(resource)
     policy_count = Enum.count(policies)
 
-    at_least_one_policy =
-      Enum.flat_map(policies, fn policy ->
-        case Enum.reject(List.wrap(policy.condition), fn
-               %{check_module: Ash.Policy.Check.Static, check_opts: opts} ->
-                 opts[:result] == true
-
-               {Ash.Policy.Check.Static, opts} ->
-                 opts[:result] == true
-
-               _ ->
-                 false
-             end) do
-          [] ->
-            []
-
-          conditions ->
-            conditions
-            |> Enum.map(fn condition ->
-              {mod, opts} =
-                case condition do
-                  %{module: module, opts: opts} ->
-                    {module, opts}
-
-                  {module, opts} ->
-                    {module, opts}
-                end
-
-              mod.describe(opts)
-            end)
-            |> Enum.intersperse(" and ")
-        end
-      end)
-      |> case do
-        [one] ->
-          one
-
-        [] ->
-          nil
-
-        multiple ->
-          Enum.map_join(multiple, " or ", fn one ->
-            "(#{one})"
-          end)
-      end
-
-    at_least_one_policy =
-      if at_least_one_policy do
-        """
-        at_least_one_policy[#{quote_and_escape(at_least_one_policy)}]
-        at_least_one_policy--False-->Forbidden
-        at_least_one_policy--True-->0_conditions
-        """
-      end
-
     policy_text =
       policies
       |> Enum.with_index()
@@ -227,7 +173,6 @@ defmodule Ash.Policy.Chart.Mermaid do
 
     """
     flowchart TB
-    #{at_least_one_policy}
     #{policy_text}
     subgraph results[Results]
       Authorized([Authorized])
@@ -283,59 +228,49 @@ defmodule Ash.Policy.Chart.Mermaid do
         text
 
       {from, to} ->
-        node_description = node_description(lines, from)
-
         lines
         |> delete_branches(from, to)
-        |> remap_branches_to(from, to)
-        |> delete_node(from)
-        |> update_node_description(to, fn description ->
-          if String.starts_with?(description, "(") do
-            "(#{node_description})\nor #{description}"
-          else
-            "(#{node_description})\nor (#{description})"
-          end
-        end)
+        |> Enum.concat(["#{from}--Or-->#{to}"])
         |> Enum.join("\n")
     end
   end
 
-  defp remap_branches_to(lines, from, to) do
-    Enum.map(lines, fn line ->
-      cond do
-        String.ends_with?(line, "--True-->#{from}") ->
-          line
-          |> String.trim_trailing("--True-->#{from}")
-          |> Kernel.<>("--True-->#{to}")
+  # defp remap_branches_to(lines, from, to) do
+  #   Enum.map(lines, fn line ->
+  #     cond do
+  #       String.ends_with?(line, "--True-->#{from}") ->
+  #         line
+  #         |> String.trim_trailing("--True-->#{from}")
+  #         |> Kernel.<>("--True-->#{to}")
 
-        String.ends_with?(line, "--False-->#{from}") ->
-          line
-          |> String.trim_trailing("--False-->#{from}")
-          |> Kernel.<>("--False-->#{to}")
+  #       String.ends_with?(line, "--False-->#{from}") ->
+  #         line
+  #         |> String.trim_trailing("--False-->#{from}")
+  #         |> Kernel.<>("--False-->#{to}")
 
-        true ->
-          line
-      end
-    end)
-  end
+  #       true ->
+  #         line
+  #     end
+  #   end)
+  # end
 
-  defp delete_node(lines, id) do
-    Enum.reject(lines, fn line ->
-      String.starts_with?(line, "#{id}{")
-    end)
-  end
+  # defp delete_node(lines, id) do
+  #   Enum.reject(lines, fn line ->
+  #     String.starts_with?(line, "#{id}{")
+  #   end)
+  # end
 
-  defp update_node_description(lines, id, func) do
-    Enum.map(lines, fn line ->
-      if String.starts_with?(line, "#{id}{") do
-        description = line |> String.trim_leading("#{id}{\\\"") |> String.trim_trailing("\\\"}")
+  # defp update_node_description(lines, id, func) do
+  #   Enum.map(lines, fn line ->
+  #     if String.starts_with?(line, "#{id}{") do
+  #       description = line |> String.trim_leading("#{id}{\\\"") |> String.trim_trailing("\\\"}")
 
-        "#{id}{#{quote_and_escape(func.(description))}}"
-      else
-        line
-      end
-    end)
-  end
+  #       "#{id}{#{quote_and_escape(func.(description))}}"
+  #     else
+  #       line
+  #     end
+  #   end)
+  # end
 
   defp delete_branches(lines, from, to) do
     Enum.reject(lines, fn line ->
@@ -343,15 +278,15 @@ defmodule Ash.Policy.Chart.Mermaid do
     end)
   end
 
-  defp node_description(lines, node_id) do
-    Enum.find_value(lines, fn line ->
-      if is_node?(line) do
-        if String.starts_with?(line, "#{node_id}{") do
-          line |> String.trim_leading("#{node_id}{") |> String.trim_trailing("}")
-        end
-      end
-    end)
-  end
+  # defp node_description(lines, node_id) do
+  #   Enum.find_value(lines, fn line ->
+  #     if is_node?(line) do
+  #       if String.starts_with?(line, "#{node_id}{") do
+  #         line |> String.trim_leading("#{node_id}{") |> String.trim_trailing("}")
+  #       end
+  #     end
+  #   end)
+  # end
 
   defp is_node?(line) do
     not (String.contains?(line, "--True-->") or String.contains?(line, "--False-->"))

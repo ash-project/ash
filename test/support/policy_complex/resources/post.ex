@@ -7,6 +7,10 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
     ]
 
   policies do
+    bypass actor_attribute_equals(:super_user, true) do
+      authorize_if always()
+    end
+
     policy action_type(:read) do
       authorize_if relates_to_actor_via(:author)
       authorize_if relates_to_actor_via([:author, :friends])
