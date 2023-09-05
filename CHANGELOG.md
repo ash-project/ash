@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.12](https://github.com/ash-project/ash/compare/v2.14.11...v2.14.12) (2023-09-05)
+
+
+
+
+### Improvements:
+
+* Allow resources to opt out of the primary key requirement. (#687)
+
 ## [v2.14.11](https://github.com/ash-project/ash/compare/v2.14.10...v2.14.11) (2023-09-04)
 
 
