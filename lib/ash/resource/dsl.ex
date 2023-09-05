@@ -811,6 +811,22 @@ defmodule Ash.Resource.Dsl do
         type: {:list, :module},
         doc:
           "A list of notifiers that require no DSL. Can be used to avoid compile time dependencies on notifiers"
+      ],
+      require_primary_key?: [
+        type: :boolean,
+        required: false,
+        default: true,
+        doc: """
+        Allow the resource to be used without any primary key fields.
+
+        ### Warning
+
+        Lots of Ash and Ash extensions assume that every resource has a primary key and this is likely to break a lot of features.
+
+        If you run into a breakage please [open an issue](https://github.com/ash-project/ash/issues/new) and we'll take a look at it.
+
+        Disable at your peril.
+        """
       ]
     ]
   }

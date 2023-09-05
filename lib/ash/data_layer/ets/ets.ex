@@ -210,10 +210,16 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:aggregate, :min}), do: true
   def can?(_, {:aggregate, :avg}), do: true
   def can?(_, {:aggregate, :exists}), do: true
+
   def can?(_, :create), do: true
   def can?(_, :read), do: true
-  def can?(_, :update), do: true
-  def can?(_, :destroy), do: true
+
+  def can?(resource, action_type) when action_type in ~w[update destroy]a do
+    resource
+    |> Ash.Resource.Info.primary_key()
+    |> Enum.any?()
+  end
+
   def can?(_, :sort), do: true
   def can?(_, :filter), do: true
   def can?(_, :limit), do: true

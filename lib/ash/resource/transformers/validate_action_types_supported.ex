@@ -18,10 +18,15 @@ defmodule Ash.Resource.Transformers.ValidateActionTypesSupported do
       resource = Transformer.get_persisted(dsl_state, :module)
 
       unless data_layer && data_layer.can?(resource, action.type) do
+        message = """
+        `#{inspect(data_layer)}` does not support `#{action.type}` actions on this resource.
+
+        This is either because of a limitation in the data layer, or specific configuration of the resource.
+        """
+
         raise DslError,
           module: resource,
-          message:
-            "Data layer #{Ash.DataLayer.data_layer(resource)} for #{inspect(resource)} does not support #{action.type} actions",
+          message: message,
           path: [:actions, action.type, action.name]
       end
     end)
