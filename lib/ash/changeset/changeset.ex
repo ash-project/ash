@@ -284,9 +284,9 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Returns a new changeset over a resource. Prefer `for_action` or `for_create`, etc. over this function if possible.
+  Returns a new changeset over a resource.
 
-  Warning: You almost always want to use `for_action/4` (or `for_create`, etc...)
+  *Warning*: You almost always want to use `for_action` or `for_create`, etc. over this function if possible.
 
   You can use this to start a changeset and make a few changes prior to calling `for_action`. For example:
 
@@ -2252,7 +2252,7 @@ defmodule Ash.Changeset do
     )
   end
 
-  @doc "Gets the value of an argument provided to the changeset"
+  @doc "Gets the value of an argument provided to the changeset."
   @spec get_argument(t, atom) :: term
   def get_argument(changeset, argument) when is_atom(argument) do
     if Map.has_key?(changeset.arguments, argument) do
@@ -2262,7 +2262,7 @@ defmodule Ash.Changeset do
     end
   end
 
-  @doc "fetches the value of an argument provided to the changeset or `:error`"
+  @doc "Fetches the value of an argument provided to the changeset or `:error`."
   @spec fetch_argument(t, atom) :: {:ok, term} | :error
   def fetch_argument(changeset, argument) when is_atom(argument) do
     case Map.fetch(changeset.arguments, argument) do
@@ -2277,7 +2277,7 @@ defmodule Ash.Changeset do
     end
   end
 
-  @doc "Gets the changing value or the original value of an attribute"
+  @doc "Gets the changing value or the original value of an attribute."
   @spec get_attribute(t, atom) :: term
   def get_attribute(changeset, attribute) do
     case fetch_change(changeset, attribute) do
@@ -2289,7 +2289,7 @@ defmodule Ash.Changeset do
     end
   end
 
-  @doc "Gets the value of an argument provided to the changeset, falling back to `Ash.Changeset.get_attribute/2` if nothing was provided"
+  @doc "Gets the value of an argument provided to the changeset, falling back to `Ash.Changeset.get_attribute/2` if nothing was provided."
   @spec get_argument_or_attribute(t, atom) :: term
   def get_argument_or_attribute(changeset, attribute) do
     case fetch_argument(changeset, attribute) do
@@ -2298,13 +2298,13 @@ defmodule Ash.Changeset do
     end
   end
 
-  @doc "Gets the new value for an attribute, or `:error` if it is not being changed"
+  @doc "Gets the new value for an attribute, or `:error` if it is not being changed."
   @spec fetch_change(t, atom) :: {:ok, any} | :error
   def fetch_change(changeset, attribute) do
     Map.fetch(changeset.attributes, attribute)
   end
 
-  @doc "Gets the value of an argument provided to the changeset, falling back to `Ash.Changeset.fetch_change/2` if nothing was provided"
+  @doc "Gets the value of an argument provided to the changeset, falling back to `Ash.Changeset.fetch_change/2` if nothing was provided."
   @spec fetch_argument_or_change(t, atom) :: {:ok, any} | :error
   def fetch_argument_or_change(changeset, attribute) do
     case fetch_argument(changeset, attribute) do
@@ -2320,7 +2320,7 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Puts a key/value in the changeset context that can be used later
+  Puts a key/value in the changeset context that can be used later.
 
   Do not use the `private` key in your custom context, as that is reserved for internal use.
   """
@@ -2340,7 +2340,7 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Deep merges the provided map into the changeset context that can be used later
+  Deep merges the provided map into the changeset context that can be used later.
 
   Do not use the `private` key in your custom context, as that is reserved for internal use.
   """
@@ -2357,7 +2357,7 @@ defmodule Ash.Changeset do
   @spec manage_relationship_opts(manage_relationship_type()) :: Keyword.t()
   def manage_relationship_opts(:replace) do
     Logger.warning(
-      "type: :replace has been renamed to `:append_and_remove` in 2.0, and it will be removed in 2.1"
+      "`type: :replace` has been renamed to `:append_and_remove` in 2.0, and it will be removed in 2.1"
     )
 
     manage_relationship_opts(:append_and_remove)
@@ -2411,44 +2411,49 @@ defmodule Ash.Changeset do
       doc: """
       If the `type` is specified, the default values of each option is modified to match that `type` of operation.
 
-      This allows for specifying certain operations much more succinctly. The defaults that are modified are listed below
+      This allows for specifying certain operations much more succinctly. The defaults that are modified are listed below:
 
-      ## `:append_and_remove`
-        [
-          on_lookup: :relate,
-          on_no_match: :error,
-          on_match: :ignore,
-          on_missing: :unrelate
-        ]
+      - `:append_and_remove`
 
-      ## `:append`
-        [
-          on_lookup: :relate,
-          on_no_match: :error,
-          on_match: :ignore,
-          on_missing: :ignore
-        ]
+            [
+              on_lookup: :relate,
+              on_no_match: :error,
+              on_match: :ignore,
+              on_missing: :unrelate
+            ]
 
-      ## `:remove`
-        [
-          on_no_match: :error,
-          on_match: :unrelate,
-          on_missing: :ignore
-        ]
+      - `:append`
 
-      ## `:direct_control`
-        [
-          on_lookup: :ignore,
-          on_no_match: :create,
-          on_match: :update,
-          on_missing: :destroy
-        ]
+            [
+              on_lookup: :relate,
+              on_no_match: :error,
+              on_match: :ignore,
+              on_missing: :ignore
+            ]
 
-      ## `:create`
-        [
-          on_no_match: :create,
-          on_match: :ignore
-        ]
+      - `:remove`
+
+            [
+              on_no_match: :error,
+              on_match: :unrelate,
+              on_missing: :ignore
+            ]
+
+      - `:direct_control`
+
+            [
+              on_lookup: :ignore,
+              on_no_match: :create,
+              on_match: :update,
+              on_missing: :destroy
+            ]
+
+      - `:create`
+
+            [
+              on_no_match: :create,
+              on_match: :ignore
+            ]
       """
     ],
     authorize?: [
@@ -2461,22 +2466,23 @@ defmodule Ash.Changeset do
       type: :atom,
       default: false,
       doc:
-        "Validates that any referenced entities exist *before* the action is being performed, using the provided api for the read."
+        "Validates that any referenced entities exist *before* the action is being performed, using the provided API for the read."
     ],
     on_no_match: [
       type: :any,
       default: :ignore,
       doc: """
-      instructions for handling records where no matching record existed in the relationship
-          * `:ignore`(default) - those inputs are ignored
-          * `:match` - For "has_one" and "belongs_to" only, any input is treated as a match for an existing value. For has_many and many_to_many, this is the same as :ignore.
-          * `:create` - the records are created using the destination's primary create action
-          * `{:create, :action_name}` - the records are created using the specified action on the destination resource
-          * `{:create, :action_name, :join_table_action_name, [:list, :of, :join_table, :params]}` - Same as `{:create, :action_name}` but takes
-              the list of params specified out and applies them when creating the join record, with the provided join_table_action_name.
-          * `:error`  - an eror is returned indicating that a record would have been created
-            *  If `on_lookup` is set, and the data contained a primary key or identity, then the error is a `NotFound` error
-            * Otherwise, an `InvalidRelationship` error is returned
+      Instructions for handling records where no matching record existed in the relationship.
+
+      * `:ignore` (default) - those inputs are ignored
+      * `:match` - For `has_one` and `belongs_to` only, any input is treated as a match for an existing value. For `has_many` and `many_to_many`, this is the same as `:ignore`.
+      * `:create` - the records are created using the destination's primary create action
+      * `{:create, :action_name}` - the records are created using the specified action on the destination resource
+      * `{:create, :action_name, :join_table_action_name, [:list, :of, :join_table, :params]}` - Same as `{:create, :action_name}` but takes
+          the list of params specified out and applies them when creating the join record, with the provided join_table_action_name.
+      * `:error`  - an error is returned indicating that a record would have been created
+        *  If `on_lookup` is set, and the data contained a primary key or identity, then the error is a `NotFound` error
+        * Otherwise, an `InvalidRelationship` error is returned
       """
     ],
     value_is_key: [
@@ -2503,7 +2509,8 @@ defmodule Ash.Changeset do
       type: {:list, :atom},
       doc: """
       A list of identities that may be used to look up and compare records.
-      Use `:_primary_key` to include the primary key. By default, only [:_primary_key] is used,
+
+      Use `:_primary_key` to include the primary key. By default, only `[:_primary_key]` is used,
       unless you have `config :ash, :use_all_identities_in_manage_relationship?: true` (an old
       configuration that you should not set to `true`).
       """
@@ -2512,76 +2519,79 @@ defmodule Ash.Changeset do
       type: :any,
       default: :ignore,
       doc: """
-      Before creating a record(because no match was found in the relationship), the record can be looked up and related.
-          * `:ignore`(default) - Does not look for existing entries (matches in the current relationship are still considered updates)
-          * `:relate` - Same as calling `{:relate, primary_action_name}`
-          * `{:relate, :action_name}` - the records are looked up by primary key/the first identity that is found (using the primary read action), and related. The action should be:
-              * many_to_many - a create action on the join resource
-              * has_many - an update action on the destination resource
-              * has_one - an update action on the destination resource
-              * belongs_to - an update action on the source resource
-          * `{:relate, :action_name, :read_action_name}` - Same as the above, but customizes the read action called to search for matches.
-          * `:relate_and_update` - Same as `:relate`, but the remaining parameters from the lookup are passed into the action that is used to change the relationship key
-          * `{:relate_and_update, :action_name}` - Same as the above, but customizes the action used. The action should be:
-              * many_to_many - a create action on the join resource
-              * has_many - an update action on the destination resource
-              * has_one - an update action on the destination resource
-              * belongs_to - an update action on the source resource
-          * `{:relate_and_update, :action_name, :read_action_name}` - Same as the above, but customizes the read action called to search for matches.
-          * `{:relate_and_update, :action_name, :read_action_name, [:list, :of, :join_table, :params]}` - Same as the above, but uses the provided list of parameters when creating
-             the join row (only relevant for many to many relationships). Use `:all` to *only* update the join record, and pass all parameters to its action
+      Before creating a record (because no match was found in the relationship), the record can be looked up and related.
+
+      * `:ignore` (default) - Does not look for existing entries (matches in the current relationship are still considered updates)
+      * `:relate` - Same as calling `{:relate, primary_action_name}`
+      * `{:relate, :action_name}` - the records are looked up by primary key/the first identity that is found (using the primary read action), and related. The action should be:
+          * `many_to_many` - a create action on the join resource
+          * `has_many` - an update action on the destination resource
+          * `has_one` - an update action on the destination resource
+          * `belongs_to` - an update action on the source resource
+      * `{:relate, :action_name, :read_action_name}` - Same as the above, but customizes the read action called to search for matches.
+      * `:relate_and_update` - Same as `:relate`, but the remaining parameters from the lookup are passed into the action that is used to change the relationship key
+      * `{:relate_and_update, :action_name}` - Same as the above, but customizes the action used. The action should be:
+          * `many_to_many` - a create action on the join resource
+          * `has_many` - an update action on the destination resource
+          * `has_one` - an update action on the destination resource
+          * `belongs_to` - an update action on the source resource
+      * `{:relate_and_update, :action_name, :read_action_name}` - Same as the above, but customizes the read action called to search for matches.
+      * `{:relate_and_update, :action_name, :read_action_name, [:list, :of, :join_table, :params]}` - Same as the above, but uses the provided list of parameters when creating
+          the join row (only relevant for many to many relationships). Use `:all` to *only* update the join record, and pass all parameters to its action
       """
     ],
     on_match: [
       type: :any,
       default: :ignore,
       doc: """
-      instructions for handling records where a matching record existed in the relationship already
-          * `:ignore`(default) - those inputs are ignored
-          * `:update` - the record is updated using the destination's primary update action
-          * `{:update, :action_name}` - the record is updated using the specified action on the destination resource
-          * `{:update, :action_name, :join_table_action_name, [:list, :of, :params]}` - Same as `{:update, :action_name}` but takes
-              the list of params specified out and applies them as an update to the join record (only valid for many to many).
-          * `{:destroy, :action_name}` - the record is destroyed using the specified action on the destination resource. The action should be:
-            * many_to_many - a destroy action on the join record
-            * has_many - a destroy action on the destination resource
-            * has_one - a destroy action on the destination resource
-            * belongs_to - a destroy action on the destination resource
-          * `:error`  - an eror is returned indicating that a record would have been updated
-          * `:no_match` - ignores the primary key match and follows the on_no_match instructions with these records instead.
-          * `:unrelate` - the related item is not destroyed, but the data is "unrelated", making this behave like `remove_from_relationship/3`. The action should be:
-            * many_to_many - the join resource row is destroyed
-            * has_many - the destination_attribute (on the related record) is set to `nil`
-            * has_one - the destination_attribute (on the related record) is set to `nil`
-            * belongs_to - the source_attribute (on this record) is set to `nil`
-          * `{:unrelate, :action_name}` - the record is unrelated using the provided update action. The action should be:
-            * many_to_many - a destroy action on the join resource
-            * has_many - an update action on the destination resource
-            * has_one - an update action on the destination resource
-            * belongs_to - an update action on the source resource
+      Instructions for handling records where a matching record existed in the relationship already.
+
+      * `:ignore` (default) - those inputs are ignored
+      * `:update` - the record is updated using the destination's primary update action
+      * `{:update, :action_name}` - the record is updated using the specified action on the destination resource
+      * `{:update, :action_name, :join_table_action_name, [:list, :of, :params]}` - Same as `{:update, :action_name}` but takes
+          the list of params specified out and applies them as an update to the join record (only valid for many to many).
+      * `{:destroy, :action_name}` - the record is destroyed using the specified action on the destination resource. The action should be:
+        * `many_to_many` - a destroy action on the join record
+        * `has_many` - a destroy action on the destination resource
+        * `has_one` - a destroy action on the destination resource
+        * `belongs_to` - a destroy action on the destination resource
+      * `:error`  - an error is returned indicating that a record would have been updated
+      * `:no_match` - ignores the primary key match and follows the `on_no_match` instructions with these records instead.
+      * `:unrelate` - the related item is not destroyed, but the data is "unrelated", making this behave like `remove_from_relationship/3`. The action should be:
+        * `many_to_many` - the join resource row is destroyed
+        * `has_many` - the `destination_attribute` (on the related record) is set to `nil`
+        * `has_one` - the `destination_attribute` (on the related record) is set to `nil`
+        * `belongs_to` - the `source_attribute` (on this record) is set to `nil`
+      * `{:unrelate, :action_name}` - the record is unrelated using the provided update action. The action should be:
+        * `many_to_many` - a destroy action on the join resource
+        * `has_many` - an update action on the destination resource
+        * `has_one` - an update action on the destination resource
+        * `belongs_to` - an update action on the source resource
       """
     ],
     on_missing: [
       type: :any,
       default: :ignore,
       doc: """
-      instructions for handling records that existed in the current relationship but not in the input
-          * `:ignore`(default) - those inputs are ignored
-          * `:destroy` - the record is destroyed using the destination's primary destroy action
-          * `{:destroy, :action_name}` - the record is destroyed using the specified action on the destination resource
-          * `{:destroy, :action_name, :join_resource_action_name, [:join, :keys]}` - the record is destroyed using the specified action on the destination resource,
-            but first the join resource is destroyed with its specified action
-          * `:error`  - an error is returned indicating that a record would have been updated
-          * `:unrelate` - the related item is not destroyed, but the data is "unrelated", making this behave like `remove_from_relationship/3`. The action should be:
-            * many_to_many - the join resource row is destroyed
-            * has_many - the destination_attribute (on the related record) is set to `nil`
-            * has_one - the destination_attribute (on the related record) is set to `nil`
-            * belongs_to - the source_attribute (on this record) is set to `nil`
-          * `{:unrelate, :action_name}` - the record is unrelated using the provided update action. The action should be:
-            * many_to_many - a destroy action on the join resource
-            * has_many - an update action on the destination resource
-            * has_one - an update action on the destination resource
-            * belongs_to - an update action on the source resource
+      Instructions for handling records that existed in the current relationship but not in the input.
+
+      * `:ignore` (default) - those inputs are ignored
+      * `:destroy` - the record is destroyed using the destination's primary destroy action
+      * `{:destroy, :action_name}` - the record is destroyed using the specified action on the destination resource
+      * `{:destroy, :action_name, :join_resource_action_name, [:join, :keys]}` - the record is destroyed using the specified action on the destination resource,
+        but first the join resource is destroyed with its specified action
+      * `:error`  - an error is returned indicating that a record would have been updated
+      * `:unrelate` - the related item is not destroyed, but the data is "unrelated", making this behave like `remove_from_relationship/3`. The action should be:
+        * `many_to_many` - the join resource row is destroyed
+        * `has_many` - the `destination_attribute` (on the related record) is set to `nil`
+        * `has_one` - the `destination_attribute` (on the related record) is set to `nil`
+        * `belongs_to` - the `source_attribute` (on this record) is set to `nil`
+      * `{:unrelate, :action_name}` - the record is unrelated using the provided update action. The action should be:
+        * `many_to_many` - a destroy action on the join resource
+        * `has_many` - an update action on the destination resource
+        * `has_one` - an update action on the destination resource
+        * `belongs_to` - an update action on the source resource
       """
     ],
     error_path: [
@@ -2603,7 +2613,7 @@ defmodule Ash.Changeset do
       default: false,
       doc: """
       This tells Ash to ignore the provided inputs when actually running the action. This can be useful for
-      building up a set of instructions that you intend to handle manually
+      building up a set of instructions that you intend to handle manually.
       """
     ]
   ]
@@ -2737,7 +2747,7 @@ defmodule Ash.Changeset do
     opts =
       if opts[:type] == :replace do
         Logger.warning(
-          "type: :replace has been renamed to `:append_and_remove` in 2.0, and it will be removed in 2.1"
+          "`type: :replace` has been renamed to `:append_and_remove` in 2.0, and it will be removed in 2.1"
         )
 
         Keyword.put(opts, :type, :append_and_remove)
@@ -3105,6 +3115,7 @@ defmodule Ash.Changeset do
   Appends a record or a list of records to a relationship.
 
   Alias for:
+
   ```elixir
   manage_relationship(changeset, relationship, input,
     on_lookup: :relate, # If a record is not in the relationship, and can be found, relate it
@@ -3146,13 +3157,14 @@ defmodule Ash.Changeset do
   Removes a record or a list of records to a relationship.
 
   Alias for:
+
   ```elixir
-    manage_relationship(changeset, relationship, record_or_records,
-      on_no_match: :error, # If a record is not found in the relationship, we error
-      on_match: :unrelate, # If a record is found in the relationship we unrelate it
-      on_missing: :ignore, # If a record is not found in the relationship
-      authorize?: false
-    )
+  manage_relationship(changeset, relationship, record_or_records,
+    on_no_match: :error, # If a record is not found in the relationship, we error
+    on_match: :unrelate, # If a record is found in the relationship we unrelate it
+    on_missing: :ignore, # If a record is not found in the relationship
+    authorize?: false
+  )
   ```
   """
   @deprecated "Use manage_relationship/4 instead"
@@ -3182,6 +3194,7 @@ defmodule Ash.Changeset do
 
   @doc """
   Alias for:
+
   ```elixir
   manage_relationship(
     changeset,
@@ -3244,10 +3257,10 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Change an attribute if is not currently being changed, by calling the provided function
+  Change an attribute if is not currently being changed, by calling the provided function.
 
   Use this if you want to only perform some expensive calculation for an attribute value
-  only if there isn't already a change for that attribute
+  only if there isn't already a change for that attribute.
   """
   @spec change_new_attribute_lazy(t(), atom, (-> any)) :: t()
   def change_new_attribute_lazy(changeset, attribute, func) do
@@ -3261,7 +3274,7 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Add an argument to the changeset, which will be provided to the action
+  Add an argument to the changeset, which will be provided to the action.
   """
   def set_argument(changeset, argument, value) do
     maybe_already_validated_error!(changeset, :set_argument)
@@ -3269,9 +3282,9 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Add an argument to the changeset, which will be provided to the action
+  Add an argument to the changeset, which will be provided to the action.
 
-  Does not show a warning when used in before/after action hooks
+  Does not show a warning when used in before/after action hooks.
   """
   def force_set_argument(changeset, argument, value) do
     do_set_argument(changeset, argument, value)
@@ -3325,7 +3338,7 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Merge a map of arguments to the arguments list
+  Merge a map of arguments to the arguments list.
   """
   def set_arguments(changeset, map) do
     Enum.reduce(map, changeset, fn {key, value}, changeset ->
@@ -3334,9 +3347,9 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Merge a map of arguments to the arguments list
+  Merge a map of arguments to the arguments list.
 
-  Does not show a warning when used in before/after action hooks
+  Does not show a warning when used in before/after action hooks.
   """
   def force_set_arguments(changeset, map) do
     Enum.reduce(map, changeset, fn {key, value}, changeset ->
@@ -3345,7 +3358,7 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Force change an attribute if it is not currently being changed
+  Force change an attribute if it is not currently being changed.
 
   See `change_new_attribute/3` for more.
   """
@@ -3359,7 +3372,7 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Force change an attribute if it is not currently being changed, by calling the provided function
+  Force change an attribute if it is not currently being changed, by calling the provided function.
 
   See `change_new_attribute_lazy/3` for more.
   """
@@ -3372,7 +3385,7 @@ defmodule Ash.Changeset do
     end
   end
 
-  @doc "Calls `change_attribute/3` for each key/value pair provided"
+  @doc "Calls `change_attribute/3` for each key/value pair provided."
   @spec change_attributes(t(), map | Keyword.t()) :: t()
   def change_attributes(changeset, changes) do
     maybe_already_validated_error!(changeset, :force_change_attributes)
@@ -3382,7 +3395,7 @@ defmodule Ash.Changeset do
     end)
   end
 
-  @doc "Adds a change to the changeset, unless the value matches the existing value"
+  @doc "Adds a change to the changeset, unless the value matches the existing value."
   @spec change_attribute(t(), atom, any) :: t()
   def change_attribute(changeset, attribute, value) do
     maybe_already_validated_error!(changeset, :change_attribute)
@@ -3465,7 +3478,7 @@ defmodule Ash.Changeset do
   The same as `change_attribute`, but annotates that the attribute is currently holding a default value.
 
   This information can be used in changes to see if a value was explicitly set or if it was set by being the default.
-  Additionally, this is used in `upsert` actions to not overwrite existing values with the default
+  Additionally, this is used in `upsert` actions to not overwrite existing values with the default.
   """
   @spec change_default_attribute(t(), atom, any) :: t()
   def change_default_attribute(changeset, attribute, value) do
@@ -3490,7 +3503,7 @@ defmodule Ash.Changeset do
     end
   end
 
-  @doc "Calls `force_change_attribute/3` for each key/value pair provided"
+  @doc "Calls `force_change_attribute/3` for each key/value pair provided."
   @spec force_change_attributes(t(), map | Keyword.t()) :: t()
   def force_change_attributes(changeset, changes) do
     Enum.reduce(changes, changeset, fn {key, value}, changeset ->
@@ -3733,6 +3746,7 @@ defmodule Ash.Changeset do
   Then, the code that appeared *after* the callbacks were called is then run.
 
   For example:
+
   ```elixir
   changeset
   |> Ash.Changeset.around_transaction(fn changeset, callback ->
@@ -3768,6 +3782,7 @@ defmodule Ash.Changeset do
   ```
 
   This would print:
+
   ```
   first around: before
   second around: before
@@ -3822,7 +3837,7 @@ defmodule Ash.Changeset do
     %{changeset | defaults: changeset.defaults -- [attribute]}
   end
 
-  @doc "Clears an attribute or relationship change off of the changeset"
+  @doc "Clears an attribute or relationship change off of the changeset."
   def clear_change(changeset, field) do
     cond do
       attr = Ash.Resource.Info.attribute(changeset.resource, field) ->
