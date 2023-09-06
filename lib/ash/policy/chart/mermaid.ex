@@ -208,7 +208,7 @@ defmodule Ash.Policy.Chart.Mermaid do
 
         description =
           if policy.description && policy.description != "" do
-            "[#{policy.description}]"
+            "Policy #{policy_index + 1}[#{policy.description}]"
           else
             "Policy #{policy_index + 1}"
           end
