@@ -12,7 +12,7 @@ To this end, there are many prebuilt extensions to use, but there is also a rich
 
 The real superpower behind Ash is the declarative design pattern. All behavior is driven by explicit, static declarations. A resource, for example, is really just a configuration file. On its own it does nothing. It is provided to code that reads that configuration and acts accordingly.
 
-You can read more about some simple declarative design patterns outside of the context of Ash Framework in [An Incremental Approach to Declarative Design](https://zachdaniel.dev/incremental-declarative-design/).
+You can read more about some simple declarative design patterns outside of the context of Ash Framework in [An Incremental Approach to Declarative Design](https://zachdaniel.dev/incremental-declarative-design).
 
 ## Pragmatism First
 
