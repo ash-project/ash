@@ -179,7 +179,7 @@ defmodule Ash.Policy.Chart.Mermaid do
                       "Forbidden"
                     end
 
-                  {forbidden, next_check_or_next_policy_or_end}
+                  {next_check_or_next_policy_or_end, forbidden}
               end
 
             true_path = "#{policy_index}_checks_#{check_index}--True-->#{true_dest}"
@@ -305,58 +305,11 @@ defmodule Ash.Policy.Chart.Mermaid do
     end
   end
 
-  # defp remap_branches_to(lines, from, to) do
-  #   Enum.map(lines, fn line ->
-  #     cond do
-  #       String.ends_with?(line, "--True-->#{from}") ->
-  #         line
-  #         |> String.trim_trailing("--True-->#{from}")
-  #         |> Kernel.<>("--True-->#{to}")
-
-  #       String.ends_with?(line, "--False-->#{from}") ->
-  #         line
-  #         |> String.trim_trailing("--False-->#{from}")
-  #         |> Kernel.<>("--False-->#{to}")
-
-  #       true ->
-  #         line
-  #     end
-  #   end)
-  # end
-
-  # defp delete_node(lines, id) do
-  #   Enum.reject(lines, fn line ->
-  #     String.starts_with?(line, "#{id}{")
-  #   end)
-  # end
-
-  # defp update_node_description(lines, id, func) do
-  #   Enum.map(lines, fn line ->
-  #     if String.starts_with?(line, "#{id}{") do
-  #       description = line |> String.trim_leading("#{id}{\\\"") |> String.trim_trailing("\\\"}")
-
-  #       "#{id}{#{quote_and_escape(func.(description))}}"
-  #     else
-  #       line
-  #     end
-  #   end)
-  # end
-
   defp delete_branches(lines, from, to) do
     Enum.reject(lines, fn line ->
       line in ["#{from}--True-->#{to}", "#{from}--False-->#{to}"]
     end)
   end
-
-  # defp node_description(lines, node_id) do
-  #   Enum.find_value(lines, fn line ->
-  #     if is_node?(line) do
-  #       if String.starts_with?(line, "#{node_id}{") do
-  #         line |> String.trim_leading("#{node_id}{") |> String.trim_trailing("}")
-  #       end
-  #     end
-  #   end)
-  # end
 
   defp is_node?(line) do
     not (String.contains?(line, "--True-->") or String.contains?(line, "--False-->")) &&
