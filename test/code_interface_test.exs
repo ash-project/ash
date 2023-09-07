@@ -68,12 +68,43 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
   end
 
+  defmodule UserMissingDefineFor do
+    @moduledoc false
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    code_interface do
+      # define_for Ash.Test.CodeInterfaceTest.Api
+      define :get_user, action: :read, get?: true, args: [:id]
+    end
+
+    actions do
+      read :read do
+        primary? true
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :first_name, :string do
+        default "fred"
+      end
+
+      attribute :last_name, :string
+    end
+  end
+
   defmodule Registry do
     @moduledoc false
     use Ash.Registry
 
     entries do
       entry(User)
+      entry(UserMissingDefineFor)
     end
   end
 
@@ -194,5 +225,13 @@ defmodule Ash.Test.CodeInterfaceTest do
   test "optional arguments are optional" do
     assert User.create!().first_name == "fred"
     assert User.create!("joe").first_name == "joe"
+  end
+
+  describe "missing `define_for`" do
+    test "no functions are defined for actions" do
+      assert_raise UndefinedFunctionError, fn ->
+        UserMissingDefineFor.get_user!("id")
+      end
+    end
   end
 end
