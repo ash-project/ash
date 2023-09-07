@@ -26,14 +26,12 @@ defmodule Ash.Resource.Dsl do
     Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except it sets
     the following different defaults:
 
-    ```elixir
-      writable? false
-      private? true
-      default &DateTime.utc_now/0
-      match_other_defaults? true
-      type Ash.Type.UTCDatetimeUsec
-      allow_nil? false
-    ```
+        writable? false
+        private? true
+        default &DateTime.utc_now/0
+        match_other_defaults? true
+        type Ash.Type.UTCDatetimeUsec
+        allow_nil? false
     """,
     examples: [
       "create_timestamp :inserted_at"
@@ -52,15 +50,13 @@ defmodule Ash.Resource.Dsl do
     Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except it sets
     the following different defaults:
 
-    ```elixir
-      writable? false
-      private? true
-      default &DateTime.utc_now/0
-      match_other_defaults? true
-      update_default &DateTime.utc_now/0
-      type Ash.Type.UTCDatetimeUsec
-      allow_nil? false
-    ```
+        writable? false
+        private? true
+        default &DateTime.utc_now/0
+        match_other_defaults? true
+        update_default &DateTime.utc_now/0
+        type Ash.Type.UTCDatetimeUsec
+        allow_nil? false
     """,
     examples: [
       "update_timestamp :inserted_at"
@@ -81,12 +77,10 @@ defmodule Ash.Resource.Dsl do
     Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except for `allow_nil?`, but it sets
     the following different defaults:
 
-    ```elixir
-      writable? false
-      primary_key? true
-      generated? true
-      type :integer
-    ```
+        writable? false
+        primary_key? true
+        generated? true
+        type :integer
     """,
     examples: [
       "integer_primary_key :id"
@@ -101,18 +95,16 @@ defmodule Ash.Resource.Dsl do
   @uuid_primary_key %Spark.Dsl.Entity{
     name: :uuid_primary_key,
     describe: """
-    Declares a non writable, non-nil, primary key column of type uuid, which defaults to `Ash.UUID.generate/0`.
+    Declares a non writable, non-nil, primary key column of type `uuid`, which defaults to `Ash.UUID.generate/0`.
 
     Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except for `allow_nil?`, but it sets
     the following different defaults:
 
-    ```elixir
-      writable? false
-      default &Ash.UUID.generate/0
-      primary_key? true
-      generated? true
-      type :uuid
-    ```
+        writable? false
+        default &Ash.UUID.generate/0
+        primary_key? true
+        generated? true
+        type :uuid
     """,
     examples: [
       "uuid_primary_key :id"
@@ -175,7 +167,7 @@ defmodule Ash.Resource.Dsl do
   @has_one %Spark.Dsl.Entity{
     name: :has_one,
     describe: """
-    Declares a has_one relationship. In a relational database, the foreign key would be on the *other* table.
+    Declares a `has_one` relationship. In a relational database, the foreign key would be on the *other* table.
 
     Generally speaking, a `has_one` also implies that the destination table is unique on that foreign key.
 
@@ -199,7 +191,7 @@ defmodule Ash.Resource.Dsl do
   @has_many %Spark.Dsl.Entity{
     name: :has_many,
     describe: """
-    Declares a has_many relationship. There can be any number of related entities.
+    Declares a `has_many` relationship. There can be any number of related entities.
 
     See the [relationships guide](/documentation/topics/relationships.md) for more.
     """,
@@ -221,7 +213,7 @@ defmodule Ash.Resource.Dsl do
   @many_to_many %Spark.Dsl.Entity{
     name: :many_to_many,
     describe: """
-    Declares a many_to_many relationship. Many to many relationships require a join resource.
+    Declares a `many_to_many` relationship. Many to many relationships require a join resource.
 
     A join resource is a resource that consists of a relationship to the source and destination of the many to many.
 
@@ -253,7 +245,7 @@ defmodule Ash.Resource.Dsl do
   @belongs_to %Spark.Dsl.Entity{
     name: :belongs_to,
     describe: """
-    Declares a belongs_to relationship. In a relational database, the foreign key would be on the *source* table.
+    Declares a `belongs_to` relationship. In a relational database, the foreign key would be on the *source* table.
 
     This creates a field on the resource with the corresponding name and type, unless `define_attribute?: false` is provided.
 
