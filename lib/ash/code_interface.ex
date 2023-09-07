@@ -186,40 +186,36 @@ defmodule Ash.CodeInterface do
   @doc """
   Defines the code interface for a given resource + api combination in the current module. For example:
 
-  ```elixir
-  defmodule MyApp.Accounting do
-    require Ash.CodeInterface
+      defmodule MyApp.Accounting do
+        require Ash.CodeInterface
 
-    Ash.CodeInterface.define_interface(MyApp.Accounting, MyApp.Accounting.Transaction)
-    Ash.CodeInterface.define_interface(MyApp.Accounting, MyApp.Accounting.Account)
-    Ash.CodeInterface.define_interface(MyApp.Accounting, MyApp.Accounting.Invoice)
-  end
-  ```
+        Ash.CodeInterface.define_interface(MyApp.Accounting, MyApp.Accounting.Transaction)
+        Ash.CodeInterface.define_interface(MyApp.Accounting, MyApp.Accounting.Account)
+        Ash.CodeInterface.define_interface(MyApp.Accounting, MyApp.Accounting.Invoice)
+      end
 
   Keep in mind that you can have this "automatically" defined in your resources by using the `define_for`
   flag in a resource.
 
   For example:
 
-  ```elixir
-  defmodule MyApp.Accounting.Transaction do
-    use Ash.Resource
+      defmodule MyApp.Accounting.Transaction do
+        use Ash.Resource
 
-    ...
+        ...
 
-    code_interface do
-      define_for MyApp.Accounting
+        code_interface do
+          define_for MyApp.Accounting
 
-      define :start do
-        args [:invoice_id]
+          define :start do
+            args [:invoice_id]
+          end
+        end
       end
-    end
-  end
 
-  # Which can now be used like so:
+  Which can now be used like so:
 
-  MyApp.Accounting.Transaction.start!(invoice.id)
-  ```
+      MyApp.Accounting.Transaction.start!(invoice.id)
   """
   defmacro define_interface(api, resource) do
     quote bind_quoted: [api: api, resource: resource], generated: true, location: :keep do

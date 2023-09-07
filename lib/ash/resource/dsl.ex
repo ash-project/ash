@@ -863,6 +863,8 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Functions that will be defined on the Api module to interact with this resource.
 
+    *Warning*: The Api module must be specified using `define_for` or no functions will be generated.
+
     See the [code interface guide](/documentation/topics/code-interface.md) for more.
     """,
     examples: [
