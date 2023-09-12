@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.14](https://github.com/ash-project/ash/compare/v2.14.13...v2.14.14) (2023-09-12)
+
+
+
+
+### Improvements:
+
+* support `trace_type?/2` in tracers
+
+* support stacktraces in `set_error`
+
+* support multiple tracers, instead of just one
+
 ## [v2.14.13](https://github.com/ash-project/ash/compare/v2.14.12...v2.14.13) (2023-09-12)
 
 
