@@ -529,7 +529,7 @@ defmodule Ash.Changeset do
         "set authorize?, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
     ],
     tracer: [
-      type: :atom,
+      type: {:wrap_list, {:behaviour, Ash.Tracer}},
       doc:
         "A tracer to use. Will be carried over to the action. For more information see `Ash.Tracer`."
     ],

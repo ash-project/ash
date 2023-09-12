@@ -79,7 +79,7 @@ defmodule Ash.Api do
       """
     ],
     tracer: [
-      type: :atom,
+      type: {:wrap_list, {:behaviour, Ash.Tracer}},
       doc: """
       A tracer that implements the `Ash.Tracer` behaviour. See that module for more.
       """
@@ -840,7 +840,7 @@ defmodule Ash.Api do
       """
     ],
     tracer: [
-      type: :any,
+      type: {:wrap_list, {:behaviour, Ash.Tracer}},
       doc: """
       A tracer, provided to the calculation context.
       """
@@ -873,7 +873,7 @@ defmodule Ash.Api do
       """
     ],
     tracer: [
-      type: :any,
+      type: {:wrap_list, {:behaviour, Ash.Tracer}},
       doc: """
       A tracer, provided to the calculation context.
       """

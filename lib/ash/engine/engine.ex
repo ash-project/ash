@@ -931,7 +931,7 @@ defmodule Ash.Engine do
             actor: request.actor || state.actor,
             verbose?: request.verbose? || state.verbose?,
             async?: request.async? and state.async?,
-            tracer: state.opts[:tracer] || Application.get_env(:ash, :tracer)
+            tracer: state.opts[:tracer]
         }
       end)
       |> Enum.map(&Request.add_initial_authorizer_state/1)

@@ -96,7 +96,7 @@ defmodule Ash.Actions.Read do
           case do_run(query, action, opts) do
             {:error, error} ->
               if opts[:tracer] do
-                opts[:tracer].set_error(Ash.Error.to_error_class(error))
+                Ash.Tracer.set_error(opts[:tracer], Ash.Error.to_error_class(error))
               end
 
               {:error, error}

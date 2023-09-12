@@ -36,17 +36,12 @@ defmodule Ash do
     tracer = Process.get(:ash_tracer)
 
     tracer_context =
-      if opts[:tracer] do
-        {:tracer_context, opts[:tracer].get_span_context()}
-      else
-        case tracer do
-          {:tracer, tracer} ->
-            {:tracer_context, tracer.get_span_context()}
-
-          _ ->
-            nil
-        end
-      end
+      opts[:tracer]
+      |> List.wrap()
+      |> Enum.concat(List.wrap(tenant))
+      |> Map.new(fn tracer ->
+        {tracer, Ash.Tracer.get_span_context(tracer)}
+      end)
 
     %{
       context: context,
@@ -68,7 +63,7 @@ defmodule Ash do
           tracer: tracer,
           tracer_context: tracer_context
         },
-        opts \\ []
+        _opts \\ []
       ) do
     case actor do
       {:actor, actor} ->
@@ -94,43 +89,11 @@ defmodule Ash do
         :ok
     end
 
-    if opts[:tracer] do
-      case tracer_context do
-        {:tracer_context, tracer_context} ->
-          opts[:tracer].set_span_context(tracer_context)
+    Ash.set_tracer(tracer)
 
-        _ ->
-          :ok
-      end
-    else
-      case tracer do
-        {:tracer, tracer} ->
-          Ash.set_tracer(tracer)
-
-          case tracer_context do
-            {:tracer_context, tracer_context} ->
-              tracer.set_span_context(tracer_context)
-
-            _ ->
-              :ok
-          end
-
-        _ ->
-          tracer = Application.get_env(:ash, :tracer) || opts[:tracer]
-
-          if tracer do
-            case tracer_context do
-              {:tracer_context, tracer_context} ->
-                tracer.set_span_context(tracer_context)
-
-              _ ->
-                :ok
-            end
-          end
-
-          :ok
-      end
-    end
+    Enum.each(tracer_context || %{}, fn {tracer, tracer_context} ->
+      Ash.Tracer.set_span_context(tracer, tracer_context)
+    end)
 
     Ash.set_context(context)
   end
@@ -191,9 +154,25 @@ defmodule Ash do
   @doc """
   Sets the tracer into the process dictionary that will be used to trace requests
   """
-  @spec set_tracer(module) :: :ok
+  @spec set_tracer(module | list(module)) :: :ok
   def set_tracer(module) do
-    Process.put(:ash_tracer, module)
+    case Process.get(:ash_tracer, module) do
+      nil -> Process.put(:ash_tracer, module)
+      tracer -> Process.put(:ash_tracer, Enum.uniq(List.wrap(tracer) ++ List.wrap(module)))
+    end
+
+    :ok
+  end
+
+  @doc """
+  Removes a tracer from the process dictionary.
+  """
+  @spec remove_tracer(module | list(module)) :: :ok
+  def remove_tracer(module) do
+    case Process.get(:ash_tracer, module) do
+      nil -> :ok
+      tracer -> Process.put(:ash_tracer, List.wrap(tracer) -- List.wrap(module))
+    end
 
     :ok
   end

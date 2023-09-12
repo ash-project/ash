@@ -44,22 +44,23 @@ defmodule Ash.Tracer do
     quote do
       type = unquote(type)
       name = unquote(name)
-      tracer = unquote(tracer)
+      tracer = List.wrap(unquote(tracer))
 
-      if tracer do
-        tracer.start_span(type, name)
+      Ash.Tracer.start_span(tracer, type, name)
 
+      # no need to use try/rescue/after if no tracers
+      if Enum.empty?(tracer) do
+        unquote(block_opts[:do])
+      else
         try do
           unquote(block_opts[:do])
         rescue
           e ->
-            tracer.set_error(e)
+            Ash.Tracer.set_error(tracer, e)
             reraise e, __STACKTRACE__
         after
-          tracer.stop_span()
+          Ash.Tracer.stop_span(tracer)
         end
-      else
-        unquote(block_opts[:do])
       end
     end
   end
@@ -91,7 +92,61 @@ defmodule Ash.Tracer do
     end
   end
 
+  def stop_span(nil), do: :ok
+
+  def stop_span(tracers) when is_list(tracers) do
+    Enum.each(tracers, &stop_span/1)
+  end
+
+  def stop_span(tracer) do
+    tracer.stop_span()
+  end
+
+  def start_span(nil, _type, _name), do: :ok
+
+  def start_span(tracers, type, name) when is_list(tracers) do
+    Enum.each(tracers, &start_span(&1, type, name))
+  end
+
+  def start_span(tracer, type, name) do
+    tracer.start_span(type, name)
+  end
+
+  def set_error(nil, _, _), do: :ok
+
+  def set_error(tracers, error) when is_list(tracers) do
+    Enum.each(tracers, &set_error(&1, error))
+  end
+
+  def set_error(tracer, error) do
+    tracer.set_error(error)
+  end
+
+  def get_span_context(nil), do: :ok
+
+  def get_span_context(tracer) when is_list(tracer) do
+    raise ArgumentError, "Cannot get span context from multiple tracers"
+  end
+
+  def get_span_context(tracer) do
+    tracer.get_span_context()
+  end
+
+  def set_span_context(nil, _), do: :ok
+
+  def set_span_context(tracer, _context) when is_list(tracer) do
+    raise ArgumentError, "Cannot set span context from multiple tracers"
+  end
+
+  def set_span_context(tracer, context) do
+    tracer.set_span_context(context)
+  end
+
   def set_metadata(nil, _type, _metadata), do: :ok
+
+  def set_metadata(tracers, type, metadata) when is_list(tracers) do
+    Enum.each(tracers, &set_metadata(&1, type, metadata))
+  end
 
   def set_metadata(tracer, type, metadata) do
     tracer.set_metadata(type, metadata)

@@ -152,17 +152,36 @@ defmodule Ash.Flow do
   end
 
   defp add_tracer(opts) do
-    if Keyword.has_key?(opts, :tracer) do
-      opts
-    else
+    opts =
       case Process.get(:ash_tracer) do
         {:tracer, value} ->
-          Keyword.put(opts, :tracer, value || Application.get_env(:ash, :tracer))
+          Keyword.put(opts, :tracer, value)
 
         _ ->
-          Keyword.put(opts, :tracer, Application.get_env(:ash, :tracer))
+          opts
       end
+
+    case Application.get_env(:ash, :tracer) do
+      nil ->
+        opts
+
+      tracer ->
+        do_add_tracer(opts, tracer)
     end
+  end
+
+  defp do_add_tracer(opts, tracer) do
+    Keyword.update(opts, :tracer, [tracer], fn existing_tracer ->
+      if is_list(existing_tracer) do
+        [tracer | existing_tracer] |> Enum.uniq()
+      else
+        if is_nil(existing_tracer) do
+          [tracer]
+        else
+          [tracer, existing_tracer] |> Enum.uniq()
+        end
+      end
+    end)
   end
 
   defp cast_input(flow, params) do

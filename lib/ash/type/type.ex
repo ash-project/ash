@@ -141,7 +141,7 @@ defmodule Ash.Type do
           api: Ash.Api.t(),
           actor: term() | nil,
           tenant: String.t() | nil,
-          tracer: Ash.Tracer.t() | nil,
+          tracer: list(Ash.Tracer.t()) | Ash.Tracer.t() | nil,
           authorize?: boolean | nil
         }
 

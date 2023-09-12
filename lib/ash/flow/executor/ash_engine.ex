@@ -164,6 +164,19 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   def execute(%Flow{steps: steps, flow: flow}, _input, opts) do
+    tracer =
+      case opts[:tracer] do
+        nil ->
+          List.wrap(Application.get_env(:ash, :tracer))
+
+        tracer when is_list(tracer) ->
+          tracer ++ List.wrap(Application.get_env(:ash, :tracer))
+
+        tracer ->
+          [tracer | List.wrap(Application.get_env(:ash, :tracer))]
+      end
+      |> Enum.uniq()
+
     steps
     |> Enum.flat_map(&requests(flow, steps, &1, opts))
     |> resume(opts[:resume])
@@ -180,7 +193,7 @@ defmodule Ash.Flow.Executor.AshEngine do
           authorize?: Keyword.get(opts, :authorize?, true),
           name: inspect(flow),
           failure_mode: :continue,
-          tracer: opts[:tracer]
+          tracer: tracer
         )
         |> case do
           {:ok, %Ash.Engine{data: data, resource_notifications: resource_notifications}} ->
