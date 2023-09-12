@@ -55,6 +55,25 @@ For customizing the names created for each span, see:
 - `d:Ash.Resource.Dsl.resource|trace_name`
 - `d:Ash.Flow.Dsl.flow|trace_name`
 
+### Trace types
+
+These are the list of trace types.
+
+- :custom
+- :action
+- :changeset
+- :validation
+- :change
+- :before_transaction
+- :before_action
+- :after_transaction
+- :after_action
+- :request_step
+- :custom_flow_step
+- :flow
+- :query
+- :preparation
+
 ## After/Before Action Hooks
 
 Due to the way before/after action hooks run, their execution time won't be included in the span created for the change. In practice, before/after action hooks are where the long running operations tend to be. We start a corresponding `span` and emit a telemetry event for before and after hooks, but they are only so useful. In a trace, they can highlight that "some hook" took a long time. In telemetry metrics they are of even less use. The cardinality of the metric would be extremely high, and we don't have a "name" or anything to distinguish them. To that end, you can use the macros & functions available in `Ash.Tracer` to create custom spans and/or emit custom telemetry events from your hooks. They automatically handle cases where the provided tracer is `nil`, for convenience. For example:

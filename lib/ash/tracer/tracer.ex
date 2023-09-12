@@ -32,6 +32,7 @@ defmodule Ash.Tracer do
   @callback get_span_context() :: term()
   @callback set_span_context(term()) :: :ok
   @callback set_error(Exception.t(), Keyword.t()) :: :ok
+  @callback trace_type?(atom) :: boolean()
 
   @doc """
   Set metadata for the current span.
@@ -41,13 +42,14 @@ defmodule Ash.Tracer do
   @callback set_metadata(span_type(), metadata()) :: :ok
   @callback set_error(Exception.t()) :: :ok
 
-  @optional_callbacks set_error: 2, set_error: 1
+  @optional_callbacks set_error: 2, set_error: 1, trace_types?: 1
 
   defmacro span(type, name, tracer, block_opts \\ []) do
     quote do
       type = unquote(type)
       name = unquote(name)
       tracer = List.wrap(unquote(tracer))
+      tracer = Enum.filter(tracer, &Ash.Tracer.trace_type?(&1, type))
 
       Ash.Tracer.start_span(tracer, type, name)
 
@@ -103,6 +105,14 @@ defmodule Ash.Tracer do
 
   def stop_span(tracer) do
     tracer.stop_span()
+  end
+
+  def trace_type?(tracer, type) do
+    if function_exported?(tracer, :trace_type?, 1) do
+      tracer.trace_type?(type)
+    else
+      true
+    end
   end
 
   def start_span(nil, _type, _name), do: :ok
