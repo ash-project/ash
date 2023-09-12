@@ -25,33 +25,31 @@ defmodule Ash.Type do
   ]
 
   @builtin_short_names [
-                         map: "Ash.Type.Map",
-                         keyword: "Ash.Type.Keyword",
-                         term: "Ash.Type.Term",
-                         atom: "Ash.Type.Atom",
-                         string: "Ash.Type.String",
-                         integer: "Ash.Type.Integer",
-                         float: "Ash.Type.Float",
-                         duration_name: "Ash.Type.DurationName",
-                         function: "Ash.Type.Function",
-                         boolean: "Ash.Type.Boolean",
-                         struct: "Ash.Type.Struct",
-                         uuid: "Ash.Type.UUID",
-                         binary: "Ash.Type.Binary",
-                         date: "Ash.Type.Date",
-                         time: "Ash.Type.Time",
-                         decimal: "Ash.Type.Decimal",
-                         ci_string: "Ash.Type.CiString",
-                         naive_datetime: "Ash.Type.NaiveDatetime",
-                         utc_datetime: "Ash.Type.UtcDatetime",
-                         utc_datetime_usec: "Ash.Type.UtcDatetimeUsec",
-                         url_encoded_binary: "Ash.Type.UrlEncodedBinary",
-                         union: "Ash.Type.Union",
-                         module: "Ash.Type.Module"
-                       ]
-                       |> Enum.map(fn {key, value} ->
-                         {key, Module.concat([value])}
-                       end)
+    map: Ash.Type.Map,
+    keyword: Ash.Type.Keyword,
+    term: Ash.Type.Term,
+    atom: Ash.Type.Atom,
+    string: Ash.Type.String,
+    integer: Ash.Type.Integer,
+    float: Ash.Type.Float,
+    duration_name: Ash.Type.DurationName,
+    function: Ash.Type.Function,
+    boolean: Ash.Type.Boolean,
+    struct: Ash.Type.Struct,
+    uuid: Ash.Type.UUID,
+    binary: Ash.Type.Binary,
+    date: Ash.Type.Date,
+    time: Ash.Type.Time,
+    decimal: Ash.Type.Decimal,
+    ci_string: Ash.Type.CiString,
+    naive_datetime: Ash.Type.NaiveDatetime,
+    utc_datetime: Ash.Type.UtcDatetime,
+    utc_datetime_usec: Ash.Type.UtcDatetimeUsec,
+    url_encoded_binary: Ash.Type.UrlEncodedBinary,
+    union: Ash.Type.Union,
+    module: Ash.Type.Module,
+    vector: Ash.Type.Vector
+  ]
 
   @custom_short_names Application.compile_env(:ash, :custom_types, [])
 
