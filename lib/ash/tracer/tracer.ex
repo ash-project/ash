@@ -31,6 +31,7 @@ defmodule Ash.Tracer do
   @callback stop_span() :: :ok
   @callback get_span_context() :: term()
   @callback set_span_context(term()) :: :ok
+  @callback set_error(Exception.t(), Keyword.t()) :: :ok
 
   @doc """
   Set metadata for the current span.
@@ -39,6 +40,8 @@ defmodule Ash.Tracer do
   """
   @callback set_metadata(span_type(), metadata()) :: :ok
   @callback set_error(Exception.t()) :: :ok
+
+  @optional_callbacks set_error: 2, set_error: 1
 
   defmacro span(type, name, tracer, block_opts \\ []) do
     quote do
@@ -56,7 +59,7 @@ defmodule Ash.Tracer do
           unquote(block_opts[:do])
         rescue
           e ->
-            Ash.Tracer.set_error(tracer, e)
+            Ash.Tracer.set_error(tracer, e, stacktrace: __STACKTRACE__)
             reraise e, __STACKTRACE__
         after
           Ash.Tracer.stop_span(tracer)
@@ -114,12 +117,30 @@ defmodule Ash.Tracer do
 
   def set_error(nil, _, _), do: :ok
 
+  def set_error(tracers, error, opts) when is_list(tracers) do
+    Enum.each(tracers, &set_error(&1, error, opts))
+  end
+
+  def set_error(tracer, error, opts) do
+    if function_exported?(tracer, :set_error, 2) do
+      tracer.set_error(error, opts)
+    else
+      tracer.set_error(error)
+    end
+  end
+
+  def set_error(nil, _), do: :ok
+
   def set_error(tracers, error) when is_list(tracers) do
     Enum.each(tracers, &set_error(&1, error))
   end
 
   def set_error(tracer, error) do
-    tracer.set_error(error)
+    if function_exported?(tracer, :set_error, 2) do
+      tracer.set_error(error, [])
+    else
+      tracer.set_error(error)
+    end
   end
 
   def get_span_context(nil), do: :ok

@@ -46,7 +46,21 @@ defmodule Ash.Actions.Update do
           case do_run(api, changeset, action, opts) do
             {:error, error} ->
               if opts[:tracer] do
-                Ash.Tracer.set_error(opts[:tracer], Ash.Error.to_error_class(error))
+                stacktrace =
+                  case error do
+                    %{stacktrace: %{stacktrace: stacktrace}} ->
+                      stacktrace || []
+
+                    _ ->
+                      {:current_stacktrace, stacktrace} =
+                        Process.info(self(), :current_stacktrace)
+
+                      stacktrace
+                  end
+
+                Ash.Tracer.set_error(opts[:tracer], Ash.Error.to_error_class(error),
+                  stacktrace: stacktrace
+                )
               end
 
               {:error, error}
