@@ -42,7 +42,7 @@ defmodule Ash.Tracer do
   @callback set_metadata(span_type(), metadata()) :: :ok
   @callback set_error(Exception.t()) :: :ok
 
-  @optional_callbacks set_error: 2, set_error: 1, trace_types?: 1
+  @optional_callbacks set_error: 2, set_error: 1, trace_types: 1
 
   defmacro span(type, name, tracer, block_opts \\ []) do
     quote do
