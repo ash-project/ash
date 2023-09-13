@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.16](https://github.com/ash-project/ash/compare/v2.14.15...v2.14.16) (2023-09-13)
+
+
+
+
+### Bug Fixes:
+
+* properly handle bubbled up exceptions from type casting
+
+* typo in new tracer setting logic
+
+* properly expose nested errors on unions
+
+### Improvements:
+
+* `set_handled_error/3` for when errors are returned
+
 ## [v2.14.15](https://github.com/ash-project/ash/compare/v2.14.14...v2.14.15) (2023-09-13)
 
 
