@@ -459,6 +459,11 @@ defmodule Ash.Type do
                     message when is_binary(message) ->
                       [message: message, index: index, path: [index]]
 
+                    error when is_exception(error) ->
+                      error
+                      |> Ash.Error.to_ash_error()
+                      |> Ash.Error.set_path([index])
+
                     keyword ->
                       keyword
                       |> Keyword.put(:index, index)
