@@ -38,7 +38,7 @@ defmodule Ash do
     tracer_context =
       opts[:tracer]
       |> List.wrap()
-      |> Enum.concat(List.wrap(tenant))
+      |> Enum.concat(List.wrap(tracer))
       |> Map.new(fn tracer ->
         {tracer, Ash.Tracer.get_span_context(tracer)}
       end)
