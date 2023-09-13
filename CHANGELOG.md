@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.15](https://github.com/ash-project/ash/compare/v2.14.14...v2.14.15) (2023-09-13)
+
+
+
+
+### Bug Fixes:
+
+* propertly handle configured list of tracers
+
 ## [v2.14.14](https://github.com/ash-project/ash/compare/v2.14.13...v2.14.14) (2023-09-12)
 
 
