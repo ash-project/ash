@@ -58,7 +58,7 @@ defmodule Ash.Actions.Update do
                       stacktrace
                   end
 
-                Ash.Tracer.set_error(opts[:tracer], Ash.Error.to_error_class(error),
+                Ash.Tracer.set_handled_error(opts[:tracer], Ash.Error.to_error_class(error),
                   stacktrace: stacktrace
                 )
               end
