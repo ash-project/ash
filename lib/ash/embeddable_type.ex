@@ -124,16 +124,12 @@ defmodule Ash.EmbeddableType do
     |> Keyword.put(:message, message)
   end
 
-  defp do_handle_errors(%{field: field} = exception) do
-    [field: field, message: Exception.message(exception)]
-  end
-
   defp do_handle_errors(error) when is_binary(error) do
     [message: error]
   end
 
   defp do_handle_errors(error) when is_exception(error) do
-    [message: Exception.message(error)]
+    [error]
   end
 
   defp do_handle_errors(_error) do
