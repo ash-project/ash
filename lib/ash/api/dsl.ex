@@ -104,8 +104,9 @@ defmodule Ash.Api.Dsl do
     examples: [
       """
       resources do
-        registry MyApp.Registry
-      en
+        resource MyApp.Tweet
+        resource MyApp.Comment
+      end
       """
     ],
     entities: [
