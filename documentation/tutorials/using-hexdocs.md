@@ -32,6 +32,5 @@ to the DSL you are looking for, use it separated by dots. For example, `DSL: att
 
 #### In the search page
 
-In the search page, you filter by type. By default, search terms are considered
-optional. You can prefix them with + to make them required. Something you would
-do to find a specific DSL is to search for `+type:dsl +something`.
+Searching by type will be supported soon, but has not yet been implemented. Once it is done, you will be able to search for `type:dsl` to filter for DSLs.
+By default, search terms are considered optional. You can prefix them with + to make them required. Something you would do to find a specific DSL is to search for `+type:dsl +something`.
