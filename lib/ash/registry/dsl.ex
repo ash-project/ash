@@ -45,22 +45,9 @@ defmodule Ash.Registry.Dsl do
   @transformers [Ash.Registry.Transformers.WarnOnEmpty]
 
   @moduledoc """
-  A small DSL for declaring an `Ash.Registry`.
+  A small DSL for declaring an `Ash.Registry`. Not generally necessary any longer.
 
   `Ash.Registry` can be used generically, but the main way it is used in Ash is to provide a compile-time registry for an Ash Api.
-
-  <!--- ash-hq-hide-start--> <!--- -->
-
-  ## DSL Documentation
-
-  ### Index
-
-  #{Spark.Dsl.Extension.doc_index(@sections)}
-
-  ### Docs
-
-  #{Spark.Dsl.Extension.doc(@sections)}
-  <!--- ash-hq-hide-stop--> <!--- -->
   """
 
   use Spark.Dsl.Extension, sections: @sections, transformers: @transformers

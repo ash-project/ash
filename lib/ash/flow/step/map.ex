@@ -1,5 +1,5 @@
 defmodule Ash.Flow.Step.Map do
-  @moduledoc false
+  @moduledoc "Represents a map grouping of steps in an Ash.Flow"
   use Ash.Flow.Step.BuiltinStep, [:over, :element, :output, steps: []]
   @shared_opts Ash.Flow.Step.shared_opts()
 

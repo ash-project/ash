@@ -41,9 +41,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       type: :boolean,
       default: false,
       doc: """
-      Whether or not the relationship will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql
-
-      See the [security guide](/documentation/topics/security.md) for more.
+      Whether or not the relationship will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql See the [security guide](/documentation/topics/security.md) for more.
       """
     ],
     not_found_message: [
@@ -99,7 +97,6 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       type: :string,
       doc: """
       A message to show if there is a conflict with this relationship in the database on destroy.
-      For example, if a record is deleted while related records still exist (and aren't configured to cascade deletes)
       """
     ]
   ]
@@ -113,23 +110,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
      [
        type: :boolean,
        doc: """
-       If true, all existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and
-       `destination_attribute` are ignored.
-
-       This can be very useful when combined with multitenancy. Specifically, if you have a tenant resource like `Organization`,
-       you can use `no_attributes?` to do things like `has_many :employees, Employee, no_attributes?: true`, which lets you avoid having an
-       unnecessary `organization_id` field on `Employee`. The same works in reverse: `has_one :organization, Organization, no_attributes?: true`
-       allows relating the employee to their organization.
-
-       Some important caveats here:
-
-       1. You can still manage relationships from one to the other, but "relate" and "unrelate"
-       will have no effect, because there are no fields to change.
-
-       2. Loading the relationship on a list of resources will not behave as expected in all circumstances involving multitenancy. For example,
-          if you get a list of `Organization` and then try to load `employees`, you would need to set a single tenant on the load query, meaning
-          you'll get all organizations back with the set of employees from one tenant. This could eventually be solved, but for now it is considered an
-          edge case.
+       All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/relationships.md) for more.
        """
      ]}
   end

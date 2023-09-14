@@ -62,7 +62,7 @@ end
 calculations do
   calculate :full_name, :string, {Concat, keys: [:first_name, :last_name]} do
     # You need to use the [allow_empty?: true, trim?: false] constraints here.
-    # The separator could be an empty string or require a leading or trailing space, 
+    # The separator could be an empty string or require a leading or trailing space,
     # but would be trimmed or even set to `nil` without the constraints shown below.
     argument :separator, :string do
       allow_nil? false
@@ -73,7 +73,7 @@ calculations do
 end
 ```
 
-See the documentation for the calculations section in `Ash.Resource.Dsl` and the `Ash.Calculation` docs for more information.
+See the documentation for the calculations section in [Resource DSL docs](dsl-ash-resource.html#calculations) and the `Ash.Calculation` docs for more information.
 
 The calculations declared on a resource allow for declaring a set of named calculations that can be used by extensions.
 They can also be loaded in the query using `Ash.Query.load/2`, or after the fact using `c:Ash.Api.load/3`. Calculations declared on the resource will be keys in the resource's struct.

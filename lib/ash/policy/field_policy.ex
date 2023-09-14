@@ -1,5 +1,5 @@
 defmodule Ash.Policy.FieldPolicy do
-  @moduledoc false
+  @moduledoc "Represents a field policy in an Ash.Resource"
   defstruct [
     :fields,
     :condition,

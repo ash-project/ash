@@ -1,5 +1,5 @@
 defmodule Ash.Policy.Policy do
-  @moduledoc false
+  @moduledoc "Represents a policy on an Ash.Resource"
 
   # For now we just write to `checks` and move them to `policies`
   # on build, when we support nested policies we can change that.

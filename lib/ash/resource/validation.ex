@@ -62,18 +62,14 @@ defmodule Ash.Resource.Validation do
       required: false,
       default: [],
       doc: """
-      Validations that should pass in order for this validation to apply.
-      These validations failing will not invalidate the changes, but will instead result in this validation being ignored.
-      Accepts a module, module and opts, or a 1 argument function that takes the changeset.
+      Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored.
       """
     ],
     on: [
       type: {:custom, __MODULE__, :on, []},
       default: [:create, :update],
       doc: """
-      The action types the validation should run on.
-
-      Many validations don't make sense in the context of deletion, so by default it is left out of the list.
+      The action types the validation should run on. Many validations don't make sense in the context of deletion, so by default it is not included.
       """
     ],
     only_when_valid?: [

@@ -46,10 +46,7 @@ defmodule Ash.Resource.Actions.Update do
                     {:spark_function_behaviour, Ash.Resource.ManualUpdate,
                      {Ash.Resource.ManualUpdate.Function, 2}},
                   doc: """
-                  Override the update behavior. See the manual action guides for more.
-                  Accepts a module or module and opts, or a function that takes the changeset and context.
-
-                  See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
+                  Override the update behavior. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
                   """
                 ]
               ]

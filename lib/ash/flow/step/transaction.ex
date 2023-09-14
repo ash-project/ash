@@ -1,5 +1,5 @@
 defmodule Ash.Flow.Step.Transaction do
-  @moduledoc false
+  @moduledoc "Represents steps grouped into a transaction in an Ash.Flow"
   use Ash.Flow.Step.BuiltinStep, [:output, :resource, :timeout, steps: []]
   @shared_opts Ash.Flow.Step.shared_opts()
 

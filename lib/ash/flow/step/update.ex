@@ -1,5 +1,5 @@
 defmodule Ash.Flow.Step.Update do
-  @moduledoc false
+  @moduledoc "Represents an update action step in an Ash.Flow"
   use Ash.Flow.Step.BuiltinStep, [:resource, :action, :api, :input, :tenant, :record]
   @shared_opts Ash.Flow.Step.shared_opts()
   @shared_action_opts Ash.Flow.Step.shared_action_opts()
@@ -12,9 +12,6 @@ defmodule Ash.Flow.Step.Update do
           required: true,
           doc: """
           The record to be updated, can use template helpers, e.g `result(:step_name)`.
-
-          If the value is `nil`, the step is skipped and `nil` is the result of the step.
-          Any other value is used as an input record.
           """
         ]
       ]

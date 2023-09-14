@@ -34,10 +34,7 @@ defmodule Ash.Flow.Step do
       wait_for: [
         type: :any,
         doc: """
-        Ensures that the step happens after the configured step or steps.
-
-        This value is just a template that isn't used, except to determine dependencies, so you can
-        use it like this `wait_for [result(:step_one), result(:step_two)]` or `wait_for result(:step)`.
+        Ensures that the step happens after the configured step or steps. This is a template who's results are not used, only awaited.
         """
       ],
       touches_resources: [
@@ -49,11 +46,7 @@ defmodule Ash.Flow.Step do
       halt_if: [
         type: :any,
         doc: """
-        Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables.
-
-        To attach a specific reason, use a `halt_reason`.
-
-        If you need more complex halting logic, then you'd want to use a custom step, and return `{:error, Ash.Error.Flow.Halted.exception(...)}`
+        Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more.
         """
       ],
       halt_reason: [

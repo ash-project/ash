@@ -38,9 +38,7 @@ defmodule Ash.Resource.Calculation do
          ]},
       required: true,
       doc: """
-      The module or `{module, opts}` to use for the calculation.
-      Also accepts a function that takes a single record and produces the result.
-      IMPORTANT: This function *does not take and return lists* like the `calculate/3` callback does.
+      The `module`, `{module, opts}` or `expr(...)` to use for the calculation. Also accepts a function that takes *a single record* and produces the result.
       """
     ],
     description: [
@@ -51,9 +49,7 @@ defmodule Ash.Resource.Calculation do
       type: :boolean,
       default: false,
       doc: """
-      Whether or not the calculation will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql
-
-      See the [security guide](/documentation/topics/security.md) for more.
+      Whether or not the calculation will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql See the [security guide](/documentation/topics/security.md) for more.
       """
     ],
     select: [

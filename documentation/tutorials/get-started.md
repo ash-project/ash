@@ -26,6 +26,7 @@ In this guide we will:
 
 - [Install Elixir](https://elixir-lang.org/install.html)
 - [Philosophy Guide](/documentation/tutorials/philosophy.md)
+- [Using Hexdocs](/documentation/tutorials/using-hexdocs.md)
 
 ## Requirements
 

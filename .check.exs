@@ -11,8 +11,8 @@
     ## ...or adjusted (e.g. use one-line formatter for more compact credo output)
     # {:credo, "mix credo --format oneline"},
 
-    {:check_formatter, command: "mix spark.formatter --check"}
-    # {:doctor, false}
+    {:check_formatter, command: "mix spark.formatter --check"},
+    {:doctor, false}
 
     ## custom new tools may be added (mix tasks or arbitrary commands)
     # {:my_mix_task, command: "mix release", env: %{"MIX_ENV" => "prod"}},

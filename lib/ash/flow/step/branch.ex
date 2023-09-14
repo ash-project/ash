@@ -1,5 +1,5 @@
 defmodule Ash.Flow.Step.Branch do
-  @moduledoc false
+  @moduledoc "Represents a branching set of steps in an Ash.Flow"
   use Ash.Flow.Step.BuiltinStep, [:output, :condition, steps: []]
   @shared_opts Ash.Flow.Step.shared_opts()
 

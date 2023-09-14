@@ -50,42 +50,27 @@ defmodule Ash.Resource.Actions.Read do
                       {:spark_function_behaviour, Ash.Resource.ManualRead,
                        {Ash.Resource.ManualRead.Function, 3}},
                     doc: """
-                    Delegates running of the query to the provided module.
-                    Accepts a module or module and opts, or a function that takes the changeset and context.
-
-                    See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
+                    Delegates running of the query to the provided module. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
                     """
                   ],
                   get?: [
                     type: :boolean,
                     default: false,
                     doc: """
-                    Expresses that this action innately only returns a single result. Can be used by extensions to validate that you have not hooked something up that expects a list
-                    to an action that can only return one thing. Used by the code interface when defining functions for read actions.
-
-                    See the [code interface guide](/documentation/topics/code-interface.md) for more.
+                    Expresses that this action innately only returns a single result. Used by extensions to validate and/or modify behavior. Causes code interfaces to return a single value instead of a list. See the [code interface guide](/documentation/topics/code-interface.md) for more.
                     """
                   ],
                   modify_query: [
                     type: {:or, [:mfa, {:fun, 2}]},
                     doc: """
-                    Allows direct manipulation of the data layer query via an MFA.
-
-                    The ash query and the data layer query will be provided as additional arguments.
-                    The result must be `{:ok, new_data_layer_query} | {:error, error}`.
-
-                    Here be dragons.
+                    Allows direct manipulation of the data layer query via an MFA. The ash query and the data layer query will be provided as additional arguments. The result must be `{:ok, new_data_layer_query} | {:error, error}`.
                     """
                   ],
                   get_by: [
                     type: {:or, [:atom, {:list, :atom}]},
                     default: nil,
                     doc: """
-                    A helper to automatically generate a "get by X" action.
-
-                    Using this option will set `get?` to true, add arguments
-                    for each of the specified fields, and add a filter to the
-                    underlying query for each of the arguments.
+                    A helper to automatically generate a "get by X" action. Sets `get?` to true, add args for each of the specified fields, and adds a filter for each of the arguments.
                     """
                   ]
                 ],

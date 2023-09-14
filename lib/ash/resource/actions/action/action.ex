@@ -38,10 +38,7 @@ defmodule Ash.Resource.Actions.Action do
                 constraints: [
                   type: :keyword_list,
                   doc: """
-                  Constraints for the return type.
-                  For more information see the specific type's documentation,
-                  for general type information see `Ash.Type` and
-                  for practical example [see the constraints topic](/documentation/topics/constraints.md).
+                  Constraints for the return type. See the [constriants topic](/documentation/topics/constraints.md) for more.
                   """
                 ],
                 run: [

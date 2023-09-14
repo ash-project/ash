@@ -40,9 +40,13 @@ defmodule Mix.Tasks.Ash.ReplaceDocLinks do
           ">#{contents}<"
         end)
         |> String.replace(~r</documentation/.*/.*.md>, fn "/documentation/" <> type_and_name ->
-          [_, filename] = String.split(type_and_name, "/")
+          case String.split(type_and_name, "/") do
+            [_, filename] ->
+              filename |> String.trim_trailing(".md") |> Kernel.<>(".html")
 
-          filename |> String.trim_trailing(".md") |> Kernel.<>(".html")
+            _ ->
+              "/documentation/" <> type_and_name
+          end
         end)
 
       File.write!(file, new_contents)

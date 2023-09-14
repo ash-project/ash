@@ -89,3 +89,16 @@ User.full_name(user)
 ```
 
 This allows for running calculations without an instance of a resource, i.e `Api.load(user, :full_name)`
+
+
+By default, configured args will be provided for any matching named reference *or* argument. This is normally fine, but in the case that you have an argument and a reference with the same name, you can specify it by supplying `{:arg, :name}` and `{:ref, :name}`. For example:
+
+```elixir
+define_calculation :id_matches, args: [{:arg, :id}, {:ref, :id}]
+```
+
+To make arguments optional, wrap them in `{:optional, ..}`, for example:
+
+```elixir
+define_calculation :id_matches, args: [{:arg, :id}, {:optional, {:ref, :id}}]
+```

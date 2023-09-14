@@ -36,19 +36,6 @@ defmodule Ash.DataLayer.Ets do
 
   Remember, this does not have support for transactions! This is not recommended for production
   use, especially in multi-user applications. It can, however, be great for prototyping.
-
-  <!--- ash-hq-hide-start--> <!--- -->
-
-  ## DSL Documentation
-
-  ### Index
-
-  #{Spark.Dsl.Extension.doc_index([@ets])}
-
-  ### Docs
-
-  #{Spark.Dsl.Extension.doc([@ets])}
-  <!--- ash-hq-hide-stop--> <!--- -->
   """
 
   use Spark.Dsl.Extension,

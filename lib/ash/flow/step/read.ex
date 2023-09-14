@@ -1,5 +1,5 @@
 defmodule Ash.Flow.Step.Read do
-  @moduledoc false
+  @moduledoc "Represents a read action step in an Ash.Flow"
   use Ash.Flow.Step.BuiltinStep, [
     :resource,
     :action,
@@ -19,8 +19,7 @@ defmodule Ash.Flow.Step.Read do
         get?: [
           type: :boolean,
           doc: """
-          Whether or not read action is expected to return a single result or `nil`.
-          If the action is configured with `get? true` then this is automatically set to `true`.
+          Whether or not read action is expected to return a single result or `nil`. Set to `true` automatically if `get? true`.
           """,
           default: false
         ],

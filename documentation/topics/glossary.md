@@ -118,7 +118,7 @@ The central concept in Ash, a resource is a domain model object in your system, 
 
 It is not a strict requirement that resources contain data - they can be used purely to create a standard interface for performing tasks - but in practice, most resources will be used to manage data.
 
-See `Ash.Resource.Dsl` for more information.
+See the [Resource DSL docs](dsl-ash-resource.html) for DSL documentation.
 
 ## Tenant
 

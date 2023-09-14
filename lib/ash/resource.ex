@@ -2,7 +2,7 @@ defmodule Ash.Resource do
   @moduledoc """
   A resource is a static definition of an entity in your system.
 
-  Resource DSL documentation: `Ash.Resource.Dsl`
+  [Resource DSL documentation](dsl-ash-resource.html)
   """
 
   @type t :: module

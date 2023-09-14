@@ -391,19 +391,6 @@ defmodule Ash.Resource.Dsl do
     args: [:change]
   }
 
-  defmodule Set do
-    @moduledoc false
-    defstruct [:description, :where, :attribute, :expr]
-
-    def transform(set) do
-      {:ok,
-       %Ash.Resource.Change{
-         change: {Ash.Resource.Change.Atomic, attribute: set.attribute, expr: set.expr}
-       }
-       |> Map.merge(Map.take(set, [:description, :where]))}
-    end
-  end
-
   @validate %Spark.Dsl.Entity{
     name: :validate,
     describe: """
@@ -661,12 +648,7 @@ defmodule Ash.Resource.Dsl do
       defaults: [
         type: {:list, {:in, [:create, :read, :update, :destroy]}},
         doc: """
-        Creates a simple action of each specified type, with the same name as the type.
-        These actions will be the primary actions, unless you've declared a different action
-        of the same type that is explicitly set as primary.
-
-        By default, resources have no default actions. Embedded resources, however, have a default
-        of all resource types.
+        Creates a simple action of each specified type, with the same name as the type. These will be `primary?` unless one already exists for that type. Embedded resources, however, have a default of all resource types.
         """
       ],
       default_accept: [
@@ -780,17 +762,13 @@ defmodule Ash.Resource.Dsl do
       trace_name: [
         type: :string,
         doc: """
-        The name to use in traces. Defaults to the short_name stringified.
-
-        See the [monitoring guide](/documentation/topics/monitoring.md) for more.
+        The name to use in traces. Defaults to the short_name stringified. See the [monitoring guide](/documentation/topics/monitoring.md) for more.
         """
       ],
       short_name: [
         type: :atom,
         doc: """
-        A short identifier for the resource, which should be unique.
-
-        See the [monitoring guide](/documentation/topics/monitoring.md) for more.
+        A short identifier for the resource, which should be unique. See the [monitoring guide](/documentation/topics/monitoring.md) for more.
         """
       ],
       plural_name: [
@@ -809,15 +787,7 @@ defmodule Ash.Resource.Dsl do
         required: false,
         default: true,
         doc: """
-        Allow the resource to be used without any primary key fields.
-
-        ### Warning
-
-        Lots of Ash and Ash extensions assume that every resource has a primary key and this is likely to break a lot of features.
-
-        If you run into a breakage please [open an issue](https://github.com/ash-project/ash/issues/new) and we'll take a look at it.
-
-        Disable at your peril.
+        Allow the resource to be used without any primary key fields. Warning: this option is experimental, and should not be used unless you know what you're doing.
         """
       ]
     ]
@@ -826,11 +796,7 @@ defmodule Ash.Resource.Dsl do
   @define_calculation %Spark.Dsl.Entity{
     name: :define_calculation,
     describe: """
-    Defines a function with the corresponding name and arguments, that evaluates a calculation.
-
-    Use `:_record` to take an instance of a record.
-
-    See the [code interface guide](/documentation/topics/code-interface.md) for more.
+    Defines a function with the corresponding name and arguments, that evaluates a calculation. Use `:_record` to take an instance of a record. See the [code interface guide](/documentation/topics/code-interface.md) for more.
     """,
     examples: [
       "define_calculation :referral_link, args: [:id]",
@@ -845,9 +811,7 @@ defmodule Ash.Resource.Dsl do
   @define %Spark.Dsl.Entity{
     name: :define,
     describe: """
-    Defines a function with the corresponding name and arguments.
-
-    See the [code interface guide](/documentation/topics/code-interface.md) for more.
+    Defines a function with the corresponding name and arguments. See the [code interface guide](/documentation/topics/code-interface.md) for more.
     """,
     examples: [
       "define :get_user_by_id, action: :get_by_id, args: [:id], get?: true"
@@ -861,9 +825,7 @@ defmodule Ash.Resource.Dsl do
   @code_interface %Spark.Dsl.Section{
     name: :code_interface,
     describe: """
-    Functions that will be defined on the Api module to interact with this resource.
-
-    See the [code interface guide](/documentation/topics/code-interface.md) for more.
+    Functions that will be defined on the Api module to interact with this resource. See the [code interface guide](/documentation/topics/code-interface.md) for more.
     """,
     examples: [
       """
@@ -1386,21 +1348,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.EnsureAggregateFieldIsAttributeOrCalculation
   ]
 
-  @moduledoc """
-  The built in resource DSL.
-  <!--- ash-hq-hide-start--> <!--- -->
-
-  ## DSL Documentation
-
-  ### Index
-
-  #{Spark.Dsl.Extension.doc_index(@sections)}
-
-  ### Docs
-
-  #{Spark.Dsl.Extension.doc(@sections)}
-  <!--- ash-hq-hide-stop--> <!--- -->
-  """
+  @moduledoc false
 
   use Spark.Dsl.Extension,
     sections: @sections,

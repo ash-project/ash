@@ -21,21 +21,7 @@ defmodule Ash.Resource.CalculationInterface do
       type: :any,
       default: [],
       doc: """
-      Supply field or argument values referenced by the calculation.
-
-      By default, the value will be provided for any matching named reference *and* argument.
-      This is normally fine, but in the case that you have an argument and a reference with the same name,
-      you can specify it by supplying `{:arg, :name}` and `{:ref, :name}`. For example:
-
-      ```elixir
-      define_calculation :id_matches, args: [{:arg, :id}, {:ref, :id}]
-      ```
-
-      To make arguments optional, wrap them in `{:optional, ..}`, for example:
-
-      ```elixir
-      define_calculation :id_matches, args: [{:arg, :id}, {:optional, {:ref, :id}}]
-      ```
+      Supply field or argument values referenced by the calculation, in the form of :name, `{:arg, :name}` and/or `{:ref, :name}`. See the [code interface guide](/documentation/topics/code-interface.md) for more.
       """
     ]
   ]

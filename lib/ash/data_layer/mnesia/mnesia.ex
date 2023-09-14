@@ -31,19 +31,6 @@ defmodule Ash.DataLayer.Mnesia do
   This data layer is *unoptimized*, fetching all records from a table and filtering them
   in memory. For that reason, it is not recommended to use it with large amounts of data. It can be
   great for prototyping or light usage, though.
-
-    <!--- ash-hq-hide-start--> <!--- -->
-
-  ## DSL Documentation
-
-  ### Index
-
-  #{Spark.Dsl.Extension.doc_index([@mnesia])}
-
-  ### Docs
-
-  #{Spark.Dsl.Extension.doc([@mnesia])}
-  <!--- ash-hq-hide-stop--> <!--- -->
   """
 
   use Spark.Dsl.Extension,

@@ -50,8 +50,7 @@ defmodule Ash.Resource.Actions.Create do
                 allow_nil_input: [
                   type: {:list, :atom},
                   doc: """
-                  A list of attributes that would normally be required, but should not be for this action. They will still be validated just before
-                  the record is created.
+                  A list of attributes that would normally be required, but should not be for this action. They will still be validated just before the record is created.
                   """
                 ],
                 manual: [
@@ -59,19 +58,14 @@ defmodule Ash.Resource.Actions.Create do
                     {:spark_function_behaviour, Ash.Resource.ManualCreate,
                      {Ash.Resource.ManualCreate.Function, 2}},
                   doc: """
-                  Override the creation behavior. See the manual action guides for more. Accepts a module or module and opts, or a function that takes the changeset and context.
-
-                  See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
+                  Override the creation behavior. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
                   """
                 ],
                 upsert?: [
                   type: :boolean,
                   default: false,
                   doc: """
-                  Wether or not this action is always an upsert.
-
-                  If this is false, the action can still be used as an upsert by passing `upsert?: true` when using it.
-                  This option forces all uses of this action to be treated as an upsert
+                  Forces all uses of this action to be treated as an upsert.
                   """
                 ],
                 upsert_identity: [
@@ -84,8 +78,6 @@ defmodule Ash.Resource.Actions.Create do
                   type: {:list, :atom},
                   doc: """
                   The fields to overwrite in the case of an upsert. If not provided, all fields except for fields set by defaults will be overwritten.
-
-                  For example `uuid_primary_key :id` gets a default value, and so we would not overwrite that.
                   """
                 ]
               ]

@@ -28,9 +28,7 @@ defmodule Ash.Policy.Authorizer do
       type: {:custom, __MODULE__, :validate_check, []},
       required: true,
       doc: """
-      The check to run.
-
-      See `Ash.Policy.Check` for more.
+      The check to run. See `Ash.Policy.Check` for more.
       """
     ],
     name: [
@@ -243,10 +241,8 @@ defmodule Ash.Policy.Authorizer do
       ],
       condition: [
         type: {:custom, __MODULE__, :validate_condition, []},
-        doc: """
-        A check or list of checks that must be true in order for this field policy to apply.
-        If not specified, it always applies.
-        """
+        doc:
+          "A check or list of checks that must be true in order for this field policy to apply. If not specified, it always applies."
       ]
     ],
     args: [:fields, {:optional, :condition, {Ash.Policy.Check.Static, result: true}}],
@@ -364,19 +360,6 @@ defmodule Ash.Policy.Authorizer do
   authorization rules as they may be deemed unnecessary. As such, authorization
   checks should have no side effects. Ideally, the checks built-in to ash should
   cover the bulk of your needs.
-
-  <!--- ash-hq-hide-start--> <!--- -->
-
-  ## DSL Documentation
-
-  ### Index
-
-  #{Spark.Dsl.Extension.doc_index(@sections)}
-
-  ### Docs
-
-  #{Spark.Dsl.Extension.doc(@sections)}
-  <!--- ash-hq-hide-stop--> <!--- -->
   """
 
   require Logger

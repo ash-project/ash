@@ -70,8 +70,7 @@ defmodule Ash.Resource.Relationships.HasOne do
                       type: :boolean,
                       default: false,
                       doc: """
-                      Set to `true` if this relationship is actually a `has_many` relationship with only a single match.
-                      This will allow data layers that do joining under the hood to properly do deduplication when necessary.
+                      Signal that this relationship is actually a `has_many` where the first record is given via the `sort`. This will allow data layers to properly deduplicate when necessary.
                       """
                     ]
                   ],

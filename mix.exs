@@ -35,14 +35,16 @@ defmodule Ash.MixProject do
   end
 
   defp extras do
-    "documentation/**/*.md"
+    "documentation/**/*.{md,livemd,cheatmd}"
     |> Path.wildcard()
     |> Enum.map(fn path ->
       title =
         path
         |> Path.basename(".md")
+        |> Path.basename(".livemd")
+        |> Path.basename(".cheatmd")
         |> String.split(~r/[-_]/)
-        |> Enum.map_join(" ", &String.capitalize/1)
+        |> Enum.map_join(" ", &capitalize/1)
         |> case do
           "F A Q" ->
             "FAQ"
@@ -59,6 +61,15 @@ defmodule Ash.MixProject do
     end)
   end
 
+  defp capitalize(string) do
+    string
+    |> String.split(" ")
+    |> Enum.map(fn string ->
+      [hd | tail] = String.graphemes(string)
+      String.capitalize(hd) <> Enum.join(tail)
+    end)
+  end
+
   defp groups_for_extras do
     [
       Tutorials: [
@@ -68,7 +79,8 @@ defmodule Ash.MixProject do
         ~r'documentation/tutorials'
       ],
       "How To": ~r'documentation/how_to',
-      Topics: ~r'documentation/topics'
+      Topics: ~r'documentation/topics',
+      DSLs: ~r'documentation/dsls'
     ]
   end
 
@@ -149,18 +161,15 @@ defmodule Ash.MixProject do
         ]
       ],
       groups_for_modules: [
-        "Extensions & DSLs": [
-          Ash.Api.Dsl,
-          Ash.Resource.Dsl,
-          Ash.Flow.Dsl,
+        Extensions: [
+          Ash.Api,
+          Ash.Resource,
           Ash.DataLayer.Ets,
           Ash.DataLayer.Mnesia,
           Ash.DataLayer.Simple,
           Ash.Notifier.PubSub,
           Ash.Policy.Authorizer,
-          Ash.Registry,
-          Ash.Registry.Dsl,
-          Ash.Resource
+          Ash.Registry
         ],
         Resources: [
           Ash.Api,
@@ -280,24 +289,23 @@ defmodule Ash.MixProject do
     [
       {:spark, "~> 1.1 and >= 1.1.20"},
       {:ecto, "~> 3.7"},
-      {:ets, "~> 0.8.0"},
+      {:ets, "~> 0.8"},
       {:decimal, "~> 2.0"},
       {:picosat_elixir, "~> 0.2"},
       {:comparable, "~> 1.0"},
       {:jason, ">= 1.0.0"},
       {:earmark, "~> 1.4", optional: true},
-      {:stream_data, "~> 0.5.0"},
+      {:stream_data, "~> 0.5"},
       {:telemetry, "~> 1.1"},
       {:plug, ">= 0.0.0", optional: true},
       # Dev/Test dependencies
       {:ex_doc, "~> 0.22", only: [:dev, :test], runtime: false},
-      {:ex_check, "~> 0.12.0", only: [:dev, :test]},
+      {:ex_check, "~> 0.12", only: [:dev, :test]},
       {:credo, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:dialyxir, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:sobelow, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:git_ops, "~> 2.5", only: [:dev, :test]},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},
-      {:parse_trans, "3.3.0", only: [:dev, :test], override: true},
       {:benchee, "~> 1.1", only: [:dev, :test]},
       {:doctor, "~> 0.21", only: [:dev, :test]}
     ]
@@ -307,9 +315,18 @@ defmodule Ash.MixProject do
     [
       sobelow: "sobelow --skip",
       credo: "credo --strict",
-      docs: ["docs", "ash.replace_doc_links"],
+      docs: [
+        "spark.cheat_sheets",
+        "docs",
+        "ash.replace_doc_links",
+        "spark.cheat_sheets_in_search"
+      ],
+      "spark.cheat_sheets_in_search":
+        "spark.cheat_sheets_in_search --extensions Ash.Resource.Dsl,Ash.Api.Dsl,Ash.Flow.Dsl,Ash.Registry.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer",
       "spark.formatter":
-        "spark.formatter --extensions Ash.Resource.Dsl,Ash.Api.Dsl,Ash.Flow.Dsl,Ash.Registry.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer"
+        "spark.formatter --extensions Ash.Resource.Dsl,Ash.Api.Dsl,Ash.Flow.Dsl,Ash.Registry.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer",
+      "spark.cheat_sheets":
+        "spark.cheat_sheets --extensions Ash.Resource.Dsl,Ash.Api.Dsl,Ash.Flow.Dsl,Ash.Registry.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer"
     ]
   end
 end

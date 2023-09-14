@@ -1,5 +1,5 @@
 defmodule Ash.Flow.Step.Create do
-  @moduledoc false
+  @moduledoc "Represents a create action step in an Ash.Flow"
   use Ash.Flow.Step.BuiltinStep, [
     :resource,
     :action,

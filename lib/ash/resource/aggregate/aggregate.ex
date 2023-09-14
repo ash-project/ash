@@ -28,10 +28,7 @@ defmodule Ash.Resource.Aggregate do
     read_action: [
       type: :atom,
       doc: """
-      The read action to use when building the aggregate
-
-      Defaults to the primary read action. Keep in mind this action must not
-      have any required arguments.
+      The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments.
       """
     ],
     relationship_path: [
@@ -87,13 +84,7 @@ defmodule Ash.Resource.Aggregate do
       type: :boolean,
       default: true,
       doc: """
-      Wether or not the aggregate query should authorize based on the target action.
-
-      If you are using filter checks or simple checks that don't depend on arguments on the destination resource, then
-      this should be set to `true`. Additionally, you can set `read_action` to a separate action that does have filter checks.
-      Otherwise, you can set `authorize? false` on the aggregate.
-
-      If the parent query is not being authorized, then the aggregate not be authorized either regardless of the setting.
+      Wether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
       """
     ]
   ]

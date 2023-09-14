@@ -1846,7 +1846,7 @@ defmodule Ash.Query do
   Aggregations are made available on the `aggregates` field of the records returned
 
   The filter option accepts either a filter or a keyword list of options to supply to build a limiting query for that aggregate.
-  See the DSL docs for each aggregate type in `Ash.Resource.Dsl` for more information.
+  See the DSL docs for each aggregate type in the [Resource DSL docs](dsl-ash-resource.html#aggregates) for more information.
 
   Options:
 
@@ -1887,7 +1887,7 @@ defmodule Ash.Query do
   Aggregations are made available on the `aggregates` field of the records returned
 
   The filter option accepts either a filter or a keyword list of options to supply to build a limiting query for that aggregate.
-  See the DSL docs for each aggregate type in `Ash.Resource.Dsl` for more information.
+  See the DSL docs for each aggregate type in the [Resource DSL docs](dsl-ash-resource.html#aggregates) for more information.
   """
   @spec aggregate(
           t() | Ash.Resource.t(),

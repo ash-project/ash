@@ -1,5 +1,5 @@
 defmodule Ash.Notifier.PubSub.Publication do
-  @moduledoc false
+  @moduledoc "Represents a configured publication from the pubsub notifier on an Ash.Resource"
 
   defstruct [
     :action,

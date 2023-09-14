@@ -33,18 +33,14 @@ defmodule Ash.Resource.Actions.Argument do
         type: :keyword_list,
         default: [],
         doc: """
-        Constraints to provide to the type when casting the value.
-        For more information see the specific type's documentation,
-        for general type information see `Ash.Type` and
-        for practical example [see the constraints topic](/documentation/topics/constraints.md).
+        Constraints to provide to the type when casting the value. For more information, see [the constraints topic](/documentation/topics/constraints.md).
         """
       ],
       allow_nil?: [
         type: :boolean,
         default: true,
         doc: """
-        Whether or not the argument value may be nil (or may be not provided)
-        If nil value is given error is raised.
+        Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised.
         """
       ],
       private?: [
@@ -58,9 +54,7 @@ defmodule Ash.Resource.Actions.Argument do
         type: :boolean,
         default: false,
         doc: """
-        Whether or not the argument value contains sensitive information, like PII.
-        Using this option will cause the argument to be `** Redacted **` from the resource when logging or inspecting.
-        See the [security guide](/documentation/topics/security.md) for more.
+        Whether or not the argument value contains sensitive information, like PII. See the [security guide](/documentation/topics/security.md) for more.
         """
       ],
       default: [

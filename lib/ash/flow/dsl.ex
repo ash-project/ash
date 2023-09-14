@@ -13,6 +13,7 @@ defmodule Ash.Flow.Dsl do
       """
     ],
     target: Ash.Flow.Step.Debug,
+    recursive_as: :steps,
     args: [:name],
     schema: Ash.Flow.Step.Debug.schema()
   }
@@ -27,6 +28,7 @@ defmodule Ash.Flow.Dsl do
       create :create_post, MyApp.Post, :create
       """
     ],
+    recursive_as: :steps,
     no_depend_modules: [:resource, :touches_resources],
     modules: [:manual],
     target: Ash.Flow.Step.Create,
@@ -49,6 +51,7 @@ defmodule Ash.Flow.Dsl do
     no_depend_modules: [:resource, :touches_resources],
     modules: [:manual],
     target: Ash.Flow.Step.Update,
+    recursive_as: :steps,
     args: [:name, :resource, :action],
     schema: Ash.Flow.Step.Update.schema()
   }
@@ -66,6 +69,7 @@ defmodule Ash.Flow.Dsl do
       end
       """
     ],
+    recursive_as: :steps,
     no_depend_modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.Update,
     args: [:name, :resource, :action],
@@ -82,6 +86,7 @@ defmodule Ash.Flow.Dsl do
       destroy :destroy_post, MyApp.Post, :destroy
       """
     ],
+    recursive_as: :steps,
     modules: [:manual],
     no_depend_modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.Destroy,
@@ -99,6 +104,7 @@ defmodule Ash.Flow.Dsl do
       read :destroy_post, MyApp.Post, :destroy
       """
     ],
+    recursive_as: :steps,
     no_depend_modules: [:resource, :touches_resources],
     modules: [:manual],
     target: Ash.Flow.Step.Read,
@@ -120,6 +126,7 @@ defmodule Ash.Flow.Dsl do
         }
       """
     ],
+    recursive_as: :run_flow,
     no_depend_modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.RunFlow,
     args: [:name, :flow],
@@ -145,6 +152,7 @@ defmodule Ash.Flow.Dsl do
       end
       """
     ],
+    recursive_as: :steps,
     no_depend_modules: [:custom, :touches_resources],
     target: Ash.Flow.Step.Custom,
     args: [:name, :custom],
@@ -210,8 +218,6 @@ defmodule Ash.Flow.Dsl do
     ]
   }
 
-  @leaf_steps [@create, @debug, @update, @destroy, @validate, @read, @run_flow, @custom]
-
   @transaction %Spark.Dsl.Entity{
     name: :transaction,
     describe: """
@@ -222,7 +228,7 @@ defmodule Ash.Flow.Dsl do
     args: [:name, :resource],
     recursive_as: :steps,
     entities: [
-      steps: @leaf_steps
+      steps: []
     ],
     no_depend_modules: [:touches_resources],
     examples: [
@@ -257,7 +263,7 @@ defmodule Ash.Flow.Dsl do
     recursive_as: :steps,
     no_depend_modules: [:touches_resources],
     entities: [
-      steps: @leaf_steps
+      steps: []
     ],
     examples: [
       """
@@ -286,7 +292,7 @@ defmodule Ash.Flow.Dsl do
     recursive_as: :steps,
     no_depend_modules: [:touches_resources],
     entities: [
-      steps: @leaf_steps
+      steps: []
     ],
     examples: [
       """
@@ -318,12 +324,19 @@ defmodule Ash.Flow.Dsl do
       """
     ],
     imports: [Ash.Flow.StepHelpers],
-    entities:
-      [
-        @map,
-        @branch,
-        @transaction
-      ] ++ @leaf_steps
+    entities: [
+      @map,
+      @branch,
+      @transaction,
+      @create,
+      @debug,
+      @update,
+      @destroy,
+      @validate,
+      @read,
+      @run_flow,
+      @custom
+    ]
   }
 
   @transformers [
@@ -340,18 +353,11 @@ defmodule Ash.Flow.Dsl do
 
   @moduledoc """
   The built in flow DSL.
-  <!--- ash-hq-hide-start--> <!--- -->
 
-  ## DSL Documentation
+  ## Halting
 
-  ### Index
-
-  #{Spark.Dsl.Extension.doc_index(@sections)}
-
-  ### Docs
-
-  #{Spark.Dsl.Extension.doc(@sections)}
-  <!--- ash-hq-hide-stop--> <!--- -->
+  Steps can be halted, which will stop the flow from continuing and return a halted flow. To attach a specific reason, use a `halt_reason`.
+  If you need more complex halting logic, then you'd want to use a custom step, and return `{:error, Ash.Error.Flow.Halted.exception(...)}`
   """
 
   use Spark.Dsl.Extension,

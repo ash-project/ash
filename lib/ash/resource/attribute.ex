@@ -57,10 +57,7 @@ defmodule Ash.Resource.Attribute do
     constraints: [
       type: :keyword_list,
       doc: """
-      Constraints to provide to the type when casting the value.
-      For more information see the specific type's documentation,
-      for general type information see `Ash.Type` and
-      for practical example [see the constraints topic](/documentation/topics/constraints.md).
+      Constraints to provide to the type when casting the value. For more, see the [constraints topic](/documentation/topics/constraints.md).
       """
     ],
     description: [
@@ -71,9 +68,7 @@ defmodule Ash.Resource.Attribute do
       type: :boolean,
       default: false,
       doc: """
-      Whether or not the attribute value contains sensitive information, like PII.
-      Using this option will cause the attribute to be `** Redacted **` from the resource when logging or inspecting.
-      See the [Security guide](/documentation/topics/security.md) for more.
+      Whether or not the attribute value contains sensitive information, like PII. See the [Security guide](/documentation/topics/security.md) for more.
       """
     ],
     source: [
@@ -86,29 +81,21 @@ defmodule Ash.Resource.Attribute do
       type: :boolean,
       default: false,
       doc: """
-      Whether or not to ensure this attribute is always selected when reading from the database.
-
-      When this option is true and performing a read action, the attribute will **always** be selected even if it was explicitly selected out of the query.
-      For example say there is a resource with two attributes `:foo` and `:bar`.
-      Say `:foo` has `always_select? true` set.
-      The query `Ash.Query.select(MyResource, [:bar])` would return both `:foo` and `:bar` even though `:foo` was not selected in the query.
+      Whether or not to ensure this attribute is always selected when reading from the database, regardless of applied select statements.
       """
     ],
     primary_key?: [
       type: :boolean,
       default: false,
       doc: """
-      Whether the attribute is the primary key.
-      Composite primary key is also possible by using `primary_key? true` in more than one attribute.
-      If primary_key? is true, allow_nil? must be false.
+      Whether the attribute is the primary key. Composite primary key is also possible by using `primary_key? true` in more than one attribute. If primary_key? is true, allow_nil? must be false.
       """
     ],
     allow_nil?: [
       type: :boolean,
       default: true,
       doc: """
-      Whether or not the attribute can be set to nil.
-      If nil value is given error is raised.
+      Whether or not the attribute can be set to nil. If nil value is given error is raised.
       """
     ],
     generated?: [
@@ -122,20 +109,14 @@ defmodule Ash.Resource.Attribute do
       type: :boolean,
       default: true,
       doc: """
-      Whether or not the value can be written to.
-      If `writable? false` then attribute is read-only and cannot be written to even when creating a record.
-      This can be overridden with `Ash.Changeset.force_change_attribute/3`.
+      Whether or not the value can be written to. Non-writable attributes can still be written with `Ash.Changeset.force_change_attribute/3`.
       """
     ],
     private?: [
       type: :boolean,
       default: false,
       doc: """
-      If `private? true` then attribute is read-only and cannot be written to even when creating a record.
-      Additionally it tells other extensions (e.g. AshJsonApi or AshGraphql) not to expose these attributes through the API.
-      The value of the attribute can be overridden with `Ash.Changeset.force_change_attribute/3`.
-
-      See the [security guide](/documentation/topics/security.md) for more.
+      The attribute is not publically writable, and should not be exposed over any public interfaces. See the [security guide](/documentation/topics/security.md) for more.
       """
     ],
     default: [
@@ -151,17 +132,13 @@ defmodule Ash.Resource.Attribute do
       default: true,
       doc: """
       Whether or not the attribute can be referenced in filters.
-      Can be used to prevent filtering on large text columns with no indexing.
       """
     ],
     match_other_defaults?: [
       type: :boolean,
       default: false,
       doc: """
-      Ensures that other attributes that use the same "lazy" default (a function or an mfa), use the same default value.
-      Has no effect unless `default` is a zero argument function.
-      For example, create and update timestamps use this option, and have the same lazy function `&DateTime.utc_now/0`, so they
-      get the same value, instead of having slightly different timestamps.
+      Ensures that other attributes that use the same "lazy" default (a function or an mfa), use the same default value. Has no effect unless `default` is a zero argument function.
       """
     ]
   ]

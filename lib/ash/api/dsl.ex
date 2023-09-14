@@ -35,17 +35,14 @@ defmodule Ash.Api.Dsl do
       timeout: [
         type: :timeout,
         doc: """
-        The default timeout to use for requests using this API.
-        See the [timeouts guide](/documentation/topics/timeouts.md) for more.
+        The default timeout to use for requests using this API. See the [timeouts guide](/documentation/topics/timeouts.md) for more.
         """,
         default: 30_000
       ],
       trace_name: [
         type: :string,
         doc: """
-        The name to use in traces. Defaults to the last part of the module.
-
-        See the [monitoring guide](/documentation/topics/monitoring.md) for more
+        The name to use in traces. Defaults to the last part of the module. See the [monitoring guide](/documentation/topics/monitoring.md) for more
         """
       ]
     ]
@@ -54,9 +51,7 @@ defmodule Ash.Api.Dsl do
   @authorization %Spark.Dsl.Section{
     name: :authorization,
     describe: """
-    Options for how requests are authorized using this Api.
-
-    See the [security guide](/documentation/topics/security.md) for more.
+    Options for how requests are authorized using this Api. See the [security guide](/documentation/topics/security.md) for more.
     """,
     examples: [
       """
@@ -81,7 +76,7 @@ defmodule Ash.Api.Dsl do
     ]
   }
 
-  defmodule Ash.Api.ResourceReference do
+  defmodule ResourceReference do
     @moduledoc "A resource reference in an api"
     defstruct [:resource]
   end
@@ -92,7 +87,7 @@ defmodule Ash.Api.Dsl do
     examples: [
       "resource Foo"
     ],
-    target: Ash.Api.ResourceReference,
+    target: ResourceReference,
     args: [:resource],
     no_depend_modules: [:resource],
     schema: [
@@ -143,8 +138,6 @@ defmodule Ash.Api.Dsl do
   @sections [@api, @resources, @execution, @authorization]
 
   @moduledoc """
-  A small DSL for declaring APIs
-
   Apis are the entrypoints for working with your resources.
 
   Apis may optionally include a list of resources, in which case they can be
@@ -152,19 +145,6 @@ defmodule Ash.Api.Dsl do
   but if at all possible you should define an `Ash.Registry` if you are using an extension
   that requires a list of resources. For example, most extensions look for two application
   environment variables called `:ash_apis` and `:ash_registries` to find any potential registries
-
-  <!--- ash-hq-hide-start --> <!--- -->
-
-  ## DSL Documentation
-
-  ### Index
-
-  #{Spark.Dsl.Extension.doc_index(@sections)}
-
-  ### Docs
-
-  #{Spark.Dsl.Extension.doc(@sections)}
-  <!--- ash-hq-hide-stop --> <!--- -->
   """
 
   use Spark.Dsl.Extension, sections: @sections

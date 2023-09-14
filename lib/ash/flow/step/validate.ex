@@ -10,18 +10,13 @@ defmodule Ash.Flow.Step.Validate do
         record: [
           type: :any,
           doc: """
-          The record to be created/updated/destroyed, if relevant. can use template helpers, e.g `result(:step_name)`.
-
-          If the value is `nil` and would be required by the action type, the step is skipped and `nil` is the result of the step.
-          Any other value is used as an input record.
+          The record to be created/updated/destroyed. If the value is `nil` and would be required by the action type, the step is skipped and `nil` is the result of the step.
           """
         ],
         only_keys: [
           type: {:list, {:or, [:atom, {:list, :atom}]}},
           doc: """
-          If the keys are set, the step will succeed as long as there are no errors for those specific fields.
-          Additionally, only errors for those keys will be returned.
-          Use a list for the key if you want to check for an error at a path, and use `:_` to allow anything at that path
+          A list of keys or paths to keys that should be validated. Others will be ignored, and errors generated for other fields will be ignored.
           """
         ]
       ]

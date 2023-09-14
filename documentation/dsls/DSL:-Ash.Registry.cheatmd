@@ -1,0 +1,58 @@
+# DSL: Ash.Registry.Dsl
+
+A small DSL for declaring an `Ash.Registry`. Not generally necessary any longer.
+
+`Ash.Registry` can be used generically, but the main way it is used in Ash is to provide a compile-time registry for an Ash Api.
+
+
+## entries
+List the entries present in this registry
+
+---
+
+ * [entry](#entries-entry)
+
+### Examples
+```
+entries do
+  entry MyApp.User
+  entry MyApp.Post
+  entry MyApp.Comment
+end
+
+```
+
+
+### Reference
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| warn_on_empty? | `boolean` | true | Set to `false` to ignore warnings about an empty registry |
+
+
+
+## entries.entry
+
+Introspection Target: `Ash.Registry.Entry`
+
+A reference to an ash module (typically a resource)
+
+---
+
+
+
+### Examples
+```
+entry MyApp.User
+```
+
+
+### Reference
+| Name | Type | Docs |
+| ---  | ---  | ---  |
+| entry | `atom` | The referenced module |
+
+
+
+
+
+

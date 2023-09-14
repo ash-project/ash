@@ -75,19 +75,12 @@ defmodule Ash.Notifier.PubSub do
         type: {:one_of, [:notification, :phoenix_broadcast, :broadcast]},
         default: :notification,
         doc: """
-        What shape the event payloads will be in. `:notification` just sends the notification, `phoenix_broadcast` sends a `%Phoenix.Socket.Broadcast{}`, and `:broadcast`
-        sends `%{topic: (topic), event: (event), notification: (notification)}`
+        What shape the event payloads will be in. See
         """
       ],
       name: [
         type: :atom,
-        doc: """
-        A named pub sub to pass as the first argument to broadcast.
-
-        If you are using a phoenix `Endpoint` module for pubsub then this is unnecessary. If you want to use
-        a custom pub sub started with something like `{Phoenix.PubSub, name: MyName}`, then you can provide `MyName` to
-        here.
-        """
+        doc: "A named pub sub to pass as the first argument to broadcast."
       ]
     ]
   }
@@ -96,19 +89,6 @@ defmodule Ash.Notifier.PubSub do
 
   @moduledoc """
   A pubsub notifier extension.
-
-  <!--- ash-hq-hide-start--> <!--- -->
-
-  ## DSL Documentation
-
-  ### Index
-
-  #{Spark.Dsl.Extension.doc_index(@sections)}
-
-  ### Docs
-
-  #{Spark.Dsl.Extension.doc(@sections)}
-  <!--- ash-hq-hide-stop--> <!--- -->
   """
 
   use Spark.Dsl.Extension, sections: @sections

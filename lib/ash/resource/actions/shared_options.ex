@@ -20,8 +20,6 @@ defmodule Ash.Resource.Actions.SharedOptions do
       type: :boolean,
       doc: """
       Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`.
-
-      Has no effect if the data layer does not support transactions, or if that data layer is already in a transaction.
       """
     ],
     touches_resources: [
@@ -41,8 +39,7 @@ defmodule Ash.Resource.Actions.SharedOptions do
       type: :boolean,
       default: false,
       doc: """
-      If true, global validations will be done in a `before_action` hook, regardless of their configuration
-      on the resource.
+      If true, global validations will be done in a `before_action` hook, regardless of their configuration on the resource.
       """
     ],
     skip_global_validations?: [
@@ -55,18 +52,13 @@ defmodule Ash.Resource.Actions.SharedOptions do
     reject: [
       type: {:or, [in: [:all], list: :atom]},
       doc: """
-      A list of attributes not to accept. This is useful if you want to say 'accept all but x'
-
-      If this is specified along with `accept`, then everything in the `accept` list minus any matches in the
-      `reject` list will be accepted.
+      A list of attributes not to accept. If this is specified along with `accept`, these are removed from the `accept` list.
       """
     ],
     require_attributes: [
       type: {:list, :atom},
       doc: """
-      A list of attributes that would normally `allow_nil?`, to require for this action.
-
-      No need to include attributes that already do not allow nil?
+      A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil?
       """
     ],
     error_handler: [
@@ -76,9 +68,7 @@ defmodule Ash.Resource.Actions.SharedOptions do
     manual?: [
       type: :boolean,
       doc: """
-      Instructs Ash to *skip* the actual update/create/destroy step at the data layer. See the manual action guides for more.
-
-      See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
+      Instructs Ash to *skip* the actual update/create/destroy step at the data layer. See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
       """
     ]
   ]

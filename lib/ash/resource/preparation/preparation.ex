@@ -25,8 +25,7 @@ defmodule Ash.Resource.Preparation do
           {:spark_function_behaviour, Ash.Resource.Preparation, Ash.Resource.Preparation.Builtins,
            {Ash.Resource.Preparation.Function, 2}},
         doc: """
-        The module and options for a preparation.
-        Also accepts functions take the query and the context.
+        The module and options for a preparation. Also accepts functions take the query and the context.
         """,
         required: true
       ]

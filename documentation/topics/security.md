@@ -4,6 +4,10 @@
 
 A great thing to do early on is to be explicit about your security configuration. To that end, once you've read this guide, we highly recommend that you place the configuration found at the bottom of your guide into your api modules, even if you are simply setting them to their default values. Especially the `authorize` option.
 
+## Sensitive Attributes
+
+Using `sensitive? true` will cause the argument to be `** Redacted **` from the resource when logging or inspecting. In filter statements, any value used in the same expression as a sensitive attribute will also be redacted. For example, you might see: `email == "** Redacted **"` in a filter statement if `email` is marked as sensitive.
+
 ## Authorization
 
 Authorization in Ash is done via authorizers. Generally, you won't need to create your own  authorizer, as the builtin policy authorizer `Ash.Policy.Authorizer` should work well for any use case. Authorization is performed with a given actor and a query or changeset.
@@ -84,10 +88,10 @@ Important: `nil` is still a valid actor, so this won't prevent providing `actor:
 
 ##### Important!
 
-The default value for this is relatively loose, and we intend to change it in the 3.0 release (which is not scheduled for anytime soon). Right now, it is `:when_requested`, but a better default would be `:by_default`, and is what you should choose when starting out. 
+The default value for this is relatively loose, and we intend to change it in the 3.0 release (which is not scheduled for anytime soon). Right now, it is `:when_requested`, but a better default would be `:by_default`, and is what you should choose when starting out.
 
 When to run authorization for a given request.
 
-- `:always` forces `authorize?: true` on all requests to the Api. 
+- `:always` forces `authorize?: true` on all requests to the Api.
 - `:by_default` sets `authorize?: true` if the `authorize?` option was not set (so it can be set to `false`).
 - `:when_requested` sets `authorize?: true` whenever an actor is set or `authorize?: true` is explicitly passed. This is the default behavior.
