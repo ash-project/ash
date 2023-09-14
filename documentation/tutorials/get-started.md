@@ -1,8 +1,9 @@
 # Get Started
 
 <!--- ash-hq-hide-start --> <!--- -->
-
-This documentation is best viewed at [ash-hq.org](https://ash-hq.org)
+> #### HexDocs {: .tip}
+>
+> Hexdocs does not support multi-package search. To assist with this, we provide a mirror of this documentation at [ash-hq.org](https://ash-hq.org). Use Ctrl+K or Cmd+K to search all packages on that site. For the best way to use the hex documentation, see the [hexdocs guide](/documentation/tutorials/using-hexdocs.md).
 
 <!--- ash-hq-hide-stop --> <!--- -->
 
