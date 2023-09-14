@@ -129,7 +129,7 @@ defmodule Ash.Api.Dsl do
       registry: [
         type: {:behaviour, Ash.Registry},
         doc: """
-        Configure the registry that contains the resources. It is recommended to use application config for this, to help with compile times. See the quick start guide for more.
+        Configure a registry that contains the resources. This option is generally not necessary anymore, and remains for backwards compatibility.
         """
       ]
     ],

@@ -47,8 +47,9 @@ List the resources present in this API
 ### Examples
 ```
 resources do
-  registry MyApp.Registry
-en
+  resource MyApp.Tweet
+  resource MyApp.Comment
+end
 
 ```
 
