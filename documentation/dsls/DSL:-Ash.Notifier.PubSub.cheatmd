@@ -32,14 +32,20 @@ end
 ### Reference
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
-| module | `atom` |  | The module to call `broadcast/3` on e.g module.broadcast(topic, event, message). |
-| prefix | `String.t` |  | A prefix for all pubsub messages, e.g `users`. A message with `created` would be published as `users:created` |
-| broadcast_type | `:notification \| :phoenix_broadcast \| :broadcast` | :notification | What shape the event payloads will be in. See |
-| name | `atom` |  | A named pub sub to pass as the first argument to broadcast. |
+| `module`  - required | `atom` |  | The module to call `broadcast/3` on e.g module.broadcast(topic, event, message). |
+| `prefix`  | `String.t` |  | A prefix for all pubsub messages, e.g `users`. A message with `created` would be published as `users:created` |
+| `broadcast_type`  | `:notification \| :phoenix_broadcast \| :broadcast` | :notification | What shape the event payloads will be in. See |
+| `name`  | `atom` |  | A named pub sub to pass as the first argument to broadcast. |
 
 
 
 ## pub_sub.publish
+
+```elixir
+publish action, topic
+```
+
+---
 
 Introspection Target: `Ash.Notifier.PubSub.Publication`
 
@@ -67,14 +73,21 @@ publish :assign, "assigned"
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| action | `atom` | The name of the action that should be published |
-| topic | ``any`` | The topic to publish |
-| event | `String.t` | The name of the event to publish. Defaults to the action name |
-| dispatcher | `atom` | The module to use as a dispatcher. If none is set, the pubsub module provided is used. |
+| `action`  - required-arg 1 | `atom` | The name of the action that should be published |
+| `topic`  - required-arg 2 | ``any`` | The topic to publish |
+| `event`  | `String.t` | The name of the event to publish. Defaults to the action name |
+| `dispatcher`  | `atom` | The module to use as a dispatcher. If none is set, the pubsub module provided is used. |
+
 
 
 
 ## pub_sub.publish_all
+
+```elixir
+publish_all type, topic
+```
+
+---
 
 Introspection Target: `Ash.Notifier.PubSub.Publication`
 
@@ -97,11 +110,12 @@ publish_all :create, "created"
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| type | `:create \| :update \| :destroy` | Publish on all actions of a given type |
-| action | `atom` | The name of the action that should be published |
-| topic | ``any`` | The topic to publish |
-| event | `String.t` | The name of the event to publish. Defaults to the action name |
-| dispatcher | `atom` | The module to use as a dispatcher. If none is set, the pubsub module provided is used. |
+| `type`  - arg 1 | `:create \| :update \| :destroy` | Publish on all actions of a given type |
+| `topic`  - required-arg 2 | ``any`` | The topic to publish |
+| `action`  | `atom` | The name of the action that should be published |
+| `event`  | `String.t` | The name of the event to publish. Defaults to the action name |
+| `dispatcher`  | `atom` | The module to use as a dispatcher. If none is set, the pubsub module provided is used. |
+
 
 
 

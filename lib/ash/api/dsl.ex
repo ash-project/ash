@@ -129,7 +129,7 @@ defmodule Ash.Api.Dsl do
       registry: [
         type: {:behaviour, Ash.Registry},
         doc: """
-        Configure a registry that contains the resources. This option is generally not necessary anymore, and remains for backwards compatibility.
+        Configure a registry that contains the resources. This option is generally not necessary anymore, and remains for backwards compatibility. Instead, configure resources in this block directly.
         """
       ]
     ],

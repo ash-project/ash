@@ -79,11 +79,17 @@ end
 ### Reference
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
-| default_access_type | `:strict \| :filter \| :runtime` | :filter | The default access type of policies for this resource. |
+| `default_access_type`  | `:strict \| :filter \| :runtime` | :filter | The default access type of policies for this resource. |
 
 
 
 ## policies.policy
+
+```elixir
+policy condition
+```
+
+---
 
 Introspection Target: `Ash.Policy.Policy`
 
@@ -128,12 +134,18 @@ See the [policies guide](/documentation/topics/policies.md) for more.
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| description | `String.t` | A description for the policy, used when explaining authorization results |
-| access_type | `:strict \| :filter \| :runtime` | What portion of the checks inside the policy are allowed to run. See the guide for more. |
-| condition | ``any`` | A check or list of checks that must be true in order for this policy to apply. |
+| `condition`  - arg 1 | ``any`` | A check or list of checks that must be true in order for this policy to apply. |
+| `description`  | `String.t` | A description for the policy, used when explaining authorization results |
+| `access_type`  | `:strict \| :filter \| :runtime` | What portion of the checks inside the policy are allowed to run. See the guide for more. |
 
 
 ## policies.policy.authorize_if
+
+```elixir
+authorize_if check
+```
+
+---
 
 Introspection Target: `Ash.Policy.Check`
 
@@ -157,12 +169,19 @@ authorize_if actor_attribute_matches_record(:group, :group)
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| check | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
-| name | `String.t` | A short name or description for the check, used when explaining authorization results |
+| `check`  - required-arg 1 | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
+| `name`  | `String.t` | A short name or description for the check, used when explaining authorization results |
+
 
 
 
 ## policies.policy.forbid_if
+
+```elixir
+forbid_if check
+```
+
+---
 
 Introspection Target: `Ash.Policy.Check`
 
@@ -186,12 +205,19 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| check | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
-| name | `String.t` | A short name or description for the check, used when explaining authorization results |
+| `check`  - required-arg 1 | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
+| `name`  | `String.t` | A short name or description for the check, used when explaining authorization results |
+
 
 
 
 ## policies.policy.authorize_unless
+
+```elixir
+authorize_unless check
+```
+
+---
 
 Introspection Target: `Ash.Policy.Check`
 
@@ -215,12 +241,19 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| check | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
-| name | `String.t` | A short name or description for the check, used when explaining authorization results |
+| `check`  - required-arg 1 | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
+| `name`  | `String.t` | A short name or description for the check, used when explaining authorization results |
+
 
 
 
 ## policies.policy.forbid_unless
+
+```elixir
+forbid_unless check
+```
+
+---
 
 Introspection Target: `Ash.Policy.Check`
 
@@ -244,13 +277,21 @@ forbid_unless actor_attribute_matches_record(:group, :group)
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| check | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
-| name | `String.t` | A short name or description for the check, used when explaining authorization results |
+| `check`  - required-arg 1 | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
+| `name`  | `String.t` | A short name or description for the check, used when explaining authorization results |
+
+
 
 
 
 
 ## policies.bypass
+
+```elixir
+bypass condition
+```
+
+---
 
 Introspection Target: `Ash.Policy.Policy`
 
@@ -269,12 +310,18 @@ A policy that, if passed, will skip all following policies. If failed, authoriza
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| description | `String.t` | A description for the policy, used when explaining authorization results |
-| access_type | `:strict \| :filter \| :runtime` | What portion of the checks inside the policy are allowed to run. See the guide for more. |
-| condition | ``any`` | A check or list of checks that must be true in order for this policy to apply. |
+| `condition`  - arg 1 | ``any`` | A check or list of checks that must be true in order for this policy to apply. |
+| `description`  | `String.t` | A description for the policy, used when explaining authorization results |
+| `access_type`  | `:strict \| :filter \| :runtime` | What portion of the checks inside the policy are allowed to run. See the guide for more. |
 
 
 ## policies.bypass.authorize_if
+
+```elixir
+authorize_if check
+```
+
+---
 
 Introspection Target: `Ash.Policy.Check`
 
@@ -298,12 +345,19 @@ authorize_if actor_attribute_matches_record(:group, :group)
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| check | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
-| name | `String.t` | A short name or description for the check, used when explaining authorization results |
+| `check`  - required-arg 1 | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
+| `name`  | `String.t` | A short name or description for the check, used when explaining authorization results |
+
 
 
 
 ## policies.bypass.forbid_if
+
+```elixir
+forbid_if check
+```
+
+---
 
 Introspection Target: `Ash.Policy.Check`
 
@@ -327,12 +381,19 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| check | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
-| name | `String.t` | A short name or description for the check, used when explaining authorization results |
+| `check`  - required-arg 1 | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
+| `name`  | `String.t` | A short name or description for the check, used when explaining authorization results |
+
 
 
 
 ## policies.bypass.authorize_unless
+
+```elixir
+authorize_unless check
+```
+
+---
 
 Introspection Target: `Ash.Policy.Check`
 
@@ -356,12 +417,19 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| check | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
-| name | `String.t` | A short name or description for the check, used when explaining authorization results |
+| `check`  - required-arg 1 | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
+| `name`  | `String.t` | A short name or description for the check, used when explaining authorization results |
+
 
 
 
 ## policies.bypass.forbid_unless
+
+```elixir
+forbid_unless check
+```
+
+---
 
 Introspection Target: `Ash.Policy.Check`
 
@@ -385,8 +453,10 @@ forbid_unless actor_attribute_matches_record(:group, :group)
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| check | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
-| name | `String.t` | A short name or description for the check, used when explaining authorization results |
+| `check`  - required-arg 1 | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
+| `name`  | `String.t` | A short name or description for the check, used when explaining authorization results |
+
+
 
 
 
@@ -438,6 +508,12 @@ end
 
 ## field_policies.field_policy_bypass
 
+```elixir
+field_policy_bypass fields, condition \ {Ash.Policy.Check.Static, [result: true]}
+```
+
+---
+
 Introspection Target: `Ash.Policy.FieldPolicy`
 
 A field policy that, if passed, will skip all following field policies for that field or fields. If failed, field authorization moves on to the next policy
@@ -455,12 +531,18 @@ A field policy that, if passed, will skip all following field policies for that 
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| description | `String.t` | A description for the policy, used when explaining authorization results |
-| fields | `list(atom) \| atom` | The field or fields that the policy applies to. |
-| condition | ``any`` | A check or list of checks that must be true in order for this field policy to apply. If not specified, it always applies. |
+| `fields`  - arg 1 | `list(atom) \| atom` | The field or fields that the policy applies to. |
+| `condition`  - arg 2 | ``any`` | A check or list of checks that must be true in order for this field policy to apply. If not specified, it always applies. |
+| `description`  | `String.t` | A description for the policy, used when explaining authorization results |
 
 
 ## field_policies.field_policy_bypass.authorize_if
+
+```elixir
+authorize_if check
+```
+
+---
 
 Introspection Target: `Ash.Policy.Check`
 
@@ -484,12 +566,19 @@ authorize_if actor_attribute_matches_record(:group, :group)
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| check | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
-| name | `String.t` | A short name or description for the check, used when explaining authorization results |
+| `check`  - required-arg 1 | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
+| `name`  | `String.t` | A short name or description for the check, used when explaining authorization results |
+
 
 
 
 ## field_policies.field_policy_bypass.forbid_if
+
+```elixir
+forbid_if check
+```
+
+---
 
 Introspection Target: `Ash.Policy.Check`
 
@@ -513,12 +602,19 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| check | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
-| name | `String.t` | A short name or description for the check, used when explaining authorization results |
+| `check`  - required-arg 1 | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
+| `name`  | `String.t` | A short name or description for the check, used when explaining authorization results |
+
 
 
 
 ## field_policies.field_policy_bypass.authorize_unless
+
+```elixir
+authorize_unless check
+```
+
+---
 
 Introspection Target: `Ash.Policy.Check`
 
@@ -542,12 +638,19 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| check | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
-| name | `String.t` | A short name or description for the check, used when explaining authorization results |
+| `check`  - required-arg 1 | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
+| `name`  | `String.t` | A short name or description for the check, used when explaining authorization results |
+
 
 
 
 ## field_policies.field_policy_bypass.forbid_unless
+
+```elixir
+forbid_unless check
+```
+
+---
 
 Introspection Target: `Ash.Policy.Check`
 
@@ -571,13 +674,21 @@ forbid_unless actor_attribute_matches_record(:group, :group)
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| check | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
-| name | `String.t` | A short name or description for the check, used when explaining authorization results |
+| `check`  - required-arg 1 | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
+| `name`  | `String.t` | A short name or description for the check, used when explaining authorization results |
+
+
 
 
 
 
 ## field_policies.field_policy
+
+```elixir
+field_policy fields, condition \ {Ash.Policy.Check.Static, [result: true]}
+```
+
+---
 
 Introspection Target: `Ash.Policy.FieldPolicy`
 
@@ -598,12 +709,18 @@ for more.
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| description | `String.t` | A description for the policy, used when explaining authorization results |
-| fields | `list(atom) \| atom` | The field or fields that the policy applies to. |
-| condition | ``any`` | A check or list of checks that must be true in order for this field policy to apply. If not specified, it always applies. |
+| `fields`  - arg 1 | `list(atom) \| atom` | The field or fields that the policy applies to. |
+| `condition`  - arg 2 | ``any`` | A check or list of checks that must be true in order for this field policy to apply. If not specified, it always applies. |
+| `description`  | `String.t` | A description for the policy, used when explaining authorization results |
 
 
 ## field_policies.field_policy.authorize_if
+
+```elixir
+authorize_if check
+```
+
+---
 
 Introspection Target: `Ash.Policy.Check`
 
@@ -627,12 +744,19 @@ authorize_if actor_attribute_matches_record(:group, :group)
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| check | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
-| name | `String.t` | A short name or description for the check, used when explaining authorization results |
+| `check`  - required-arg 1 | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
+| `name`  | `String.t` | A short name or description for the check, used when explaining authorization results |
+
 
 
 
 ## field_policies.field_policy.forbid_if
+
+```elixir
+forbid_if check
+```
+
+---
 
 Introspection Target: `Ash.Policy.Check`
 
@@ -656,12 +780,19 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| check | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
-| name | `String.t` | A short name or description for the check, used when explaining authorization results |
+| `check`  - required-arg 1 | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
+| `name`  | `String.t` | A short name or description for the check, used when explaining authorization results |
+
 
 
 
 ## field_policies.field_policy.authorize_unless
+
+```elixir
+authorize_unless check
+```
+
+---
 
 Introspection Target: `Ash.Policy.Check`
 
@@ -685,12 +816,19 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| check | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
-| name | `String.t` | A short name or description for the check, used when explaining authorization results |
+| `check`  - required-arg 1 | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
+| `name`  | `String.t` | A short name or description for the check, used when explaining authorization results |
+
 
 
 
 ## field_policies.field_policy.forbid_unless
+
+```elixir
+forbid_unless check
+```
+
+---
 
 Introspection Target: `Ash.Policy.Check`
 
@@ -714,8 +852,10 @@ forbid_unless actor_attribute_matches_record(:group, :group)
 ### Reference
 | Name | Type | Docs |
 | ---  | ---  | ---  |
-| check | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
-| name | `String.t` | A short name or description for the check, used when explaining authorization results |
+| `check`  - required-arg 1 | ``any`` | The check to run. See `Ash.Policy.Check` for more. |
+| `name`  | `String.t` | A short name or description for the check, used when explaining authorization results |
+
+
 
 
 
