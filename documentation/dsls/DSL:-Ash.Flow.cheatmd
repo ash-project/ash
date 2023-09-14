@@ -1,0 +1,628 @@
+# DSL: Ash.Flow.Dsl
+
+The built in flow DSL.
+
+## Halting
+
+Steps can be halted, which will stop the flow from continuing and return a halted flow. To attach a specific reason, use a `halt_reason`.
+If you need more complex halting logic, then you'd want to use a custom step, and return `{:error, Ash.Error.Flow.Halted.exception(...)}`
+
+
+## flow
+Details about the flow itself, like description and the successful return type.
+
+
+ * [argument](#flow-argument)
+
+
+
+
+### Options
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `api` | `module` |  | An api to use by default when calling actions |
+| `description` | `String.t` |  | A description of the flow |
+| `trace_name` | `String.t` |  | The name to use when creating traces. Defaults to the short name. |
+| `short_name` | `atom` |  | A short name to use for the flow. Defaults to the last to parts of the module name, underscored. |
+| `returns` | ``any`` |  | The step or step that should constitute the return value. |
+
+
+
+## flow.argument
+
+
+An argument to be passed into the flow
+
+
+
+
+### Examples
+```
+argument :params, :map do
+  default %{}
+end
+
+```
+
+```
+argument :retries, :integer do
+  allow_nil? false
+end
+
+```
+
+
+
+### Arguments
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `name`* | `atom` |  | The name to use for the argument |
+| `type`* | `module` |  | The type of the argument. See `Ash.Type` for more. |
+### Options
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `default` | `(-> any) \| mfa \| any()` |  | A default value to use for the argument if not provided |
+| `allow_nil?` | `boolean` | true | Whether or not the argument value may be nil |
+| `constraints` | `Keyword.t` | [] | Constraints to provide to the type when casting the value. See the type's documentation for more information. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Flow.Argument`
+
+
+
+
+## steps
+
+ * [map](#steps-map)
+
+ * [branch](#steps-branch)
+
+ * [transaction](#steps-transaction)
+
+ * [create](#steps-create)
+ * [debug](#steps-debug)
+ * [update](#steps-update)
+ * [destroy](#steps-destroy)
+ * [validate](#steps-validate)
+ * [read](#steps-read)
+ * [run_flow](#steps-run_flow)
+ * [custom](#steps-custom)
+
+### Examples
+```
+steps do
+  # invokes a create action
+  create :create_post, MyApp.Post, :create
+end
+
+```
+
+
+
+
+## steps.map
+
+
+Runs a set of steps for each item in a provided list.
+
+
+
+
+### Examples
+```
+map :create_users, range(1, arg(:count)) do
+  output :create_user
+
+  create :create_user, Org, :create do
+    input %{
+      first_name: {Faker.Person, :first_name, []},
+      last_name: {Faker.Person, :last_name, []}
+    }
+  end
+end
+
+```
+
+
+
+### Arguments
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `name`* | `atom` |  | The name of the step. Will be used when expressing dependencies, and step inputs. |
+| `over` | ``any`` |  | The value to be iterated over. Will be available inside the `map` step as `element(:map_step_name)` |
+### Options
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `output` | `atom` |  | Which step to use when constructing the output list. Defaults to the last step. |
+| `short_name` | `String.t` |  | Set a short name for the step. Will be used when building things like mermaid charts. |
+| `wait_for` | ``any`` |  | Ensures that the step happens after the configured step or steps. This is a template who's results are not used, only awaited. |
+| `touches_resources` | `list(atom)` |  | A list of resources touched by any custom logic in this step. This is used in the case that this step is run in a transaction. This is primarily only needed for `custom` steps. |
+| `halt_if` | ``any`` |  | Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more. |
+| `halt_reason` | ``any`` | :halted | Configures the reason for the `halt_if` clause. |
+| `description` | `String.t` |  | A description for the step. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Flow.Step.Map`
+
+## steps.branch
+
+
+Runs a set of steps based on a given value.
+
+
+
+
+### Examples
+```
+branch :create_users, result(:create_users?) do
+  output :create_user
+
+  create :create_user, Org, :create do
+    input %{
+      first_name: {Faker.Person, :first_name, []},
+      last_name: {Faker.Person, :last_name, []}
+    }
+  end
+end
+
+```
+
+
+
+### Arguments
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `name`* | `atom` |  | The name of the step. Will be used when expressing dependencies, and step inputs. |
+| `condition` | ``any`` |  | A template that must evaluate to `true` for the branch to be executed. |
+### Options
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `output` | `atom` |  | Which step to use as the output. Defaults to the last step. |
+| `short_name` | `String.t` |  | Set a short name for the step. Will be used when building things like mermaid charts. |
+| `wait_for` | ``any`` |  | Ensures that the step happens after the configured step or steps. This is a template who's results are not used, only awaited. |
+| `touches_resources` | `list(atom)` |  | A list of resources touched by any custom logic in this step. This is used in the case that this step is run in a transaction. This is primarily only needed for `custom` steps. |
+| `halt_if` | ``any`` |  | Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more. |
+| `halt_reason` | ``any`` | :halted | Configures the reason for the `halt_if` clause. |
+| `description` | `String.t` |  | A description for the step. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Flow.Step.Branch`
+
+## steps.transaction
+
+
+Runs a set of steps in a transaction.
+
+
+
+
+### Examples
+```
+transaction :create_users do
+  create :create_user, User, :create do
+    input %{
+      first_name: {Faker.Person, :first_name, []},
+      last_name: {Faker.Person, :last_name, []}
+    }
+  end
+
+  create :create_user, Org, :create do
+    input %{
+      first_name: {Faker.Person, :first_name, []},
+      last_name: {Faker.Person, :last_name, []}
+    }
+  end
+end
+
+```
+
+
+
+### Arguments
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `name`* | `atom` |  | The name of the step. Will be used when expressing dependencies, and step inputs. |
+| `resource` | `module \| list(module)` |  | The Ash resource to use for the transaction. |
+### Options
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `output` | ``any`` |  | Which step or steps to use when constructing the output. Defaults to the last step. |
+| `timeout` | `timeout` |  | A timeout to apply to the transaction. |
+| `short_name` | `String.t` |  | Set a short name for the step. Will be used when building things like mermaid charts. |
+| `wait_for` | ``any`` |  | Ensures that the step happens after the configured step or steps. This is a template who's results are not used, only awaited. |
+| `touches_resources` | `list(atom)` |  | A list of resources touched by any custom logic in this step. This is used in the case that this step is run in a transaction. This is primarily only needed for `custom` steps. |
+| `halt_if` | ``any`` |  | Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more. |
+| `halt_reason` | ``any`` | :halted | Configures the reason for the `halt_if` clause. |
+| `description` | `String.t` |  | A description for the step. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Flow.Step.Transaction`
+
+## steps.create
+
+
+Declares a step that will call a create action on a resource.
+
+
+
+
+### Examples
+```
+create :create_post, MyApp.Post, :create
+
+```
+
+
+
+### Arguments
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `name`* | `atom` |  | The name of the step. Will be used when expressing dependencies, and step inputs. |
+| `resource`* | ``any`` |  | The resource to call the action on. |
+| `action`* | ``any`` |  | The action to call on the resource. |
+### Options
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `upsert?` | `boolean` | false | Wether or not this action is always an upsert. |
+| `upsert_identity` | `atom` |  | The identity to use for the upsert. |
+| `short_name` | `String.t` |  | Set a short name for the step. Will be used when building things like mermaid charts. |
+| `wait_for` | ``any`` |  | Ensures that the step happens after the configured step or steps. This is a template who's results are not used, only awaited. |
+| `touches_resources` | `list(atom)` |  | A list of resources touched by any custom logic in this step. This is used in the case that this step is run in a transaction. This is primarily only needed for `custom` steps. |
+| `halt_if` | ``any`` |  | Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more. |
+| `halt_reason` | ``any`` | :halted | Configures the reason for the `halt_if` clause. |
+| `description` | `String.t` |  | A description for the step. |
+| `api` | ``any`` |  | The api to use when calling the action. Defaults to the api set in the `flow` section. |
+| `tenant` | ``any`` |  | A tenant to use for the operation. May be a template or a literal value. |
+| `input` | ``any`` |  | A template for the input. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Flow.Step.Create`
+
+## steps.debug
+
+
+Declares a step that will inspect its input and provide
+additional debug information.
+
+
+
+
+### Examples
+```
+debug :show_some_information do
+  input %{post: result(:create_post)}
+end
+
+```
+
+
+
+### Arguments
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `name`* | `atom` |  | The name of the step. Will be used when expressing dependencies, and step inputs. |
+### Options
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `input` | ``any`` |  | A template for the input. |
+| `short_name` | `String.t` |  | Set a short name for the step. Will be used when building things like mermaid charts. |
+| `wait_for` | ``any`` |  | Ensures that the step happens after the configured step or steps. This is a template who's results are not used, only awaited. |
+| `halt_if` | ``any`` |  | Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more. |
+| `halt_reason` | ``any`` | :halted | Configures the reason for the `halt_if` clause. |
+| `description` | `String.t` |  | A description for the step. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Flow.Step.Debug`
+
+## steps.update
+
+
+Declares a step that will call a update action on a resource.
+
+
+
+
+### Examples
+```
+update :update_post, MyApp.Post, :update do
+  record result(:get_post)
+end
+
+```
+
+
+
+### Arguments
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `name`* | `atom` |  | The name of the step. Will be used when expressing dependencies, and step inputs. |
+| `resource`* | ``any`` |  | The resource to call the action on. |
+| `action`* | ``any`` |  | The action to call on the resource. |
+### Options
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `record`* | ``any`` |  | The record to be updated, can use template helpers, e.g `result(:step_name)`. |
+| `short_name` | `String.t` |  | Set a short name for the step. Will be used when building things like mermaid charts. |
+| `wait_for` | ``any`` |  | Ensures that the step happens after the configured step or steps. This is a template who's results are not used, only awaited. |
+| `touches_resources` | `list(atom)` |  | A list of resources touched by any custom logic in this step. This is used in the case that this step is run in a transaction. This is primarily only needed for `custom` steps. |
+| `halt_if` | ``any`` |  | Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more. |
+| `halt_reason` | ``any`` | :halted | Configures the reason for the `halt_if` clause. |
+| `description` | `String.t` |  | A description for the step. |
+| `api` | ``any`` |  | The api to use when calling the action. Defaults to the api set in the `flow` section. |
+| `tenant` | ``any`` |  | A tenant to use for the operation. May be a template or a literal value. |
+| `input` | ``any`` |  | A template for the input. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Flow.Step.Update`
+
+## steps.destroy
+
+
+Declares a step that will call a destroy action on a resource.
+
+
+
+
+### Examples
+```
+destroy :destroy_post, MyApp.Post, :destroy
+
+```
+
+
+
+### Arguments
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `name`* | `atom` |  | The name of the step. Will be used when expressing dependencies, and step inputs. |
+| `resource`* | ``any`` |  | The resource to call the action on. |
+| `action`* | ``any`` |  | The action to call on the resource. |
+### Options
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `record`* | ``any`` |  | The record to be updated, can use template helpers, e.g `result(:step_name)`. |
+| `short_name` | `String.t` |  | Set a short name for the step. Will be used when building things like mermaid charts. |
+| `wait_for` | ``any`` |  | Ensures that the step happens after the configured step or steps. This is a template who's results are not used, only awaited. |
+| `touches_resources` | `list(atom)` |  | A list of resources touched by any custom logic in this step. This is used in the case that this step is run in a transaction. This is primarily only needed for `custom` steps. |
+| `halt_if` | ``any`` |  | Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more. |
+| `halt_reason` | ``any`` | :halted | Configures the reason for the `halt_if` clause. |
+| `description` | `String.t` |  | A description for the step. |
+| `api` | ``any`` |  | The api to use when calling the action. Defaults to the api set in the `flow` section. |
+| `tenant` | ``any`` |  | A tenant to use for the operation. May be a template or a literal value. |
+| `input` | ``any`` |  | A template for the input. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Flow.Step.Destroy`
+
+## steps.validate
+
+
+Validates some input against an action.
+
+
+
+
+### Examples
+```
+validate :update_post, MyApp.Post, :update do
+  record result(:get_post)
+  only_keys [:name]
+end
+
+```
+
+
+
+### Arguments
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `name`* | `atom` |  | The name of the step. Will be used when expressing dependencies, and step inputs. |
+| `resource`* | ``any`` |  | The resource to call the action on. |
+| `action`* | ``any`` |  | The action to call on the resource. |
+### Options
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `record` | ``any`` |  | The record to be created/updated/destroyed. If the value is `nil` and would be required by the action type, the step is skipped and `nil` is the result of the step. |
+| `only_keys` | `list(atom \| list(atom))` |  | A list of keys or paths to keys that should be validated. Others will be ignored, and errors generated for other fields will be ignored. |
+| `short_name` | `String.t` |  | Set a short name for the step. Will be used when building things like mermaid charts. |
+| `wait_for` | ``any`` |  | Ensures that the step happens after the configured step or steps. This is a template who's results are not used, only awaited. |
+| `touches_resources` | `list(atom)` |  | A list of resources touched by any custom logic in this step. This is used in the case that this step is run in a transaction. This is primarily only needed for `custom` steps. |
+| `halt_if` | ``any`` |  | Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more. |
+| `halt_reason` | ``any`` | :halted | Configures the reason for the `halt_if` clause. |
+| `description` | `String.t` |  | A description for the step. |
+| `api` | ``any`` |  | The api to use when calling the action. Defaults to the api set in the `flow` section. |
+| `tenant` | ``any`` |  | A tenant to use for the operation. May be a template or a literal value. |
+| `input` | ``any`` |  | A template for the input. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Flow.Step.Update`
+
+## steps.read
+
+
+Declares a step that will call a read action on a resource.
+
+
+
+
+### Examples
+```
+read :destroy_post, MyApp.Post, :destroy
+
+```
+
+
+
+### Arguments
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `name`* | `atom` |  | The name of the step. Will be used when expressing dependencies, and step inputs. |
+| `resource`* | ``any`` |  | The resource to call the action on. |
+| `action`* | ``any`` |  | The action to call on the resource. |
+### Options
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `get?` | `boolean` | false | Whether or not read action is expected to return a single result or `nil`. Set to `true` automatically if `get? true`. |
+| `not_found_error?` | `boolean` | true | Whether or not finding no record should result in a not found error |
+| `short_name` | `String.t` |  | Set a short name for the step. Will be used when building things like mermaid charts. |
+| `wait_for` | ``any`` |  | Ensures that the step happens after the configured step or steps. This is a template who's results are not used, only awaited. |
+| `touches_resources` | `list(atom)` |  | A list of resources touched by any custom logic in this step. This is used in the case that this step is run in a transaction. This is primarily only needed for `custom` steps. |
+| `halt_if` | ``any`` |  | Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more. |
+| `halt_reason` | ``any`` | :halted | Configures the reason for the `halt_if` clause. |
+| `description` | `String.t` |  | A description for the step. |
+| `api` | ``any`` |  | The api to use when calling the action. Defaults to the api set in the `flow` section. |
+| `tenant` | ``any`` |  | A tenant to use for the operation. May be a template or a literal value. |
+| `input` | ``any`` |  | A template for the input. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Flow.Step.Read`
+
+## steps.run_flow
+
+
+Runs another flow as part of the current flow.
+The return value of the step is the return value of the flow.
+
+
+
+
+### Examples
+```
+run_flow :get_org, GetOrgByName do
+  input %{
+    name: arg(:org_name)
+  }
+
+```
+
+
+
+### Arguments
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `name`* | `atom` |  | The name of the step. Will be used when expressing dependencies, and step inputs. |
+| `flow`* | `atom` |  | The flow to run. |
+### Options
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `input` | ``any`` |  | A template for the input. |
+| `short_name` | `String.t` |  | Set a short name for the step. Will be used when building things like mermaid charts. |
+| `wait_for` | ``any`` |  | Ensures that the step happens after the configured step or steps. This is a template who's results are not used, only awaited. |
+| `touches_resources` | `list(atom)` |  | A list of resources touched by any custom logic in this step. This is used in the case that this step is run in a transaction. This is primarily only needed for `custom` steps. |
+| `halt_if` | ``any`` |  | Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more. |
+| `halt_reason` | ``any`` | :halted | Configures the reason for the `halt_if` clause. |
+| `description` | `String.t` |  | A description for the step. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Flow.Step.RunFlow`
+
+## steps.custom
+
+
+Runs a custom step module.
+
+See `Ash.Flow.Step` for the necessary callbacks and more information.
+
+
+
+
+### Examples
+```
+custom :do_custom_thing, MyApp.DoCustomThing do
+  input %{...}
+end
+
+```
+
+```
+custom :do_custom_thing, {MyApp.DoCustomThing, opt1: :foo, opt2: :bar} do
+  input %{...}
+end
+
+```
+
+
+
+### Arguments
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `name`* | `atom` |  | The name of the step. Will be used when expressing dependencies, and step inputs. |
+| `custom` | `(any, any -> any) \| module` |  | The module that implements the step behaviour. Also accepts a 2 argument function that takes the input and the context. |
+### Options
+| Name | Type | Default | Docs |
+| ---  | ---  | ---     | ---  |
+| `input` | ``any`` |  | A template for the input. |
+| `async?` | `boolean` | false | Whether or not this step can be run outside of the current process. |
+| `short_name` | `String.t` |  | Set a short name for the step. Will be used when building things like mermaid charts. |
+| `wait_for` | ``any`` |  | Ensures that the step happens after the configured step or steps. This is a template who's results are not used, only awaited. |
+| `touches_resources` | `list(atom)` |  | A list of resources touched by any custom logic in this step. This is used in the case that this step is run in a transaction. This is primarily only needed for `custom` steps. |
+| `halt_if` | ``any`` |  | Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more. |
+| `halt_reason` | ``any`` | :halted | Configures the reason for the `halt_if` clause. |
+| `description` | `String.t` |  | A description for the step. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Flow.Step.Custom`
+
+
+
+

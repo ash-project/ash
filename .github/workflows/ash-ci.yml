@@ -8,6 +8,9 @@ on:
       spark-formatter:
         type: boolean
         default: true
+      spark-cheat-sheets:
+        type: boolean
+        default: true
       sobelow:
         type: boolean
         default: true
@@ -63,6 +66,18 @@ jobs:
         with:
           mix-env: test
           task: spark.formatter --check
+
+  spark-cheat-sheets:
+    name: mix spark.cheat_sheets --check
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v3
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        if: ${{inputs.spark-cheat-sheets}}
+        with:
+          mix-env: test
+          task: spark.cheat_sheets --check
   sobelow:
     name: mix sobelow
     runs-on: ubuntu-latest
