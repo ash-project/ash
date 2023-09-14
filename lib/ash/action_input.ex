@@ -19,12 +19,15 @@ defmodule Ash.ActionInput do
   @type t :: %__MODULE__{
           arguments: map(),
           params: map(),
-          action: Ash.Resource.Actions.Action.t(),
+          action: Ash.Resource.Actions.Action.t() | nil,
           resource: Ash.Resource.t(),
           context: map(),
           api: Ash.Api.t(),
           valid?: boolean()
         }
+  def new(resource, api \\ nil) do
+    %__MODULE__{resource: resource, api: api}
+  end
 
   @doc """
   Creates a new input for a generic action
@@ -43,7 +46,8 @@ defmodule Ash.ActionInput do
           %__MODULE__{resource: resource, action: action}
 
         input ->
-          input
+          action = Ash.Resource.Info.action(input.resource, action)
+          %{input | action: action}
       end
 
     {input, _opts} = Ash.Actions.Helpers.add_process_context(input.api, input, opts)

@@ -9,6 +9,7 @@ defmodule Ash.Resource.Actions.Action do
     constraints: [],
     touches_resources: [],
     arguments: [],
+    allow_nil?: false,
     transaction?: false,
     primary?: false,
     type: :action
@@ -19,6 +20,7 @@ defmodule Ash.Resource.Actions.Action do
           name: atom,
           description: String.t() | nil,
           arguments: [Ash.Resource.Actions.Argument.t()],
+          allow_nil?: boolean,
           touches_resources: [Ash.Resource.t()],
           constraints: Keyword.t(),
           run: {module, Keyword.t()},
@@ -39,6 +41,13 @@ defmodule Ash.Resource.Actions.Action do
                   type: :keyword_list,
                   doc: """
                   Constraints for the return type. See the [constriants topic](/documentation/topics/constraints.md) for more.
+                  """
+                ],
+                allow_nil?: [
+                  type: :boolean,
+                  default: false,
+                  doc: """
+                  Wether or not the action can return nil. Unlike attributes & arguments, this defaults to `false`.
                   """
                 ],
                 run: [

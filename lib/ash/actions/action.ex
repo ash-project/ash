@@ -120,6 +120,15 @@ defmodule Ash.Actions.Action do
 
                 {:error, error} ->
                   {:error, error}
+
+                other ->
+                  raise """
+                  Invalid return from generic action #{input.resource}.#{input.action.name}.
+
+                  Expected {:ok, result} or {:error, error}, got:
+
+                  #{inspect(other)}
+                  """
               end
 
             {:error, error} ->
