@@ -86,7 +86,7 @@ defmodule Ash.Type do
   of `cast_input`, `cast_stored`, `dump_to_native` and `apply_constraints`, you can
   override how your type behaves as a collection. This is how the features of embedded
   resources are implemented. No need to implement them unless you wish to override the
-  default behaviour.
+  default behaviour. Your type is responsible for handling nil values in each callback as well.
 
   Simple example of a float custom type
 
@@ -98,16 +98,19 @@ defmodule Ash.Type do
     def storage_type(_), do: :float
 
     @impl Ash.Type
+    def cast_input(nil, _), do: {:ok, nil}
     def cast_input(value, _) do
       Ecto.Type.cast(:float, value)
     end
 
     @impl Ash.Type
+    def cast_stored(nil, _), do: {:ok, nil}
     def cast_stored(value, _) do
       Ecto.Type.load(:float, value)
     end
 
     @impl Ash.Type
+    def dump_to_native(nil, _), do: {:ok, nil}
     def dump_to_native(value, _) do
       Ecto.Type.dump(:float, value)
     end
