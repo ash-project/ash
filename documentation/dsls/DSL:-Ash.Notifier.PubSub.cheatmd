@@ -40,6 +40,9 @@ end
 
 
 ## pub_sub.publish
+```elixir
+publish action, topic
+```
 
 
 Configure a given action to publish its results over a given topic.
@@ -81,6 +84,9 @@ publish :assign, "assigned"
 Target: `Ash.Notifier.PubSub.Publication`
 
 ## pub_sub.publish_all
+```elixir
+publish_all type, topic
+```
 
 
 Works just like `publish`, except that it takes a type

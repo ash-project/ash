@@ -47,6 +47,9 @@ end
 
 
 ## attributes.attribute
+```elixir
+attribute name, type
+```
 
 
 Declares an attribute on the resource.
@@ -96,6 +99,9 @@ end
 Target: `Ash.Resource.Attribute`
 
 ## attributes.create_timestamp
+```elixir
+create_timestamp name
+```
 
 
 Declares a non-writable attribute with a create default of `&DateTime.utc_now/0`
@@ -103,12 +109,12 @@ Declares a non-writable attribute with a create default of `&DateTime.utc_now/0`
 Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except it sets
 the following different defaults:
 
-    writable? false
-    private? true
-    default &DateTime.utc_now/0
-    match_other_defaults? true
-    type Ash.Type.UTCDatetimeUsec
-    allow_nil? false
+writable? false
+private? true
+default &DateTime.utc_now/0
+match_other_defaults? true
+type Ash.Type.UTCDatetimeUsec
+allow_nil? false
 
 
 
@@ -152,6 +158,9 @@ create_timestamp :inserted_at
 Target: `Ash.Resource.Attribute`
 
 ## attributes.update_timestamp
+```elixir
+update_timestamp name
+```
 
 
 Declares a non-writable attribute with a create and update default of `&DateTime.utc_now/0`
@@ -159,13 +168,13 @@ Declares a non-writable attribute with a create and update default of `&DateTime
 Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except it sets
 the following different defaults:
 
-    writable? false
-    private? true
-    default &DateTime.utc_now/0
-    match_other_defaults? true
-    update_default &DateTime.utc_now/0
-    type Ash.Type.UTCDatetimeUsec
-    allow_nil? false
+writable? false
+private? true
+default &DateTime.utc_now/0
+match_other_defaults? true
+update_default &DateTime.utc_now/0
+type Ash.Type.UTCDatetimeUsec
+allow_nil? false
 
 
 
@@ -209,6 +218,9 @@ update_timestamp :inserted_at
 Target: `Ash.Resource.Attribute`
 
 ## attributes.integer_primary_key
+```elixir
+integer_primary_key name
+```
 
 
 Declares a generated, non writable, non-nil, primary key column of type integer.
@@ -218,10 +230,10 @@ Generated integer primary keys must be supported by the data layer.
 Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except for `allow_nil?`, but it sets
 the following different defaults:
 
-    writable? false
-    primary_key? true
-    generated? true
-    type :integer
+writable? false
+primary_key? true
+generated? true
+type :integer
 
 
 
@@ -264,6 +276,9 @@ integer_primary_key :id
 Target: `Ash.Resource.Attribute`
 
 ## attributes.uuid_primary_key
+```elixir
+uuid_primary_key name
+```
 
 
 Declares a non writable, non-nil, primary key column of type `uuid`, which defaults to `Ash.UUID.generate/0`.
@@ -271,11 +286,11 @@ Declares a non writable, non-nil, primary key column of type `uuid`, which defau
 Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except for `allow_nil?`, but it sets
 the following different defaults:
 
-    writable? false
-    default &Ash.UUID.generate/0
-    primary_key? true
-    generated? true
-    type :uuid
+writable? false
+default &Ash.UUID.generate/0
+primary_key? true
+generated? true
+type :uuid
 
 
 
@@ -371,6 +386,9 @@ end
 
 
 ## relationships.has_one
+```elixir
+has_one name, destination
+```
 
 
 Declares a `has_one` relationship. In a relational database, the foreign key would be on the *other* table.
@@ -431,6 +449,9 @@ end
 Target: `Ash.Resource.Relationships.HasOne`
 
 ## relationships.has_many
+```elixir
+has_many name, destination
+```
 
 
 Declares a `has_many` relationship. There can be any number of related entities.
@@ -487,6 +508,9 @@ end
 Target: `Ash.Resource.Relationships.HasMany`
 
 ## relationships.many_to_many
+```elixir
+many_to_many name, destination
+```
 
 
 Declares a `many_to_many` relationship. Many to many relationships require a join resource.
@@ -554,6 +578,9 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 Target: `Ash.Resource.Relationships.ManyToMany`
 
 ## relationships.belongs_to
+```elixir
+belongs_to name, destination
+```
 
 
 Declares a `belongs_to` relationship. In a relational database, the foreign key would be on the *source* table.
@@ -693,6 +720,9 @@ end
 
 
 ## actions.action
+```elixir
+action name, returns
+```
 
 
 Declares a generic action. A combination of arguments, a return type and a run function.
@@ -735,6 +765,9 @@ end
 
 
 ## actions.action.argument
+```elixir
+argument name, type
+```
 
 
 Declares an argument on the action
@@ -780,6 +813,9 @@ Target: `Ash.Resource.Actions.Argument`
 Target: `Ash.Resource.Actions.Action`
 
 ## actions.create
+```elixir
+create name
+```
 
 
 Declares a `create` action. For calling this action, see the `Ash.Api` documentation.
@@ -826,6 +862,9 @@ end
 
 
 ## actions.create.change
+```elixir
+change change
+```
 
 
 A change to be applied to the changeset.
@@ -866,6 +905,9 @@ change {MyCustomChange, :foo}
 Target: `Ash.Resource.Change`
 
 ## actions.create.validate
+```elixir
+validate validation
+```
 
 
 Declares a validation to be applied to the changeset.
@@ -904,6 +946,9 @@ validate changing(:email)
 Target: `Ash.Resource.Validation`
 
 ## actions.create.argument
+```elixir
+argument name, type
+```
 
 
 Declares an argument on the action
@@ -942,6 +987,9 @@ argument :password_confirmation, :string
 Target: `Ash.Resource.Actions.Argument`
 
 ## actions.create.metadata
+```elixir
+metadata name, type
+```
 
 
 A special kind of attribute that is only added to specific actions. Nothing sets this value, it must be set in a custom
@@ -992,6 +1040,9 @@ Target: `Ash.Resource.Actions.Metadata`
 Target: `Ash.Resource.Actions.Create`
 
 ## actions.read
+```elixir
+read name
+```
 
 
 Declares a `read` action. For calling this action, see the `Ash.Api` documentation.
@@ -1031,6 +1082,9 @@ end
 
 
 ## actions.read.argument
+```elixir
+argument name, type
+```
 
 
 Declares an argument on the action
@@ -1069,6 +1123,9 @@ argument :password_confirmation, :string
 Target: `Ash.Resource.Actions.Argument`
 
 ## actions.read.prepare
+```elixir
+prepare preparation
+```
 
 
 Declares a preparation, which can be used to prepare a query for a read action.
@@ -1099,9 +1156,6 @@ prepare build(sort: [:foo, :bar])
 Target: `Ash.Resource.Preparation`
 
 ## actions.read.pagination
-```elixir
-pagination
-```
 
 
 Adds pagination options to a resource
@@ -1131,6 +1185,9 @@ Adds pagination options to a resource
 Target: `Ash.Resource.Actions.Read.Pagination`
 
 ## actions.read.metadata
+```elixir
+metadata name, type
+```
 
 
 A special kind of attribute that is only added to specific actions. Nothing sets this value, it must be set in a custom
@@ -1181,6 +1238,9 @@ Target: `Ash.Resource.Actions.Metadata`
 Target: `Ash.Resource.Actions.Read`
 
 ## actions.update
+```elixir
+update name
+```
 
 
 Declares a `update` action. For calling this action, see the `Ash.Api` documentation.
@@ -1220,6 +1280,9 @@ update :flag_for_review, primary?: true
 
 
 ## actions.update.change
+```elixir
+change change
+```
 
 
 A change to be applied to the changeset.
@@ -1260,6 +1323,9 @@ change {MyCustomChange, :foo}
 Target: `Ash.Resource.Change`
 
 ## actions.update.validate
+```elixir
+validate validation
+```
 
 
 Declares a validation to be applied to the changeset.
@@ -1298,6 +1364,9 @@ validate changing(:email)
 Target: `Ash.Resource.Validation`
 
 ## actions.update.metadata
+```elixir
+metadata name, type
+```
 
 
 A special kind of attribute that is only added to specific actions. Nothing sets this value, it must be set in a custom
@@ -1341,6 +1410,9 @@ metadata :operation_id, :string, allow_nil?: false
 Target: `Ash.Resource.Actions.Metadata`
 
 ## actions.update.argument
+```elixir
+argument name, type
+```
 
 
 Declares an argument on the action
@@ -1386,6 +1458,9 @@ Target: `Ash.Resource.Actions.Argument`
 Target: `Ash.Resource.Actions.Update`
 
 ## actions.destroy
+```elixir
+destroy name
+```
 
 
 Declares a `destroy` action. For calling this action, see the `Ash.Api` documentation.
@@ -1429,6 +1504,9 @@ end
 
 
 ## actions.destroy.change
+```elixir
+change change
+```
 
 
 A change to be applied to the changeset.
@@ -1469,6 +1547,9 @@ change {MyCustomChange, :foo}
 Target: `Ash.Resource.Change`
 
 ## actions.destroy.validate
+```elixir
+validate validation
+```
 
 
 Declares a validation to be applied to the changeset.
@@ -1507,6 +1588,9 @@ validate changing(:email)
 Target: `Ash.Resource.Validation`
 
 ## actions.destroy.metadata
+```elixir
+metadata name, type
+```
 
 
 A special kind of attribute that is only added to specific actions. Nothing sets this value, it must be set in a custom
@@ -1550,6 +1634,9 @@ metadata :operation_id, :string, allow_nil?: false
 Target: `Ash.Resource.Actions.Metadata`
 
 ## actions.destroy.argument
+```elixir
+argument name, type
+```
 
 
 Declares an argument on the action
@@ -1625,6 +1712,9 @@ end
 
 
 ## code_interface.define
+```elixir
+define name
+```
 
 
 Defines a function with the corresponding name and arguments. See the [code interface guide](/documentation/topics/code-interface.md) for more.
@@ -1662,6 +1752,9 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
 Target: `Ash.Resource.Interface`
 
 ## code_interface.define_calculation
+```elixir
+define_calculation name
+```
 
 
 Defines a function with the corresponding name and arguments, that evaluates a calculation. Use `:_record` to take an instance of a record. See the [code interface guide](/documentation/topics/code-interface.md) for more.
@@ -1753,6 +1846,9 @@ end
 
 
 ## identities.identity
+```elixir
+identity name, keys
+```
 
 
 Represents a unique constraint on the resource.
@@ -1814,6 +1910,9 @@ end
 
 
 ## changes.change
+```elixir
+change change
+```
 
 
 A change to be applied to the changeset.
@@ -1874,6 +1973,9 @@ end
 
 
 ## preparations.prepare
+```elixir
+prepare preparation
+```
 
 
 Declares a preparation, which can be used to prepare a query for a read action.
@@ -1923,6 +2025,9 @@ end
 
 
 ## validations.validate
+```elixir
+validate validation
+```
 
 
 Declares a validation for creates and updates.
@@ -1994,6 +2099,9 @@ end
 
 
 ## aggregates.count
+```elixir
+count name, relationship_path
+```
 
 
 Declares a named count aggregate on the resource
@@ -2043,6 +2151,9 @@ end
 Target: `Ash.Resource.Aggregate`
 
 ## aggregates.exists
+```elixir
+exists name, relationship_path
+```
 
 
 Declares a named `exists` aggregate on the resource
@@ -2088,6 +2199,9 @@ exists :has_ticket, :assigned_tickets
 Target: `Ash.Resource.Aggregate`
 
 ## aggregates.first
+```elixir
+first name, relationship_path, field
+```
 
 
 Declares a named `first` aggregate on the resource
@@ -2139,6 +2253,9 @@ end
 Target: `Ash.Resource.Aggregate`
 
 ## aggregates.sum
+```elixir
+sum name, relationship_path, field
+```
 
 
 Declares a named `sum` aggregate on the resource
@@ -2187,6 +2304,9 @@ end
 Target: `Ash.Resource.Aggregate`
 
 ## aggregates.list
+```elixir
+list name, relationship_path, field
+```
 
 
 Declares a named `list` aggregate on the resource.
@@ -2238,6 +2358,9 @@ end
 Target: `Ash.Resource.Aggregate`
 
 ## aggregates.max
+```elixir
+max name, relationship_path, field
+```
 
 
 Declares a named `max` aggregate on the resource
@@ -2286,6 +2409,9 @@ end
 Target: `Ash.Resource.Aggregate`
 
 ## aggregates.min
+```elixir
+min name, relationship_path, field
+```
 
 
 Declares a named `min` aggregate on the resource
@@ -2334,6 +2460,9 @@ end
 Target: `Ash.Resource.Aggregate`
 
 ## aggregates.avg
+```elixir
+avg name, relationship_path, field
+```
 
 
 Declares a named `avg` aggregate on the resource
@@ -2382,6 +2511,9 @@ end
 Target: `Ash.Resource.Aggregate`
 
 ## aggregates.custom
+```elixir
+custom name, relationship_path, type
+```
 
 
 Declares a named `custom` aggregate on the resource
@@ -2454,6 +2586,9 @@ end
 
 
 ## calculations.calculate
+```elixir
+calculate name, type, calculation \ nil
+```
 
 
 Declares a named calculation on the resource.
@@ -2504,6 +2639,9 @@ calculate :full_name, :string, expr(first_name <> " " <> last_name)
 
 
 ## calculations.calculate.argument
+```elixir
+argument name, type
+```
 
 
 An argument to be passed into the calculation's arguments map

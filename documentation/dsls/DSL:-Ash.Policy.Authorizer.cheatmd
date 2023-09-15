@@ -84,6 +84,9 @@ end
 
 
 ## policies.policy
+```elixir
+policy condition
+```
 
 
 A policy has a name, a condition, and a list of checks.
@@ -95,11 +98,11 @@ want to add an `authorize_if always()` at the bottom of your policy, like so:
 
 ```elixir
 policy action_type(:read) do
-  forbid_if not_logged_in()
-  forbid_if user_is_denylisted()
-  forbid_if user_is_in_denylisted_group()
+forbid_if not_logged_in()
+forbid_if user_is_denylisted()
+forbid_if user_is_in_denylisted_group()
 
-  authorize_if always()
+authorize_if always()
 end
 ```
 
@@ -107,7 +110,7 @@ If the policy should always run, use the `always()` check, like so:
 
 ```elixir
 policy always() do
-  ...
+...
 end
 ```
 
@@ -133,6 +136,9 @@ See the [policies guide](/documentation/topics/policies.md) for more.
 
 
 ## policies.policy.authorize_if
+```elixir
+authorize_if check
+```
 
 
 If the check is true, the request is authorized, otherwise run remaining checks.
@@ -168,6 +174,9 @@ authorize_if actor_attribute_matches_record(:group, :group)
 Target: `Ash.Policy.Check`
 
 ## policies.policy.forbid_if
+```elixir
+forbid_if check
+```
 
 
 If the check is true, the request is forbidden, otherwise run remaining checks.
@@ -203,6 +212,9 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 Target: `Ash.Policy.Check`
 
 ## policies.policy.authorize_unless
+```elixir
+authorize_unless check
+```
 
 
 If the check is false, the request is authorized, otherwise run remaining checks.
@@ -238,6 +250,9 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 Target: `Ash.Policy.Check`
 
 ## policies.policy.forbid_unless
+```elixir
+forbid_unless check
+```
 
 
 If the check is true, the request is forbidden, otherwise run remaining checks.
@@ -280,6 +295,9 @@ Target: `Ash.Policy.Check`
 Target: `Ash.Policy.Policy`
 
 ## policies.bypass
+```elixir
+bypass condition
+```
 
 
 A policy that, if passed, will skip all following policies. If failed, authorization moves on to the next policy
@@ -303,6 +321,9 @@ A policy that, if passed, will skip all following policies. If failed, authoriza
 
 
 ## policies.bypass.authorize_if
+```elixir
+authorize_if check
+```
 
 
 If the check is true, the request is authorized, otherwise run remaining checks.
@@ -338,6 +359,9 @@ authorize_if actor_attribute_matches_record(:group, :group)
 Target: `Ash.Policy.Check`
 
 ## policies.bypass.forbid_if
+```elixir
+forbid_if check
+```
 
 
 If the check is true, the request is forbidden, otherwise run remaining checks.
@@ -373,6 +397,9 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 Target: `Ash.Policy.Check`
 
 ## policies.bypass.authorize_unless
+```elixir
+authorize_unless check
+```
 
 
 If the check is false, the request is authorized, otherwise run remaining checks.
@@ -408,6 +435,9 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 Target: `Ash.Policy.Check`
 
 ## policies.bypass.forbid_unless
+```elixir
+forbid_unless check
+```
 
 
 If the check is true, the request is forbidden, otherwise run remaining checks.
@@ -493,6 +523,9 @@ end
 
 
 ## field_policies.field_policy_bypass
+```elixir
+field_policy_bypass fields, condition \ {Ash.Policy.Check.Static, [result: true]}
+```
 
 
 A field policy that, if passed, will skip all following field policies for that field or fields. If failed, field authorization moves on to the next policy
@@ -516,6 +549,9 @@ A field policy that, if passed, will skip all following field policies for that 
 
 
 ## field_policies.field_policy_bypass.authorize_if
+```elixir
+authorize_if check
+```
 
 
 If the check is true, the request is authorized, otherwise run remaining checks.
@@ -551,6 +587,9 @@ authorize_if actor_attribute_matches_record(:group, :group)
 Target: `Ash.Policy.Check`
 
 ## field_policies.field_policy_bypass.forbid_if
+```elixir
+forbid_if check
+```
 
 
 If the check is true, the request is forbidden, otherwise run remaining checks.
@@ -586,6 +625,9 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 Target: `Ash.Policy.Check`
 
 ## field_policies.field_policy_bypass.authorize_unless
+```elixir
+authorize_unless check
+```
 
 
 If the check is false, the request is authorized, otherwise run remaining checks.
@@ -621,6 +663,9 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 Target: `Ash.Policy.Check`
 
 ## field_policies.field_policy_bypass.forbid_unless
+```elixir
+forbid_unless check
+```
 
 
 If the check is true, the request is forbidden, otherwise run remaining checks.
@@ -663,6 +708,9 @@ Target: `Ash.Policy.Check`
 Target: `Ash.Policy.FieldPolicy`
 
 ## field_policies.field_policy
+```elixir
+field_policy fields, condition \ {Ash.Policy.Check.Static, [result: true]}
+```
 
 
 Field policies behave similarly to policies. See `d:Ash.Policy.Authorizer.field_policies`
@@ -688,6 +736,9 @@ for more.
 
 
 ## field_policies.field_policy.authorize_if
+```elixir
+authorize_if check
+```
 
 
 If the check is true, the request is authorized, otherwise run remaining checks.
@@ -723,6 +774,9 @@ authorize_if actor_attribute_matches_record(:group, :group)
 Target: `Ash.Policy.Check`
 
 ## field_policies.field_policy.forbid_if
+```elixir
+forbid_if check
+```
 
 
 If the check is true, the request is forbidden, otherwise run remaining checks.
@@ -758,6 +812,9 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 Target: `Ash.Policy.Check`
 
 ## field_policies.field_policy.authorize_unless
+```elixir
+authorize_unless check
+```
 
 
 If the check is false, the request is authorized, otherwise run remaining checks.
@@ -793,6 +850,9 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 Target: `Ash.Policy.Check`
 
 ## field_policies.field_policy.forbid_unless
+```elixir
+forbid_unless check
+```
 
 
 If the check is true, the request is forbidden, otherwise run remaining checks.

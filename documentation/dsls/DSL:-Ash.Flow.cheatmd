@@ -29,6 +29,9 @@ Details about the flow itself, like description and the successful return type.
 
 
 ## flow.argument
+```elixir
+argument name, type
+```
 
 
 An argument to be passed into the flow
@@ -106,6 +109,9 @@ end
 
 
 ## steps.map
+```elixir
+map name, over
+```
 
 
 Runs a set of steps for each item in a provided list.
@@ -155,6 +161,9 @@ end
 Target: `Ash.Flow.Step.Map`
 
 ## steps.branch
+```elixir
+branch name, condition
+```
 
 
 Runs a set of steps based on a given value.
@@ -204,6 +213,9 @@ end
 Target: `Ash.Flow.Step.Branch`
 
 ## steps.transaction
+```elixir
+transaction name, resource
+```
 
 
 Runs a set of steps in a transaction.
@@ -259,6 +271,9 @@ end
 Target: `Ash.Flow.Step.Transaction`
 
 ## steps.create
+```elixir
+create name, resource, action
+```
 
 
 Declares a step that will call a create action on a resource.
@@ -304,6 +319,9 @@ create :create_post, MyApp.Post, :create
 Target: `Ash.Flow.Step.Create`
 
 ## steps.debug
+```elixir
+debug name
+```
 
 
 Declares a step that will inspect its input and provide
@@ -345,6 +363,9 @@ end
 Target: `Ash.Flow.Step.Debug`
 
 ## steps.update
+```elixir
+update name, resource, action
+```
 
 
 Declares a step that will call a update action on a resource.
@@ -391,6 +412,9 @@ end
 Target: `Ash.Flow.Step.Update`
 
 ## steps.destroy
+```elixir
+destroy name, resource, action
+```
 
 
 Declares a step that will call a destroy action on a resource.
@@ -435,6 +459,9 @@ destroy :destroy_post, MyApp.Post, :destroy
 Target: `Ash.Flow.Step.Destroy`
 
 ## steps.validate
+```elixir
+validate name, resource, action
+```
 
 
 Validates some input against an action.
@@ -483,6 +510,9 @@ end
 Target: `Ash.Flow.Step.Update`
 
 ## steps.read
+```elixir
+read name, resource, action
+```
 
 
 Declares a step that will call a read action on a resource.
@@ -528,6 +558,9 @@ read :destroy_post, MyApp.Post, :destroy
 Target: `Ash.Flow.Step.Read`
 
 ## steps.run_flow
+```elixir
+run_flow name, flow
+```
 
 
 Runs another flow as part of the current flow.
@@ -572,6 +605,9 @@ run_flow :get_org, GetOrgByName do
 Target: `Ash.Flow.Step.RunFlow`
 
 ## steps.custom
+```elixir
+custom name, custom
+```
 
 
 Runs a custom step module.

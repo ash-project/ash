@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.17](https://github.com/ash-project/ash/compare/v2.14.16...v2.14.17) (2023-09-15)
+
+
+
+
+### Improvements:
+
+* recommit the dsl cheatsheets, and update ash-ci
+
+* add `allow_nil?` to generic actions, defaults to false
+
 ## [v2.14.16](https://github.com/ash-project/ash/compare/v2.14.15...v2.14.16) (2023-09-13)
 
 

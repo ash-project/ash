@@ -64,6 +64,9 @@ end
 
 
 ## resources.resource
+```elixir
+resource resource
+```
 
 
 A resource present in the API

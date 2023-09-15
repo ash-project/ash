@@ -31,6 +31,9 @@ end
 
 
 ## entries.entry
+```elixir
+entry entry
+```
 
 
 A reference to an ash module (typically a resource)
