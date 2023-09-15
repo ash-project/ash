@@ -9,8 +9,10 @@ A section for configuring how resource actions are published over pubsub
 See the [PubSub](/documentation/topics/pub_sub.md) and [Notifiers](/documentation/topics/notifiers.md) guide for more.
 
 
+### Nested DSLs
  * [publish](#pub_sub-publish)
  * [publish_all](#pub_sub-publish_all)
+
 
 ### Examples
 ```

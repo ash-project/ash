@@ -38,6 +38,7 @@ request to be authorized.
 See the [policies guide](/documentation/topics/policies.md) for more.
 
 
+### Nested DSLs
  * [policy](#policies-policy)
    * authorize_if
    * forbid_if
@@ -48,6 +49,7 @@ See the [policies guide](/documentation/topics/policies.md) for more.
    * forbid_if
    * authorize_unless
    * forbid_unless
+
 
 ### Examples
 ```
@@ -117,10 +119,12 @@ end
 See the [policies guide](/documentation/topics/policies.md) for more.
 
 
+### Nested DSLs
  * [authorize_if](#policies-policy-authorize_if)
  * [forbid_if](#policies-policy-forbid_if)
  * [authorize_unless](#policies-policy-authorize_unless)
  * [forbid_unless](#policies-policy-forbid_unless)
+
 
 
 
@@ -302,10 +306,12 @@ bypass condition
 
 A policy that, if passed, will skip all following policies. If failed, authorization moves on to the next policy
 
+### Nested DSLs
  * [authorize_if](#policies-bypass-authorize_if)
  * [forbid_if](#policies-bypass-forbid_if)
  * [authorize_unless](#policies-bypass-authorize_unless)
  * [forbid_unless](#policies-bypass-forbid_unless)
+
 
 
 
@@ -483,7 +489,38 @@ Target: `Ash.Policy.Policy`
 
 
 ## field_policies
+Authorize access to specific fields via policies scoped to fields.
 
+If *any* field policies exist then *all* fields must be authorized by a field policy.
+If you want a "deny-list" style, then you can add policies for specific fields
+and add a catch-all policy using the special field name `:*`. All policies that apply
+to a field must be authorized.
+
+The only exception to the above behavior is primary keys, which can always be read by everyone.
+
+Additionally, keep in mind that adding `Ash.Policy.Authorizer` will require that all actions
+pass policies. If you want to just add field policies, you will need to add a policy that allows
+all access explicitly, i.e
+
+```elixir
+policies do
+policy always() do
+authorize_if always()
+end
+end
+```
+
+Using expressions: unlike in regular policies, expressions in field policies cannot refer
+to related entities currently. Instead, you will need to create aggregates or expression calculations
+that return the results you want to reference.
+
+In results, forbidden fields will be replaced with a special value: `%Ash.ForbiddenField{}`.
+
+When these fields are referred to in filters, they will be replaced with an expression that evaluates
+to `nil`. To support this behavior, only expression/filter checks are allowed in field policies.
+
+
+### Nested DSLs
  * [field_policy_bypass](#field_policies-field_policy_bypass)
    * authorize_if
    * forbid_if
@@ -494,6 +531,7 @@ Target: `Ash.Policy.Policy`
    * forbid_if
    * authorize_unless
    * forbid_unless
+
 
 ### Examples
 ```
@@ -530,10 +568,12 @@ field_policy_bypass fields, condition \ {Ash.Policy.Check.Static, [result: true]
 
 A field policy that, if passed, will skip all following field policies for that field or fields. If failed, field authorization moves on to the next policy
 
+### Nested DSLs
  * [authorize_if](#field_policies-field_policy_bypass-authorize_if)
  * [forbid_if](#field_policies-field_policy_bypass-forbid_if)
  * [authorize_unless](#field_policies-field_policy_bypass-authorize_unless)
  * [forbid_unless](#field_policies-field_policy_bypass-forbid_unless)
+
 
 
 
@@ -717,10 +757,12 @@ Field policies behave similarly to policies. See `d:Ash.Policy.Authorizer.field_
 for more.
 
 
+### Nested DSLs
  * [authorize_if](#field_policies-field_policy-authorize_if)
  * [forbid_if](#field_policies-field_policy-forbid_if)
  * [authorize_unless](#field_policies-field_policy-authorize_unless)
  * [forbid_unless](#field_policies-field_policy-forbid_unless)
+
 
 
 

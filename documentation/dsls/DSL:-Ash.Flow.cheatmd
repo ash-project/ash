@@ -12,7 +12,9 @@ If you need more complex halting logic, then you'd want to use a custom step, an
 Details about the flow itself, like description and the successful return type.
 
 
+### Nested DSLs
  * [argument](#flow-argument)
+
 
 
 
@@ -80,7 +82,10 @@ Target: `Ash.Flow.Argument`
 
 
 ## steps
+The steps to run.
 
+
+### Nested DSLs
  * [map](#steps-map)
 
  * [branch](#steps-branch)
@@ -95,6 +100,7 @@ Target: `Ash.Flow.Argument`
  * [read](#steps-read)
  * [run_flow](#steps-run_flow)
  * [custom](#steps-custom)
+
 
 ### Examples
 ```

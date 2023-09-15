@@ -40,7 +40,9 @@ end
 ## resources
 List the resources present in this API
 
+### Nested DSLs
  * [resource](#resources-resource)
+
 
 ### Examples
 ```

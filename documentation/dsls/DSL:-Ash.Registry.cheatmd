@@ -8,7 +8,9 @@ A small DSL for declaring an `Ash.Registry`. Not generally necessary any longer.
 ## entries
 List the entries present in this registry
 
+### Nested DSLs
  * [entry](#entries-entry)
+
 
 ### Examples
 ```
