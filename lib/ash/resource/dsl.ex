@@ -447,6 +447,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Actions.Action,
     schema: Ash.Resource.Actions.Action.opt_schema(),
+    transform: {Ash.Resource.Actions.Action, :transform, []},
     entities: [
       arguments: [
         @action_argument

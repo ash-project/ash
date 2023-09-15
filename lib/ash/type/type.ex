@@ -226,6 +226,8 @@ defmodule Ash.Type do
     @builtin_types
   end
 
+  def short_names, do: @short_names
+
   def builtin?(type) when type in @builtin_types, do: true
   def builtin?(_), do: false
 
@@ -1059,7 +1061,8 @@ defmodule Ash.Type do
     end
   end
 
-  defp validate_constraints(type, constraints) do
+  @doc false
+  def validate_constraints(type, constraints) do
     case type do
       {:array, type} ->
         array_constraints = array_constraints(type)

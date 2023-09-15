@@ -31,6 +31,37 @@ defmodule Ash.Resource.Actions.Action do
 
   import Ash.Resource.Actions.SharedOptions
 
+  def transform(%{returns: original_type, constraints: constraints} = thing) do
+    type = Ash.Type.get_type(original_type)
+
+    ash_type? =
+      try do
+        Ash.Type.ash_type?(type)
+      rescue
+        _ ->
+          false
+      end
+
+    unless ash_type? do
+      raise """
+      #{inspect(original_type)} is not a valid type.
+
+      Valid types include any custom types, or the following short codes (alongside the types they map to):
+
+      #{Enum.map_join(Ash.Type.short_names(), "\n", fn {name, type} -> "  #{inspect(name)} -> #{inspect(type)}" end)}
+
+      """
+    end
+
+    case Ash.Type.validate_constraints(type, constraints) do
+      {:ok, constraints} ->
+        {:ok, %{thing | returns: type, constraints: constraints}}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
   @global_opts shared_options()
   @opt_schema [
                 returns: [
