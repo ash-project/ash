@@ -59,7 +59,7 @@ defmodule Ash.Resource.Dsl do
         allow_nil? false
     """,
     examples: [
-      "update_timestamp :inserted_at"
+      "update_timestamp :updated_at"
     ],
     target: Ash.Resource.Attribute,
     schema: Ash.Resource.Attribute.update_timestamp_schema(),
