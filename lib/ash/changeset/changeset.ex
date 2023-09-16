@@ -2247,6 +2247,19 @@ defmodule Ash.Changeset do
 
           {:error, error} ->
             {:halt, {:error, error}}
+
+          other ->
+            raise """
+            Invalid return value from after_action hook. Expected one of:
+
+            * {:ok, result}
+            * {:ok, result, notifications}
+            * {:error, error}
+
+            Got:
+
+            #{inspect(other)}
+            """
         end
       end
     )
