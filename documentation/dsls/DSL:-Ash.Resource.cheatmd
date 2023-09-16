@@ -185,7 +185,7 @@ allow_nil? false
 
 ### Examples
 ```
-update_timestamp :inserted_at
+update_timestamp :updated_at
 ```
 
 
@@ -2795,9 +2795,3 @@ end
 | `attribute` | `atom` |  | If using the `attribute` strategy, the attribute to use, e.g `org_id` |
 | `global?` | `boolean` | false | Whether or not the data also exists outside of each tenant. |
 | `parse_attribute` | `mfa` | {Ash.Resource.Dsl, :identity, []} | An mfa ({module, function, args}) pointing to a function that takes a tenant and returns the attribute value |
-
-
-
-
-
-
