@@ -634,174 +634,184 @@ defmodule Ash.Api do
   defp run_check(api, actor, subject, opts) do
     subject.resource
     |> Ash.Resource.Info.authorizers()
-    |> Enum.reduce_while(
-      {false, nil},
-      fn authorizer, {_authorized?, query} ->
-        authorizer_state =
-          authorizer.initial_state(
-            actor,
-            subject.resource,
-            subject.action,
-            false
-          )
-
-        context = %{api: api, query: nil, changeset: nil, action_input: nil}
-
-        context =
-          case subject do
-            %Ash.Query{} -> Map.put(context, :query, subject)
-            %Ash.Changeset{} -> Map.put(context, :changeset, subject)
-            %Ash.ActionInput{} -> Map.put(context, :action_input, subject)
-          end
-
-        case authorizer.strict_check(authorizer_state, context) do
-          {:error, %{class: :forbidden} = e} when is_exception(e) ->
-            {:halt, {false, e}}
-
-          {:error, error} ->
-            {:halt, {:error, error}}
-
-          {:authorized, _} ->
-            {:cont, {true, query}}
-
-          :forbidden ->
-            {:halt, {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
-
-          _ when not is_nil(context.action_input) ->
-            raise """
-            Cannot use filter or runtime checks with generic actions
-
-            Failed when authorizing #{inspect(subject.resource)}.#{subject.action.name}
-            """
-
-          {:filter, _authorizer, filter} ->
-            query = query || Ash.Query.new(subject.resource, api) |> Ash.Query.select([])
-
-            {:cont, {true, query |> Ash.Query.filter(^filter)}}
-
-          {:filter, filter} ->
-            query = query || Ash.Query.new(subject.resource, api) |> Ash.Query.select([])
-
-            {:cont, {true, Ash.Query.filter(query, ^filter)}}
-
-          {:continue, authorizer_state} ->
-            if opts[:maybe_is] == false do
-              {:halt, {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
-            else
-              {:halt, {:maybe, nil}}
-            end
-
-          {:filter_and_continue, _, authorizer_state} ->
-            if opts[:maybe_is] == false do
-              {:halt, {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
-            else
-              {:halt, {:maybe, nil}}
-            end
-        end
-      end
-    )
     |> case do
-      {:error, error} ->
-        {:error, error}
+      [] ->
+        {:ok, true}
 
-      {true, query} when not is_nil(query) ->
-        if opts[:run_queries?] do
-          case subject do
-            %Ash.Query{} ->
-              if opts[:data] do
-                data = List.wrap(opts[:data])
+      authorizers ->
+        authorizers
+        |> Enum.reduce_while(
+          {false, nil},
+          fn authorizer, {_authorized?, query} ->
+            authorizer_state =
+              authorizer.initial_state(
+                actor,
+                subject.resource,
+                subject.action,
+                false
+              )
 
-                pkey = Ash.Resource.Info.primary_key(query.resource)
-                pkey_values = Enum.map(data, &Map.take(&1, pkey))
+            context = %{api: api, query: nil, changeset: nil, action_input: nil}
 
-                if Enum.any?(pkey_values, fn pkey_value ->
-                     pkey_value |> Map.values() |> Enum.any?(&is_nil/1)
-                   end) do
-                  {:ok, :maybe}
+            context =
+              case subject do
+                %Ash.Query{} -> Map.put(context, :query, subject)
+                %Ash.Changeset{} -> Map.put(context, :changeset, subject)
+                %Ash.ActionInput{} -> Map.put(context, :action_input, subject)
+              end
+
+            case authorizer.strict_check(authorizer_state, context) do
+              {:error, %{class: :forbidden} = e} when is_exception(e) ->
+                {:halt, {false, e}}
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+
+              {:authorized, _} ->
+                {:cont, {true, query}}
+
+              :forbidden ->
+                {:halt,
+                 {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+
+              _ when not is_nil(context.action_input) ->
+                raise """
+                Cannot use filter or runtime checks with generic actions
+
+                Failed when authorizing #{inspect(subject.resource)}.#{subject.action.name}
+                """
+
+              {:filter, _authorizer, filter} ->
+                query = query || Ash.Query.new(subject.resource, api) |> Ash.Query.select([])
+
+                {:cont, {true, query |> Ash.Query.filter(^filter)}}
+
+              {:filter, filter} ->
+                query = query || Ash.Query.new(subject.resource, api) |> Ash.Query.select([])
+
+                {:cont, {true, Ash.Query.filter(query, ^filter)}}
+
+              {:continue, authorizer_state} ->
+                if opts[:maybe_is] == false do
+                  {:halt,
+                   {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
                 else
-                  query
-                  |> Ash.Query.do_filter(or: pkey_values)
-                  |> Ash.Query.data_layer_query()
-                  |> case do
-                    {:ok, data_layer_query} ->
-                      case Ash.DataLayer.run_query(data_layer_query, query.resource) do
-                        {:ok, results} ->
-                          if Enum.count(results) == Enum.count(data) do
+                  {:halt, {:maybe, nil}}
+                end
+
+              {:filter_and_continue, _, authorizer_state} ->
+                if opts[:maybe_is] == false do
+                  {:halt,
+                   {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                else
+                  {:halt, {:maybe, nil}}
+                end
+            end
+          end
+        )
+        |> case do
+          {:error, error} ->
+            {:error, error}
+
+          {true, query} when not is_nil(query) ->
+            if opts[:run_queries?] do
+              case subject do
+                %Ash.Query{} ->
+                  if opts[:data] do
+                    data = List.wrap(opts[:data])
+
+                    pkey = Ash.Resource.Info.primary_key(query.resource)
+                    pkey_values = Enum.map(data, &Map.take(&1, pkey))
+
+                    if Enum.any?(pkey_values, fn pkey_value ->
+                         pkey_value |> Map.values() |> Enum.any?(&is_nil/1)
+                       end) do
+                      {:ok, :maybe}
+                    else
+                      query
+                      |> Ash.Query.do_filter(or: pkey_values)
+                      |> Ash.Query.data_layer_query()
+                      |> case do
+                        {:ok, data_layer_query} ->
+                          case Ash.DataLayer.run_query(data_layer_query, query.resource) do
+                            {:ok, results} ->
+                              if Enum.count(results) == Enum.count(data) do
+                                {:ok, true}
+                              else
+                                if opts[:return_forbidden_error?] do
+                                  {:ok, false, Ash.Error.Forbidden.exception([])}
+                                else
+                                  {:ok, false}
+                                end
+                              end
+
+                            {:error, error} ->
+                              {:error, error}
+                          end
+                      end
+                    end
+                  else
+                    {:ok, true}
+                  end
+
+                %Ash.Changeset{data: data, action_type: type, resource: resource}
+                when type in [:update, :destroy] ->
+                  pkey = Ash.Resource.Info.primary_key(resource)
+                  pkey_value = Map.take(data, pkey)
+
+                  if pkey_value |> Map.values() |> Enum.any?(&is_nil/1) do
+                    {:ok, :maybe}
+                  else
+                    query
+                    |> Ash.Query.do_filter(pkey_value)
+                    |> Ash.Query.data_layer_query()
+                    |> case do
+                      {:ok, data_layer_query} ->
+                        case Ash.DataLayer.run_query(data_layer_query, resource) do
+                          {:ok, [_]} ->
                             {:ok, true}
-                          else
+
+                          {:error, error} ->
+                            {:error, error}
+
+                          _ ->
                             if opts[:return_forbidden_error?] do
                               {:ok, false, Ash.Error.Forbidden.exception([])}
                             else
                               {:ok, false}
                             end
-                          end
-
-                        {:error, error} ->
-                          {:error, error}
-                      end
-                  end
-                end
-              else
-                {:ok, true}
-              end
-
-            %Ash.Changeset{data: data, action_type: type, resource: resource}
-            when type in [:update, :destroy] ->
-              pkey = Ash.Resource.Info.primary_key(resource)
-              pkey_value = Map.take(data, pkey)
-
-              if pkey_value |> Map.values() |> Enum.any?(&is_nil/1) do
-                {:ok, :maybe}
-              else
-                query
-                |> Ash.Query.do_filter(pkey_value)
-                |> Ash.Query.data_layer_query()
-                |> case do
-                  {:ok, data_layer_query} ->
-                    case Ash.DataLayer.run_query(data_layer_query, resource) do
-                      {:ok, [_]} ->
-                        {:ok, true}
-
-                      {:error, error} ->
-                        {:error, error}
-
-                      _ ->
-                        if opts[:return_forbidden_error?] do
-                          {:ok, false, Ash.Error.Forbidden.exception([])}
-                        else
-                          {:ok, false}
                         end
                     end
-                end
+                  end
+
+                %Ash.Changeset{} ->
+                  if opts[:return_forbidden_error?] do
+                    {:ok, false, Ash.Error.Forbidden.exception([])}
+                  else
+                    {:ok, false}
+                  end
               end
+            else
+              {:ok, :maybe}
+            end
 
-            %Ash.Changeset{} ->
-              if opts[:return_forbidden_error?] do
-                {:ok, false, Ash.Error.Forbidden.exception([])}
-              else
-                {:ok, false}
-              end
-          end
-        else
-          {:ok, :maybe}
+          {false, error} ->
+            if opts[:return_forbidden_error?] do
+              {:ok, false, error || Ash.Error.Forbidden.exception([])}
+            else
+              {:ok, false}
+            end
+
+          {other, _} ->
+            {:ok, other}
         end
+        |> case do
+          {:ok, :maybe} ->
+            {:ok, opts[:maybe_is]}
 
-      {false, error} ->
-        if opts[:return_forbidden_error?] do
-          {:ok, false, error || Ash.Error.Forbidden.exception([])}
-        else
-          {:ok, false}
+          other ->
+            other
         end
-
-      {other, _} ->
-        {:ok, other}
-    end
-    |> case do
-      {:ok, :maybe} ->
-        {:ok, opts[:maybe_is]}
-
-      other ->
-        other
     end
   end
 
