@@ -788,7 +788,7 @@ defmodule Ash.Api do
 
       {false, error} ->
         if opts[:return_forbidden_error?] do
-          {:ok, false, error}
+          {:ok, false, error || Ash.Error.Forbidden.exception([])}
         else
           {:ok, false}
         end
