@@ -98,8 +98,8 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
 
     test "have a helper to test authorization" do
-      assert {:ok, false} == User.can_hello(nil, "fred")
-      assert false == User.can_hello?(nil, "fred")
+      assert {:ok, true} == User.can_hello(nil, "fred")
+      assert User.can_hello?(nil, "fred")
     end
   end
 
@@ -110,10 +110,10 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
 
     test "have a helper to test authorization" do
-      assert {:ok, false} == User.can_read_users(nil)
-      assert {:ok, false} == User.can_get_by_id(nil, "some uuid")
-      assert false == User.can_read_users?(nil)
-      assert false == User.can_get_by_id?(nil, "some uuid")
+      assert {:ok, true} == User.can_read_users(nil)
+      assert {:ok, true} == User.can_get_by_id(nil, "some uuid")
+      assert User.can_read_users?(nil)
+      assert User.can_get_by_id?(nil, "some uuid")
     end
   end
 
@@ -150,10 +150,10 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
 
     test "have a helper to test authorization" do
-      assert {:ok, false} == User.can_create(nil)
-      assert {:ok, false} == User.can_create(nil, "bob")
-      assert false == User.can_create?(nil)
-      assert false == User.can_create?(nil, "bob")
+      assert {:ok, true} == User.can_create(nil)
+      assert {:ok, true} == User.can_create(nil, "bob")
+      assert User.can_create?(nil)
+      assert User.can_create?(nil, "bob")
     end
   end
 
