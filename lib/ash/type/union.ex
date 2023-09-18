@@ -1,5 +1,15 @@
 defmodule Ash.Type.Union do
   @constraints [
+    storage: [
+      type: {:one_of, [:type_and_value, :map_with_tag]},
+      default: :type_and_value,
+      doc: """
+      How the value will be stored when persisted.
+
+      `:type_and_value` will store the type and value in a map like so `{type: :type_name, value: the_value}`
+      `:map_with_tag` will store the value directly. This only works if all types have a `tag` and `tag_value` configured.
+      """
+    ],
     types: [
       type: {:custom, __MODULE__, :union_types, []},
       doc: """
@@ -230,20 +240,9 @@ defmodule Ash.Type.Union do
             value
           end
 
-        their_tag_value =
-          Map.get(value, config[:tag], Map.get(value, to_string(config[:tag])))
+        their_tag_value = get_tag(value, config[:tag])
 
-        tags_equal? =
-          cond do
-            is_atom(tag_value) ->
-              their_tag_value == tag_value || their_tag_value == to_string(tag_value)
-
-            is_binary(tag_value) && is_atom(their_tag_value) ->
-              their_tag_value == tag_value || to_string(their_tag_value) == tag_value
-
-            true ->
-              their_tag_value == tag_value
-          end
+        tags_equal? = tags_equal?(tag_value, their_tag_value)
 
         if tags_equal? do
           case Ash.Type.cast_input(type, value, config[:constraints] || []) do
@@ -318,6 +317,23 @@ defmodule Ash.Type.Union do
     end
   end
 
+  defp get_tag(map, tag) do
+    Map.get(map, tag, Map.get(map, to_string(tag)))
+  end
+
+  defp tags_equal?(tag_value, their_tag_value) do
+    cond do
+      is_atom(tag_value) ->
+        their_tag_value == tag_value || their_tag_value == to_string(tag_value)
+
+      is_binary(tag_value) && is_atom(their_tag_value) ->
+        their_tag_value == tag_value || to_string(their_tag_value) == tag_value
+
+      true ->
+        their_tag_value == tag_value
+    end
+  end
+
   defp has_key?(map, key) do
     Map.has_key?(map, key) || Map.has_key?(map, to_string(key))
   end
@@ -345,32 +361,68 @@ defmodule Ash.Type.Union do
   @impl true
   def cast_stored(nil, _), do: {:ok, nil}
 
-  def cast_stored(%{"type" => type, "value" => value}, constraints) do
-    type =
-      if is_binary(type) do
-        String.to_existing_atom(type)
-      else
-        type
-      end
-
+  def cast_stored(value, constraints) when is_map(value) do
     types = constraints[:types] || []
 
-    case Keyword.fetch(types, type) do
-      {:ok, config} ->
-        case Ash.Type.cast_stored(config[:type], value, config[:constraints]) do
-          {:ok, casted_value} ->
-            {:ok,
-             %Ash.Union{
-               value: casted_value,
-               type: type
-             }}
+    case constraints[:storage] do
+      :type_and_value ->
+        case value do
+          %{"type" => type, "value" => value} ->
+            type =
+              if is_binary(type) do
+                String.to_existing_atom(type)
+              else
+                type
+              end
 
-          other ->
-            other
+            case Keyword.fetch(types, type) do
+              {:ok, config} ->
+                case Ash.Type.cast_stored(config[:type], value, config[:constraints]) do
+                  {:ok, casted_value} ->
+                    {:ok,
+                     %Ash.Union{
+                       value: casted_value,
+                       type: type
+                     }}
+
+                  other ->
+                    other
+                end
+
+              other ->
+                other
+            end
+
+          _ ->
+            :error
         end
 
-      other ->
-        other
+      :map_with_tag ->
+        case Enum.find(types, fn {_type_name, config} ->
+               unless config[:tag] && config[:tag_value] do
+                 raise "Found a type without a tag when using the `:map_with_tag` storage constraint. Constraints: #{inspect(constraints)}"
+               end
+
+               their_tag_value = get_tag(value, config[:tag])
+
+               tags_equal?(config[:tag_value], their_tag_value)
+             end) do
+          nil ->
+            :error
+
+          {type_name, config} ->
+            case Ash.Type.cast_stored(config[:type], value, config[:constraints]) do
+              {:ok, casted_value} ->
+                {:ok,
+                 %Ash.Union{
+                   value: casted_value,
+                   type: type_name
+                 }}
+
+              other ->
+                other
+            end
+        end
     end
   end
 
@@ -379,17 +431,30 @@ defmodule Ash.Type.Union do
   @impl true
   def dump_to_native(nil, _), do: {:ok, nil}
 
-  def dump_to_native(%Ash.Union{value: value, type: type_name}, constraints) do
-    type = constraints[:types][type_name][:type]
-    constraints = constraints[:types][type_name][:constraints] || []
+  def dump_to_native(%Ash.Union{value: value, type: type_name}, union_constraints) do
+    type = union_constraints[:types][type_name][:type]
 
     if type do
-      case Ash.Type.dump_to_native(type, value, constraints) do
-        {:ok, value} ->
-          {:ok, %{"type" => type_name, "value" => value}}
+      constraints = union_constraints[:types][type_name][:constraints] || []
 
-        other ->
-          other
+      case union_constraints[:storage] do
+        :type_and_value ->
+          case Ash.Type.dump_to_native(type, value, constraints) do
+            {:ok, value} ->
+              {:ok, %{"type" => type_name, "value" => value}}
+
+            other ->
+              other
+          end
+
+        :map_with_tag ->
+          config = union_constraints[:types][type_name]
+
+          unless config[:tag] && config[:tag_value] do
+            raise "Found a type without a tag when using the `:map_with_tag` storage constraint. Constraints: #{inspect(union_constraints)}"
+          end
+
+          Ash.Type.dump_to_native(type, value, constraints)
       end
     else
       :error

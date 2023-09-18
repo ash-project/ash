@@ -162,4 +162,57 @@ defmodule Ash.Test.Type.UnionTest do
     |> Ash.Changeset.for_create(:create, %{things: [%{type: :foo, foo: "bar"}]})
     |> Ash.Test.AnyApi.create()
   end
+
+  test "it dumps to native as explicit maps by default" do
+    constraints = [
+      types: [
+        foo: [
+          type: :map,
+          tag: :type,
+          tag_value: :foo
+        ],
+        bar: [
+          type: :map,
+          tag: :type,
+          tag_value: :bar
+        ]
+      ]
+    ]
+
+    {:ok, %{constraints: constraints}} =
+      Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
+
+    assert {:ok, %Ash.Union{value: %{type: :foo, bar: 1}, type: :foo} = union} =
+             Ash.Type.cast_input(:union, %{type: :foo, bar: 1}, constraints)
+
+    assert Ash.Type.dump_to_native(Ash.Type.Union, union, constraints) ==
+             {:ok, %{"type" => :foo, "value" => %{type: :foo, bar: 1}}}
+  end
+
+  test "it dumps to native as raw maps when configured" do
+    constraints = [
+      storage: :map_with_tag,
+      types: [
+        foo: [
+          type: :map,
+          tag: :type,
+          tag_value: :foo
+        ],
+        bar: [
+          type: :map,
+          tag: :type,
+          tag_value: :bar
+        ]
+      ]
+    ]
+
+    {:ok, %{constraints: constraints}} =
+      Ash.Type.set_type_transformation(%{type: Ash.Type.Union, constraints: constraints})
+
+    assert {:ok, %Ash.Union{value: %{type: :foo, bar: 1}, type: :foo} = union} =
+             Ash.Type.cast_input(:union, %{type: :foo, bar: 1}, constraints)
+
+    assert Ash.Type.dump_to_native(Ash.Type.Union, union, constraints) ==
+             {:ok, %{type: :foo, bar: 1}}
+  end
 end
