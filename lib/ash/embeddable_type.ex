@@ -164,6 +164,8 @@ defmodule Ash.EmbeddableType do
         end
       end
 
+      def cast_input(nil, _), do: {:ok, nil}
+
       def cast_input(_, _), do: :error
 
       def cast_stored(value, constraints) when is_map(value) do
