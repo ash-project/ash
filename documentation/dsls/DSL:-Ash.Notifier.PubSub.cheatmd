@@ -36,7 +36,7 @@ end
 | ---  | ---  | ---     | ---  |
 | `module`* | `atom` |  | The module to call `broadcast/3` on e.g module.broadcast(topic, event, message). |
 | `prefix` | `String.t` |  | A prefix for all pubsub messages, e.g `users`. A message with `created` would be published as `users:created` |
-| `broadcast_type` | `:notification \| :phoenix_broadcast \| :broadcast` | :notification | What shape the event payloads will be in. See |
+| `broadcast_type` | `:notification \| :phoenix_broadcast \| :broadcast` | `:notification` | What shape the event payloads will be in. See |
 | `name` | `atom` |  | A named pub sub to pass as the first argument to broadcast. |
 
 

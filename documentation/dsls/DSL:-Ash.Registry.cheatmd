@@ -28,7 +28,7 @@ end
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
-| `warn_on_empty?` | `boolean` | true | Set to `false` to ignore warnings about an empty registry |
+| `warn_on_empty?` | `boolean` | `true` | Set to `false` to ignore warnings about an empty registry |
 
 
 

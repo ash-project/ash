@@ -27,7 +27,7 @@ end
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
-| `private?` | `boolean` | false | Sets the ets table protection to private, and scopes it to only this process. The table name will not be used directly if this is true, to allow multiple processes to use this resource separately. |
+| `private?` | `boolean` | `false` | Sets the ets table protection to private, and scopes it to only this process. The table name will not be used directly if this is true, to allow multiple processes to use this resource separately. |
 | `table` | `atom` |  | The name of the table. Defaults to the resource name. |
 
 

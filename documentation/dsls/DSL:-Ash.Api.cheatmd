@@ -60,7 +60,7 @@ end
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `allow` | `mfa` |  | Support a dynamic resource list by providing a callback that checks whether or not the resource should be allowed. |
-| `allow_unregistered?` | `boolean` | false | Whether the Api will support only registered entries or not. |
+| `allow_unregistered?` | `boolean` | `false` | Whether the Api will support only registered entries or not. |
 | `registry` | `module` |  | Configure a registry that contains the resources. This option is generally not necessary anymore, and remains for backwards compatibility. Instead, configure resources in this block directly. |
 
 
@@ -118,7 +118,7 @@ end
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
-| `timeout` | `timeout` | 30000 | The default timeout to use for requests using this API. See the [timeouts guide](/documentation/topics/timeouts.md) for more. |
+| `timeout` | `timeout` | `30000` | The default timeout to use for requests using this API. See the [timeouts guide](/documentation/topics/timeouts.md) for more. |
 | `trace_name` | `String.t` |  | The name to use in traces. Defaults to the last part of the module. See the [monitoring guide](/documentation/topics/monitoring.md) for more |
 
 
@@ -146,8 +146,8 @@ end
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
-| `require_actor?` | `boolean` | false | Requires that an actor has been supplied. |
-| `authorize` | `:always \| :by_default \| :when_requested` | :when_requested | When to run authorization for a given request. |
+| `require_actor?` | `boolean` | `false` | Requires that an actor has been supplied. |
+| `authorize` | `:always \| :by_default \| :when_requested` | `:when_requested` | When to run authorization for a given request. |
 
 
 

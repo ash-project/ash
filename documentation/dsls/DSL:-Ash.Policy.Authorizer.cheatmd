@@ -81,7 +81,7 @@ end
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
-| `default_access_type` | `:strict \| :filter \| :runtime` | :filter | The default access type of policies for this resource. |
+| `default_access_type` | `:strict \| :filter \| :runtime` | `:filter` | The default access type of policies for this resource. |
 
 
 
