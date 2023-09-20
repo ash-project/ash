@@ -5,6 +5,35 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.18](https://github.com/ash-project/ash/compare/v2.14.17...v2.14.18) (2023-09-20)
+
+
+
+
+### Bug Fixes:
+
+* properly wrap [tracer] in Ash.Flow
+
+* use `:wrap_list` type where appropriate (#698)
+
+* `get_by` option can accept a single atom (#697)
+
+* properly handle `nil` values in embedded resources
+
+* ensure that `can` always returns an error when asked
+
+* get type for manual action at compile time
+
+### Improvements:
+
+* make `storage_type` overridable by new_types
+
+* support `map_with_tag` storage mode for `Ash.Union`.
+
+* if no authorizers are set, anyone can do anything
+
+* explicit error on after_action hook mismatch
+
 ## [v2.14.17](https://github.com/ash-project/ash/compare/v2.14.16...v2.14.17) (2023-09-15)
 
 
