@@ -14,6 +14,10 @@ The Livebook tutorial is self contained and separate from the documentation belo
 
 [![Run in Livebook](https://livebook.dev/badge/v1/pink.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2Fash-project%2Fash_tutorial%2Fblob%2Fmaster%2Foverview.livemd)
 
+##  Watch the ElixirConf Talk
+
+<iframe width="560" height="315" class="rounded-xl w-full aspect-video" src="https://www.youtube.com/embed/c4iou77kOFc?si=gxPdzGng5cQTrr7P" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen />
+
 ## Goals
 
 In this guide we will:

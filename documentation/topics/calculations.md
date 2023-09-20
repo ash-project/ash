@@ -2,6 +2,10 @@
 
 Calculations in Ash allow for displaying complex values as a top level value of a resource.
 
+## Primer
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/oxaqpDlI-Hk?si=leaR-xQ5SD7PKOXo" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+
 ## Declaring calculations on a resource
 
 ### Expression Calculations
