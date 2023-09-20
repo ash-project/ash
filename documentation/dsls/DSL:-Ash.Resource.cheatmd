@@ -1095,7 +1095,7 @@ end
 | `manual` | `(any, any, any -> any) \| module` |  | Delegates running of the query to the provided module. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
 | `get?` | `boolean` | false | Expresses that this action innately only returns a single result. Used by extensions to validate and/or modify behavior. Causes code interfaces to return a single value instead of a list. See the [code interface guide](/documentation/topics/code-interface.md) for more. |
 | `modify_query` | `mfa \| (any, any -> any)` |  | Allows direct manipulation of the data layer query via an MFA. The ash query and the data layer query will be provided as additional arguments. The result must be `{:ok, new_data_layer_query} \| {:error, error}`. |
-| `get_by` | `atom \| list(atom)` |  | A helper to automatically generate a "get by X" action. Sets `get?` to true, add args for each of the specified fields, and adds a filter for each of the arguments. |
+| `get_by` | `list(atom) \| atom` |  | A helper to automatically generate a "get by X" action. Sets `get?` to true, add args for each of the specified fields, and adds a filter for each of the arguments. |
 | `primary?` | `boolean` | false | Whether or not this action should be used when no action is specified by the caller. |
 | `description` | `String.t` |  | An optional description for the action |
 | `transaction?` | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
@@ -1767,7 +1767,7 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
 | `args` | `list(atom \| {:optional, atom})` |  | Map specific arguments to named inputs. Can provide any argument/attributes that the action allows. |
 | `not_found_error?` | `boolean` | true | If the action or interface is configured with `get?: true`, this determines whether or not an error is raised or `nil` is returned. |
 | `get?` | `boolean` |  | Expects to only receive a single result from a read action, and returns a single result instead of a list. Ignored for other action types. |
-| `get_by` | `list(atom)` |  | Takes a list of fields and adds those fields as arguments, which will then be used to filter. Sets `get?` to true automatically. Ignored for non-read actions. |
+| `get_by` | `list(atom) \| atom` |  | Takes a list of fields and adds those fields as arguments, which will then be used to filter. Sets `get?` to true automatically. Ignored for non-read actions. |
 | `get_by_identity` | `atom` |  | Only relevant for read actions. Takes an identity, and gets its field list, performing the same logic as `get_by` once it has the list of fields. |
 
 

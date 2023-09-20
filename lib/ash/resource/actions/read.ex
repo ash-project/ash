@@ -21,7 +21,7 @@ defmodule Ash.Resource.Actions.Read do
           arguments: [Ash.Resource.Actions.Argument.t()],
           description: String.t() | nil,
           filter: any,
-          get_by: nil | [atom],
+          get_by: nil | atom | [atom],
           get?: nil | boolean,
           manual: atom | {atom, Keyword.t()} | nil,
           metadata: [Ash.Resource.Actions.Metadata.t()],
@@ -67,7 +67,7 @@ defmodule Ash.Resource.Actions.Read do
                     """
                   ],
                   get_by: [
-                    type: {:or, [:atom, {:list, :atom}]},
+                    type: {:wrap_list, :atom},
                     default: nil,
                     doc: """
                     A helper to automatically generate a "get by X" action. Sets `get?` to true, add args for each of the specified fields, and adds a filter for each of the arguments.
