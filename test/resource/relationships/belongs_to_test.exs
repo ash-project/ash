@@ -237,7 +237,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   test "fails in api initialization if the destination resource doesn't have the correct field" do
     assert_raise(
       Spark.Error.DslError,
-      ~r/Relationship `post` expects source field `post_id` to be defined/,
+      ~r/Relationship `post` expects source attribute `post_id` to be defined/,
       fn ->
         defposts do
           relationships do

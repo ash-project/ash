@@ -1335,7 +1335,6 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.DefaultAccept,
     Ash.Resource.Transformers.RequireUniqueFieldNames,
     Ash.Resource.Transformers.NoReservedFieldNames,
-    Ash.Resource.Transformers.ValidateRelationshipAttributes,
     Ash.Resource.Transformers.ValidateEagerIdentities,
     Ash.Resource.Transformers.ValidateAggregatesSupported,
     Ash.Resource.Transformers.ValidateAccept,
@@ -1346,7 +1345,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.ValidateRelationshipAttributesMatch,
     Ash.Resource.Verifiers.VerifyReservedCalculationArguments,
     Ash.Resource.Verifiers.VerifyIdentityFields,
-    Ash.Resource.Verifiers.EnsureAggregateFieldIsAttributeOrCalculation
+    Ash.Resource.Verifiers.EnsureAggregateFieldIsAttributeOrCalculation,
+    Ash.Resource.Verifiers.ValidateRelationshipAttributes
   ]
 
   @moduledoc false

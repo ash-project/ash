@@ -1,29 +1,24 @@
-defmodule Ash.Resource.Transformers.ValidateRelationshipAttributes do
+defmodule Ash.Resource.Verifiers.ValidateRelationshipAttributes do
   @moduledoc """
   Validates that all relationships point to valid fields
   """
-  use Spark.Dsl.Transformer
-  alias Spark.Dsl.Transformer
+  use Spark.Dsl.Verifier
+  alias Spark.Dsl.Verifier
 
   @impl true
-  def after_compile?, do: true
-
-  @impl true
-  def transform(dsl) do
+  def verify(dsl) do
     attribute_names =
       dsl
-      |> Transformer.get_entities([:attributes])
+      |> Verifier.get_entities([:attributes])
       |> Enum.map(& &1.name)
 
     dsl
-    |> Transformer.get_entities([:relationships])
+    |> Verifier.get_entities([:relationships])
     |> Enum.reject(fn relationship ->
       Map.get(relationship, :manual) || Map.get(relationship, :no_attributes?)
     end)
     |> Enum.filter(& &1.validate_destination_attribute?)
     |> Enum.each(&validate_relationship(&1, attribute_names))
-
-    {:ok, dsl}
   end
 
   defp validate_relationship(relationship, attribute_names) do
@@ -31,7 +26,7 @@ defmodule Ash.Resource.Transformers.ValidateRelationshipAttributes do
       raise Spark.Error.DslError,
         path: [:relationships, relationship.name],
         message:
-          "Relationship `#{relationship.name}` expects source field `#{relationship.source_attribute}` to be defined"
+          "Relationship `#{relationship.name}` expects source attribute `#{relationship.source_attribute}` to be defined"
     end
 
     if Code.ensure_loaded?(relationship.destination) do
