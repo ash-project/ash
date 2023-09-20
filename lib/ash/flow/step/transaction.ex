@@ -16,8 +16,7 @@ defmodule Ash.Flow.Step.Transaction do
           doc: "A timeout to apply to the transaction."
         ],
         resource: [
-          type:
-            {:or, [Ash.OptionsHelpers.ash_resource(), {:list, Ash.OptionsHelpers.ash_resource()}]},
+          type: {:wrap_list, Ash.OptionsHelpers.ash_resource()},
           doc: """
           The Ash resource to use for the transaction.
           """

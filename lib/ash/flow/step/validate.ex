@@ -14,7 +14,7 @@ defmodule Ash.Flow.Step.Validate do
           """
         ],
         only_keys: [
-          type: {:list, {:or, [:atom, {:list, :atom}]}},
+          type: {:list, {:wrap_list, :atom}},
           doc: """
           A list of keys or paths to keys that should be validated. Others will be ignored, and errors generated for other fields will be ignored.
           """
