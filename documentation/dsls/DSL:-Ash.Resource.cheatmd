@@ -950,7 +950,7 @@ validate changing(:email)
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
-| `where` | `(any -> any) \| module \| list((any -> any) \| module)` | [] | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
+| `where` | `list((any -> any) \| module) \| (any -> any) \| module` | [] | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
 | `only_when_valid?` | `boolean` | false | If the validation should only run on valid changes. Useful for expensive validations or validations that depend on valid data. |
 | `message` | `String.t` |  | If provided, overrides any message set by the validation error |
 | `description` | `String.t` |  | An optional description for the validation |
@@ -1372,7 +1372,7 @@ validate changing(:email)
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
-| `where` | `(any -> any) \| module \| list((any -> any) \| module)` | [] | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
+| `where` | `list((any -> any) \| module) \| (any -> any) \| module` | [] | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
 | `only_when_valid?` | `boolean` | false | If the validation should only run on valid changes. Useful for expensive validations or validations that depend on valid data. |
 | `message` | `String.t` |  | If provided, overrides any message set by the validation error |
 | `description` | `String.t` |  | An optional description for the validation |
@@ -1598,7 +1598,7 @@ validate changing(:email)
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
-| `where` | `(any -> any) \| module \| list((any -> any) \| module)` | [] | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
+| `where` | `list((any -> any) \| module) \| (any -> any) \| module` | [] | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
 | `only_when_valid?` | `boolean` | false | If the validation should only run on valid changes. Useful for expensive validations or validations that depend on valid data. |
 | `message` | `String.t` |  | If provided, overrides any message set by the validation error |
 | `description` | `String.t` |  | An optional description for the validation |
@@ -2100,7 +2100,7 @@ validate at_least_one_of_present([:first_name, :last_name])
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
-| `where` | `(any -> any) \| module \| list((any -> any) \| module)` | [] | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
+| `where` | `list((any -> any) \| module) \| (any -> any) \| module` | [] | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
 | `on` | ``any`` | [:create, :update] | The action types the validation should run on. Many validations don't make sense in the context of deletion, so by default it is not included. |
 | `only_when_valid?` | `boolean` | false | If the validation should only run on valid changes. Useful for expensive validations or validations that depend on valid data. |
 | `message` | `String.t` |  | If provided, overrides any message set by the validation error |

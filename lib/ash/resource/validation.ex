@@ -58,7 +58,7 @@ defmodule Ash.Resource.Validation do
         "The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a one argument function that takes the changeset."
     ],
     where: [
-      type: {:or, [@validation_type, {:list, @validation_type}]},
+      type: {:wrap_list, @validation_type},
       required: false,
       default: [],
       doc: """

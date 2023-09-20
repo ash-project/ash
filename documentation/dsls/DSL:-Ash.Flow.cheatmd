@@ -255,7 +255,7 @@ end
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `name`* | `atom` |  | The name of the step. Will be used when expressing dependencies, and step inputs. |
-| `resource` | `module \| list(module)` |  | The Ash resource to use for the transaction. |
+| `resource` | `list(module) \| module` |  | The Ash resource to use for the transaction. |
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
@@ -496,7 +496,7 @@ end
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `record` | ``any`` |  | The record to be created/updated/destroyed. If the value is `nil` and would be required by the action type, the step is skipped and `nil` is the result of the step. |
-| `only_keys` | `list(atom \| list(atom))` |  | A list of keys or paths to keys that should be validated. Others will be ignored, and errors generated for other fields will be ignored. |
+| `only_keys` | `list(list(atom) \| atom)` |  | A list of keys or paths to keys that should be validated. Others will be ignored, and errors generated for other fields will be ignored. |
 | `short_name` | `String.t` |  | Set a short name for the step. Will be used when building things like mermaid charts. |
 | `wait_for` | ``any`` |  | Ensures that the step happens after the configured step or steps. This is a template who's results are not used, only awaited. |
 | `touches_resources` | `list(atom)` |  | A list of resources touched by any custom logic in this step. This is used in the case that this step is run in a transaction. This is primarily only needed for `custom` steps. |
