@@ -8,6 +8,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
   alias Spark.Error.DslError
 
   @extension Ash.Resource.Dsl
+  @default_belongs_to_type Application.compile_env(:ash, :default_belongs_to_type, :uuid)
 
   def transform(dsl_state) do
     dsl_state
@@ -22,7 +23,7 @@ defmodule Ash.Resource.Transformers.BelongsToAttribute do
       entity =
         Transformer.build_entity(@extension, [:attributes], :attribute,
           name: relationship.source_attribute,
-          type: relationship.attribute_type || :uuid,
+          type: relationship.attribute_type || @default_belongs_to_type,
           allow_nil?:
             if relationship.primary_key? do
               false
