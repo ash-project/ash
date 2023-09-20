@@ -155,7 +155,7 @@ defmodule Ash.Flow do
     opts =
       case Process.get(:ash_tracer) do
         {:tracer, value} ->
-          Keyword.put(opts, :tracer, value)
+          do_add_tracer(opts, value)
 
         _ ->
           opts
@@ -171,14 +171,16 @@ defmodule Ash.Flow do
   end
 
   defp do_add_tracer(opts, tracer) do
-    Keyword.update(opts, :tracer, [tracer], fn existing_tracer ->
+    tracer = List.wrap(tracer)
+
+    Keyword.update(opts, :tracer, tracer, fn existing_tracer ->
       if is_list(existing_tracer) do
-        [tracer | existing_tracer] |> Enum.uniq()
+        Enum.uniq(tracer ++ existing_tracer)
       else
         if is_nil(existing_tracer) do
-          [tracer]
+          tracer
         else
-          [tracer, existing_tracer] |> Enum.uniq()
+          Enum.uniq(tracer ++ existing_tracer)
         end
       end
     end)
