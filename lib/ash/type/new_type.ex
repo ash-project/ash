@@ -76,7 +76,7 @@ defmodule Ash.Type.NewType do
             subtype_of: Ash.Type.get_type(opts[:subtype_of]),
             subtype_constraints: Macro.escape(opts[:constraints] || []),
             mod: __MODULE__
-          ] do
+          ], generated: true do
       Code.ensure_compiled!(subtype_of)
 
       if is_nil(subtype_of) do
