@@ -121,7 +121,7 @@ defmodule Ash.Resource.Interface do
       """
     ],
     get_by: [
-      type: {:list, :atom},
+      type: {:wrap_list, :atom},
       doc: """
       Takes a list of fields and adds those fields as arguments, which will then be used to filter. Sets `get?` to true automatically. Ignored for non-read actions.
       """
