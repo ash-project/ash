@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.19](https://github.com/ash-project/ash/compare/v2.14.18...v2.14.19) (2023-09-21)
+
+
+
+
+### Bug Fixes:
+
+* more usages of `:wrap_list` type (#700)
+
+* add missing usage of `:default_belongs_to_type` (#699)
+
+### Improvements:
+
+* add `sequence` generator utility
+
 ## [v2.14.18](https://github.com/ash-project/ash/compare/v2.14.17...v2.14.18) (2023-09-20)
 
 
