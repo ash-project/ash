@@ -69,6 +69,77 @@ defmodule Ash.Generator do
   end
 
   @doc """
+  Generate globally unique values.
+
+  This is useful for generating values that are unique across all resources, such as email addresses,
+  or for generating values that are unique across a single resource, such as identifiers. The values will be unique
+  for anything using the same sequence name.
+
+  The name of the identifier will be used as the name of the agent process, so use a unique name not in use anywhere else.
+
+  The lifecycle of this generator is tied to the process that initially starts it. In general,
+  that will be the test. In the rare case where you are running async processes that need to share a sequence
+  that is not created in the test process, you can initialize a sequence in the test using `initialize_sequence/1`.
+
+  Example:
+
+      Ash.Generator.sequence(:unique_email, fn i -> "user\#\{i\}@example.com" end) |> Enum.take(3)
+      iex> ["user0@example.com", "user1@example.com", "user2@example.com"]
+
+  ## Using a different sequencer
+
+  By default we use an incrementing integer starting at 0. However, if you want to use something else, you can provide
+  your own sequencer. The initial value will be `nil`, which you can use to detect that you are the start of the sequence.
+
+  Example:
+
+      Ash.Generator.sequence(:unique_email, fn i -> "user\#\{i\}@example.com" end, fn num -> (num || 1) - 1 end) |> Enum.take(3)
+      iex> ["user0@example.com", "user-1@example.com", "user-2@example.com"]
+  """
+  @spec sequence(pid | atom, (iterator | nil -> value), (iterator | nil -> iterator)) ::
+          StreamData.t(value)
+        when iterator: term, value: term
+  def sequence(identifier, generator, sequencer \\ fn i -> (i || -1) + 1 end) do
+    pid =
+      if is_pid(identifier) do
+        identifier
+      else
+        initialize_sequence(identifier)
+      end
+
+    StreamData.repeatedly(fn ->
+      Agent.get_and_update(pid, fn state ->
+        next_in_sequence = sequencer.(state)
+        value = generator.(next_in_sequence)
+        {value, next_in_sequence}
+      end)
+    end)
+  end
+
+  @doc """
+  Starts and links an agent for a sequence, or returns the existing agent pid if it already exists.
+
+  See `sequence/3` for more.
+  """
+  @spec initialize_sequence(atom) :: pid
+  def initialize_sequence(identifier) do
+    case Agent.start_link(fn -> nil end, name: identifier) do
+      {:ok, pid} -> pid
+      {:error, {:already_started, pid}} -> pid
+    end
+  end
+
+  @doc """
+  Stops the agent for a sequence.
+
+  See `sequence/3` for more.
+  """
+  def stop_sequence(identifier) do
+    Agent.stop(identifier)
+    :ok
+  end
+
+  @doc """
   Gets input using `seed_input/2` and passes it to `Ash.Seed.seed!/2`, returning the result
   """
   def seed!(resource, generators \\ %{}) do

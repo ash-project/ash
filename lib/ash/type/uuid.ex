@@ -12,11 +12,7 @@ defmodule Ash.Type.UUID do
 
   @impl true
   def generator(_constraints) do
-    # Waiting on blessed date/datetime generators in stream data
-    # https://github.com/whatyouhide/stream_data/pull/161/files
-    StreamData.integer()
-    |> StreamData.bind(fn _i -> StreamData.constant(Ash.UUID.generate()) end)
-    |> StreamData.unshrinkable()
+    StreamData.repeatedly(&Ash.UUID.generate/0)
   end
 
   @impl true
