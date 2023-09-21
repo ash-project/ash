@@ -18,7 +18,7 @@ defmodule Ash.Resource.Change do
   def schema do
     [
       on: [
-        type: {:custom, __MODULE__, :on, []},
+        type: {:wrap_list, {:in, [:create, :update, :destroy]}},
         default: [:create, :update],
         doc: """
         The action types the validation should run on. Destroy actions are omitted by default as most changes don't make sense for a destroy.
@@ -89,20 +89,6 @@ defmodule Ash.Resource.Change do
 
   def change(other) do
     {:error, "Expected a module and opts, got: #{inspect(other)}"}
-  end
-
-  @doc false
-  def on(list) do
-    list
-    |> List.wrap()
-    |> Enum.all?(&(&1 in [:create, :update, :destroy]))
-    |> case do
-      true ->
-        {:ok, List.wrap(list)}
-
-      false ->
-        {:error, "Expected items of [:create, :update, :destroy], got: #{inspect(list)}"}
-    end
   end
 
   @type context :: %{

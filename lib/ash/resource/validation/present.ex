@@ -9,7 +9,7 @@ defmodule Ash.Resource.Validation.Present do
     case Spark.OptionsHelpers.validate(
            opts,
            Keyword.put(Ash.Resource.Validation.Builtins.present_opts(), :attributes,
-             type: {:custom, __MODULE__, :attributes, []},
+             type: {:wrap_list, :atom},
              required: true
            )
          ) do
@@ -107,16 +107,5 @@ defmodule Ash.Resource.Validation.Present do
        |> with_description(opts)
        |> InvalidAttribute.exception()
      end)}
-  end
-
-  @doc false
-  def attributes(attributes) do
-    attributes = List.wrap(attributes)
-
-    if Enum.all?(attributes, &is_atom/1) do
-      {:ok, attributes}
-    else
-      {:error, "Expected all attributes provided to be atoms."}
-    end
   end
 end

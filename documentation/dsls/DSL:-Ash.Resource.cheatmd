@@ -1904,7 +1904,7 @@ identity :full_name, [:first_name, :last_name]
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `name`* | `atom` |  | The name of the identity. |
-| `keys`* | ``any`` |  | The names of the attributes that uniquely identify this resource. |
+| `keys`* | `list(atom) \| atom` |  | The names of the attributes that uniquely identify this resource. |
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
@@ -1977,7 +1977,7 @@ change {MyCustomChange, :foo}
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
-| `on` | ``any`` | `[:create, :update]` | The action types the validation should run on. Destroy actions are omitted by default as most changes don't make sense for a destroy. |
+| `on` | `list(:create \| :update \| :destroy) \| :create \| :update \| :destroy` | `[:create, :update]` | The action types the validation should run on. Destroy actions are omitted by default as most changes don't make sense for a destroy. |
 | `only_when_valid?` | `boolean` | `false` | If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here. |
 | `description` | `String.t` |  | An optional description for the change |
 | `where` | `list((any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. These validations failing will result in this validation being ignored. |
@@ -2101,7 +2101,7 @@ validate at_least_one_of_present([:first_name, :last_name])
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `where` | `list((any -> any) \| module) \| (any -> any) \| module` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
-| `on` | ``any`` | `[:create, :update]` | The action types the validation should run on. Many validations don't make sense in the context of deletion, so by default it is not included. |
+| `on` | `list(:create \| :update \| :destroy) \| :create \| :update \| :destroy` | `[:create, :update]` | The action types the validation should run on. Many validations don't make sense in the context of deletion, so by default it is not included. |
 | `only_when_valid?` | `boolean` | `false` | If the validation should only run on valid changes. Useful for expensive validations or validations that depend on valid data. |
 | `message` | `String.t` |  | If provided, overrides any message set by the validation error |
 | `description` | `String.t` |  | An optional description for the validation |
@@ -2181,7 +2181,7 @@ end
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `name`* | `atom` |  | The field to place the aggregate in |
-| `relationship_path`* | ``any`` |  | The relationship or relationship path to use for the aggregate |
+| `relationship_path`* | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate |
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
@@ -2231,7 +2231,7 @@ exists :has_ticket, :assigned_tickets
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `name`* | `atom` |  | The field to place the aggregate in |
-| `relationship_path`* | ``any`` |  | The relationship or relationship path to use for the aggregate |
+| `relationship_path`* | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate |
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
@@ -2283,7 +2283,7 @@ end
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `name`* | `atom` |  | The field to place the aggregate in |
-| `relationship_path`* | ``any`` |  | The relationship or relationship path to use for the aggregate |
+| `relationship_path`* | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate |
 | `field` | `atom` |  | The field to aggregate. Defaults to the first field in the primary key of the resource |
 ### Options
 | Name | Type | Default | Docs |
@@ -2335,7 +2335,7 @@ end
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `name`* | `atom` |  | The field to place the aggregate in |
-| `relationship_path`* | ``any`` |  | The relationship or relationship path to use for the aggregate |
+| `relationship_path`* | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate |
 | `field` | `atom` |  | The field to aggregate. Defaults to the first field in the primary key of the resource |
 ### Options
 | Name | Type | Default | Docs |
@@ -2387,7 +2387,7 @@ end
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `name`* | `atom` |  | The field to place the aggregate in |
-| `relationship_path`* | ``any`` |  | The relationship or relationship path to use for the aggregate |
+| `relationship_path`* | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate |
 | `field` | `atom` |  | The field to aggregate. Defaults to the first field in the primary key of the resource |
 ### Options
 | Name | Type | Default | Docs |
@@ -2440,7 +2440,7 @@ end
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `name`* | `atom` |  | The field to place the aggregate in |
-| `relationship_path`* | ``any`` |  | The relationship or relationship path to use for the aggregate |
+| `relationship_path`* | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate |
 | `field` | `atom` |  | The field to aggregate. Defaults to the first field in the primary key of the resource |
 ### Options
 | Name | Type | Default | Docs |
@@ -2491,7 +2491,7 @@ end
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `name`* | `atom` |  | The field to place the aggregate in |
-| `relationship_path`* | ``any`` |  | The relationship or relationship path to use for the aggregate |
+| `relationship_path`* | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate |
 | `field` | `atom` |  | The field to aggregate. Defaults to the first field in the primary key of the resource |
 ### Options
 | Name | Type | Default | Docs |
@@ -2542,7 +2542,7 @@ end
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `name`* | `atom` |  | The field to place the aggregate in |
-| `relationship_path`* | ``any`` |  | The relationship or relationship path to use for the aggregate |
+| `relationship_path`* | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate |
 | `field` | `atom` |  | The field to aggregate. Defaults to the first field in the primary key of the resource |
 ### Options
 | Name | Type | Default | Docs |
@@ -2595,7 +2595,7 @@ end
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `name`* | `atom` |  | The field to place the aggregate in |
-| `relationship_path`* | ``any`` |  | The relationship or relationship path to use for the aggregate |
+| `relationship_path`* | `list(atom) \| atom` |  | The relationship or relationship path to use for the aggregate |
 | `type`* | `module` |  | The type of the value returned by the aggregate |
 ### Options
 | Name | Type | Default | Docs |

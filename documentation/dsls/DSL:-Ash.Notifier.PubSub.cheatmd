@@ -70,7 +70,7 @@ publish :assign, "assigned"
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `action`* | `atom` |  | The name of the action that should be published |
-| `topic`* | ``any`` |  | The topic to publish |
+| `topic`* | `list(String.t \| atom) \| String.t \| atom` |  | The topic to publish |
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
@@ -110,7 +110,7 @@ publish_all :create, "created"
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `type` | `:create \| :update \| :destroy` |  | Publish on all actions of a given type |
-| `topic`* | ``any`` |  | The topic to publish |
+| `topic`* | `list(String.t \| atom) \| String.t \| atom` |  | The topic to publish |
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |

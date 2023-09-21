@@ -18,7 +18,7 @@ defmodule Ash.Resource.Identity do
       doc: "The name of the identity."
     ],
     keys: [
-      type: {:custom, __MODULE__, :keys, []},
+      type: {:wrap_list, :atom},
       required: true,
       doc: "The names of the attributes that uniquely identify this resource."
     ],
@@ -51,14 +51,4 @@ defmodule Ash.Resource.Identity do
           keys: list(atom()),
           description: String.t() | nil
         }
-
-  def keys(keys) do
-    keys = List.wrap(keys)
-
-    if Enum.all?(keys, &is_atom/1) do
-      {:ok, keys}
-    else
-      {:error, "Expected a list of atoms for the identity keys"}
-    end
-  end
 end
