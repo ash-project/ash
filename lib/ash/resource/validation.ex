@@ -66,7 +66,7 @@ defmodule Ash.Resource.Validation do
       """
     ],
     on: [
-      type: {:custom, __MODULE__, :on, []},
+      type: {:wrap_list, {:in, [:create, :update, :destroy]}},
       default: [:create, :update],
       doc: """
       The action types the validation should run on. Many validations don't make sense in the context of deletion, so by default it is not included.
@@ -128,19 +128,5 @@ defmodule Ash.Resource.Validation do
 
   def opt_schema, do: @schema
   def action_schema, do: @action_schema
-
-  def on(list) do
-    list
-    |> List.wrap()
-    |> Enum.all?(&(&1 in [:create, :update, :destroy]))
-    |> case do
-      true ->
-        {:ok, List.wrap(list)}
-
-      false ->
-        {:error, "Expected items of [:create, :update, :destroy], got: #{inspect(list)}"}
-    end
-  end
-
   def validation_type, do: @validation_type
 end

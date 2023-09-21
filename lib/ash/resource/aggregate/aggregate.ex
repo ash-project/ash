@@ -32,7 +32,7 @@ defmodule Ash.Resource.Aggregate do
       """
     ],
     relationship_path: [
-      type: {:custom, __MODULE__, :relationship_path, []},
+      type: {:wrap_list, :atom},
       doc: "The relationship or relationship path to use for the aggregate",
       required: true
     ],
@@ -104,14 +104,4 @@ defmodule Ash.Resource.Aggregate do
 
   @doc false
   def schema, do: @schema
-
-  def relationship_path(value) do
-    value = List.wrap(value)
-
-    if Enum.all?(value, &is_atom/1) do
-      {:ok, value}
-    else
-      {:error, "relationship path must be atoms"}
-    end
-  end
 end
