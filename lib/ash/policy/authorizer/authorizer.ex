@@ -687,7 +687,8 @@ defmodule Ash.Policy.Authorizer do
                %{
                  authorizer
                  | policies: policies
-               },
+               }
+               |> add_query_or_changeset(query_or_changeset),
                for_fields: fields,
                context_description: "selecting or loading fields"
              ) do
@@ -749,6 +750,24 @@ defmodule Ash.Policy.Authorizer do
       {:ok, result, authorizer}
     end)
   end
+
+  defp add_query_or_changeset(
+         authorizer,
+         %Ash.Query{} = query
+       ),
+       do: %{authorizer | query: query}
+
+  defp add_query_or_changeset(
+         authorizer,
+         %Ash.Changeset{} = query
+       ),
+       do: %{authorizer | query: query}
+
+  defp add_query_or_changeset(
+         authorizer,
+         _
+       ),
+       do: authorizer
 
   defp strict_check_all_facts(authorizer) do
     case Checker.strict_check_all_facts(authorizer) do
