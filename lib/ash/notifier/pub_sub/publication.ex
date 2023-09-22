@@ -16,7 +16,7 @@ defmodule Ash.Notifier.PubSub.Publication do
       required: true
     ],
     topic: [
-      type: {:wrap_list, {:or, [:string, :atom]}},
+      type: {:custom, __MODULE__, :topic, []},
       doc: "The topic to publish",
       required: true
     ],
@@ -40,4 +40,35 @@ defmodule Ash.Notifier.PubSub.Publication do
 
   def schema, do: @schema
   def publish_all_schema, do: @publish_all_schema
+
+  @doc false
+  def topic(topic) when is_binary(topic) do
+    {:ok, [topic]}
+  end
+
+  def topic(topic) when is_list(topic) do
+    if nested_list_of_binaries_or_atoms?(topic) do
+      {:ok, topic}
+    else
+      {:error,
+       "Expected topic to be a string or a list of strings or attribute names (as atoms), got: #{inspect(topic)}"}
+    end
+  end
+
+  def topic(other) do
+    {:error,
+     "Expected topic to be a string or a list of strings or attribute names (as atoms), got: #{inspect(other)}"}
+  end
+
+  defp nested_list_of_binaries_or_atoms?(list) when is_list(list) do
+    Enum.all?(list, &nested_list_of_binaries_or_atoms?/1)
+  end
+
+  defp nested_list_of_binaries_or_atoms?(value) when is_binary(value) or is_atom(value) do
+    true
+  end
+
+  defp nested_list_of_binaries_or_atoms?(_) do
+    false
+  end
 end
