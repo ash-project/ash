@@ -505,7 +505,9 @@ defmodule Ash.Policy.Authorizer do
         {expr, _acc} =
           replace_refs(expression, %{
             stack: [{resource, [], context.query.action}],
-            authorizers: %{{resource, context.query.action} => authorizer},
+            authorizers: %{
+              {resource, context.query.action} => %{authorizer | query: context.query}
+            },
             verbose?: authorizer.verbose?,
             actor: authorizer.actor
           })
@@ -574,6 +576,7 @@ defmodule Ash.Policy.Authorizer do
          %{stack: [{resource, _path, action} | _]} = acc
        )
        when struct in [Ash.Resource.Attribute, Ash.Resource.Aggregate, Ash.Resource.Calculation] do
+    dbg()
     {expr, acc} = expression_for_field(resource, name, action, ref, acc)
 
     {expr, acc}

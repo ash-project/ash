@@ -30,5 +30,7 @@ defmodule Ash.Policy.Check.AccessingFrom do
     end
   end
 
-  def match?(_, _, _), do: false
+  def match?(_, _, _) do
+    raise "Field Policy"
+  end
 end

@@ -30,6 +30,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
       assert [
                %Ash.Policy.FieldPolicy{bypass?: true},
                %Ash.Policy.FieldPolicy{bypass?: false},
+               %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false}
              ] =
                Ash.Policy.Info.field_policies(User)
