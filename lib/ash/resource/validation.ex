@@ -115,14 +115,13 @@ defmodule Ash.Resource.Validation do
   end
 
   @doc false
-  def transform(%{validation: {module, opts}, where: where} = validation) do
+  def transform(%{validation: {module, opts}} = validation) do
     {:ok,
      %{
        validation
        | validation: {module, opts},
          module: module,
-         opts: opts,
-         where: List.wrap(where)
+         opts: opts
      }}
   end
 
