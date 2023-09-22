@@ -139,6 +139,39 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Api.read_one!()
                |> Map.get(:status)
     end
+
+    @tag :wip
+    test "reading is allowed through a relationship",
+         %{representative: representative} do
+      # someone who is allowed because it's accessed through the ticket
+      assert [ticket] =
+               Ticket
+               |> Ash.Query.select([])
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
+               |> Ash.Query.filter(reporter.ticket_count > 0)
+               |> Ash.Query.load(reporter: [:ticket_count])
+               |> Ash.Query.limit(1)
+               |> IO.inspect()
+               |> Api.read!(authorize?: true)
+
+      assert is_number(ticket.reporter.ticket_count)
+      assert ticket.reporter.ticket_count > 0
+
+      # can't read the value when reading the resource directly
+      assert [user] =
+               User
+               |> Ash.Query.select([])
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
+               |> Ash.Query.load([:ticket_count])
+               |> Ash.Query.limit(1)
+               |> IO.inspect()
+               |> Api.read!(authorize?: true)
+
+      assert user.ticket_count == %Ash.ForbiddenField{
+               field: :ticket_count,
+               type: :aggregate
+             }
+    end
   end
 
   describe "filters" do
@@ -159,6 +192,41 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
                |> Ash.Query.filter_input(role: :representative)
                |> Api.read!(authorize?: true)
+    end
+
+    test "it's possible to filter on values that are only allowed to be accesed from a parent", %{
+      representative: representative,
+      user: user
+    } do
+      # someone who is allowed because it's accessed through the ticket
+      assert [ticket] =
+               Ticket
+               |> Ash.Query.select([])
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
+               |> Ash.Query.filter(reporter.ticket_count > 0)
+               |> Ash.Query.load(reporter: [:ticket_count])
+               |> Ash.Query.limit(1)
+               |> IO.inspect()
+               |> Api.read!(authorize?: true)
+
+      assert is_number(ticket.reporter.ticket_count)
+      assert ticket.reporter.ticket_count > 0
+
+      # someone who isn't allowed to see the field
+      assert [ticket] =
+               Ticket
+               |> Ash.Query.select([])
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
+               |> Ash.Query.filter(reporter.ticket_count > 0)
+               |> Ash.Query.load(reporter: [:ticket_count])
+               |> Ash.Query.limit(1)
+               |> IO.inspect()
+               |> Api.read!(authorize?: true)
+
+      assert ticket.reporter.ticket_count == %Ash.ForbiddenField{
+               field: :ticket_count,
+               type: :aggregate
+             }
     end
   end
 end
