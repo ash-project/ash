@@ -38,6 +38,7 @@ defmodule Ash.Query do
     :tenant,
     :timeout,
     :lock,
+    around_transaction: [],
     invalid_keys: MapSet.new(),
     load_through: %{},
     action_failed?: false,
@@ -90,6 +91,14 @@ defmodule Ash.Query do
           sort: [atom | {atom, :asc | :desc}],
           valid?: boolean
         }
+
+  @type around_result ::
+          {:ok, list(Ash.Resource.record())}
+          | {:error, Ash.Error.t()}
+  @type around_callback :: (t() -> around_result)
+  @type around_action_fun :: (t, around_callback -> around_result)
+
+  @type around_transaction_fun :: (t -> {:ok, Ash.Resource.record()} | {:error, any})
 
   alias Ash.Actions.Sort
 
@@ -582,6 +591,27 @@ defmodule Ash.Query do
         end
       end
     end)
+  end
+
+  @doc """
+  Adds an around_transaction hook to the query.
+
+  Your function will get the query, and a callback that must be called with a query (that may be modified).
+  The callback will return `{:ok, results}` or `{:error, error}`. You can modify these values, but the return value
+  must be one of those types.
+
+  The around_transaction calls happen first, and then (after they each resolve their callbacks) the `before_action`
+  hooks are called, followed by the `after_action` hooks being run. Then, the code that appeared *after* the callbacks were called is then run.
+
+  Warning: using this without understanding how it works can cause big problems.
+  You *must* call the callback function that is provided to your hook, and the return value must
+  contain the same structure that was given to you, i.e `{:ok, result_of_action}`.
+  """
+
+  @spec around_transaction(t(), around_transaction_fun()) :: t()
+  def around_transaction(query, func) do
+    query = to_query(query)
+    %{query | around_transaction: query.around_transaction ++ [func]}
   end
 
   @spec before_action(

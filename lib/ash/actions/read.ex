@@ -93,34 +93,47 @@ defmodule Ash.Actions.Read do
         Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(query.api), :read], metadata do
           Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
-          case do_run(query, action, opts) do
-            {:error, error} ->
-              if opts[:tracer] do
-                stacktrace =
-                  case error do
-                    %{stacktrace: %{stacktrace: stacktrace}} ->
-                      stacktrace || []
+          run_around_transaction_hooks(query, fn query ->
+            case do_run(query, action, opts) do
+              {:error, error} ->
+                if opts[:tracer] do
+                  stacktrace =
+                    case error do
+                      %{stacktrace: %{stacktrace: stacktrace}} ->
+                        stacktrace || []
 
-                    _ ->
-                      {:current_stacktrace, stacktrace} =
-                        Process.info(self(), :current_stacktrace)
+                      _ ->
+                        {:current_stacktrace, stacktrace} =
+                          Process.info(self(), :current_stacktrace)
 
-                      stacktrace
-                  end
+                        stacktrace
+                    end
 
-                Ash.Tracer.set_handled_error(opts[:tracer], Ash.Error.to_error_class(error),
-                  stacktrace: stacktrace
-                )
-              end
+                  Ash.Tracer.set_handled_error(opts[:tracer], Ash.Error.to_error_class(error),
+                    stacktrace: stacktrace
+                  )
+                end
 
-              {:error, error}
+                {:error, error}
 
-            other ->
-              other
-          end
+              other ->
+                other
+            end
+          end)
         end
       end
     end
+  end
+
+  defp run_around_transaction_hooks(%{around_transaction: []} = query, func),
+    do: func.(query)
+
+  defp run_around_transaction_hooks(%{around_transaction: [around | rest]} = query, func) do
+    query
+    |> set_phase(:around_transaction)
+    |> around.(fn query ->
+      run_around_transaction_hooks(%{query | around_transaction: rest}, func)
+    end)
   end
 
   defp do_run(query, action, opts) do
@@ -838,7 +851,8 @@ defmodule Ash.Actions.Read do
           query: query,
           resource: resource,
           action: action.name
-        }
+        },
+        data_layer_context: query.context[:data_layer]
       }
     )
   end
@@ -3464,6 +3478,6 @@ defmodule Ash.Actions.Read do
   end
 
   defp set_phase(query, phase \\ :preparing)
-       when phase in ~w[preparing before_action after_action executing]a,
+       when phase in ~w[preparing before_action after_action executing around_transaction]a,
        do: %{query | phase: phase}
 end

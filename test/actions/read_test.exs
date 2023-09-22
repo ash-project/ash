@@ -136,6 +136,30 @@ defmodule Ash.Test.Actions.ReadTest do
     end
   end
 
+  describe "around_transaction/2" do
+    test "it runs around the action" do
+        Post
+        |> new(%{title: "test", contents: "yeet"})
+        |> Api.create!()
+        |> strip_metadata()
+
+      assert {:ok, [_]} =
+               Post
+               |> Ash.Query.around_transaction(fn query, callback ->
+                 send(self(), :around_transaction_start)
+                  {:ok, results} = callback.(query)
+                 send(self(), :around_transaction_end)
+                 {:ok, results}
+                end)
+               |> Ash.Query.before_action(fn query ->
+                 send(self(), :before_action)
+                 query
+                end)
+               |> Api.read()
+      assert {:messages, [:around_transaction_start, :before_action, :around_transaction_end]} = :erlang.process_info(self(), :messages)
+    end
+  end
+
   describe "api.get!/3" do
     setup do
       post =

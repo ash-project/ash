@@ -59,21 +59,32 @@ defmodule Ash.Actions.Action do
           try do
             resources
             |> Enum.reject(&Ash.DataLayer.in_transaction?/1)
-            |> Ash.DataLayer.transaction(fn ->
-              case authorize(api, opts[:actor], input) do
-                :ok ->
-                  case module.run(input, run_opts, context) do
-                    {:ok, result} ->
-                      {:ok, result, []}
+            |> Ash.DataLayer.transaction(
+              fn ->
+                case authorize(api, opts[:actor], input) do
+                  :ok ->
+                    case module.run(input, run_opts, context) do
+                      {:ok, result} ->
+                        {:ok, result, []}
 
-                    other ->
-                      other
-                  end
+                      other ->
+                        other
+                    end
 
-                {:error, error} ->
-                  {:error, error}
-              end
-            end)
+                  {:error, error} ->
+                    {:error, error}
+                end
+              end,
+              %{
+                type: :generic,
+                metadata: %{
+                  resource: input.resource,
+                  action: input.action.name,
+                  actor: opts[:actor]
+                },
+                data_layer_context: input.context[:data_layer]
+              }
+            )
             |> case do
               {:ok, {:ok, value, notifications}} ->
                 notifications =

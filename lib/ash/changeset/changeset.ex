@@ -1815,7 +1815,11 @@ defmodule Ash.Changeset do
               end
             end,
             changeset.timeout || :infinity,
-            opts[:transaction_metadata]
+            Map.put(
+              opts[:transaction_metadata],
+              :data_layer_context,
+              changeset.context[:data_layer] || %{}
+            )
           )
           |> case do
             {:ok, {:ok, value, changeset, instructions}} ->
