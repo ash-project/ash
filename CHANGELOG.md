@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.20](https://github.com/ash-project/ash/compare/v2.14.19...v2.14.20) (2023-09-22)
+
+
+
+
+### Bug Fixes:
+
+* revert `:wrap_list` usage for `topic` in PubSub, needs recursion (#702)
+
 ## [v2.14.19](https://github.com/ash-project/ash/compare/v2.14.18...v2.14.19) (2023-09-21)
 
 
