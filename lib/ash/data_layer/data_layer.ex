@@ -14,35 +14,61 @@ defmodule Ash.DataLayer do
   @type data_layer_query() :: struct
   @type lock_type :: :for_update | term()
   @type transaction_reason ::
-          %{type: :create, metadata: %{resource: Ash.Resource.t(), action: atom}}
+          %{
+            required(:type) => :create,
+            required(:metadata) => %{resource: Ash.Resource.t(), action: atom},
+            optional(:data_layer_context) => %{}
+          }
           | %{
-              type: :update,
-              metadata: %{
+              required(:type) => :update,
+              required(:metadata) => %{
                 resource: Ash.Resource.t(),
                 action: atom,
                 record: Ash.Resource.record(),
                 actor: term()
-              }
+              },
+              optional(:data_layer_context) => %{}
             }
           | %{
-              type: :destroy,
-              metadata: %{
+              required(:type) => :destroy,
+              required(:metadata) => %{
                 resource: Ash.Resource.t(),
                 action: atom,
                 record: Ash.Resource.record(),
                 actor: term()
-              }
+              },
+              optional(:data_layer_context) => %{}
             }
           | %{
-              type: :read,
-              metadata: %{resource: Ash.Resource.t(), query: Ash.Query.t(), actor: term()}
+              required(:type) => :read,
+              required(:metadata) => %{
+                resource: Ash.Resource.t(),
+                query: Ash.Query.t(),
+                actor: term()
+              },
+              optional(:data_layer_context) => %{}
             }
           | %{
-              type: :flow_transaction,
-              metadata: %{step_name: atom | list(term), flow: module(), actor: term()}
+              required(:type) => :flow_transaction,
+              required(:metadata) => %{
+                resource: Ash.Resource.t(),
+                input: Ash.ActionInput.t(),
+                action: atom,
+                actor: term()
+              },
+              optional(:data_layer_context) => %{}
             }
-          | %{type: :custom, metadata: map()}
-          | %{type: atom, metadata: map()}
+          | %{
+              required(:type) => :generic,
+              required(:metadata) => %{
+                step_name: atom | list(term),
+                flow: module(),
+                actor: term()
+              },
+              optional(:data_layer_context) => %{}
+            }
+          | %{required(:type) => :custom, required(:metadata) => map()}
+          | %{required(:type) => atom, required(:metadata) => map()}
 
   @type feature() ::
           :transact

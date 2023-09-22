@@ -75,14 +75,16 @@ defmodule Ash.Actions.Action do
                     {:error, error}
                 end
               end,
+              nil,
               %{
                 type: :generic,
                 metadata: %{
                   resource: input.resource,
                   action: input.action.name,
+                  input: input,
                   actor: opts[:actor]
                 },
-                data_layer_context: input.context[:data_layer]
+                data_layer_context: input.context[:data_layer] || %{}
               }
             )
             |> case do
