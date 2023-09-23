@@ -96,7 +96,7 @@ Add `:ash` to your `.formatter.exs` file
 ```elixir
 # Used by "mix format"
 [
-  import_deps: [:ash], # <-- add this line, if you have more import_deps, just add it within the array
+  import_deps: [:ash], # <-- add this line, if you have more import_deps, just add it within the list
   inputs: [
     "{mix,.formatter}.exs",
     "{config,lib,test}/**/*.{ex,exs}"
