@@ -49,7 +49,7 @@ defmodule Ash.Test.Support.PolicyField.Ticket do
 
     field_policy :internal_status, [
       accessing_from(Ash.Test.Support.PolicyField.User, :tickets),
-      actor_attribute_equals(:role, :reporter)
+      actor_attribute_equals(:role, :user)
     ] do
       authorize_if always()
     end

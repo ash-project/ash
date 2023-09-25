@@ -26,6 +26,10 @@ defmodule Ash.Policy.Check.AccessingFrom do
 
     dbg()
 
+    # if options == [source: Ash.Test.Support.PolicyField.User, relationship: :tickets] do
+    #   raise "Nested Policy"
+    # end
+
     if accessing_from do
       accessing_from.source == options[:source] &&
         accessing_from.name == options[:relationship]

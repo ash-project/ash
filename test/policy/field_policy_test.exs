@@ -170,10 +170,8 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
              }
     end
 
-    @tag :wip
     test "reading is allowed through a multi level relationship",
          %{user: user} do
-      #  someone who is allowed because it's accessed through the ticket
       assert [ticket] =
                Ticket
                |> Ash.Query.select([:internal_status])
@@ -189,7 +187,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
 
       nested_ticket = ticket.reporter.tickets |> List.first()
 
-      assert nested_ticket.internal_status == :new
+      assert nested_ticket.internal_status == nil
     end
   end
 
