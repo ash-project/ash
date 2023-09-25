@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.14.21](https://github.com/ash-project/ash/compare/v2.14.20...v2.14.21) (2023-09-25)
+
+
+
+
+### Improvements:
+
+* deprecate old school manual actions
+
+* better UX around nimble options errors
+
+* remove old, now-deprecated config
+
+* add `Ash.Query.around_transaction/2`
+
 ## [v2.14.20](https://github.com/ash-project/ash/compare/v2.14.19...v2.14.20) (2023-09-22)
 
 
