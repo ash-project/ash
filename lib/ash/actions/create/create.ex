@@ -377,6 +377,10 @@ defmodule Ash.Actions.Create do
                                 authorize?: authorize?,
                                 api: changeset.api
                               })
+                              |> validate_manual_action_return_result!(
+                                resource,
+                                changeset.action
+                              )
                             end
                             |> add_tenant(changeset)
                             |> manage_relationships(api, changeset,
@@ -515,6 +519,40 @@ defmodule Ash.Actions.Create do
       )
 
     [authorization_request, commit_request]
+  end
+
+  defp validate_manual_action_return_result!({:ok, %resource{}} = result, resource, _) do
+    result
+  end
+
+  defp validate_manual_action_return_result!(
+         {:ok, %resource{}, notifications} = result,
+         resource,
+         _
+       )
+       when is_list(notifications) do
+    result
+  end
+
+  defp validate_manual_action_return_result!({:error, _error} = result, _resource, _) do
+    result
+  end
+
+  defp validate_manual_action_return_result!(other, resource, action) do
+    raise Ash.Error.Framework.AssumptionFailed,
+      message: """
+      Manual action #{inspect(action.name)} on #{inspect(resource)} returned an invalid result.
+
+      Expected one of the following:
+
+      * {:ok, %Resource{}}
+      * {:ok, %Resource{}, notifications}
+      * {:error, error}
+
+      Got:
+
+      #{inspect(other)}
+      """
   end
 
   defp run_after_action({:ok, result, instructions}, changeset, opts) do

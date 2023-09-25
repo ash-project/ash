@@ -16,7 +16,9 @@ defmodule Ash.Resource.ManualDestroy do
               opts :: Keyword.t(),
               context :: context()
             ) ::
-              {:ok, Ash.Resource.record()} | {:error, term}
+              {:ok, Ash.Resource.record()}
+              | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
+              | {:error, term}
 
   defmacro __using__(_) do
     quote do

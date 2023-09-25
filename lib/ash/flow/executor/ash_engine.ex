@@ -431,6 +431,7 @@ defmodule Ash.Flow.Executor.AshEngine do
               else
                 touches_resources || []
               end
+              |> List.flatten()
               |> Enum.filter(&(&1 && is_atom(&1)))
 
             if touches_resources == [] do

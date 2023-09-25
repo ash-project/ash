@@ -2830,6 +2830,7 @@ defmodule Ash.Actions.Read do
        ) do
     ash_query
     |> mod.read(query, opts, context)
+    |> validate_manual_action_return_result!(ash_query.resource, ash_query.action)
     |> Helpers.select(ash_query)
     |> Helpers.load_runtime_types(ash_query, load_attributes?)
   end
@@ -2850,6 +2851,31 @@ defmodule Ash.Actions.Read do
       |> Helpers.select(ash_query)
       |> Helpers.load_runtime_types(ash_query, load_attributes?)
     end
+  end
+
+  defp validate_manual_action_return_result!({:ok, list} = result, _resource, _)
+       when is_list(list) do
+    result
+  end
+
+  defp validate_manual_action_return_result!({:error, _error} = result, _resource, _) do
+    result
+  end
+
+  defp validate_manual_action_return_result!(other, resource, action) do
+    raise Ash.Error.Framework.AssumptionFailed,
+      message: """
+      Manual action #{inspect(action.name)} on #{inspect(resource)} returned an invalid result.
+
+      Expected one of the following:
+
+      * {:ok, [list, of, results]}
+      * {:error, error}
+
+      Got:
+
+      #{inspect(other)}
+      """
   end
 
   @doc false
