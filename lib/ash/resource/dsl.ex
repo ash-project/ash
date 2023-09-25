@@ -710,6 +710,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Identity,
     schema: Ash.Resource.Identity.schema(),
+    transform: {Ash.Resource.Identity, :transform, []},
     no_depend_modules: [:pre_check_with, :eager_check_with],
     args: [:name, :keys]
   }

@@ -18,9 +18,10 @@ defmodule Ash.Resource.Identity do
       doc: "The name of the identity."
     ],
     keys: [
-      type: {:wrap_list, :atom},
-      required: true,
-      doc: "The names of the attributes that uniquely identify this resource."
+      type: {:or, [:atom, {:list, :atom}]},
+      doc: """
+      The names of the attributes that uniquely identify this resource. Defaults to the name of the identity.
+      """
     ],
     eager_check_with: [
       type: {:behaviour, Ash.Api},
@@ -51,4 +52,9 @@ defmodule Ash.Resource.Identity do
           keys: list(atom()),
           description: String.t() | nil
         }
+
+  @doc false
+  def transform(%{name: name, keys: keys} = identity) do
+    {:ok, %{identity | keys: List.wrap(keys || name)}}
+  end
 end

@@ -1904,7 +1904,7 @@ identity :full_name, [:first_name, :last_name]
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |
 | `name`* | `atom` |  | The name of the identity. |
-| `keys`* | `list(atom) \| atom` |  | The names of the attributes that uniquely identify this resource. |
+| `keys` | `atom \| list(atom)` |  | The names of the attributes that uniquely identify this resource. Defaults to the name of the identity. |
 ### Options
 | Name | Type | Default | Docs |
 | ---  | ---  | ---     | ---  |

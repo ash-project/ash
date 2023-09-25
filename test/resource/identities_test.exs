@@ -38,6 +38,23 @@ defmodule Ash.Test.Resource.IdentitiesTest do
                Ash.Resource.Info.identities(Post)
     end
 
+    test "defaults fields to a provided name" do
+      defposts do
+        actions do
+          read :read do
+            primary? true
+          end
+        end
+
+        identities do
+          identity :name, pre_check_with: Api
+        end
+      end
+
+      assert [%Ash.Resource.Identity{name: :name, keys: [:name]}] =
+               Ash.Resource.Info.identities(Post)
+    end
+
     test "eager_check_with requires a primary read action" do
       assert_raise Spark.Error.DslError,
                    ~r/but the resource has no primary read action./,
