@@ -761,9 +761,9 @@ defmodule Ash.Policy.Authorizer do
 
   defp add_query_or_changeset(
          authorizer,
-         %Ash.Changeset{} = query
+         %Ash.Changeset{} = changeset
        ),
-       do: %{authorizer | query: query}
+       do: %{authorizer | changeset: changeset}
 
   defp add_query_or_changeset(
          authorizer,
