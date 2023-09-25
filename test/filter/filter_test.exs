@@ -119,7 +119,7 @@ defmodule Ash.Test.Filter.FilterTest do
       attribute :title, :string
       attribute :contents, :string
       attribute :points, :integer
-      attribute :approved_at, :utc_datetime
+      attribute :approved_at, :datetime
       attribute :category, :ci_string
     end
 

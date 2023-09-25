@@ -45,6 +45,7 @@ defmodule Ash.Type do
     naive_datetime: Ash.Type.NaiveDatetime,
     utc_datetime: Ash.Type.UtcDatetime,
     utc_datetime_usec: Ash.Type.UtcDatetimeUsec,
+    datetime: Ash.Type.DateTime,
     url_encoded_binary: Ash.Type.UrlEncodedBinary,
     union: Ash.Type.Union,
     module: Ash.Type.Module,
