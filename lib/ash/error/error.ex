@@ -195,6 +195,13 @@ defmodule Ash.Error do
   end
 
   def to_error_class(values, opts) when is_list(values) do
+    values =
+      if Keyword.keyword?(opts) do
+        [to_ash_error(values, nil, Keyword.delete(opts, :error_context))]
+      else
+        Enum.map(values, &to_ash_error(&1, nil, Keyword.delete(opts, :error_context)))
+      end
+
     case values do
       [%{class: :special} = exception] ->
         exception
@@ -221,7 +228,9 @@ defmodule Ash.Error do
   end
 
   def to_error_class(value, opts) do
-    if ash_error?(value) && value.__struct__ in Keyword.values(@error_modules) do
+    value = to_ash_error(value, nil, Keyword.delete(opts, :error_context))
+
+    if value.__struct__ in Keyword.values(@error_modules) do
       value
       |> add_changeset_or_query([value], opts[:changeset] || opts[:query])
       |> Map.put(:error_context, [opts[:error_context] | value.error_context])
@@ -326,6 +335,10 @@ defmodule Ash.Error do
     end
   end
 
+  def to_ash_error(%NimbleOptions.ValidationError{message: message}, stacktrace, opts) do
+    to_ash_error(Ash.Error.Action.InvalidOptions.exception(message: message), stacktrace, opts)
+  end
+
   def to_ash_error(error, stacktrace, opts) when is_binary(error) do
     [error: error]
     |> UnknownError.exception()
@@ -354,7 +367,7 @@ defmodule Ash.Error do
     end
   end
 
-  defp add_stacktrace(error, stacktrace) do
+  defp add_stacktrace(%{stacktrace: _} = error, stacktrace) do
     stacktrace =
       case stacktrace do
         %Stacktrace{stacktrace: nil} ->
@@ -369,6 +382,8 @@ defmodule Ash.Error do
 
     %{error | stacktrace: stacktrace || error.stacktrace || fake_stacktrace()}
   end
+
+  defp add_stacktrace(e, _), do: e
 
   defp fake_stacktrace do
     {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)

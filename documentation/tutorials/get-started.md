@@ -106,17 +106,6 @@ Add `:ash` to your `.formatter.exs` file
 
 And run `mix deps.get`
 
-### Temporary Config
-
-For backwards compatibility, the following configuration is required. Don't worry about it for now, just know that it needs to be set until the behavior is deprecated in the next major release. Create a file at `config/config.exs` with the following contents. If you already have one, just add the last line.
-
-```elixir
-import Config
-
-# if you already have a config file, then you'll just need to add this:
-config :ash, :use_all_identities_in_manage_relationship?, false
-```
-
 ### Building your first Ash API
 
 The basic building blocks of an Ash application are Ash resources. They are tied together by an API module (not to be confused with a web API), which will allow you to interact with those resources.

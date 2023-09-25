@@ -2525,11 +2525,7 @@ defmodule Ash.Changeset do
     use_identities: [
       type: {:list, :atom},
       doc: """
-      A list of identities that may be used to look up and compare records.
-
-      Use `:_primary_key` to include the primary key. By default, only `[:_primary_key]` is used,
-      unless you have `config :ash, :use_all_identities_in_manage_relationship?: true` (an old
-      configuration that you should not set to `true`).
+      A list of identities that may be used to look up and compare records. Use `:_primary_key` to include the primary key. By default, only `[:_primary_key]` is used.
       """
     ],
     on_lookup: [

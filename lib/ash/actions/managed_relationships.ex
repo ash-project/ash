@@ -7,27 +7,15 @@ defmodule Ash.Actions.ManagedRelationships do
 
   require Ash.Query
 
-  @use_all_identities_in_manage_relationship Application.compile_env(
-                                               :ash,
-                                               :use_all_identities_in_manage_relationship?
-                                             )
-
-  if is_nil(@use_all_identities_in_manage_relationship) do
+  if Application.compile_env(:ash, :use_all_identities_in_manage_relationship?) == true do
     IO.warn("""
     * IMPORTANT *
 
-    The configuration `use_all_identities_in_manage_relationship` was not set.
-    It is defaulting to `true` for backwards compatibility.
+    This configuration is no longer valid and is being ignored. You must explicitly configure the validations
+    used by `manage_relationship`, using `use_identities: [...]` in your manage_relationship options.
 
-    This configuration must now be manually set, and it should be set to `false`.
-    If you have just started a new project, or haven't used `manage_relationship` yet, just set the following config:
-
-    config :ash, :use_all_identities_in_manage_relationship?, false
-
-    If you are currently using `manage_relationship`, please read https://github.com/ash-project/ash/issues/469 before proceeding
+    Please read https://github.com/ash-project/ash/issues/469 for more
     """)
-
-    @use_all_identities_in_manage_relationship true
   end
 
   def load(_api, created, %{relationships: rels}, _) when rels == %{},
@@ -566,16 +554,7 @@ defmodule Ash.Actions.ManagedRelationships do
     use_identities =
       case opts[:use_identities] do
         nil ->
-          if @use_all_identities_in_manage_relationship do
-            [
-              :_primary_key
-              | relationship.destination
-                |> Ash.Resource.Info.identities()
-                |> Enum.map(& &1.name)
-            ]
-          else
-            [:_primary_key]
-          end
+          [:_primary_key]
 
         use_identities ->
           use_identities
