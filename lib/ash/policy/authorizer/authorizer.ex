@@ -576,7 +576,6 @@ defmodule Ash.Policy.Authorizer do
          %{stack: [{resource, _path, action} | _]} = acc
        )
        when struct in [Ash.Resource.Attribute, Ash.Resource.Aggregate, Ash.Resource.Calculation] do
-    dbg()
     {expr, acc} = expression_for_field(resource, name, action, ref, acc)
 
     {expr, acc}

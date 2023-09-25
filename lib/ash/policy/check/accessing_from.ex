@@ -11,8 +11,6 @@ defmodule Ash.Policy.Check.AccessingFrom do
   def match?(_actor, %{changeset: %Ash.Changeset{} = changeset}, options) do
     accessing_from = changeset.context[:accessing_from]
 
-    dbg()
-
     if accessing_from do
       accessing_from.source == options[:source] &&
         accessing_from.name == options[:relationship]
@@ -24,12 +22,6 @@ defmodule Ash.Policy.Check.AccessingFrom do
   def match?(_actor, %{query: %Ash.Query{} = query}, options) do
     accessing_from = query.context[:accessing_from]
 
-    dbg()
-
-    # if options == [source: Ash.Test.Support.PolicyField.User, relationship: :tickets] do
-    #   raise "Nested Policy"
-    # end
-
     if accessing_from do
       accessing_from.source == options[:source] &&
         accessing_from.name == options[:relationship]
@@ -38,7 +30,5 @@ defmodule Ash.Policy.Check.AccessingFrom do
     end
   end
 
-  def match?(_, _, _) do
-    raise "Field Policy"
-  end
+  def match?(_, _, _), do: false
 end
