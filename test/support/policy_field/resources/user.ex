@@ -46,8 +46,15 @@ defmodule Ash.Test.Support.PolicyField.User do
       authorize_if actor_attribute_equals(:role, :representative)
     end
 
-    field_policy :ticket_count do
-      authorize_if actor_attribute_equals(:role, :reporter)
+    field_policy :ticket_count, [
+      actor_attribute_equals(:role, :representative),
+      accessing_from(Ash.Test.Support.PolicyField.Ticket, :reporter)
+    ] do
+      authorize_if always()
+    end
+
+    field_policy :ticket_count, actor_attribute_equals(:role, :reporter) do
+      authorize_if always()
     end
   end
 end

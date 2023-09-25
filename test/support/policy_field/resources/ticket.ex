@@ -43,8 +43,15 @@ defmodule Ash.Test.Support.PolicyField.Ticket do
       authorize_if relates_to_actor_via(:reporter)
     end
 
-    field_policy :internal_status do
-      forbid_unless actor_attribute_equals(:role, :representative)
+    field_policy :internal_status, actor_attribute_equals(:role, :representative) do
+      authorize_if always()
+    end
+
+    field_policy :internal_status, [
+      accessing_from(Ash.Test.Support.PolicyField.User, :tickets),
+      actor_attribute_equals(:role, :user)
+    ] do
+      authorize_if always()
     end
 
     field_policy [:name, :reporter_id, :representative_id] do

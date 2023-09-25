@@ -30,6 +30,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
       assert [
                %Ash.Policy.FieldPolicy{bypass?: true},
                %Ash.Policy.FieldPolicy{bypass?: false},
+               %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false}
              ] =
                Ash.Policy.Info.field_policies(User)
@@ -138,6 +139,56 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Api.read_one!()
                |> Map.get(:status)
     end
+
+    test "reading is allowed through a relationship",
+         %{representative: representative} do
+      # someone who is allowed because it's accessed through the ticket
+      assert [ticket] =
+               Ticket
+               |> Ash.Query.select([])
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
+               |> Ash.Query.filter(reporter.ticket_count > 0)
+               |> Ash.Query.load(reporter: [:ticket_count])
+               |> Ash.Query.limit(1)
+               |> Api.read!(authorize?: true)
+
+      assert is_number(ticket.reporter.ticket_count)
+      assert ticket.reporter.ticket_count > 0
+
+      # can't read the value when reading the resource directly
+      assert [user] =
+               User
+               |> Ash.Query.select([])
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
+               |> Ash.Query.load([:ticket_count])
+               |> Ash.Query.limit(1)
+               |> Api.read!(authorize?: true)
+
+      assert user.ticket_count == %Ash.ForbiddenField{
+               field: :ticket_count,
+               type: :aggregate
+             }
+    end
+
+    test "reading is allowed through a multi level relationship",
+         %{user: user} do
+      assert [ticket] =
+               Ticket
+               |> Ash.Query.select([:internal_status])
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
+               |> Ash.Query.filter(reporter_id == ^user.id)
+               |> Ash.Query.load(reporter: [:tickets])
+               |> Api.read!(authorize?: true)
+
+      assert ticket.internal_status == %Ash.ForbiddenField{
+               field: :internal_status,
+               type: :attribute
+             }
+
+      nested_ticket = ticket.reporter.tickets |> List.first()
+
+      assert nested_ticket.internal_status == nil
+    end
   end
 
   describe "filters" do
@@ -158,6 +209,39 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
                |> Ash.Query.filter_input(role: :representative)
                |> Api.read!(authorize?: true)
+    end
+
+    test "it's possible to filter on values that are only allowed to be accesed from a parent", %{
+      representative: representative,
+      user: user
+    } do
+      # someone who is allowed because it's accessed through the ticket
+      assert [ticket] =
+               Ticket
+               |> Ash.Query.select([])
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
+               |> Ash.Query.filter(reporter.ticket_count > 0)
+               |> Ash.Query.load(reporter: [:ticket_count])
+               |> Ash.Query.limit(1)
+               |> Api.read!(authorize?: true)
+
+      assert is_number(ticket.reporter.ticket_count)
+      assert ticket.reporter.ticket_count > 0
+
+      # someone who isn't allowed to see the field
+      assert [ticket] =
+               Ticket
+               |> Ash.Query.select([])
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
+               |> Ash.Query.filter(reporter.ticket_count > 0)
+               |> Ash.Query.load(reporter: [:ticket_count])
+               |> Ash.Query.limit(1)
+               |> Api.read!(authorize?: true)
+
+      assert ticket.reporter.ticket_count == %Ash.ForbiddenField{
+               field: :ticket_count,
+               type: :aggregate
+             }
     end
   end
 end
