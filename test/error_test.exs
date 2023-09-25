@@ -35,7 +35,7 @@ defmodule Ash.Test.ErrorTest do
     end
 
     test "returns chosen error if the value argument is a list of values" do
-      values = [[a: "a", b: "b"], [c: "c", d: "d"], "foo", "bar"]
+      values = ["foo", "bar"]
 
       result = Ash.Error.to_error_class(values, [])
 

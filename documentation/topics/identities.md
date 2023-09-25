@@ -8,7 +8,7 @@ This will allow these fields to be passed to `c:Ash.Api.get/3`, e.g `get(Resourc
 
 ## Using upserts
 
-Create actions support the `upsert?: true` option, if the data layer supports it. An `upsert?` involves checking for a conflict on some set of attributes, and translating the behavior to an update in the case one is found. By default, the primary key is used when looking for duplicates, but you can set `[upsert?: true, upsert_identity: :identity_name]` to tell it to look for conflicts on a specific identity. 
+Create actions support the `upsert?: true` option, if the data layer supports it. An `upsert?` involves checking for a conflict on some set of attributes, and translating the behavior to an update in the case one is found. By default, the primary key is used when looking for duplicates, but you can set `[upsert?: true, upsert_identity: :identity_name]` to tell it to look for conflicts on a specific identity.
 
 ## Creating unique constraints
 
@@ -25,4 +25,4 @@ For creates, The identity is checked unless your are performing an `upsert`, and
 
 ## Pre Checking
 
-`pre_check_with: ApiName` behaves the same as `eager_check_with`, but it runs just prior to the action being committed. Useful for data layers that don't support transactions/unique constraints, or manual resources with identities. `Ash.DataLayer.Ets` will actually require you to set `pre_check_with` since the ETS data layer has no built in support for unique constraints. 
+`pre_check_with: ApiName` behaves the same as `eager_check_with`, but it runs just prior to the action being committed. Useful for data layers that don't support transactions/unique constraints, or manual resources with identities. `Ash.DataLayer.Ets` will actually require you to set `pre_check_with` since the ETS data layer has no built in support for unique constraints.

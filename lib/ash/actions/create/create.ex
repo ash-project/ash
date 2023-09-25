@@ -365,111 +365,106 @@ defmodule Ash.Actions.Create do
                           end
 
                         if changeset.valid? do
-                          cond do
-                            action.manual ->
-                              {mod, opts} = action.manual
+                          if action.manual do
+                            {mod, opts} = action.manual
 
-                              if result = changeset.context[:private][:action_result] do
-                                result
-                              else
-                                mod.create(changeset, opts, %{
-                                  actor: actor,
-                                  tenant: changeset.tenant,
-                                  authorize?: authorize?,
-                                  api: changeset.api
-                                })
-                              end
-                              |> add_tenant(changeset)
-                              |> manage_relationships(api, changeset,
+                            if result = changeset.context[:private][:action_result] do
+                              result
+                            else
+                              mod.create(changeset, opts, %{
                                 actor: actor,
+                                tenant: changeset.tenant,
                                 authorize?: authorize?,
-                                upsert?: upsert?
+                                api: changeset.api
+                              })
+                            end
+                            |> add_tenant(changeset)
+                            |> manage_relationships(api, changeset,
+                              actor: actor,
+                              authorize?: authorize?,
+                              upsert?: upsert?
+                            )
+                          else
+                            belongs_to_attrs =
+                              changeset.resource
+                              |> Ash.Resource.Info.relationships()
+                              |> Enum.filter(&(&1.type == :belongs_to))
+                              |> Enum.map(& &1.source_attribute)
+
+                            final_check =
+                              changeset.resource
+                              |> Ash.Resource.Info.attributes()
+                              |> Enum.reject(
+                                &(&1.allow_nil? || &1.generated? || &1.name in belongs_to_attrs)
                               )
 
-                            action.manual? ->
-                              {:ok, nil}
-
-                            true ->
-                              belongs_to_attrs =
-                                changeset.resource
-                                |> Ash.Resource.Info.relationships()
-                                |> Enum.filter(&(&1.type == :belongs_to))
-                                |> Enum.map(& &1.source_attribute)
-
-                              final_check =
-                                changeset.resource
-                                |> Ash.Resource.Info.attributes()
-                                |> Enum.reject(
-                                  &(&1.allow_nil? || &1.generated? || &1.name in belongs_to_attrs)
-                                )
-
-                              changeset =
-                                if changeset.context[:private][:action_result] do
-                                  changeset
-                                else
-                                  changeset =
-                                    changeset
-                                    |> Ash.Changeset.require_values(
-                                      :create,
-                                      true,
-                                      final_check
-                                    )
-
-                                  {changeset, _} =
-                                    Ash.Actions.ManagedRelationships.validate_required_belongs_to(
-                                      {changeset, []},
-                                      false
-                                    )
-
-                                  changeset
-                                end
-
-                              if changeset.valid? do
-                                cond do
-                                  result = changeset.context[:private][:action_result] ->
-                                    result
-                                    |> add_tenant(changeset)
-                                    |> manage_relationships(api, changeset,
-                                      actor: actor,
-                                      authorize?: authorize?,
-                                      upsert?: upsert?
-                                    )
-
-                                  upsert? ->
-                                    resource
-                                    |> Ash.DataLayer.upsert(changeset, upsert_keys)
-                                    |> add_tenant(changeset)
-                                    |> manage_relationships(api, changeset,
-                                      actor: actor,
-                                      authorize?: authorize?,
-                                      upsert?: upsert?
-                                    )
-
-                                  true ->
-                                    resource
-                                    |> Ash.DataLayer.create(changeset)
-                                    |> add_tenant(changeset)
-                                    |> manage_relationships(api, changeset,
-                                      actor: actor,
-                                      authorize?: authorize?,
-                                      upsert?: upsert?
-                                    )
-                                end
-                                |> case do
-                                  {:ok, result, instructions} ->
-                                    {:ok, result,
-                                     instructions
-                                     |> Map.update!(
-                                       :notifications,
-                                       &(&1 ++ manage_instructions.notifications)
-                                     )}
-
-                                  {:error, error} ->
-                                    {:error, Ash.Changeset.add_error(changeset, error)}
-                                end
+                            changeset =
+                              if changeset.context[:private][:action_result] do
+                                changeset
                               else
-                                {:error, changeset}
+                                changeset =
+                                  changeset
+                                  |> Ash.Changeset.require_values(
+                                    :create,
+                                    true,
+                                    final_check
+                                  )
+
+                                {changeset, _} =
+                                  Ash.Actions.ManagedRelationships.validate_required_belongs_to(
+                                    {changeset, []},
+                                    false
+                                  )
+
+                                changeset
                               end
+
+                            if changeset.valid? do
+                              cond do
+                                result = changeset.context[:private][:action_result] ->
+                                  result
+                                  |> add_tenant(changeset)
+                                  |> manage_relationships(api, changeset,
+                                    actor: actor,
+                                    authorize?: authorize?,
+                                    upsert?: upsert?
+                                  )
+
+                                upsert? ->
+                                  resource
+                                  |> Ash.DataLayer.upsert(changeset, upsert_keys)
+                                  |> add_tenant(changeset)
+                                  |> manage_relationships(api, changeset,
+                                    actor: actor,
+                                    authorize?: authorize?,
+                                    upsert?: upsert?
+                                  )
+
+                                true ->
+                                  resource
+                                  |> Ash.DataLayer.create(changeset)
+                                  |> add_tenant(changeset)
+                                  |> manage_relationships(api, changeset,
+                                    actor: actor,
+                                    authorize?: authorize?,
+                                    upsert?: upsert?
+                                  )
+                              end
+                              |> case do
+                                {:ok, result, instructions} ->
+                                  {:ok, result,
+                                   instructions
+                                   |> Map.update!(
+                                     :notifications,
+                                     &(&1 ++ manage_instructions.notifications)
+                                   )}
+
+                                {:error, error} ->
+                                  {:error, Ash.Changeset.add_error(changeset, error)}
+                              end
+                            else
+                              {:error, changeset}
+                            end
                           end
                         else
                           {:error, changeset}
@@ -492,34 +487,8 @@ defmodule Ash.Actions.Create do
                 )
 
               case result do
-                {:ok, nil, _changeset, _instructions} ->
-                  if action.manual? do
-                    {:error,
-                     Ash.Error.Framework.ManualActionMissed.exception(
-                       resource: resource,
-                       action: action.name,
-                       type: :create
-                     )}
-                  else
-                    {:error, "No record created in create action!"}
-                  end
-
                 {:ok, created, changeset, instructions} ->
-                  if action.manual? do
-                    {:ok, created}
-                    |> add_tenant(changeset)
-                    |> manage_relationships(api, changeset, actor: actor, authorize?: authorize?)
-                    |> case do
-                      {:ok, result, %{notifications: new_notifications}} ->
-                        {:ok, result,
-                         Map.update!(instructions, :notifications, &(&1 ++ new_notifications))}
-
-                      {:error, error} ->
-                        {:error, error}
-                    end
-                  else
-                    {:ok, created, instructions}
-                  end
+                  {:ok, created, instructions}
                   |> Helpers.load(changeset, api,
                     actor: actor,
                     authorize?: authorize?,

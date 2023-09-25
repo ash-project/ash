@@ -327,6 +327,7 @@ defmodule Ash.Error do
       list
       |> Keyword.take([:error, :vars])
       |> Keyword.put_new(:error, list[:message])
+      |> Keyword.put_new(:value, list)
       |> UnknownError.exception()
       |> add_stacktrace(stacktrace)
       |> add_error_context(opts[:error_context])

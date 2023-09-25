@@ -305,40 +305,35 @@ defmodule Ash.Actions.Destroy do
                     {:error, changeset}
 
                   changeset ->
-                    cond do
-                      action.manual ->
-                        {mod, opts} = action.manual
+                    if action.manual do
+                      {mod, opts} = action.manual
 
-                        if result = changeset.context[:private][:action_result] do
-                          result
-                        else
-                          mod.destroy(changeset, opts, %{
-                            actor: actor,
-                            tenant: changeset.tenant,
-                            authorize?: authorize?,
-                            api: changeset.api
-                          })
+                      if result = changeset.context[:private][:action_result] do
+                        result
+                      else
+                        mod.destroy(changeset, opts, %{
+                          actor: actor,
+                          tenant: changeset.tenant,
+                          authorize?: authorize?,
+                          api: changeset.api
+                        })
+                      end
+                    else
+                      if result = changeset.context[:private][:action_result] do
+                        result
+                      else
+                        case Ash.DataLayer.destroy(resource, changeset) do
+                          :ok ->
+                            {:ok,
+                             Ash.Resource.set_meta(record, %Ecto.Schema.Metadata{
+                               state: :deleted,
+                               schema: resource
+                             })}
+
+                          {:error, error} ->
+                            {:error, Ash.Changeset.add_error(changeset, error)}
                         end
-
-                      action.manual? ->
-                        {:ok, record}
-
-                      true ->
-                        if result = changeset.context[:private][:action_result] do
-                          result
-                        else
-                          case Ash.DataLayer.destroy(resource, changeset) do
-                            :ok ->
-                              {:ok,
-                               Ash.Resource.set_meta(record, %Ecto.Schema.Metadata{
-                                 state: :deleted,
-                                 schema: resource
-                               })}
-
-                            {:error, error} ->
-                              {:error, Ash.Changeset.add_error(changeset, error)}
-                          end
-                        end
+                      end
                     end
                     |> then(fn result ->
                       if return_destroyed? do

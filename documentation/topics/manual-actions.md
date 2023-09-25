@@ -6,7 +6,7 @@ Manual actions are a way to implement an action in a fully custom way. This can 
 
 ## Manual Creates/Updates/Destroy
 
-For manual create/update/destroy actions, you will provide 
+For manual create/update/destroy actions, you will provide
  everything works pretty much the same, with the exception that the `after_action` hooks on a resource will receive a `nil` value for creates, and the old unmodified value for updates, and you are expected to add an after action hook that changes that `nil` value into the result of the action.
 
 For example:
@@ -71,4 +71,3 @@ end
 ```
 
 This can be used as a last-resort escape hatch when you want to still use resource actions but need to do something that you can't do easily with Ash tools. As with any low level escape hatch, here be dragons.
-

@@ -75,10 +75,6 @@ defmodule Ash.Actions.Create.Bulk do
   def do_run(api, resource, action, inputs, opts) do
     opts = Ash.Actions.Helpers.set_opts(opts, api)
 
-    if action.manual? do
-      raise "Old style manual actions cannot be used with bulk creates"
-    end
-
     upsert? = opts[:upsert?] || action.upsert?
     upsert_fields = opts[:upsert_fields] || action.upsert_fields
 

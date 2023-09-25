@@ -133,12 +133,6 @@ defmodule Ash.Test.Actions.CreateTest do
         change {DuplicateName, []}
       end
 
-      create :old_manual_create do
-        accept []
-        manual? true
-        change ManualCreateAuthor
-      end
-
       create :manual_create do
         manual fn _, _ ->
           {:ok,
@@ -172,12 +166,6 @@ defmodule Ash.Test.Actions.CreateTest do
 
     actions do
       defaults [:create, :read, :update, :destroy]
-
-      create :old_manual_create do
-        accept []
-        manual? true
-        change ManualCreateAuthorWithRequiredId
-      end
 
       create :manual_create do
         accept []
@@ -522,23 +510,7 @@ defmodule Ash.Test.Actions.CreateTest do
   end
 
   describe "manual creates" do
-    test "old: the manual action succeeds" do
-      Author
-      |> Ash.Changeset.for_create(:old_manual_create)
-      |> Api.create!()
-
-      assert [%{name: "manual"}] = Api.read!(Author)
-    end
-
-    test "old: the manual action does not require values that aren't accepted" do
-      AuthorWithRequiredId
-      |> Ash.Changeset.for_create(:old_manual_create)
-      |> Api.create!()
-
-      assert [%{name: "manual"}] = Api.read!(AuthorWithRequiredId)
-    end
-
-    test "new: the manual action succeeds" do
+    test "the manual action succeeds" do
       Author
       |> Ash.Changeset.for_create(:manual_create)
       |> Api.create!()
@@ -546,7 +518,7 @@ defmodule Ash.Test.Actions.CreateTest do
       assert [%{name: "manual"}] = Api.read!(Author)
     end
 
-    test "new: the manual action does not require values that aren't accepted" do
+    test "the manual action does not require values that aren't accepted" do
       AuthorWithRequiredId
       |> Ash.Changeset.for_create(:manual_create)
       |> Api.create!()

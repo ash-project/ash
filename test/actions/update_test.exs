@@ -106,12 +106,6 @@ defmodule Ash.Test.Actions.UpdateTest do
         change {DuplicateName, []}
       end
 
-      update :old_manual_update do
-        accept []
-        manual? true
-        change ManualUpdateAuthor
-      end
-
       update :manual_update do
         accept []
 
@@ -251,16 +245,7 @@ defmodule Ash.Test.Actions.UpdateTest do
   end
 
   describe "manual updates" do
-    test "old: the update occurs properly" do
-      author =
-        Author
-        |> new(%{name: "auto"})
-        |> Api.create!()
-
-      assert %Author{name: "manual"} = author |> new() |> Api.update!(action: :old_manual_update)
-    end
-
-    test "new: the update occurs properly" do
+    test "the update occurs properly" do
       author =
         Author
         |> new(%{name: "auto"})

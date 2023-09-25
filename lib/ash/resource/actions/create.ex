@@ -6,7 +6,6 @@ defmodule Ash.Resource.Actions.Create do
     :description,
     :error_handler,
     accept: nil,
-    manual?: false,
     manual: nil,
     touches_resources: [],
     require_attributes: [],
