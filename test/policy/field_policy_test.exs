@@ -140,7 +140,6 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Map.get(:status)
     end
 
-    @tag :wip
     test "reading is allowed through a relationship",
          %{representative: representative} do
       # someone who is allowed because it's accessed through the ticket
@@ -151,7 +150,6 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.filter(reporter.ticket_count > 0)
                |> Ash.Query.load(reporter: [:ticket_count])
                |> Ash.Query.limit(1)
-               |> IO.inspect()
                |> Api.read!(authorize?: true)
 
       assert is_number(ticket.reporter.ticket_count)
@@ -164,13 +162,34 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
                |> Ash.Query.load([:ticket_count])
                |> Ash.Query.limit(1)
-               |> IO.inspect()
                |> Api.read!(authorize?: true)
 
       assert user.ticket_count == %Ash.ForbiddenField{
                field: :ticket_count,
                type: :aggregate
              }
+    end
+
+    @tag :wip
+    test "reading is allowed through a multi level relationship",
+         %{user: user} do
+      #  someone who is allowed because it's accessed through the ticket
+      assert [ticket] =
+               Ticket
+               |> Ash.Query.select([:internal_status])
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
+               |> Ash.Query.filter(reporter_id == ^user.id)
+               |> Ash.Query.load(reporter: [:tickets])
+               |> Api.read!(authorize?: true)
+
+      assert ticket.internal_status == %Ash.ForbiddenField{
+               field: :internal_status,
+               type: :attribute
+             }
+
+      nested_ticket = ticket.reporter.tickets |> List.first()
+
+      assert nested_ticket.internal_status == :new
     end
   end
 
@@ -206,7 +225,6 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.filter(reporter.ticket_count > 0)
                |> Ash.Query.load(reporter: [:ticket_count])
                |> Ash.Query.limit(1)
-               |> IO.inspect()
                |> Api.read!(authorize?: true)
 
       assert is_number(ticket.reporter.ticket_count)
@@ -220,7 +238,6 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.filter(reporter.ticket_count > 0)
                |> Ash.Query.load(reporter: [:ticket_count])
                |> Ash.Query.limit(1)
-               |> IO.inspect()
                |> Api.read!(authorize?: true)
 
       assert ticket.reporter.ticket_count == %Ash.ForbiddenField{
