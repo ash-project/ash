@@ -160,7 +160,7 @@ defmodule Ash.Actions.Create.Bulk do
 
         {:batch, batch_config} ->
           %{count: count, batch: batch, must_return_records?: must_return_records?} = batch_config
-          context = batch |> Enum.at(0) |> Map.get(:context)
+          context = batch |> Enum.at(0) |> Kernel.||(%{}) |> Map.get(:context)
 
           batch =
             Stream.map(batch, fn changeset ->
