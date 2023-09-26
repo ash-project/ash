@@ -1007,7 +1007,8 @@ defmodule Ash.Changeset do
         )
         |> Ash.Query.do_filter(values)
         |> Ash.Query.limit(1)
-        |> api.read_one()
+        |> Ash.Query.set_context(%{private: %{internal?: true}})
+        |> api.read_one(authorize?: false)
         |> case do
           {:ok, nil} ->
             changeset
