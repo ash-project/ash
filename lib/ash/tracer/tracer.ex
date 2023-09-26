@@ -14,6 +14,10 @@ defmodule Ash.Tracer do
           | :preparation
           | :custom_flow_step
           | :custom
+          | :before_transaction
+          | :before_action
+          | :after_transaction
+          | :after_action
           | {:custom, atom()}
 
   @type metadata() :: %{
