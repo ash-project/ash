@@ -24,6 +24,8 @@ defmodule Ash.Type.Float do
   @impl true
   def storage_type(_), do: :float
 
+  def constraints(_), do: @constraints
+
   @impl true
   def generator(constraints) do
     StreamData.float(Keyword.take(constraints, [:min, :max]))
