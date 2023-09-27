@@ -37,16 +37,15 @@ defmodule Mix.Tasks.Ash.ReplaceDocLinks do
             end
           end
 
-          ">#{contents}<"
-        end)
-        |> String.replace(~r</documentation/.*/.*.md>, fn "/documentation/" <> type_and_name ->
-          case String.split(type_and_name, "/") do
-            [_, filename] ->
-              filename |> String.trim_trailing(".md") |> Kernel.<>(".html")
+          name =
+            module_name
+            |> String.trim_trailing(".Dsl")
+            |> String.split(".")
+            |> Enum.map_join("-", &String.downcase/1)
 
-            _ ->
-              "/documentation/" <> type_and_name
-          end
+          rest = contents |> String.trim_leading(module_name <> ".") |> String.replace(".", "-")
+
+          "><a href=\"dsl-#{name}.html##{rest}\">#{contents}</a><"
         end)
 
       File.write!(file, new_contents)
