@@ -20,9 +20,13 @@ defmodule Ash.Policy.FieldPolicy do
        %{
          field_policy
          | policies: Enum.map(field_policy.policies, &set_field_policy_opt/1),
-           condition: field_policy.condition || []
+           condition: Enum.map(List.wrap(field_policy.condition || []), &set_field_policy_opt/1)
        }}
     end
+  end
+
+  defp set_field_policy_opt({module, opts}) do
+    {module, Keyword.merge(opts, ash_field_policy?: true, access_type: :filter)}
   end
 
   defp set_field_policy_opt(%{check_opts: opts} = policy) do
