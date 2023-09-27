@@ -66,7 +66,7 @@ defmodule Ash.Policy.Checker do
     scenario
     |> Map.drop([true, false])
     |> Enum.reduce_while(:reality, fn {fact, requirement}, status ->
-      case Map.fetch(facts, fact) do
+      case Policy.fetch_fact(facts, fact) do
         {:ok, ^requirement} ->
           {:cont, status}
 

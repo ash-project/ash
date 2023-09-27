@@ -152,8 +152,8 @@ defmodule Ash.Policy.Policy do
     Enum.find_value(authorizer.facts, fn
       {{fact_mod, fact_opts}, result} ->
         if check_module == fact_mod &&
-             Keyword.delete(fact_opts, :access_type) ==
-               Keyword.delete(opts, :access_type) do
+             Keyword.drop(fact_opts, [:access_type, :ash_field_policy?]) ==
+               Keyword.drop(opts, [:access_type, :ash_field_policy?]) do
           {:ok, result}
         end
 
@@ -198,8 +198,8 @@ defmodule Ash.Policy.Policy do
     Enum.find_value(facts, fn
       {{fact_mod, fact_opts}, result} ->
         if mod == fact_mod &&
-             Keyword.delete(fact_opts, :access_type) ==
-               Keyword.delete(opts, :access_type) do
+             Keyword.drop(fact_opts, [:access_type, :ash_field_policy?]) ==
+               Keyword.drop(opts, [:access_type, :ash_field_policy?]) do
           {:ok, result}
         end
 
@@ -275,13 +275,14 @@ defmodule Ash.Policy.Policy do
       condition_expression ->
         case compile_policy_expression(policies, authorizer) do
           {true, authorizer} ->
-            {condition_expression, authorizer}
+            {true, authorizer}
 
           {false, authorizer} ->
             {{:not, condition_expression}, authorizer}
 
           {compiled_policies, authorizer} ->
-            {{:and, condition_expression, compiled_policies}, authorizer}
+            {{:or, {:and, condition_expression, compiled_policies}, {:not, condition_expression}},
+             authorizer}
         end
     end
   end

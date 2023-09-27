@@ -100,7 +100,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
   def opt_schema, do: @opt_schema
 
   @doc false
-  # sobelow_skip ["DOS.StringToAtom"]
+  # sobelow_skip ["DOS.BinToAtom"]
   def transform(%{source_attribute: source_attribute, name: name} = relationship) do
     {:ok, %{relationship | source_attribute: source_attribute || :"#{name}_id"}}
   end

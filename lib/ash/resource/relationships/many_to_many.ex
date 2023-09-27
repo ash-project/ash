@@ -87,7 +87,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
   def opt_schema, do: @opt_schema
 
   @doc false
-  # sobelow_skip ["DOS.StringToAtom"]
+  # sobelow_skip ["DOS.BinToAtom"]
   def transform(%{join_relationship: join_relationship, name: name} = relationship) do
     {:ok, %{relationship | join_relationship: join_relationship || :"#{name}_join_assoc"}}
   end
