@@ -125,6 +125,7 @@ defmodule Ash.Actions.Create.Bulk do
         })
         |> Ash.Actions.Helpers.add_context(opts)
         |> Ash.Changeset.set_context(%{bulk_create: %{index: index}})
+        |> Ash.Changeset.set_context(opts[:context] || %{})
         |> Ash.Changeset.prepare_changeset_for_action(action, opts, input)
         |> Ash.Changeset.run_before_transaction_hooks()
       end)
