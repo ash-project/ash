@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.1](https://github.com/ash-project/ash/compare/v2.15.0...v2.15.1) (2023-09-27)
+
+
+
+
+### Bug Fixes:
+
+* static checks with conditions could be overly or insufficiently restrictive
+
+* set field policy opts on field policy conditions
+
+* move `Resource.Transformers.BelongsToSourceField` into entity (#709)
+
+### Improvements:
+
+* add `context` option to `bulk_create`
+
 ## [v2.15.0](https://github.com/ash-project/ash/compare/v2.14.21...v2.15.0) (2023-09-27)
 
 
