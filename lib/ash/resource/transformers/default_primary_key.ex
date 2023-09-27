@@ -44,6 +44,6 @@ defmodule Ash.Resource.Transformers.DefaultPrimaryKey do
     end
   end
 
-  def after?(Ash.Resource.Transformers.BelongsToSourceField), do: true
+  def after?(Ash.Resource.Transformers.BelongsToAttribute), do: true
   def after?(_), do: false
 end

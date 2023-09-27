@@ -263,6 +263,7 @@ defmodule Ash.Resource.Dsl do
     no_depend_modules: [:destination],
     target: Ash.Resource.Relationships.BelongsTo,
     schema: Ash.Resource.Relationships.BelongsTo.opt_schema(),
+    transform: {Ash.Resource.Relationships.BelongsTo, :transform, []},
     args: [:name, :destination]
   }
 
@@ -1323,7 +1324,6 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.RequireUniqueActionNames,
     Ash.Resource.Transformers.SetRelationshipSource,
     Ash.Resource.Transformers.BelongsToAttribute,
-    Ash.Resource.Transformers.BelongsToSourceField,
     Ash.Resource.Transformers.HasDestinationField,
     Ash.Resource.Transformers.CreateJoinRelationship,
     Ash.Resource.Transformers.CachePrimaryKey,
