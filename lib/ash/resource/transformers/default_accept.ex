@@ -70,7 +70,6 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
     Enum.reject(list, &(&1 in reject))
   end
 
-  def after?(Ash.Resource.Transformers.BelongsToSourceField), do: true
   def after?(Ash.Resource.Transformers.BelongsToAttribute), do: true
   def after?(Ash.Resource.Transformers.CreateJoinRelationship), do: true
   def after?(Ash.Resource.Transformers.ValidatePrimaryActions), do: true
