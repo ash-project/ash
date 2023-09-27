@@ -28,9 +28,8 @@ Some helpful tips on using Hex Docs. DSLs are each documented in their own area.
 #### In the sidebar
 
 When searching for a dsl, prefix your search with `DSL: `. If you know the path
-to the DSL you are looking for, use it separated by dots. For example, `DSL: attributes.attribute`. Only five results will show up in the sidebar, so be as specific as possible. If you don't find it, press enter and you will be taken to the search page.
+to the DSL you are looking for, use it separated by dots. For example, `DSL: attributes.attribute`. Only five results will show up in the sidebar, so be as specific as possible. If you don't find it, press enter and you will be taken to the search page. An *important limitation* is that the sidebar only shows "entities" not "options". We are looking into adding something to ex_doc to improve this, but until we do, you will need to use the search page to find options. For example, you can find `attributes.attribute` but not `attributes.attribute.primary_key?` in the sidebar search.
 
 #### In the search page
 
-Searching by type will be supported soon, but has not yet been implemented. Once it is done, you will be able to search for `type:dsl` to filter for DSLs.
-By default, search terms are considered optional. You can prefix them with + to make them required. Something you would do to find a specific DSL is to search for `+type:dsl +something`.
+The fastest way to get to the search page is to click on the sidebar search and press enter without selecting anything. Use `type:dsl` to filter for DSLs on the search page. By default, search terms are considered optional. You can prefix them with + to make them required. Something you would do to find a specific DSL option is to search for `+type:dsl +attributes.attribute.primary_key?`.
