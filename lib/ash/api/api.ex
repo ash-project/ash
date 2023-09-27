@@ -381,7 +381,7 @@ defmodule Ash.Api do
                                type: :atom,
                                doc:
                                  "The identity to use when detecting conflicts for `upsert?`, e.g. `upsert_identity: :full_name`. By default, the primary key is used. Has no effect if `upsert?: true` is not provided"
-                             ,
+                             ],
                              context: %{
                                type: :map,
                                doc: "Context to set on each changeset"
