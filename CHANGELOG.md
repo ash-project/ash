@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.0](https://github.com/ash-project/ash/compare/v2.14.21...v2.15.0) (2023-09-27)
+
+
+
+
+### Features:
+
+* expose query or changeset to field policies (#701)
+
+### Bug Fixes:
+
+* don't authorize on identity usage validations
+
+* handle empty batches in bulk create
+
+* update stream_data dependency, as we use the latest version
+
+### Improvements:
+
+* expose max/min constraints on `Ash.Type.Float`
+
+* rework `utc_datetime` to `datetime`
+
+* explicitly validate manual action return types
+
 ## [v2.14.21](https://github.com/ash-project/ash/compare/v2.14.20...v2.14.21) (2023-09-25)
 
 
