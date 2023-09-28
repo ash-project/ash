@@ -398,9 +398,11 @@ defmodule Ash.EmbeddableType do
       alias Ash.EmbeddableType.ShadowApi
 
       def load(record, load, _constraints, %{api: api} = context) do
-        opts = context |> Map.take([:actor, :authorize?, :tenant, :tracer]) |> Map.to_list()
+        opts = Ash.context_to_opts(context)
 
-        api.load(record, load, opts)
+        attribute_loads = __MODULE__ |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
+
+        api.load(record, attribute_loads ++ List.wrap(load), opts)
       end
 
       def array_constraints, do: Ash.EmbeddableType.embedded_resource_array_constraints()

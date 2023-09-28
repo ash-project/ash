@@ -345,6 +345,8 @@ defmodule Ash.Actions.Read do
                       "No api configured when generating requests for read: #{inspect(api)}, #{inspect(query)}"
                 end
 
+                query = add_field_level_auth(query, api, request_opts)
+
                 query = %{
                   query
                   | api: api,
@@ -470,7 +472,7 @@ defmodule Ash.Actions.Read do
                     get_in(context, path ++ [:calculation_results]) || :error,
                     query.tenant,
                     context[:actor],
-                    context[:authorize?],
+                    request_opts[:authorize?],
                     context[:tracer],
                     request_opts
                   )
@@ -479,7 +481,8 @@ defmodule Ash.Actions.Read do
                     api,
                     context[:actor],
                     context[:tracer],
-                    context[:authorize?]
+                    request_opts[:authorize?],
+                    !Keyword.has_key?(request_opts, :initial_data)
                   )
                   |> case do
                     {:ok, values} ->
@@ -512,10 +515,30 @@ defmodule Ash.Actions.Read do
     [fetch, process]
   end
 
-  defp load_through_attributes({:requests, error}, _, _, _, _, _), do: {:requests, error}
+  defp load_through_attributes({:requests, error}, _, _, _, _, _, _),
+    do: {:requests, error}
 
-  defp load_through_attributes({:ok, results}, query, api, actor, tracer, authorize?) do
-    Enum.reduce_while(query.load_through, {:ok, results}, fn
+  defp load_through_attributes(
+         {:ok, results},
+         query,
+         api,
+         actor,
+         tracer,
+         authorize?,
+         _initial_data?
+       ) do
+    load_through =
+      query.resource
+      |> Ash.Resource.Info.attributes()
+      |> Enum.filter(fn %{type: type, constraints: constraints} ->
+        Ash.Type.can_load?(type, constraints)
+      end)
+      |> Enum.map(& &1.name)
+      |> Enum.reduce(query.load_through, fn name, load_through ->
+        Map.update(load_through, :attribute, %{name => []}, &Map.put_new(&1, name, []))
+      end)
+
+    Enum.reduce_while(load_through, {:ok, results}, fn
       {:calculation, load_through}, {:ok, results} ->
         Enum.reduce_while(load_through, {:ok, results}, fn {name, load_statement},
                                                            {:ok, results} ->

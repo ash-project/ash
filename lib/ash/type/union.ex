@@ -156,7 +156,15 @@ defmodule Ash.Type.Union do
             context
           )
         else
-          {:ok, values}
+          type = constraints[:types][name][:type]
+
+          Ash.Type.load(
+            type,
+            values,
+            [],
+            constraints[:types][name][:constraints],
+            context
+          )
         end
 
       case result do

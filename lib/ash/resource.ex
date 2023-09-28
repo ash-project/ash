@@ -95,9 +95,11 @@ defmodule Ash.Resource do
         def cast_input(%struct{} = value, _) when struct == __MODULE__, do: {:ok, value}
 
         @impl Ash.Type
-        def load(record, load, _constraints, %{api: api} = context) do
-          opts = context |> Map.take([:actor, :authorize?, :tenant, :tracer]) |> Map.to_list()
-          api.load(record, load, opts)
+        def load(records, load, _constraints, %{api: api} = context) do
+          opts = Ash.context_to_opts(context)
+          attribute_loads = __MODULE__ |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
+
+          api.load(records, List.wrap(load), opts)
         end
 
         @impl Ash.Type
