@@ -14,6 +14,7 @@ defmodule Ash.Resource.Transformers.GetByReadActions do
 
   @doc false
   @spec after?(module) :: boolean
+  def after?(Ash.Resource.Transformers.BelongsToAttribute), do: true
   def after?(_), do: false
 
   @doc false
