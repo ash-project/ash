@@ -53,7 +53,13 @@ defmodule Ash.CiString do
     end
   end
 
-  def new(value, casing \\ nil) do
+  def new(value, casing \\ nil)
+
+  def new(%__MODULE__{string: value}, casing) do
+    new(value, casing)
+  end
+
+  def new(value, casing) do
     case casing do
       :upper ->
         %Ash.CiString{casted?: true, string: value && String.upcase(value)}
