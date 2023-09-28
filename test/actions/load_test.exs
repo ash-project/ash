@@ -868,7 +868,6 @@ defmodule Ash.Test.Actions.LoadTest do
                |> Api.read!()
     end
 
-    @tag :wip
     test "can load calculations through union produced by a calculation" do
       Author
       |> new(%{name: "zerg", bio_union: %{type: "bio", first_name: "donald", last_name: "duck"}})
