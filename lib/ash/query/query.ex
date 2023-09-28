@@ -1384,9 +1384,6 @@ defmodule Ash.Query do
       resource_calculation = Ash.Resource.Info.calculation(query.resource, field) ->
         load_resource_calculation(query, resource_calculation, %{})
 
-      field == [] ->
-        query
-
       true ->
         add_error(query, :load, Ash.Error.Query.InvalidLoad.exception(load: field))
     end
