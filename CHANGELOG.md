@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.2](https://github.com/ash-project/ash/compare/v2.15.1...v2.15.2) (2023-09-28)
+
+
+
+
+### Bug Fixes:
+
+* properly perform field authorization on loaded through types
+
+* usage of `get_by` with `belongs_to` attribute (#712)
+
 ## [v2.15.1](https://github.com/ash-project/ash/compare/v2.15.0...v2.15.1) (2023-09-27)
 
 
