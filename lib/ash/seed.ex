@@ -76,6 +76,30 @@ defmodule Ash.Seed do
     raise "Cannot seed #{inspect(resource)} with an input of type #{inspect(other)}"
   end
 
+  def seed!(%resource{} = record, input) when is_map(input) do
+    attrs =
+      resource
+      |> Ash.Resource.Info.attributes()
+      |> Enum.map(& &1.name)
+
+    attr_input = Map.take(record, attrs)
+
+    resource
+    |> Ash.Changeset.new()
+    |> change_attributes(attr_input)
+    |> change_attributes(input)
+    |> change_relationships(input)
+    |> Ash.Changeset.set_defaults(:create, true)
+    |> create_via_data_layer()
+    |> case do
+      {:ok, result, _, _} ->
+        result
+
+      {:error, error} ->
+        raise Ash.Error.to_error_class(error)
+    end
+  end
+
   def seed!(resource, input) when is_map(input) do
     resource
     |> Ash.Changeset.new()
