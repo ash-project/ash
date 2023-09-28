@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.5](https://github.com/ash-project/ash/compare/v2.15.4...v2.15.5) (2023-09-28)
+
+
+
+
+### Bug Fixes:
+
+* ensure constraints are properly set in map/new_types
+
+### Improvements:
+
+* don't double cast ci strings
+
 ## [v2.15.4](https://github.com/ash-project/ash/compare/v2.15.3...v2.15.4) (2023-09-28)
 
 
