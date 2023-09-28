@@ -25,7 +25,9 @@ defmodule Ash.Test.Actions.LoadTest do
   end
 
   defmodule Bio do
-    use Ash.Resource, data_layer: :embedded
+    use Ash.Resource,
+      authorizers: [Ash.Policy.Authorizer],
+      data_layer: :embedded
 
     attributes do
       attribute(:first_name, :string)
@@ -38,13 +40,32 @@ defmodule Ash.Test.Actions.LoadTest do
       end
     end
 
+    field_policies do
+      field_policy :* do
+        authorize_if always()
+      end
+
+      field_policy :forbidden_name do
+        forbid_if always()
+      end
+    end
+
+    policies do
+      policy always() do
+        authorize_if always()
+      end
+    end
+
     calculations do
       calculate(:full_name, :string, expr(first_name <> " " <> last_name))
+      calculate(:forbidden_name, :string, expr(first_name <> " " <> last_name))
     end
   end
 
   defmodule OtherKindOfBio do
-    use Ash.Resource, data_layer: :embedded
+    use Ash.Resource,
+      authorizers: [Ash.Policy.Authorizer],
+      data_layer: :embedded
 
     attributes do
       attribute(:first_name, :string)
@@ -57,8 +78,26 @@ defmodule Ash.Test.Actions.LoadTest do
       end
     end
 
+    field_policies do
+      field_policy :* do
+        authorize_if always()
+      end
+
+      field_policy :forbidden_name do
+        forbid_if always()
+      end
+    end
+
+    policies do
+      policy always() do
+        authorize_if always()
+      end
+    end
+
     calculations do
       calculate(:full_name, :string, expr(first_name <> " " <> last_name))
+
+      calculate(:forbidden_name, :string, expr(first_name <> " " <> last_name))
     end
   end
 
@@ -842,22 +881,39 @@ defmodule Ash.Test.Actions.LoadTest do
       |> Api.create!()
 
       assert [
-               %{bio_union_calc: %Ash.Union{value: %{full_name: "donald duck"}}},
-               %{bio_union_calc: %Ash.Union{value: %{full_name: "donald duck"}}}
+               %{
+                 bio_union_calc: %Ash.Union{
+                   value: %{full_name: "donald duck", forbidden_name: %Ash.ForbiddenField{}}
+                 }
+               },
+               %{
+                 bio_union_calc: %Ash.Union{
+                   value: %{full_name: "donald duck", forbidden_name: %Ash.ForbiddenField{}}
+                 }
+               }
              ] =
                Author
-               |> Ash.Query.load(bio_union_calc: {%{}, [*: :full_name]})
-               |> Api.read!()
+               |> Ash.Query.load(bio_union_calc: {%{}, [*: [:full_name, :forbidden_name]]})
+               |> Api.read!(actor: %{name: "zerg"})
 
       assert [
-               %{bio_union_calc: %Ash.Union{value: %{full_name: "donald duck"}}},
-               %{bio_union_calc: %Ash.Union{value: %{full_name: "donald duck"}}}
+               %{
+                 bio_union_calc: %Ash.Union{
+                   value: %{full_name: "donald duck", forbidden_name: %Ash.ForbiddenField{}}
+                 }
+               },
+               %{
+                 bio_union_calc: %Ash.Union{
+                   value: %{full_name: "donald duck", forbidden_name: %Ash.ForbiddenField{}}
+                 }
+               }
              ] =
                Author
                |> Ash.Query.load(
-                 bio_union_calc: {%{}, [bio: :full_name, other_kind_of_bio: :full_name]}
+                 bio_union_calc:
+                   {%{}, [bio: :full_name, other_kind_of_bio: [:full_name, :forbidden_name]]}
                )
-               |> Api.read!()
+               |> Api.read!(actor: %{name: "zerg"})
     end
   end
 end
