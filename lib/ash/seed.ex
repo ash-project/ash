@@ -81,8 +81,18 @@ defmodule Ash.Seed do
       resource
       |> Ash.Resource.Info.attributes()
       |> Enum.map(& &1.name)
+      |> Enum.reject(&is_nil(Map.get(record, &1)))
 
-    attr_input = Map.take(record, attrs)
+    attr_input =
+      record
+      |> Map.take(attrs)
+      |> Map.new(fn {key, value} ->
+        if value == :__keep_nil do
+          {key, nil}
+        else
+          {key, value}
+        end
+      end)
 
     resource
     |> Ash.Changeset.new()
