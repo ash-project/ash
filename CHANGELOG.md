@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.3](https://github.com/ash-project/ash/compare/v2.15.2...v2.15.3) (2023-09-28)
+
+
+
+
+### Bug Fixes:
+
+* Ash.Seed extracts attributes from the struct now
+
 ## [v2.15.2](https://github.com/ash-project/ash/compare/v2.15.1...v2.15.2) (2023-09-28)
 
 

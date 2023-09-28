@@ -10,7 +10,7 @@
 ```elixir
 def deps do
   [
-    {:ash, "~> 2.15.2"}
+    {:ash, "~> 2.15.3"}
   ]
 end
 ```
