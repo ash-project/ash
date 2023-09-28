@@ -1054,6 +1054,9 @@ defmodule Ash.Query do
     query = to_query(query)
 
     Enum.reduce(fields, query, fn
+      [], query ->
+        query
+
       {field, %__MODULE__{} = nested}, query ->
         load_relationship(query, [{field, nested}])
 
@@ -1380,6 +1383,9 @@ defmodule Ash.Query do
 
       resource_calculation = Ash.Resource.Info.calculation(query.resource, field) ->
         load_resource_calculation(query, resource_calculation, %{})
+
+      field == [] ->
+        query
 
       true ->
         add_error(query, :load, Ash.Error.Query.InvalidLoad.exception(load: field))
