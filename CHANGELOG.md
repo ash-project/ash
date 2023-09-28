@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.4](https://github.com/ash-project/ash/compare/v2.15.3...v2.15.4) (2023-09-28)
+
+
+
+
+### Bug Fixes:
+
+* only set non-nil values unless __keep_nil__ in seed creation
+
 ## [v2.15.3](https://github.com/ash-project/ash/compare/v2.15.2...v2.15.3) (2023-09-28)
 
 
