@@ -135,13 +135,13 @@ defmodule Ash.Type.Map do
     case Ash.Type.cast_input(
            field_constraints[:type],
            field_value,
-           field_constraints[:type]
+           field_constraints[:constraints] || []
          ) do
       {:ok, field_value} ->
         case Ash.Type.apply_constraints(
                field_constraints[:type],
                field_value,
-               field_constraints[:constraints]
+               field_constraints[:constraints] || []
              ) do
           {:ok, nil} ->
             if field_constraints[:allow_nil?] == false do

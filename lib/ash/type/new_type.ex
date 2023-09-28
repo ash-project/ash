@@ -303,7 +303,7 @@ defmodule Ash.Type.NewType do
 
       @impl Ash.Type.NewType
       def type_constraints(constraints, subtype_constraints) do
-        Keyword.merge(constraints || [], subtype_constraints)
+        Keyword.merge(constraints || [], subtype_constraints || [])
       end
 
       defoverridable type_constraints: 2, storage_type: 1
