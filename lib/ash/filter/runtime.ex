@@ -283,7 +283,16 @@ defmodule Ash.Filter.Runtime do
   end
 
   @doc false
-  def do_match(record, expression, parent \\ nil, resource \\ nil) do
+  def do_match(record, expression, parent \\ nil, resource \\ nil)
+
+  def do_match(record, %Ash.Filter.Simple{predicates: predicates}, parent, resource) do
+    {:ok,
+     Enum.all?(predicates, fn predicate ->
+       do_match(record, predicate, parent, resource) == {:ok, true}
+     end)}
+  end
+
+  def do_match(record, expression, parent, resource) do
     hydrated =
       case record do
         %resource{} ->
