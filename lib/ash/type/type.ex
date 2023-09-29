@@ -852,7 +852,6 @@ defmodule Ash.Type do
       if can_load?(type, constraints) do
         type.load(values, loads, constraints, context)
       else
-        IO.inspect(type)
         {:error, Ash.Error.Query.InvalidLoad.exception(load: loads)}
       end
     end)
