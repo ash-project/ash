@@ -122,6 +122,9 @@ defmodule Ash.Type.Union do
   def storage_type(_), do: :map
 
   @impl true
+  def load(unions, [], _, _), do: {:ok, unions}
+
+  @impl true
   def load(unions, load, constraints, context) do
     unions
     |> Stream.with_index()
