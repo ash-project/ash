@@ -157,14 +157,19 @@ defmodule Ash.Type.Union do
           )
         else
           type = constraints[:types][name][:type]
+          constraints = constraints[:types][name][:constraints]
 
-          Ash.Type.load(
-            type,
-            values,
-            [],
-            constraints[:types][name][:constraints],
-            context
-          )
+          if Ash.Type.can_load?(type, constraints) do
+            Ash.Type.load(
+              type,
+              values,
+              [],
+              constraints,
+              context
+            )
+          else
+            {:ok, values}
+          end
         end
 
       case result do
