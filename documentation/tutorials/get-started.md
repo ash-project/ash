@@ -632,6 +632,12 @@ What you've seen above barely scratches the surface of what Ash can do. In a lot
 
 Where Ash shines however, is all of the tools that can operate on your resources. You have the ability to extend the framework yourself, and apply consistent design patterns that enable unparalleled efficiency, power and flexibility as your application grows.
 
+#### Get Help
+
+- Check out [ElixirForum](https://elixirforum.com/c/elixir-framework-forums/ash-framework-forum/123)
+- Join our [Discord server](https://discord.gg/D7FNG2q)
+- Open a [GitHub issue](https://github.com/ash-project/ash/issues/new/choose)
+
 #### Clean up your code that uses Ash?
 
 Creating and using changesets manually can be verbose, and they all look very similar. Luckily, Ash has your back and can generate these for you using Code Interfaces!

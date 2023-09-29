@@ -15,9 +15,9 @@ def deps do
 end
 ```
 
-## What is Ash? 
+## What is Ash?
 
-Ash Framework is a declarative, resource-oriented application development framework for Elixir. A resource can model anything, like a database table, an external API, or even custom code. Ash provides a rich, and extensive set of tools for interacting with and building on top of these resources. By modeling your application as a set of resources, other tools know exactly how to use them, allowing extensions like `AshGraphql` and `AshJsonApi` to provide top tier APIs with minimal configuration. With filtering/sorting/pagination/calculations/aggregations, pub/sub, policy authorization, rich introspection, and *much* more built-in, and a comprehensive suite of tools to allow you to build your own extensions, the possibilities are endless. 
+Ash Framework is a declarative, resource-oriented application development framework for Elixir. A resource can model anything, like a database table, an external API, or even custom code. Ash provides a rich, and extensive set of tools for interacting with and building on top of these resources. By modeling your application as a set of resources, other tools know exactly how to use them, allowing extensions like `AshGraphql` and `AshJsonApi` to provide top tier APIs with minimal configuration. With filtering/sorting/pagination/calculations/aggregations, pub/sub, policy authorization, rich introspection, and *much* more built-in, and a comprehensive suite of tools to allow you to build your own extensions, the possibilities are endless.
 
 For those familiar with Phoenix, you can think of Ash as a declarative application modeling layer designed to replace your Phoenix contexts.
 
@@ -60,6 +60,7 @@ All of the extensions above are created with a set of tools that are free to use
 
 ## Links
 
+* ElixirForum: https://elixirforum.com/c/elixir-framework-forums/ash-framework-forum/123
 * New and improved docs:  https://ash-hq.org!
 * Office hours/Q&A 2.0 release live stream: https://www.youtube.com/watch?v=BchANMO1f8s
 * Official discord Server: https://discord.gg/D7FNG2q

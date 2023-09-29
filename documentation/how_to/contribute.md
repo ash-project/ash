@@ -2,7 +2,7 @@
 
 ## Welcome!
 
-We are delighted to have anyone contribute to Ash, regardless of their skill level or background. We welcome contributions both large and small, from typos and documentation improvements, to bug fixes and features. There is a place for everyone's contribution here. Check the issue tracker or join in the discord to see how you can help! Make sure to read the rules below as well.
+We are delighted to have anyone contribute to Ash, regardless of their skill level or background. We welcome contributions both large and small, from typos and documentation improvements, to bug fixes and features. There is a place for everyone's contribution here. Check the issue tracker or join the ElixirForum/discord server to see how you can help! Make sure to read the rules below as well.
 
 ## Rules
 
