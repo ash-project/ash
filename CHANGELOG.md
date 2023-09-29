@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.7](https://github.com/ash-project/ash/compare/v2.15.6...v2.15.7) (2023-09-29)
+
+
+
+
+### Bug Fixes:
+
+* return unions as is if load is empty (#714)
+
 ## [v2.15.6](https://github.com/ash-project/ash/compare/v2.15.5...v2.15.6) (2023-09-29)
 
 
