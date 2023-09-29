@@ -85,3 +85,16 @@ validations do
   end
 end
 ```
+
+## Action-Specific Validation
+
+You can also put a validation directly in an action, like so:
+
+```elixir
+actions do
+  create do
+    ...
+    validate present([:foo, :bar], at_least: 1)
+  end
+end
+```
