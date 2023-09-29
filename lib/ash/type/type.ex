@@ -834,6 +834,7 @@ defmodule Ash.Type do
           {:ok, list(term)} | {:error, Ash.Error.t()}
   def load(_, [], _, _, _), do: {:ok, []}
   def load(_, nil, _, _, _), do: {:ok, nil}
+  def load(_, %Ash.ForbiddenField{} = value, _, _, _), do: {:ok, value}
 
   def load({:array, type}, values, loads, constraints, context) do
     load(type, values, loads, constraints[:items] || [], context)
