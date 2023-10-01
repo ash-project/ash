@@ -1,8 +1,6 @@
 defmodule Ash do
   @moduledoc """
-  General purpose tools for working with Ash.
-
-  Currently only contains setters/getters for process context.
+  General purpose tools for working with Ash and Ash resources.
   """
 
   for {function, arity} <- Ash.Api.Functions.functions() do
