@@ -1329,7 +1329,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.DefaultPrimaryKey,
     Ash.Resource.Transformers.DefaultAccept,
     Ash.Resource.Transformers.RequireUniqueFieldNames,
-    Ash.Resource.Transformers.GetByReadActions
+    Ash.Resource.Transformers.SetDefineFor
   ]
 
   @verifiers [
@@ -1346,7 +1346,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.ValidateEagerIdentities,
     Ash.Resource.Verifiers.ValidateManagedRelationshipOpts,
     Ash.Resource.Verifiers.ValidateMultitenancy,
-    Ash.Resource.Verifiers.ValidatePrimaryKey
+    Ash.Resource.Verifiers.ValidatePrimaryKey,
+    Ash.Resource.Verifiers.VerifyAcceptedByApi
   ]
 
   @moduledoc false

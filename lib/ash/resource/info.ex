@@ -21,6 +21,10 @@ defmodule Ash.Resource.Info do
   @deprecated "Use `Ash.Resource.selected?/2` instead"
   defdelegate selected?(record, field), to: Ash.Resource
 
+  def api(resource) do
+    Spark.Dsl.Extension.get_persisted(resource, :api)
+  end
+
   @doc """
   Retrieves a relationship path from the resource related by path, to the provided resource.
   """
