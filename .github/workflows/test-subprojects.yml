@@ -15,11 +15,13 @@ jobs:
           [
             { org: "ash-project", name: "ash_postgres" },
             { org: "ash-project", name: "ash_csv" },
+            { org: "ash-project", name: "ash_double_entry" },
             { org: "ash-project", name: "ash_graphql" },
             { org: "ash-project", name: "ash_json_api" },
             { org: "ash-project", name: "ash_phoenix" },
             { org: "ash-project", name: "ash_admin" },
             { org: "ash-project", name: "ash_archival" },
+            { org: "ash-project", name: "ash_state_machine" },
             { org: "team-alembic", name: "ash_authentication" },
             { org: "team-alembic", name: "ash_authentication_phoenix" },
           ]
