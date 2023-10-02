@@ -108,7 +108,7 @@ defmodule Ash.Actions.Action do
                 {:ok, value}
 
               {:error, error} ->
-                {:error, error}
+                {:error, Ash.Error.to_ash_error(error)}
             end
           after
             if notify? do

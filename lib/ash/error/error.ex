@@ -340,6 +340,14 @@ defmodule Ash.Error do
     to_ash_error(Ash.Error.Action.InvalidOptions.exception(message: message), stacktrace, opts)
   end
 
+  def to_ash_error(%Ash.Changeset{errors: errors}, stacktrace, opts) do
+    to_ash_error(errors, stacktrace, opts)
+  end
+
+  def to_ash_error(%Ash.Query{errors: errors}, stacktrace, opts) do
+    to_ash_error(errors, stacktrace, opts)
+  end
+
   def to_ash_error(error, stacktrace, opts) when is_binary(error) do
     [error: error]
     |> UnknownError.exception()
