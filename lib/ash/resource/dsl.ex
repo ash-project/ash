@@ -14,7 +14,6 @@ defmodule Ash.Resource.Dsl do
     transform: {Ash.Resource.Attribute, :transform, []},
     target: Ash.Resource.Attribute,
     args: [:name, :type],
-    modules: [:type],
     schema: Ash.Resource.Attribute.attribute_schema()
   }
 
@@ -182,7 +181,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    no_depend_modules: [:destination],
+    no_depend_modules: [:destination, :manual],
     target: Ash.Resource.Relationships.HasOne,
     schema: Ash.Resource.Relationships.HasOne.opt_schema(),
     args: [:name, :destination]
@@ -205,7 +204,7 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     target: Ash.Resource.Relationships.HasMany,
-    no_depend_modules: [:destination],
+    no_depend_modules: [:destination, :manual],
     schema: Ash.Resource.Relationships.HasMany.opt_schema(),
     args: [:name, :destination]
   }
@@ -348,7 +347,6 @@ defmodule Ash.Resource.Dsl do
     examples: [
       "argument :password_confirmation, :string"
     ],
-    modules: [:type],
     target: Ash.Resource.Actions.Argument,
     args: [:name, :type],
     transform: {Ash.Type, :set_type_transformation, []},
@@ -476,8 +474,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Actions.Create,
     schema: Ash.Resource.Actions.Create.opt_schema(),
-    modules: [:manual],
-    no_depend_modules: [:touches_resources],
+    no_depend_modules: [:manual, :touches_resources],
     deprecations: [
       manual?: "Use the `manual` option instead, and provide an implementation."
     ],
@@ -541,8 +538,7 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Actions.Read,
     schema: Ash.Resource.Actions.Read.opt_schema(),
     transform: {Ash.Resource.Actions.Read, :transform, []},
-    no_depend_modules: [:touches_resources],
-    modules: [:manual],
+    no_depend_modules: [:touches_resources, :manual],
     entities: [
       arguments: [
         @action_argument
@@ -573,7 +569,6 @@ defmodule Ash.Resource.Dsl do
     examples: [
       "update :flag_for_review, primary?: true"
     ],
-    modules: [:manual],
     entities: [
       changes: [
         @action_change,
@@ -589,7 +584,7 @@ defmodule Ash.Resource.Dsl do
     deprecations: [
       manual?: "Use the `manual` option instead, and provide an implementation."
     ],
-    no_depend_modules: [:touches_resources],
+    no_depend_modules: [:touches_resources, :manual],
     target: Ash.Resource.Actions.Update,
     schema: Ash.Resource.Actions.Update.opt_schema(),
     args: [:name]
@@ -607,7 +602,6 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    modules: [:manual],
     imports: [
       Ash.Resource.Change.Builtins,
       Ash.Resource.Validation.Builtins,
@@ -616,7 +610,7 @@ defmodule Ash.Resource.Dsl do
     deprecations: [
       manual?: "Use the `manual` option instead, and provide an implementation."
     ],
-    no_depend_modules: [:touches_resources],
+    no_depend_modules: [:touches_resources, :manual],
     entities: [
       changes: [
         @action_change,
@@ -747,7 +741,7 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     imports: [Ash.Filter.TemplateHelpers],
-    modules: [:simple_notifiers],
+    no_depend_modules: [:simple_notifiers],
     schema: [
       description: [
         type: :string,
@@ -838,7 +832,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    modules: [:define_for],
+    no_depend_modules: [:define_for],
     schema: [
       define_for: [
         type: {:spark, Ash.Api},

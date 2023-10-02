@@ -29,8 +29,7 @@ defmodule Ash.Flow.Dsl do
       """
     ],
     recursive_as: :steps,
-    no_depend_modules: [:resource, :touches_resources],
-    modules: [:manual],
+    no_depend_modules: [:resource, :touches_resources, :manual],
     target: Ash.Flow.Step.Create,
     args: [:name, :resource, :action],
     schema: Ash.Flow.Step.Create.schema()
@@ -48,8 +47,7 @@ defmodule Ash.Flow.Dsl do
       end
       """
     ],
-    no_depend_modules: [:resource, :touches_resources],
-    modules: [:manual],
+    no_depend_modules: [:resource, :touches_resources, :manual],
     target: Ash.Flow.Step.Update,
     recursive_as: :steps,
     args: [:name, :resource, :action],
@@ -87,8 +85,7 @@ defmodule Ash.Flow.Dsl do
       """
     ],
     recursive_as: :steps,
-    modules: [:manual],
-    no_depend_modules: [:resource, :touches_resources],
+    no_depend_modules: [:resource, :touches_resources, :manual],
     target: Ash.Flow.Step.Destroy,
     args: [:name, :resource, :action],
     schema: Ash.Flow.Step.Destroy.schema()
@@ -105,8 +102,7 @@ defmodule Ash.Flow.Dsl do
       """
     ],
     recursive_as: :steps,
-    no_depend_modules: [:resource, :touches_resources],
-    modules: [:manual],
+    no_depend_modules: [:resource, :touches_resources, :manual],
     target: Ash.Flow.Step.Read,
     args: [:name, :resource, :action],
     schema: Ash.Flow.Step.Read.schema()

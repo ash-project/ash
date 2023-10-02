@@ -43,6 +43,7 @@ defmodule Ash.Policy.Authorizer do
     describe: "If the check is true, the request is authorized, otherwise run remaining checks.",
     args: [:check],
     schema: @check_schema,
+    no_depend_modules: [:check],
     examples: [
       "authorize_if logged_in()",
       "authorize_if actor_attribute_matches_record(:group, :group)"
@@ -61,6 +62,7 @@ defmodule Ash.Policy.Authorizer do
     schema: @check_schema,
     target: Ash.Policy.Check,
     transform: {Ash.Policy.Check, :transform, []},
+    no_depend_modules: [:check],
     examples: [
       "forbid_if not_logged_in()",
       "forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)"
@@ -77,6 +79,7 @@ defmodule Ash.Policy.Authorizer do
     schema: @check_schema,
     target: Ash.Policy.Check,
     transform: {Ash.Policy.Check, :transform, []},
+    no_depend_modules: [:check],
     examples: [
       "authorize_unless not_logged_in()",
       "authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)"
@@ -92,6 +95,7 @@ defmodule Ash.Policy.Authorizer do
     args: [:check],
     schema: @check_schema,
     target: Ash.Policy.Check,
+    no_depend_modules: [:check],
     transform: {Ash.Policy.Check, :transform, []},
     examples: [
       "forbid_unless logged_in()",
@@ -152,6 +156,7 @@ defmodule Ash.Policy.Authorizer do
     ],
     args: [:condition],
     target: Ash.Policy.Policy,
+    no_depend_modules: [:condition],
     transform: {Ash.Policy.Policy, :transform, []},
     entities: [
       policies: [
