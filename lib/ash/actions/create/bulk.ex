@@ -9,7 +9,7 @@ defmodule Ash.Actions.Create.Bulk do
     action = Ash.Resource.Info.action(resource, action)
 
     if !action do
-      raise NoSuchAction, resource: resource, action: action, type: type
+      raise Ash.Error.Invalid.NoSuchAction, resource: resource, action: action, type: :create
     end
 
     if opts[:transaction] == :all && opts[:return_stream?] do
