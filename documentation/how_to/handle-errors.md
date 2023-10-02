@@ -59,21 +59,86 @@ end
 
 ## Generating Errors
 
-When returning errors in your application, your best bet will be to return a built in error. These are all modules under `Ash.Error.*`. You can create a new one with `error.new(options)`, and the options are documented in each exception. This documentation is missing in some cases. Go to the source code of the exception to see its special options. All of them support the `vars` option, which are values to be interpolated into the message, useful for things like translation.
+When returning errors in your application, you can a few different things:
+
+## Return a keyword list in changes and validations
+
+A shortcut for creating errors is to return a keyword list containing `field`
+and `message`. This works in changes and validations. For example:
+
+```elixir
+# in a change, you use `Ash.Changeset.add_error/2`
+def change(changeset, _, _) do
+  if under_21?(changeset) do
+    Ash.Changeset.add_error(changeset, field: :age, message: "must be 21 or older")
+  else
+    changeset
+  end
+end
+
+# in a validation, you return the error in an `{:error, error}` tuple.
+def change(changeset, _, _) do
+  if under_21?(changeset) do
+    {:error,  field: :age, message: "must be 21 or older"}
+  else
+    :ok
+  end
+end
+```
+
+## Using a Builtin Exception
+
+These are all modules under `Ash.Error.*`. You can create a new one with `error.exception(options)`, and the options are documented in each exception. This documentation is missing in some cases. Go to the source code of the exception to see its special options. All of them support the `vars` option, which are values to be interpolated into the message, useful for things like translation.
 
 For example:
 ```elixir
 def change(changeset, _, _) do
   if some_condition(changeset) do
     error = Ash.Error.Changes.Required.new(
-      field: :foo, 
-      type: :attribute, 
+      field: :foo,
+      type: :attribute,
       resource: changeset.resource
     )
 
     Ash.Changeset.add_error(changeset, error)
   else
     changeset
+  end
+end
+```
+
+## Use a Custom Exception
+
+You can create a custom exception like so. This is an example of a builtin exception that you could mirror to build your own
+
+```elixir
+defmodule Ash.Error.Action.InvalidArgument do
+  @moduledoc "Used when an invalid value is provided for an action argument"
+  use Ash.Error.Exception
+
+  def_ash_error([:field, :message, :value], class: :invalid)
+
+  defimpl Ash.ErrorKind do
+    def id(_), do: Ash.UUID.generate()
+
+    def code(_), do: "invalid_argument"
+
+    def message(error) do
+      """
+      Invalid value provided#{for_field(error)}#{do_message(error)}
+
+      #{inspect(error.value)}
+      """
+    end
+
+    defp for_field(%{field: field}) when not is_nil(field), do: " for #{field}"
+    defp for_field(_), do: ""
+
+    defp do_message(%{message: message}) when not is_nil(message) do
+      ": #{message}."
+    end
+
+    defp do_message(_), do: "."
   end
 end
 ```
