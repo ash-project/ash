@@ -58,3 +58,27 @@ next_page = Api.read(Resource, page: [limit: 10, after: last_record.__metadata__
 
 - A bit more complex to use
 - Can't go to a specific page number
+
+## Setting up overview
+
+### Resource Action pagination setup
+
+Setup the pagination for the [Resource's](https://hexdocs.pm/ash/glossary.html#resource) [Action](https://hexdocs.pm/ash/glossary.html#action) you want to be paginated.
+
+(In the defmodule which has `use Ash.Resource` as per Resource docs):
+```
+actions do
+  ... 
+  read :name_of_the_action do
+        ...
+        pagination offset?: true, default_limit: 3, countable: true
+        ...
+      end
+  ...
+end
+```
+All the options for setting the pagination in the Actions of a Resource are available [here](https://hexdocs.pm/ash/dsl-ash-resource.html#actions-read-pagination)
+
+### Querying the paginated Resource
+
+All the options for Querying the paginated Resource via `Api.read(Resource, page: [options])` are available [here](https://hexdocs.pm/ash/Ash.Api.html#c:read/2-pagination)
