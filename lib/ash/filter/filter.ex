@@ -564,8 +564,6 @@ defmodule Ash.Filter do
       {:_actor, :_primary_key} ->
         if actor do
           Map.take(actor, Ash.Resource.Info.primary_key(actor.__struct__))
-        else
-          false
         end
 
       {:_actor, field} when is_atom(field) or is_binary(field) ->
@@ -585,8 +583,8 @@ defmodule Ash.Filter do
 
       {:_ref, path, name} ->
         %Ref{
-          attribute: name,
-          relationship_path: path
+          attribute: build_filter_from_template(name, actor, args, context),
+          relationship_path: build_filter_from_template(path, actor, args, context)
         }
 
       other ->
