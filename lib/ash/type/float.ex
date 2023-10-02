@@ -1,11 +1,11 @@
 defmodule Ash.Type.Float do
   @constraints [
     max: [
-      type: {:custom, __MODULE__, :decimal, []},
+      type: {:custom, __MODULE__, :float, []},
       doc: "Enforces a maximum on the value"
     ],
     min: [
-      type: {:custom, __MODULE__, :decimal, []},
+      type: {:custom, __MODULE__, :float, []},
       doc: "Enforces a minimum on the value"
     ]
   ]
@@ -25,6 +25,17 @@ defmodule Ash.Type.Float do
   def storage_type(_), do: :float
 
   def constraints(_), do: @constraints
+
+  @doc false
+  def float(value) do
+    case cast_input(value, []) do
+      {:ok, float} ->
+        {:ok, float}
+
+      :error ->
+        {:error, "cannot be casted to float"}
+    end
+  end
 
   @impl true
   def generator(constraints) do
