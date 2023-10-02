@@ -8,6 +8,10 @@ defmodule Ash.Actions.Create.Bulk do
   def run(api, resource, action, inputs, opts) do
     action = Ash.Resource.Info.action(resource, action)
 
+    if !action do
+      raise NoSuchAction, resource: resource, action: action, type: type
+    end
+
     if opts[:transaction] == :all && opts[:return_stream?] do
       raise ArgumentError,
             "Cannot specify `transaction: :all` and `return_stream?: true` together"
