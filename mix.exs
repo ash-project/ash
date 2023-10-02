@@ -97,11 +97,12 @@ defmodule Ash.MixProject do
         if type == :html do
           """
           <script>
-            if (location.hostname === "hexdocs") {
+            if (location.hostname === "hexdocs.pm") {
               var script = document.createElement("script");
               script.src = "https://plausible.io/js/script.js";
               script.setAttribute("defer", "defer")
               script.setAttribute("data-domain", "ashhexdocs")
+              document.head.appendChild(script);
             }
           </script>
           """
