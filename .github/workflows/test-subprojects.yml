@@ -26,7 +26,7 @@ jobs:
             { org: "team-alembic", name: "ash_authentication_phoenix" },
           ]
         otp: ["24"]
-        elixir: ["1.14.0"]
+        elixir: ["1.15.0"]
     services:
       pg:
         image: postgres:13
