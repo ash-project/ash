@@ -573,7 +573,13 @@ defmodule Ash.Filter do
         get_path(actor || %{}, path)
 
       {:_arg, field} ->
-        Map.get(args, field) || Map.get(args, to_string(field))
+        case Map.fetch(args, field) do
+          :error ->
+            Map.get(args, to_string(field))
+
+          {:ok, value} ->
+            value
+        end
 
       {:_context, fields} when is_list(fields) ->
         get_path(context, fields)
