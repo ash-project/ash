@@ -5,6 +5,29 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.8](https://github.com/ash-project/ash/compare/v2.15.7...v2.15.8) (2023-10-03)
+
+
+
+
+### Bug Fixes:
+
+* don't use `||` when fetching arguments because `false || nil` is `nil`
+
+* handle exceptions in generic actions
+
+* fix types for `min`/`max` constraints in `Type.Float` (#718)
+
+* lower compile time dependencies
+
+* raise cleaner error on missing action in bulk creates
+
+* allow for `ref` to contain nested templates
+
+### Improvements:
+
+* massage changesets & queries in `Ash.Error.to_ash_error/3`
+
 ## [v2.15.7](https://github.com/ash-project/ash/compare/v2.15.6...v2.15.7) (2023-09-29)
 
 
