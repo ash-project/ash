@@ -407,8 +407,55 @@ defmodule Ash.CodeInterface do
           """
         end
 
+        arg_docs =
+          case action.arguments do
+            [] ->
+              "none"
+
+            _ ->
+              action.arguments
+              |> Enum.map_join("\n", fn
+                %Ash.Resource.Actions.Argument{description: nil} = arg ->
+                  "* #{Atom.to_string(arg.name)}"
+
+                %Ash.Resource.Actions.Argument{} = arg ->
+                  "* #{Atom.to_string(arg.name)} - #{arg.description}"
+              end)
+          end
+
+        accept_docs =
+          case action do
+            %Ash.Resource.Actions.Action{} ->
+              "none"
+
+            %Ash.Resource.Actions.Read{} ->
+              "none"
+
+            _ ->
+              action.accept
+              |> Enum.map_join("\n", fn attr_name ->
+                attr = Ash.Resource.Info.attribute(resource, attr_name)
+
+                case attr do
+                  %Ash.Resource.Attribute{description: nil} ->
+                    "* #{Atom.to_string(attr.name)}"
+
+                  %Ash.Resource.Attribute{} ->
+                    "* #{Atom.to_string(attr.name)} - #{attr.description}"
+                end
+              end)
+          end
+
         doc = """
         #{action.description || "Calls the #{action.name} action on the #{inspect(resource)} resource."}
+
+        ## Args
+
+        #{arg_docs}
+
+        ## Accepts
+
+        #{accept_docs}
 
         ## Options
 
