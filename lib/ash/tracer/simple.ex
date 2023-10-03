@@ -12,7 +12,7 @@ defmodule Ash.Tracer.Simple do
   @impl true
   def start_span(type, name) do
     context = get_span_context()
-    id = System.unique_integer()
+    id = Ash.UUID.generate()
 
     spans = Process.get(:tracer_spans, [])
 

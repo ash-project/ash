@@ -356,7 +356,7 @@ defmodule Ash.Flow.Executor.AshEngine do
           get_dep_paths(all_steps, deps, transaction_name, wait_for_deps ++ halt_if_deps)
 
         request_deps = dependable_request_paths(dep_paths)
-        id = System.unique_integer()
+        id = Ash.UUID.generate()
 
         [
           Ash.Engine.Request.new(

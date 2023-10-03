@@ -292,13 +292,13 @@ defmodule Ash.Query.Aggregate do
   defp validate_query(_resource, %Ash.Query{} = query) do
     cond do
       query.load != [] ->
-        {:error, "Cannot load in an aggregate"}
+        {:error, "Cannot load in an aggregate."}
 
       not is_nil(query.limit) ->
-        {:error, "Cannot limit an aggregate (for now)"}
+        {:error, "Cannot limit an aggregate."}
 
       not (is_nil(query.offset) || query.offset == 0) ->
-        {:error, "Cannot offset an aggregate (for now)"}
+        {:error, "Cannot offset an aggregate."}
 
       true ->
         {:ok, query}

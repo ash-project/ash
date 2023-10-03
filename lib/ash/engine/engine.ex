@@ -232,7 +232,7 @@ defmodule Ash.Engine do
     state =
       %__MODULE__{
         ref: make_ref(),
-        id: System.unique_integer([:positive, :monotonic]),
+        id: Ash.UUID.generate(),
         resolved_fields: %{},
         actor: opts[:actor],
         return_notifications?: opts[:return_notifications?],
