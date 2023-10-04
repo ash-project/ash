@@ -478,7 +478,10 @@ defmodule Ash.EmbeddableType do
       end
 
       def handle_change_array(old_values, nil, constraints) do
-        handle_change_array(old_values, [], constraints)
+        case handle_change_array(old_values, [], constraints) do
+          {:ok, []} -> {:ok, nil}
+          other -> other
+        end
       end
 
       def handle_change_array(old_values, new_values, constraints) do
@@ -520,6 +523,10 @@ defmodule Ash.EmbeddableType do
           {:error, error} ->
             {:error, error}
         end
+      end
+
+      def prepare_change_array(nil, _new_uncasted_values, _constraints) do
+        {:ok, nil}
       end
 
       def prepare_change_array(old_values, new_uncasted_values, constraints) do
