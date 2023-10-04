@@ -525,7 +525,7 @@ defmodule Ash.EmbeddableType do
         end
       end
 
-      def prepare_change_array(nil, _new_uncasted_values, _constraints) do
+      def prepare_change_array(_old_values, nil, _constraints) do
         {:ok, nil}
       end
 
