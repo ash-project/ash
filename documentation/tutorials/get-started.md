@@ -31,9 +31,7 @@ In this guide we will:
 
 - [Install Elixir](https://elixir-lang.org/install.html)
 - [Philosophy Guide](/documentation/tutorials/philosophy.md)
-<!--- ash-hq-hide-start --> <!--- -->
 - [Using Hexdocs](/documentation/tutorials/using-hexdocs.md)
-<!--- ash-hq-hide-stop --> <!--- -->
 
 ## Requirements
 
