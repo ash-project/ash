@@ -57,8 +57,9 @@ defmodule Ash.Actions.Action do
             end
 
           try do
+            resources = Enum.reject(resources, &Ash.DataLayer.in_transaction?/1)
+
             resources
-            |> Enum.reject(&Ash.DataLayer.in_transaction?/1)
             |> Ash.DataLayer.transaction(
               fn ->
                 case authorize(api, opts[:actor], input) do
@@ -67,12 +68,15 @@ defmodule Ash.Actions.Action do
                       {:ok, result} ->
                         {:ok, result, []}
 
+                      {:error, error} ->
+                        Ash.DataLayer.rollback(resources, error)
+
                       other ->
-                        other
+                        raise_invalid_manual_action_return!(input, other)
                     end
 
                   {:error, error} ->
-                    {:error, error}
+                    Ash.DataLayer.rollback(resources, error)
                 end
               end,
               nil,
@@ -135,13 +139,7 @@ defmodule Ash.Actions.Action do
                   {:error, error}
 
                 other ->
-                  raise """
-                  Invalid return from generic action #{input.resource}.#{input.action.name}.
-
-                  Expected {:ok, result} or {:error, error}, got:
-
-                  #{inspect(other)}
-                  """
+                  raise_invalid_manual_action_return!(input, other)
               end
 
             {:error, error} ->
@@ -150,6 +148,16 @@ defmodule Ash.Actions.Action do
         end
       end
     end
+  end
+
+  defp raise_invalid_manual_action_return!(input, other) do
+    raise """
+    Invalid return from generic action #{input.resource}.#{input.action.name}.
+
+    Expected {:ok, result} or {:error, error}, got:
+
+    #{inspect(other)}
+    """
   end
 
   defp authorize(api, actor, input) do

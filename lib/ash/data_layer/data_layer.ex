@@ -350,7 +350,11 @@ defmodule Ash.DataLayer do
   end
 
   @doc "Rolls back the current transaction"
-  @spec rollback(Ash.Resource.t(), term) :: no_return
+  @spec rollback(Ash.Resource.t() | list(Ash.Resource.t()), term) :: no_return
+  def rollback([resource | _], term) do
+    rollback(resource, term)
+  end
+
   def rollback(resource, term) do
     data_layer(resource).rollback(resource, term)
   end
