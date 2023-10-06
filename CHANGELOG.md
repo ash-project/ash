@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.9](https://github.com/ash-project/ash/compare/v2.15.8...v2.15.9) (2023-10-06)
+
+
+
+
+### Bug Fixes:
+
+* properly rollback transactions on returned errors in generic actions
+
+* generate keysets immediately after read action
+
+* prepare_change_array on embedded types needs to handle `nil`
+
+* handle_change_array on embedded types needs to honor `nil`
+
+### Improvements:
+
+* allow overriding `cast_input/2` on `NewType`
+
 ## [v2.15.8](https://github.com/ash-project/ash/compare/v2.15.7...v2.15.8) (2023-10-03)
 
 
