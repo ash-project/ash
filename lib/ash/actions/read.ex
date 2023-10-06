@@ -1454,6 +1454,7 @@ defmodule Ash.Actions.Read do
                    ),
                  :ok <-
                    validate_get(results, ash_query.action, ash_query),
+                 results <- add_keysets(ash_query, results, ash_query.sort),
                  {:ok, results, after_notifications} <-
                    run_after_action(initial_query, results),
                  {:ok, count} <- maybe_await(count) do
@@ -1489,6 +1490,17 @@ defmodule Ash.Actions.Read do
         end
       end
     )
+  end
+
+  defp add_keysets(original_query, data, sort) do
+    if Enum.any?(
+         Ash.Resource.Info.actions(original_query.resource),
+         &(&1.type == :read && &1.pagination && &1.pagination.keyset?)
+       ) do
+      Ash.Page.Keyset.data_with_keyset(data, original_query.resource, sort)
+    else
+      data
+    end
   end
 
   defp data_layer_filter(query, filter, ash_query) do
