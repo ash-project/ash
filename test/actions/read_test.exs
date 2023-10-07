@@ -593,7 +593,6 @@ defmodule Ash.Test.Actions.ReadTest do
       Post
       |> Ash.Query.sort([{Ash.Sort.expr_sort(title <> contents), :asc}])
       |> Api.read!()
-      |> IO.inspect()
     end
   end
 
