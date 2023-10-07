@@ -375,7 +375,13 @@ defmodule Ash.Flow.Template do
   end
 
   defp do_handle_input_template({:_arg, name}, input) do
-    {Map.get(input, name) || Map.get(input, to_string(name)), []}
+    case Map.fetch(input, name) do
+      {:ok, value} ->
+        {value, []}
+
+      :error ->
+        {Map.get(input, to_string(name)), []}
+    end
   end
 
   defp do_handle_input_template({:_result, step}, _input) do
