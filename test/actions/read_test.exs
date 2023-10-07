@@ -586,6 +586,15 @@ defmodule Ash.Test.Actions.ReadTest do
                |> Api.read()
                |> strip_metadata()
     end
+
+    test "a sort can use an expression", %{post1: post1, post2: post2} do
+      require Ash.Sort
+
+      Post
+      |> Ash.Query.sort([{Ash.Sort.expr_sort(title <> contents), :asc}])
+      |> Api.read!()
+      |> IO.inspect()
+    end
   end
 
   describe "get_by with only a single field" do

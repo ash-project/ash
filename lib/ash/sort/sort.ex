@@ -24,6 +24,23 @@ defmodule Ash.Sort do
 
   alias Ash.Error.Query.{InvalidSortOrder, NoSuchAttribute}
 
+  defmacro expr_sort(expression, type \\ nil) do
+    quote do
+      require Ash.Expr
+      type = unquote(type)
+
+      case Ash.Query.Calculation.new(
+             :expr_sort,
+             Ash.Resource.Calculation.Expression,
+             [expr: Ash.Expr.expr(unquote(expression))],
+             type && Ash.Type.get_type(type)
+           ) do
+        {:ok, calc} -> calc
+        {:error, term} -> raise Ash.Error.to_ash_error(term)
+      end
+    end
+  end
+
   @doc """
   A utility for parsing sorts provided from external input. Only allows sorting
   on public attributes and aggregates.
