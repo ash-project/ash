@@ -309,7 +309,6 @@ defmodule Ash.MixProject do
       {:picosat_elixir, "~> 0.2"},
       {:comparable, "~> 1.0"},
       {:jason, ">= 1.0.0"},
-      {:earmark, "~> 1.4", optional: true},
       {:stream_data, "~> 0.6"},
       {:telemetry, "~> 1.1"},
       {:plug, ">= 0.0.0", optional: true},
