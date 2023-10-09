@@ -1801,6 +1801,87 @@ defmodule Ash.Filter do
     end
   end
 
+  defp do_relationship_paths(
+         %Ref{
+           relationship_path: path,
+           resource: resource,
+           attribute: %Ash.Query.Calculation{module: module, opts: opts, context: context}
+         } = ref,
+         include_exists?,
+         with_references?
+       ) do
+    if function_exported?(module, :expression, 2) do
+      expression = module.expression(opts, context)
+
+      case hydrate_refs(expression, %{
+             resource: resource,
+             relationship_path: [],
+             public?: false
+           }) do
+        {:ok, expression} ->
+          path_and_ref =
+            if with_references? do
+              {path, ref}
+            else
+              {path}
+            end
+
+          nested =
+            expression
+            |> do_relationship_paths(include_exists?, with_references?)
+            |> List.wrap()
+            |> List.flatten()
+
+          nested
+          |> Enum.map(fn
+            {nested_path, _ref} ->
+              nested_path
+
+            {nested_path} ->
+              nested_path
+          end)
+          |> Enum.find(fn path ->
+            not to_one_path?(path, resource)
+          end)
+          |> case do
+            nil ->
+              :ok
+
+            path ->
+              raise """
+              Only to-one relationship references are allowed in a calculation reference paths. Got: #{inspect(Enum.join(path, "."))} in #{inspect(ref)}
+
+              To extract a single value from a to_many relationship or path that includes a to_many relationship, use a `first` aggregate.
+              """
+          end
+
+          nested =
+            Enum.map(nested, fn
+              {nested_path, ref} ->
+                {path ++ nested_path, ref}
+
+              {nested_path} ->
+                {path ++ nested_path}
+            end)
+
+          [path_and_ref | nested]
+
+        _ ->
+          if with_references? do
+            [{path, ref}]
+          else
+            [{path}]
+          end
+      end
+    else
+      if with_references? do
+        [{path, ref}]
+      else
+        [{path}]
+      end
+    end
+  end
+
   defp do_relationship_paths(%Ref{relationship_path: path} = ref, _, true) do
     [{path, ref}]
   end
@@ -1885,6 +1966,21 @@ defmodule Ash.Filter do
   end
 
   defp do_relationship_paths(_, _, _), do: []
+
+  defp to_one_path?([], _resource), do: true
+
+  defp to_one_path?([next | rest], resource) do
+    case Ash.Resource.Info.relationship(resource, next) do
+      nil ->
+        false
+
+      %{cardinality: :one, destination: destination} ->
+        to_one_path?(rest, destination)
+
+      _ ->
+        false
+    end
+  end
 
   defp parent_relationship_paths(expression, at_path, include_exists?, with_reference?) do
     expression

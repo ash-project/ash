@@ -587,7 +587,7 @@ defmodule Ash.Test.Actions.ReadTest do
                |> strip_metadata()
     end
 
-    test "a sort can use an expression", %{post1: post1, post2: post2} do
+    test "a sort can use an expression" do
       require Ash.Sort
 
       Post

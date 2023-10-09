@@ -252,6 +252,8 @@ defmodule Ash.Test.CalculationTest do
         calculation(expr(is_active && user_is_active))
         load([:user_is_active])
       end
+
+      calculate :user_is_active_with_calc, :boolean, expr(user.is_active || false)
     end
 
     relationships do
@@ -513,6 +515,12 @@ defmodule Ash.Test.CalculationTest do
     |> Api.create!()
 
     %{user1: user1, user2: user2}
+  end
+
+  test "calculations can refer to `to_one` relationships in filters" do
+    Role
+    |> Ash.Query.filter(user_is_active_with_calc == true)
+    |> Api.read!()
   end
 
   test "it uses default arguments" do

@@ -312,6 +312,7 @@ defmodule Ash.MixProject do
       {:stream_data, "~> 0.6"},
       {:telemetry, "~> 1.1"},
       {:plug, ">= 0.0.0", optional: true},
+      {:earmark, "~> 1.4"},
       # Dev/Test dependencies
       {:ex_doc, github: "elixir-lang/ex_doc", only: [:dev, :test], runtime: false},
       {:ex_check, "~> 0.12", only: [:dev, :test]},
