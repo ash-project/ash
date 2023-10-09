@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.10](https://github.com/ash-project/ash/compare/v2.15.9...v2.15.10) (2023-10-09)
+
+
+
+
+### Bug Fixes:
+
+* handle `false` values properly when passed to flows
+
+### Improvements:
+
+* support to-one reference paths in calculations
+
+* add `Ash.Sort.expr_sort`. In 3.0 sort should be a macro
+
 ## [v2.15.9](https://github.com/ash-project/ash/compare/v2.15.8...v2.15.9) (2023-10-06)
 
 
