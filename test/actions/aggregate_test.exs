@@ -115,17 +115,21 @@ defmodule Ash.Test.Actions.AggregateTest do
     test "runs authorization" do
       assert %{count: 0} = Api.aggregate!(Post, {:count, :count}, authorize?: true)
 
+      assert 0 = Api.count!(Post, authorize?: true)
+
       Post
       |> Ash.Changeset.for_create(:create, %{title: "title"})
       |> Api.create!()
 
       assert %{count: 0} = Api.aggregate!(Post, {:count, :count}, authorize?: true)
+      assert 0 = Api.count!(Post, authorize?: true)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "title", public: true})
       |> Api.create!()
 
       assert %{count: 1} = Api.aggregate!(Post, {:count, :count}, authorize?: true)
+      assert 1 = Api.count!(Post, authorize?: true)
     end
   end
 

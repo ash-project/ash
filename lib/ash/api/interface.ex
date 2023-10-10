@@ -245,7 +245,15 @@ defmodule Ash.Api.Interface do
       end
 
       defp split_aggregate_opts(opts) do
-        Keyword.split(opts, Ash.Query.Aggregate.opt_keys())
+        {left, right} = Keyword.split(opts, Ash.Query.Aggregate.opt_keys())
+
+        case Keyword.fetch(left, :authorize?) do
+          {:ok, value} ->
+            {left, Keyword.put(right, :authorize?, value)}
+
+          :error ->
+            {left, right}
+        end
       end
 
       def aggregate(query, aggregate_or_aggregates, opts \\ []) do
