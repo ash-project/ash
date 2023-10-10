@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.12](https://github.com/ash-project/ash/compare/v2.15.11...v2.15.12) (2023-10-10)
+
+
+
+
+### Improvements:
+
+* set storage type for citext to `ci_string`
+
 ## [v2.15.11](https://github.com/ash-project/ash/compare/v2.15.10...v2.15.11) (2023-10-10)
 
 
