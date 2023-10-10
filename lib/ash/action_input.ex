@@ -9,6 +9,7 @@ defmodule Ash.ActionInput do
     :action,
     :api,
     :resource,
+    invalid_keys: MapSet.new(),
     arguments: %{},
     params: %{},
     context: %{},
@@ -21,6 +22,7 @@ defmodule Ash.ActionInput do
           params: map(),
           action: Ash.Resource.Actions.Action.t() | nil,
           resource: Ash.Resource.t(),
+          invalid_keys: MapSet.t(),
           context: map(),
           api: Ash.Api.t(),
           valid?: boolean()
@@ -139,10 +141,10 @@ defmodule Ash.ActionInput do
             add_invalid_errors(value, input, argument, error)
         end
       else
-        %{input | arguments: Map.put(input.arguments, argument, value)}
+        input
       end
     else
-      %{input | arguments: Map.put(input.arguments, argument, value)}
+      input
     end
   end
 
@@ -182,6 +184,8 @@ defmodule Ash.ActionInput do
   end
 
   defp add_invalid_errors(value, input, attribute, message) do
+    input = %{input | invalid_keys: MapSet.put(input.invalid_keys, attribute.name)}
+
     messages =
       if Keyword.keyword?(message) do
         [message]

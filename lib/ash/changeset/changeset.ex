@@ -190,6 +190,7 @@ defmodule Ash.Changeset do
           errors: [Ash.Error.t()],
           handle_errors:
             nil | (t, error :: any -> :ignore | t | (error :: any) | {error :: any, t}),
+          invalid_keys: MapSet.t(),
           params: %{optional(atom | binary) => any},
           phase:
             :validate
