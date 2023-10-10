@@ -52,7 +52,52 @@ defmodule Ash.ActionInput do
 
     {input, _opts} = Ash.Actions.Helpers.add_process_context(input.api, input, opts)
 
-    cast_params(input, params)
+    input
+    |> cast_params(params)
+    |> require_arguments()
+  end
+
+  defp require_arguments(input) do
+    input.action.arguments
+    |> Enum.filter(&(&1.allow_nil? == false))
+    |> Enum.reduce(input, fn argument, input ->
+      case fetch_argument(input, argument.name) do
+        {:ok, value} when not is_nil(value) ->
+          input
+
+        _ ->
+          if argument.name in input.invalid_keys do
+            input
+          else
+            add_error(
+              input,
+              Ash.Error.Changes.Required.exception(
+                resource: input.resource,
+                field: argument.name,
+                type: :argument
+              )
+            )
+          end
+      end
+    end)
+  end
+
+  @doc "Gets the value of an argument provided to the input."
+  @spec get_argument(t, atom | String.t()) :: term
+  def get_argument(input, argument) when is_atom(argument) or is_binary(argument) do
+    case fetch_argument(input, argument) do
+      {:ok, value} -> value
+      :error -> nil
+    end
+  end
+
+  @doc "Fetches the value of an argument provided to the input or `:error`."
+  @spec fetch_argument(t, atom | String.t()) :: {:ok, term()} | :error
+  def fetch_argument(input, argument) when is_atom(argument) or is_binary(argument) do
+    with :error <- Map.fetch(input.arguments, argument),
+         :error <- Map.fetch(input.arguments, to_string(argument)) do
+      :error
+    end
   end
 
   @doc "Set an argument value"
