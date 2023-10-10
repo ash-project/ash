@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.11](https://github.com/ash-project/ash/compare/v2.15.10...v2.15.11) (2023-10-10)
+
+
+
+
+### Bug Fixes:
+
+* honor `authorize?` option for calls to aggregate
+
 ## [v2.15.10](https://github.com/ash-project/ash/compare/v2.15.9...v2.15.10) (2023-10-09)
 
 
