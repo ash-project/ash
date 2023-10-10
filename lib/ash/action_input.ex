@@ -96,9 +96,8 @@ defmodule Ash.ActionInput do
   @doc "Fetches the value of an argument provided to the input or `:error`."
   @spec fetch_argument(t, atom | String.t()) :: {:ok, term()} | :error
   def fetch_argument(input, argument) when is_atom(argument) or is_binary(argument) do
-    with :error <- Map.fetch(input.arguments, argument),
-         :error <- Map.fetch(input.arguments, to_string(argument)) do
-      :error
+    with :error <- Map.fetch(input.arguments, argument) do
+      Map.fetch(input.arguments, to_string(argument))
     end
   end
 
