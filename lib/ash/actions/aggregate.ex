@@ -6,8 +6,9 @@ defmodule Ash.Actions.Aggregate do
     query = %{query | api: api}
     {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
     action = query.action || Ash.Resource.Info.primary_action!(query.resource, :read)
+    opts = Keyword.put_new(opts, :read_action, action.name)
 
-    case validate_aggregates(query, aggregates) do
+    case validate_aggregates(query, aggregates, opts) do
       {:ok, aggregates} ->
         aggregates
         |> Enum.group_by(fn aggregate ->
@@ -120,14 +121,19 @@ defmodule Ash.Actions.Aggregate do
     end
   end
 
-  defp validate_aggregates(query, aggregates) do
+  defp validate_aggregates(query, aggregates, opts) do
     aggregates
     |> Enum.reduce_while({:ok, []}, fn
       %Ash.Query.Aggregate{} = aggregate, {:ok, aggregates} ->
         {:cont, {:ok, [aggregate | aggregates]}}
 
       {name, kind}, {:ok, aggregates} ->
-        case Ash.Query.Aggregate.new(query.resource, name, kind) do
+        case Ash.Query.Aggregate.new(
+               query.resource,
+               name,
+               kind,
+               set_opts([], opts)
+             ) do
           {:ok, aggregate} ->
             {:cont, {:ok, [aggregate | aggregates]}}
 
@@ -135,8 +141,8 @@ defmodule Ash.Actions.Aggregate do
             {:halt, {:error, error}}
         end
 
-      {name, kind, opts}, {:ok, aggregates} ->
-        case Ash.Query.Aggregate.new(query.resource, name, kind, opts) do
+      {name, kind, agg_opts}, {:ok, aggregates} ->
+        case Ash.Query.Aggregate.new(query.resource, name, kind, set_opts(agg_opts, opts)) do
           {:ok, aggregate} ->
             {:cont, {:ok, [aggregate | aggregates]}}
 
@@ -144,5 +150,10 @@ defmodule Ash.Actions.Aggregate do
             {:halt, {:error, error}}
         end
     end)
+  end
+
+  defp set_opts(specified, others) do
+    {agg_opts, _} = Ash.Query.Aggregate.split_aggregate_opts(others)
+    Keyword.merge(agg_opts, specified)
   end
 end

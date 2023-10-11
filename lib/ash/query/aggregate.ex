@@ -123,12 +123,22 @@ defmodule Ash.Query.Aggregate do
       end)
 
     with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @schema) do
+      query =
+        opts[:query] || Ash.Query.new(Ash.Resource.Info.related(resource, opts[:path] || []))
+
+      query =
+        if opts[:read_action] && query.__validated_for_action__ != opts[:read_action] do
+          Ash.Query.for_read(query, opts[:read_action], %{})
+        else
+          query
+        end
+
       new(
         resource,
         name,
         kind,
         opts[:path] || [],
-        opts[:query] || Ash.Query.new(Ash.Resource.Info.related(resource, opts[:path] || [])),
+        query,
         opts[:field],
         opts[:default],
         Keyword.get(opts, :filterable?, true),
@@ -264,6 +274,28 @@ defmodule Ash.Query.Aggregate do
           true ->
             validate_path(relationship.destination, rest)
         end
+    end
+  end
+
+  @doc false
+  def split_aggregate_opts(opts) do
+    {left, right} = Keyword.split(opts, opt_keys())
+
+    right =
+      case Keyword.fetch(left, :authorize?) do
+        {:ok, value} ->
+          Keyword.put(right, :authorize?, value)
+
+        :error ->
+          right
+      end
+
+    case Keyword.fetch(right, :action) do
+      {:ok, action} ->
+        {Keyword.put(left, :read_action, action), right}
+
+      :error ->
+        {left, right}
     end
   end
 
@@ -476,6 +508,13 @@ defmodule Ash.Query.Aggregate do
       request_path ++
         [:aggregate, relationship_path, {authorize?, read_action}, :authorization_filter]
 
+    action =
+      if read_action do
+        Ash.Resource.Info.action(related, read_action)
+      else
+        Ash.Resource.Info.primary_action!(related, :read)
+      end
+
     Request.new(
       resource: related,
       api: initial_query.api,
@@ -483,7 +522,7 @@ defmodule Ash.Query.Aggregate do
       query: related_query,
       path: request_path ++ [:aggregate, relationship_path, {authorize?, read_action}],
       strict_check_only?: true,
-      action: Ash.Resource.Info.primary_action(related, :read),
+      action: action,
       name: "authorize aggregate: #{Enum.join(relationship_path, ".")}",
       data:
         Request.resolve([auth_filter_path], fn data ->

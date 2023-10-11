@@ -46,6 +46,7 @@ defmodule Ash.Test.Actions.AggregateTest do
 
     actions do
       defaults [:create, :read, :update, :destroy]
+      read :unpublic
     end
 
     attributes do
@@ -70,8 +71,12 @@ defmodule Ash.Test.Actions.AggregateTest do
     end
 
     policies do
-      policy always() do
+      policy action(:read) do
         authorize_if expr(public == true)
+      end
+
+      policy action(:unpublic) do
+        authorize_if expr(public == false)
       end
     end
   end
@@ -122,6 +127,17 @@ defmodule Ash.Test.Actions.AggregateTest do
       |> Api.create!()
 
       assert %{count: 0} = Api.aggregate!(Post, {:count, :count}, authorize?: true)
+      assert 0 = Api.count!(Post, authorize?: true)
+
+      assert %{count: 1} =
+               Post
+               |> Ash.Query.for_read(:unpublic)
+               |> Api.aggregate!({:count, :count}, actor: nil)
+
+      assert %{count: 1} =
+               Api.aggregate!(Post, {:count, :count}, actor: nil, action: :unpublic)
+
+      assert 1 = Api.count!(Post, actor: nil, action: :unpublic)
       assert 0 = Api.count!(Post, authorize?: true)
 
       Post

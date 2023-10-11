@@ -79,7 +79,7 @@ defmodule Ash.Api.Interface do
             opts
           end
 
-        {aggregate_opts, opts} = split_aggregate_opts(opts)
+        {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
 
         case Ash.Query.Aggregate.new(query.resource, :count, :count, aggregate_opts) do
           {:ok, aggregate} ->
@@ -106,7 +106,7 @@ defmodule Ash.Api.Interface do
             opts
           end
 
-        {aggregate_opts, opts} = split_aggregate_opts(opts)
+        {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
 
         case Ash.Query.Aggregate.new(query.resource, :count, :count, aggregate_opts) do
           {:ok, aggregate} ->
@@ -133,7 +133,7 @@ defmodule Ash.Api.Interface do
             opts
           end
 
-        {aggregate_opts, opts} = split_aggregate_opts(opts)
+        {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
 
         case Ash.Query.Aggregate.new(query.resource, :exists, :exists, aggregate_opts) do
           {:ok, aggregate} ->
@@ -160,7 +160,7 @@ defmodule Ash.Api.Interface do
             opts
           end
 
-        {aggregate_opts, opts} = split_aggregate_opts(opts)
+        {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
 
         case Ash.Query.Aggregate.new(query.resource, :exists, :exists, aggregate_opts) do
           {:ok, aggregate} ->
@@ -188,7 +188,7 @@ defmodule Ash.Api.Interface do
               opts
             end
 
-          {aggregate_opts, opts} = split_aggregate_opts(opts)
+          {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
 
           case Ash.Query.Aggregate.new(
                  query.resource,
@@ -214,7 +214,7 @@ defmodule Ash.Api.Interface do
         def unquote(:"#{kind}!")(query, field, opts \\ []) do
           query = Ash.Query.to_query(query)
 
-          {aggregate_opts, opts} = split_aggregate_opts(opts)
+          {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
 
           opts =
             if query.action do
@@ -241,18 +241,6 @@ defmodule Ash.Api.Interface do
             {:error, error} ->
               raise Ash.Error.to_error_class(error)
           end
-        end
-      end
-
-      defp split_aggregate_opts(opts) do
-        {left, right} = Keyword.split(opts, Ash.Query.Aggregate.opt_keys())
-
-        case Keyword.fetch(left, :authorize?) do
-          {:ok, value} ->
-            {left, Keyword.put(right, :authorize?, value)}
-
-          :error ->
-            {left, right}
         end
       end
 
