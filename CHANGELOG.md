@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.13](https://github.com/ash-project/ash/compare/v2.15.12...v2.15.13) (2023-10-11)
+
+
+
+
+### Bug Fixes:
+
+* move misplaced file and fix typespecs for Ash.DataLayer.Ets.Info
+
+* properly set `invalid_keys` on action inputs
+
+* properly validate required arguments for generic actions
+
 ## [v2.15.12](https://github.com/ash-project/ash/compare/v2.15.11...v2.15.12) (2023-10-10)
 
 
