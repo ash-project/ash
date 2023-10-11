@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.17](https://github.com/ash-project/ash/compare/v2.15.16...v2.15.17) (2023-10-11)
+
+
+
+
+### Bug Fixes:
+
+* properly authorize access to query aggregates in all cases
+
 ## [v2.15.16](https://github.com/ash-project/ash/compare/v2.15.15...v2.15.16) (2023-10-11)
 
 
