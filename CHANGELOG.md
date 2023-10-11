@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.15](https://github.com/ash-project/ash/compare/v2.15.14...v2.15.15) (2023-10-11)
+
+
+
+
+### Improvements:
+
+* support atomics on upserts
+
 ## [v2.15.14](https://github.com/ash-project/ash/compare/v2.15.13...v2.15.14) (2023-10-11)
 
 
