@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.16](https://github.com/ash-project/ash/compare/v2.15.15...v2.15.16) (2023-10-11)
+
+
+
+
+### Improvements:
+
+* move various transformers to be verifiers
+
 ## [v2.15.15](https://github.com/ash-project/ash/compare/v2.15.14...v2.15.15) (2023-10-11)
 
 
