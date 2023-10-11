@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.14](https://github.com/ash-project/ash/compare/v2.15.13...v2.15.14) (2023-10-11)
+
+
+
+
+### Improvements:
+
+* ensure all changesets sent batched to data layer have same set of atomics
+
 ## [v2.15.13](https://github.com/ash-project/ash/compare/v2.15.12...v2.15.13) (2023-10-11)
 
 
