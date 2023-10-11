@@ -218,7 +218,7 @@ Ash.Query.filter(exists(open_tickets, severity >= parent(severity_threshold)))
 The following two examples do not work currently, but are being worked on
 
 ```elixir
-has_many :relevant_tickets, Ticket **do**
+has_many :relevant_tickets, Ticket do
   filter expr(status == :open and severity >= parent(severity_threshold))
 end
 ```
