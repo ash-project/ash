@@ -813,90 +813,103 @@ defmodule Ash.Actions.Create.Bulk do
             Map.put(changesets_by_index, changeset.context.bulk_create.index, changeset)
           end)
 
-        case action.manual do
-          {mod, opts} ->
-            if function_exported?(mod, :bulk_create, 3) do
-              mod.bulk_create(batch, opts, %{
-                actor: opts[:actor],
-                authorize?: opts[:authorize?],
-                tracer: opts[:tracer],
-                api: api,
-                batch_size: count,
-                upsert?: opts[:upsert?] || action.upsert?,
-                upsert_keys: upsert_keys,
-                upsert_fields: opts[:upsert_fields] || action.upsert_fields,
-                return_records?:
-                  opts[:return_records?] || must_return_records? ||
-                    must_return_records_for_changes?,
-                tenant: opts[:tenant]
-              })
-            else
-              [changeset] = batch
-
-              result =
-                mod.create(changeset, opts, %{
-                  actor: opts[:actor],
-                  tenant: opts[:tenant],
-                  authorize?: opts[:authorize?],
-                  tracer: opts[:tracer],
-                  api: api
-                })
-
-              case result do
-                {:ok, result} ->
-                  {:ok,
-                   [
-                     Ash.Resource.put_metadata(
-                       result,
-                       :bulk_create_index,
-                       changeset.context.bulk_create.index
-                     )
-                   ]}
-
-                {:error, error} ->
-                  {:error, error}
-              end
-            end
-
-          _ ->
-            if data_layer_can_bulk? do
-              Ash.DataLayer.bulk_create(resource, batch, %{
-                batch_size: count,
-                return_records?:
-                  opts[:return_records?] || must_return_records? ||
-                    must_return_records_for_changes?,
-                upsert?: opts[:upsert?] || action.upsert? || false,
-                upsert_keys: upsert_keys,
-                upsert_fields: opts[:upsert_fields] || action.upsert_fields,
-                tenant: opts[:tenant]
-              })
-            else
-              [changeset] = batch
-              upsert? = opts[:upsert?] || action.upsert? || false
-
-              result =
-                if upsert? do
-                  Ash.DataLayer.upsert(resource, changeset, upsert_keys)
+        batch
+        |> Enum.group_by(& &1.atomics)
+        |> Enum.reduce_while({:ok, []}, fn {_atomics, batch}, {:ok, acc} ->
+          result =
+            case action.manual do
+              {mod, opts} ->
+                if function_exported?(mod, :bulk_create, 3) do
+                  mod.bulk_create(batch, opts, %{
+                    actor: opts[:actor],
+                    authorize?: opts[:authorize?],
+                    tracer: opts[:tracer],
+                    api: api,
+                    batch_size: count,
+                    upsert?: opts[:upsert?] || action.upsert?,
+                    upsert_keys: upsert_keys,
+                    upsert_fields: opts[:upsert_fields] || action.upsert_fields,
+                    return_records?:
+                      opts[:return_records?] || must_return_records? ||
+                        must_return_records_for_changes?,
+                    tenant: opts[:tenant]
+                  })
                 else
-                  Ash.DataLayer.create(resource, changeset)
+                  [changeset] = batch
+
+                  result =
+                    mod.create(changeset, opts, %{
+                      actor: opts[:actor],
+                      tenant: opts[:tenant],
+                      authorize?: opts[:authorize?],
+                      tracer: opts[:tracer],
+                      api: api
+                    })
+
+                  case result do
+                    {:ok, result} ->
+                      {:ok,
+                       [
+                         Ash.Resource.put_metadata(
+                           result,
+                           :bulk_create_index,
+                           changeset.context.bulk_create.index
+                         )
+                       ]}
+
+                    {:error, error} ->
+                      {:error, error}
+                  end
                 end
 
-              case result do
-                {:ok, result} ->
-                  {:ok,
-                   [
-                     Ash.Resource.put_metadata(
-                       result,
-                       :bulk_create_index,
-                       changeset.context.bulk_create.index
-                     )
-                   ]}
+              _ ->
+                if data_layer_can_bulk? do
+                  Ash.DataLayer.bulk_create(resource, batch, %{
+                    batch_size: count,
+                    return_records?:
+                      opts[:return_records?] || must_return_records? ||
+                        must_return_records_for_changes?,
+                    upsert?: opts[:upsert?] || action.upsert? || false,
+                    upsert_keys: upsert_keys,
+                    upsert_fields: opts[:upsert_fields] || action.upsert_fields,
+                    tenant: opts[:tenant]
+                  })
+                else
+                  [changeset] = batch
+                  upsert? = opts[:upsert?] || action.upsert? || false
 
-                {:error, error} ->
-                  {:error, error}
-              end
+                  result =
+                    if upsert? do
+                      Ash.DataLayer.upsert(resource, changeset, upsert_keys)
+                    else
+                      Ash.DataLayer.create(resource, changeset)
+                    end
+
+                  case result do
+                    {:ok, result} ->
+                      {:ok,
+                       [
+                         Ash.Resource.put_metadata(
+                           result,
+                           :bulk_create_index,
+                           changeset.context.bulk_create.index
+                         )
+                       ]}
+
+                    {:error, error} ->
+                      {:error, error}
+                  end
+                end
             end
-        end
+
+          case result do
+            {:ok, result} ->
+              {:cont, {:ok, acc ++ result}}
+
+            other ->
+              {:halt, other}
+          end
+        end)
         |> case do
           {:ok, result} ->
             {:ok, result, invalid, notifications, changesets_by_index}
