@@ -1,29 +1,28 @@
-defmodule Ash.Resource.Transformers.ValidateEagerIdentities do
+defmodule Ash.Resource.Verifiers.ValidateEagerIdentities do
   @moduledoc """
   Confirms that eager identities are not declared on a resource with no primary read.
   """
-  use Spark.Dsl.Transformer
+  use Spark.Dsl.Verifier
 
-  alias Spark.Dsl.Transformer
+  alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
 
-  def after_compile?, do: true
-
-  def transform(dsl_state) do
+  @impl true
+  def verify(dsl_state) do
     primary_read =
       dsl_state
-      |> Transformer.get_entities([:actions])
+      |> Verifier.get_entities([:actions])
       |> Enum.find(&(&1.type == :read && &1.primary?))
 
     dsl_state
-    |> Transformer.get_entities([:identities])
+    |> Verifier.get_entities([:identities])
     |> Enum.filter(&(&1.eager_check_with || &1.pre_check_with))
     |> case do
       [] ->
-        {:ok, dsl_state}
+        :ok
 
       eager ->
-        attributes = Transformer.get_entities(dsl_state, [:attributes])
+        attributes = Verifier.get_entities(dsl_state, [:attributes])
 
         if primary_read do
           non_attributes =
@@ -35,7 +34,7 @@ defmodule Ash.Resource.Transformers.ValidateEagerIdentities do
 
           case non_attributes do
             [] ->
-              {:ok, dsl_state}
+              :ok
 
             [identity] ->
               {:error,

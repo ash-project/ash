@@ -1,24 +1,23 @@
-defmodule Ash.Resource.Transformers.ValidateAggregatesSupported do
+defmodule Ash.Resource.Verifiers.ValidateAggregatesSupported do
   @moduledoc """
   Confirms that all aggregates are supported by the data layer
   """
-  use Spark.Dsl.Transformer
+  use Spark.Dsl.Verifier
 
-  alias Spark.Dsl.Transformer
+  alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
 
-  def after_compile?, do: true
-
-  def transform(dsl_state) do
-    resource = Transformer.get_persisted(dsl_state, :module)
+  @impl true
+  def verify(dsl_state) do
+    resource = Verifier.get_persisted(dsl_state, :module)
 
     dsl_state
-    |> Transformer.get_entities([:aggregates])
+    |> Verifier.get_entities([:aggregates])
     |> Enum.each(fn %{relationship_path: relationship_path, name: name} ->
       check_aggregatable(resource, resource, name, relationship_path)
     end)
 
-    {:ok, dsl_state}
+    :ok
   end
 
   defp check_aggregatable(_resource, _root_resource, _name, []), do: :ok

@@ -1314,7 +1314,6 @@ defmodule Ash.Resource.Dsl do
   ]
 
   @transformers [
-    Ash.Resource.Transformers.ValidateManagedRelationshipOpts,
     Ash.Resource.Transformers.RequireUniqueActionNames,
     Ash.Resource.Transformers.SetRelationshipSource,
     Ash.Resource.Transformers.BelongsToAttribute,
@@ -1322,16 +1321,9 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.CreateJoinRelationship,
     Ash.Resource.Transformers.CachePrimaryKey,
     Ash.Resource.Transformers.ValidatePrimaryActions,
-    Ash.Resource.Transformers.ValidateActionTypesSupported,
-    Ash.Resource.Transformers.CountableActions,
-    Ash.Resource.Transformers.ValidateMultitenancy,
     Ash.Resource.Transformers.DefaultPrimaryKey,
     Ash.Resource.Transformers.DefaultAccept,
     Ash.Resource.Transformers.RequireUniqueFieldNames,
-    Ash.Resource.Transformers.NoReservedFieldNames,
-    Ash.Resource.Transformers.ValidateEagerIdentities,
-    Ash.Resource.Transformers.ValidateAggregatesSupported,
-    Ash.Resource.Transformers.ValidateAccept,
     Ash.Resource.Transformers.GetByReadActions
   ]
 
@@ -1340,7 +1332,16 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.VerifyReservedCalculationArguments,
     Ash.Resource.Verifiers.VerifyIdentityFields,
     Ash.Resource.Verifiers.EnsureAggregateFieldIsAttributeOrCalculation,
-    Ash.Resource.Verifiers.ValidateRelationshipAttributes
+    Ash.Resource.Verifiers.ValidateRelationshipAttributes,
+    Ash.Resource.Verifiers.CountableActions,
+    Ash.Resource.Verifiers.NoReservedFieldNames,
+    Ash.Resource.Verifiers.ValidateAccept,
+    Ash.Resource.Verifiers.ValidateActionTypesSupported,
+    Ash.Resource.Verifiers.ValidateAggregatesSupported,
+    Ash.Resource.Verifiers.ValidateEagerIdentities,
+    Ash.Resource.Verifiers.ValidateManagedRelationshipOpts,
+    Ash.Resource.Verifiers.ValidateMultitenancy,
+    Ash.Resource.Verifiers.ValidatePrimaryKey
   ]
 
   @moduledoc false

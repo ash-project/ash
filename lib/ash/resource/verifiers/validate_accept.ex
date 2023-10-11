@@ -1,18 +1,15 @@
-defmodule Ash.Resource.Transformers.ValidateAccept do
+defmodule Ash.Resource.Verifiers.ValidateAccept do
   @moduledoc "Validates that accept and reject lists only contain valid attributes"
-  use Spark.Dsl.Transformer
+  use Spark.Dsl.Verifier
 
-  alias Spark.Dsl.Transformer
+  alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
 
   @impl true
-  def after_compile?, do: true
-
-  @impl true
-  def transform(dsl_state) do
+  def verify(dsl_state) do
     {private_attributes, public_attributes} =
       dsl_state
-      |> Transformer.get_entities([:attributes])
+      |> Verifier.get_entities([:attributes])
       |> Enum.split_with(& &1.private?)
 
     public_attribute_names = MapSet.new(public_attributes, & &1.name)
@@ -21,7 +18,7 @@ defmodule Ash.Resource.Transformers.ValidateAccept do
     initial_errors = %{private: [], not_attribute: []}
 
     result =
-      Transformer.get_entities(dsl_state, [:actions])
+      Verifier.get_entities(dsl_state, [:actions])
       |> Enum.reduce(%{}, fn
         %{name: action_name, accept: accept, reject: reject}, acc ->
           validate_attribute_name = fn attribute_name ->

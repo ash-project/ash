@@ -1,30 +1,28 @@
-defmodule Ash.Resource.Transformers.CountableActions do
+defmodule Ash.Resource.Verifiers.CountableActions do
   @moduledoc """
   Ensures that countable paginated actions do not exist for resources that are not countable
   """
-  use Spark.Dsl.Transformer
+  use Spark.Dsl.Verifier
 
-  alias Spark.Dsl.Transformer
-
-  def after_compile?, do: true
+  alias Spark.Dsl.Verifier
 
   # sobelow_skip ["DOS.BinToAtom"]
-  def transform(dsl_state) do
+  def verify(dsl_state) do
     dsl_state
-    |> Transformer.get_entities([:actions])
+    |> Verifier.get_entities([:actions])
     |> Enum.filter(fn action ->
       action.type == :read && action.pagination && action.pagination.countable
     end)
     |> case do
       [] ->
-        {:ok, dsl_state}
+        :ok
 
       [action | _] ->
-        data_layer = Transformer.get_persisted(dsl_state, :data_layer)
-        resource = Transformer.get_persisted(dsl_state, :module)
+        data_layer = Verifier.get_persisted(dsl_state, :data_layer)
+        resource = Verifier.get_persisted(dsl_state, :module)
 
         if data_layer && data_layer.can?(resource, {:query_aggregate, :count}) do
-          {:ok, dsl_state}
+          :ok
         else
           {:error,
            Spark.Error.DslError.exception(

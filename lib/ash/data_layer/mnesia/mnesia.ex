@@ -35,7 +35,7 @@ defmodule Ash.DataLayer.Mnesia do
 
   use Spark.Dsl.Extension,
     sections: [@mnesia],
-    transformers: [Ash.DataLayer.Transformers.RequirePreCheckWith]
+    verifiers: [Ash.DataLayer.Verifiers.RequirePreCheckWith]
 
   alias Ash.Actions.Sort
   alias :mnesia, as: Mnesia

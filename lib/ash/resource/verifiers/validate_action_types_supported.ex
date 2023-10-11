@@ -1,21 +1,20 @@
-defmodule Ash.Resource.Transformers.ValidateActionTypesSupported do
+defmodule Ash.Resource.Verifiers.ValidateActionTypesSupported do
   @moduledoc """
   Confirms that all action types declared on a resource are supported by its data layer
   """
-  use Spark.Dsl.Transformer
+  use Spark.Dsl.Verifier
 
-  alias Spark.Dsl.Transformer
+  alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
 
-  def after_compile?, do: true
-
-  def transform(dsl_state) do
+  @impl true
+  def verify(dsl_state) do
     dsl_state
-    |> Transformer.get_entities([:actions])
+    |> Verifier.get_entities([:actions])
     |> Enum.reject(&(&1.type in [:read, :action]))
     |> Enum.each(fn action ->
-      data_layer = Transformer.get_persisted(dsl_state, :data_layer)
-      resource = Transformer.get_persisted(dsl_state, :module)
+      data_layer = Verifier.get_persisted(dsl_state, :data_layer)
+      resource = Verifier.get_persisted(dsl_state, :module)
 
       unless data_layer && data_layer.can?(resource, action.type) do
         message = """
@@ -31,6 +30,6 @@ defmodule Ash.Resource.Transformers.ValidateActionTypesSupported do
       end
     end)
 
-    {:ok, dsl_state}
+    :ok
   end
 end

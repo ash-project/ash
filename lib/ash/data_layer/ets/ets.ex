@@ -40,7 +40,7 @@ defmodule Ash.DataLayer.Ets do
 
   use Spark.Dsl.Extension,
     sections: [@ets],
-    transformers: [Ash.DataLayer.Transformers.RequirePreCheckWith]
+    verifiers: [Ash.DataLayer.Verifiers.RequirePreCheckWith]
 
   alias Ash.Actions.Sort
 

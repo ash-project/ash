@@ -1,20 +1,19 @@
-defmodule Ash.Resource.Transformers.ValidateManagedRelationshipOpts do
+defmodule Ash.Resource.Verifiers.ValidateManagedRelationshipOpts do
   @moduledoc """
   Confirms that all action types declared on a resource are supported by its data layer
   """
-  use Spark.Dsl.Transformer
+  use Spark.Dsl.Verifier
 
   alias Ash.Changeset.ManagedRelationshipHelpers
-  alias Spark.Dsl.Transformer
+  alias Spark.Dsl.Verifier
   require Logger
 
-  def after_compile?, do: true
-
-  def transform(dsl_state) do
-    relationships = Transformer.get_entities(dsl_state, [:relationships])
+  @impl true
+  def verify(dsl_state) do
+    relationships = Verifier.get_entities(dsl_state, [:relationships])
 
     dsl_state
-    |> Transformer.get_entities([:actions])
+    |> Verifier.get_entities([:actions])
     |> Enum.reject(&(&1.type in [:read, :action]))
     |> Enum.each(fn action ->
       action.changes
@@ -102,7 +101,7 @@ defmodule Ash.Resource.Transformers.ValidateManagedRelationshipOpts do
       end)
     end)
 
-    {:ok, dsl_state}
+    :ok
   end
 
   defp ensure_compiled?(%Ash.Resource.Relationships.ManyToMany{

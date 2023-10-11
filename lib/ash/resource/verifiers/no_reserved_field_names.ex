@@ -1,32 +1,32 @@
-defmodule Ash.Resource.Transformers.NoReservedFieldNames do
+defmodule Ash.Resource.Verifiers.NoReservedFieldNames do
   @moduledoc """
   Confirms that a resource does not use reserved names for field names.
 
   Reserved field names are: #{inspect(Ash.Resource.reserved_names())}.
   """
-  use Spark.Dsl.Transformer
+  use Spark.Dsl.Verifier
 
-  alias Spark.Dsl.Transformer
+  alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
 
-  def transform(dsl_state) do
-    resource = Transformer.get_persisted(dsl_state, :module)
+  def verify(dsl_state) do
+    resource = Verifier.get_persisted(dsl_state, :module)
 
     attributes =
       dsl_state
-      |> Transformer.get_entities([:attributes])
+      |> Verifier.get_entities([:attributes])
 
     relationships =
       dsl_state
-      |> Transformer.get_entities([:relationships])
+      |> Verifier.get_entities([:relationships])
 
     calculations =
       dsl_state
-      |> Transformer.get_entities([:calculations])
+      |> Verifier.get_entities([:calculations])
 
     aggregates =
       dsl_state
-      |> Transformer.get_entities([:aggregates])
+      |> Verifier.get_entities([:aggregates])
 
     attributes
     |> Enum.concat(relationships)
@@ -53,8 +53,6 @@ defmodule Ash.Resource.Transformers.NoReservedFieldNames do
       end
     end)
 
-    {:ok, dsl_state}
+    :ok
   end
-
-  def after_compile?, do: true
 end

@@ -1,20 +1,19 @@
-defmodule Ash.Resource.Transformers.ValidateMultitenancy do
+defmodule Ash.Resource.Verifiers.ValidateMultitenancy do
   @moduledoc """
   Ensures that the multitenancy configuration is valid for the given resource
   """
-  use Spark.Dsl.Transformer
+  use Spark.Dsl.Verifier
 
-  alias Spark.Dsl.Transformer
-
-  def after_compile?, do: true
+  alias Spark.Dsl.Verifier
 
   # sobelow_skip ["DOS.BinToAtom"]
-  def transform(dsl_state) do
-    strategy = Transformer.get_option(dsl_state, [:multitenancy], :strategy)
-    attribute = Transformer.get_option(dsl_state, [:multitenancy], :attribute)
-    attributes = Transformer.get_entities(dsl_state, [:attributes])
-    resource = Transformer.get_persisted(dsl_state, :module)
-    data_layer = Transformer.get_persisted(dsl_state, :data_layer)
+  @impl true
+  def verify(dsl_state) do
+    strategy = Verifier.get_option(dsl_state, [:multitenancy], :strategy)
+    attribute = Verifier.get_option(dsl_state, [:multitenancy], :attribute)
+    attributes = Verifier.get_entities(dsl_state, [:attributes])
+    resource = Verifier.get_persisted(dsl_state, :module)
+    data_layer = Verifier.get_persisted(dsl_state, :data_layer)
 
     cond do
       strategy == :context && not data_layer.can?(resource, :multitenancy) ->
@@ -32,7 +31,7 @@ defmodule Ash.Resource.Transformers.ValidateMultitenancy do
          )}
 
       true ->
-        {:ok, dsl_state}
+        :ok
     end
   end
 end

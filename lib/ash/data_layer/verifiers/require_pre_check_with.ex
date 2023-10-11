@@ -1,32 +1,29 @@
-defmodule Ash.DataLayer.Transformers.RequirePreCheckWith do
+defmodule Ash.DataLayer.Verifiers.RequirePreCheckWith do
   @moduledoc """
   Ensures that all identities have a `pre_check_with` configured, or raises.
   """
-  use Spark.Dsl.Transformer
+  use Spark.Dsl.Verifier
 
-  alias Spark.Dsl.Transformer
+  alias Spark.Dsl.Verifier
 
   require Logger
 
   @impl true
-  def after_compile?, do: true
-
-  @impl true
-  def transform(dsl) do
-    resource = Transformer.get_persisted(dsl, :module)
+  def verify(dsl) do
+    resource = Verifier.get_persisted(dsl, :module)
 
     dsl
-    |> Transformer.get_entities([:identities])
+    |> Verifier.get_entities([:identities])
     |> Enum.filter(fn identity ->
       is_nil(identity.pre_check_with)
     end)
     |> case do
       [] ->
-        {:ok, dsl}
+        :ok
 
       identities ->
         if function_exported?(resource, :testing_identities, 0) do
-          {:ok, dsl}
+          :ok
         else
           {:error,
            Spark.Error.DslError.exception(
