@@ -363,6 +363,9 @@ defmodule Ash.Actions.Update do
               if is_nil(changeset) && skip_on_nil_record? do
                 {:ok, nil}
               else
+                can_atomic_update? =
+                  Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :update})
+
                 result =
                   changeset
                   |> Ash.Changeset.before_action(
@@ -374,114 +377,122 @@ defmodule Ash.Actions.Update do
                     )
                   )
                   |> Ash.Changeset.with_hooks(
-                    fn changeset ->
-                      changeset = Ash.Changeset.hydrate_atomic_refs(changeset, actor)
+                    fn
+                      %{atomics: atomics} when atomics != [] and not can_atomic_update? ->
+                        {:error,
+                         Ash.Error.Invalid.AtomicsNotSupported.exception(
+                           resource: changeset.resource,
+                           action_type: :update
+                         )}
 
-                      case Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
-                             changeset,
-                             actor,
-                             actor: actor,
-                             authorize?: authorize?
-                           ) do
-                        {:error, error} ->
-                          {:error, error}
+                      changeset ->
+                        changeset = Ash.Changeset.hydrate_atomic_refs(changeset, actor)
 
-                        {changeset, manage_instructions} ->
-                          changeset =
-                            changeset
-                            |> Ash.Changeset.require_values(
-                              :update,
-                              true
-                            )
-                            |> Ash.Changeset.require_values(
-                              :update,
-                              false,
-                              action.require_attributes
-                            )
+                        case Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
+                               changeset,
+                               actor,
+                               actor: actor,
+                               authorize?: authorize?
+                             ) do
+                          {:error, error} ->
+                            {:error, error}
 
-                          changeset = set_tenant(changeset)
-
-                          if changeset.valid? do
-                            if action.manual do
-                              {mod, opts} = action.manual
-
-                              if result = changeset.context[:private][:action_result] do
-                                result
-                              else
-                                mod.update(changeset, opts, %{
-                                  actor: actor,
-                                  tenant: changeset.tenant,
-                                  authorize?: authorize?,
-                                  api: changeset.api
-                                })
-                                |> validate_manual_action_return_result!(
-                                  resource,
-                                  changeset.action
-                                )
-                              end
-                              |> manage_relationships(api, changeset,
-                                actor: actor,
-                                authorize?: authorize?
+                          {changeset, manage_instructions} ->
+                            changeset =
+                              changeset
+                              |> Ash.Changeset.require_values(
+                                :update,
+                                true
                               )
-                            else
-                              cond do
-                                result = changeset.context[:private][:action_result] ->
+                              |> Ash.Changeset.require_values(
+                                :update,
+                                false,
+                                action.require_attributes
+                              )
+
+                            changeset = set_tenant(changeset)
+
+                            if changeset.valid? do
+                              if action.manual do
+                                {mod, opts} = action.manual
+
+                                if result = changeset.context[:private][:action_result] do
                                   result
-                                  |> add_tenant(changeset)
-                                  |> manage_relationships(api, changeset,
+                                else
+                                  mod.update(changeset, opts, %{
                                     actor: actor,
-                                    authorize?: authorize?
+                                    tenant: changeset.tenant,
+                                    authorize?: authorize?,
+                                    api: changeset.api
+                                  })
+                                  |> validate_manual_action_return_result!(
+                                    resource,
+                                    changeset.action
                                   )
+                                end
+                                |> manage_relationships(api, changeset,
+                                  actor: actor,
+                                  authorize?: authorize?
+                                )
+                              else
+                                cond do
+                                  result = changeset.context[:private][:action_result] ->
+                                    result
+                                    |> add_tenant(changeset)
+                                    |> manage_relationships(api, changeset,
+                                      actor: actor,
+                                      authorize?: authorize?
+                                    )
 
-                                Ash.Changeset.changing_attributes?(changeset) ||
-                                    !Enum.empty?(changeset.atomics) ->
-                                  changeset =
-                                    changeset
-                                    |> Ash.Changeset.set_defaults(:update, true)
-                                    |> Ash.Changeset.put_context(:changed?, true)
+                                  Ash.Changeset.changing_attributes?(changeset) ||
+                                      !Enum.empty?(changeset.atomics) ->
+                                    changeset =
+                                      changeset
+                                      |> Ash.Changeset.set_defaults(:update, true)
+                                      |> Ash.Changeset.put_context(:changed?, true)
 
-                                  resource
-                                  |> Ash.DataLayer.update(changeset)
-                                  |> add_tenant(changeset)
-                                  |> manage_relationships(api, changeset,
-                                    actor: actor,
-                                    authorize?: authorize?
-                                  )
+                                    resource
+                                    |> Ash.DataLayer.update(changeset)
+                                    |> add_tenant(changeset)
+                                    |> manage_relationships(api, changeset,
+                                      actor: actor,
+                                      authorize?: authorize?
+                                    )
 
-                                true ->
-                                  changeset =
-                                    Ash.Changeset.put_context(changeset, :changed?, false)
+                                  true ->
+                                    changeset =
+                                      Ash.Changeset.put_context(changeset, :changed?, false)
 
-                                  {:ok, changeset.data}
-                                  |> add_tenant(changeset)
-                                  |> manage_relationships(api, changeset,
-                                    actor: actor,
-                                    authorize?: authorize?
-                                  )
+                                    {:ok, changeset.data}
+                                    |> add_tenant(changeset)
+                                    |> manage_relationships(api, changeset,
+                                      actor: actor,
+                                      authorize?: authorize?
+                                    )
+                                end
                               end
-                            end
-                            |> case do
-                              {:ok, result} ->
-                                {:ok, result,
-                                 %{
-                                   notifications: manage_instructions.notifications
-                                 }}
+                              |> case do
+                                {:ok, result} ->
+                                  {:ok, result,
+                                   %{
+                                     notifications: manage_instructions.notifications
+                                   }}
 
-                              {:ok, result, notifications} ->
-                                {:ok, result,
-                                 Map.update!(
-                                   notifications,
-                                   :notifications,
-                                   &(&1 ++ manage_instructions.notifications)
-                                 )}
+                                {:ok, result, notifications} ->
+                                  {:ok, result,
+                                   Map.update!(
+                                     notifications,
+                                     :notifications,
+                                     &(&1 ++ manage_instructions.notifications)
+                                   )}
 
-                              {:error, error} ->
-                                {:error, Ash.Changeset.add_error(changeset, error)}
+                                {:error, error} ->
+                                  {:error, Ash.Changeset.add_error(changeset, error)}
+                              end
+                            else
+                              {:error, changeset}
                             end
-                          else
-                            {:error, changeset}
-                          end
-                      end
+                        end
                     end,
                     transaction?:
                       Keyword.get(request_opts, :transaction?, true) && action.transaction?,

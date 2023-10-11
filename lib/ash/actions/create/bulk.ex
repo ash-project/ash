@@ -814,7 +814,7 @@ defmodule Ash.Actions.Create.Bulk do
           end)
 
         batch
-        |> Enum.group_by(& &1.atomics)
+        |> Enum.group_by(&{&1.atomics, &1.filters})
         |> Enum.reduce_while({:ok, []}, fn {_atomics, batch}, {:ok, acc} ->
           result =
             case action.manual do

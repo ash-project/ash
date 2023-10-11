@@ -1,6 +1,7 @@
 defmodule Ash.Test.Resource.UpsertTest do
   @moduledoc false
   use ExUnit.Case, async: true
+  import Ash.Expr
 
   defmodule ProductCatalog do
     use Ash.Api,
@@ -136,6 +137,33 @@ defmodule Ash.Test.Resource.UpsertTest do
   end
 
   alias ProductCatalog.Product
+
+  describe "atomics" do
+    test "atomics can be added to a changeset" do
+      product =
+        Product
+        |> Ash.Changeset.for_create(:create, %{name: "foo"},
+          upsert?: true,
+          upsert_identity: :unique_name
+        )
+        |> Ash.Changeset.atomic_update(:name, expr(name <> " bar"))
+        |> ProductCatalog.create!()
+
+      assert product.name == "foo"
+
+      updated =
+        Product
+        |> Ash.Changeset.for_create(:create, %{name: "foo"},
+          upsert?: true,
+          upsert_identity: :unique_name
+        )
+        |> Ash.Changeset.atomic_update(:name, expr(name <> " bar"))
+        |> ProductCatalog.create!()
+
+      assert updated.id == product.id
+      assert updated.name == "foo bar"
+    end
+  end
 
   describe "upsert and load children" do
     test "Product.upsert_variants" do

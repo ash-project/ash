@@ -2048,6 +2048,8 @@ defmodule Ash.Changeset do
 
   @doc false
   def run_before_actions(changeset) do
+    can_atomic_upsert? = Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :upsert})
+
     Enum.reduce_while(
       changeset.before_action,
       {changeset, %{notifications: []}},
@@ -2106,6 +2108,26 @@ defmodule Ash.Changeset do
         end
       end
     )
+    |> case do
+      {:error, error} ->
+        {:error, error}
+
+      {%{atomics: atomics} = changeset, _} when atomics != [] and not can_atomic_upsert? ->
+        Ash.Changeset.add_error(
+          changeset,
+          Ash.Error.Invalid.AtomicsNotSupported.exception(
+            resource: changeset.resource,
+            action_type: :create
+          )
+        )
+
+      {%{valid?: true} = changeset, instructions} ->
+        {Ash.Changeset.hydrate_atomic_refs(changeset, changeset.context[:private][:actor]),
+         instructions}
+
+      {changeset, instructions} ->
+        {changeset, instructions}
+    end
   end
 
   @doc false
@@ -2156,7 +2178,17 @@ defmodule Ash.Changeset do
       |> put_context(:private, %{in_before_action?: true})
       |> set_phase(:before_action)
 
-    result = run_before_actions(changeset)
+    result =
+      if changeset.atomics != [] &&
+           !Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :upsert}) do
+        {:error,
+         Ash.Error.Invalid.AtomicsNotSupported.exception(
+           resource: changeset.resource,
+           action_type: :create
+         )}
+      else
+        run_before_actions(changeset)
+      end
 
     case result do
       {:error, error} ->

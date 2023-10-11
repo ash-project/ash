@@ -233,6 +233,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:query_aggregate, :exists}), do: true
   def can?(_, {:sort, _}), do: true
   def can?(_, {:atomic, :update}), do: true
+  def can?(_, {:atomic, :upsert}), do: true
   def can?(_, _), do: false
 
   @doc false
