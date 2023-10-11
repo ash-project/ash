@@ -74,8 +74,7 @@ end
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -89,7 +88,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-type-name" href="#name-type-name">
+    <a id="attributes-attribute-name" href="#attributes-attribute-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -110,7 +109,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-type" href="#name-type-type">
+    <a id="attributes-attribute-type" href="#attributes-attribute-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -129,9 +128,23 @@ end
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-type-constraints" href="#name-type-constraints">
+    <a id="attributes-attribute-constraints" href="#attributes-attribute-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>
@@ -152,7 +165,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-description" href="#name-type-description">
+    <a id="attributes-attribute-description" href="#attributes-attribute-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -172,7 +185,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-sensitive?" href="#name-type-sensitive?">
+    <a id="attributes-attribute-sensitive?" href="#attributes-attribute-sensitive?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sensitive?
       </span>
@@ -193,7 +206,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-source" href="#name-type-source">
+    <a id="attributes-attribute-source" href="#attributes-attribute-source">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         source
       </span>
@@ -214,7 +227,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-always_select?" href="#name-type-always_select?">
+    <a id="attributes-attribute-always_select?" href="#attributes-attribute-always_select?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         always_select?
       </span>
@@ -235,7 +248,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-primary_key?" href="#name-type-primary_key?">
+    <a id="attributes-attribute-primary_key?" href="#attributes-attribute-primary_key?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         primary_key?
       </span>
@@ -256,7 +269,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-allow_nil?" href="#name-type-allow_nil?">
+    <a id="attributes-attribute-allow_nil?" href="#attributes-attribute-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -277,7 +290,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-generated?" href="#name-type-generated?">
+    <a id="attributes-attribute-generated?" href="#attributes-attribute-generated?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         generated?
       </span>
@@ -298,7 +311,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-writable?" href="#name-type-writable?">
+    <a id="attributes-attribute-writable?" href="#attributes-attribute-writable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         writable?
       </span>
@@ -319,7 +332,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-private?" href="#name-type-private?">
+    <a id="attributes-attribute-private?" href="#attributes-attribute-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -340,7 +353,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-default" href="#name-type-default">
+    <a id="attributes-attribute-default" href="#attributes-attribute-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -360,7 +373,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-update_default" href="#name-type-update_default">
+    <a id="attributes-attribute-update_default" href="#attributes-attribute-update_default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         update_default
       </span>
@@ -380,7 +393,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-filterable?" href="#name-type-filterable?">
+    <a id="attributes-attribute-filterable?" href="#attributes-attribute-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -401,7 +414,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-match_other_defaults?" href="#name-type-match_other_defaults?">
+    <a id="attributes-attribute-match_other_defaults?" href="#attributes-attribute-match_other_defaults?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         match_other_defaults?
       </span>
@@ -459,8 +472,7 @@ create_timestamp :inserted_at
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -474,7 +486,7 @@ create_timestamp :inserted_at
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-name" href="#name-name">
+    <a id="attributes-create_timestamp-name" href="#attributes-create_timestamp-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -493,9 +505,23 @@ create_timestamp :inserted_at
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-type" href="#name-type">
+    <a id="attributes-create_timestamp-type" href="#attributes-create_timestamp-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -515,7 +541,7 @@ create_timestamp :inserted_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-constraints" href="#name-constraints">
+    <a id="attributes-create_timestamp-constraints" href="#attributes-create_timestamp-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>
@@ -536,7 +562,7 @@ create_timestamp :inserted_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-description" href="#name-description">
+    <a id="attributes-create_timestamp-description" href="#attributes-create_timestamp-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -556,7 +582,7 @@ create_timestamp :inserted_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-sensitive?" href="#name-sensitive?">
+    <a id="attributes-create_timestamp-sensitive?" href="#attributes-create_timestamp-sensitive?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sensitive?
       </span>
@@ -577,7 +603,7 @@ create_timestamp :inserted_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-source" href="#name-source">
+    <a id="attributes-create_timestamp-source" href="#attributes-create_timestamp-source">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         source
       </span>
@@ -598,7 +624,7 @@ create_timestamp :inserted_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-always_select?" href="#name-always_select?">
+    <a id="attributes-create_timestamp-always_select?" href="#attributes-create_timestamp-always_select?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         always_select?
       </span>
@@ -619,7 +645,7 @@ create_timestamp :inserted_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-primary_key?" href="#name-primary_key?">
+    <a id="attributes-create_timestamp-primary_key?" href="#attributes-create_timestamp-primary_key?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         primary_key?
       </span>
@@ -640,7 +666,7 @@ create_timestamp :inserted_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-allow_nil?" href="#name-allow_nil?">
+    <a id="attributes-create_timestamp-allow_nil?" href="#attributes-create_timestamp-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -661,7 +687,7 @@ create_timestamp :inserted_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-generated?" href="#name-generated?">
+    <a id="attributes-create_timestamp-generated?" href="#attributes-create_timestamp-generated?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         generated?
       </span>
@@ -682,7 +708,7 @@ create_timestamp :inserted_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-writable?" href="#name-writable?">
+    <a id="attributes-create_timestamp-writable?" href="#attributes-create_timestamp-writable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         writable?
       </span>
@@ -703,7 +729,7 @@ create_timestamp :inserted_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-private?" href="#name-private?">
+    <a id="attributes-create_timestamp-private?" href="#attributes-create_timestamp-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -724,7 +750,7 @@ create_timestamp :inserted_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-default" href="#name-default">
+    <a id="attributes-create_timestamp-default" href="#attributes-create_timestamp-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -744,7 +770,7 @@ create_timestamp :inserted_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-update_default" href="#name-update_default">
+    <a id="attributes-create_timestamp-update_default" href="#attributes-create_timestamp-update_default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         update_default
       </span>
@@ -764,7 +790,7 @@ create_timestamp :inserted_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-filterable?" href="#name-filterable?">
+    <a id="attributes-create_timestamp-filterable?" href="#attributes-create_timestamp-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -785,7 +811,7 @@ create_timestamp :inserted_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-match_other_defaults?" href="#name-match_other_defaults?">
+    <a id="attributes-create_timestamp-match_other_defaults?" href="#attributes-create_timestamp-match_other_defaults?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         match_other_defaults?
       </span>
@@ -844,8 +870,7 @@ update_timestamp :updated_at
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -859,7 +884,7 @@ update_timestamp :updated_at
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-name" href="#name-name">
+    <a id="attributes-update_timestamp-name" href="#attributes-update_timestamp-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -878,9 +903,23 @@ update_timestamp :updated_at
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-type" href="#name-type">
+    <a id="attributes-update_timestamp-type" href="#attributes-update_timestamp-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -900,7 +939,7 @@ update_timestamp :updated_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-constraints" href="#name-constraints">
+    <a id="attributes-update_timestamp-constraints" href="#attributes-update_timestamp-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>
@@ -921,7 +960,7 @@ update_timestamp :updated_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-description" href="#name-description">
+    <a id="attributes-update_timestamp-description" href="#attributes-update_timestamp-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -941,7 +980,7 @@ update_timestamp :updated_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-sensitive?" href="#name-sensitive?">
+    <a id="attributes-update_timestamp-sensitive?" href="#attributes-update_timestamp-sensitive?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sensitive?
       </span>
@@ -962,7 +1001,7 @@ update_timestamp :updated_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-source" href="#name-source">
+    <a id="attributes-update_timestamp-source" href="#attributes-update_timestamp-source">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         source
       </span>
@@ -983,7 +1022,7 @@ update_timestamp :updated_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-always_select?" href="#name-always_select?">
+    <a id="attributes-update_timestamp-always_select?" href="#attributes-update_timestamp-always_select?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         always_select?
       </span>
@@ -1004,7 +1043,7 @@ update_timestamp :updated_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-primary_key?" href="#name-primary_key?">
+    <a id="attributes-update_timestamp-primary_key?" href="#attributes-update_timestamp-primary_key?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         primary_key?
       </span>
@@ -1025,7 +1064,7 @@ update_timestamp :updated_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-allow_nil?" href="#name-allow_nil?">
+    <a id="attributes-update_timestamp-allow_nil?" href="#attributes-update_timestamp-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -1046,7 +1085,7 @@ update_timestamp :updated_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-generated?" href="#name-generated?">
+    <a id="attributes-update_timestamp-generated?" href="#attributes-update_timestamp-generated?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         generated?
       </span>
@@ -1067,7 +1106,7 @@ update_timestamp :updated_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-writable?" href="#name-writable?">
+    <a id="attributes-update_timestamp-writable?" href="#attributes-update_timestamp-writable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         writable?
       </span>
@@ -1088,7 +1127,7 @@ update_timestamp :updated_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-private?" href="#name-private?">
+    <a id="attributes-update_timestamp-private?" href="#attributes-update_timestamp-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -1109,7 +1148,7 @@ update_timestamp :updated_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-default" href="#name-default">
+    <a id="attributes-update_timestamp-default" href="#attributes-update_timestamp-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -1129,7 +1168,7 @@ update_timestamp :updated_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-update_default" href="#name-update_default">
+    <a id="attributes-update_timestamp-update_default" href="#attributes-update_timestamp-update_default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         update_default
       </span>
@@ -1149,7 +1188,7 @@ update_timestamp :updated_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-filterable?" href="#name-filterable?">
+    <a id="attributes-update_timestamp-filterable?" href="#attributes-update_timestamp-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -1170,7 +1209,7 @@ update_timestamp :updated_at
 
 <tr>
   <td style="text-align: left">
-    <a id="name-match_other_defaults?" href="#name-match_other_defaults?">
+    <a id="attributes-update_timestamp-match_other_defaults?" href="#attributes-update_timestamp-match_other_defaults?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         match_other_defaults?
       </span>
@@ -1228,8 +1267,7 @@ integer_primary_key :id
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -1243,7 +1281,7 @@ integer_primary_key :id
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-name" href="#name-name">
+    <a id="attributes-integer_primary_key-name" href="#attributes-integer_primary_key-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -1262,9 +1300,23 @@ integer_primary_key :id
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-type" href="#name-type">
+    <a id="attributes-integer_primary_key-type" href="#attributes-integer_primary_key-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -1284,7 +1336,7 @@ integer_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-constraints" href="#name-constraints">
+    <a id="attributes-integer_primary_key-constraints" href="#attributes-integer_primary_key-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>
@@ -1305,7 +1357,7 @@ integer_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-description" href="#name-description">
+    <a id="attributes-integer_primary_key-description" href="#attributes-integer_primary_key-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -1325,7 +1377,7 @@ integer_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-sensitive?" href="#name-sensitive?">
+    <a id="attributes-integer_primary_key-sensitive?" href="#attributes-integer_primary_key-sensitive?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sensitive?
       </span>
@@ -1346,7 +1398,7 @@ integer_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-source" href="#name-source">
+    <a id="attributes-integer_primary_key-source" href="#attributes-integer_primary_key-source">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         source
       </span>
@@ -1367,7 +1419,7 @@ integer_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-always_select?" href="#name-always_select?">
+    <a id="attributes-integer_primary_key-always_select?" href="#attributes-integer_primary_key-always_select?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         always_select?
       </span>
@@ -1388,7 +1440,7 @@ integer_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-primary_key?" href="#name-primary_key?">
+    <a id="attributes-integer_primary_key-primary_key?" href="#attributes-integer_primary_key-primary_key?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         primary_key?
       </span>
@@ -1409,7 +1461,7 @@ integer_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-generated?" href="#name-generated?">
+    <a id="attributes-integer_primary_key-generated?" href="#attributes-integer_primary_key-generated?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         generated?
       </span>
@@ -1430,7 +1482,7 @@ integer_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-writable?" href="#name-writable?">
+    <a id="attributes-integer_primary_key-writable?" href="#attributes-integer_primary_key-writable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         writable?
       </span>
@@ -1451,7 +1503,7 @@ integer_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-private?" href="#name-private?">
+    <a id="attributes-integer_primary_key-private?" href="#attributes-integer_primary_key-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -1472,7 +1524,7 @@ integer_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-default" href="#name-default">
+    <a id="attributes-integer_primary_key-default" href="#attributes-integer_primary_key-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -1492,7 +1544,7 @@ integer_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-update_default" href="#name-update_default">
+    <a id="attributes-integer_primary_key-update_default" href="#attributes-integer_primary_key-update_default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         update_default
       </span>
@@ -1512,7 +1564,7 @@ integer_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-filterable?" href="#name-filterable?">
+    <a id="attributes-integer_primary_key-filterable?" href="#attributes-integer_primary_key-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -1533,7 +1585,7 @@ integer_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-match_other_defaults?" href="#name-match_other_defaults?">
+    <a id="attributes-integer_primary_key-match_other_defaults?" href="#attributes-integer_primary_key-match_other_defaults?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         match_other_defaults?
       </span>
@@ -1590,8 +1642,7 @@ uuid_primary_key :id
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -1605,7 +1656,7 @@ uuid_primary_key :id
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-name" href="#name-name">
+    <a id="attributes-uuid_primary_key-name" href="#attributes-uuid_primary_key-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -1624,9 +1675,23 @@ uuid_primary_key :id
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-type" href="#name-type">
+    <a id="attributes-uuid_primary_key-type" href="#attributes-uuid_primary_key-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -1646,7 +1711,7 @@ uuid_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-constraints" href="#name-constraints">
+    <a id="attributes-uuid_primary_key-constraints" href="#attributes-uuid_primary_key-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>
@@ -1667,7 +1732,7 @@ uuid_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-description" href="#name-description">
+    <a id="attributes-uuid_primary_key-description" href="#attributes-uuid_primary_key-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -1687,7 +1752,7 @@ uuid_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-sensitive?" href="#name-sensitive?">
+    <a id="attributes-uuid_primary_key-sensitive?" href="#attributes-uuid_primary_key-sensitive?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sensitive?
       </span>
@@ -1708,7 +1773,7 @@ uuid_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-source" href="#name-source">
+    <a id="attributes-uuid_primary_key-source" href="#attributes-uuid_primary_key-source">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         source
       </span>
@@ -1729,7 +1794,7 @@ uuid_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-always_select?" href="#name-always_select?">
+    <a id="attributes-uuid_primary_key-always_select?" href="#attributes-uuid_primary_key-always_select?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         always_select?
       </span>
@@ -1750,7 +1815,7 @@ uuid_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-primary_key?" href="#name-primary_key?">
+    <a id="attributes-uuid_primary_key-primary_key?" href="#attributes-uuid_primary_key-primary_key?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         primary_key?
       </span>
@@ -1771,7 +1836,7 @@ uuid_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-generated?" href="#name-generated?">
+    <a id="attributes-uuid_primary_key-generated?" href="#attributes-uuid_primary_key-generated?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         generated?
       </span>
@@ -1792,7 +1857,7 @@ uuid_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-writable?" href="#name-writable?">
+    <a id="attributes-uuid_primary_key-writable?" href="#attributes-uuid_primary_key-writable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         writable?
       </span>
@@ -1813,7 +1878,7 @@ uuid_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-private?" href="#name-private?">
+    <a id="attributes-uuid_primary_key-private?" href="#attributes-uuid_primary_key-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -1834,7 +1899,7 @@ uuid_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-default" href="#name-default">
+    <a id="attributes-uuid_primary_key-default" href="#attributes-uuid_primary_key-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -1854,7 +1919,7 @@ uuid_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-update_default" href="#name-update_default">
+    <a id="attributes-uuid_primary_key-update_default" href="#attributes-uuid_primary_key-update_default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         update_default
       </span>
@@ -1874,7 +1939,7 @@ uuid_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-filterable?" href="#name-filterable?">
+    <a id="attributes-uuid_primary_key-filterable?" href="#attributes-uuid_primary_key-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -1895,7 +1960,7 @@ uuid_primary_key :id
 
 <tr>
   <td style="text-align: left">
-    <a id="name-match_other_defaults?" href="#name-match_other_defaults?">
+    <a id="attributes-uuid_primary_key-match_other_defaults?" href="#attributes-uuid_primary_key-match_other_defaults?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         match_other_defaults?
       </span>
@@ -2014,7 +2079,60 @@ end
 
 
 
+### Arguments
 
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+  <td style="text-align: left">
+    <a id="relationships-has_one-name" href="#relationships-has_one-name">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        name
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">atom</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The name of the relationship
+  </td>
+</tr>
+
+<tr>
+  <td style="text-align: left">
+    <a id="relationships-has_one-destination" href="#relationships-has_one-destination">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        destination
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">module</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The destination resource
+  </td>
+</tr>
+
+  </tbody>
+</table>
 ### Options
 
 <table>
@@ -2029,7 +2147,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-destination-manual" href="#name-destination-manual">
+    <a id="relationships-has_one-manual" href="#relationships-has_one-manual">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         manual
       </span>
@@ -2050,7 +2168,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-no_attributes?" href="#name-destination-no_attributes?">
+    <a id="relationships-has_one-no_attributes?" href="#relationships-has_one-no_attributes?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         no_attributes?
       </span>
@@ -2071,7 +2189,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-allow_nil?" href="#name-destination-allow_nil?">
+    <a id="relationships-has_one-allow_nil?" href="#relationships-has_one-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -2092,7 +2210,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-from_many?" href="#name-destination-from_many?">
+    <a id="relationships-has_one-from_many?" href="#relationships-has_one-from_many?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         from_many?
       </span>
@@ -2113,47 +2231,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-name" href="#name-destination-name">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        name
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">atom</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The name of the relationship
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="name-destination-destination" href="#name-destination-destination">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        destination
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">module</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The destination resource
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="name-destination-description" href="#name-destination-description">
+    <a id="relationships-has_one-description" href="#relationships-has_one-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -2173,7 +2251,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-destination_attribute" href="#name-destination-destination_attribute">
+    <a id="relationships-has_one-destination_attribute" href="#relationships-has_one-destination_attribute">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         destination_attribute
       </span>
@@ -2193,7 +2271,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-validate_destination_attribute?" href="#name-destination-validate_destination_attribute?">
+    <a id="relationships-has_one-validate_destination_attribute?" href="#relationships-has_one-validate_destination_attribute?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         validate_destination_attribute?
       </span>
@@ -2213,7 +2291,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-source_attribute" href="#name-destination-source_attribute">
+    <a id="relationships-has_one-source_attribute" href="#relationships-has_one-source_attribute">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         source_attribute
       </span>
@@ -2233,7 +2311,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-relationship_context" href="#name-destination-relationship_context">
+    <a id="relationships-has_one-relationship_context" href="#relationships-has_one-relationship_context">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         relationship_context
       </span>
@@ -2254,7 +2332,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-private?" href="#name-destination-private?">
+    <a id="relationships-has_one-private?" href="#relationships-has_one-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -2275,7 +2353,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-not_found_message" href="#name-destination-not_found_message">
+    <a id="relationships-has_one-not_found_message" href="#relationships-has_one-not_found_message">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         not_found_message
       </span>
@@ -2296,7 +2374,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-writable?" href="#name-destination-writable?">
+    <a id="relationships-has_one-writable?" href="#relationships-has_one-writable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         writable?
       </span>
@@ -2317,7 +2395,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-read_action" href="#name-destination-read_action">
+    <a id="relationships-has_one-read_action" href="#relationships-has_one-read_action">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         read_action
       </span>
@@ -2338,7 +2416,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-api" href="#name-destination-api">
+    <a id="relationships-has_one-api" href="#relationships-has_one-api">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         api
       </span>
@@ -2359,7 +2437,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-filter" href="#name-destination-filter">
+    <a id="relationships-has_one-filter" href="#relationships-has_one-filter">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filter
       </span>
@@ -2380,7 +2458,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-filterable?" href="#name-destination-filterable?">
+    <a id="relationships-has_one-filterable?" href="#relationships-has_one-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -2400,7 +2478,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-sort" href="#name-destination-sort">
+    <a id="relationships-has_one-sort" href="#relationships-has_one-sort">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sort
       </span>
@@ -2421,7 +2499,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-could_be_related_at_creation?" href="#name-destination-could_be_related_at_creation?">
+    <a id="relationships-has_one-could_be_related_at_creation?" href="#relationships-has_one-could_be_related_at_creation?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         could_be_related_at_creation?
       </span>
@@ -2442,7 +2520,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-violation_message" href="#name-destination-violation_message">
+    <a id="relationships-has_one-violation_message" href="#relationships-has_one-violation_message">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         violation_message
       </span>
@@ -2497,7 +2575,60 @@ end
 
 
 
+### Arguments
 
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+  <td style="text-align: left">
+    <a id="relationships-has_many-name" href="#relationships-has_many-name">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        name
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">atom</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The name of the relationship
+  </td>
+</tr>
+
+<tr>
+  <td style="text-align: left">
+    <a id="relationships-has_many-destination" href="#relationships-has_many-destination">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        destination
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">module</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The destination resource
+  </td>
+</tr>
+
+  </tbody>
+</table>
 ### Options
 
 <table>
@@ -2512,7 +2643,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-destination-manual" href="#name-destination-manual">
+    <a id="relationships-has_many-manual" href="#relationships-has_many-manual">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         manual
       </span>
@@ -2533,7 +2664,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-no_attributes?" href="#name-destination-no_attributes?">
+    <a id="relationships-has_many-no_attributes?" href="#relationships-has_many-no_attributes?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         no_attributes?
       </span>
@@ -2554,47 +2685,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-name" href="#name-destination-name">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        name
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">atom</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The name of the relationship
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="name-destination-destination" href="#name-destination-destination">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        destination
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">module</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The destination resource
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="name-destination-description" href="#name-destination-description">
+    <a id="relationships-has_many-description" href="#relationships-has_many-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -2614,7 +2705,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-destination_attribute" href="#name-destination-destination_attribute">
+    <a id="relationships-has_many-destination_attribute" href="#relationships-has_many-destination_attribute">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         destination_attribute
       </span>
@@ -2634,7 +2725,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-validate_destination_attribute?" href="#name-destination-validate_destination_attribute?">
+    <a id="relationships-has_many-validate_destination_attribute?" href="#relationships-has_many-validate_destination_attribute?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         validate_destination_attribute?
       </span>
@@ -2654,7 +2745,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-source_attribute" href="#name-destination-source_attribute">
+    <a id="relationships-has_many-source_attribute" href="#relationships-has_many-source_attribute">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         source_attribute
       </span>
@@ -2674,7 +2765,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-relationship_context" href="#name-destination-relationship_context">
+    <a id="relationships-has_many-relationship_context" href="#relationships-has_many-relationship_context">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         relationship_context
       </span>
@@ -2695,7 +2786,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-private?" href="#name-destination-private?">
+    <a id="relationships-has_many-private?" href="#relationships-has_many-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -2716,7 +2807,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-not_found_message" href="#name-destination-not_found_message">
+    <a id="relationships-has_many-not_found_message" href="#relationships-has_many-not_found_message">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         not_found_message
       </span>
@@ -2737,7 +2828,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-writable?" href="#name-destination-writable?">
+    <a id="relationships-has_many-writable?" href="#relationships-has_many-writable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         writable?
       </span>
@@ -2758,7 +2849,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-read_action" href="#name-destination-read_action">
+    <a id="relationships-has_many-read_action" href="#relationships-has_many-read_action">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         read_action
       </span>
@@ -2779,7 +2870,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-api" href="#name-destination-api">
+    <a id="relationships-has_many-api" href="#relationships-has_many-api">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         api
       </span>
@@ -2800,7 +2891,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-filter" href="#name-destination-filter">
+    <a id="relationships-has_many-filter" href="#relationships-has_many-filter">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filter
       </span>
@@ -2821,7 +2912,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-filterable?" href="#name-destination-filterable?">
+    <a id="relationships-has_many-filterable?" href="#relationships-has_many-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -2841,7 +2932,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-sort" href="#name-destination-sort">
+    <a id="relationships-has_many-sort" href="#relationships-has_many-sort">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sort
       </span>
@@ -2862,7 +2953,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-could_be_related_at_creation?" href="#name-destination-could_be_related_at_creation?">
+    <a id="relationships-has_many-could_be_related_at_creation?" href="#relationships-has_many-could_be_related_at_creation?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         could_be_related_at_creation?
       </span>
@@ -2883,7 +2974,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-violation_message" href="#name-destination-violation_message">
+    <a id="relationships-has_many-violation_message" href="#relationships-has_many-violation_message">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         violation_message
       </span>
@@ -2947,7 +3038,60 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 
 
+### Arguments
 
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+  <td style="text-align: left">
+    <a id="relationships-many_to_many-name" href="#relationships-many_to_many-name">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        name
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">atom</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The name of the relationship
+  </td>
+</tr>
+
+<tr>
+  <td style="text-align: left">
+    <a id="relationships-many_to_many-destination" href="#relationships-many_to_many-destination">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        destination
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">module</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The destination resource
+  </td>
+</tr>
+
+  </tbody>
+</table>
 ### Options
 
 <table>
@@ -2962,7 +3106,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-destination-source_attribute_on_join_resource" href="#name-destination-source_attribute_on_join_resource">
+    <a id="relationships-many_to_many-source_attribute_on_join_resource" href="#relationships-many_to_many-source_attribute_on_join_resource">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         source_attribute_on_join_resource
       </span>
@@ -2983,7 +3127,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-destination_attribute_on_join_resource" href="#name-destination-destination_attribute_on_join_resource">
+    <a id="relationships-many_to_many-destination_attribute_on_join_resource" href="#relationships-many_to_many-destination_attribute_on_join_resource">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         destination_attribute_on_join_resource
       </span>
@@ -3004,7 +3148,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-through" href="#name-destination-through">
+    <a id="relationships-many_to_many-through" href="#relationships-many_to_many-through">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         through
       </span>
@@ -3025,7 +3169,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-join_relationship" href="#name-destination-join_relationship">
+    <a id="relationships-many_to_many-join_relationship" href="#relationships-many_to_many-join_relationship">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         join_relationship
       </span>
@@ -3045,47 +3189,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-name" href="#name-destination-name">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        name
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">atom</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The name of the relationship
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="name-destination-destination" href="#name-destination-destination">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        destination
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">module</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The destination resource
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="name-destination-description" href="#name-destination-description">
+    <a id="relationships-many_to_many-description" href="#relationships-many_to_many-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -3105,7 +3209,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-destination_attribute" href="#name-destination-destination_attribute">
+    <a id="relationships-many_to_many-destination_attribute" href="#relationships-many_to_many-destination_attribute">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         destination_attribute
       </span>
@@ -3125,7 +3229,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-validate_destination_attribute?" href="#name-destination-validate_destination_attribute?">
+    <a id="relationships-many_to_many-validate_destination_attribute?" href="#relationships-many_to_many-validate_destination_attribute?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         validate_destination_attribute?
       </span>
@@ -3145,7 +3249,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-source_attribute" href="#name-destination-source_attribute">
+    <a id="relationships-many_to_many-source_attribute" href="#relationships-many_to_many-source_attribute">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         source_attribute
       </span>
@@ -3165,7 +3269,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-relationship_context" href="#name-destination-relationship_context">
+    <a id="relationships-many_to_many-relationship_context" href="#relationships-many_to_many-relationship_context">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         relationship_context
       </span>
@@ -3186,7 +3290,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-private?" href="#name-destination-private?">
+    <a id="relationships-many_to_many-private?" href="#relationships-many_to_many-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -3207,7 +3311,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-not_found_message" href="#name-destination-not_found_message">
+    <a id="relationships-many_to_many-not_found_message" href="#relationships-many_to_many-not_found_message">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         not_found_message
       </span>
@@ -3228,7 +3332,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-writable?" href="#name-destination-writable?">
+    <a id="relationships-many_to_many-writable?" href="#relationships-many_to_many-writable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         writable?
       </span>
@@ -3249,7 +3353,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-read_action" href="#name-destination-read_action">
+    <a id="relationships-many_to_many-read_action" href="#relationships-many_to_many-read_action">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         read_action
       </span>
@@ -3270,7 +3374,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-api" href="#name-destination-api">
+    <a id="relationships-many_to_many-api" href="#relationships-many_to_many-api">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         api
       </span>
@@ -3291,7 +3395,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-filter" href="#name-destination-filter">
+    <a id="relationships-many_to_many-filter" href="#relationships-many_to_many-filter">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filter
       </span>
@@ -3312,7 +3416,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-filterable?" href="#name-destination-filterable?">
+    <a id="relationships-many_to_many-filterable?" href="#relationships-many_to_many-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -3332,7 +3436,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-sort" href="#name-destination-sort">
+    <a id="relationships-many_to_many-sort" href="#relationships-many_to_many-sort">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sort
       </span>
@@ -3353,7 +3457,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-could_be_related_at_creation?" href="#name-destination-could_be_related_at_creation?">
+    <a id="relationships-many_to_many-could_be_related_at_creation?" href="#relationships-many_to_many-could_be_related_at_creation?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         could_be_related_at_creation?
       </span>
@@ -3374,7 +3478,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-violation_message" href="#name-destination-violation_message">
+    <a id="relationships-many_to_many-violation_message" href="#relationships-many_to_many-violation_message">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         violation_message
       </span>
@@ -3431,7 +3535,60 @@ end
 
 
 
+### Arguments
 
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+  <td style="text-align: left">
+    <a id="relationships-belongs_to-name" href="#relationships-belongs_to-name">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        name
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">atom</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The name of the relationship
+  </td>
+</tr>
+
+<tr>
+  <td style="text-align: left">
+    <a id="relationships-belongs_to-destination" href="#relationships-belongs_to-destination">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        destination
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">module</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The destination resource
+  </td>
+</tr>
+
+  </tbody>
+</table>
 ### Options
 
 <table>
@@ -3446,7 +3603,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-destination-primary_key?" href="#name-destination-primary_key?">
+    <a id="relationships-belongs_to-primary_key?" href="#relationships-belongs_to-primary_key?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         primary_key?
       </span>
@@ -3466,7 +3623,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-allow_nil?" href="#name-destination-allow_nil?">
+    <a id="relationships-belongs_to-allow_nil?" href="#relationships-belongs_to-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -3486,7 +3643,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-attribute_writable?" href="#name-destination-attribute_writable?">
+    <a id="relationships-belongs_to-attribute_writable?" href="#relationships-belongs_to-attribute_writable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         attribute_writable?
       </span>
@@ -3507,7 +3664,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-define_attribute?" href="#name-destination-define_attribute?">
+    <a id="relationships-belongs_to-define_attribute?" href="#relationships-belongs_to-define_attribute?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         define_attribute?
       </span>
@@ -3527,7 +3684,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-attribute_type" href="#name-destination-attribute_type">
+    <a id="relationships-belongs_to-attribute_type" href="#relationships-belongs_to-attribute_type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         attribute_type
       </span>
@@ -3547,47 +3704,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-name" href="#name-destination-name">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        name
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">atom</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The name of the relationship
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="name-destination-destination" href="#name-destination-destination">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        destination
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">module</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The destination resource
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="name-destination-description" href="#name-destination-description">
+    <a id="relationships-belongs_to-description" href="#relationships-belongs_to-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -3607,7 +3724,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-destination_attribute" href="#name-destination-destination_attribute">
+    <a id="relationships-belongs_to-destination_attribute" href="#relationships-belongs_to-destination_attribute">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         destination_attribute
       </span>
@@ -3627,7 +3744,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-validate_destination_attribute?" href="#name-destination-validate_destination_attribute?">
+    <a id="relationships-belongs_to-validate_destination_attribute?" href="#relationships-belongs_to-validate_destination_attribute?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         validate_destination_attribute?
       </span>
@@ -3647,7 +3764,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-source_attribute" href="#name-destination-source_attribute">
+    <a id="relationships-belongs_to-source_attribute" href="#relationships-belongs_to-source_attribute">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         source_attribute
       </span>
@@ -3667,7 +3784,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-relationship_context" href="#name-destination-relationship_context">
+    <a id="relationships-belongs_to-relationship_context" href="#relationships-belongs_to-relationship_context">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         relationship_context
       </span>
@@ -3688,7 +3805,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-private?" href="#name-destination-private?">
+    <a id="relationships-belongs_to-private?" href="#relationships-belongs_to-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -3709,7 +3826,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-not_found_message" href="#name-destination-not_found_message">
+    <a id="relationships-belongs_to-not_found_message" href="#relationships-belongs_to-not_found_message">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         not_found_message
       </span>
@@ -3730,7 +3847,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-writable?" href="#name-destination-writable?">
+    <a id="relationships-belongs_to-writable?" href="#relationships-belongs_to-writable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         writable?
       </span>
@@ -3751,7 +3868,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-read_action" href="#name-destination-read_action">
+    <a id="relationships-belongs_to-read_action" href="#relationships-belongs_to-read_action">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         read_action
       </span>
@@ -3772,7 +3889,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-api" href="#name-destination-api">
+    <a id="relationships-belongs_to-api" href="#relationships-belongs_to-api">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         api
       </span>
@@ -3793,7 +3910,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-filter" href="#name-destination-filter">
+    <a id="relationships-belongs_to-filter" href="#relationships-belongs_to-filter">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filter
       </span>
@@ -3814,7 +3931,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-filterable?" href="#name-destination-filterable?">
+    <a id="relationships-belongs_to-filterable?" href="#relationships-belongs_to-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -3834,7 +3951,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-sort" href="#name-destination-sort">
+    <a id="relationships-belongs_to-sort" href="#relationships-belongs_to-sort">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sort
       </span>
@@ -3855,7 +3972,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-destination-violation_message" href="#name-destination-violation_message">
+    <a id="relationships-belongs_to-violation_message" href="#relationships-belongs_to-violation_message">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         violation_message
       </span>
@@ -4046,8 +4163,7 @@ end
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -4061,7 +4177,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-returns-name" href="#name-returns-name">
+    <a id="actions-action-name" href="#actions-action-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -4082,7 +4198,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-returns-returns" href="#name-returns-returns">
+    <a id="actions-action-returns" href="#actions-action-returns">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         returns
       </span>
@@ -4100,9 +4216,23 @@ end
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-returns-constraints" href="#name-returns-constraints">
+    <a id="actions-action-constraints" href="#actions-action-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>
@@ -4123,7 +4253,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-returns-allow_nil?" href="#name-returns-allow_nil?">
+    <a id="actions-action-allow_nil?" href="#actions-action-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -4144,7 +4274,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-returns-run" href="#name-returns-run">
+    <a id="actions-action-run" href="#actions-action-run">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         run
       </span>
@@ -4164,7 +4294,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-returns-primary?" href="#name-returns-primary?">
+    <a id="actions-action-primary?" href="#actions-action-primary?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         primary?
       </span>
@@ -4184,7 +4314,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-returns-description" href="#name-returns-description">
+    <a id="actions-action-description" href="#actions-action-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -4204,7 +4334,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-returns-transaction?" href="#name-returns-transaction?">
+    <a id="actions-action-transaction?" href="#actions-action-transaction?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         transaction?
       </span>
@@ -4225,7 +4355,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-returns-touches_resources" href="#name-returns-touches_resources">
+    <a id="actions-action-touches_resources" href="#actions-action-touches_resources">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         touches_resources
       </span>
@@ -4266,8 +4396,7 @@ argument :password_confirmation, :string
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -4281,7 +4410,7 @@ argument :password_confirmation, :string
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-type-name" href="#name-type-name">
+    <a id="actions-action-argument-name" href="#actions-action-argument-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -4302,7 +4431,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-type" href="#name-type-type">
+    <a id="actions-action-argument-type" href="#actions-action-argument-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -4321,9 +4450,23 @@ argument :password_confirmation, :string
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-type-description" href="#name-type-description">
+    <a id="actions-action-argument-description" href="#actions-action-argument-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -4343,7 +4486,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-constraints" href="#name-type-constraints">
+    <a id="actions-action-argument-constraints" href="#actions-action-argument-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>
@@ -4364,7 +4507,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-allow_nil?" href="#name-type-allow_nil?">
+    <a id="actions-action-argument-allow_nil?" href="#actions-action-argument-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -4385,7 +4528,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-private?" href="#name-type-private?">
+    <a id="actions-action-argument-private?" href="#actions-action-argument-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -4406,7 +4549,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-sensitive?" href="#name-type-sensitive?">
+    <a id="actions-action-argument-sensitive?" href="#actions-action-argument-sensitive?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sensitive?
       </span>
@@ -4427,7 +4570,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-default" href="#name-type-default">
+    <a id="actions-action-argument-default" href="#actions-action-argument-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -4489,8 +4632,7 @@ end
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -4504,7 +4646,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-name" href="#name-name">
+    <a id="actions-create-name" href="#actions-create-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -4523,9 +4665,23 @@ end
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-allow_nil_input" href="#name-allow_nil_input">
+    <a id="actions-create-allow_nil_input" href="#actions-create-allow_nil_input">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil_input
       </span>
@@ -4546,7 +4702,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-manual" href="#name-manual">
+    <a id="actions-create-manual" href="#actions-create-manual">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         manual
       </span>
@@ -4567,7 +4723,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-upsert?" href="#name-upsert?">
+    <a id="actions-create-upsert?" href="#actions-create-upsert?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         upsert?
       </span>
@@ -4588,7 +4744,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-upsert_identity" href="#name-upsert_identity">
+    <a id="actions-create-upsert_identity" href="#actions-create-upsert_identity">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         upsert_identity
       </span>
@@ -4609,7 +4765,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-upsert_fields" href="#name-upsert_fields">
+    <a id="actions-create-upsert_fields" href="#actions-create-upsert_fields">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         upsert_fields
       </span>
@@ -4630,7 +4786,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-primary?" href="#name-primary?">
+    <a id="actions-create-primary?" href="#actions-create-primary?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         primary?
       </span>
@@ -4650,7 +4806,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-description" href="#name-description">
+    <a id="actions-create-description" href="#actions-create-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -4670,7 +4826,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-transaction?" href="#name-transaction?">
+    <a id="actions-create-transaction?" href="#actions-create-transaction?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         transaction?
       </span>
@@ -4691,7 +4847,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-touches_resources" href="#name-touches_resources">
+    <a id="actions-create-touches_resources" href="#actions-create-touches_resources">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         touches_resources
       </span>
@@ -4712,7 +4868,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-accept" href="#name-accept">
+    <a id="actions-create-accept" href="#actions-create-accept">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         accept
       </span>
@@ -4732,7 +4888,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-delay_global_validations?" href="#name-delay_global_validations?">
+    <a id="actions-create-delay_global_validations?" href="#actions-create-delay_global_validations?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         delay_global_validations?
       </span>
@@ -4753,7 +4909,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-skip_global_validations?" href="#name-skip_global_validations?">
+    <a id="actions-create-skip_global_validations?" href="#actions-create-skip_global_validations?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         skip_global_validations?
       </span>
@@ -4774,7 +4930,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-reject" href="#name-reject">
+    <a id="actions-create-reject" href="#actions-create-reject">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         reject
       </span>
@@ -4795,7 +4951,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-require_attributes" href="#name-require_attributes">
+    <a id="actions-create-require_attributes" href="#actions-create-require_attributes">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         require_attributes
       </span>
@@ -4816,7 +4972,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-error_handler" href="#name-error_handler">
+    <a id="actions-create-error_handler" href="#actions-create-error_handler">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         error_handler
       </span>
@@ -4836,7 +4992,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-manual?" href="#name-manual?">
+    <a id="actions-create-manual?" href="#actions-create-manual?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         manual?
       </span>
@@ -4897,7 +5053,7 @@ change {MyCustomChange, :foo}
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="change-change" href="#change-change">
+    <a id="actions-create-change-change" href="#actions-create-change-change">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         change
       </span>
@@ -4933,7 +5089,7 @@ change {MyCustomChange, :foo}
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="change-only_when_valid?" href="#change-only_when_valid?">
+    <a id="actions-create-change-only_when_valid?" href="#actions-create-change-only_when_valid?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         only_when_valid?
       </span>
@@ -4954,7 +5110,7 @@ change {MyCustomChange, :foo}
 
 <tr>
   <td style="text-align: left">
-    <a id="change-description" href="#change-description">
+    <a id="actions-create-change-description" href="#actions-create-change-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -4974,7 +5130,7 @@ change {MyCustomChange, :foo}
 
 <tr>
   <td style="text-align: left">
-    <a id="change-where" href="#change-where">
+    <a id="actions-create-change-where" href="#actions-create-change-where">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         where
       </span>
@@ -5024,8 +5180,7 @@ validate changing(:email)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -5039,7 +5194,7 @@ validate changing(:email)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="validation-validation" href="#validation-validation">
+    <a id="actions-create-validate-validation" href="#actions-create-validate-validation">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         validation
       </span>
@@ -5058,9 +5213,23 @@ validate changing(:email)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="validation-where" href="#validation-where">
+    <a id="actions-create-validate-where" href="#actions-create-validate-where">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         where
       </span>
@@ -5081,7 +5250,7 @@ validate changing(:email)
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-only_when_valid?" href="#validation-only_when_valid?">
+    <a id="actions-create-validate-only_when_valid?" href="#actions-create-validate-only_when_valid?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         only_when_valid?
       </span>
@@ -5101,7 +5270,7 @@ validate changing(:email)
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-message" href="#validation-message">
+    <a id="actions-create-validate-message" href="#actions-create-validate-message">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         message
       </span>
@@ -5121,7 +5290,7 @@ validate changing(:email)
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-description" href="#validation-description">
+    <a id="actions-create-validate-description" href="#actions-create-validate-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -5141,7 +5310,7 @@ validate changing(:email)
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-before_action?" href="#validation-before_action?">
+    <a id="actions-create-validate-before_action?" href="#actions-create-validate-before_action?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         before_action?
       </span>
@@ -5188,8 +5357,7 @@ argument :password_confirmation, :string
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -5203,7 +5371,7 @@ argument :password_confirmation, :string
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-type-name" href="#name-type-name">
+    <a id="actions-create-argument-name" href="#actions-create-argument-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -5224,7 +5392,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-type" href="#name-type-type">
+    <a id="actions-create-argument-type" href="#actions-create-argument-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -5243,9 +5411,23 @@ argument :password_confirmation, :string
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-type-description" href="#name-type-description">
+    <a id="actions-create-argument-description" href="#actions-create-argument-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -5265,7 +5447,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-constraints" href="#name-type-constraints">
+    <a id="actions-create-argument-constraints" href="#actions-create-argument-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>
@@ -5286,7 +5468,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-allow_nil?" href="#name-type-allow_nil?">
+    <a id="actions-create-argument-allow_nil?" href="#actions-create-argument-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -5307,7 +5489,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-private?" href="#name-type-private?">
+    <a id="actions-create-argument-private?" href="#actions-create-argument-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -5328,7 +5510,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-sensitive?" href="#name-type-sensitive?">
+    <a id="actions-create-argument-sensitive?" href="#actions-create-argument-sensitive?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sensitive?
       </span>
@@ -5349,7 +5531,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-default" href="#name-type-default">
+    <a id="actions-create-argument-default" href="#actions-create-argument-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -5403,8 +5585,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -5418,7 +5599,7 @@ metadata :operation_id, :string, allow_nil?: false
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-type-name" href="#name-type-name">
+    <a id="actions-create-metadata-name" href="#actions-create-metadata-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -5439,7 +5620,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-type" href="#name-type-type">
+    <a id="actions-create-metadata-type" href="#actions-create-metadata-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -5458,9 +5639,23 @@ metadata :operation_id, :string, allow_nil?: false
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-type-constraints" href="#name-type-constraints">
+    <a id="actions-create-metadata-constraints" href="#actions-create-metadata-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>
@@ -5480,7 +5675,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-description" href="#name-type-description">
+    <a id="actions-create-metadata-description" href="#actions-create-metadata-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -5500,7 +5695,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-allow_nil?" href="#name-type-allow_nil?">
+    <a id="actions-create-metadata-allow_nil?" href="#actions-create-metadata-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -5520,7 +5715,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-default" href="#name-type-default">
+    <a id="actions-create-metadata-default" href="#actions-create-metadata-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -5582,8 +5777,7 @@ end
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -5597,7 +5791,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-name" href="#name-name">
+    <a id="actions-read-name" href="#actions-read-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -5616,9 +5810,23 @@ end
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-filter" href="#name-filter">
+    <a id="actions-read-filter" href="#actions-read-filter">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filter
       </span>
@@ -5638,7 +5846,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-manual" href="#name-manual">
+    <a id="actions-read-manual" href="#actions-read-manual">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         manual
       </span>
@@ -5659,7 +5867,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-get?" href="#name-get?">
+    <a id="actions-read-get?" href="#actions-read-get?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         get?
       </span>
@@ -5680,7 +5888,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-modify_query" href="#name-modify_query">
+    <a id="actions-read-modify_query" href="#actions-read-modify_query">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         modify_query
       </span>
@@ -5701,7 +5909,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-get_by" href="#name-get_by">
+    <a id="actions-read-get_by" href="#actions-read-get_by">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         get_by
       </span>
@@ -5722,7 +5930,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-primary?" href="#name-primary?">
+    <a id="actions-read-primary?" href="#actions-read-primary?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         primary?
       </span>
@@ -5742,7 +5950,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-description" href="#name-description">
+    <a id="actions-read-description" href="#actions-read-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -5762,7 +5970,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-transaction?" href="#name-transaction?">
+    <a id="actions-read-transaction?" href="#actions-read-transaction?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         transaction?
       </span>
@@ -5783,7 +5991,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-touches_resources" href="#name-touches_resources">
+    <a id="actions-read-touches_resources" href="#actions-read-touches_resources">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         touches_resources
       </span>
@@ -5824,8 +6032,7 @@ argument :password_confirmation, :string
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -5839,7 +6046,7 @@ argument :password_confirmation, :string
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-type-name" href="#name-type-name">
+    <a id="actions-read-argument-name" href="#actions-read-argument-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -5860,7 +6067,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-type" href="#name-type-type">
+    <a id="actions-read-argument-type" href="#actions-read-argument-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -5879,9 +6086,23 @@ argument :password_confirmation, :string
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-type-description" href="#name-type-description">
+    <a id="actions-read-argument-description" href="#actions-read-argument-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -5901,7 +6122,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-constraints" href="#name-type-constraints">
+    <a id="actions-read-argument-constraints" href="#actions-read-argument-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>
@@ -5922,7 +6143,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-allow_nil?" href="#name-type-allow_nil?">
+    <a id="actions-read-argument-allow_nil?" href="#actions-read-argument-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -5943,7 +6164,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-private?" href="#name-type-private?">
+    <a id="actions-read-argument-private?" href="#actions-read-argument-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -5964,7 +6185,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-sensitive?" href="#name-type-sensitive?">
+    <a id="actions-read-argument-sensitive?" href="#actions-read-argument-sensitive?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sensitive?
       </span>
@@ -5985,7 +6206,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-default" href="#name-type-default">
+    <a id="actions-read-argument-default" href="#actions-read-argument-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -6033,8 +6254,7 @@ prepare build(sort: [:foo, :bar])
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -6048,7 +6268,7 @@ prepare build(sort: [:foo, :bar])
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="preparation-preparation" href="#preparation-preparation">
+    <a id="actions-read-prepare-preparation" href="#actions-read-prepare-preparation">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         preparation
       </span>
@@ -6070,6 +6290,7 @@ prepare build(sort: [:foo, :bar])
 
   </tbody>
 </table>
+
 
 
 
@@ -6104,7 +6325,7 @@ Adds pagination options to a resource
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="keyset?" href="#keyset?">
+    <a id="actions-read-pagination-keyset?" href="#actions-read-pagination-keyset?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         keyset?
       </span>
@@ -6124,7 +6345,7 @@ Adds pagination options to a resource
 
 <tr>
   <td style="text-align: left">
-    <a id="offset?" href="#offset?">
+    <a id="actions-read-pagination-offset?" href="#actions-read-pagination-offset?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         offset?
       </span>
@@ -6144,7 +6365,7 @@ Adds pagination options to a resource
 
 <tr>
   <td style="text-align: left">
-    <a id="default_limit" href="#default_limit">
+    <a id="actions-read-pagination-default_limit" href="#actions-read-pagination-default_limit">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default_limit
       </span>
@@ -6164,7 +6385,7 @@ Adds pagination options to a resource
 
 <tr>
   <td style="text-align: left">
-    <a id="countable" href="#countable">
+    <a id="actions-read-pagination-countable" href="#actions-read-pagination-countable">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         countable
       </span>
@@ -6184,7 +6405,7 @@ Adds pagination options to a resource
 
 <tr>
   <td style="text-align: left">
-    <a id="max_page_size" href="#max_page_size">
+    <a id="actions-read-pagination-max_page_size" href="#actions-read-pagination-max_page_size">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         max_page_size
       </span>
@@ -6204,7 +6425,7 @@ Adds pagination options to a resource
 
 <tr>
   <td style="text-align: left">
-    <a id="required?" href="#required?">
+    <a id="actions-read-pagination-required?" href="#actions-read-pagination-required?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         required?
       </span>
@@ -6258,8 +6479,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -6273,7 +6493,7 @@ metadata :operation_id, :string, allow_nil?: false
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-type-name" href="#name-type-name">
+    <a id="actions-read-metadata-name" href="#actions-read-metadata-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -6294,7 +6514,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-type" href="#name-type-type">
+    <a id="actions-read-metadata-type" href="#actions-read-metadata-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -6313,9 +6533,23 @@ metadata :operation_id, :string, allow_nil?: false
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-type-constraints" href="#name-type-constraints">
+    <a id="actions-read-metadata-constraints" href="#actions-read-metadata-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>
@@ -6335,7 +6569,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-description" href="#name-type-description">
+    <a id="actions-read-metadata-description" href="#actions-read-metadata-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -6355,7 +6589,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-allow_nil?" href="#name-type-allow_nil?">
+    <a id="actions-read-metadata-allow_nil?" href="#actions-read-metadata-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -6375,7 +6609,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-default" href="#name-type-default">
+    <a id="actions-read-metadata-default" href="#actions-read-metadata-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -6434,8 +6668,7 @@ update :flag_for_review, primary?: true
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -6449,7 +6682,7 @@ update :flag_for_review, primary?: true
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-name" href="#name-name">
+    <a id="actions-update-name" href="#actions-update-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -6468,9 +6701,23 @@ update :flag_for_review, primary?: true
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-manual" href="#name-manual">
+    <a id="actions-update-manual" href="#actions-update-manual">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         manual
       </span>
@@ -6491,7 +6738,7 @@ update :flag_for_review, primary?: true
 
 <tr>
   <td style="text-align: left">
-    <a id="name-primary?" href="#name-primary?">
+    <a id="actions-update-primary?" href="#actions-update-primary?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         primary?
       </span>
@@ -6511,7 +6758,7 @@ update :flag_for_review, primary?: true
 
 <tr>
   <td style="text-align: left">
-    <a id="name-description" href="#name-description">
+    <a id="actions-update-description" href="#actions-update-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -6531,7 +6778,7 @@ update :flag_for_review, primary?: true
 
 <tr>
   <td style="text-align: left">
-    <a id="name-transaction?" href="#name-transaction?">
+    <a id="actions-update-transaction?" href="#actions-update-transaction?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         transaction?
       </span>
@@ -6552,7 +6799,7 @@ update :flag_for_review, primary?: true
 
 <tr>
   <td style="text-align: left">
-    <a id="name-touches_resources" href="#name-touches_resources">
+    <a id="actions-update-touches_resources" href="#actions-update-touches_resources">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         touches_resources
       </span>
@@ -6573,7 +6820,7 @@ update :flag_for_review, primary?: true
 
 <tr>
   <td style="text-align: left">
-    <a id="name-accept" href="#name-accept">
+    <a id="actions-update-accept" href="#actions-update-accept">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         accept
       </span>
@@ -6593,7 +6840,7 @@ update :flag_for_review, primary?: true
 
 <tr>
   <td style="text-align: left">
-    <a id="name-delay_global_validations?" href="#name-delay_global_validations?">
+    <a id="actions-update-delay_global_validations?" href="#actions-update-delay_global_validations?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         delay_global_validations?
       </span>
@@ -6614,7 +6861,7 @@ update :flag_for_review, primary?: true
 
 <tr>
   <td style="text-align: left">
-    <a id="name-skip_global_validations?" href="#name-skip_global_validations?">
+    <a id="actions-update-skip_global_validations?" href="#actions-update-skip_global_validations?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         skip_global_validations?
       </span>
@@ -6635,7 +6882,7 @@ update :flag_for_review, primary?: true
 
 <tr>
   <td style="text-align: left">
-    <a id="name-reject" href="#name-reject">
+    <a id="actions-update-reject" href="#actions-update-reject">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         reject
       </span>
@@ -6656,7 +6903,7 @@ update :flag_for_review, primary?: true
 
 <tr>
   <td style="text-align: left">
-    <a id="name-require_attributes" href="#name-require_attributes">
+    <a id="actions-update-require_attributes" href="#actions-update-require_attributes">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         require_attributes
       </span>
@@ -6677,7 +6924,7 @@ update :flag_for_review, primary?: true
 
 <tr>
   <td style="text-align: left">
-    <a id="name-error_handler" href="#name-error_handler">
+    <a id="actions-update-error_handler" href="#actions-update-error_handler">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         error_handler
       </span>
@@ -6697,7 +6944,7 @@ update :flag_for_review, primary?: true
 
 <tr>
   <td style="text-align: left">
-    <a id="name-manual?" href="#name-manual?">
+    <a id="actions-update-manual?" href="#actions-update-manual?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         manual?
       </span>
@@ -6758,7 +7005,7 @@ change {MyCustomChange, :foo}
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="change-change" href="#change-change">
+    <a id="actions-update-change-change" href="#actions-update-change-change">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         change
       </span>
@@ -6794,7 +7041,7 @@ change {MyCustomChange, :foo}
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="change-only_when_valid?" href="#change-only_when_valid?">
+    <a id="actions-update-change-only_when_valid?" href="#actions-update-change-only_when_valid?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         only_when_valid?
       </span>
@@ -6815,7 +7062,7 @@ change {MyCustomChange, :foo}
 
 <tr>
   <td style="text-align: left">
-    <a id="change-description" href="#change-description">
+    <a id="actions-update-change-description" href="#actions-update-change-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -6835,7 +7082,7 @@ change {MyCustomChange, :foo}
 
 <tr>
   <td style="text-align: left">
-    <a id="change-where" href="#change-where">
+    <a id="actions-update-change-where" href="#actions-update-change-where">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         where
       </span>
@@ -6885,8 +7132,7 @@ validate changing(:email)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -6900,7 +7146,7 @@ validate changing(:email)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="validation-validation" href="#validation-validation">
+    <a id="actions-update-validate-validation" href="#actions-update-validate-validation">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         validation
       </span>
@@ -6919,9 +7165,23 @@ validate changing(:email)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="validation-where" href="#validation-where">
+    <a id="actions-update-validate-where" href="#actions-update-validate-where">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         where
       </span>
@@ -6942,7 +7202,7 @@ validate changing(:email)
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-only_when_valid?" href="#validation-only_when_valid?">
+    <a id="actions-update-validate-only_when_valid?" href="#actions-update-validate-only_when_valid?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         only_when_valid?
       </span>
@@ -6962,7 +7222,7 @@ validate changing(:email)
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-message" href="#validation-message">
+    <a id="actions-update-validate-message" href="#actions-update-validate-message">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         message
       </span>
@@ -6982,7 +7242,7 @@ validate changing(:email)
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-description" href="#validation-description">
+    <a id="actions-update-validate-description" href="#actions-update-validate-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -7002,7 +7262,7 @@ validate changing(:email)
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-before_action?" href="#validation-before_action?">
+    <a id="actions-update-validate-before_action?" href="#actions-update-validate-before_action?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         before_action?
       </span>
@@ -7056,8 +7316,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -7071,7 +7330,7 @@ metadata :operation_id, :string, allow_nil?: false
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-type-name" href="#name-type-name">
+    <a id="actions-update-metadata-name" href="#actions-update-metadata-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -7092,7 +7351,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-type" href="#name-type-type">
+    <a id="actions-update-metadata-type" href="#actions-update-metadata-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -7111,9 +7370,23 @@ metadata :operation_id, :string, allow_nil?: false
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-type-constraints" href="#name-type-constraints">
+    <a id="actions-update-metadata-constraints" href="#actions-update-metadata-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>
@@ -7133,7 +7406,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-description" href="#name-type-description">
+    <a id="actions-update-metadata-description" href="#actions-update-metadata-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -7153,7 +7426,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-allow_nil?" href="#name-type-allow_nil?">
+    <a id="actions-update-metadata-allow_nil?" href="#actions-update-metadata-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -7173,7 +7446,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-default" href="#name-type-default">
+    <a id="actions-update-metadata-default" href="#actions-update-metadata-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -7220,8 +7493,7 @@ argument :password_confirmation, :string
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -7235,7 +7507,7 @@ argument :password_confirmation, :string
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-type-name" href="#name-type-name">
+    <a id="actions-update-argument-name" href="#actions-update-argument-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -7256,7 +7528,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-type" href="#name-type-type">
+    <a id="actions-update-argument-type" href="#actions-update-argument-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -7275,9 +7547,23 @@ argument :password_confirmation, :string
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-type-description" href="#name-type-description">
+    <a id="actions-update-argument-description" href="#actions-update-argument-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -7297,7 +7583,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-constraints" href="#name-type-constraints">
+    <a id="actions-update-argument-constraints" href="#actions-update-argument-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>
@@ -7318,7 +7604,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-allow_nil?" href="#name-type-allow_nil?">
+    <a id="actions-update-argument-allow_nil?" href="#actions-update-argument-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -7339,7 +7625,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-private?" href="#name-type-private?">
+    <a id="actions-update-argument-private?" href="#actions-update-argument-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -7360,7 +7646,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-sensitive?" href="#name-type-sensitive?">
+    <a id="actions-update-argument-sensitive?" href="#actions-update-argument-sensitive?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sensitive?
       </span>
@@ -7381,7 +7667,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-default" href="#name-type-default">
+    <a id="actions-update-argument-default" href="#actions-update-argument-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -7443,8 +7729,7 @@ end
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -7458,7 +7743,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-name" href="#name-name">
+    <a id="actions-destroy-name" href="#actions-destroy-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -7477,9 +7762,23 @@ end
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-soft?" href="#name-soft?">
+    <a id="actions-destroy-soft?" href="#actions-destroy-soft?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         soft?
       </span>
@@ -7499,7 +7798,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-manual" href="#name-manual">
+    <a id="actions-destroy-manual" href="#actions-destroy-manual">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         manual
       </span>
@@ -7520,7 +7819,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-primary?" href="#name-primary?">
+    <a id="actions-destroy-primary?" href="#actions-destroy-primary?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         primary?
       </span>
@@ -7540,7 +7839,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-description" href="#name-description">
+    <a id="actions-destroy-description" href="#actions-destroy-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -7560,7 +7859,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-transaction?" href="#name-transaction?">
+    <a id="actions-destroy-transaction?" href="#actions-destroy-transaction?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         transaction?
       </span>
@@ -7581,7 +7880,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-touches_resources" href="#name-touches_resources">
+    <a id="actions-destroy-touches_resources" href="#actions-destroy-touches_resources">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         touches_resources
       </span>
@@ -7602,7 +7901,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-accept" href="#name-accept">
+    <a id="actions-destroy-accept" href="#actions-destroy-accept">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         accept
       </span>
@@ -7622,7 +7921,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-delay_global_validations?" href="#name-delay_global_validations?">
+    <a id="actions-destroy-delay_global_validations?" href="#actions-destroy-delay_global_validations?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         delay_global_validations?
       </span>
@@ -7643,7 +7942,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-skip_global_validations?" href="#name-skip_global_validations?">
+    <a id="actions-destroy-skip_global_validations?" href="#actions-destroy-skip_global_validations?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         skip_global_validations?
       </span>
@@ -7664,7 +7963,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-reject" href="#name-reject">
+    <a id="actions-destroy-reject" href="#actions-destroy-reject">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         reject
       </span>
@@ -7685,7 +7984,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-require_attributes" href="#name-require_attributes">
+    <a id="actions-destroy-require_attributes" href="#actions-destroy-require_attributes">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         require_attributes
       </span>
@@ -7706,7 +8005,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-error_handler" href="#name-error_handler">
+    <a id="actions-destroy-error_handler" href="#actions-destroy-error_handler">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         error_handler
       </span>
@@ -7726,7 +8025,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-manual?" href="#name-manual?">
+    <a id="actions-destroy-manual?" href="#actions-destroy-manual?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         manual?
       </span>
@@ -7787,7 +8086,7 @@ change {MyCustomChange, :foo}
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="change-change" href="#change-change">
+    <a id="actions-destroy-change-change" href="#actions-destroy-change-change">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         change
       </span>
@@ -7823,7 +8122,7 @@ change {MyCustomChange, :foo}
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="change-only_when_valid?" href="#change-only_when_valid?">
+    <a id="actions-destroy-change-only_when_valid?" href="#actions-destroy-change-only_when_valid?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         only_when_valid?
       </span>
@@ -7844,7 +8143,7 @@ change {MyCustomChange, :foo}
 
 <tr>
   <td style="text-align: left">
-    <a id="change-description" href="#change-description">
+    <a id="actions-destroy-change-description" href="#actions-destroy-change-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -7864,7 +8163,7 @@ change {MyCustomChange, :foo}
 
 <tr>
   <td style="text-align: left">
-    <a id="change-where" href="#change-where">
+    <a id="actions-destroy-change-where" href="#actions-destroy-change-where">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         where
       </span>
@@ -7914,8 +8213,7 @@ validate changing(:email)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -7929,7 +8227,7 @@ validate changing(:email)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="validation-validation" href="#validation-validation">
+    <a id="actions-destroy-validate-validation" href="#actions-destroy-validate-validation">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         validation
       </span>
@@ -7948,9 +8246,23 @@ validate changing(:email)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="validation-where" href="#validation-where">
+    <a id="actions-destroy-validate-where" href="#actions-destroy-validate-where">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         where
       </span>
@@ -7971,7 +8283,7 @@ validate changing(:email)
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-only_when_valid?" href="#validation-only_when_valid?">
+    <a id="actions-destroy-validate-only_when_valid?" href="#actions-destroy-validate-only_when_valid?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         only_when_valid?
       </span>
@@ -7991,7 +8303,7 @@ validate changing(:email)
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-message" href="#validation-message">
+    <a id="actions-destroy-validate-message" href="#actions-destroy-validate-message">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         message
       </span>
@@ -8011,7 +8323,7 @@ validate changing(:email)
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-description" href="#validation-description">
+    <a id="actions-destroy-validate-description" href="#actions-destroy-validate-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -8031,7 +8343,7 @@ validate changing(:email)
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-before_action?" href="#validation-before_action?">
+    <a id="actions-destroy-validate-before_action?" href="#actions-destroy-validate-before_action?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         before_action?
       </span>
@@ -8085,8 +8397,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -8100,7 +8411,7 @@ metadata :operation_id, :string, allow_nil?: false
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-type-name" href="#name-type-name">
+    <a id="actions-destroy-metadata-name" href="#actions-destroy-metadata-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -8121,7 +8432,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-type" href="#name-type-type">
+    <a id="actions-destroy-metadata-type" href="#actions-destroy-metadata-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -8140,9 +8451,23 @@ metadata :operation_id, :string, allow_nil?: false
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-type-constraints" href="#name-type-constraints">
+    <a id="actions-destroy-metadata-constraints" href="#actions-destroy-metadata-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>
@@ -8162,7 +8487,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-description" href="#name-type-description">
+    <a id="actions-destroy-metadata-description" href="#actions-destroy-metadata-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -8182,7 +8507,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-allow_nil?" href="#name-type-allow_nil?">
+    <a id="actions-destroy-metadata-allow_nil?" href="#actions-destroy-metadata-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -8202,7 +8527,7 @@ metadata :operation_id, :string, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-default" href="#name-type-default">
+    <a id="actions-destroy-metadata-default" href="#actions-destroy-metadata-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -8249,8 +8574,7 @@ argument :password_confirmation, :string
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -8264,7 +8588,7 @@ argument :password_confirmation, :string
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-type-name" href="#name-type-name">
+    <a id="actions-destroy-argument-name" href="#actions-destroy-argument-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -8285,7 +8609,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-type" href="#name-type-type">
+    <a id="actions-destroy-argument-type" href="#actions-destroy-argument-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -8304,9 +8628,23 @@ argument :password_confirmation, :string
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-type-description" href="#name-type-description">
+    <a id="actions-destroy-argument-description" href="#actions-destroy-argument-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -8326,7 +8664,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-constraints" href="#name-type-constraints">
+    <a id="actions-destroy-argument-constraints" href="#actions-destroy-argument-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>
@@ -8347,7 +8685,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-allow_nil?" href="#name-type-allow_nil?">
+    <a id="actions-destroy-argument-allow_nil?" href="#actions-destroy-argument-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -8368,7 +8706,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-private?" href="#name-type-private?">
+    <a id="actions-destroy-argument-private?" href="#actions-destroy-argument-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -8389,7 +8727,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-sensitive?" href="#name-type-sensitive?">
+    <a id="actions-destroy-argument-sensitive?" href="#actions-destroy-argument-sensitive?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sensitive?
       </span>
@@ -8410,7 +8748,7 @@ argument :password_confirmation, :string
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-default" href="#name-type-default">
+    <a id="actions-destroy-argument-default" href="#actions-destroy-argument-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -8526,8 +8864,7 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -8541,7 +8878,7 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-name" href="#name-name">
+    <a id="code_interface-define-name" href="#code_interface-define-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -8560,9 +8897,23 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-action" href="#name-action">
+    <a id="code_interface-define-action" href="#code_interface-define-action">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         action
       </span>
@@ -8582,7 +8933,7 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
 
 <tr>
   <td style="text-align: left">
-    <a id="name-args" href="#name-args">
+    <a id="code_interface-define-args" href="#code_interface-define-args">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         args
       </span>
@@ -8603,7 +8954,7 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
 
 <tr>
   <td style="text-align: left">
-    <a id="name-not_found_error?" href="#name-not_found_error?">
+    <a id="code_interface-define-not_found_error?" href="#code_interface-define-not_found_error?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         not_found_error?
       </span>
@@ -8623,7 +8974,7 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
 
 <tr>
   <td style="text-align: left">
-    <a id="name-get?" href="#name-get?">
+    <a id="code_interface-define-get?" href="#code_interface-define-get?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         get?
       </span>
@@ -8644,7 +8995,7 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
 
 <tr>
   <td style="text-align: left">
-    <a id="name-get_by" href="#name-get_by">
+    <a id="code_interface-define-get_by" href="#code_interface-define-get_by">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         get_by
       </span>
@@ -8665,7 +9016,7 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
 
 <tr>
   <td style="text-align: left">
-    <a id="name-get_by_identity" href="#name-get_by_identity">
+    <a id="code_interface-define-get_by_identity" href="#code_interface-define-get_by_identity">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         get_by_identity
       </span>
@@ -8717,8 +9068,7 @@ define_calculation :referral_link, args: [{:arg, :id}, {:ref, :id}]
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -8732,7 +9082,7 @@ define_calculation :referral_link, args: [{:arg, :id}, {:ref, :id}]
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-name" href="#name-name">
+    <a id="code_interface-define_calculation-name" href="#code_interface-define_calculation-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -8751,9 +9101,23 @@ define_calculation :referral_link, args: [{:arg, :id}, {:ref, :id}]
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-calculation" href="#name-calculation">
+    <a id="code_interface-define_calculation-calculation" href="#code_interface-define_calculation-calculation">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         calculation
       </span>
@@ -8773,7 +9137,7 @@ define_calculation :referral_link, args: [{:arg, :id}, {:ref, :id}]
 
 <tr>
   <td style="text-align: left">
-    <a id="name-args" href="#name-args">
+    <a id="code_interface-define_calculation-args" href="#code_interface-define_calculation-args">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         args
       </span>
@@ -9052,8 +9416,7 @@ identity :full_name, [:first_name, :last_name]
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -9067,7 +9430,7 @@ identity :full_name, [:first_name, :last_name]
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-keys-name" href="#name-keys-name">
+    <a id="identities-identity-name" href="#identities-identity-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -9088,7 +9451,7 @@ identity :full_name, [:first_name, :last_name]
 
 <tr>
   <td style="text-align: left">
-    <a id="name-keys-keys" href="#name-keys-keys">
+    <a id="identities-identity-keys" href="#identities-identity-keys">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         keys
       </span>
@@ -9107,9 +9470,23 @@ identity :full_name, [:first_name, :last_name]
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-keys-eager_check_with" href="#name-keys-eager_check_with">
+    <a id="identities-identity-eager_check_with" href="#identities-identity-eager_check_with">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         eager_check_with
       </span>
@@ -9130,7 +9507,7 @@ identity :full_name, [:first_name, :last_name]
 
 <tr>
   <td style="text-align: left">
-    <a id="name-keys-pre_check_with" href="#name-keys-pre_check_with">
+    <a id="identities-identity-pre_check_with" href="#identities-identity-pre_check_with">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         pre_check_with
       </span>
@@ -9151,7 +9528,7 @@ identity :full_name, [:first_name, :last_name]
 
 <tr>
   <td style="text-align: left">
-    <a id="name-keys-description" href="#name-keys-description">
+    <a id="identities-identity-description" href="#identities-identity-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -9171,7 +9548,7 @@ identity :full_name, [:first_name, :last_name]
 
 <tr>
   <td style="text-align: left">
-    <a id="name-keys-message" href="#name-keys-message">
+    <a id="identities-identity-message" href="#identities-identity-message">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         message
       </span>
@@ -9263,7 +9640,7 @@ change {MyCustomChange, :foo}
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="change-change" href="#change-change">
+    <a id="changes-change-change" href="#changes-change-change">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         change
       </span>
@@ -9299,7 +9676,7 @@ change {MyCustomChange, :foo}
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="change-on" href="#change-on">
+    <a id="changes-change-on" href="#changes-change-on">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         on
       </span>
@@ -9320,7 +9697,7 @@ change {MyCustomChange, :foo}
 
 <tr>
   <td style="text-align: left">
-    <a id="change-only_when_valid?" href="#change-only_when_valid?">
+    <a id="changes-change-only_when_valid?" href="#changes-change-only_when_valid?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         only_when_valid?
       </span>
@@ -9341,7 +9718,7 @@ change {MyCustomChange, :foo}
 
 <tr>
   <td style="text-align: left">
-    <a id="change-description" href="#change-description">
+    <a id="changes-change-description" href="#changes-change-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -9361,7 +9738,7 @@ change {MyCustomChange, :foo}
 
 <tr>
   <td style="text-align: left">
-    <a id="change-where" href="#change-where">
+    <a id="changes-change-where" href="#changes-change-where">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         where
       </span>
@@ -9433,8 +9810,7 @@ prepare build(sort: [:foo, :bar])
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -9448,7 +9824,7 @@ prepare build(sort: [:foo, :bar])
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="preparation-preparation" href="#preparation-preparation">
+    <a id="preparations-prepare-preparation" href="#preparations-prepare-preparation">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         preparation
       </span>
@@ -9470,6 +9846,7 @@ prepare build(sort: [:foo, :bar])
 
   </tbody>
 </table>
+
 
 
 
@@ -9526,8 +9903,7 @@ validate at_least_one_of_present([:first_name, :last_name])
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -9541,7 +9917,7 @@ validate at_least_one_of_present([:first_name, :last_name])
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="validation-validation" href="#validation-validation">
+    <a id="validations-validate-validation" href="#validations-validate-validation">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         validation
       </span>
@@ -9560,9 +9936,23 @@ validate at_least_one_of_present([:first_name, :last_name])
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="validation-where" href="#validation-where">
+    <a id="validations-validate-where" href="#validations-validate-where">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         where
       </span>
@@ -9583,7 +9973,7 @@ validate at_least_one_of_present([:first_name, :last_name])
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-on" href="#validation-on">
+    <a id="validations-validate-on" href="#validations-validate-on">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         on
       </span>
@@ -9604,7 +9994,7 @@ validate at_least_one_of_present([:first_name, :last_name])
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-only_when_valid?" href="#validation-only_when_valid?">
+    <a id="validations-validate-only_when_valid?" href="#validations-validate-only_when_valid?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         only_when_valid?
       </span>
@@ -9624,7 +10014,7 @@ validate at_least_one_of_present([:first_name, :last_name])
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-message" href="#validation-message">
+    <a id="validations-validate-message" href="#validations-validate-message">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         message
       </span>
@@ -9644,7 +10034,7 @@ validate at_least_one_of_present([:first_name, :last_name])
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-description" href="#validation-description">
+    <a id="validations-validate-description" href="#validations-validate-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -9664,7 +10054,7 @@ validate at_least_one_of_present([:first_name, :last_name])
 
 <tr>
   <td style="text-align: left">
-    <a id="validation-before_action?" href="#validation-before_action?">
+    <a id="validations-validate-before_action?" href="#validations-validate-before_action?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         before_action?
       </span>
@@ -9755,8 +10145,7 @@ end
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -9770,7 +10159,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-name" href="#name-relationship_path-name">
+    <a id="aggregates-count-name" href="#aggregates-count-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -9791,7 +10180,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-relationship_path" href="#name-relationship_path-relationship_path">
+    <a id="aggregates-count-relationship_path" href="#aggregates-count-relationship_path">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         relationship_path
       </span>
@@ -9810,9 +10199,23 @@ end
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-kind" href="#name-relationship_path-kind">
+    <a id="aggregates-count-kind" href="#aggregates-count-kind">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         kind
       </span>
@@ -9833,7 +10236,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-uniq?" href="#name-relationship_path-uniq?">
+    <a id="aggregates-count-uniq?" href="#aggregates-count-uniq?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         uniq?
       </span>
@@ -9853,7 +10256,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-read_action" href="#name-relationship_path-read_action">
+    <a id="aggregates-count-read_action" href="#aggregates-count-read_action">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         read_action
       </span>
@@ -9874,7 +10277,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field" href="#name-relationship_path-field">
+    <a id="aggregates-count-field" href="#aggregates-count-field">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         field
       </span>
@@ -9894,7 +10297,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-filter" href="#name-relationship_path-filter">
+    <a id="aggregates-count-filter" href="#aggregates-count-filter">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filter
       </span>
@@ -9914,7 +10317,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-description" href="#name-relationship_path-description">
+    <a id="aggregates-count-description" href="#aggregates-count-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -9934,7 +10337,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-default" href="#name-relationship_path-default">
+    <a id="aggregates-count-default" href="#aggregates-count-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -9954,7 +10357,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-private?" href="#name-relationship_path-private?">
+    <a id="aggregates-count-private?" href="#aggregates-count-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -9974,7 +10377,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-filterable?" href="#name-relationship_path-filterable?">
+    <a id="aggregates-count-filterable?" href="#aggregates-count-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -9994,7 +10397,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-authorize?" href="#name-relationship_path-authorize?">
+    <a id="aggregates-count-authorize?" href="#aggregates-count-authorize?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         authorize?
       </span>
@@ -10047,8 +10450,7 @@ exists :has_ticket, :assigned_tickets
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -10062,7 +10464,7 @@ exists :has_ticket, :assigned_tickets
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-name" href="#name-relationship_path-name">
+    <a id="aggregates-exists-name" href="#aggregates-exists-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -10083,7 +10485,7 @@ exists :has_ticket, :assigned_tickets
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-relationship_path" href="#name-relationship_path-relationship_path">
+    <a id="aggregates-exists-relationship_path" href="#aggregates-exists-relationship_path">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         relationship_path
       </span>
@@ -10102,9 +10504,23 @@ exists :has_ticket, :assigned_tickets
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-kind" href="#name-relationship_path-kind">
+    <a id="aggregates-exists-kind" href="#aggregates-exists-kind">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         kind
       </span>
@@ -10125,7 +10541,7 @@ exists :has_ticket, :assigned_tickets
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-read_action" href="#name-relationship_path-read_action">
+    <a id="aggregates-exists-read_action" href="#aggregates-exists-read_action">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         read_action
       </span>
@@ -10146,7 +10562,7 @@ exists :has_ticket, :assigned_tickets
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-filter" href="#name-relationship_path-filter">
+    <a id="aggregates-exists-filter" href="#aggregates-exists-filter">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filter
       </span>
@@ -10166,7 +10582,7 @@ exists :has_ticket, :assigned_tickets
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-description" href="#name-relationship_path-description">
+    <a id="aggregates-exists-description" href="#aggregates-exists-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -10186,7 +10602,7 @@ exists :has_ticket, :assigned_tickets
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-default" href="#name-relationship_path-default">
+    <a id="aggregates-exists-default" href="#aggregates-exists-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -10206,7 +10622,7 @@ exists :has_ticket, :assigned_tickets
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-private?" href="#name-relationship_path-private?">
+    <a id="aggregates-exists-private?" href="#aggregates-exists-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -10226,7 +10642,7 @@ exists :has_ticket, :assigned_tickets
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-filterable?" href="#name-relationship_path-filterable?">
+    <a id="aggregates-exists-filterable?" href="#aggregates-exists-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -10246,7 +10662,7 @@ exists :has_ticket, :assigned_tickets
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-authorize?" href="#name-relationship_path-authorize?">
+    <a id="aggregates-exists-authorize?" href="#aggregates-exists-authorize?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         authorize?
       </span>
@@ -10303,8 +10719,7 @@ end
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -10318,7 +10733,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-name" href="#name-relationship_path-field-name">
+    <a id="aggregates-first-name" href="#aggregates-first-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -10339,7 +10754,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-relationship_path" href="#name-relationship_path-field-relationship_path">
+    <a id="aggregates-first-relationship_path" href="#aggregates-first-relationship_path">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         relationship_path
       </span>
@@ -10360,7 +10775,41 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-kind" href="#name-relationship_path-field-kind">
+    <a id="aggregates-first-field" href="#aggregates-first-field">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        field
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">atom</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The field to aggregate. Defaults to the first field in the primary key of the resource
+  </td>
+</tr>
+
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+  <td style="text-align: left">
+    <a id="aggregates-first-kind" href="#aggregates-first-kind">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         kind
       </span>
@@ -10381,7 +10830,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-read_action" href="#name-relationship_path-field-read_action">
+    <a id="aggregates-first-read_action" href="#aggregates-first-read_action">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         read_action
       </span>
@@ -10402,27 +10851,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-field" href="#name-relationship_path-field-field">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        field
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">atom</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The field to aggregate. Defaults to the first field in the primary key of the resource
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="name-relationship_path-field-filter" href="#name-relationship_path-field-filter">
+    <a id="aggregates-first-filter" href="#aggregates-first-filter">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filter
       </span>
@@ -10442,7 +10871,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-sort" href="#name-relationship_path-field-sort">
+    <a id="aggregates-first-sort" href="#aggregates-first-sort">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sort
       </span>
@@ -10462,7 +10891,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-description" href="#name-relationship_path-field-description">
+    <a id="aggregates-first-description" href="#aggregates-first-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -10482,7 +10911,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-default" href="#name-relationship_path-field-default">
+    <a id="aggregates-first-default" href="#aggregates-first-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -10502,7 +10931,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-private?" href="#name-relationship_path-field-private?">
+    <a id="aggregates-first-private?" href="#aggregates-first-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -10522,7 +10951,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-filterable?" href="#name-relationship_path-field-filterable?">
+    <a id="aggregates-first-filterable?" href="#aggregates-first-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -10542,7 +10971,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-authorize?" href="#name-relationship_path-field-authorize?">
+    <a id="aggregates-first-authorize?" href="#aggregates-first-authorize?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         authorize?
       </span>
@@ -10597,8 +11026,7 @@ end
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -10612,7 +11040,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-name" href="#name-relationship_path-field-name">
+    <a id="aggregates-sum-name" href="#aggregates-sum-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -10633,7 +11061,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-relationship_path" href="#name-relationship_path-field-relationship_path">
+    <a id="aggregates-sum-relationship_path" href="#aggregates-sum-relationship_path">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         relationship_path
       </span>
@@ -10654,7 +11082,41 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-kind" href="#name-relationship_path-field-kind">
+    <a id="aggregates-sum-field" href="#aggregates-sum-field">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        field
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">atom</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The field to aggregate. Defaults to the first field in the primary key of the resource
+  </td>
+</tr>
+
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+  <td style="text-align: left">
+    <a id="aggregates-sum-kind" href="#aggregates-sum-kind">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         kind
       </span>
@@ -10675,7 +11137,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-read_action" href="#name-relationship_path-field-read_action">
+    <a id="aggregates-sum-read_action" href="#aggregates-sum-read_action">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         read_action
       </span>
@@ -10696,27 +11158,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-field" href="#name-relationship_path-field-field">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        field
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">atom</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The field to aggregate. Defaults to the first field in the primary key of the resource
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="name-relationship_path-field-filter" href="#name-relationship_path-field-filter">
+    <a id="aggregates-sum-filter" href="#aggregates-sum-filter">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filter
       </span>
@@ -10736,7 +11178,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-description" href="#name-relationship_path-field-description">
+    <a id="aggregates-sum-description" href="#aggregates-sum-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -10756,7 +11198,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-default" href="#name-relationship_path-field-default">
+    <a id="aggregates-sum-default" href="#aggregates-sum-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -10776,7 +11218,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-private?" href="#name-relationship_path-field-private?">
+    <a id="aggregates-sum-private?" href="#aggregates-sum-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -10796,7 +11238,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-filterable?" href="#name-relationship_path-field-filterable?">
+    <a id="aggregates-sum-filterable?" href="#aggregates-sum-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -10816,7 +11258,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-authorize?" href="#name-relationship_path-field-authorize?">
+    <a id="aggregates-sum-authorize?" href="#aggregates-sum-authorize?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         authorize?
       </span>
@@ -10872,8 +11314,7 @@ end
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -10887,7 +11328,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-name" href="#name-relationship_path-field-name">
+    <a id="aggregates-list-name" href="#aggregates-list-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -10908,7 +11349,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-relationship_path" href="#name-relationship_path-field-relationship_path">
+    <a id="aggregates-list-relationship_path" href="#aggregates-list-relationship_path">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         relationship_path
       </span>
@@ -10929,7 +11370,41 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-kind" href="#name-relationship_path-field-kind">
+    <a id="aggregates-list-field" href="#aggregates-list-field">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        field
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">atom</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The field to aggregate. Defaults to the first field in the primary key of the resource
+  </td>
+</tr>
+
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+  <td style="text-align: left">
+    <a id="aggregates-list-kind" href="#aggregates-list-kind">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         kind
       </span>
@@ -10950,7 +11425,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-uniq?" href="#name-relationship_path-field-uniq?">
+    <a id="aggregates-list-uniq?" href="#aggregates-list-uniq?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         uniq?
       </span>
@@ -10970,7 +11445,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-read_action" href="#name-relationship_path-field-read_action">
+    <a id="aggregates-list-read_action" href="#aggregates-list-read_action">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         read_action
       </span>
@@ -10991,27 +11466,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-field" href="#name-relationship_path-field-field">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        field
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">atom</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The field to aggregate. Defaults to the first field in the primary key of the resource
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="name-relationship_path-field-filter" href="#name-relationship_path-field-filter">
+    <a id="aggregates-list-filter" href="#aggregates-list-filter">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filter
       </span>
@@ -11031,7 +11486,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-sort" href="#name-relationship_path-field-sort">
+    <a id="aggregates-list-sort" href="#aggregates-list-sort">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sort
       </span>
@@ -11051,7 +11506,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-description" href="#name-relationship_path-field-description">
+    <a id="aggregates-list-description" href="#aggregates-list-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -11071,7 +11526,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-default" href="#name-relationship_path-field-default">
+    <a id="aggregates-list-default" href="#aggregates-list-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -11091,7 +11546,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-private?" href="#name-relationship_path-field-private?">
+    <a id="aggregates-list-private?" href="#aggregates-list-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -11111,7 +11566,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-filterable?" href="#name-relationship_path-field-filterable?">
+    <a id="aggregates-list-filterable?" href="#aggregates-list-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -11131,7 +11586,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-authorize?" href="#name-relationship_path-field-authorize?">
+    <a id="aggregates-list-authorize?" href="#aggregates-list-authorize?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         authorize?
       </span>
@@ -11186,8 +11641,7 @@ end
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -11201,7 +11655,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-name" href="#name-relationship_path-field-name">
+    <a id="aggregates-max-name" href="#aggregates-max-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -11222,7 +11676,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-relationship_path" href="#name-relationship_path-field-relationship_path">
+    <a id="aggregates-max-relationship_path" href="#aggregates-max-relationship_path">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         relationship_path
       </span>
@@ -11243,7 +11697,41 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-kind" href="#name-relationship_path-field-kind">
+    <a id="aggregates-max-field" href="#aggregates-max-field">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        field
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">atom</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The field to aggregate. Defaults to the first field in the primary key of the resource
+  </td>
+</tr>
+
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+  <td style="text-align: left">
+    <a id="aggregates-max-kind" href="#aggregates-max-kind">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         kind
       </span>
@@ -11264,7 +11752,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-read_action" href="#name-relationship_path-field-read_action">
+    <a id="aggregates-max-read_action" href="#aggregates-max-read_action">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         read_action
       </span>
@@ -11285,27 +11773,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-field" href="#name-relationship_path-field-field">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        field
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">atom</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The field to aggregate. Defaults to the first field in the primary key of the resource
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="name-relationship_path-field-filter" href="#name-relationship_path-field-filter">
+    <a id="aggregates-max-filter" href="#aggregates-max-filter">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filter
       </span>
@@ -11325,7 +11793,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-description" href="#name-relationship_path-field-description">
+    <a id="aggregates-max-description" href="#aggregates-max-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -11345,7 +11813,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-default" href="#name-relationship_path-field-default">
+    <a id="aggregates-max-default" href="#aggregates-max-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -11365,7 +11833,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-private?" href="#name-relationship_path-field-private?">
+    <a id="aggregates-max-private?" href="#aggregates-max-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -11385,7 +11853,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-filterable?" href="#name-relationship_path-field-filterable?">
+    <a id="aggregates-max-filterable?" href="#aggregates-max-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -11405,7 +11873,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-authorize?" href="#name-relationship_path-field-authorize?">
+    <a id="aggregates-max-authorize?" href="#aggregates-max-authorize?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         authorize?
       </span>
@@ -11460,8 +11928,7 @@ end
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -11475,7 +11942,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-name" href="#name-relationship_path-field-name">
+    <a id="aggregates-min-name" href="#aggregates-min-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -11496,7 +11963,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-relationship_path" href="#name-relationship_path-field-relationship_path">
+    <a id="aggregates-min-relationship_path" href="#aggregates-min-relationship_path">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         relationship_path
       </span>
@@ -11517,7 +11984,41 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-kind" href="#name-relationship_path-field-kind">
+    <a id="aggregates-min-field" href="#aggregates-min-field">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        field
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">atom</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The field to aggregate. Defaults to the first field in the primary key of the resource
+  </td>
+</tr>
+
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+  <td style="text-align: left">
+    <a id="aggregates-min-kind" href="#aggregates-min-kind">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         kind
       </span>
@@ -11538,7 +12039,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-read_action" href="#name-relationship_path-field-read_action">
+    <a id="aggregates-min-read_action" href="#aggregates-min-read_action">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         read_action
       </span>
@@ -11559,27 +12060,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-field" href="#name-relationship_path-field-field">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        field
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">atom</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The field to aggregate. Defaults to the first field in the primary key of the resource
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="name-relationship_path-field-filter" href="#name-relationship_path-field-filter">
+    <a id="aggregates-min-filter" href="#aggregates-min-filter">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filter
       </span>
@@ -11599,7 +12080,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-description" href="#name-relationship_path-field-description">
+    <a id="aggregates-min-description" href="#aggregates-min-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -11619,7 +12100,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-default" href="#name-relationship_path-field-default">
+    <a id="aggregates-min-default" href="#aggregates-min-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -11639,7 +12120,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-private?" href="#name-relationship_path-field-private?">
+    <a id="aggregates-min-private?" href="#aggregates-min-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -11659,7 +12140,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-filterable?" href="#name-relationship_path-field-filterable?">
+    <a id="aggregates-min-filterable?" href="#aggregates-min-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -11679,7 +12160,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-authorize?" href="#name-relationship_path-field-authorize?">
+    <a id="aggregates-min-authorize?" href="#aggregates-min-authorize?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         authorize?
       </span>
@@ -11734,8 +12215,7 @@ end
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -11749,7 +12229,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-name" href="#name-relationship_path-field-name">
+    <a id="aggregates-avg-name" href="#aggregates-avg-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -11770,7 +12250,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-relationship_path" href="#name-relationship_path-field-relationship_path">
+    <a id="aggregates-avg-relationship_path" href="#aggregates-avg-relationship_path">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         relationship_path
       </span>
@@ -11791,7 +12271,41 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-kind" href="#name-relationship_path-field-kind">
+    <a id="aggregates-avg-field" href="#aggregates-avg-field">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        field
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">atom</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The field to aggregate. Defaults to the first field in the primary key of the resource
+  </td>
+</tr>
+
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+  <td style="text-align: left">
+    <a id="aggregates-avg-kind" href="#aggregates-avg-kind">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         kind
       </span>
@@ -11812,7 +12326,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-read_action" href="#name-relationship_path-field-read_action">
+    <a id="aggregates-avg-read_action" href="#aggregates-avg-read_action">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         read_action
       </span>
@@ -11833,27 +12347,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-field" href="#name-relationship_path-field-field">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        field
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">atom</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The field to aggregate. Defaults to the first field in the primary key of the resource
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="name-relationship_path-field-filter" href="#name-relationship_path-field-filter">
+    <a id="aggregates-avg-filter" href="#aggregates-avg-filter">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filter
       </span>
@@ -11873,7 +12367,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-description" href="#name-relationship_path-field-description">
+    <a id="aggregates-avg-description" href="#aggregates-avg-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -11893,7 +12387,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-default" href="#name-relationship_path-field-default">
+    <a id="aggregates-avg-default" href="#aggregates-avg-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -11913,7 +12407,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-private?" href="#name-relationship_path-field-private?">
+    <a id="aggregates-avg-private?" href="#aggregates-avg-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -11933,7 +12427,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-filterable?" href="#name-relationship_path-field-filterable?">
+    <a id="aggregates-avg-filterable?" href="#aggregates-avg-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -11953,7 +12447,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-field-authorize?" href="#name-relationship_path-field-authorize?">
+    <a id="aggregates-avg-authorize?" href="#aggregates-avg-authorize?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         authorize?
       </span>
@@ -12010,8 +12504,7 @@ end
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -12025,49 +12518,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-type-implementation" href="#name-relationship_path-type-implementation">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        implementation
-      </span>
-    </a>
-      <sup style="color: red">*</sup>
-
-  </td>
-  <td style="text-align: left">
-    <code class="inline">module</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The module that implements the relevant data layer callbacks
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="name-relationship_path-type-type" href="#name-relationship_path-type-type">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        type
-      </span>
-    </a>
-      <sup style="color: red">*</sup>
-
-  </td>
-  <td style="text-align: left">
-    <code class="inline">module</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The type of the value returned by the aggregate
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="name-relationship_path-type-name" href="#name-relationship_path-type-name">
+    <a id="aggregates-custom-name" href="#aggregates-custom-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -12088,7 +12539,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-type-relationship_path" href="#name-relationship_path-type-relationship_path">
+    <a id="aggregates-custom-relationship_path" href="#aggregates-custom-relationship_path">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         relationship_path
       </span>
@@ -12109,7 +12560,63 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-type-kind" href="#name-relationship_path-type-kind">
+    <a id="aggregates-custom-type" href="#aggregates-custom-type">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        type
+      </span>
+    </a>
+      <sup style="color: red">*</sup>
+
+  </td>
+  <td style="text-align: left">
+    <code class="inline">module</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The type of the value returned by the aggregate
+  </td>
+</tr>
+
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+  <td style="text-align: left">
+    <a id="aggregates-custom-implementation" href="#aggregates-custom-implementation">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        implementation
+      </span>
+    </a>
+      <sup style="color: red">*</sup>
+
+  </td>
+  <td style="text-align: left">
+    <code class="inline">module</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The module that implements the relevant data layer callbacks
+  </td>
+</tr>
+
+<tr>
+  <td style="text-align: left">
+    <a id="aggregates-custom-kind" href="#aggregates-custom-kind">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         kind
       </span>
@@ -12130,7 +12637,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-type-read_action" href="#name-relationship_path-type-read_action">
+    <a id="aggregates-custom-read_action" href="#aggregates-custom-read_action">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         read_action
       </span>
@@ -12151,7 +12658,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-type-field" href="#name-relationship_path-type-field">
+    <a id="aggregates-custom-field" href="#aggregates-custom-field">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         field
       </span>
@@ -12171,7 +12678,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-type-filter" href="#name-relationship_path-type-filter">
+    <a id="aggregates-custom-filter" href="#aggregates-custom-filter">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filter
       </span>
@@ -12191,7 +12698,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-type-sort" href="#name-relationship_path-type-sort">
+    <a id="aggregates-custom-sort" href="#aggregates-custom-sort">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         sort
       </span>
@@ -12211,7 +12718,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-type-description" href="#name-relationship_path-type-description">
+    <a id="aggregates-custom-description" href="#aggregates-custom-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -12231,7 +12738,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-type-default" href="#name-relationship_path-type-default">
+    <a id="aggregates-custom-default" href="#aggregates-custom-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -12251,7 +12758,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-type-private?" href="#name-relationship_path-type-private?">
+    <a id="aggregates-custom-private?" href="#aggregates-custom-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -12271,7 +12778,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-type-filterable?" href="#name-relationship_path-type-filterable?">
+    <a id="aggregates-custom-filterable?" href="#aggregates-custom-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -12291,7 +12798,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-relationship_path-type-authorize?" href="#name-relationship_path-type-authorize?">
+    <a id="aggregates-custom-authorize?" href="#aggregates-custom-authorize?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         authorize?
       </span>
@@ -12386,8 +12893,7 @@ calculate :full_name, :string, expr(first_name <> " " <> last_name)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -12401,7 +12907,7 @@ calculate :full_name, :string, expr(first_name <> " " <> last_name)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-type-calculation-name" href="#name-type-calculation-name">
+    <a id="calculations-calculate-name" href="#calculations-calculate-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -12422,7 +12928,7 @@ calculate :full_name, :string, expr(first_name <> " " <> last_name)
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-calculation-type" href="#name-type-calculation-type">
+    <a id="calculations-calculate-type" href="#calculations-calculate-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -12443,7 +12949,7 @@ calculate :full_name, :string, expr(first_name <> " " <> last_name)
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-calculation-calculation" href="#name-type-calculation-calculation">
+    <a id="calculations-calculate-calculation" href="#calculations-calculate-calculation">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         calculation
       </span>
@@ -12463,9 +12969,23 @@ calculate :full_name, :string, expr(first_name <> " " <> last_name)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-type-calculation-constraints" href="#name-type-calculation-constraints">
+    <a id="calculations-calculate-constraints" href="#calculations-calculate-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>
@@ -12485,7 +13005,7 @@ calculate :full_name, :string, expr(first_name <> " " <> last_name)
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-calculation-description" href="#name-type-calculation-description">
+    <a id="calculations-calculate-description" href="#calculations-calculate-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -12505,7 +13025,7 @@ calculate :full_name, :string, expr(first_name <> " " <> last_name)
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-calculation-private?" href="#name-type-calculation-private?">
+    <a id="calculations-calculate-private?" href="#calculations-calculate-private?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         private?
       </span>
@@ -12526,7 +13046,7 @@ calculate :full_name, :string, expr(first_name <> " " <> last_name)
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-calculation-select" href="#name-type-calculation-select">
+    <a id="calculations-calculate-select" href="#calculations-calculate-select">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         select
       </span>
@@ -12546,7 +13066,7 @@ calculate :full_name, :string, expr(first_name <> " " <> last_name)
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-calculation-load" href="#name-type-calculation-load">
+    <a id="calculations-calculate-load" href="#calculations-calculate-load">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         load
       </span>
@@ -12566,7 +13086,7 @@ calculate :full_name, :string, expr(first_name <> " " <> last_name)
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-calculation-allow_nil?" href="#name-type-calculation-allow_nil?">
+    <a id="calculations-calculate-allow_nil?" href="#calculations-calculate-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -12586,7 +13106,7 @@ calculate :full_name, :string, expr(first_name <> " " <> last_name)
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-calculation-filterable?" href="#name-type-calculation-filterable?">
+    <a id="calculations-calculate-filterable?" href="#calculations-calculate-filterable?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         filterable?
       </span>
@@ -12638,8 +13158,7 @@ end
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -12653,7 +13172,7 @@ end
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="name-type-name" href="#name-type-name">
+    <a id="calculations-calculate-argument-name" href="#calculations-calculate-argument-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -12674,7 +13193,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-type" href="#name-type-type">
+    <a id="calculations-calculate-argument-type" href="#calculations-calculate-argument-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -12693,9 +13212,23 @@ end
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="name-type-default" href="#name-type-default">
+    <a id="calculations-calculate-argument-default" href="#calculations-calculate-argument-default">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         default
       </span>
@@ -12715,7 +13248,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-allow_nil?" href="#name-type-allow_nil?">
+    <a id="calculations-calculate-argument-allow_nil?" href="#calculations-calculate-argument-allow_nil?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_nil?
       </span>
@@ -12735,7 +13268,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-allow_expr?" href="#name-type-allow_expr?">
+    <a id="calculations-calculate-argument-allow_expr?" href="#calculations-calculate-argument-allow_expr?">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         allow_expr?
       </span>
@@ -12755,7 +13288,7 @@ end
 
 <tr>
   <td style="text-align: left">
-    <a id="name-type-constraints" href="#name-type-constraints">
+    <a id="calculations-calculate-argument-constraints" href="#calculations-calculate-argument-constraints">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         constraints
       </span>

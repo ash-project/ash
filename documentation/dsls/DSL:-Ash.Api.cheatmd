@@ -201,7 +201,7 @@ resource Foo
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="resource-resource" href="#resource-resource">
+    <a id="resources-resource-resource" href="#resources-resource-resource">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         resource
       </span>

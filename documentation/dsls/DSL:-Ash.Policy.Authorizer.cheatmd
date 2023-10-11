@@ -162,7 +162,41 @@ See the [policies guide](/documentation/topics/policies.md) for more.
 
 
 
+### Arguments
 
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+  <td style="text-align: left">
+    <a id="policies-policy-condition" href="#policies-policy-condition">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        condition
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">`any`</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    A check or list of checks that must be true in order for this policy to apply.
+
+  </td>
+</tr>
+
+  </tbody>
+</table>
 ### Options
 
 <table>
@@ -177,7 +211,7 @@ See the [policies guide](/documentation/topics/policies.md) for more.
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="condition-description" href="#condition-description">
+    <a id="policies-policy-description" href="#policies-policy-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -197,7 +231,7 @@ See the [policies guide](/documentation/topics/policies.md) for more.
 
 <tr>
   <td style="text-align: left">
-    <a id="condition-access_type" href="#condition-access_type">
+    <a id="policies-policy-access_type" href="#policies-policy-access_type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         access_type
       </span>
@@ -212,27 +246,6 @@ See the [policies guide](/documentation/topics/policies.md) for more.
   </td>
   <td style="text-align: left" colspan=2>
     What portion of the checks inside the policy are allowed to run. See the guide for more.
-
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="condition-condition" href="#condition-condition">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        condition
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">`any`</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    A check or list of checks that must be true in order for this policy to apply.
 
   </td>
 </tr>
@@ -262,8 +275,7 @@ authorize_if actor_attribute_matches_record(:group, :group)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -277,7 +289,7 @@ authorize_if actor_attribute_matches_record(:group, :group)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="check-check" href="#check-check">
+    <a id="policies-policy-authorize_if-check" href="#policies-policy-authorize_if-check">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         check
       </span>
@@ -297,9 +309,23 @@ authorize_if actor_attribute_matches_record(:group, :group)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="check-name" href="#check-name">
+    <a id="policies-policy-authorize_if-name" href="#policies-policy-authorize_if-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -349,8 +375,7 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -364,7 +389,7 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="check-check" href="#check-check">
+    <a id="policies-policy-forbid_if-check" href="#policies-policy-forbid_if-check">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         check
       </span>
@@ -384,9 +409,23 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="check-name" href="#check-name">
+    <a id="policies-policy-forbid_if-name" href="#policies-policy-forbid_if-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -436,8 +475,7 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -451,7 +489,7 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="check-check" href="#check-check">
+    <a id="policies-policy-authorize_unless-check" href="#policies-policy-authorize_unless-check">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         check
       </span>
@@ -471,9 +509,23 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="check-name" href="#check-name">
+    <a id="policies-policy-authorize_unless-name" href="#policies-policy-authorize_unless-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -523,8 +575,7 @@ forbid_unless actor_attribute_matches_record(:group, :group)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -538,7 +589,7 @@ forbid_unless actor_attribute_matches_record(:group, :group)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="check-check" href="#check-check">
+    <a id="policies-policy-forbid_unless-check" href="#policies-policy-forbid_unless-check">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         check
       </span>
@@ -558,9 +609,23 @@ forbid_unless actor_attribute_matches_record(:group, :group)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="check-name" href="#check-name">
+    <a id="policies-policy-forbid_unless-name" href="#policies-policy-forbid_unless-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -613,7 +678,41 @@ A policy that, if passed, will skip all following policies. If failed, authoriza
 
 
 
+### Arguments
 
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+  <td style="text-align: left">
+    <a id="policies-bypass-condition" href="#policies-bypass-condition">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        condition
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">`any`</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    A check or list of checks that must be true in order for this policy to apply.
+
+  </td>
+</tr>
+
+  </tbody>
+</table>
 ### Options
 
 <table>
@@ -628,7 +727,7 @@ A policy that, if passed, will skip all following policies. If failed, authoriza
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="condition-description" href="#condition-description">
+    <a id="policies-bypass-description" href="#policies-bypass-description">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         description
       </span>
@@ -648,7 +747,7 @@ A policy that, if passed, will skip all following policies. If failed, authoriza
 
 <tr>
   <td style="text-align: left">
-    <a id="condition-access_type" href="#condition-access_type">
+    <a id="policies-bypass-access_type" href="#policies-bypass-access_type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         access_type
       </span>
@@ -663,27 +762,6 @@ A policy that, if passed, will skip all following policies. If failed, authoriza
   </td>
   <td style="text-align: left" colspan=2>
     What portion of the checks inside the policy are allowed to run. See the guide for more.
-
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="condition-condition" href="#condition-condition">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        condition
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">`any`</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    A check or list of checks that must be true in order for this policy to apply.
 
   </td>
 </tr>
@@ -713,8 +791,7 @@ authorize_if actor_attribute_matches_record(:group, :group)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -728,7 +805,7 @@ authorize_if actor_attribute_matches_record(:group, :group)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="check-check" href="#check-check">
+    <a id="policies-bypass-authorize_if-check" href="#policies-bypass-authorize_if-check">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         check
       </span>
@@ -748,9 +825,23 @@ authorize_if actor_attribute_matches_record(:group, :group)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="check-name" href="#check-name">
+    <a id="policies-bypass-authorize_if-name" href="#policies-bypass-authorize_if-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -800,8 +891,7 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -815,7 +905,7 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="check-check" href="#check-check">
+    <a id="policies-bypass-forbid_if-check" href="#policies-bypass-forbid_if-check">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         check
       </span>
@@ -835,9 +925,23 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="check-name" href="#check-name">
+    <a id="policies-bypass-forbid_if-name" href="#policies-bypass-forbid_if-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -887,8 +991,7 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -902,7 +1005,7 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="check-check" href="#check-check">
+    <a id="policies-bypass-authorize_unless-check" href="#policies-bypass-authorize_unless-check">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         check
       </span>
@@ -922,9 +1025,23 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="check-name" href="#check-name">
+    <a id="policies-bypass-authorize_unless-name" href="#policies-bypass-authorize_unless-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -974,8 +1091,7 @@ forbid_unless actor_attribute_matches_record(:group, :group)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -989,7 +1105,7 @@ forbid_unless actor_attribute_matches_record(:group, :group)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="check-check" href="#check-check">
+    <a id="policies-bypass-forbid_unless-check" href="#policies-bypass-forbid_unless-check">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         check
       </span>
@@ -1009,9 +1125,23 @@ forbid_unless actor_attribute_matches_record(:group, :group)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="check-name" href="#check-name">
+    <a id="policies-bypass-forbid_unless-name" href="#policies-bypass-forbid_unless-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -1139,8 +1269,7 @@ A field policy that, if passed, will skip all following field policies for that 
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -1154,27 +1283,7 @@ A field policy that, if passed, will skip all following field policies for that 
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="fields-condition-description" href="#fields-condition-description">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        description
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">String.t</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    A description for the policy, used when explaining authorization results
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="fields-condition-fields" href="#fields-condition-fields">
+    <a id="field_policies-field_policy_bypass-fields" href="#field_policies-field_policy_bypass-fields">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         fields
       </span>
@@ -1194,7 +1303,7 @@ A field policy that, if passed, will skip all following field policies for that 
 
 <tr>
   <td style="text-align: left">
-    <a id="fields-condition-condition" href="#fields-condition-condition">
+    <a id="field_policies-field_policy_bypass-condition" href="#field_policies-field_policy_bypass-condition">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         condition
       </span>
@@ -1209,6 +1318,40 @@ A field policy that, if passed, will skip all following field policies for that 
   </td>
   <td style="text-align: left" colspan=2>
     A check or list of checks that must be true in order for this field policy to apply. If not specified, it always applies.
+  </td>
+</tr>
+
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+  <td style="text-align: left">
+    <a id="field_policies-field_policy_bypass-description" href="#field_policies-field_policy_bypass-description">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        description
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">String.t</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    A description for the policy, used when explaining authorization results
   </td>
 </tr>
 
@@ -1237,8 +1380,7 @@ authorize_if actor_attribute_matches_record(:group, :group)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -1252,7 +1394,7 @@ authorize_if actor_attribute_matches_record(:group, :group)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="check-check" href="#check-check">
+    <a id="field_policies-field_policy_bypass-authorize_if-check" href="#field_policies-field_policy_bypass-authorize_if-check">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         check
       </span>
@@ -1272,9 +1414,23 @@ authorize_if actor_attribute_matches_record(:group, :group)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="check-name" href="#check-name">
+    <a id="field_policies-field_policy_bypass-authorize_if-name" href="#field_policies-field_policy_bypass-authorize_if-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -1324,8 +1480,7 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -1339,7 +1494,7 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="check-check" href="#check-check">
+    <a id="field_policies-field_policy_bypass-forbid_if-check" href="#field_policies-field_policy_bypass-forbid_if-check">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         check
       </span>
@@ -1359,9 +1514,23 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="check-name" href="#check-name">
+    <a id="field_policies-field_policy_bypass-forbid_if-name" href="#field_policies-field_policy_bypass-forbid_if-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -1411,8 +1580,7 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -1426,7 +1594,7 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="check-check" href="#check-check">
+    <a id="field_policies-field_policy_bypass-authorize_unless-check" href="#field_policies-field_policy_bypass-authorize_unless-check">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         check
       </span>
@@ -1446,9 +1614,23 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="check-name" href="#check-name">
+    <a id="field_policies-field_policy_bypass-authorize_unless-name" href="#field_policies-field_policy_bypass-authorize_unless-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -1498,8 +1680,7 @@ forbid_unless actor_attribute_matches_record(:group, :group)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -1513,7 +1694,7 @@ forbid_unless actor_attribute_matches_record(:group, :group)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="check-check" href="#check-check">
+    <a id="field_policies-field_policy_bypass-forbid_unless-check" href="#field_policies-field_policy_bypass-forbid_unless-check">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         check
       </span>
@@ -1533,9 +1714,23 @@ forbid_unless actor_attribute_matches_record(:group, :group)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="check-name" href="#check-name">
+    <a id="field_policies-field_policy_bypass-forbid_unless-name" href="#field_policies-field_policy_bypass-forbid_unless-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -1590,8 +1785,7 @@ for more.
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -1605,27 +1799,7 @@ for more.
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="fields-condition-description" href="#fields-condition-description">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        description
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">String.t</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    A description for the policy, used when explaining authorization results
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="fields-condition-fields" href="#fields-condition-fields">
+    <a id="field_policies-field_policy-fields" href="#field_policies-field_policy-fields">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         fields
       </span>
@@ -1645,7 +1819,7 @@ for more.
 
 <tr>
   <td style="text-align: left">
-    <a id="fields-condition-condition" href="#fields-condition-condition">
+    <a id="field_policies-field_policy-condition" href="#field_policies-field_policy-condition">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         condition
       </span>
@@ -1660,6 +1834,40 @@ for more.
   </td>
   <td style="text-align: left" colspan=2>
     A check or list of checks that must be true in order for this field policy to apply. If not specified, it always applies.
+  </td>
+</tr>
+
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+  <td style="text-align: left">
+    <a id="field_policies-field_policy-description" href="#field_policies-field_policy-description">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        description
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">String.t</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    A description for the policy, used when explaining authorization results
   </td>
 </tr>
 
@@ -1688,8 +1896,7 @@ authorize_if actor_attribute_matches_record(:group, :group)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -1703,7 +1910,7 @@ authorize_if actor_attribute_matches_record(:group, :group)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="check-check" href="#check-check">
+    <a id="field_policies-field_policy-authorize_if-check" href="#field_policies-field_policy-authorize_if-check">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         check
       </span>
@@ -1723,9 +1930,23 @@ authorize_if actor_attribute_matches_record(:group, :group)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="check-name" href="#check-name">
+    <a id="field_policies-field_policy-authorize_if-name" href="#field_policies-field_policy-authorize_if-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -1775,8 +1996,7 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -1790,7 +2010,7 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="check-check" href="#check-check">
+    <a id="field_policies-field_policy-forbid_if-check" href="#field_policies-field_policy-forbid_if-check">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         check
       </span>
@@ -1810,9 +2030,23 @@ forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="check-name" href="#check-name">
+    <a id="field_policies-field_policy-forbid_if-name" href="#field_policies-field_policy-forbid_if-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -1862,8 +2096,7 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -1877,7 +2110,7 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="check-check" href="#check-check">
+    <a id="field_policies-field_policy-authorize_unless-check" href="#field_policies-field_policy-authorize_unless-check">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         check
       </span>
@@ -1897,9 +2130,23 @@ authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="check-name" href="#check-name">
+    <a id="field_policies-field_policy-authorize_unless-name" href="#field_policies-field_policy-authorize_unless-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>
@@ -1949,8 +2196,7 @@ forbid_unless actor_attribute_matches_record(:group, :group)
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -1964,7 +2210,7 @@ forbid_unless actor_attribute_matches_record(:group, :group)
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="check-check" href="#check-check">
+    <a id="field_policies-field_policy-forbid_unless-check" href="#field_policies-field_policy-forbid_unless-check">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         check
       </span>
@@ -1984,9 +2230,23 @@ forbid_unless actor_attribute_matches_record(:group, :group)
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="check-name" href="#check-name">
+    <a id="field_policies-field_policy-forbid_unless-name" href="#field_policies-field_policy-forbid_unless-name">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         name
       </span>

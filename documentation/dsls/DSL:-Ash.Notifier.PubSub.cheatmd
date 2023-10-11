@@ -158,8 +158,7 @@ publish :assign, "assigned"
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -173,7 +172,7 @@ publish :assign, "assigned"
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="action-topic-action" href="#action-topic-action">
+    <a id="pub_sub-publish-action" href="#pub_sub-publish-action">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         action
       </span>
@@ -194,7 +193,7 @@ publish :assign, "assigned"
 
 <tr>
   <td style="text-align: left">
-    <a id="action-topic-topic" href="#action-topic-topic">
+    <a id="pub_sub-publish-topic" href="#pub_sub-publish-topic">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         topic
       </span>
@@ -213,9 +212,23 @@ publish :assign, "assigned"
   </td>
 </tr>
 
-<tr>
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
   <td style="text-align: left">
-    <a id="action-topic-event" href="#action-topic-event">
+    <a id="pub_sub-publish-event" href="#pub_sub-publish-event">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         event
       </span>
@@ -235,7 +248,7 @@ publish :assign, "assigned"
 
 <tr>
   <td style="text-align: left">
-    <a id="action-topic-dispatcher" href="#action-topic-dispatcher">
+    <a id="pub_sub-publish-dispatcher" href="#pub_sub-publish-dispatcher">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         dispatcher
       </span>
@@ -285,8 +298,7 @@ publish_all :create, "created"
 
 
 
-
-### Options
+### Arguments
 
 <table>
   <thead>
@@ -300,28 +312,7 @@ publish_all :create, "created"
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="type-topic-topic" href="#type-topic-topic">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        topic
-      </span>
-    </a>
-      <sup style="color: red">*</sup>
-
-  </td>
-  <td style="text-align: left">
-    <code class="inline">`any`</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The topic to publish
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="type-topic-type" href="#type-topic-type">
+    <a id="pub_sub-publish_all-type" href="#pub_sub-publish_all-type">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         type
       </span>
@@ -341,7 +332,42 @@ publish_all :create, "created"
 
 <tr>
   <td style="text-align: left">
-    <a id="type-topic-action" href="#type-topic-action">
+    <a id="pub_sub-publish_all-topic" href="#pub_sub-publish_all-topic">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        topic
+      </span>
+    </a>
+      <sup style="color: red">*</sup>
+
+  </td>
+  <td style="text-align: left">
+    <code class="inline">`any`</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The topic to publish
+  </td>
+</tr>
+
+  </tbody>
+</table>
+### Options
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th colspan=2>Docs</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+  <td style="text-align: left">
+    <a id="pub_sub-publish_all-action" href="#pub_sub-publish_all-action">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         action
       </span>
@@ -361,7 +387,7 @@ publish_all :create, "created"
 
 <tr>
   <td style="text-align: left">
-    <a id="type-topic-event" href="#type-topic-event">
+    <a id="pub_sub-publish_all-event" href="#pub_sub-publish_all-event">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         event
       </span>
@@ -381,7 +407,7 @@ publish_all :create, "created"
 
 <tr>
   <td style="text-align: left">
-    <a id="type-topic-dispatcher" href="#type-topic-dispatcher">
+    <a id="pub_sub-publish_all-dispatcher" href="#pub_sub-publish_all-dispatcher">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         dispatcher
       </span>
