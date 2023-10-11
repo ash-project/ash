@@ -17,6 +17,9 @@ on:
       postgres:
         type: boolean
         default: false
+      sqlite:
+        type: boolean
+        default: false
       hex-api-key:
         type: string
 jobs:
@@ -159,6 +162,26 @@ jobs:
           mix-env: test
           task: ash_postgres.migrate --tenants
         if: ${{inputs.postgres}}
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        with:
+          mix-env: test
+          task: ash_sqlite.generate_migrations --check
+        if: ${{inputs.sqlite}}
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        with:
+          mix-env: test
+          task: ash_sqlite.create
+        if: ${{inputs.sqlite}}
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        with:
+          mix-env: test
+          task: ash_sqlite.migrate
+        if: ${{inputs.sqlite}}
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        with:
+          mix-env: test
+          task: ash_sqlite.migrate --tenants
+        if: ${{inputs.sqlite}}
       - uses: team-alembic/staple-actions/actions/mix-test@main
         with:
           mix-env: test
