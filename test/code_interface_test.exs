@@ -19,6 +19,8 @@ defmodule Ash.Test.CodeInterfaceTest do
       define :create, args: [{:optional, :first_name}]
       define :hello, args: [:name]
 
+      define :update, action: :update
+
       define_calculation(:full_name, args: [:first_name, :last_name])
 
       define_calculation(:full_name_opt,
@@ -35,6 +37,8 @@ defmodule Ash.Test.CodeInterfaceTest do
       end
 
       create :create
+
+      update :update
 
       read :by_id do
         argument :id, :uuid, allow_nil?: false
@@ -114,6 +118,21 @@ defmodule Ash.Test.CodeInterfaceTest do
       assert {:ok, true} == User.can_get_by_id(nil, "some uuid")
       assert User.can_read_users?(nil)
       assert User.can_get_by_id?(nil, "some uuid")
+    end
+
+    test "code interface-generated functions should check the type of their first argument and return an expressive error" do
+      # create a few users
+      users = [
+        User
+        |> Ash.Changeset.for_create(:create, %{first_name: "Zach", last_name: "Daniel"})
+        |> Api.create!(),
+        User
+        |> Ash.Changeset.for_create(:create, %{first_name: "Zach2", last_name: "Daniel2"})
+        |> Api.create!()
+      ]
+      assert_raise Ash.Error.InvalidArgument, fn ->
+        User.update([], %{first_name: "Zack3", last_name: "Daniel3"})
+      end
     end
   end
 
