@@ -8,7 +8,7 @@ defmodule Ash.Type.DateTime do
   @constraints [
     precision: [
       type: {:one_of, [:microsecond, :second]},
-      default: :microsecond
+      default: :second
     ],
     timezone: [
       type: {:one_of, [:utc]},
