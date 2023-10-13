@@ -2,6 +2,16 @@ defmodule Ash.Actions.Helpers do
   @moduledoc false
   require Logger
 
+  def rollback_if_in_transaction({:error, error}, resource) do
+    if Ash.DataLayer.in_transaction?(resource) do
+      Ash.DataLayer.rollback(resource, error)
+    else
+      {:error, error}
+    end
+  end
+
+  def rollback_if_in_transaction(success, _), do: success
+
   def validate_calculation_load!(%{__struct__: Ash.Query}, module) do
     raise """
     `#{inspect(module)}.load/3` returned a query.

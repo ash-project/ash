@@ -17,6 +17,7 @@ defmodule Ash.DataLayer.Simple do
   def can?(_, {:sort, _}), do: true
   def can?(_, :filter), do: true
   def can?(_, :boolean_filter), do: true
+  def can?(_, :composite_primary_key), do: true
   def can?(_, :nested_expressions), do: true
   def can?(_, {:filter_expr, _}), do: true
   def can?(_, :multitenancy), do: true

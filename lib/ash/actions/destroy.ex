@@ -323,7 +323,10 @@ defmodule Ash.Actions.Destroy do
                       if result = changeset.context[:private][:action_result] do
                         result
                       else
-                        case Ash.DataLayer.destroy(resource, changeset) do
+                      resource
+                      |> Ash.DataLayer.destroy(changeset)
+                      |> Ash.Actions.Helpers.rollback_if_in_transaction(changeset.resource)
+                      |> case do
                           :ok ->
                             {:ok,
                              Ash.Resource.set_meta(record, %Ecto.Schema.Metadata{

@@ -1803,14 +1803,20 @@ defmodule Ash.Changeset do
             true
           end
 
+        resources = Enum.reject(resources, &Ash.DataLayer.in_transaction?/1)
+
         try do
           resources
-          |> Enum.reject(&Ash.DataLayer.in_transaction?/1)
           |> Ash.DataLayer.transaction(
             fn ->
               case run_around_actions(changeset, func) do
                 {:error, error} ->
-                  Ash.DataLayer.rollback(changeset.resource, error)
+                  case resources do
+                    [] ->
+                      {:error, error}
+                    _ ->
+                      Ash.DataLayer.rollback(changeset.resource, error)
+                  end
 
                 other ->
                   other
@@ -1836,6 +1842,8 @@ defmodule Ash.Changeset do
                 end
 
               {:ok, value, changeset, Map.put(instructions, :notifications, notifications)}
+            {:ok, {:error, error}} ->
+              {:error, error}
 
             {:error, error} ->
               {:error, error}
