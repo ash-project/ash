@@ -453,7 +453,7 @@ defmodule Ash.Actions.Update do
 
                                     resource
                                     |> Ash.DataLayer.update(changeset)
-                                    |> Ash.Actions.Helpers.rollback_if_in_transaction(changeset.resource)
+                                    |> Ash.Actions.Helpers.rollback_if_in_transaction(changeset)
                                     |> add_tenant(changeset)
                                     |> manage_relationships(api, changeset,
                                       actor: actor,

@@ -1814,8 +1814,12 @@ defmodule Ash.Changeset do
                   case resources do
                     [] ->
                       {:error, error}
+
                     _ ->
-                      Ash.DataLayer.rollback(changeset.resource, error)
+                      Ash.DataLayer.rollback(
+                        changeset.resource,
+                        Ash.Changeset.add_error(changeset, error)
+                      )
                   end
 
                 other ->
@@ -1842,6 +1846,7 @@ defmodule Ash.Changeset do
                 end
 
               {:ok, value, changeset, Map.put(instructions, :notifications, notifications)}
+
             {:ok, {:error, error}} ->
               {:error, error}
 
@@ -3985,6 +3990,10 @@ defmodule Ash.Changeset do
       InvalidChanges.exception(message: error),
       path
     )
+  end
+
+  def add_error(changeset, %__MODULE__{errors: errors}, path) do
+    add_error(changeset, errors, path)
   end
 
   def add_error(changeset, error, path) do

@@ -2,9 +2,9 @@ defmodule Ash.Actions.Helpers do
   @moduledoc false
   require Logger
 
-  def rollback_if_in_transaction({:error, error}, resource) do
-    if Ash.DataLayer.in_transaction?(resource) do
-      Ash.DataLayer.rollback(resource, error)
+  def rollback_if_in_transaction({:error, error}, changeset) do
+    if Ash.DataLayer.in_transaction?(changeset.resource) do
+      Ash.DataLayer.rollback(changeset.resource, Ash.Changeset.add_error(changeset, error))
     else
       {:error, error}
     end
