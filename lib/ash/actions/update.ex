@@ -97,6 +97,7 @@ defmodule Ash.Actions.Update do
       authorize?: authorize?,
       return_notifications?: opts[:return_notifications?],
       actor: actor,
+      rollback_on_error?: Keyword.get(opts, :rollback_on_error?, true),
       timeout: opts[:timeout] || changeset.timeout || Ash.Api.Info.timeout(api),
       tracer: opts[:tracer],
       after_action: after_action,
@@ -498,6 +499,7 @@ defmodule Ash.Actions.Update do
                     transaction?:
                       Keyword.get(request_opts, :transaction?, true) && action.transaction?,
                     timeout: request_opts[:timeout],
+                    rollback_on_error?: request_opts[:rollback_on_error?],
                     return_notifications?: request_opts[:return_notifications?],
                     transaction_metadata: %{
                       type: :update,

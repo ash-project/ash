@@ -115,6 +115,7 @@ defmodule Ash.Actions.Create do
       return_notifications?: opts[:return_notifications?],
       authorize?: authorize?,
       actor: actor,
+      rollback_on_error?: Keyword.get(opts, :rollback_on_error?, true),
       tenant: opts[:tenant],
       tracer: opts[:tracer],
       after_action: opts[:after_action]
@@ -504,6 +505,7 @@ defmodule Ash.Actions.Create do
                   transaction?:
                     Keyword.get(request_opts, :transaction?, true) && action.transaction?,
                   timeout: request_opts[:timeout],
+                  rollback_on_error?: request_opts[:rollback_on_error?],
                   tracer: request_opts[:tracer],
                   return_notifications?: request_opts[:return_notifications?],
                   transaction_metadata: %{

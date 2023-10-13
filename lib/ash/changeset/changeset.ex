@@ -1811,15 +1811,13 @@ defmodule Ash.Changeset do
             fn ->
               case run_around_actions(changeset, func) do
                 {:error, error} ->
-                  case resources do
-                    [] ->
-                      {:error, error}
-
-                    _ ->
-                      Ash.DataLayer.rollback(
-                        changeset.resource,
-                        Ash.Changeset.add_error(changeset, error)
-                      )
+                  if opts[:rollback_on_error?] do
+                    Ash.DataLayer.rollback(
+                      changeset.resource,
+                      Ash.Changeset.add_error(changeset, error)
+                    )
+                  else
+                    {:error, error}
                   end
 
                 other ->

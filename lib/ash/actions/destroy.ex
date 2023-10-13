@@ -110,6 +110,7 @@ defmodule Ash.Actions.Destroy do
       timeout: opts[:timeout] || changeset.timeout || Ash.Api.Info.timeout(api),
       return_notifications?: opts[:return_notifications?],
       return_destroyed?: return_destroyed?,
+      rollback_on_error?: Keyword.get(opts, :rollback_on_error?, true),
       tracer: opts[:tracer],
       timeout: opts[:timeout],
       tenant: opts[:tenant]
@@ -355,6 +356,7 @@ defmodule Ash.Actions.Destroy do
                 transaction?:
                   Keyword.get(request_opts, :transaction?, true) && action.transaction?,
                 timeout: request_opts[:timeout],
+                rollback_on_error?: request_opts[:rollback_on_error?],
                 return_notifications?: request_opts[:return_notifications?],
                 transaction_metadata: %{
                   type: :destroy,

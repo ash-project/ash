@@ -309,6 +309,16 @@ defmodule Ash.Api do
       that can be sent, and returns the rest.
       """
     ],
+    rollback_on_error?: [
+      type: :boolean,
+      default: true,
+      doc: """
+      Whether or not to rollback the transaction on error, if the resource is in a transaction.
+
+      If the action has `transaction? false` this option has no effect. If an error is returned from the
+      data layer and the resource is in a transaction, the transaction is always rolled back, regardless.
+      """
+    ],
     notification_metadata: [
       type: :any,
       default: %{},
