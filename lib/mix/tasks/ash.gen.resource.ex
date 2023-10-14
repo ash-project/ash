@@ -1,69 +1,84 @@
 defmodule Mix.Tasks.Ash.Gen.Resource do
   use Mix.Task
 
-  @shortdoc "Generates an Ash resource and related API files."
+  @shortdoc "Generates an Ash API and resource file."
 
   @moduledoc """
-  Generates an Ash resource and updates or creates the corresponding API files.
+  This task generates an internal API and a definition of a resource for Ash.
 
   ## Arguments
 
-  - API Name:      The name of the internal API (e.g. "Shop").
-  - Resource Name: The name of the resource (e.g. "Product").
-  - Table Name:    The name of the database table (e.g. "products").
-  - Attributes:    A list of attributes in the format name:type (e.g. "name:string").
+  * `api_name` - The API (e.g. "Shop").
+  * `resource_name` - The resource (e.g. "Product").
+  * `table_name` - The table name (e.g. "products").
+  * `attributes` - The list of attributes (e.g. "name:string" or "name").
+
+  If the attribute type is not provided, it defaults to `string`.
+
+  ## Switches
+
+  * `--no-code-interface` - Disables the generation of the `code_interface` block.
 
   ## Example
 
-  mix ash.gen.resource Shop Product products name:string price:integer
+  mix ash.gen.resource Shop Product products name:string price:integer --no-code-interface
   """
 
-  def run([]) do
-    Mix.shell().info("""
-    #{Mix.Task.shortdoc(__MODULE__)}
+  def run(args) do
+    {opts, positional_args, _} =
+      OptionParser.parse(args,
+        switches: [no_code_interface: :boolean]
+      )
 
-    #{Mix.Task.moduledoc(__MODULE__)}
-    """)
-  end
+    case positional_args do
+      [api_name, resource_name, table_name | attribute_args] ->
+        no_code_interface? = opts[:no_code_interface] || false
 
-  def run([api_name, resource_name, table_name | attribute_args]) do
-    attributes =
-      for attr <- attribute_args do
-        parts = String.split(attr, ":")
+        attributes =
+          for attr <- attribute_args do
+            parts = String.split(attr, ":")
 
-        case parts do
-          [name] ->
-            {String.to_atom(name), "string"}
+            case parts do
+              [name] ->
+                {String.to_atom(name), "string"}
 
-          [name, type] ->
-            {String.to_atom(name), type}
-        end
-      end
+              [name, type] ->
+                {String.to_atom(name), type}
+            end
+          end
 
-    generate_files(api_name, resource_name, table_name, attributes)
-  end
+        generate_files(api_name, resource_name, table_name, attributes, no_code_interface?)
 
-  defp generate_files(api_name, resource_name, table_name, attributes) do
-    app_name = app_name()
+      _ ->
+        Mix.shell().info("""
+        #{@shortdoc}
 
-    api_module_name = "#{app_name}.#{api_name}"
-    resource_module_name = "#{app_name}.#{api_name}.#{resource_name}"
-
-    api_file_content = """
-    defmodule #{api_module_name} do
-      use Ash.Api
-
-      resources do
-        resource #{resource_module_name}
-      end
+        #{@moduledoc}
+        """)
     end
-    """
+  end
+
+  defp generate_files(api_name, resource_name, table_name, attributes, no_code_interface?) do
+    app_name = app_name()
+    api_module_name = "#{app_name}.#{api_name}"
+    resource_module_name = "#{api_module_name}.#{resource_name}"
 
     attribute_definitions =
-      Enum.map(attributes, fn {key, type} ->
-        "attribute :#{key}, :#{type}"
+      Enum.map(attributes, fn {name, type} ->
+        "attribute :#{name}, :#{type}"
       end)
       |> Enum.join("\n    ")
+
+    code_interface_content = """
+    code_interface do
+      define_for #{api_module_name}
+      define :create
+      define :read
+      define :by_id, get_by: [:id], action: :read
+      define :update
+      define :destroy
+    end
+    """
 
     resource_file_content = """
     defmodule #{resource_module_name} do
@@ -84,14 +99,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
         defaults [:create, :read, :update, :destroy]
       end
 
-      code_interface do
-        define_for #{api_module_name}
-        define :create
-        define :read
-        define :by_id, get_by: [:id], action: :read
-        define :update
-        define :destroy
-      end
+      #{unless no_code_interface?, do: code_interface_content}
     end
     """
 
@@ -105,39 +113,43 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
     api_file_path = "#{api_dir_path}.ex"
     resource_file_path = "#{resource_dir_path}/#{String.downcase(resource_name)}.ex"
 
-    # Check and update the API file
     if File.exists?(api_file_path) do
-      current_content = File.read!(api_file_path)
+      content = File.read!(api_file_path)
 
-      unless String.contains?(current_content, "resource #{resource_module_name}") do
-        updated_content =
-          String.replace(
-            current_content,
-            "resources do",
-            "resources do\n    resource #{resource_module_name}"
-          )
+      unless String.contains?(content, "resource #{resource_module_name}") do
+        # Append the new resource to the existing API file
+        parts = String.split(content, "\n")
+        index = Enum.find_index(parts, fn line -> String.trim(line) == "end" end)
 
-        File.write!(api_file_path, updated_content)
+        if index do
+          parts = List.insert_at(parts, index, "    resource #{resource_module_name}")
+          File.write!(api_file_path, Enum.join(parts, "\n"))
+        end
       end
     else
-      File.write!(api_file_path, api_file_content)
+      File.write!(api_file_path, """
+      defmodule #{api_module_name} do
+        use Ash.Api
+
+        resources do
+          resource #{resource_module_name}
+        end
+      end
+      """)
     end
 
-    # Check and decide on the Resource file
     if File.exists?(resource_file_path) do
-      IO.puts("Resource file #{resource_file_path} already exists.")
-      action = IO.gets("Do you want to replace it? (y/n): ")
+      IO.puts("File #{resource_file_path} already exists. Replace? [Yn]")
+      response = IO.gets("> ") |> String.trim()
 
-      case String.trim(action) do
-        "y" ->
-          File.write!(resource_file_path, resource_file_content)
-
-        _ ->
-          IO.puts("Aborted.")
+      if String.downcase(response) not in ["y", "yes", ""] do
+        IO.puts("Aborted!")
+        exit(:normal)
       end
-    else
-      File.write!(resource_file_path, resource_file_content)
     end
+
+    File.write!(resource_file_path, resource_file_content)
+    IO.puts("Generated #{resource_file_path}")
   end
 
   defp app_name do
