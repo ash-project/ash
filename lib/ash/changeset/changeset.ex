@@ -1814,7 +1814,7 @@ defmodule Ash.Changeset do
                   if opts[:rollback_on_error?] do
                     Ash.DataLayer.rollback(
                       changeset.resource,
-                      Ash.Changeset.add_error(changeset, error)
+                      error
                     )
                   else
                     {:error, error}
