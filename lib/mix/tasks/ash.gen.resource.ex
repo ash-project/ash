@@ -215,13 +215,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   end
 
   defp uses_ash_postgres? do
-    mix_file = "mix.exs"
-    content = File.read!(mix_file)
-
-    # Regex to find ash_postgres in deps
-    # This approach has limitations, and there are many ways in which deps can be defined,
-    # but it should work for standard dep definitions.
-    Regex.match?(~r/ash_postgres/, content)
+    Code.ensure_loaded?(AshPostgres)
   end
 
   defp api_listed?(api_module_name) do
