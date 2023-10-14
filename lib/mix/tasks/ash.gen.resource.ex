@@ -171,6 +171,22 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
       IO.puts("Generated #{api_file_path}")
     end
 
+    # Check if the API is listed in the configuration of the current application
+    unless api_listed?(api_module_name) do
+      IO.puts("""
+      \e[31m
+      WARNING:
+      #{api_module_name} is not yet listed in the application's configuration.\e[0m
+      Make sure to add it to the configuration. Here is an example:
+
+      ** config/config.exs **
+      import Config
+
+      config :#{Macro.underscore(app_name)}, :ash_apis, [#{api_module_name}]
+
+      """)
+    end
+
     if File.exists?(resource_file_path) do
       IO.puts("File #{resource_file_path} already exists. Replace? [Yn]")
       response = IO.gets("> ") |> String.trim()
@@ -205,5 +221,15 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
     # This approach has limitations, and there are many ways in which deps can be defined,
     # but it should work for standard dep definitions.
     Regex.match?(~r/ash_postgres/, content)
+  end
+
+  defp api_listed?(api_module_name) do
+    Application.get_all_env(Mix.Project.config()[:app])
+    |> Enum.filter(fn {key, _value} -> key == :ash_apis end)
+    |> case do
+      [{:ash_apis, api_list}] -> api_list
+      _ -> []
+    end
+    |> Enum.member?(Module.concat([api_module_name]))
   end
 end
