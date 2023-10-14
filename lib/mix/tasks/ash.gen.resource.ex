@@ -1,10 +1,10 @@
 defmodule Mix.Tasks.Ash.Gen.Resource do
   use Mix.Task
 
-  @shortdoc "Generates an Ash API and resource file."
+  @shortdoc "Generates an Ash resource and add it to the API."
 
   @moduledoc """
-  This task generates an internal API and a definition of a resource for Ash.
+  This task generates a definition of an Ash resource and adds it to the internal API.
 
   ## Arguments
 
@@ -18,6 +18,11 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   ## Switches
 
   * `--no-code-interface` - Disables the generation of the `code_interface` block.
+
+  ## Data Layer
+
+  When `:ash_postgres` is in the dependencies, the used data layer is
+  `AshPostgres.DataLayer` otherwise it defaults to `Ash.DataLayer.Ets`.
 
   ## Example
 
