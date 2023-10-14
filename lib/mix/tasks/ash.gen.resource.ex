@@ -72,8 +72,10 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
   defp generate_files(api_name, resource_name, table_name, attributes, no_code_interface?) do
     app_name = app_name()
-    api_module_name = "#{app_name}.#{api_name}"
-    resource_module_name = "#{api_module_name}.#{resource_name}"
+    camelized_api_name = Macro.camelize(api_name)
+    api_module_name = "#{app_name}.#{camelized_api_name}"
+    camelized_resource_name = Macro.camelize(resource_name)
+    resource_module_name = "#{api_module_name}.#{camelized_resource_name}"
 
     attribute_definitions =
       Enum.map(attributes, fn {name, type} ->
@@ -92,15 +94,26 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
     end
     """
 
+    data_layer_content =
+      if uses_ash_postgres?() do
+        """
+        use Ash.Resource,
+          data_layer: AshPostgres.DataLayer
+
+        postgres do
+          table "#{table_name}"
+          repo #{app_name}.Repo
+        end
+        """
+      else
+        """
+        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+        """
+      end
+
     resource_file_content = """
     defmodule #{resource_module_name} do
-      use Ash.Resource,
-        data_layer: AshPostgres.DataLayer
-
-      postgres do
-        table "#{table_name}"
-        repo #{app_name}.Repo
-      end
+      #{data_layer_content}
 
       attributes do
         uuid_primary_key :id
@@ -173,5 +186,15 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   defp app_name do
     app_name_atom = Mix.Project.config()[:app]
     Macro.camelize(Atom.to_string(app_name_atom))
+  end
+
+  defp uses_ash_postgres? do
+    mix_file = "mix.exs"
+    content = File.read!(mix_file)
+
+    # Regex to find ash_postgres in deps
+    # This approach has limitations, and there are many ways in which deps can be defined,
+    # but it should work for standard dep definitions.
+    Regex.match?(~r/ash_postgres/, content)
   end
 end
