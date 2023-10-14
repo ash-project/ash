@@ -44,11 +44,13 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   defp parse_args(args) do
     {opts, positional_args, _} = OptionParser.parse(args, switches: [no_code_interface: :boolean])
 
-    with [api_name, resource_name, table_name | attribute_args] <- positional_args do
-      attributes = parse_attributes(attribute_args)
-      {:ok, api_name, resource_name, table_name, attributes, opts[:no_code_interface] || false}
-    else
-      _ -> :error
+    case positional_args do
+      [api_name, resource_name, table_name | attribute_args] ->
+        attributes = parse_attributes(attribute_args)
+        {:ok, api_name, resource_name, table_name, attributes, opts[:no_code_interface] || false}
+
+      _ ->
+        :error
     end
   end
 
@@ -83,10 +85,9 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
     resource_module_name = "#{api_module_name}.#{camelized_resource_name}"
 
     attribute_definitions =
-      Enum.map(attributes, fn {name, type} ->
+      Enum.map_join(attributes, "\n    ", fn {name, type} ->
         "attribute :#{name}, :#{type}"
       end)
-      |> Enum.join("\n    ")
 
     code_interface_content = """
     code_interface do
