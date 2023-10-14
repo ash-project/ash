@@ -184,6 +184,10 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
     File.write!(resource_file_path, resource_file_content)
     IO.puts("Generated #{resource_file_path}")
 
+    if uses_ash_postgres?() do
+      IO.puts("\nYou may need to run 'mix ash.codegen' and 'mix ash_postgres.migrate'.")
+    end
+
     # Format the generated resource
     Mix.Tasks.Format.run([api_file_path, resource_file_path])
   end
