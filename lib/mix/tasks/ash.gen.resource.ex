@@ -29,8 +29,15 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   def run([api_name, resource_name, table_name | attribute_args]) do
     attributes =
       for attr <- attribute_args do
-        [name, type] = String.split(attr, ":")
-        {String.to_atom(name), type}
+        parts = String.split(attr, ":")
+
+        case parts do
+          [name] ->
+            {String.to_atom(name), "string"}
+
+          [name, type] ->
+            {String.to_atom(name), type}
+        end
       end
 
     generate_files(api_name, resource_name, table_name, attributes)
