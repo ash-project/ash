@@ -136,6 +136,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
         if index do
           parts = List.insert_at(parts, index, "    resource #{resource_module_name}")
           File.write!(api_file_path, Enum.join(parts, "\n"))
+          IO.puts("Modified #{api_file_path}")
         end
       end
     else
@@ -148,6 +149,8 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
         end
       end
       """)
+
+      IO.puts("Generated #{api_file_path}")
     end
 
     if File.exists?(resource_file_path) do
@@ -162,6 +165,9 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
     File.write!(resource_file_path, resource_file_content)
     IO.puts("Generated #{resource_file_path}")
+
+    # Format the generated resource
+    Mix.Tasks.Format.run([api_file_path, resource_file_path])
   end
 
   defp app_name do
