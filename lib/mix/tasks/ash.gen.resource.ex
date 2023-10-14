@@ -25,37 +25,49 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   """
 
   def run(args) do
-    {opts, positional_args, _} =
-      OptionParser.parse(args,
-        switches: [no_code_interface: :boolean]
-      )
-
-    case positional_args do
-      [api_name, resource_name, table_name | attribute_args] ->
-        no_code_interface? = opts[:no_code_interface] || false
-
-        attributes =
-          for attr <- attribute_args do
-            parts = String.split(attr, ":")
-
-            case parts do
-              [name] ->
-                {String.to_atom(name), "string"}
-
-              [name, type] ->
-                {String.to_atom(name), type}
-            end
-          end
-
+    args
+    |> parse_args()
+    |> case do
+      {:ok, api_name, resource_name, table_name, attributes, no_code_interface?} ->
         generate_files(api_name, resource_name, table_name, attributes, no_code_interface?)
 
-      _ ->
-        Mix.shell().info("""
-        #{@shortdoc}
-
-        #{@moduledoc}
-        """)
+      :error ->
+        display_documentation()
     end
+  end
+
+  defp parse_args(args) do
+    {opts, positional_args, _} = OptionParser.parse(args, switches: [no_code_interface: :boolean])
+
+    with [api_name, resource_name, table_name | attribute_args] <- positional_args do
+      attributes = parse_attributes(attribute_args)
+      {:ok, api_name, resource_name, table_name, attributes, opts[:no_code_interface] || false}
+    else
+      _ -> :error
+    end
+  end
+
+  defp parse_attributes(attribute_args) do
+    Enum.map(attribute_args, fn attr ->
+      parts = String.split(attr, ":")
+      parse_attribute(parts)
+    end)
+  end
+
+  defp parse_attribute([name]) do
+    {String.to_atom(name), "string"}
+  end
+
+  defp parse_attribute([name, type]) do
+    {String.to_atom(name), type}
+  end
+
+  defp display_documentation do
+    Mix.shell().info("""
+    #{@shortdoc}
+
+    #{@moduledoc}
+    """)
   end
 
   defp generate_files(api_name, resource_name, table_name, attributes, no_code_interface?) do
