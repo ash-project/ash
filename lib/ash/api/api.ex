@@ -387,6 +387,12 @@ defmodule Ash.Api do
                                doc:
                                  "If a conflict is found based on the primary key, the record is updated in the database (requires upsert support)"
                              ],
+                             max_concurrency: [
+                               type: :non_neg_integer,
+                               default: 0,
+                               doc:
+                                 "If set to a value greater than 0, up to that many tasks will be started to run batches asynchronously"
+                             ],
                              upsert_identity: [
                                type: :atom,
                                doc:
@@ -1741,13 +1747,16 @@ defmodule Ash.Api do
   def load(_, {:error, error}, _, _), do: {:error, error}
 
   def load(api, {:ok, values}, query, opts) do
-    load(api, values, query, opts)
+    resource = resource_from_data!(values, query, opts)
+    load(api, values, query, Keyword.put(opts, :resource, resource))
   end
 
   def load(api, %struct{results: results} = page, query, opts)
       when struct in [Ash.Page.Offset, Ash.Page.Keyset] do
+    resource = resource_from_data!(page, query, opts)
+
     api
-    |> load(results, query, opts)
+    |> load(results, query, Keyword.put(opts, :resource, resource))
     |> case do
       {:ok, results} -> {:ok, %{page | results: results}}
       {:error, error} -> {:error, error}
@@ -1755,15 +1764,20 @@ defmodule Ash.Api do
   end
 
   def load(api, data, query, opts) when not is_list(data) do
+    resource = resource_from_data!(data, query, opts)
+
     api
-    |> load(List.wrap(data), query, opts)
+    |> load(List.wrap(data), query, Keyword.put(opts, :resource, resource))
     |> case do
       {:ok, data} -> {:ok, Enum.at(data, 0)}
       {:error, error} -> {:error, error}
     end
   end
 
-  def load(api, [%resource{} = record | _] = data, query, opts) do
+  def load(api, [record | _] = data, query, opts) do
+    resource = resource_from_data!(data, query, opts)
+    opts = Keyword.delete(opts, :resource)
+
     query =
       case query do
         %Ash.Query{} = query ->
@@ -1789,6 +1803,60 @@ defmodule Ash.Api do
       %{errors: errors} ->
         {:error, errors}
     end
+  end
+
+  defp resource_from_data!(data, query, opts) do
+    if opts[:resource] do
+      opts[:resource]
+    else
+      case query do
+        %Ash.Query{resource: resource} -> resource
+        _ -> do_resource_from_data!(data)
+      end
+    end
+  end
+
+  defp do_resource_from_data!(%struct{rerun: {%Ash.Query{resource: resource}, _}})
+       when struct in [Ash.Page.Offset, Ash.Page.Keyset] do
+    resource
+  end
+
+  defp do_resource_from_data!(%struct{results: [%resource{} | _]} = data)
+       when struct in [Ash.Page.Offset, Ash.Page.Keyset] do
+    if Ash.Resource.Info.resource?(resource) do
+      resource
+    else
+      raise_no_resource_error!(data)
+    end
+  end
+
+  defp do_resource_from_data!(%resource{} = data) do
+    if Ash.Resource.Info.resource?(resource) do
+      resource
+    else
+      raise_no_resource_error!(data)
+    end
+  end
+
+  defp do_resource_from_data!([%resource{} | _] = data) do
+    if Ash.Resource.Info.resource?(resource) do
+      resource
+    else
+      raise_no_resource_error!(data)
+    end
+  end
+
+  defp do_resource_from_data!(data) do
+    raise_no_resource_error!(data)
+  end
+
+  defp raise_no_resource_error!(data) do
+    raise ArgumentError,
+      message: """
+      Could not determine a resource from the provided input:
+
+      #{inspect(data)}
+      """
   end
 
   @spec stream!(api :: module(), query :: Ash.Query.t(), opts :: Keyword.t()) ::

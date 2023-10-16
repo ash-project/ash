@@ -230,6 +230,49 @@ defmodule Ash.Test.Actions.BulkCreateTest do
              )
   end
 
+  test "can run batches concurrently" do
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "title1", title2: "changes", title3: "wont"},
+               %{title: "title2", title2: "changes", title3: "wont"}
+             ]
+           } =
+             Api.bulk_create!(
+               [
+                 %{title: "title1", title2: "changes", title3: "wont"},
+                 %{title: "title2", title2: "changes", title3: "wont"}
+               ],
+               Post,
+               :create,
+               return_records?: true,
+               batch_size: 1,
+               max_concurrency: 2,
+               sorted?: true
+             )
+
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "title1", title2: "did_change", title3: "wont"},
+               %{title: "title2", title2: "did_change", title3: "wont"}
+             ]
+           } =
+             Api.bulk_create!(
+               [
+                 %{title: "title1", title2: "did_change", title3: "oh no"},
+                 %{title: "title2", title2: "did_change", title3: "what happened"}
+               ],
+               Post,
+               :create,
+               return_records?: true,
+               batch_size: 1,
+               max_concurrency: 2,
+               upsert?: true,
+               upsert_identity: :unique_title,
+               upsert_fields: [:title2],
+               sorted?: true
+             )
+  end
+
   test "runs after action hooks" do
     assert %Ash.BulkResult{records: [%{title: "title1_stuff"}, %{title: "title2_stuff"}]} =
              Api.bulk_create!(

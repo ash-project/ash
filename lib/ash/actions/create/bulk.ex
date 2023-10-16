@@ -21,6 +21,14 @@ defmodule Ash.Actions.Create.Bulk do
       raise ArgumentError, "Cannot specify `sorted?: true` and `return_stream?: true` together"
     end
 
+    opts =
+      if opts[:max_concurrency] && opts[:max_concurrency] > 0 &&
+           not Ash.DataLayer.can?(:async_engine, resource) do
+        Keyword.put(opts, :max_concurrency, 0)
+      else
+        opts
+      end
+
     if opts[:transaction] == :all &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
       notify? =
@@ -159,11 +167,8 @@ defmodule Ash.Actions.Create.Bulk do
         end,
         fn _ -> :ok end
       )
-      |> Stream.map(fn
-        {:error, error} ->
-          {:error, error}
-
-        {:batch, batch_config} ->
+      |> map_batches(opts, fn
+        batch_config ->
           %{count: count, batch: batch, must_return_records?: must_return_records?} = batch_config
           context = batch |> Enum.at(0) |> Kernel.||(%{}) |> Map.get(:context)
 
@@ -496,6 +501,74 @@ defmodule Ash.Actions.Create.Bulk do
       %{result | errors: errors, error_count: error_count}
   end
 
+  defp map_batches(stream, opts, callback) do
+    max_concurrency = opts[:max_concurrency]
+    process_ref = make_ref()
+
+    if max_concurrency && max_concurrency > 0 do
+      Stream.transform(
+        stream,
+        fn -> {[], 0} end,
+        fn
+          {:error, _} = error, acc ->
+            {[error], acc}
+
+          {:batch, batch_config}, {tasks, count} ->
+            {tasks, count, items} =
+              tasks
+              |> Task.yield_many()
+              |> Enum.reduce({[], count, []}, fn
+                {task, nil}, {tasks, count, items} ->
+                  {[task | tasks], count, items}
+
+                {_task, {:ok, result}}, {tasks, count, items} ->
+                  {tasks, count - 1, [result | items]}
+
+                {_task, {:exit, error}}, {tasks, count, items} ->
+                  {tasks, count - 1, [{:error, error} | items]}
+              end)
+
+            if count >= max_concurrency do
+              {[callback.(batch_config) | items], {tasks, count}}
+            else
+              task =
+                Task.async(fn ->
+                  callback.(batch_config)
+                end)
+
+              {items, {[task | tasks], count + 1}}
+            end
+        end,
+        fn {tasks, _count} ->
+          Process.put({:bulk_create_tasks, process_ref}, tasks)
+        end
+      )
+      |> Stream.concat(
+        Stream.resource(
+          fn -> Process.delete({:bulk_create_tasks, process_ref}) || [] end,
+          fn tasks ->
+            case tasks do
+              [] ->
+                {:halt, []}
+
+              tasks ->
+                {Task.await_many(tasks), []}
+            end
+          end,
+          fn _ -> :ok end
+        )
+      )
+    else
+      Stream.map(stream, fn
+        {:error, error} ->
+          {:error, error}
+
+        {:batch, batch} ->
+          callback.(batch)
+      end)
+    end
+  end
+
   defp errors(result, invalid, opts) when is_list(invalid) do
     Enum.reduce(invalid, {result.error_count, result.errors}, fn invalid, {error_count, errors} ->
       errors(%{result | error_count: error_count, errors: errors}, invalid, opts)
@@ -794,8 +867,9 @@ defmodule Ash.Actions.Create.Bulk do
                   |> Ash.Resource.Info.identities()
                   |> Enum.find(&(&1.name == identity))
                   |> Kernel.||(
-                    raise ArgumentError,
-                          "No identity found for #{inspect(resource)} called #{inspect(identity)}"
+                    raise Ash.Error.Invalid.NoIdentityFound,
+                      resource: resource,
+                      identity: identity
                   )
                   |> Map.get(:keys)
 
