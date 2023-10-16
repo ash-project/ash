@@ -1229,7 +1229,7 @@ defmodule Ash.Actions.Create.Bulk do
             must_return_records? =
               state.must_return_records? ||
                 Enum.any?(batch, fn item ->
-                  item.relationships not in [nil, %{}]
+                  item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action)
                 end) || function_exported?(module, :after_batch, 3)
 
             %{
