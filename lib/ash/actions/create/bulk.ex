@@ -1280,7 +1280,10 @@ defmodule Ash.Actions.Create.Bulk do
               matches = batch_change(module, matches, change_opts, context, actor)
 
               must_return_records? =
-                state.must_return_records? || function_exported?(module, :after_batch, 3)
+                state.must_return_records? ||
+                  Enum.any?(batch, fn item ->
+                    item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action)
+                  end) || function_exported?(module, :after_batch, 3)
 
               %{
                 must_return_records?: must_return_records?,
