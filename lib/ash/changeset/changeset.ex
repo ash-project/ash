@@ -790,32 +790,27 @@ defmodule Ash.Changeset do
   end
 
   defp upsert_update_defaults(changeset) do
-    attributes =
-      changeset.resource
-      |> Ash.Resource.Info.attributes()
-      |> Enum.reject(&is_nil(&1.update_default))
-
-    attributes
+    changeset.resource
     |> static_defaults()
-    |> Enum.concat(lazy_matching_defaults(attributes))
-    |> Enum.concat(lazy_non_matching_defaults(attributes))
+    |> Enum.concat(lazy_matching_defaults(changeset.resource))
+    |> Enum.concat(lazy_non_matching_defaults(changeset.resource))
   end
 
-  defp static_defaults(attributes) do
-    attributes
-    |> Enum.reject(&get_default_fun(&1))
+  defp static_defaults(resource) do
+    resource
+    |> Ash.Resource.Info.static_default_attributes(:update)
     |> Enum.map(&{&1.name, &1.update_default})
   end
 
-  defp lazy_non_matching_defaults(attributes) do
-    attributes
-    |> Enum.filter(&(!&1.match_other_defaults? && get_default_fun(&1)))
+  defp lazy_non_matching_defaults(resource) do
+    resource
+    |> Ash.Resource.Info.lazy_non_matching_default_attributes(:update)
     |> Enum.map(&{&1.name, &1.update_default})
   end
 
-  defp lazy_matching_defaults(attributes) do
-    attributes
-    |> Enum.filter(&(&1.match_other_defaults? && get_default_fun(&1)))
+  defp lazy_matching_defaults(resource) do
+    resource
+    |> Ash.Resource.Info.lazy_matching_default_attributes(:update)
     |> Enum.group_by(& &1.update_default)
     |> Enum.flat_map(fn {default_fun, attributes} ->
       default_value =
@@ -829,12 +824,6 @@ defmodule Ash.Changeset do
 
       Enum.map(attributes, &{&1.name, default_value})
     end)
-  end
-
-  defp get_default_fun(attribute) do
-    if is_function(attribute.update_default) or match?({_, _, _}, attribute.update_default) do
-      attribute.update_default
-    end
   end
 
   defp do_for_action(changeset, action_or_name, params, opts) do
