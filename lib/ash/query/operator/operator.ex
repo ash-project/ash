@@ -103,8 +103,8 @@ defmodule Ash.Query.Operator do
     {:ok, left, right}
   end
 
-  defp try_cast(%Ref{attribute: %{type: type}} = left, right, :same) do
-    case Ash.Query.Type.try_cast(right, type) do
+  defp try_cast(%Ref{attribute: %{type: type, constraints: constraints}} = left, right, :same) do
+    case Ash.Query.Type.try_cast(right, type, constraints) do
       {:ok, new_right} ->
         {:ok, left, new_right}
 
@@ -113,8 +113,8 @@ defmodule Ash.Query.Operator do
     end
   end
 
-  defp try_cast(left, %Ref{attribute: %{type: type}} = right, :same) do
-    case Ash.Query.Type.try_cast(left, type) do
+  defp try_cast(left, %Ref{attribute: %{type: type, constraints: constraints}} = right, :same) do
+    case Ash.Query.Type.try_cast(left, type, constraints) do
       {:ok, new_left} ->
         {:ok, new_left, right}
 
@@ -123,7 +123,7 @@ defmodule Ash.Query.Operator do
     end
   end
 
-  defp try_cast(%Ref{attribute: %{type: type}} = left, right, [
+  defp try_cast(%Ref{attribute: %{type: type, constraints: constraints}} = left, right, [
          :any,
          {:array, :same}
        ]) do
@@ -136,7 +136,7 @@ defmodule Ash.Query.Operator do
         nil
 
       right ->
-        case Ash.Query.Type.try_cast(right, {:array, type}) do
+        case Ash.Query.Type.try_cast(right, {:array, type}, items: constraints) do
           {:ok, new_right} ->
             {:ok, left, new_right}
 
@@ -148,10 +148,10 @@ defmodule Ash.Query.Operator do
 
   defp try_cast(
          left,
-         %Ref{attribute: %{type: {:array, type}}} = right,
+         %Ref{attribute: %{type: {:array, type}, constraints: constraints}} = right,
          [:any, {:array, :same}]
        ) do
-    case Ash.Query.Type.try_cast(left, type) do
+    case Ash.Query.Type.try_cast(left, type, constraints) do
       {:ok, new_left} ->
         {:ok, new_left, right}
 
