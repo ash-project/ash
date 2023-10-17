@@ -23,7 +23,7 @@ defmodule Ash.Type.DateTime do
 
   @impl true
   def init(constraints) do
-    case constraints[:precision] || :microsecond do
+    case constraints[:precision] || :second do
       :microsecond ->
         {:ok, [{:storage_type, :utc_datetime_usec} | constraints]}
 
@@ -37,7 +37,7 @@ defmodule Ash.Type.DateTime do
     storage_type
   end
 
-  def storage_type(_), do: :utc_datetime_usec
+  def storage_type(_), do: :utc_datetime
 
   @impl true
   def generator(_constraints) do
