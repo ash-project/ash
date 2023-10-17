@@ -151,6 +151,7 @@ defmodule Ash.Type do
 
   @callback storage_type() :: Ecto.Type.t()
   @callback storage_type(constraints) :: Ecto.Type.t()
+  @callback include_source(constraints, Ash.Changeset.t()) :: constraints
   @doc """
   Useful for typed data layers (like ash_postgres) to instruct them not to attempt to cast input values.
 
@@ -219,6 +220,7 @@ defmodule Ash.Type do
     array_constraints: 0,
     dump_to_embedded: 2,
     dump_to_embedded_array: 2,
+    include_source: 2,
     load: 4
   ]
 
@@ -823,6 +825,15 @@ defmodule Ash.Type do
     type.equal?(left, right)
   end
 
+  @spec include_source(t(), Ash.Changeset.t(), constraints()) :: constraints()
+  def include_source({:array, type}, changeset, constraints) do
+    include_source(type, changeset, constraints)
+  end
+
+  def include_source(type, changeset, constraints) do
+    type.include_source(changeset, constraints)
+  end
+
   @spec load(
           type :: Ash.Type.t(),
           values :: list(term),
@@ -1008,6 +1019,9 @@ defmodule Ash.Type do
       def prepare_change(_old_value, new_value, _constraints), do: {:ok, new_value}
 
       @impl true
+      def include_source(_, constraints), do: constraints
+
+      @impl true
       def array_constraints do
         unquote(@array_constraints)
       end
@@ -1022,6 +1036,7 @@ defmodule Ash.Type do
 
       defoverridable constraints: 0,
                      init: 1,
+                     include_source: 2,
                      describe: 1,
                      embedded?: 0,
                      ecto_type: 0,

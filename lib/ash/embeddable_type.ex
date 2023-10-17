@@ -525,6 +525,10 @@ defmodule Ash.EmbeddableType do
         end
       end
 
+      def include_source(changeset, constraints) do
+        Keyword.put(constraints, :__source__, changeset)
+      end
+
       def prepare_change_array(_old_values, nil, _constraints) do
         {:ok, nil}
       end
