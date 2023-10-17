@@ -831,6 +831,7 @@ defmodule Ash.Type do
   end
 
   def include_source(type, changeset, constraints) do
+    type = get_type(type)
     type.include_source(changeset, constraints)
   end
 
