@@ -22,7 +22,7 @@ jobs:
             { org: "ash-project", name: "ash_admin" },
             { org: "ash-project", name: "ash_archival" },
             { org: "ash-project", name: "ash_state_machine" },
-            { org: "ash-sqlite", name: "ash_sqlite" },
+            { org: "ash-project", name: "ash_sqlite" },
             { org: "team-alembic", name: "ash_authentication" },
             { org: "team-alembic", name: "ash_authentication_phoenix" },
           ]
