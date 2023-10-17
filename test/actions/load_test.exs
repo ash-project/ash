@@ -807,7 +807,7 @@ defmodule Ash.Test.Actions.LoadTest do
         |> new(%{name: "zerg"})
         |> Api.create!()
 
-      _post1 =
+      post1 =
         Post
         |> new(%{title: "post1"})
         |> manage_relationship(:author, author, type: :append_and_remove)
@@ -824,6 +824,7 @@ defmodule Ash.Test.Actions.LoadTest do
         |> Ash.Query.load(:latest_post)
         |> Api.read!()
 
+      refute author.latest_post.id == post1.id
       assert author.latest_post.id == post2.id
     end
   end

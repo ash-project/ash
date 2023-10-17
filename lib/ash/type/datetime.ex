@@ -33,6 +33,7 @@ defmodule Ash.Type.DateTime do
   end
 
   @impl true
+  @spec storage_type(nonempty_maybe_improper_list()) :: any()
   def storage_type([{:storage_type, storage_type} | _]) do
     storage_type
   end

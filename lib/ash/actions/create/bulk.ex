@@ -21,14 +21,6 @@ defmodule Ash.Actions.Create.Bulk do
       raise ArgumentError, "Cannot specify `sorted?: true` and `return_stream?: true` together"
     end
 
-    opts =
-      if opts[:max_concurrency] && opts[:max_concurrency] > 0 &&
-           not Ash.DataLayer.can?(:async_engine, resource) do
-        Keyword.put(opts, :max_concurrency, 0)
-      else
-        opts
-      end
-
     if opts[:transaction] == :all &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
       notify? =
@@ -168,7 +160,7 @@ defmodule Ash.Actions.Create.Bulk do
         end,
         fn _ -> :ok end
       )
-      |> map_batches(opts, fn
+      |> map_batches(resource, opts, fn
         batch_config ->
           %{count: count, batch: batch, must_return_records?: must_return_records?} = batch_config
           context = batch |> Enum.at(0) |> Kernel.||(%{}) |> Map.get(:context)
@@ -497,8 +489,16 @@ defmodule Ash.Actions.Create.Bulk do
       %{result | errors: errors, error_count: error_count}
   end
 
-  defp map_batches(stream, opts, callback) do
+  defp map_batches(stream, resource, opts, callback) do
     max_concurrency = opts[:max_concurrency]
+
+    max_concurrency =
+      if max_concurrency && max_concurrency > 0 &&
+           not Ash.DataLayer.can?(:async_engine, resource) do
+        max_concurrency
+      else
+        0
+      end
 
     if max_concurrency && max_concurrency > 1 do
       Task.async_stream(

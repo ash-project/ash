@@ -373,7 +373,10 @@ defmodule Ash.Type do
     end
   end
 
-  def init(type, constraints), do: type.init(constraints)
+  def init(type, constraints) do
+    type = get_type(type)
+    type.init(constraints)
+  end
 
   @doc """
   Returns the *underlying* storage type (the underlying type of the *ecto type* of the *ash type*)
@@ -946,7 +949,9 @@ defmodule Ash.Type do
         def init(opts) do
           constraints = @parent.constraints()
 
-          Keyword.take(opts, Keyword.keys(constraints))
+          opts
+          |> Keyword.take(Keyword.keys(constraints))
+          |> @parent.init()
         end
 
         @impl true

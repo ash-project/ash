@@ -127,7 +127,7 @@ defmodule Ash.Type.NewType do
 
       @impl Ash.Type
       def init(constraints) do
-        {:ok, type_constraints(constraints, unquote(subtype_constraints))}
+        unquote(subtype_of).init(type_constraints(constraints, unquote(subtype_constraints)))
       end
 
       @impl Ash.Type
