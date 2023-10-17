@@ -127,6 +127,48 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
       end
     end
 
+    test "it guesses `source_attribute_on_join_resource` if not set" do
+      defposts do
+        relationships do
+          many_to_many :authors, Author do
+            through PostsJoinArticlesAuthors
+            destination_attribute_on_join_resource :manager_id
+          end
+        end
+      end
+
+      assert [
+               %HasMany{},
+               %ManyToMany{
+                 destination: Author,
+                 destination_attribute_on_join_resource: :manager_id,
+                 source_attribute_on_join_resource: :post_id,
+                 through: PostsJoinArticlesAuthors
+               }
+             ] = Ash.Resource.Info.relationships(Post)
+    end
+
+    test "it guesses `destination_attribute_on_join_resource` if not set" do
+      defposts do
+        relationships do
+          many_to_many :authors, ArticleAuthor do
+            through PostsJoinArticlesAuthors
+            source_attribute_on_join_resource :article_id
+          end
+        end
+      end
+
+      assert [
+               %HasMany{},
+               %ManyToMany{
+                 destination: ArticleAuthor,
+                 destination_attribute_on_join_resource: :article_author_id,
+                 source_attribute_on_join_resource: :article_id,
+                 through: PostsJoinArticlesAuthors
+               }
+             ] = Ash.Resource.Info.relationships(Post)
+    end
+
     test "it fails if you dont pass an atom for `source_attribute_on_join_resource`" do
       assert_raise(
         Spark.Error.DslError,

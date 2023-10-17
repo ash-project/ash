@@ -3106,48 +3106,6 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
   <tbody>
     <tr>
   <td style="text-align: left">
-    <a id="relationships-many_to_many-source_attribute_on_join_resource" href="#relationships-many_to_many-source_attribute_on_join_resource">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        source_attribute_on_join_resource
-      </span>
-    </a>
-      <sup style="color: red">*</sup>
-
-  </td>
-  <td style="text-align: left">
-    <code class="inline">atom</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The attribute on the join resource that should line up with `source_attribute` on this resource.
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
-    <a id="relationships-many_to_many-destination_attribute_on_join_resource" href="#relationships-many_to_many-destination_attribute_on_join_resource">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        destination_attribute_on_join_resource
-      </span>
-    </a>
-      <sup style="color: red">*</sup>
-
-  </td>
-  <td style="text-align: left">
-    <code class="inline">atom</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The attribute on the join resource that should line up with `destination_attribute` on the related resource.
-  </td>
-</tr>
-
-<tr>
-  <td style="text-align: left">
     <a id="relationships-many_to_many-through" href="#relationships-many_to_many-through">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         through
@@ -3169,6 +3127,46 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 <tr>
   <td style="text-align: left">
+    <a id="relationships-many_to_many-source_attribute_on_join_resource" href="#relationships-many_to_many-source_attribute_on_join_resource">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        source_attribute_on_join_resource
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">atom</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The attribute on the join resource that should line up with `source_attribute` on this resource. Defaults to `<snake_cased_last_part_of_source_module_name>_id`.
+  </td>
+</tr>
+
+<tr>
+  <td style="text-align: left">
+    <a id="relationships-many_to_many-destination_attribute_on_join_resource" href="#relationships-many_to_many-destination_attribute_on_join_resource">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        destination_attribute_on_join_resource
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">atom</code>
+  </td>
+  <td style="text-align: left">
+    
+  </td>
+  <td style="text-align: left" colspan=2>
+    The attribute on the join resource that should line up with `destination_attribute` on the related resource. Defaults to `<snake_cased_last_part_of_destination_module_name>_id`.
+  </td>
+</tr>
+
+<tr>
+  <td style="text-align: left">
     <a id="relationships-many_to_many-join_relationship" href="#relationships-many_to_many-join_relationship">
       <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
         join_relationship
@@ -3183,7 +3181,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
     
   </td>
   <td style="text-align: left" colspan=2>
-    The has_many relationship to the join resource. Defaults to <relationship_name>_join_assoc
+    The has_many relationship to the join resource. Defaults to `<relationship_name>_join_assoc`.
   </td>
 </tr>
 
