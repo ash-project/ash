@@ -258,11 +258,7 @@ defmodule Ash.Type do
   end
 
   def array_constraints(type) do
-    if ash_type?(type) do
-      type.array_constraints()
-    else
-      []
-    end
+    type.array_constraints()
   end
 
   @spec get_type(atom | module | {:array, atom | module}) ::
@@ -271,11 +267,12 @@ defmodule Ash.Type do
     {:array, get_type(value)}
   end
 
+  for {short_name, value} <- @short_names do
+    def get_type(unquote(short_name)), do: unquote(value)
+  end
+
   def get_type(value) when is_atom(value) do
-    case Keyword.fetch(@short_names, value) do
-      {:ok, mod} -> mod
-      :error -> value
-    end
+    value
   end
 
   def get_type(value) do
@@ -663,13 +660,9 @@ defmodule Ash.Type do
   def apply_constraints(type, term, constraints) do
     type = get_type(type)
 
-    if ash_type?(type) do
-      case type.apply_constraints(term, constraints) do
-        :ok -> {:ok, term}
-        other -> other
-      end
-    else
-      {:ok, term}
+    case type.apply_constraints(term, constraints) do
+      :ok -> {:ok, term}
+      other -> other
     end
   end
 
@@ -720,11 +713,8 @@ defmodule Ash.Type do
   end
 
   def constraints(type) do
-    if ash_type?(type) do
-      type.constraints()
-    else
-      []
-    end
+    type = get_type(type)
+    type.constraints()
   end
 
   def cast_in_query?(type, constraints \\ [])
@@ -734,14 +724,12 @@ defmodule Ash.Type do
   end
 
   def cast_in_query?(type, constraints) do
-    if ash_type?(type) do
-      if function_exported?(type, :cast_in_query?, 0) do
-        type.cast_in_query?()
-      else
-        type.cast_in_query?(constraints)
-      end
+    type = get_type(type)
+
+    if function_exported?(type, :cast_in_query?, 0) do
+      type.cast_in_query?()
     else
-      false
+      type.cast_in_query?(constraints)
     end
   end
 

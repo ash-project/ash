@@ -1314,6 +1314,8 @@ defmodule Ash.Resource.Dsl do
   ]
 
   @transformers [
+    Ash.Resource.Transformers.AttributesByName,
+    Ash.Resource.Transformers.ValidationsAndChangesForType,
     Ash.Resource.Transformers.RequireUniqueActionNames,
     Ash.Resource.Transformers.SetRelationshipSource,
     Ash.Resource.Transformers.BelongsToAttribute,

@@ -215,9 +215,15 @@ defmodule Ash.Resource.Info do
           Ash.Resource.Validation.t()
         ]
   def validations(resource, type) do
-    resource
-    |> validations()
-    |> Enum.filter(&(type in &1.on))
+    case Extension.get_persisted(resource, :validations_by_on) do
+      nil ->
+        resource
+        |> validations()
+        |> Enum.filter(&(type in &1.on))
+
+      persisted ->
+        Map.get(persisted, type) || []
+    end
   end
 
   @doc "A list of all validations for the resource"
@@ -233,9 +239,15 @@ defmodule Ash.Resource.Info do
             | Ash.Resource.Change.t()
           )
   def changes(resource, type) do
-    resource
-    |> changes()
-    |> Enum.filter(&(type in &1.on))
+    case Extension.get_persisted(resource, :changes_by_on) do
+      nil ->
+        resource
+        |> changes()
+        |> Enum.filter(&(type in &1.on))
+
+      persisted ->
+        Map.get(persisted, type) || []
+    end
   end
 
   @doc "A list of all changes for the resource"
@@ -572,15 +584,17 @@ defmodule Ash.Resource.Info do
   @spec attribute(Spark.Dsl.t() | Ash.Resource.t(), String.t() | atom) ::
           Ash.Resource.Attribute.t() | nil
   def attribute(resource, name) when is_binary(name) do
-    resource
-    |> attributes()
-    |> Enum.find(&(to_string(&1.name) == name))
+    Extension.get_persisted(resource, :attributes_by_name)[name] ||
+      resource
+      |> attributes()
+      |> Enum.find(&(to_string(&1.name) == name))
   end
 
   def attribute(resource, name) do
-    resource
-    |> attributes()
-    |> Enum.find(&(&1.name == name))
+    Extension.get_persisted(resource, :attributes_by_name)[name] ||
+      resource
+      |> attributes()
+      |> Enum.find(&(&1.name == name))
   end
 
   @doc "Returns all public attributes of a resource"
