@@ -1320,6 +1320,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.SetRelationshipSource,
     Ash.Resource.Transformers.BelongsToAttribute,
     Ash.Resource.Transformers.HasDestinationField,
+    Ash.Resource.Transformers.ManyToManySourceAttributeOnJoinResource,
+    Ash.Resource.Transformers.ManyToManyDestinationAttributeOnJoinResource,
     Ash.Resource.Transformers.CreateJoinRelationship,
     Ash.Resource.Transformers.CachePrimaryKey,
     Ash.Resource.Transformers.ValidatePrimaryActions,
