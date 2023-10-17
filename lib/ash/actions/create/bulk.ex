@@ -501,26 +501,38 @@ defmodule Ash.Actions.Create.Bulk do
     max_concurrency = opts[:max_concurrency]
 
     if max_concurrency && max_concurrency > 1 do
-      Task.async_stream(stream, fn
-        {:error, error} ->
-          # This is subpar, we shouldn't star tasks for errors
+      Task.async_stream(
+        stream,
+        fn
+          {:error, error} ->
+            # This is subpar, we shouldn't star tasks for errors
+            {:error, error}
+
+          {:batch, batch} ->
+            Process.put(:ash_started_transaction?, true)
+            batch_result = callback.(batch)
+            new_notifications = Process.get(:ash_notifications, [])
+
+            case batch_result do
+              {:ok, invalid, notifications} ->
+                {:ok, invalid, notifications ++ new_notifications}
+
+              {:ok, results, invalid, notifications} ->
+                {:ok, results, invalid, notifications ++ new_notifications}
+
+              other ->
+                other
+            end
+        end,
+        timeout: :infinity,
+        max_concurrency: max_concurrency
+      )
+      |> Stream.map(fn
+        {:ok, value} ->
+          value
+
+        {:exit, error} ->
           {:error, error}
-
-        {:batch, batch} ->
-          Process.put(:ash_started_transaction?, true)
-          batch_result = callback.(batch)
-          new_notifications = Process.get(:ash_notifications, [])
-
-          case batch_result do
-            {:ok, invalid, notifications} ->
-              {:ok, invalid, notifications ++ new_notifications}
-
-            {:ok, results, invalid, notifications} ->
-              {:ok, results, invalid, notifications ++ new_notifications}
-
-            other ->
-              other
-          end
       end)
     else
       Stream.map(stream, fn
