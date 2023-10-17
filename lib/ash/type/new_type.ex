@@ -110,10 +110,9 @@ defmodule Ash.Type.NewType do
 
       @impl Ash.Type
       def cast_input(value, constraints) do
-        unquote(subtype_of).cast_input(
-          value,
-          constraints
-        )
+        with {:ok, value} <- unquote(subtype_of).cast_input(value, constraints) do
+          unquote(subtype_of).apply_constraints(value, constraints)
+        end
       end
 
       if function_exported?(subtype_of, :cast_input_array, 2) do
@@ -269,8 +268,8 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
-      def apply_constraints(value, constraints) do
-        unquote(subtype_of).apply_constraints(value, constraints)
+      def apply_constraints(value, _constraints) do
+        {:ok, value}
       end
 
       if function_exported?(subtype_of, :apply_constraints_array, 3) do

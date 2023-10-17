@@ -6,6 +6,8 @@ defmodule Ash.Resource.Transformers.ValidationsAndChangesForType do
 
   alias Spark.Dsl.Transformer
 
+  def after?(_), do: true
+
   def transform(dsl_state) do
     validations_by_on =
       dsl_state

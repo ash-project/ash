@@ -5,7 +5,7 @@ defmodule Ash.Type.Helpers do
 
   def cast_input(type, value, constraints, changeset, return_value?) do
     value = handle_indexed_maps(type, value)
-    constraints = Ash.Type.constraints(changeset, type, constraints)
+    constraints = constraints ++ [{:__source__, changeset}]
 
     case Ash.Type.cast_input(type, value, constraints) do
       {:ok, value} ->

@@ -436,7 +436,9 @@ defmodule Ash.Type do
   end
 
   def cast_input(type, term, nil) do
-    with {:ok, constraints} <- Ash.Type.init(type, []) do
+    with {:ok, constraints} <-
+           Spark.OptionsHelpers.validate([], Ash.Type.constraints(type)),
+         {:ok, constraints} <- Ash.Type.init(type, constraints) do
       cast_input(type, term, constraints)
     end
   end
@@ -696,17 +698,6 @@ defmodule Ash.Type do
     end)
   end
 
-  @spec constraints(Ash.Changeset.t() | Ash.Query.t(), Ash.Type.t(), Keyword.t()) :: Keyword.t()
-  def constraints(source, type, constraints) do
-    type = get_type(type)
-
-    if embedded_type?(type) do
-      Keyword.put(constraints, :__source__, source)
-    else
-      constraints
-    end
-  end
-
   @spec constraints(t()) :: constraints()
   def constraints({:array, _type}) do
     @array_constraints
@@ -931,7 +922,7 @@ defmodule Ash.Type do
       parent = __MODULE__
 
       @doc false
-      def ash_type?(), do: true
+      def ash_type?, do: true
 
       defmodule EctoType do
         @moduledoc false

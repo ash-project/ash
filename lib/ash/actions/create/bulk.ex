@@ -139,8 +139,8 @@ defmodule Ash.Actions.Create.Bulk do
         |> Ash.Actions.Helpers.add_context(opts)
         |> Ash.Changeset.set_context(opts[:context] || %{})
         |> Ash.Changeset.prepare_changeset_for_action(action, opts, input)
+        |> Ash.Changeset.run_before_transaction_hooks()
       end)
-      |> Stream.map(&Ash.Changeset.run_before_transaction_hooks/1)
       |> set_lazy_defaults(resource)
       |> transform_and_stop_on_errors(opts)
       |> Stream.transform(
@@ -499,62 +499,29 @@ defmodule Ash.Actions.Create.Bulk do
 
   defp map_batches(stream, opts, callback) do
     max_concurrency = opts[:max_concurrency]
-    process_ref = make_ref()
 
     if max_concurrency && max_concurrency > 1 do
-      Stream.transform(
-        stream,
-        fn -> {[], 0} end,
-        fn
-          {:error, _} = error, acc ->
-            {[error], acc}
+      Task.async_stream(stream, fn
+        {:error, error} ->
+          # This is subpar, we shouldn't star tasks for errors
+          {:error, error}
 
-          {:batch, batch_config}, {tasks, count} ->
-            {tasks, count, items} =
-              tasks
-              |> Task.yield_many()
-              |> Enum.reduce({[], count, []}, fn
-                {task, nil}, {tasks, count, items} ->
-                  {[task | tasks], count, items}
+        {:batch, batch} ->
+          Process.put(:ash_started_transaction?, true)
+          batch_result = callback.(batch)
+          new_notifications = Process.get(:ash_notifications, [])
 
-                {_task, {:ok, result}}, {tasks, count, items} ->
-                  {tasks, count - 1, [result | items]}
+          case batch_result do
+            {:ok, invalid, notifications} ->
+              {:ok, invalid, notifications ++ new_notifications}
 
-                {_task, {:exit, error}}, {tasks, count, items} ->
-                  {tasks, count - 1, [{:error, error} | items]}
-              end)
+            {:ok, results, invalid, notifications} ->
+              {:ok, results, invalid, notifications ++ new_notifications}
 
-            if count >= max_concurrency do
-              {tasks, count, items} = yield_at_least_one(tasks, count)
-              {items, {tasks, count}}
-            else
-              task =
-                Task.async(fn ->
-                  callback.(batch_config)
-                end)
-
-              {items, {[task | tasks], count + 1}}
-            end
-        end,
-        fn {tasks, _count} ->
-          Process.put({:bulk_create_tasks, process_ref}, tasks)
-        end
-      )
-      |> Stream.concat(
-        Stream.resource(
-          fn -> Process.delete({:bulk_create_tasks, process_ref}) || [] end,
-          fn tasks ->
-            case tasks do
-              [] ->
-                {:halt, []}
-
-              tasks ->
-                {Task.await_many(tasks), []}
-            end
-          end,
-          fn _ -> :ok end
-        )
-      )
+            other ->
+              other
+          end
+      end)
     else
       Stream.map(stream, fn
         {:error, error} ->
@@ -605,25 +572,6 @@ defmodule Ash.Actions.Create.Bulk do
   defp default(%{default: {mod, func, args}}), do: apply(mod, func, args)
   defp default(%{default: function}) when is_function(function, 0), do: function.()
   defp default(%{default: value}), do: value
-
-  defp yield_at_least_one(tasks, count) do
-    tasks
-    |> Task.yield_many()
-    |> Enum.reduce({[], count, []}, fn
-      {task, nil}, {tasks, items} ->
-        {[task | tasks], count, items}
-
-      {_task, {:ok, value}}, {tasks, count, items} ->
-        {tasks, count - 1, [value | items]}
-
-      {_task, {:error, value}}, {tasks, count, items} ->
-        {tasks, count - 1, [{:error, value} | items]}
-    end)
-    |> case do
-      {tasks, count, []} -> yield_at_least_one(tasks, count)
-      {tasks, count, items} -> {tasks, count, items}
-    end
-  end
 
   defp errors(result, invalid, opts) when is_list(invalid) do
     Enum.reduce(invalid, {result.error_count, result.errors}, fn invalid, {error_count, errors} ->

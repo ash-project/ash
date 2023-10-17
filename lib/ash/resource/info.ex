@@ -307,15 +307,17 @@ defmodule Ash.Resource.Info do
   end
 
   def relationship(resource, relationship_name) when is_binary(relationship_name) do
-    resource
-    |> relationships()
-    |> Enum.find(&(to_string(&1.name) == relationship_name))
+    Extension.get_persisted(resource, :relationships_by_name)[relationship_name] ||
+      resource
+      |> relationships()
+      |> Enum.find(&(to_string(&1.name) == relationship_name))
   end
 
   def relationship(resource, relationship_name) do
-    resource
-    |> relationships()
-    |> Enum.find(&(&1.name == relationship_name))
+    Extension.get_persisted(resource, :relationships_by_name)[relationship_name] ||
+      resource
+      |> relationships()
+      |> Enum.find(&(&1.name == relationship_name))
   end
 
   @doc "Returns all public relationships of a resource"
@@ -325,6 +327,11 @@ defmodule Ash.Resource.Info do
     resource
     |> relationships()
     |> Enum.reject(& &1.private?)
+  end
+
+  @doc "The required belongs_to relationships"
+  def required_belongs_to_relationships(resource) do
+    Extension.get_persisted(resource, :required_belongs_to_relationships)
   end
 
   @doc "Get a public relationship by name or path"
@@ -338,16 +345,11 @@ defmodule Ash.Resource.Info do
     end
   end
 
-  def public_relationship(resource, relationship_name) when is_binary(relationship_name) do
-    resource
-    |> relationships()
-    |> Enum.find(&(to_string(&1.name) == relationship_name && !&1.private?))
-  end
-
   def public_relationship(resource, relationship_name) do
-    resource
-    |> relationships()
-    |> Enum.find(&(&1.name == relationship_name && !&1.private?))
+    case relationship(resource, relationship_name) do
+      %{private?: false} = relationship -> relationship
+      _ -> nil
+    end
   end
 
   @doc "The multitenancy strategy for a resource"
@@ -580,6 +582,45 @@ defmodule Ash.Resource.Info do
     Extension.get_entities(resource, [:attributes])
   end
 
+  @doc "Returns all attributes of a resource with lazy non-matching-defaults"
+  @spec lazy_non_matching_default_attributes(
+          Spark.Dsl.t() | Ash.Resource.t(),
+          type :: :create | :update
+        ) :: [Ash.Resource.Attribute.t()]
+  def lazy_non_matching_default_attributes(resource, :create) do
+    Extension.get_persisted(resource, :create_attributes_with_non_matching_lazy_defaults) || []
+  end
+
+  def lazy_non_matching_default_attributes(resource, :update) do
+    Extension.get_persisted(resource, :update_attributes_with_non_matching_lazy_defaults) || []
+  end
+
+  @doc "Returns all attributes of a resource with static defaults"
+  @spec static_default_attributes(
+          Spark.Dsl.t() | Ash.Resource.t(),
+          type :: :create | :update
+        ) :: [Ash.Resource.Attribute.t()]
+  def static_default_attributes(resource, :create) do
+    Extension.get_persisted(resource, :create_attributes_with_static_defaults) || []
+  end
+
+  def static_default_attributes(resource, :update) do
+    Extension.get_persisted(resource, :update_attributes_with_static_defaults) || []
+  end
+
+  @doc "Returns all attributes of a resource with lazy matching defaults"
+  @spec lazy_matching_default_attributes(
+          Spark.Dsl.t() | Ash.Resource.t(),
+          type :: :create | :update
+        ) :: [Ash.Resource.Attribute.t()]
+  def lazy_matching_default_attributes(resource, :create) do
+    Extension.get_persisted(resource, :create_attributes_with_matching_defaults) || []
+  end
+
+  def lazy_matching_default_attributes(resource, :update) do
+    Extension.get_persisted(resource, :update_attributes_with_matching_defaults) || []
+  end
+
   @doc "Get an attribute name from the resource"
   @spec attribute(Spark.Dsl.t() | Ash.Resource.t(), String.t() | atom) ::
           Ash.Resource.Attribute.t() | nil
@@ -608,16 +649,11 @@ defmodule Ash.Resource.Info do
   @doc "Get a public attribute name from the resource"
   @spec public_attribute(Spark.Dsl.t() | Ash.Resource.t(), String.t() | atom) ::
           Ash.Resource.Attribute.t() | nil
-  def public_attribute(resource, name) when is_binary(name) do
-    resource
-    |> attributes()
-    |> Enum.find(&(to_string(&1.name) == name && !&1.private?))
-  end
-
   def public_attribute(resource, name) do
-    resource
-    |> attributes()
-    |> Enum.find(&(&1.name == name && !&1.private?))
+    case attribute(resource, name) do
+      %{private?: false} = attr -> attr
+      _ -> nil
+    end
   end
 
   @spec related(Spark.Dsl.t() | Ash.Resource.t(), atom() | String.t() | [atom() | String.t()]) ::

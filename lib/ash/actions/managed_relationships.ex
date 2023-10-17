@@ -345,19 +345,6 @@ defmodule Ash.Actions.ManagedRelationships do
     )
   end
 
-  defp keep_relationships_to_validate(relationships, changeset, true) do
-    Enum.filter(relationships, fn relationship ->
-      changeset.relationships[relationship.name] &&
-        !changeset.context[:private][:error][relationship.name]
-    end)
-  end
-
-  defp keep_relationships_to_validate(relationships, changeset, false) do
-    Enum.filter(relationships, fn relationship ->
-      !changeset.context[:private][:error][relationship.name]
-    end)
-  end
-
   def validate_required_belongs_to(changeset_instructions_or_error, preflight? \\ true)
   def validate_required_belongs_to({:error, error}, _), do: {:error, error}
 
@@ -367,24 +354,27 @@ defmodule Ash.Actions.ManagedRelationships do
 
   def validate_required_belongs_to({changeset, instructions}, preflight?) do
     changeset.resource
-    |> Ash.Resource.Info.relationships()
-    |> Enum.filter(&(&1.type == :belongs_to && !&1.allow_nil?))
-    |> keep_relationships_to_validate(changeset, preflight?)
+    |> Ash.Resource.Info.required_belongs_to_relationships()
     |> Enum.reduce({changeset, instructions}, fn required_relationship,
                                                  {changeset, instructions} ->
       changeset =
-        case Ash.Changeset.get_attribute(changeset, required_relationship.source_attribute) do
-          nil ->
-            Ash.Changeset.add_error(
-              changeset,
-              Ash.Error.Changes.Required.exception(
-                field: required_relationship.name,
-                type: :relationship
+        if (preflight? || changeset.relationships[required_relationship.name]) &&
+             !changeset.context[:private][:error][required_relationship.name] do
+          case Ash.Changeset.get_attribute(changeset, required_relationship.source_attribute) do
+            nil ->
+              Ash.Changeset.add_error(
+                changeset,
+                Ash.Error.Changes.Required.exception(
+                  field: required_relationship.name,
+                  type: :relationship
+                )
               )
-            )
 
-          _ ->
-            changeset
+            _ ->
+              changeset
+          end
+        else
+          changeset
         end
 
       {changeset, instructions}
