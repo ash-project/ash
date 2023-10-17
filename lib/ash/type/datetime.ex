@@ -38,7 +38,9 @@ defmodule Ash.Type.DateTime do
     storage_type
   end
 
-  def storage_type(_), do: :utc_datetime
+  def storage_type(_constraints) do
+    :utc_datetime
+  end
 
   @impl true
   def generator(_constraints) do

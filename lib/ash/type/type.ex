@@ -949,9 +949,12 @@ defmodule Ash.Type do
         def init(opts) do
           constraints = @parent.constraints()
 
+          {:ok, opts} =
+            opts
+            |> Keyword.take(Keyword.keys(constraints))
+            |> @parent.init()
+
           opts
-          |> Keyword.take(Keyword.keys(constraints))
-          |> @parent.init()
         end
 
         @impl true
