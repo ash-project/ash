@@ -22,6 +22,7 @@ jobs:
             { org: "ash-project", name: "ash_admin" },
             { org: "ash-project", name: "ash_archival" },
             { org: "ash-project", name: "ash_state_machine" },
+            { org: "ash-sqlite", name: "ash_sqlite" },
             { org: "team-alembic", name: "ash_authentication" },
             { org: "team-alembic", name: "ash_authentication_phoenix" },
           ]
@@ -69,13 +70,13 @@ jobs:
         run: mix deps.get
         working-directory: ./${{matrix.project.name}}
       - run: mix test.create
-        if: ${{matrix.project.name == 'ash_postgres'}}
+        if: ${{matrix.project.name == 'ash_postgres' || matrix.project.name == 'ash_sqlite'}}
         working-directory: ./${{matrix.project.name}}
       - run: mix test.migrate
-        if: ${{matrix.project.name == 'ash_postgres'}}
+        if: ${{matrix.project.name == 'ash_postgres' || matrix.project.name == 'ash_sqlite'}}
         working-directory: ./${{matrix.project.name}}
       - run: mix test.migrate_tenants
-        if: ${{matrix.project.name == 'ash_postgres'}}
+        if: ${{matrix.project.name == 'ash_postgres' || matrix.project.name == 'ash_sqlite'}}
         working-directory: ./${{matrix.project.name}}
       - name: mix compile --force --warnings-as-errors inside ./${{matrix.project.name}}
         run: mix compile --force --warnings-as-errors

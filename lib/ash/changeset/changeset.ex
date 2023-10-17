@@ -1258,14 +1258,9 @@ defmodule Ash.Changeset do
   def set_defaults(changeset, action_type, lazy? \\ false)
 
   def set_defaults(changeset, :create, lazy?) do
-    attributes = Ash.Resource.Info.attributes(changeset.resource)
-
     with_static_defaults =
-      attributes
-      |> Enum.filter(fn attribute ->
-        not is_nil(attribute.default) &&
-          not (is_function(attribute.default) or match?({_, _, _}, attribute.default))
-      end)
+      changeset.resource
+      |> Ash.Resource.Info.static_default_attributes(:create)
       |> Enum.reduce(changeset, fn attribute, changeset ->
         if changing_attribute?(changeset, attribute.name) do
           changeset
@@ -1280,7 +1275,7 @@ defmodule Ash.Changeset do
       |> Map.update!(:defaults, &Enum.uniq/1)
 
     if lazy? do
-      set_lazy_defaults(with_static_defaults, attributes, :create)
+      set_lazy_defaults(with_static_defaults, :create)
     else
       with_static_defaults
     end
@@ -1288,15 +1283,9 @@ defmodule Ash.Changeset do
   end
 
   def set_defaults(changeset, :update, lazy?) do
-    attributes = Ash.Resource.Info.attributes(changeset.resource)
-
     with_static_defaults =
-      attributes
-      |> Enum.filter(fn attribute ->
-        not is_nil(attribute.update_default) &&
-          not (is_function(attribute.update_default) or
-                 match?({_, _, _}, attribute.update_default))
-      end)
+      changeset.resource
+      |> Ash.Resource.Info.static_default_attributes(:update)
       |> Enum.reduce(changeset, fn attribute, changeset ->
         if changing_attribute?(changeset, attribute.name) do
           changeset
@@ -1310,7 +1299,7 @@ defmodule Ash.Changeset do
       end)
 
     if lazy? do
-      set_lazy_defaults(with_static_defaults, attributes, :update)
+      set_lazy_defaults(with_static_defaults, :update)
     else
       with_static_defaults
     end
@@ -1321,7 +1310,9 @@ defmodule Ash.Changeset do
     changeset
   end
 
-  defp set_lazy_defaults(changeset, attributes, type) do
+  defp set_lazy_defaults(changeset, type) do
+    attributes = Ash.Resource.Info.attributes(changeset.resource)
+
     changeset
     |> set_lazy_non_matching_defaults(attributes, type)
     |> set_lazy_matching_defaults(attributes, type)
@@ -1394,6 +1385,64 @@ defmodule Ash.Changeset do
       end)
     end)
   end
+
+  # defp set_lazy_defaults(changeset, type) do
+  #   changeset
+  #   |> set_lazy_non_matching_defaults(type)
+  #   |> set_lazy_matching_defaults(type)
+  # end
+
+  # defp set_lazy_non_matching_defaults(changeset, type) do
+  #   changeset.resource
+  #   |> Ash.Resource.Info.lazy_matching_default_attributes(type)
+  #   |> Enum.reduce(changeset, fn attribute, changeset ->
+  #     if changing_attribute?(changeset, attribute.name) do
+  #       changeset
+  #     else
+  #       changeset
+  #       |> force_change_attribute(attribute.name, default(type, attribute))
+  #       |> Map.update!(:defaults, fn defaults ->
+  #         [attribute.name | defaults]
+  #       end)
+  #     end
+  #   end)
+  # end
+
+  # defp set_lazy_matching_defaults(changeset, type) do
+  #   changeset.resource
+  #   |> Ash.Resource.Info.lazy_matching_default_attributes(type)
+  #   |> Enum.group_by(fn attribute ->
+  #     case type do
+  #       :create ->
+  #         attribute.default
+
+  #       :update ->
+  #         attribute.update_default
+  #     end
+  #   end)
+  #   |> Enum.reduce(changeset, fn {default_fun, attributes}, changeset ->
+  #     default_value =
+  #       case default_fun do
+  #         function when is_function(function) ->
+  #           function.()
+
+  #         {m, f, a} when is_atom(m) and is_atom(f) and is_list(a) ->
+  #           apply(m, f, a)
+  #       end
+
+  #     Enum.reduce(attributes, changeset, fn attribute, changeset ->
+  #       if changing_attribute?(changeset, attribute.name) do
+  #         changeset
+  #       else
+  #         changeset
+  #         |> force_change_attribute(attribute.name, default_value)
+  #         |> Map.update!(:defaults, fn defaults ->
+  #           [attribute.name | defaults]
+  #         end)
+  #       end
+  #     end)
+  #   end)
+  # end
 
   defp default(:create, %{default: {mod, func, args}}), do: apply(mod, func, args)
   defp default(:create, %{default: function}) when is_function(function, 0), do: function.()
