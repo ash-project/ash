@@ -23,19 +23,15 @@ defmodule Ash.Type.DateTime do
 
   @impl true
   def init(constraints) do
-    case constraints[:precision] || :second do
-      :microsecond ->
-        {:ok, [{:storage_type, :utc_datetime_usec} | constraints]}
-
-      :second ->
-        {:ok, [{:storage_type, :utc_datetime} | constraints]}
-    end
+    {precision, constraints} = Keyword.pop(constraints, :precision)
+    precision = precision || :second
+    {:ok, [{:precision, precision} | constraints]}
   end
 
   @impl true
   @spec storage_type(nonempty_maybe_improper_list()) :: any()
-  def storage_type([{:storage_type, storage_type} | _]) do
-    storage_type
+  def storage_type([{:precision, :microsecond} | _]) do
+    :utc_datetime_usec
   end
 
   def storage_type(_constraints) do
@@ -62,7 +58,7 @@ defmodule Ash.Type.DateTime do
 
   def cast_input(
         %DateTime{microsecond: {_, _}} = datetime,
-        [{:storage_type, :utc_datetime} | _] = constraints
+        [{:precision, :second} | _] = constraints
       ) do
     cast_input(%{datetime | microsecond: nil}, constraints)
   end

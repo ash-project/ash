@@ -11,7 +11,13 @@ defmodule Ash.Query.Function.Type do
   end
 
   def new([val, type, constraints]) do
-    {:ok, %__MODULE__{arguments: [val, type, constraints]}}
+    case Spark.OptionsHelpers.validate(constraints, Ash.Type.constraints(type)) do
+      {:ok, constraints} ->
+        {:ok, %__MODULE__{arguments: [val, type, constraints]}}
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   def evaluate(%{arguments: [val, type, constraints]}) do
