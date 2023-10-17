@@ -661,7 +661,7 @@ defmodule Ash.Type do
   def apply_constraints({:array, _}, nil, _), do: {:ok, nil}
 
   def apply_constraints({:array, _}, _, _) do
-    {:error, ["must be a list"]}
+    {:error, "must be a list"}
   end
 
   def apply_constraints(type, term, constraints) do
@@ -828,14 +828,14 @@ defmodule Ash.Type do
     type.equal?(left, right)
   end
 
-  @spec include_source(t(), Ash.Changeset.t(), constraints()) :: constraints()
-  def include_source({:array, type}, changeset, constraints) do
-    include_source(type, changeset, constraints)
+  @spec include_source(t(), Ash.Changeset.t() | Ash.Query.t(), constraints()) :: constraints()
+  def include_source({:array, type}, changeset_or_query, constraints) do
+    include_source(type, changeset_or_query, constraints)
   end
 
-  def include_source(type, changeset, constraints) do
+  def include_source(type, changeset_or_query, constraints) do
     type = get_type(type)
-    type.include_source(changeset, constraints)
+    type.include_source(changeset_or_query, constraints)
   end
 
   @spec load(
