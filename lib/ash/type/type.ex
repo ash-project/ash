@@ -156,6 +156,7 @@ defmodule Ash.Type do
 
   You generally won't need this, but it can be an escape hatch for certain cases.
   """
+  @callback init(constraints) :: {:ok, constraints} | {:error, Ash.Error.t()}
   @callback cast_in_query?(constraints) :: boolean
   @callback can_load?(constraints) :: boolean
   @callback ecto_type() :: Ecto.Type.t()
@@ -206,6 +207,7 @@ defmodule Ash.Type do
               {:ok, list(term)} | {:error, Ash.Error.t()}
 
   @optional_callbacks [
+    init: 1,
     storage_type: 0,
     cast_stored_array: 2,
     generator: 1,
@@ -357,6 +359,24 @@ defmodule Ash.Type do
   end
 
   @doc """
+  Initializes the constraints according to the underlying type
+  """
+  @spec init(t(), constraints) :: {:ok, constraints} | {:error, Ash.Error.t()}
+  def init({:array, type}, constraints) do
+    item_constraints = constraints[:items] || []
+
+    case init(type, item_constraints) do
+      {:ok, new_item_constraints} ->
+        {:ok, Keyword.put(constraints, :items, new_item_constraints)}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def init(type, constraints), do: type.init(constraints)
+
+  @doc """
   Returns the *underlying* storage type (the underlying type of the *ecto type* of the *ash type*)
   """
   @spec storage_type(t()) :: Ecto.Type.t()
@@ -400,13 +420,7 @@ defmodule Ash.Type do
   def ash_type?({:array, value}), do: ash_type?(value)
 
   def ash_type?(module) when is_atom(module) do
-    case Code.ensure_compiled(module) do
-      {:module, module} ->
-        Ash.Resource.Info.resource?(module) || ash_type_module?(module)
-
-      _ ->
-        Ash.Resource.Info.resource?(module)
-    end
+    ash_type_module?(module) || Ash.Resource.Info.resource?(module)
   end
 
   def ash_type?(_), do: false
@@ -417,11 +431,17 @@ defmodule Ash.Type do
   Maps to `Ecto.Type.cast/2`
   """
   @spec cast_input(t(), term, constraints | nil) :: {:ok, term} | {:error, Keyword.t()} | :error
-  def cast_input(type, term, constraints \\ [])
+  def cast_input(type, term, constraints \\ nil)
 
   def cast_input({:array, _type}, term, _)
       when not (is_list(term) or is_map(term) or is_nil(term)) do
     {:error, "is invalid"}
+  end
+
+  def cast_input(type, term, nil) do
+    with {:ok, constraints} <- Ash.Type.init(type, []) do
+      cast_input(type, term, constraints)
+    end
   end
 
   def cast_input({:array, type}, term, constraints) do
@@ -922,6 +942,9 @@ defmodule Ash.Type do
 
       parent = __MODULE__
 
+      @doc false
+      def ash_type?(), do: true
+
       defmodule EctoType do
         @moduledoc false
         @parent parent
@@ -1015,7 +1038,11 @@ defmodule Ash.Type do
         unquote(opts[:embedded?] || false)
       end
 
+      @impl true
+      def init(constraints), do: {:ok, constraints}
+
       defoverridable constraints: 0,
+                     init: 1,
                      describe: 1,
                      embedded?: 0,
                      ecto_type: 0,
@@ -1028,20 +1055,16 @@ defmodule Ash.Type do
   end
 
   defp ash_type_module?(module) do
-    Ash.Helpers.implements_behaviour?(module, __MODULE__)
+    module.ash_type?()
+  rescue
+    _ -> false
   end
 
   @doc false
   def set_type_transformation(%{type: original_type, constraints: constraints} = thing) do
     type = get_type(original_type)
 
-    ash_type? =
-      try do
-        Ash.Type.ash_type?(type)
-      rescue
-        _ ->
-          false
-      end
+    ash_type? = Ash.Type.ash_type?(type)
 
     unless ash_type? do
       raise """
@@ -1054,12 +1077,9 @@ defmodule Ash.Type do
       """
     end
 
-    case validate_constraints(type, constraints) do
-      {:ok, constraints} ->
-        {:ok, %{thing | type: type, constraints: constraints}}
-
-      {:error, error} ->
-        {:error, error}
+    with {:ok, constraints} <- validate_constraints(type, constraints),
+         {:ok, constraints} <- Ash.Type.init(type, constraints) do
+      {:ok, %{thing | type: type, constraints: constraints}}
     end
   end
 

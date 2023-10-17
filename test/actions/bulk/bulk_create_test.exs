@@ -128,6 +128,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     assert %Ash.BulkResult{records: [%{title: "title1"}, %{title: "title2"}]} =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_records?: true,
+               return_errors?: true,
                sorted?: true
              )
   end

@@ -709,7 +709,6 @@ defmodule Ash.Changeset do
 
               changeset
               |> Map.put(:action, action)
-              |> reset_arguments()
               |> handle_errors(action.error_handler)
               |> set_actor(opts)
               |> set_authorize(opts)
@@ -737,12 +736,6 @@ defmodule Ash.Changeset do
     else
       changeset
     end
-  end
-
-  defp reset_arguments(%{arguments: arguments} = changeset) do
-    Enum.reduce(arguments, changeset, fn {key, value}, changeset ->
-      set_argument(changeset, key, value)
-    end)
   end
 
   @doc """
@@ -904,7 +897,6 @@ defmodule Ash.Changeset do
   def prepare_changeset_for_action(changeset, action, opts, params) do
     changeset
     |> Map.put(:action, action)
-    |> reset_arguments()
     |> handle_errors(action.error_handler)
     |> set_actor(opts)
     |> set_authorize(opts)

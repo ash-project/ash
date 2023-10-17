@@ -2112,13 +2112,13 @@ defmodule Ash.Api do
         end
 
       inputs ->
-        case Spark.OptionsHelpers.validate(opts, @bulk_create_opts_schema) do
-          {:ok, opts} ->
-            Create.Bulk.run(api, resource, action, inputs, opts)
+        # case Spark.OptionsHelpers.validate(opts, @bulk_create_opts_schema) do
+        #   {:ok, opts} ->
+        Create.Bulk.run(api, resource, action, inputs, opts)
 
-          {:error, error} ->
-            %Ash.BulkResult{status: :error, errors: [Ash.Error.to_ash_error(error)]}
-        end
+        #   {:error, error} ->
+        #     %Ash.BulkResult{status: :error, errors: [Ash.Error.to_ash_error(error)]}
+        # end
     end
   end
 

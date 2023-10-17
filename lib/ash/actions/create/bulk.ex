@@ -133,14 +133,15 @@ defmodule Ash.Actions.Create.Bulk do
             upsert?: opts[:upsert?] || action.upsert? || false,
             upsert_identity: opts[:upsert_identity] || action.upsert_identity,
             upsert_fields: opts[:upsert_fields] || action.upsert_fields
-          }
+          },
+          bulk_create: %{index: index}
         })
         |> Ash.Actions.Helpers.add_context(opts)
-        |> Ash.Changeset.set_context(%{bulk_create: %{index: index}})
         |> Ash.Changeset.set_context(opts[:context] || %{})
         |> Ash.Changeset.prepare_changeset_for_action(action, opts, input)
-        |> Ash.Changeset.run_before_transaction_hooks()
       end)
+      |> Stream.map(&Ash.Changeset.run_before_transaction_hooks/1)
+      |> set_lazy_defaults(resource)
       |> transform_and_stop_on_errors(opts)
       |> Stream.transform(
         fn -> %{batch: [], count: 0, must_return_records?: opts[:notify?]} end,
@@ -172,11 +173,6 @@ defmodule Ash.Actions.Create.Bulk do
           %{count: count, batch: batch, must_return_records?: must_return_records?} = batch_config
           context = batch |> Enum.at(0) |> Kernel.||(%{}) |> Map.get(:context)
 
-          batch =
-            Stream.map(batch, fn changeset ->
-              Ash.Changeset.set_defaults(changeset, :create, true)
-            end)
-
           if opts[:transaction] == :batch &&
                Ash.DataLayer.data_layer_can?(resource, :transact) do
             notify? =
@@ -200,8 +196,8 @@ defmodule Ash.Actions.Create.Bulk do
                     batch: batch,
                     changes: changes
                   } =
-                    batch
-                    |> run_action_changes(
+                    run_action_changes(
+                      batch,
                       all_changes,
                       action,
                       opts[:actor],
@@ -505,7 +501,7 @@ defmodule Ash.Actions.Create.Bulk do
     max_concurrency = opts[:max_concurrency]
     process_ref = make_ref()
 
-    if max_concurrency && max_concurrency > 0 do
+    if max_concurrency && max_concurrency > 1 do
       Stream.transform(
         stream,
         fn -> {[], 0} end,
@@ -529,7 +525,8 @@ defmodule Ash.Actions.Create.Bulk do
               end)
 
             if count >= max_concurrency do
-              {[callback.(batch_config) | items], {tasks, count}}
+              {tasks, count, items} = yield_at_least_one(tasks, count)
+              {items, {tasks, count}}
             else
               task =
                 Task.async(fn ->
@@ -566,6 +563,65 @@ defmodule Ash.Actions.Create.Bulk do
         {:batch, batch} ->
           callback.(batch)
       end)
+    end
+  end
+
+  defp set_lazy_defaults(changesets, resource) do
+    attributes_to_set =
+      resource
+      |> Ash.Resource.Info.attributes()
+      |> Enum.filter(fn attribute ->
+        is_function(attribute.default) or match?({_, _, _}, attribute.default)
+      end)
+
+    names = Enum.map(attributes_to_set, & &1.name)
+
+    defaults_by_func =
+      attributes_to_set
+      |> Enum.filter(& &1.match_other_defaults?)
+      |> Enum.reduce(%{}, fn attribute, acc ->
+        Map.put(acc, attribute.default, default(attribute))
+      end)
+
+    Stream.map(changesets, fn changeset ->
+      changeset = %{changeset | defaults: changeset.defaults ++ names}
+
+      Enum.reduce(attributes_to_set, changeset, fn attribute, changeset ->
+        if Ash.Changeset.changing_attribute?(changeset, attribute.name) do
+          changeset
+        else
+          Ash.Changeset.force_change_attribute(
+            changeset,
+            attribute.name,
+            Map.get_lazy(defaults_by_func, attribute.default, fn ->
+              default(attribute)
+            end)
+          )
+        end
+      end)
+    end)
+  end
+
+  defp default(%{default: {mod, func, args}}), do: apply(mod, func, args)
+  defp default(%{default: function}) when is_function(function, 0), do: function.()
+  defp default(%{default: value}), do: value
+
+  defp yield_at_least_one(tasks, count) do
+    tasks
+    |> Task.yield_many()
+    |> Enum.reduce({[], count, []}, fn
+      {task, nil}, {tasks, items} ->
+        {[task | tasks], count, items}
+
+      {_task, {:ok, value}}, {tasks, count, items} ->
+        {tasks, count - 1, [value | items]}
+
+      {_task, {:error, value}}, {tasks, count, items} ->
+        {tasks, count - 1, [{:error, value} | items]}
+    end)
+    |> case do
+      {tasks, count, []} -> yield_at_least_one(tasks, count)
+      {tasks, count, items} -> {tasks, count, items}
     end
   end
 
@@ -620,37 +676,51 @@ defmodule Ash.Actions.Create.Bulk do
       _ ->
         false
     end)
-    |> Enum.reduce(batch, fn {%{change: {module, change_opts}}, index}, batch ->
-      {matches, non_matches} =
-        batch
-        |> Enum.split_with(fn
-          %{valid?: false} ->
-            false
+    |> case do
+      [] ->
+        {batch, []}
 
-          changeset ->
-            changes[index] == :all or
-              changeset.context.bulk_create.index in List.wrap(changes[index])
+      relevant_changes ->
+        Enum.reduce(relevant_changes, batch, fn {%{change: {module, change_opts}}, index},
+                                                batch ->
+          if changes[index] == :all do
+            module.before_batch(batch, change_opts, %{
+              actor: opts[:actor],
+              tracer: opts[:tracer],
+              authorize?: opts[:authorize?]
+            })
+          else
+            {matches, non_matches} =
+              batch
+              |> Enum.split_with(fn
+                %{valid?: false} ->
+                  false
+
+                changeset ->
+                  changeset.context.bulk_create.index in List.wrap(changes[index])
+              end)
+
+            before_batch_results =
+              module.before_batch(matches, change_opts, %{
+                actor: opts[:actor],
+                tracer: opts[:tracer],
+                authorize?: opts[:authorize?]
+              })
+
+            Enum.concat([before_batch_results, non_matches])
+          end
         end)
+        |> Enum.reduce(
+          {[], []},
+          fn
+            %Ash.Notifier.Notification{} = notification, {changesets, notifications} ->
+              {changesets, [notification | notifications]}
 
-      before_batch_results =
-        module.before_batch(matches, change_opts, %{
-          actor: opts[:actor],
-          tracer: opts[:tracer],
-          authorize?: opts[:authorize?]
-        })
-
-      Enum.concat([before_batch_results, non_matches])
-    end)
-    |> Enum.reduce(
-      {[], []},
-      fn
-        %Ash.Notifier.Notification{} = notification, {changesets, notifications} ->
-          {changesets, [notification | notifications]}
-
-        result, {changesets, notifications} ->
-          {[result | changesets], notifications}
-      end
-    )
+            result, {changesets, notifications} ->
+              {[result | changesets], notifications}
+          end
+        )
+    end
   end
 
   defp notify_stream(stream, notifications, resource, action, opts) do
@@ -1128,30 +1198,37 @@ defmodule Ash.Actions.Create.Bulk do
         false
     end)
     |> Enum.reduce(results, fn {%{change: {module, change_opts}}, index}, results ->
-      {matches, non_matches} =
-        results
-        |> Enum.split_with(fn
-          {:ok, result} ->
-            changes[index] == :all or
-              result.__metadata__.bulk_create_index in List.wrap(changes[index])
-
-          _ ->
-            false
-        end)
-
-      matches =
-        Enum.map(matches, fn {:ok, match} ->
-          {changesets_by_index[match.__metadata__.bulk_create_index], match}
-        end)
-
-      after_batch_results =
-        module.after_batch(matches, change_opts, %{
+      if changes[index] == :all do
+        module.after_batch(results, change_opts, %{
           actor: opts[:actor],
           tracer: opts[:tracer],
           authorize?: opts[:authorize?]
         })
+      else
+        {matches, non_matches} =
+          results
+          |> Enum.split_with(fn
+            {:ok, result} ->
+              result.__metadata__.bulk_create_index in List.wrap(changes[index])
 
-      Enum.concat([after_batch_results, non_matches])
+            _ ->
+              false
+          end)
+
+        matches =
+          Enum.map(matches, fn {:ok, match} ->
+            {changesets_by_index[match.__metadata__.bulk_create_index], match}
+          end)
+
+        after_batch_results =
+          module.after_batch(matches, change_opts, %{
+            actor: opts[:actor],
+            tracer: opts[:tracer],
+            authorize?: opts[:authorize?]
+          })
+
+        Enum.concat([after_batch_results, non_matches])
+      end
     end)
     |> Enum.reduce(
       {[], [], []},
@@ -1211,12 +1288,14 @@ defmodule Ash.Actions.Create.Bulk do
             end)
 
           %{
-            must_return_records?: state.must_return_records?,
-            batch: batch,
-            changes: state.changes
+            state
+            | must_return_records?: state.must_return_records?,
+              batch: batch,
+              changes: state.changes
           }
 
         {%{change: {module, change_opts}} = change, change_index}, %{batch: batch} = state ->
+          # could track if any element in the batch is invalid, and if not use the fast version
           if Enum.empty?(change.where) && !change.only_when_valid? do
             context = %{
               actor: actor,
@@ -1233,9 +1312,10 @@ defmodule Ash.Actions.Create.Bulk do
                 end) || function_exported?(module, :after_batch, 3)
 
             %{
-              must_return_records?: must_return_records?,
-              batch: batch,
-              changes: Map.put(state.changes, change_index, :all)
+              state
+              | must_return_records?: must_return_records?,
+                batch: batch,
+                changes: Map.put(state.changes, change_index, :all)
             }
           else
             {matches, non_matches} =
@@ -1266,9 +1346,10 @@ defmodule Ash.Actions.Create.Bulk do
 
             if Enum.empty?(matches) do
               %{
-                must_return_records?: state.must_return_records?,
-                batch: non_matches,
-                changes: state.changes
+                state
+                | must_return_records?: state.must_return_records?,
+                  batch: non_matches,
+                  changes: state.changes
               }
             else
               context = %{
@@ -1286,14 +1367,15 @@ defmodule Ash.Actions.Create.Bulk do
                   end) || function_exported?(module, :after_batch, 3)
 
               %{
-                must_return_records?: must_return_records?,
-                batch: Enum.concat(matches, non_matches),
-                changes:
-                  Map.put(
-                    state.changes,
-                    change_index,
-                    Enum.map(matches, & &1.context.bulk_create.index)
-                  )
+                state
+                | must_return_records?: must_return_records?,
+                  batch: Enum.concat(matches, non_matches),
+                  changes:
+                    Map.put(
+                      state.changes,
+                      change_index,
+                      Enum.map(matches, & &1.context.bulk_create.index)
+                    )
               }
             end
           end
