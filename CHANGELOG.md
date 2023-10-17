@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.19](https://github.com/ash-project/ash/compare/v2.15.18...v2.15.19) (2023-10-17)
+
+
+
+
+### Bug Fixes:
+
+* handle new type constraints properly
+
+### Improvements:
+
+* properly honor ecto type `init` callback
+
 ## [v2.15.18](https://github.com/ash-project/ash/compare/v2.15.17...v2.15.18) (2023-10-17)
 
 

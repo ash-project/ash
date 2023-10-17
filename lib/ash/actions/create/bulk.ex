@@ -493,7 +493,7 @@ defmodule Ash.Actions.Create.Bulk do
     max_concurrency = opts[:max_concurrency]
 
     max_concurrency =
-      if max_concurrency && max_concurrency > 0 &&
+      if max_concurrency && max_concurrency > 1 &&
            not Ash.DataLayer.can?(:async_engine, resource) do
         max_concurrency
       else
