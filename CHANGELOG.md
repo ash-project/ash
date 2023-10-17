@@ -5,6 +5,51 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.18](https://github.com/ash-project/ash/compare/v2.15.17...v2.15.18) (2023-10-17)
+
+
+
+
+### Bug Fixes:
+
+* honor `max_concurrency` option
+
+* handle generic actions in `list_arguments_and_attributes`
+
+* fix type casting for embedded resources
+
+* ensure after action hooks are run on bulk creates
+
+* return records from batches if items have after action hooks
+
+* don't transform errors to changesets when rolling back in with_hooks
+
+* undo previous changes where transactional actions might not roll back
+
+* undo regression where errors weren't wrapped in a changeset
+
+* provide full constraints when determining `Ash.Type.NewType` storage types
+
+* go back to original default timestamp behavior
+
+### Improvements:
+
+* various optimizations and compile time caching
+
+* set default many to many options (#737)
+
+* various performance improvements
+
+* various optimizations for bulk create actions
+
+* support `max_concurrency` option on bulk creates
+
+* better error message on missing identities
+
+* better error message on invalid data passed to `YourApi.load`
+
+* better handling of nested errors in transactions
+
 ## [v2.15.17](https://github.com/ash-project/ash/compare/v2.15.16...v2.15.17) (2023-10-11)
 
 
