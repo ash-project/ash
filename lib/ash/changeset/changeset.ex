@@ -1914,7 +1914,7 @@ defmodule Ash.Changeset do
 
       1. Create another action that is safe to use in a surrounding transaction, and use that instead of this one
       2. Silence this warning using `set_context(%{warn_on_transaction_hooks?: false})` in the action definition
-      3. If building a changeset manually, do #2 except programatically, `Ash.Changeset.set_context(changeset, %{warn_on_transaction_hooks?: false})`
+      3. If building a changeset manually, do #2 except programmatically, `Ash.Changeset.set_context(changeset, %{warn_on_transaction_hooks?: false})`
       """)
     end
   end
