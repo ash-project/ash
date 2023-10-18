@@ -884,6 +884,11 @@ defmodule Ash.DataLayer.Ets do
       # This is not optimized, but thats okay for now
       stream
       |> Enum.reduce_while({:ok, []}, fn changeset, {:ok, results} ->
+        changeset =
+          Ash.Changeset.set_context(changeset, %{
+            private: %{upsert_fields: options[:upsert_fields] || []}
+          })
+
         case upsert(resource, changeset, options.upsert_keys) do
           {:ok, result} ->
             {:cont,

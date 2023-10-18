@@ -855,7 +855,8 @@ defmodule Ash.Changeset do
 
             changeset =
               changeset
-              |> prepare_changeset_for_action(action, opts, params)
+              |> prepare_changeset_for_action(action, opts)
+              |> handle_params(action, params)
               |> run_action_changes(
                 action,
                 opts[:actor],
@@ -883,7 +884,7 @@ defmodule Ash.Changeset do
     end
   end
 
-  def prepare_changeset_for_action(changeset, action, opts, params) do
+  def prepare_changeset_for_action(changeset, action, opts) do
     changeset
     |> Map.put(:action, action)
     |> handle_errors(action.error_handler)
@@ -892,7 +893,14 @@ defmodule Ash.Changeset do
     |> set_tracer(opts)
     |> timeout(changeset.timeout || opts[:timeout])
     |> set_tenant(opts[:tenant] || changeset.tenant || changeset.data.__metadata__[:tenant])
-    |> cast_params(action, params || %{})
+  end
+
+  def handle_params(changeset, action, params, handle_params_opts \\ []) do
+    if Keyword.get(handle_params_opts, :cast_params?, true) do
+      cast_params(changeset, action, params || %{})
+    else
+      changeset
+    end
     |> set_argument_defaults(action)
     |> require_arguments(action)
     |> validate_attributes_accepted(action)
@@ -1266,7 +1274,7 @@ defmodule Ash.Changeset do
           changeset
         else
           changeset
-          |> force_change_attribute(attribute.name, default(:create, attribute))
+          |> unsafe_change_attribute(attribute.name, default(:create, attribute))
           |> Map.update!(:defaults, fn defaults ->
             [attribute.name | defaults]
           end)
@@ -1291,7 +1299,7 @@ defmodule Ash.Changeset do
           changeset
         else
           changeset
-          |> force_change_attribute(attribute.name, default(:update, attribute))
+          |> unsafe_change_attribute(attribute.name, default(:update, attribute))
           |> Map.update!(:defaults, fn defaults ->
             [attribute.name | defaults]
           end)
@@ -1324,7 +1332,7 @@ defmodule Ash.Changeset do
         changeset
       else
         changeset
-        |> force_change_attribute(attribute.name, default(type, attribute))
+        |> unsafe_change_attribute(attribute.name, default(type, attribute))
         |> Map.update!(:defaults, fn defaults ->
           [attribute.name | defaults]
         end)
@@ -1359,7 +1367,7 @@ defmodule Ash.Changeset do
           changeset
         else
           changeset
-          |> force_change_attribute(attribute.name, default_value)
+          |> unsafe_change_attribute(attribute.name, default_value)
           |> Map.update!(:defaults, fn defaults ->
             [attribute.name | defaults]
           end)
@@ -2012,6 +2020,8 @@ defmodule Ash.Changeset do
   end
 
   @doc false
+  def run_before_actions(%{before_action: []} = changeset), do: {changeset, %{notifications: []}}
+
   def run_before_actions(changeset) do
     can_atomic_upsert? = Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :upsert})
 
@@ -3591,6 +3601,20 @@ defmodule Ash.Changeset do
             add_invalid_errors(value, :attribute, changeset, attribute, error_or_errors)
         end
     end
+  end
+
+  @doc "Calls `unsafe_change_attribute/3` for each key/value pair provided."
+  @spec unsafe_change_attributes(t(), map | Keyword.t()) :: t()
+  def unsafe_change_attributes(changeset, changes) do
+    Enum.reduce(changes, changeset, fn {key, value}, changeset ->
+      unsafe_change_attribute(changeset, key, value)
+    end)
+  end
+
+  @doc "Changes an attribute even if it isn't writable, doing no type casting or validation"
+  @spec unsafe_change_attribute(t(), atom, any) :: t()
+  def unsafe_change_attribute(changeset, attribute, value) do
+    %{changeset | attributes: Map.put(changeset.attributes, attribute, value)}
   end
 
   @doc """

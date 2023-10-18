@@ -612,52 +612,72 @@ defmodule Ash.Filter do
 
   defp get_path(_, _), do: nil
 
+  def template_references_actor?(template) do
+    template_references?(template, fn
+      {:_actor, _} -> true
+      _ -> false
+    end)
+  end
+
+  def template_references_argument?(template) do
+    template_references?(template, fn
+      {:_arg, _} -> true
+      _ -> false
+    end)
+  end
+
+  def template_references_context?(template) do
+    template_references?(template, fn
+      {:_context, _} -> true
+      _ -> false
+    end)
+  end
+
   @doc "Whether or not a given template contains an actor reference"
-  def template_references_actor?({:_actor, _}), do: true
-
-  def template_references_actor?(%BooleanExpression{op: :and, left: left, right: right}) do
-    template_references_actor?(left) || template_references_actor?(right)
+  def template_references?(%BooleanExpression{op: :and, left: left, right: right}, pred) do
+    template_references?(left, pred) || template_references?(right, pred)
   end
 
-  def template_references_actor?(%Not{expression: expression}) do
-    template_references_actor?(expression)
+  def template_references?(%Not{expression: expression}, pred) do
+    template_references?(expression, pred)
   end
 
-  def template_references_actor?(%Ash.Query.Exists{expr: expr}) do
-    template_references_actor?(expr)
+  def template_references?(%Ash.Query.Exists{expr: expr}, pred) do
+    template_references?(expr, pred)
   end
 
-  def template_references_actor?(%Ash.Query.Parent{expr: expr}) do
-    template_references_actor?(expr)
+  def template_references?(%Ash.Query.Parent{expr: expr}, pred) do
+    template_references?(expr, pred)
   end
 
-  def template_references_actor?(%{left: left, right: right}) do
-    template_references_actor?(left) || template_references_actor?(right)
+  def template_references?(%{left: left, right: right}, pred) do
+    template_references?(left, pred) || template_references?(right, pred)
   end
 
-  def template_references_actor?(%{arguments: args}) do
-    Enum.any?(args, &template_references_actor?/1)
+  def template_references?(%{arguments: args}, pred) do
+    Enum.any?(args, &template_references?(&1, pred))
   end
 
-  def template_references_actor?(%Ash.Query.Call{args: args}) do
-    Enum.any?(args, &template_references_actor?/1)
+  def template_references?(%Ash.Query.Call{args: args}, pred) do
+    Enum.any?(args, &template_references?(&1, pred))
   end
 
-  def template_references_actor?(list) when is_list(list) do
-    Enum.any?(list, &template_references_actor?/1)
+  def template_references?(list, pred) when is_list(list) do
+    Enum.any?(list, &template_references?(&1, pred))
   end
 
-  def template_references_actor?(map) when is_map(map) and not is_struct(map) do
-    Enum.any?(map, &template_references_actor?/1)
+  def template_references?(map, pred) when is_map(map) and not is_struct(map) do
+    Enum.any?(map, &template_references?(&1, pred))
   end
 
-  def template_references_actor?(tuple) when is_tuple(tuple) do
-    tuple
-    |> Tuple.to_list()
-    |> Enum.any?(&template_references_actor?/1)
+  def template_references?(tuple, pred) when is_tuple(tuple) do
+    pred.(tuple) ||
+      tuple
+      |> Tuple.to_list()
+      |> Enum.any?(&template_references?(&1, pred))
   end
 
-  def template_references_actor?(_), do: false
+  def template_references?(thing, pred), do: pred.(thing)
 
   @doc false
   def walk_filter_template(filter, mapper) when is_list(filter) do

@@ -332,7 +332,13 @@ defmodule Ash.Error do
       |> add_stacktrace(stacktrace)
       |> add_error_context(opts[:error_context])
     else
-      Enum.map(list, &to_ash_error(&1, stacktrace, opts))
+      case list do
+        [item] ->
+          to_ash_error(item, stacktrace, opts)
+
+        list ->
+          Enum.map(list, &to_ash_error(&1, stacktrace, opts))
+      end
     end
   end
 
@@ -351,6 +357,7 @@ defmodule Ash.Error do
   def to_ash_error(error, stacktrace, opts) when is_binary(error) do
     [error: error]
     |> UnknownError.exception()
+    |> Map.put(:stacktrace, nil)
     |> add_stacktrace(stacktrace)
     |> add_error_context(opts[:error_context])
   end
@@ -365,12 +372,14 @@ defmodule Ash.Error do
       is_exception(other) ->
         [error: Exception.format(:error, other)]
         |> UnknownError.exception()
+        |> Map.put(:stacktrace, nil)
         |> add_stacktrace(stacktrace)
         |> add_error_context(opts[:error_context])
 
       true ->
         [error: "unknown error: #{inspect(other)}"]
         |> UnknownError.exception()
+        |> Map.put(:stacktrace, nil)
         |> add_stacktrace(stacktrace)
         |> add_error_context(opts[:error_context])
     end
@@ -396,7 +405,7 @@ defmodule Ash.Error do
 
   defp fake_stacktrace do
     {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
-    %Stacktrace{stacktrace: Enum.drop(stacktrace, 2)}
+    %Stacktrace{stacktrace: Enum.drop(stacktrace, 3)}
   end
 
   defp add_error_context(error, error_context) when is_binary(error_context) do

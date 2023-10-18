@@ -393,6 +393,12 @@ defmodule Ash.Api do
                                doc:
                                  "If set to a value greater than 0, up to that many tasks will be started to run batches asynchronously"
                              ],
+                             assume_casted?: [
+                               type: :boolean,
+                               default: false,
+                               doc:
+                                 "Wether or not to cast attributes and arguments as input. This is an optimization for cases where the input is already casted and/or not in need of casting"
+                             ],
                              upsert_identity: [
                                type: :atom,
                                doc:
@@ -2066,7 +2072,7 @@ defmodule Ash.Api do
     api
     |> bulk_create(inputs, resource, action, opts)
     |> case do
-      %Ash.BulkResult{status: :error, errors: []} ->
+      %Ash.BulkResult{status: :error, errors: errors} when errors in [nil, []] ->
         if opts[:return_errors?] do
           raise Ash.Error.to_error_class(
                   Ash.Error.Unknown.UnknownError.exception(

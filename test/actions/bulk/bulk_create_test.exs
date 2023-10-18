@@ -268,7 +268,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
     test "policy failure results in failures" do
       assert %Ash.BulkResult{errors: [_, _]} =
-               Api.bulk_create!(
+               Api.bulk_create(
                  [%{title: "title1", authorize?: false}, %{title: "title2", authorize?: false}],
                  Post,
                  :create_with_policy,
