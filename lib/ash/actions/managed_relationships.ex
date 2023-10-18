@@ -61,6 +61,29 @@ defmodule Ash.Actions.ManagedRelationships do
     end)
   end
 
+  def setup_managed_belongs_to_relationships(%{relationships: relationships} = changeset, _, _)
+      when relationships in [%{}, nil] do
+    {changeset, %{notifications: []}}
+    |> validate_required_belongs_to()
+    |> case do
+      {:error, error} ->
+        {:error, error}
+
+      {changeset, instructions} ->
+        changeset =
+          Map.update!(changeset, :relationships, fn relationships ->
+            Map.new(relationships, fn {rel, inputs} ->
+              {rel,
+               Enum.map(inputs, fn {input, config} ->
+                 {input, Keyword.put(config, :handled?, true)}
+               end)}
+            end)
+          end)
+
+        {changeset, instructions}
+    end
+  end
+
   def setup_managed_belongs_to_relationships(changeset, actor, engine_opts) do
     changeset.relationships
     |> Enum.map(fn {relationship, val} ->
@@ -87,211 +110,213 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Enum.sort_by(fn {{_rel, {_input, opts}}, _index} ->
       opts[:meta][:order]
     end)
-    |> Enum.reduce_while({changeset, %{notifications: []}}, fn {{relationship, {input, opts}},
-                                                                index},
-                                                               {changeset, instructions} ->
-      opts = Ash.Changeset.ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
-      opts = Keyword.put(opts, :authorize?, !!(engine_opts[:authorize?] && opts[:authorize?]))
-      pkeys = pkeys(relationship, opts)
+    |> Enum.reduce_while({changeset, %{notifications: []}}, fn
+      {{relationship, {input, opts}}, index}, {changeset, instructions} ->
+        opts = Ash.Changeset.ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
+        opts = Keyword.put(opts, :authorize?, !!(engine_opts[:authorize?] && opts[:authorize?]))
+        pkeys = pkeys(relationship, opts)
 
-      changeset =
-        if changeset.action.type == :update do
-          case changeset.api.load(changeset.data, relationship.name,
-                 authorize?: opts[:authorize?],
-                 actor: actor
-               ) do
-            {:ok, result} ->
-              {:ok, %{changeset | data: result}}
+        changeset =
+          if changeset.action.type == :update do
+            case changeset.api.load(changeset.data, relationship.name,
+                   authorize?: opts[:authorize?],
+                   actor: actor
+                 ) do
+              {:ok, result} ->
+                {:ok, %{changeset | data: result}}
 
-            {:error, error} ->
-              {:error, error}
+              {:error, error} ->
+                {:error, error}
+            end
+          else
+            {:ok, changeset}
           end
-        else
-          {:ok, changeset}
-        end
 
-      case changeset do
-        {:ok, changeset} ->
-          changeset =
-            if input in [nil, []] && opts[:on_missing] != :ignore do
-              changeset
-              |> maybe_force_change_attribute(relationship, :source_attribute, nil)
-              |> Ash.Changeset.after_action(
-                fn _changeset, result ->
-                  {:ok, Map.put(result, relationship.name, nil)}
-                end,
-                prepend?: true
-              )
-            else
-              changeset
-            end
+        case changeset do
+          {:ok, changeset} ->
+            changeset =
+              if input in [nil, []] && opts[:on_missing] != :ignore do
+                changeset
+                |> maybe_force_change_attribute(relationship, :source_attribute, nil)
+                |> Ash.Changeset.after_action(
+                  fn _changeset, result ->
+                    {:ok, Map.put(result, relationship.name, nil)}
+                  end,
+                  prepend?: true
+                )
+              else
+                changeset
+              end
 
-          current_value =
-            case Map.get(changeset.data, relationship.name) do
-              %Ash.NotLoaded{} ->
+            current_value =
+              case Map.get(changeset.data, relationship.name) do
+                %Ash.NotLoaded{} ->
+                  nil
+
+                other ->
+                  other
+              end
+
+            input =
+              if is_list(input) do
+                Enum.at(input, 0)
+              else
+                input
+              end
+
+            match =
+              if input do
+                find_match(
+                  List.wrap(current_value),
+                  input,
+                  pkeys,
+                  relationship,
+                  opts[:on_no_match] == :match
+                )
+              else
                 nil
+              end
 
-              other ->
-                other
-            end
+            case match do
+              nil ->
+                case opts[:on_lookup] do
+                  _ when is_nil(input) ->
+                    create_belongs_to_record(
+                      changeset,
+                      instructions,
+                      relationship,
+                      input,
+                      actor,
+                      index,
+                      opts
+                    )
 
-          input =
-            if is_list(input) do
-              Enum.at(input, 0)
-            else
-              input
-            end
+                  :ignore ->
+                    create_belongs_to_record(
+                      changeset,
+                      instructions,
+                      relationship,
+                      input,
+                      actor,
+                      index,
+                      opts
+                    )
 
-          match =
-            if input do
-              find_match(
-                List.wrap(current_value),
-                input,
-                pkeys,
-                relationship,
-                opts[:on_no_match] == :match
-              )
-            else
-              nil
-            end
-
-          case match do
-            nil ->
-              case opts[:on_lookup] do
-                _ when is_nil(input) ->
-                  create_belongs_to_record(
-                    changeset,
-                    instructions,
-                    relationship,
-                    input,
-                    actor,
-                    index,
-                    opts
-                  )
-
-                :ignore ->
-                  create_belongs_to_record(
-                    changeset,
-                    instructions,
-                    relationship,
-                    input,
-                    actor,
-                    index,
-                    opts
-                  )
-
-                {_key, _create_or_update, read} ->
-                  if is_struct(input, relationship.destination) do
-                    changeset =
-                      changeset
-                      |> Ash.Changeset.set_context(%{
-                        private: %{
-                          belongs_to_manage_found: %{relationship.name => %{index => input}}
-                        }
-                      })
-                      |> maybe_force_change_attribute(
-                        relationship,
-                        :source_attribute,
-                        Map.get(input, relationship.destination_attribute)
-                      )
-
-                    {:cont, {changeset, instructions}}
-                  else
-                    Enum.find_value(pkeys(relationship, opts), fn fields ->
-                      if Enum.all?(fields, fn field ->
-                           has_input_value?(input, field)
-                         end) do
-                        Map.new(fields, &{&1, get_input_value(input, &1)})
-                      end
-                    end)
-                    |> case do
-                      nil ->
-                        create_belongs_to_record(
-                          changeset,
-                          instructions,
-                          relationship,
-                          input,
-                          actor,
-                          index,
-                          opts
-                        )
-
-                      keys ->
-                        relationship.destination
-                        |> Ash.Query.set_context(%{
-                          accessing_from: %{source: relationship.source, name: relationship.name}
+                  {_key, _create_or_update, read} ->
+                    if is_struct(input, relationship.destination) do
+                      changeset =
+                        changeset
+                        |> Ash.Changeset.set_context(%{
+                          private: %{
+                            belongs_to_manage_found: %{relationship.name => %{index => input}}
+                          }
                         })
-                        |> Ash.Query.for_read(read, input,
-                          actor: actor,
-                          authorize?: opts[:authorize?]
+                        |> maybe_force_change_attribute(
+                          relationship,
+                          :source_attribute,
+                          Map.get(input, relationship.destination_attribute)
                         )
-                        |> Ash.Query.filter(^keys)
-                        |> Ash.Query.do_filter(relationship.filter,
-                          parent_stack: relationship.source
-                        )
-                        |> Ash.Query.sort(relationship.sort, prepend?: true)
-                        |> Ash.Query.set_context(relationship.context)
-                        |> Ash.Query.set_tenant(changeset.tenant)
-                        |> api(changeset, relationship).read_one()
-                        |> case do
-                          {:ok, nil} ->
-                            create_belongs_to_record(
-                              changeset,
-                              instructions,
-                              relationship,
-                              input,
-                              actor,
-                              index,
-                              opts
-                            )
 
-                          {:ok, found} ->
-                            changeset =
-                              changeset
-                              |> Ash.Changeset.set_context(%{
-                                private: %{
-                                  belongs_to_manage_found: %{
-                                    relationship.name => %{index => found}
-                                  }
-                                }
-                              })
-                              |> maybe_force_change_attribute(
+                      {:cont, {changeset, instructions}}
+                    else
+                      Enum.find_value(pkeys(relationship, opts), fn fields ->
+                        if Enum.all?(fields, fn field ->
+                             has_input_value?(input, field)
+                           end) do
+                          Map.new(fields, &{&1, get_input_value(input, &1)})
+                        end
+                      end)
+                      |> case do
+                        nil ->
+                          create_belongs_to_record(
+                            changeset,
+                            instructions,
+                            relationship,
+                            input,
+                            actor,
+                            index,
+                            opts
+                          )
+
+                        keys ->
+                          relationship.destination
+                          |> Ash.Query.set_context(%{
+                            accessing_from: %{
+                              source: relationship.source,
+                              name: relationship.name
+                            }
+                          })
+                          |> Ash.Query.for_read(read, input,
+                            actor: actor,
+                            authorize?: opts[:authorize?]
+                          )
+                          |> Ash.Query.filter(^keys)
+                          |> Ash.Query.do_filter(relationship.filter,
+                            parent_stack: relationship.source
+                          )
+                          |> Ash.Query.sort(relationship.sort, prepend?: true)
+                          |> Ash.Query.set_context(relationship.context)
+                          |> Ash.Query.set_tenant(changeset.tenant)
+                          |> api(changeset, relationship).read_one()
+                          |> case do
+                            {:ok, nil} ->
+                              create_belongs_to_record(
+                                changeset,
+                                instructions,
                                 relationship,
-                                :source_attribute,
-                                Map.get(found, relationship.destination_attribute)
+                                input,
+                                actor,
+                                index,
+                                opts
                               )
 
-                            {:cont, {changeset, instructions}}
+                            {:ok, found} ->
+                              changeset =
+                                changeset
+                                |> Ash.Changeset.set_context(%{
+                                  private: %{
+                                    belongs_to_manage_found: %{
+                                      relationship.name => %{index => found}
+                                    }
+                                  }
+                                })
+                                |> maybe_force_change_attribute(
+                                  relationship,
+                                  :source_attribute,
+                                  Map.get(found, relationship.destination_attribute)
+                                )
 
-                          {:error, error} ->
-                            {:halt,
-                             {Ash.Changeset.add_error(changeset, error, [
-                                opts[:meta][:id] || relationship.name
-                              ]), instructions}}
-                        end
+                              {:cont, {changeset, instructions}}
+
+                            {:error, error} ->
+                              {:halt,
+                               {Ash.Changeset.add_error(changeset, error, [
+                                  opts[:meta][:id] || relationship.name
+                                ]), instructions}}
+                          end
+                      end
                     end
-                  end
-              end
+                end
 
-            _value ->
-              if opts[:on_match] == :destroy do
-                changeset =
-                  maybe_force_change_attribute(
-                    changeset,
-                    relationship,
-                    :source_attribute,
-                    nil
-                  )
+              _value ->
+                if opts[:on_match] == :destroy do
+                  changeset =
+                    maybe_force_change_attribute(
+                      changeset,
+                      relationship,
+                      :source_attribute,
+                      nil
+                    )
 
-                {:cont, {changeset, instructions}}
-              else
-                {:cont, {changeset, instructions}}
-              end
-          end
+                  {:cont, {changeset, instructions}}
+                else
+                  {:cont, {changeset, instructions}}
+                end
+            end
 
-        {:error, error} ->
-          {:halt, {:error, error}}
-      end
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
     end)
     |> validate_required_belongs_to()
     |> case do
@@ -338,7 +363,7 @@ defmodule Ash.Actions.ManagedRelationships do
   defp maybe_force_change_attribute(changeset, %{no_attributes?: true}, _, _), do: changeset
 
   defp maybe_force_change_attribute(changeset, relationship, key, value) do
-    Ash.Changeset.force_change_attribute(
+    Ash.Changeset.unsafe_change_attribute(
       changeset,
       Map.get(relationship, key),
       value

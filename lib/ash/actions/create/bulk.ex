@@ -107,389 +107,382 @@ defmodule Ash.Actions.Create.Bulk do
         1
       end
 
-    all_changes =
-      action.changes
-      |> Enum.concat(Ash.Resource.Info.validations(resource, action.type))
-      |> Enum.concat(Ash.Resource.Info.changes(resource, action.type))
-      |> Enum.with_index()
+    ref = make_ref()
 
-    result =
+    lazy_matching_default_values = lazy_matching_default_values(resource)
+    base_changeset = base_changeset(resource, api, opts, action)
+
+    all_changes =
+      pre_template_all_changes(action, resource, action.type, base_changeset, opts[:actor])
+
+    argument_names = Enum.map(action.arguments, & &1.name)
+
+    changeset_stream =
       inputs
       |> Stream.with_index()
-      |> Stream.map(fn {input, index} ->
-        resource
-        |> Ash.Changeset.new()
-        |> Map.put(:api, api)
-        |> Ash.Changeset.set_context(%{
-          private: %{
-            upsert?: opts[:upsert?] || action.upsert? || false,
-            upsert_identity: opts[:upsert_identity] || action.upsert_identity,
-            upsert_fields: opts[:upsert_fields] || action.upsert_fields
-          },
-          bulk_create: %{index: index}
-        })
-        |> Ash.Actions.Helpers.add_context(opts)
-        |> Ash.Changeset.set_context(opts[:context] || %{})
-        |> Ash.Changeset.prepare_changeset_for_action(action, opts, input)
-        |> Ash.Changeset.run_before_transaction_hooks()
-      end)
-      |> set_lazy_defaults(resource)
-      |> transform_and_stop_on_errors(opts)
-      |> Stream.transform(
-        fn -> %{batch: [], count: 0, must_return_records?: opts[:notify?]} end,
-        fn
-          {:ok, item}, state when state.count < batch_size ->
-            must_return_records? = state.must_return_records? || !Enum.empty?(item.after_action)
-
-            {[],
-             %{
-               state
-               | batch: [item | state.batch],
-                 count: state.count + 1,
-                 must_return_records?: must_return_records?
-             }}
-
-          {:ok, item}, state ->
-            {[batch(state)], %{state | batch: [item], count: 0, must_return_records?: false}}
-
-          {:error, error}, state ->
-            {[{:error, error}], state}
-        end,
-        fn state ->
-          {[batch(state)], state}
-        end,
-        fn _ -> :ok end
-      )
-      |> map_batches(resource, opts, fn
-        batch_config ->
-          %{count: count, batch: batch, must_return_records?: must_return_records?} = batch_config
-          context = batch |> Enum.at(0) |> Kernel.||(%{}) |> Map.get(:context)
-
-          if opts[:transaction] == :batch &&
-               Ash.DataLayer.data_layer_can?(resource, :transact) do
-            notify? =
-              if opts[:notify?] do
-                if Process.get(:ash_started_transaction?) do
-                  false
-                else
-                  Process.put(:ash_started_transaction?, true)
-                  true
-                end
-              else
-                false
-              end
-
-            try do
-              Ash.DataLayer.transaction(
-                List.wrap(resource) ++ (action.touches_resources || []),
-                fn ->
-                  %{
-                    must_return_records?: must_return_records_for_changes?,
-                    batch: batch,
-                    changes: changes
-                  } =
-                    run_action_changes(
-                      batch,
-                      all_changes,
-                      action,
-                      opts[:actor],
-                      opts[:authorize?],
-                      opts[:tracer]
-                    )
-
-                  {batch, before_batch_notifications} =
-                    batch
-                    |> authorize(api, opts)
-                    |> Enum.to_list()
-                    |> run_bulk_before_batches(
-                      changes,
-                      all_changes,
-                      opts
-                    )
-
-                  {batch, changesets_by_index} =
-                    Enum.reduce(batch, {[], %{}}, fn changeset,
-                                                     {changesets, changesets_by_index} ->
-                      {[changeset | changesets],
-                       Map.put(
-                         changesets_by_index,
-                         changeset.context.bulk_create.index,
-                         changeset
-                       )}
-                    end)
-
-                  run_batch(
-                    resource,
-                    batch,
-                    action,
-                    opts,
-                    count,
-                    changesets_by_index,
-                    must_return_records?,
-                    must_return_records_for_changes?,
-                    data_layer_can_bulk?,
-                    api,
-                    before_batch_notifications
-                  )
-                  |> run_after_action_hooks(opts, api)
-                  |> process_results(changes, all_changes, opts)
-                  |> case do
-                    {:error, error} ->
-                      Ash.DataLayer.rollback(resource, error)
-
-                    other ->
-                      other
-                  end
-                end,
-                opts[:timeout],
-                %{
-                  type: :bulk_create,
-                  metadata: %{
-                    resource: resource,
-                    action: action.name,
-                    actor: opts[:actor]
-                  },
-                  data_layer_context: opts[:data_layer_context] || context
-                }
-              )
-              |> case do
-                {:ok, result} ->
-                  result
-
-                {:error, error} ->
-                  {:error, error}
-              end
-            after
-              if notify? do
-                notifications = Process.get(:ash_notifications, [])
-                remaining_notifications = Ash.Notifier.notify(notifications)
-                Process.delete(:ash_notifications) || []
-
-                Ash.Actions.Helpers.warn_missed!(resource, action, %{
-                  resource_notifications: remaining_notifications
-                })
-              end
-            end
-          else
-            %{
-              must_return_records?: must_return_records_for_changes?,
-              batch: batch,
-              changes: changes
-            } =
-              batch
-              |> run_action_changes(
-                all_changes,
+      |> Stream.chunk_every(batch_size)
+      |> map_batches(
+        resource,
+        opts,
+        ref,
+        fn batch ->
+          try do
+            batch
+            |> Stream.map(
+              &setup_changeset(
+                &1,
                 action,
-                opts[:actor],
-                opts[:authorize?],
-                opts[:tracer]
+                opts,
+                lazy_matching_default_values,
+                base_changeset,
+                argument_names
               )
-
-            {batch, before_batch_notifications} =
-              batch
-              |> authorize(api, opts)
-              |> Enum.to_list()
-              |> run_bulk_before_batches(
-                changes,
-                all_changes,
-                opts
-              )
-
-            {batch, changesets_by_index} =
-              Enum.reduce(batch, {[], %{}}, fn changeset, {changesets, changesets_by_index} ->
-                {[changeset | changesets],
-                 Map.put(
-                   changesets_by_index,
-                   changeset.context.bulk_create.index,
-                   changeset
-                 )}
-              end)
-
-            run_batch(
-              resource,
-              batch,
-              action,
-              opts,
-              count,
-              changesets_by_index,
-              must_return_records?,
-              must_return_records_for_changes?,
-              data_layer_can_bulk?,
-              api,
-              before_batch_notifications
             )
-            |> run_after_action_hooks(opts, api)
-            |> process_results(changes, all_changes, opts)
+            |> reject_and_maybe_store_errors(ref, opts)
+            |> handle_batch(api, resource, action, all_changes, data_layer_can_bulk?, opts, ref)
+          after
+            if opts[:notify?] && !opts[:return_notifications?] do
+              Ash.Notifier.notify(Process.delete({:bulk_create_notifications, ref}))
+            end
           end
-      end)
+        end
+      )
+      |> Stream.concat()
 
     if opts[:return_stream?] do
-      Stream.transform(
-        result,
-        fn -> nil end,
-        fn item, nil ->
-          case item do
-            {:error, error} ->
-              if opts[:stop_on_error?] do
-                {:halt, {[], error}}
-              else
-                {error_stream(error, opts), nil}
-              end
-
-            {:error, notifications, error} ->
-              if opts[:stop_on_error?] do
-                {:halt, {notify_stream([], notifications, resource, action, opts), error}}
-              else
-                {
-                  notify_stream(error_stream(error, opts), notifications, resource, action, opts),
-                  nil
-                }
-              end
-
-            {:ok, invalid, notifications} ->
-              if opts[:stop_on_error?] && !Enum.empty?(invalid) do
-                {:halt,
-                 {[],
-                  invalid
-                  |> error_stream(opts)
-                  |> notify_stream(notifications, resource, action, opts)}}
-              else
-                {invalid
-                 |> error_stream(opts)
-                 |> notify_stream(notifications, resource, action, opts), nil}
-              end
-
-            {:ok, batch_result, invalid, notifications} ->
-              if opts[:stop_on_error?] && !Enum.empty?(invalid) do
-                {:halt, {error_stream(invalid, opts), batch_result}}
-              else
-                if opts[:return_records?] do
-                  {batch_result
-                   |> Stream.map(&{:ok, &1})
-                   |> Stream.concat(error_stream(invalid, opts))
-                   |> notify_stream(notifications, resource, action, opts), nil}
-                else
-                  {error_stream(invalid, opts)
-                   |> notify_stream(notifications, resource, action, opts), nil}
-                end
-              end
-
-            :ok ->
-              {[], nil}
-          end
-        end,
-        fn
-          {errors, successes} ->
-            remaining_items =
-              successes
-              |> Stream.map(&{:ok, &1})
-              |> Stream.concat(error_stream(errors, opts))
-
-            {remaining_items, nil}
-
-          nil ->
-            {[], nil}
-        end,
-        & &1
-      )
+      changeset_stream
     else
-      result
-      |> Enum.reduce(%Ash.BulkResult{status: :empty, records: [], errors: []}, fn
-        {:error, error}, result ->
-          {error_count, errors} = errors(result, error, opts)
+      try do
+        records =
+          if opts[:return_records?] do
+            Enum.to_list(changeset_stream)
+          else
+            Stream.run(changeset_stream)
+            []
+          end
 
-          %{
-            result
-            | errors: errors,
-              error_count: error_count,
-              status: errored(result.status)
-          }
+        notifications =
+          if opts[:notify?] && opts[:return_notifications?] do
+            Process.delete({:bulk_create_notifications, ref})
+          else
+            if opts[:notify?] do
+              Ash.Notifier.notify(Process.delete({:bulk_create_notifications, ref}))
+            end
 
-        {:error, notifications, error}, result ->
-          {error_count, errors} = errors(result, error, opts)
+            []
+          end
 
-          %{
-            result
-            | errors: errors,
-              error_count: error_count,
-              status: errored(result.status),
-              notifications: (result.notifications || []) ++ notifications
-          }
+        {errors, error_count} = Process.get({:bulk_create_errors, ref}) || {[], 0}
 
-        {:ok, [], notifications}, result ->
-          %{
-            result
-            | notifications: (result.notifications || []) ++ notifications,
-              status: success(result.status)
-          }
+        bulk_result = %Ash.BulkResult{
+          records: records,
+          errors: errors,
+          notifications: notifications,
+          error_count: error_count
+        }
 
-        {:ok, invalid, notifications}, result ->
-          {error_count, errors} = errors(result, invalid, opts)
-
-          %{
-            result
-            | errors: errors,
-              error_count: error_count,
-              status: :partial_success,
-              notifications: (result.notifications || []) ++ notifications
-          }
-
-        {:ok, batch_result, invalid, notifications}, result ->
+        case bulk_result do
+          %{records: _, error_count: 0} -> %{bulk_result | status: :success}
+          %{records: [], error_count: _} -> %{bulk_result | status: :error}
+          _ -> %{bulk_result | status: :partial_success}
+        end
+      catch
+        {:error, error, batch_number} ->
           status =
-            case invalid do
-              [] -> success(result.status)
-              _ -> :partial_success
-            end
-
-          records =
-            if opts[:return_records?] do
-              Enum.concat(Enum.to_list(batch_result), result.records)
+            if batch_number > 1 do
+              :partial_success
             else
-              result.records
+              :error
             end
 
-          {error_count, errors} = errors(result, invalid, opts)
-
-          %{
-            result
-            | records: records,
-              errors: errors,
-              error_count: error_count,
-              status: status,
-              notifications: (result.notifications || []) ++ notifications
+          result = %Ash.BulkResult{
+            status: status,
+            notifications: Process.delete({:bulk_create_notifications, ref})
           }
 
-        :ok, result ->
-          result
-      end)
-      |> case do
-        %{status: :empty} = result ->
-          %{result | status: :success}
+          {error_count, errors} = errors(result, error, opts)
 
-        other ->
-          other
+          %{result | errors: errors, error_count: error_count}
+      after
+        Process.delete({:bulk_create_errors, ref})
+        Process.delete({:bulk_create_notifications, ref})
       end
     end
-  catch
-    {:error, error, batch_number, notifications} ->
-      status =
-        if batch_number > 1 do
-          :partial_success
-        else
-          :error
-        end
-
-      result = %Ash.BulkResult{
-        status: status,
-        notifications: notifications
-      }
-
-      {error_count, errors} = errors(result, error, opts)
-
-      %{result | errors: errors, error_count: error_count}
   end
 
-  defp map_batches(stream, resource, opts, callback) do
+  defp pre_template_all_changes(action, resource, :create, base, actor) do
+    action.changes
+    |> Enum.concat(Ash.Resource.Info.validations(resource, action.type))
+    |> Enum.concat(Ash.Resource.Info.changes(resource, action.type))
+    |> Enum.map(fn
+      %{change: {module, opts}} = change ->
+        %{change | change: {module, pre_template(opts, base, actor)}}
+
+      %{validation: {module, opts}} = validation ->
+        %{validation | validation: {module, pre_template(opts, base, actor)}}
+    end)
+    |> Enum.map(fn
+      %{where: where} = change ->
+        new_where =
+          if where do
+            where
+            |> List.wrap()
+            |> Enum.map(fn {module, opts} -> {module, pre_template(opts, base, actor)} end)
+          end
+
+        %{change | where: new_where}
+
+      other ->
+        other
+    end)
+    |> Enum.with_index()
+  end
+
+  defp pre_template(opts, changeset, actor) do
+    if Ash.Filter.template_references_argument?(opts) ||
+         Ash.Filter.template_references_context?(opts) do
+      opts
+    else
+      {:templated,
+       Ash.Filter.build_filter_from_template(
+         opts,
+         actor,
+         %{},
+         changeset.context
+       )}
+    end
+  end
+
+  defp base_changeset(resource, api, opts, action) do
+    resource
+    |> Ash.Changeset.new()
+    |> Map.put(:api, api)
+    |> Map.put(:context, %{
+      private: %{
+        upsert?: opts[:upsert?] || action.upsert? || false,
+        upsert_identity: opts[:upsert_identity] || action.upsert_identity,
+        upsert_fields: opts[:upsert_fields] || action.upsert_fields
+      }
+    })
+    |> Ash.Actions.Helpers.add_context(opts)
+    |> Ash.Changeset.set_context(opts[:context] || %{})
+    |> Ash.Changeset.prepare_changeset_for_action(action, opts)
+  end
+
+  defp lazy_matching_default_values(resource) do
+    resource
+    |> Ash.Resource.Info.lazy_matching_default_attributes(:create)
+    |> Enum.group_by(& &1.default)
+    |> Enum.reduce(%{}, fn {fun, attributes}, lazy_matching_default_values ->
+      default =
+        case fun do
+          {m, f, a} -> apply(m, f, a)
+          fun -> fun.()
+        end
+
+      Enum.reduce(attributes, lazy_matching_default_values, fn attribute,
+                                                               lazy_matching_default_values ->
+        Map.put(lazy_matching_default_values, attribute.name, default)
+      end)
+    end)
+  end
+
+  defp error_stream(ref) do
+    Stream.resource(
+      fn -> Process.delete({:bulk_create_errors, ref}) end,
+      fn
+        {errors, _count} ->
+          {Stream.map(errors || [], &{:error, &1}), []}
+
+        _ ->
+          {:halt, []}
+      end,
+      fn _ -> :ok end
+    )
+  end
+
+  defp notification_stream(ref) do
+    Stream.resource(
+      fn -> Process.delete({:bulk_create_notifications, ref}) end,
+      fn
+        [] ->
+          {:halt, []}
+
+        notifications ->
+          {Stream.map(notifications || [], &{:notification, &1}), []}
+      end,
+      fn _ -> :ok end
+    )
+  end
+
+  defp handle_batch(batch, api, resource, action, all_changes, data_layer_can_bulk?, opts, ref) do
+    if opts[:transaction] == :batch &&
+         Ash.DataLayer.data_layer_can?(resource, :transact) do
+      context = batch |> Enum.at(0) |> Kernel.||(%{}) |> Map.get(:context)
+
+      notify? =
+        if opts[:notify?] do
+          if Process.get(:ash_started_transaction?) do
+            false
+          else
+            Process.put(:ash_started_transaction?, true)
+            true
+          end
+        else
+          false
+        end
+
+      try do
+        Ash.DataLayer.transaction(
+          List.wrap(resource) ++ action.touches_resources,
+          fn ->
+            do_handle_batch(
+              batch,
+              api,
+              resource,
+              action,
+              opts,
+              all_changes,
+              data_layer_can_bulk?,
+              ref
+            )
+            |> case do
+              {:error, error} ->
+                Ash.DataLayer.rollback(resource, error)
+
+              other ->
+                other
+            end
+          end,
+          opts[:timeout],
+          %{
+            type: :bulk_create,
+            metadata: %{
+              resource: resource,
+              action: action.name,
+              actor: opts[:actor]
+            },
+            data_layer_context: opts[:data_layer_context] || context
+          }
+        )
+        |> case do
+          {:ok, result} ->
+            result
+
+          {:error, error} ->
+            [{:error, error}]
+        end
+      after
+        if notify? do
+          notifications = Process.get(:ash_notifications, [])
+          remaining_notifications = Ash.Notifier.notify(notifications)
+          Process.delete(:ash_notifications) || []
+
+          Ash.Actions.Helpers.warn_missed!(resource, action, %{
+            resource_notifications: remaining_notifications
+          })
+        end
+      end
+    else
+      do_handle_batch(batch, api, resource, action, opts, all_changes, data_layer_can_bulk?, ref)
+    end
+  end
+
+  defp do_handle_batch(batch, api, resource, action, opts, all_changes, data_layer_can_bulk?, ref) do
+    must_return_records? =
+      opts[:notify?] ||
+        Enum.any?(batch, fn item ->
+          item.after_action != []
+        end)
+
+    %{
+      must_return_records?: must_return_records_for_changes?,
+      batch: batch,
+      changes: changes
+    } =
+      run_action_changes(
+        batch,
+        all_changes,
+        action,
+        opts[:actor],
+        opts[:authorize?],
+        opts[:tracer]
+      )
+
+    batch =
+      batch
+      |> authorize(api, opts)
+      |> Enum.to_list()
+      |> run_bulk_before_batches(
+        changes,
+        all_changes,
+        opts,
+        ref
+      )
+
+    # TODO: We will likely need to store the changeset in record metadata after calling the
+    # data layer instead of passing this in, as this is a stale changeset
+    changesets_by_index = index_changesets(batch)
+
+    run_batch(
+      resource,
+      batch,
+      action,
+      opts,
+      must_return_records?,
+      must_return_records_for_changes?,
+      data_layer_can_bulk?,
+      api,
+      ref
+    )
+    |> run_after_action_hooks(opts, api, ref, changesets_by_index)
+    |> process_results(changes, all_changes, opts, ref, changesets_by_index)
+    |> then(fn stream ->
+      if opts[:return_stream?] do
+        stream
+        |> Stream.map(&{:ok, &1})
+        |> Stream.concat(error_stream(ref))
+        |> Stream.concat(notification_stream(ref))
+      else
+        stream
+      end
+    end)
+  end
+
+  defp setup_changeset(
+         {input, index},
+         action,
+         opts,
+         lazy_matching_default_values,
+         base,
+         argument_names
+       ) do
+    base
+    |> Ash.Changeset.put_context(:bulk_create, %{index: index})
+    |> handle_params(
+      Keyword.get(opts, :assume_casted?, false),
+      action,
+      opts,
+      input,
+      argument_names
+    )
+    |> set_lazy_non_matching_defaults()
+    |> set_lazy_matching_defaults(lazy_matching_default_values)
+  end
+
+  defp handle_params(changeset, false, action, _opts, input, _argument_names) do
+    Ash.Changeset.handle_params(changeset, action, input)
+  end
+
+  defp handle_params(changeset, true, action, _opts, input, argument_names) do
+    {args, attrs} =
+      Map.split(input, argument_names)
+
+    %{changeset | arguments: args, attributes: attrs}
+    |> Ash.Changeset.handle_params(action, input, cast_params?: false)
+  end
+
+  defp map_batches(stream, resource, opts, ref, callback) do
     max_concurrency = opts[:max_concurrency]
 
     max_concurrency =
@@ -503,81 +496,70 @@ defmodule Ash.Actions.Create.Bulk do
     if max_concurrency && max_concurrency > 1 do
       Task.async_stream(
         stream,
-        fn
-          {:error, error} ->
-            # This is subpar, we shouldn't star tasks for errors
-            {:error, error}
+        fn batch ->
+          Process.put(:ash_started_transaction?, true)
+          batch_result = callback.(batch)
+          {errors, _} = Process.get({:bulk_create_errors, ref}) || {[], 0}
+          notifications = Process.get({:bulk_create_notifications, ref}) || []
 
-          {:batch, batch} ->
-            Process.put(:ash_started_transaction?, true)
-            batch_result = callback.(batch)
-            new_notifications = Process.get(:ash_notifications, [])
-
-            case batch_result do
-              {:ok, invalid, notifications} ->
-                {:ok, invalid, notifications ++ new_notifications}
-
-              {:ok, results, invalid, notifications} ->
-                {:ok, results, invalid, notifications ++ new_notifications}
-
-              other ->
-                other
-            end
+          {batch_result, Process.get(:ash_notifications, []) ++ notifications, errors}
         end,
         timeout: :infinity,
         max_concurrency: max_concurrency
       )
-      |> Stream.map(fn
-        {:ok, value} ->
-          value
+      |> Stream.flat_map(fn
+        {:ok, {result, notifications, errors}} ->
+          store_notification(ref, notifications, opts)
+          store_error(ref, errors, opts)
+
+          [result]
 
         {:exit, error} ->
-          {:error, error}
+          store_error(ref, error, opts)
+          []
       end)
     else
-      Stream.map(stream, fn
-        {:error, error} ->
-          {:error, error}
-
-        {:batch, batch} ->
-          callback.(batch)
-      end)
+      Stream.map(stream, callback)
     end
   end
 
-  defp set_lazy_defaults(changesets, resource) do
-    attributes_to_set =
-      resource
-      |> Ash.Resource.Info.attributes()
-      |> Enum.filter(fn attribute ->
-        is_function(attribute.default) or match?({_, _, _}, attribute.default)
-      end)
+  defp set_lazy_non_matching_defaults(changeset) do
+    changeset.resource
+    |> Ash.Resource.Info.lazy_non_matching_default_attributes(:create)
+    |> Enum.reduce(changeset, fn attribute, changeset ->
+      if Ash.Changeset.changing_attribute?(changeset, attribute.name) do
+        changeset
+      else
+        Ash.Changeset.unsafe_change_attribute(
+          changeset,
+          attribute.name,
+          default(attribute)
+        )
+      end
+    end)
+  end
 
-    names = Enum.map(attributes_to_set, & &1.name)
+  defp set_lazy_matching_defaults(changeset, values) do
+    Enum.reduce(values, changeset, fn {key, value}, changeset ->
+      if Ash.Changeset.changing_attribute?(changeset, key) do
+        changeset
+      else
+        Ash.Changeset.unsafe_change_attribute(
+          changeset,
+          key,
+          value
+        )
+      end
+    end)
+  end
 
-    defaults_by_func =
-      attributes_to_set
-      |> Enum.filter(& &1.match_other_defaults?)
-      |> Enum.reduce(%{}, fn attribute, acc ->
-        Map.put(acc, attribute.default, default(attribute))
-      end)
-
-    Stream.map(changesets, fn changeset ->
-      changeset = %{changeset | defaults: changeset.defaults ++ names}
-
-      Enum.reduce(attributes_to_set, changeset, fn attribute, changeset ->
-        if Ash.Changeset.changing_attribute?(changeset, attribute.name) do
-          changeset
-        else
-          Ash.Changeset.force_change_attribute(
-            changeset,
-            attribute.name,
-            Map.get_lazy(defaults_by_func, attribute.default, fn ->
-              default(attribute)
-            end)
-          )
-        end
-      end)
+  defp index_changesets(batch) do
+    Enum.reduce(batch, %{}, fn changeset, changesets_by_index ->
+      Map.put(
+        changesets_by_index,
+        changeset.context.bulk_create.index,
+        changeset
+      )
     end)
   end
 
@@ -612,21 +594,12 @@ defmodule Ash.Actions.Create.Bulk do
     end
   end
 
-  defp error_stream(error, opts) do
-    if opts[:return_errors?] do
-      error
-      |> List.wrap()
-      |> Stream.map(&{:error, &1})
-    else
-      []
-    end
-  end
-
   defp run_bulk_before_batches(
          batch,
          changes,
          all_changes,
-         opts
+         opts,
+         ref
        ) do
     all_changes
     |> Enum.filter(fn
@@ -636,101 +609,101 @@ defmodule Ash.Actions.Create.Bulk do
       _ ->
         false
     end)
-    |> case do
-      [] ->
-        {batch, []}
-
-      relevant_changes ->
-        Enum.reduce(relevant_changes, batch, fn {%{change: {module, change_opts}}, index},
-                                                batch ->
-          if changes[index] == :all do
-            module.before_batch(batch, change_opts, %{
-              actor: opts[:actor],
-              tracer: opts[:tracer],
-              authorize?: opts[:authorize?]
-            })
-          else
-            {matches, non_matches} =
-              batch
-              |> Enum.split_with(fn
-                %{valid?: false} ->
-                  false
-
-                changeset ->
-                  changeset.context.bulk_create.index in List.wrap(changes[index])
-              end)
-
-            before_batch_results =
-              module.before_batch(matches, change_opts, %{
-                actor: opts[:actor],
-                tracer: opts[:tracer],
-                authorize?: opts[:authorize?]
-              })
-
-            Enum.concat([before_batch_results, non_matches])
-          end
-        end)
-        |> Enum.reduce(
-          {[], []},
-          fn
-            %Ash.Notifier.Notification{} = notification, {changesets, notifications} ->
-              {changesets, [notification | notifications]}
-
-            result, {changesets, notifications} ->
-              {[result | changesets], notifications}
-          end
-        )
-    end
-  end
-
-  defp notify_stream(stream, notifications, resource, action, opts) do
-    if opts[:notify?] do
-      notifications = List.wrap(notifications)
-
-      if opts[:return_notifications?] do
-        Stream.concat(stream, Stream.map(notifications, &{:notification, &1}))
-      else
-        remaining = Ash.Notifier.notify(notifications)
-
-        Ash.Actions.Helpers.warn_missed!(resource, action, %{
-          resource_notifications: remaining
+    |> Enum.reduce(batch, fn {%{change: {module, change_opts}}, index}, batch ->
+      if changes[index] == :all do
+        module.before_batch(batch, change_opts, %{
+          actor: opts[:actor],
+          tracer: opts[:tracer],
+          authorize?: opts[:authorize?]
         })
-
-        stream
-      end
-    else
-      stream
-    end
-  end
-
-  defp errored(:empty), do: :error
-  defp errored(:partial_success), do: :partial_success
-  defp errored(:success), do: :partial_success
-  defp errored(:error), do: :error
-
-  defp success(:empty), do: :success
-  defp success(:partial_success), do: :partial_success
-  defp success(:error), do: :partial_success
-  defp success(:success), do: :success
-
-  defp transform_and_stop_on_errors(stream, opts) do
-    Stream.map(stream, fn changeset ->
-      if changeset.valid? do
-        {:ok, changeset}
       else
-        if opts[:stop_on_error?] && !opts[:return_stream?] do
-          throw({:error, Ash.Error.to_error_class(changeset.errors), 0, []})
-        else
-          {:error, changeset}
-        end
+        {matches, non_matches} =
+          batch
+          |> Enum.split_with(fn
+            %{valid?: false} ->
+              false
+
+            changeset ->
+              changeset.context.bulk_create.index in List.wrap(changes[index])
+          end)
+
+        before_batch_results =
+          module.before_batch(matches, change_opts, %{
+            actor: opts[:actor],
+            tracer: opts[:tracer],
+            authorize?: opts[:authorize?]
+          })
+
+        Enum.concat([before_batch_results, non_matches])
       end
     end)
+    |> Enum.reject(fn
+      %Ash.Notifier.Notification{} = notification ->
+        store_notification(ref, notification, opts)
+        true
+
+      _changeset ->
+        false
+    end)
+  end
+
+  defp reject_and_maybe_store_errors(stream, ref, opts) do
+    Enum.reject(stream, fn changeset ->
+      if changeset.valid? do
+        false
+      else
+        store_error(ref, changeset, opts)
+        true
+      end
+    end)
+  end
+
+  defp store_error(ref, error, opts) do
+    if opts[:stop_on_error?] && !opts[:return_stream?] do
+      throw({:error, Ash.Error.to_error_class(error), 0, []})
+    else
+      if opts[:return_errors?] do
+        {errors, count} = Process.get({:bulk_create_errors, ref}) || {[], 0}
+
+        error =
+          case error do
+            %Ash.Changeset{} = changeset ->
+              changeset
+
+            other ->
+              Ash.Error.to_ash_error(other)
+          end
+
+        Process.put(
+          {:bulk_create_errors, ref},
+          {[error | errors], count + 1}
+        )
+      else
+        {errors, count} = Process.get({:bulk_create_errors, ref}) || {[], 0}
+        Process.put({:bulk_create_errors, ref}, {errors, count + 1})
+      end
+    end
+  end
+
+  defp store_notification(ref, notification, opts) do
+    if opts[:notify?] || opts[:return_notifications?] do
+      notifications = Process.get({:bulk_create_notifications, ref}) || []
+
+      new_notifications =
+        if is_list(notification) do
+          notification ++ notifications
+        else
+          [notification | notifications]
+        end
+
+      Process.put({:bulk_create_notifications, ref}, new_notifications)
+    end
   end
 
   defp authorize(batch, api, opts) do
     if opts[:authorize?] do
       batch
-      |> Stream.map(fn changeset ->
+      |> Enum.map(fn changeset ->
         if changeset.valid? do
           case api.can(changeset, opts[:actor], return_forbidden_error?: true, maybe_is: false) do
             {:ok, true} ->
@@ -751,9 +724,8 @@ defmodule Ash.Actions.Create.Bulk do
     end
   end
 
-  defp handle_bulk_result(%Ash.BulkResult{} = bulk_result, resource, action, opts) do
+  defp handle_bulk_result(%Ash.BulkResult{} = bulk_result, _resource, _action, opts) do
     bulk_result
-    |> notify(resource, action, opts)
     |> sort(opts)
     |> ensure_records_return_type(opts)
     |> ensure_errors_return_type(opts)
@@ -788,101 +760,61 @@ defmodule Ash.Actions.Create.Bulk do
 
   defp sort(result, _), do: result
 
-  defp notify(%{notifications: []} = result, _resource, _action, _opts), do: result
-
-  defp notify(%{notifications: notifications} = result, resource, action, opts) do
-    if opts[:return_notifications?] do
-      result
-    else
-      if opts[:notify?] do
-        result = %{result | notifications: Ash.Notifier.notify(notifications)}
-
-        Ash.Actions.Helpers.warn_missed!(resource, action, %{
-          resource_notifications: result.notifications
-        })
-
-        result
-      else
-        result
-      end
-    end
-  end
-
   defp run_batch(
          resource,
          batch,
          action,
          opts,
-         count,
-         changesets_by_index,
          must_return_records?,
          must_return_records_for_changes?,
          data_layer_can_bulk?,
          api,
-         before_batch_notifications
+         ref
        ) do
-    {batch, invalid, notifications} =
-      batch
-      |> Stream.map(fn changeset ->
-        Ash.Changeset.require_values(
-          changeset,
-          :create
-        )
-        |> Ash.Changeset.require_values(
-          :update,
-          false,
-          action.require_attributes
-        )
-      end)
-      |> Enum.reduce({[], [], before_batch_notifications}, fn changeset,
-                                                              {changesets, invalid, notifications} ->
-        if changeset.valid? do
-          {changeset, %{notifications: new_notifications}} =
-            Ash.Changeset.run_before_actions(changeset)
+    batch
+    |> Enum.map(fn changeset ->
+      if changeset.valid? do
+        {changeset, %{notifications: new_notifications}} =
+          Ash.Changeset.run_before_actions(changeset)
 
-          new_notifications =
-            if opts[:notify?] do
-              new_notifications
-            else
-              []
-            end
+        new_notifications = store_notification(ref, new_notifications, opts)
 
-          {changeset, manage_notifications} =
-            if changeset.valid? do
-              case Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
-                     changeset,
-                     opts[:actor],
-                     authorize?: opts[:authorize?],
-                     actor: opts[:actor]
-                   ) do
-                {:error, error} ->
-                  {Ash.Changeset.add_error(changeset, error), new_notifications}
-
-                {changeset, manage_instructions} ->
-                  {changeset, manage_instructions.notifications}
-              end
-            else
-              {changeset, []}
-            end
-
+        {changeset, manage_notifications} =
           if changeset.valid? do
-            {[changeset | changesets], invalid,
-             notifications ++ new_notifications ++ manage_notifications}
-          else
-            if opts[:stop_on_error?] && !opts[:return_stream?] do
-              throw({:error, Ash.Error.to_error_class(changeset.errors), 0, []})
+            case Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
+                   changeset,
+                   opts[:actor],
+                   authorize?: opts[:authorize?],
+                   actor: opts[:actor]
+                 ) do
+              {:error, error} ->
+                {Ash.Changeset.add_error(changeset, error), new_notifications}
+
+              {changeset, manage_instructions} ->
+                {changeset, manage_instructions.notifications}
             end
-
-            {changesets, [changeset | invalid], notifications ++ new_notifications}
+          else
+            {changeset, []}
           end
-        else
-          {changesets, [changeset | invalid], notifications}
-        end
-      end)
 
-    case batch do
+        store_notification(ref, manage_notifications, opts)
+
+        changeset
+      else
+        changeset
+      end
+    end)
+    |> Enum.reject(fn
+      %{valid?: false} = changeset ->
+        store_error(ref, changeset, opts)
+        true
+
+      _changeset ->
+        false
+    end)
+    |> case do
       [] ->
-        {:ok, [], invalid, notifications, changesets_by_index}
+        []
 
       batch ->
         upsert_keys =
@@ -912,24 +844,19 @@ defmodule Ash.Actions.Create.Bulk do
             end
           end
 
-        changesets_by_index =
-          Enum.reduce(batch, changesets_by_index, fn changeset, changesets_by_index ->
-            Map.put(changesets_by_index, changeset.context.bulk_create.index, changeset)
-          end)
-
         batch
         |> Enum.group_by(&{&1.atomics, &1.filters})
-        |> Enum.reduce_while({:ok, []}, fn {_atomics, batch}, {:ok, acc} ->
+        |> Enum.flat_map(fn {_atomics, batch} ->
           result =
             case action.manual do
               {mod, opts} ->
                 if function_exported?(mod, :bulk_create, 3) do
                   mod.bulk_create(batch, opts, %{
                     actor: opts[:actor],
+                    batch_size: opts[:batch_size],
                     authorize?: opts[:authorize?],
                     tracer: opts[:tracer],
                     api: api,
-                    batch_size: count,
                     upsert?: opts[:upsert?] || action.upsert?,
                     upsert_keys: upsert_keys,
                     upsert_fields: opts[:upsert_fields] || action.upsert_fields,
@@ -968,16 +895,20 @@ defmodule Ash.Actions.Create.Bulk do
 
               _ ->
                 if data_layer_can_bulk? do
-                  Ash.DataLayer.bulk_create(resource, batch, %{
-                    batch_size: count,
-                    return_records?:
-                      opts[:return_records?] || must_return_records? ||
-                        must_return_records_for_changes?,
-                    upsert?: opts[:upsert?] || action.upsert? || false,
-                    upsert_keys: upsert_keys,
-                    upsert_fields: opts[:upsert_fields] || action.upsert_fields,
-                    tenant: opts[:tenant]
-                  })
+                  Ash.DataLayer.bulk_create(
+                    resource,
+                    batch,
+                    %{
+                      batch_size: opts[:batch_size],
+                      return_records?:
+                        opts[:return_records?] || must_return_records? ||
+                          must_return_records_for_changes?,
+                      upsert?: opts[:upsert?] || action.upsert? || false,
+                      upsert_keys: upsert_keys,
+                      upsert_fields: opts[:upsert_fields] || action.upsert_fields,
+                      tenant: opts[:tenant]
+                    }
+                  )
                 else
                   [changeset] = batch
                   upsert? = opts[:upsert?] || action.upsert? || false
@@ -1008,22 +939,16 @@ defmodule Ash.Actions.Create.Bulk do
 
           case result do
             {:ok, result} ->
-              {:cont, {:ok, acc ++ result}}
+              result
 
-            other ->
-              {:halt, other}
+            :ok ->
+              []
+
+            {:error, error} ->
+              store_error(ref, error, opts)
+              []
           end
         end)
-        |> case do
-          {:ok, result} ->
-            {:ok, result, invalid, notifications, changesets_by_index}
-
-          :ok ->
-            {:ok, invalid, notifications, changesets_by_index}
-
-          other ->
-            other
-        end
     end
   end
 
@@ -1041,114 +966,83 @@ defmodule Ash.Actions.Create.Bulk do
     end
   end
 
-  defp run_after_action_hooks({:ok, invalid, notifications, changesets_by_index}, _opts, _api) do
-    {:ok, invalid, notifications, changesets_by_index}
-  end
-
   defp run_after_action_hooks(
-         {:ok, batch_results, invalid, notifications, changesets_by_index},
+         batch_results,
          opts,
-         api
+         api,
+         ref,
+         changesets_by_index
        ) do
-    batch_results
-    |> Enum.reduce_while(
-      {:ok, [], notifications, changesets_by_index},
-      fn result, {:ok, records, notifications, changesets_by_index} ->
-        changeset = changesets_by_index[result.__metadata__.bulk_create_index]
+    Enum.flat_map(batch_results, fn result ->
+      changeset = changesets_by_index[result.__metadata__.bulk_create_index]
 
-        case manage_relationships(result, api, changeset,
-               actor: opts[:actor],
-               authorize?: opts[:authorize?]
-             ) do
-          {:ok, result, %{notifications: new_notifications, new_changeset: changeset}} ->
-            case Ash.Changeset.run_after_actions(result, changeset, []) do
-              {:error, error} ->
-                {:halt, {:error, error}}
+      case manage_relationships(result, api, changeset,
+             actor: opts[:actor],
+             authorize?: opts[:authorize?]
+           ) do
+        {:ok, result, %{notifications: new_notifications, new_changeset: changeset}} ->
+          store_notification(ref, new_notifications, opts)
 
-              {:ok, result, changeset, %{notifications: more_new_notifications}} ->
-                {:cont,
-                 {:ok, [result | records],
-                  notifications ++ new_notifications ++ more_new_notifications,
-                  Map.put(changesets_by_index, result.__metadata__.bulk_create_index, changeset)}}
-            end
+          case Ash.Changeset.run_after_actions(result, changeset, []) do
+            {:error, error} ->
+              store_error(ref, error, opts)
+              []
 
-          {:error, error} ->
-            {:error, error}
-        end
-      end
-    )
-    |> case do
-      {:ok, results, notifications, changesets_by_index} ->
-        {:ok, results, invalid, notifications, changesets_by_index}
-
-      other ->
-        other
-    end
-  end
-
-  defp run_after_action_hooks({:error, error}, _opts, _api) do
-    {:error, error}
-  end
-
-  defp process_results({:ok, invalid, notifications, _changesets_by_index}, _, _, _),
-    do: {:ok, invalid, notifications}
-
-  defp process_results(
-         {:ok, batch, invalid, notifications, changesets_by_index},
-         changes,
-         all_changes,
-         opts
-       ) do
-    Enum.reduce(
-      batch,
-      {[], notifications, changesets_by_index, []},
-      fn result, {results, notifications, changesets_by_index, errors} ->
-        changeset = changesets_by_index[result.__metadata__.bulk_create_index]
-
-        notifications =
-          if opts[:notify?] do
-            [notification(changeset, result, opts) | notifications]
-          else
-            notifications
+            {:ok, result, _changeset, %{notifications: more_new_notifications}} ->
+              store_notification(ref, more_new_notifications, opts)
+              [result]
           end
 
+        {:error, error} ->
+          store_error(ref, error, opts)
+          []
+      end
+    end)
+  end
+
+  defp process_results(
+         batch,
+         changes,
+         all_changes,
+         opts,
+         ref,
+         changesets_by_index
+       ) do
+    results =
+      Enum.flat_map(batch, fn result ->
+        changeset = changesets_by_index[result.__metadata__.bulk_create_index]
+
+        if opts[:notify?] || opts[:return_notifications?] do
+          store_notification(ref, notification(changeset, result, opts), opts)
+        end
+
         try do
-          case Ash.Changeset.run_after_transactions({:ok, result}, changeset) do
+          case Ash.Changeset.run_after_transactions(
+                 {:ok, result},
+                 changeset
+               ) do
             {:ok, result} ->
-              {[result | results], notifications, changesets_by_index, errors}
+              if opts[:return_records?] do
+                [result]
+              else
+                []
+              end
 
             {:error, error} ->
-              {results, notifications, changesets_by_index, [error | errors]}
+              store_error(ref, error, opts)
+              []
           end
         rescue
           e ->
-            {results, notifications, changesets_by_index, [e | errors]}
+            store_error(ref, e, opts)
+            []
         end
-      end
-    )
-    |> case do
-      {results, notifications, changesets_by_index, []} ->
-        case run_bulk_after_changes(changes, all_changes, results, changesets_by_index, opts) do
-          {results, new_notifications, []} ->
-            {:ok, results, invalid, new_notifications ++ notifications}
-
-          {_results, _new_notifications, errors} ->
-            {:error, notifications, Ash.Error.to_ash_error(errors)}
-        end
-
-      {_result, notifications, _, errors} ->
-        {:error, notifications, Ash.Error.to_ash_error(errors)}
-    end
-  end
-
-  defp process_results({:error, error}, _, _, _), do: {:error, error}
-
-  defp run_bulk_after_changes(changes, all_changes, results, changesets_by_index, opts) do
-    results =
-      Stream.map(results, fn result ->
-        {:ok, result}
       end)
 
+    run_bulk_after_changes(changes, all_changes, results, changesets_by_index, opts, ref)
+  end
+
+  defp run_bulk_after_changes(changes, all_changes, results, changesets_by_index, opts, ref) do
     all_changes
     |> Enum.filter(fn
       {%{change: {module, _opts}}, _} ->
@@ -1159,11 +1053,17 @@ defmodule Ash.Actions.Create.Bulk do
     end)
     |> Enum.reduce(results, fn {%{change: {module, change_opts}}, index}, results ->
       if changes[index] == :all do
+        results =
+          Enum.map(results, fn result ->
+            {changesets_by_index[result.__metadata__.bulk_create_index], result}
+          end)
+
         module.after_batch(results, change_opts, %{
           actor: opts[:actor],
           tracer: opts[:tracer],
           authorize?: opts[:authorize?]
         })
+        |> handle_after_batch_results(ref, opts)
       else
         {matches, non_matches} =
           results
@@ -1176,7 +1076,7 @@ defmodule Ash.Actions.Create.Bulk do
           end)
 
         matches =
-          Enum.map(matches, fn {:ok, match} ->
+          Enum.map(matches, fn match ->
             {changesets_by_index[match.__metadata__.bulk_create_index], match}
           end)
 
@@ -1186,21 +1086,26 @@ defmodule Ash.Actions.Create.Bulk do
             tracer: opts[:tracer],
             authorize?: opts[:authorize?]
           })
+          |> handle_after_batch_results(ref, opts)
 
         Enum.concat([after_batch_results, non_matches])
       end
     end)
-    |> Enum.reduce(
-      {[], [], []},
+  end
+
+  defp handle_after_batch_results(results, ref, options) do
+    Enum.flat_map(
+      results,
       fn
-        %Ash.Notifier.Notification{} = notification, {results, notifications, errors} ->
-          {results, [notification | notifications], errors}
+        %Ash.Notifier.Notification{} = notification ->
+          store_notification(ref, notification, options)
 
-        {:ok, result}, {results, notifications, errors} ->
-          {[result | results], notifications, errors}
+        {:ok, result} ->
+          [result]
 
-        {:error, error}, {results, notifications, errors} ->
-          {results, notifications, [error | errors]}
+        {:error, error} ->
+          store_error(ref, error, options)
+          []
       end
     )
   end
@@ -1216,25 +1121,32 @@ defmodule Ash.Actions.Create.Bulk do
     }
   end
 
+  defp templated_opts({:templated, opts}, _actor, _arguments, _context), do: opts
+
+  defp templated_opts(opts, actor, arguments, context) do
+    Ash.Filter.build_filter_from_template(
+      opts,
+      actor,
+      arguments,
+      context
+    )
+  end
+
   defp run_action_changes(batch, all_changes, _action, actor, authorize?, tracer) do
     Enum.reduce(
       all_changes,
-      %{must_return_records?: false, batch: batch, changes: %{}, notifications: []},
+      %{must_return_records?: false, batch: batch, changes: %{}},
       fn
         {%{validation: {module, opts}} = validation, _change_index}, %{batch: batch} = state ->
           batch =
-            Stream.map(batch, fn changeset ->
+            Enum.map(batch, fn changeset ->
               if Enum.all?(validation.where || [], fn {module, opts} ->
-                   opts =
-                     Ash.Filter.build_filter_from_template(
-                       opts,
-                       actor,
-                       changeset.arguments,
-                       changeset.context
-                     )
+                   opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
 
                    module.validate(changeset, opts) == :ok
                  end) do
+                opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
+
                 case module.validate(changeset, opts) do
                   :ok ->
                     changeset
@@ -1283,13 +1195,7 @@ defmodule Ash.Actions.Create.Bulk do
               |> Enum.split_with(fn changeset ->
                 applies_from_where? =
                   Enum.all?(change.where || [], fn {module, opts} ->
-                    opts =
-                      Ash.Filter.build_filter_from_template(
-                        opts,
-                        actor,
-                        changeset.arguments,
-                        changeset.context
-                      )
+                    opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
 
                     module.validate(changeset, opts) == :ok
                   end)
@@ -1344,42 +1250,26 @@ defmodule Ash.Actions.Create.Bulk do
   end
 
   defp batch_change(module, batch, change_opts, context, actor) do
-    built_change_opts =
-      Ash.Filter.build_filter_from_template(
-        change_opts,
-        actor,
-        %{},
-        context
-      )
+    case change_opts do
+      {:templated, change_opts} ->
+        if function_exported?(module, :batch_change, 4) do
+          module.batch_change(batch, change_opts, context, actor)
+        else
+          Enum.map(batch, fn changeset ->
+            {:ok, change_opts} = module.init(change_opts)
 
-    # TODO: We should figure out how to remove this requirement
-    # the basic problem is that if someone writes `set_attribute(:foo, ^arg(:arg))`
-    # we can't use `.batch_change/3` (because which argument value do we pass in?)
-    if function_exported?(module, :batch_change, 3) && built_change_opts == change_opts do
-      module.batch_change(batch, change_opts, context)
-    else
-      Enum.map(batch, fn changeset ->
-        change_opts =
-          Ash.Filter.build_filter_from_template(
-            change_opts,
-            actor,
-            changeset.arguments,
-            changeset.context
-          )
+            module.change(changeset, change_opts, Map.put(context, :bulk?, true))
+          end)
+        end
 
-        {:ok, change_opts} = module.init(change_opts)
+      change_opts ->
+        Enum.map(batch, fn changeset ->
+          change_opts = templated_opts(change_opts, actor, changeset.arguments, changeset.context)
 
-        module.change(changeset, change_opts, Map.put(context, :bulk?, true))
-      end)
+          {:ok, change_opts} = module.init(change_opts)
+
+          module.change(changeset, change_opts, Map.put(context, :bulk?, true))
+        end)
     end
-  end
-
-  defp batch(state) do
-    {:batch,
-     %{
-       count: state.count,
-       batch: state.batch,
-       must_return_records?: state.must_return_records?
-     }}
   end
 end
