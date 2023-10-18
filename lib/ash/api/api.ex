@@ -613,33 +613,53 @@ defmodule Ash.Api do
       case action_or_query_or_changeset do
         %{type: :update, name: name} ->
           if opts[:data] do
-            Ash.Changeset.for_update(opts[:data], name, input, actor: actor)
+            Ash.Changeset.for_update(opts[:data], name, input,
+              actor: actor,
+              tenant: opts[:tenant]
+            )
           else
             resource
             |> struct()
-            |> Ash.Changeset.for_update(name, input, actor: actor)
+            |> Ash.Changeset.for_update(name, input, actor: actor, tenant: opts[:tenant])
           end
 
         %{type: :create, name: name} ->
-          Ash.Changeset.for_create(resource, name, input, actor: actor)
+          Ash.Changeset.for_create(resource, name, input, actor: actor, tenant: opts[:tenant])
 
         %{type: :read, name: name} ->
-          Ash.Query.for_read(resource, name, input, actor: actor)
+          Ash.Query.for_read(resource, name, input, actor: actor, tenant: opts[:tenant])
 
         %{type: :destroy, name: name} ->
           if opts[:data] do
-            Ash.Changeset.for_destroy(opts[:data], name, input, actor: actor)
+            Ash.Changeset.for_destroy(opts[:data], name, input,
+              actor: actor,
+              tenant: opts[:tenant]
+            )
           else
             resource
             |> struct()
-            |> Ash.Changeset.for_destroy(name, input, actor: actor)
+            |> Ash.Changeset.for_destroy(name, input, actor: actor, tenant: opts[:tenant])
           end
 
         %{type: :action, name: name} ->
           Ash.ActionInput.for_action(resource, name, input, actor: actor)
 
-        %struct{} when struct in [Ash.Query, Ash.Changeset, Ash.ActionInput] ->
-          action_or_query_or_changeset
+        %Ash.ActionInput{} = action_input ->
+          action_input
+
+        %Ash.Query{} = query ->
+          if opts[:tenant] do
+            Ash.Query.set_tenant(query, opts[:tenant])
+          else
+            query
+          end
+
+        %Ash.Changeset{} = changeset ->
+          if opts[:tenant] do
+            Ash.Changeset.set_tenant(changeset, opts[:tenant])
+          else
+            changeset
+          end
 
         _ ->
           raise ArgumentError,
