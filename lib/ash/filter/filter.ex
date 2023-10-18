@@ -158,7 +158,7 @@ defmodule Ash.Filter do
   Some example filters:
 
   ```elixir
-  Ash.Query.filter(resource, [name: "Zardoz"]))
+  Ash.Query.filter(resource, [name: "Zardoz"])
   Ash.Query.filter(resource, [first_name: "Zar", last_name: "Doz"])
   Ash.Query.filter(resource, [first_name: "Zar", last_name: [in: ["Doz", "Daz"]], high_score: [greater_than: 10]])
   Ash.Query.filter(resource, [or: [
