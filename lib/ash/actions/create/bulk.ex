@@ -485,8 +485,7 @@ defmodule Ash.Actions.Create.Bulk do
     max_concurrency = opts[:max_concurrency]
 
     max_concurrency =
-      if max_concurrency && max_concurrency > 1 &&
-           not Ash.DataLayer.can?(:async_engine, resource) do
+      if max_concurrency && max_concurrency > 1 && Ash.DataLayer.can?(:async_engine, resource) do
         max_concurrency
       else
         0
@@ -524,7 +523,8 @@ defmodule Ash.Actions.Create.Bulk do
               {:throw, value}
           end
         end,
-        [timeout: :infinity, max_concurrency: max_concurrency] |> IO.inspect()
+        timeout: :infinity,
+        max_concurrency: max_concurrency
       )
       |> Stream.map(fn
         {:ok, {:throw, value}} ->
