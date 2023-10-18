@@ -147,15 +147,14 @@ defmodule Ash.Actions.Create.Bulk do
           end
         end
       )
-      |> Stream.concat()
 
     if opts[:return_stream?] do
-      changeset_stream
+      Stream.concat(changeset_stream)
     else
       try do
         records =
           if opts[:return_records?] do
-            Enum.to_list(changeset_stream)
+            Enum.to_list(Stream.concat(changeset_stream))
           else
             Stream.run(changeset_stream)
             []
@@ -497,22 +496,45 @@ defmodule Ash.Actions.Create.Bulk do
       Task.async_stream(
         stream,
         fn batch ->
-          Process.put(:ash_started_transaction?, true)
-          batch_result = callback.(batch)
-          {errors, _} = Process.get({:bulk_create_errors, ref}) || {[], 0}
-          notifications = Process.get({:bulk_create_notifications, ref}) || []
+          try do
+            Process.put(:ash_started_transaction?, true)
+            batch_result = callback.(batch)
+            {errors, _} = Process.get({:bulk_create_errors, ref}) || {[], 0}
 
-          {batch_result, Process.get(:ash_notifications, []) ++ notifications, errors}
+            notifications =
+              if opts[:notify?] do
+                process_notifications = Process.get(:ash_notifications, [])
+                bulk_notifications = Process.get({:bulk_create_notifications, ref}) || []
+
+                if opts[:return_notifications?] do
+                  process_notifications ++ bulk_notifications
+                else
+                  if opts[:transaction] && opts[:transaction] != :all do
+                    Ash.Notifier.notify(bulk_notifications)
+                    Ash.Notifier.notify(process_notifications)
+                  end
+
+                  []
+                end
+              end
+
+            {batch_result, notifications, errors}
+          catch
+            value ->
+              {:throw, value}
+          end
         end,
-        timeout: :infinity,
-        max_concurrency: max_concurrency
+        [timeout: :infinity, max_concurrency: max_concurrency] |> IO.inspect()
       )
-      |> Stream.flat_map(fn
+      |> Stream.map(fn
+        {:ok, {:throw, value}} ->
+          throw(value)
+
         {:ok, {result, notifications, errors}} ->
           store_notification(ref, notifications, opts)
           store_error(ref, errors, opts)
 
-          [result]
+          result
 
         {:exit, error} ->
           store_error(ref, error, opts)
@@ -658,6 +680,8 @@ defmodule Ash.Actions.Create.Bulk do
     end)
   end
 
+  defp store_error(_ref, empty, _opts) when empty in [[], nil], do: :ok
+
   defp store_error(ref, error, opts) do
     if opts[:stop_on_error?] && !opts[:return_stream?] do
       throw({:error, Ash.Error.to_error_class(error), 0, []})
@@ -684,6 +708,8 @@ defmodule Ash.Actions.Create.Bulk do
       end
     end
   end
+
+  defp store_notification(_ref, empty, _opts) when empty in [[], nil], do: :ok
 
   defp store_notification(ref, notification, opts) do
     if opts[:notify?] || opts[:return_notifications?] do

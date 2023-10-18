@@ -18,6 +18,8 @@ defmodule Ash.Notifier do
   """
   @spec notify(list(Ash.Notifier.Notification.t()) | Ash.Notifier.Notification.t()) ::
           list(Ash.Notifier.Notification.t())
+  def notify([]), do: []
+
   def notify(resource_notifications) do
     {unsent, to_send} =
       resource_notifications
