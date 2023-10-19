@@ -1872,9 +1872,11 @@ defmodule Ash.Filter do
 
           #   path ->
           # raise """
-          # Only to-one relationship references are allowed in a calculation reference paths. Got: #{inspect(Enum.join(path, "."))} in #{inspect(ref)}
+          # Only to-one relationship references are allowed in a calculation reference paths.
+          # Got: #{inspect(Enum.join(path, "."))} in #{inspect(ref)}
 
-          # To extract a single value from a to_many relationship or path that includes a to_many relationship, use a `first` aggregate.
+          # To extract a single value from a to_many relationship or path that includes a
+          # to_many relationship, use a `first` aggregate.
           # """
           # end
 
