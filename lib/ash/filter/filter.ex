@@ -1863,17 +1863,21 @@ defmodule Ash.Filter do
           |> Enum.find(fn path ->
             not to_one_path?(path, resource)
           end)
-          |> case do
-            nil ->
-              :ok
 
-            path ->
-              raise """
-              Only to-one relationship references are allowed in a calculation reference paths. Got: #{inspect(Enum.join(path, "."))} in #{inspect(ref)}
+          # This validation needs to be added back in at some point
+          # it was removed because we currently can't tell the difference between relationship paths
+          # that appear inside of the path to `exists`, i.e `exists(to_many, ....)`.
+          # |> case do
+          #   nil ->
+          #     :ok
 
-              To extract a single value from a to_many relationship or path that includes a to_many relationship, use a `first` aggregate.
-              """
-          end
+          #   path ->
+          # raise """
+          # Only to-one relationship references are allowed in a calculation reference paths. Got: #{inspect(Enum.join(path, "."))} in #{inspect(ref)}
+
+          # To extract a single value from a to_many relationship or path that includes a to_many relationship, use a `first` aggregate.
+          # """
+          # end
 
           nested =
             Enum.map(nested, fn
