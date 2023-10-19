@@ -1081,10 +1081,50 @@ defmodule Ash.Type do
     end
 
     with {:ok, constraints} <- validate_constraints(type, constraints),
-         {:ok, constraints} <- Ash.Type.init(type, constraints) do
+         {:ok, constraints} <- Ash.Type.init(type, constraints),
+         {:ok, thing} <- set_default(thing, type, constraints),
+         {:ok, thing} <- set_update_default(thing, type, constraints) do
       {:ok, %{thing | type: type, constraints: constraints}}
     end
   end
+
+  defp set_default(%{default: {_m, _f, _a}} = thing, _type, _constraints), do: {:ok, thing}
+
+  defp set_default(%{default: default} = thing, type, constraints)
+       when not is_nil(default) and not is_function(default) do
+    case Ash.Type.cast_input(type, default, constraints) do
+      {:ok, value} ->
+        {:ok, %{thing | default: value}}
+
+      :error ->
+        {:error, "Could not cast #{inspect(default)} to #{inspect(type)}"}
+
+      {:error, error} ->
+        {:error, "Could not cast #{inspect(default)} to #{inspect(type)}: #{inspect(error)}"}
+    end
+  end
+
+  defp set_default(thing, _type, _constraints), do: {:ok, thing}
+
+  defp set_update_default(%{update_default: {_m, _f, _a}} = thing, _type, _constraints),
+    do: {:ok, thing}
+
+  defp set_update_default(%{update_default: update_default} = thing, type, constraints)
+       when not is_nil(update_default) and not is_function(update_default) do
+    case Ash.Type.cast_input(type, update_default, constraints) do
+      {:ok, value} ->
+        {:ok, %{thing | update_default: value}}
+
+      :error ->
+        {:error, "Could not cast #{inspect(update_default)} to #{inspect(type)}"}
+
+      {:error, error} ->
+        {:error,
+         "Could not cast #{inspect(update_default)} to #{inspect(type)}: #{inspect(error)}"}
+    end
+  end
+
+  defp set_update_default(thing, _type, _constraints), do: {:ok, thing}
 
   @doc false
   def validate_constraints(type, constraints) do

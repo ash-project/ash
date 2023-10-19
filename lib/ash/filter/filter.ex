@@ -1992,20 +1992,20 @@ defmodule Ash.Filter do
 
   defp do_relationship_paths(_, _, _), do: []
 
-  defp to_one_path?([], _resource), do: true
+  # defp to_one_path?([], _resource), do: true
 
-  defp to_one_path?([next | rest], resource) do
-    case Ash.Resource.Info.relationship(resource, next) do
-      nil ->
-        false
+  # defp to_one_path?([next | rest], resource) do
+  #   case Ash.Resource.Info.relationship(resource, next) do
+  #     nil ->
+  #       false
 
-      %{cardinality: :one, destination: destination} ->
-        to_one_path?(rest, destination)
+  #     %{cardinality: :one, destination: destination} ->
+  #       to_one_path?(rest, destination)
 
-      _ ->
-        false
-    end
-  end
+  #     _ ->
+  #       false
+  #   end
+  # end
 
   defp parent_relationship_paths(expression, at_path, include_exists?, with_reference?) do
     expression
