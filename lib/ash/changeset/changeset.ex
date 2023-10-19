@@ -1332,7 +1332,7 @@ defmodule Ash.Changeset do
         changeset
       else
         changeset
-        |> unsafe_change_attribute(attribute.name, default(type, attribute))
+        |> force_change_attribute(attribute.name, default(type, attribute))
         |> Map.update!(:defaults, fn defaults ->
           [attribute.name | defaults]
         end)
