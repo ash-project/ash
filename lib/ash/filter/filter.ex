@@ -1852,21 +1852,20 @@ defmodule Ash.Filter do
             |> List.wrap()
             |> List.flatten()
 
-          nested
-          |> Enum.map(fn
-            {nested_path, _ref} ->
-              nested_path
-
-            {nested_path} ->
-              nested_path
-          end)
-          |> Enum.find(fn path ->
-            not to_one_path?(path, resource)
-          end)
-
           # This validation needs to be added back in at some point
           # it was removed because we currently can't tell the difference between relationship paths
           # that appear inside of the path to `exists`, i.e `exists(to_many, ....)`.
+          # nested
+          # |> Enum.map(fn
+          #   {nested_path, _ref} ->
+          #     nested_path
+
+          #   {nested_path} ->
+          #     nested_path
+          # end)
+          # |> Enum.find(fn path ->
+          #   not to_one_path?(path, resource)
+          # end)
           # |> case do
           #   nil ->
           #     :ok
