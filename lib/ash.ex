@@ -4,8 +4,12 @@ defmodule Ash do
   """
 
   for {function, arity} <- Ash.Api.Functions.functions() do
+    args = Macro.generate_arguments(arity, __MODULE__)
+
+    defdelegate unquote(function)(unquote_splicing(args)), to: Ash.Api.GlobalInterface
+
     unless function in Ash.Api.Functions.no_opts_functions() do
-      args = Macro.generate_arguments(arity, __MODULE__)
+      args = Macro.generate_arguments(arity + 1, __MODULE__)
 
       defdelegate unquote(function)(unquote_splicing(args)), to: Ash.Api.GlobalInterface
     end

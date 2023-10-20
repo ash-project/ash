@@ -146,7 +146,8 @@ defmodule Ash.Api.GlobalInterface do
     resource
   end
 
-  defp resource_from_args!(fun, _, [resource | _]) when fun in [:calculate, :calculate!] do
+  defp resource_from_args!(fun, _, [resource | _])
+       when fun in [:calculate, :calculate!, :get, :get!] do
     resource
   end
 
