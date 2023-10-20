@@ -1,9 +1,15 @@
 defmodule Ash do
   @moduledoc """
-  General purpose tools for working with Ash.
-
-  Currently only contains setters/getters for process context.
+  General purpose tools for working with Ash and Ash resources.
   """
+
+  for {function, arity} <- Ash.Api.Functions.functions() do
+    unless function in Ash.Api.Functions.no_opts_functions() do
+      args = Macro.generate_arguments(arity, __MODULE__)
+
+      defdelegate unquote(function)(unquote_splicing(args)), to: Ash.Api.GlobalInterface
+    end
+  end
 
   @doc """
   Converts a context map to opts to be passed into an action.

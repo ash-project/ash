@@ -22,6 +22,11 @@ defmodule Ash.Resource do
       validate_api_inclusion?: [
         type: :boolean,
         default: true
+      ],
+      api: [
+        type: :atom,
+        doc:
+          "The api to use when interacting with this resource. Also sets defaults for various options that ask for an api."
       ]
     ]
 
@@ -76,8 +81,13 @@ defmodule Ash.Resource do
   @impl Spark.Dsl
   def handle_opts(opts) do
     quote bind_quoted: [
-            embedded?: opts[:embedded?]
+            embedded?: opts[:embedded?],
+            api: opts[:api]
           ] do
+      if api do
+        @persist {:api, api}
+      end
+
       if embedded? do
         @persist {:embedded?, true}
 
