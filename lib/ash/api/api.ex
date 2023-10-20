@@ -2024,6 +2024,7 @@ defmodule Ash.Api do
 
   @doc false
   def read_one(api, query, opts) do
+    query = Ash.Query.to_query(query)
     query = Ash.Query.set_api(query, api)
 
     with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @read_opts_schema),
