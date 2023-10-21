@@ -158,10 +158,10 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Examples
 
-  change set_attribute(:active, false)
-  change set_attribute(:opened_at, &DateTime.utc_now/0)
-  change set_attribute(:status, arg(:status))
-  change set_attribute(:encrypted_data, arg(:data), set_when_nil?: false)
+      change set_attribute(:active, false)
+      change set_attribute(:opened_at, &DateTime.utc_now/0)
+      change set_attribute(:status, arg(:status))
+      change set_attribute(:encrypted_data, arg(:data), set_when_nil?: false)
   """
   @spec set_attribute(
           relationship :: atom,
