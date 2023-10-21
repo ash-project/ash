@@ -31,6 +31,10 @@ end
 
 See [Managing Relationships](/documentation/topics/managing-relationships.md) for more information.
 
+Your data layer may enforce foreign key constraints, see the following guides for more information :
+
+- [AshPostgres references](https://hexdocs.pm/ash_postgres/references.html)
+
 ## Kinds of relationships
 
 There are four kinds of relationships:
