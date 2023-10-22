@@ -3,6 +3,94 @@ defmodule Ash.Test do
   Testing helpers for Ash.
   """
 
+  require ExUnit.Assertions
+
+  @doc """
+  Assert that the given changeset, query, or action input has a matching error.
+
+  Use the optional second argument to assert that the errors (all together) are of a specific class.
+  """
+  @spec assert_has_error(
+          Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t(),
+          error_class :: Ash.Error.class_module(),
+          (Ash.Error.t() -> boolean)
+        ) :: :ok | no_return
+  def assert_has_error(changeset_query_or_input, error_class \\ nil, callback, opts \\ []) do
+    type =
+      case changeset_query_or_input do
+        %Ash.Changeset{} -> "changeset"
+        %Ash.Query{} -> "query"
+        %Ash.ActionInput{} -> "action input"
+      end
+
+    error = Ash.Error.to_error_class(changeset_query_or_input)
+
+    if error_class do
+      ExUnit.Assertions.assert(error.__struct__ == error_class,
+        message:
+          "Expected the #{type} to have errors of class #{inspect(error_class)}, got: #{inspect(error.__struct__)}"
+      )
+    end
+
+    ExUnit.Assertions.assert(Enum.any?(error.errors, callback),
+      message:
+        opts[:message] ||
+          """
+          Expected at least one error to match the provided callback, but none did.
+
+          Errors:
+
+          #{inspect(error.errors, pretty: true)}
+          """
+    )
+  end
+
+  @doc """
+  Refute that the given changeset, query, or action input has a matching error.
+
+  Use the optional second argument to assert that the errors (all together) are of a specific class.
+  """
+  @spec refute_has_error(
+          Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t(),
+          error_class :: Ash.Error.class_module(),
+          (Ash.Error.t() -> boolean)
+        ) :: :ok | no_return
+  def refute_has_error(changeset_query_or_input, error_class \\ nil, callback, opts \\ []) do
+    type =
+      case changeset_query_or_input do
+        %Ash.Changeset{} -> "changeset"
+        %Ash.Query{} -> "query"
+        %Ash.ActionInput{} -> "action input"
+      end
+
+    error = Ash.Error.to_error_class(changeset_query_or_input)
+
+    if error_class do
+      ExUnit.Assertions.assert(error.__struct__ == error_class,
+        message:
+          "Expected the #{type} to have errors of class #{inspect(error_class)}, got: #{inspect(error.__struct__)}"
+      )
+    end
+
+    match = Enum.find(error.errors, callback)
+
+    ExUnit.Assertions.refute(match,
+      message:
+        opts[:message] ||
+          """
+          Expected no errors to match the provided callback, but one did.
+
+          Matching Error:
+
+          #{inspect(match, pretty: true)}
+
+          Errors:
+
+          #{inspect(error.errors, pretty: true)}
+          """
+    )
+  end
+
   @doc """
   Clears the `__metadata__` field and the underlying ecto `__meta__` field
 

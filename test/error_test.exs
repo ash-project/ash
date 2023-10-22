@@ -170,6 +170,14 @@ defmodule Ash.Test.ErrorTest do
 
       cs = Ash.Changeset.for_create(TestResource, :create) |> Map.put(:errors, [error1, error2])
 
+      Ash.Test.assert_has_error(cs, Ash.Error.Unknown, fn err ->
+        err.error == "whoops!"
+      end)
+
+      Ash.Test.refute_has_error(cs, Ash.Error.Unknown, fn err ->
+        err.error == "yay!"
+      end)
+
       assert clean(Ash.Error.to_error_class(cs)) ==
                clean(Ash.Error.to_error_class([error1, error2], changeset: cs))
     end
