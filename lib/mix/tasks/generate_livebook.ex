@@ -4,16 +4,24 @@ defmodule Mix.Tasks.Ash.GenerateLivebook do
 
   ## Command line options
 
-    * `--only` - only generates the given API file
+    * `--filename` - Specify the name of the generated Livebook file. Default: `livebook.livemd`
 
   """
   use Mix.Task
 
   @shortdoc "Generates a Livebook for each Ash API"
-  def run(_argv) do
+  def run(argv) do
     Mix.Task.run("compile")
 
-    File.write!("livebook.livemd", Ash.Api.Info.Livebook.overview(apis()))
+    {opts, _} =
+      OptionParser.parse!(argv,
+        strict: [filename: :string],
+        aliases: [f: :filename]
+      )
+
+    filename = Keyword.get(opts, :filename, "livebook.livemd")
+
+    File.write!(filename, Ash.Api.Info.Livebook.overview(apis()))
 
     Mix.shell().info("Generated Livebook")
   end
