@@ -19,7 +19,7 @@ defmodule Ash.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       package: package(),
       deps: deps(),
-      dialyzer: [plt_add_apps: [:mix, :mnesia, :earmark, :plug]],
+      dialyzer: [plt_add_apps: [:mix, :mnesia, :earmark, :plug, :ex_unit]],
       docs: docs(),
       aliases: aliases(),
       description: @description,

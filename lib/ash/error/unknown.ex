@@ -4,6 +4,8 @@ defmodule Ash.Error.Unknown do
 
   def_ash_error([:errors, stacktraces?: true], class: :unknown)
 
+  @type t :: %__MODULE__{}
+
   def exception(opts) do
     if opts[:error] do
       super(Keyword.update(opts, :errors, [opts[:error]], &[opts[:error] | &1]))

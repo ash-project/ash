@@ -4,6 +4,8 @@ defmodule Ash.Error.Invalid do
 
   def_ash_error([:errors, stacktraces?: true], class: :invalid)
 
+  @type t :: %__MODULE__{}
+
   defimpl Ash.ErrorKind do
     def id(_), do: Ash.UUID.generate()
 

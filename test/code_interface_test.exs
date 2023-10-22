@@ -1,6 +1,5 @@
 defmodule Ash.Test.CodeInterfaceTest do
   @moduledoc false
-  alias Ash.Error.Exception
   use ExUnit.Case, async: true
 
   defmodule User do
@@ -122,16 +121,6 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
 
     test "code interface-generated functions should check the type of their first argument and return an expressive error" do
-      # create a few users
-      users = [
-        User
-        |> Ash.Changeset.for_create(:create, %{first_name: "Zach", last_name: "Daniel"})
-        |> Api.create!(),
-        User
-        |> Ash.Changeset.for_create(:create, %{first_name: "Zach2", last_name: "Daniel2"})
-        |> Api.create!()
-      ]
-
       assert_raise ArgumentError,
                    ~r/^Initial must be a changeset with the action type of.+/i,
                    fn ->

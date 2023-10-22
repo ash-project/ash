@@ -5,6 +5,8 @@ defmodule Ash.Error.Forbidden do
 
   def_ash_error([:errors, stacktraces?: true], class: :forbidden)
 
+  @type t :: %__MODULE__{}
+
   defimpl Ash.ErrorKind do
     def id(_), do: Ash.UUID.generate()
 

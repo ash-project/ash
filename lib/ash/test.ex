@@ -14,7 +14,7 @@ defmodule Ash.Test do
           Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t(),
           error_class :: Ash.Error.class_module(),
           (Ash.Error.t() -> boolean)
-        ) :: :ok | no_return
+        ) :: Ash.Error.t() | no_return
   def assert_has_error(changeset_query_or_input, error_class \\ nil, callback, opts \\ []) do
     type =
       case changeset_query_or_input do
@@ -32,7 +32,9 @@ defmodule Ash.Test do
       )
     end
 
-    ExUnit.Assertions.assert(Enum.any?(error.errors, callback),
+    match = Enum.find(error.errors, callback)
+
+    ExUnit.Assertions.assert(match,
       message:
         opts[:message] ||
           """
@@ -43,6 +45,8 @@ defmodule Ash.Test do
           #{inspect(error.errors, pretty: true)}
           """
     )
+
+    match
   end
 
   @doc """
@@ -54,7 +58,7 @@ defmodule Ash.Test do
           Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t(),
           error_class :: Ash.Error.class_module(),
           (Ash.Error.t() -> boolean)
-        ) :: :ok | no_return
+        ) :: Ash.Error.t() | no_return
   def refute_has_error(changeset_query_or_input, error_class \\ nil, callback, opts \\ []) do
     type =
       case changeset_query_or_input do
@@ -89,6 +93,8 @@ defmodule Ash.Test do
           #{inspect(error.errors, pretty: true)}
           """
     )
+
+    match
   end
 
   @doc """

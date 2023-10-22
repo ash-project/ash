@@ -54,19 +54,6 @@ defmodule Ash.Error do
 
   @error_class_indices @error_classes |> Enum.with_index() |> Enum.into(%{})
 
-  @spec extract_errors(
-          t()
-          | list(t())
-          | Ash.Changeset.t()
-          | Ash.Query.t()
-          | Ash.ActionInput.t()
-          | term()
-        ) :: [class_error()]
-  def extract_errors(%struct{errors: errors})
-      when struct in [Ash.Changeset, Ash.Query, Ash.ActionInput] do
-    Ash.Error.to_error_class(errors)
-  end
-
   @doc false
   def error_modules, do: Keyword.values(@error_modules)
 
@@ -207,7 +194,7 @@ defmodule Ash.Error do
   - `query`: a query related to the error
   - `error_context`: a sting message providing extra context around the error
   """
-  @spec to_error_class(term()) :: class_error()
+  @spec to_error_class(any()) :: class_error()
   def to_error_class(values, opts \\ [])
 
   def to_error_class(%struct{errors: errors} = thing, opts)
