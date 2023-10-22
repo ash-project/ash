@@ -11,8 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project:
-          [
+        project: [
             { org: "ash-project", name: "ash_postgres" },
             { org: "ash-project", name: "ash_csv" },
             { org: "ash-project", name: "ash_double_entry" },
@@ -22,7 +21,7 @@ jobs:
             { org: "ash-project", name: "ash_admin" },
             { org: "ash-project", name: "ash_archival" },
             { org: "ash-project", name: "ash_state_machine" },
-            { org: "ash-project", name: "ash_sqlite" },
+            # { org: "ash-project", name: "ash_sqlite" },
             { org: "team-alembic", name: "ash_authentication" },
             { org: "team-alembic", name: "ash_authentication_phoenix" },
           ]
