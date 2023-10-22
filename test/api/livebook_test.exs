@@ -5,9 +5,9 @@ defmodule Ash.Test.Api.Info.LivebookTest do
   test "generate a livebook API section from a given API" do
     assert Ash.Api.Info.Livebook.api_section(Ash.Test.Flow.Api) ==
              """
-             # API Ash.Test.Flow.Api
+             ## API Ash.Test.Flow.Api
 
-             ## Class Diagram
+             ### Class Diagram
 
              ```mermaid
              classDiagram
@@ -40,7 +40,7 @@ defmodule Ash.Test.Api.Info.LivebookTest do
                  Org -- User
              ```
 
-             ## ER Diagram
+             ### ER Diagram
 
              ```mermaid
              erDiagram
@@ -58,16 +58,16 @@ defmodule Ash.Test.Api.Info.LivebookTest do
                  Org ||--|| User : ""
              ```
 
-             ## Resources
+             ### Resources
 
              - [User](#user)
              - [Org](#org)
 
-             ## User
+             ### User
 
              User model
 
-             ### Attributes
+             #### Attributes
 
              | Name | Type | Description |
              | ---- | ---- | ----------- |
@@ -78,7 +78,7 @@ defmodule Ash.Test.Api.Info.LivebookTest do
              | **approved** | Boolean | Is the user approved? |
              | **org_id** | UUID |  |
 
-             ### Actions
+             #### Actions
 
              | Name | Type | Input | Description |
              | ---- | ---- | ----- | ----------- |
@@ -91,18 +91,18 @@ defmodule Ash.Test.Api.Info.LivebookTest do
              | **approve** | _update_ | <ul></ul> |  |
              | **unapprove** | _update_ | <ul></ul> |  |
 
-             ## Org
+             ### Org
 
              Org model
 
-             ### Attributes
+             #### Attributes
 
              | Name | Type | Description |
              | ---- | ---- | ----------- |
              | **id** | UUID |  |
              | **name** | String |  |
 
-             ### Actions
+             #### Actions
 
              | Name | Type | Input | Description |
              | ---- | ---- | ----- | ----------- |
