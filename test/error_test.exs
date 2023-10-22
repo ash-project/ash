@@ -162,6 +162,18 @@ defmodule Ash.Test.ErrorTest do
       assert cs_error.error_context == ["some context"]
     end
 
+    test "a changeset can be passed in directly" do
+      error1 = Ash.Error.to_ash_error("whoops!", nil, error_context: "some context")
+
+      error2 =
+        Ash.Error.to_ash_error("whoops, again!!", nil, error_context: "some other context")
+
+      cs = Ash.Changeset.for_create(TestResource, :create) |> Map.put(:errors, [error1, error2])
+
+      assert clean(Ash.Error.to_error_class(cs)) ==
+               clean(Ash.Error.to_error_class([error1, error2], changeset: cs))
+    end
+
     test "accumulates error_context field in changeset's copy of error hierarchy" do
       error1 = Ash.Error.to_ash_error("whoops!", nil, error_context: "some context")
       error2 = Ash.Error.to_ash_error("whoops, again!!", nil, error_context: "some other context")

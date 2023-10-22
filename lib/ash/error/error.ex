@@ -21,6 +21,19 @@ defmodule Ash.Error do
           optional(atom) => any
         }
 
+  @type class_error :: %{
+          required(:__struct__) => Forbidden.t() | Framework.t() | Invalid.t() | Unknown.t(),
+          required(:__exception__) => true,
+          required(:class) => error_class(),
+          required(:path) => [atom | integer],
+          required(:changeset) => Ash.Changeset.t() | nil,
+          required(:query) => Ash.Query.t() | nil,
+          required(:error_context) => list(String.t()),
+          required(:vars) => Keyword.t(),
+          required(:stacktrace) => Ash.Error.Stacktrace.t() | nil,
+          optional(atom) => any
+        }
+
   # We use these error classes also to choose a single error
   # to raise when multiple errors have occurred. We raise them
   # sorted by their error classes
@@ -39,6 +52,19 @@ defmodule Ash.Error do
   ]
 
   @error_class_indices @error_classes |> Enum.with_index() |> Enum.into(%{})
+
+  @spec extract_errors(
+          t()
+          | list(t())
+          | Ash.Changeset.t()
+          | Ash.Query.t()
+          | Ash.ActionInput.t()
+          | term()
+        ) :: [class_error()]
+  def extract_errors(%struct{errors: errors})
+      when struct in [Ash.Changeset, Ash.Query, Ash.ActionInput] do
+    Ash.Error.to_error_class(errors)
+  end
 
   @doc false
   def error_modules, do: Keyword.values(@error_modules)
@@ -180,7 +206,20 @@ defmodule Ash.Error do
   - `query`: a query related to the error
   - `error_context`: a sting message providing extra context around the error
   """
+  @spec to_error_class(term()) :: class_error()
   def to_error_class(values, opts \\ [])
+
+  def to_error_class(%struct{errors: errors} = thing, opts)
+      when struct in [Ash.Changeset, Ash.Query, Ash.ActionInput] do
+    opt =
+      case struct do
+        Ash.Changeset -> :changeset
+        Ash.Query -> :query
+        Ash.ActionInput -> :input
+      end
+
+    to_error_class(errors, Keyword.put(opts, opt, thing))
+  end
 
   def to_error_class(%{class: :special} = special, _opts) do
     special
@@ -222,7 +261,7 @@ defmodule Ash.Error do
 
         values
         |> accumulate_error_context(opts[:error_context])
-        |> choose_error(opts[:changeset] || opts[:query])
+        |> choose_error(opts[:changeset] || opts[:query] || opts[:input])
         |> add_error_context(opts[:error_context])
     end
   end
@@ -232,7 +271,10 @@ defmodule Ash.Error do
 
     if value.__struct__ in Keyword.values(@error_modules) do
       value
-      |> add_changeset_or_query([value], opts[:changeset] || opts[:query])
+      |> add_changeset_or_query_or_input(
+        [value],
+        opts[:changeset] || opts[:query] || opts[:input]
+      )
       |> Map.put(:error_context, [opts[:error_context] | value.error_context])
     else
       to_error_class([value], opts)
@@ -467,15 +509,15 @@ defmodule Ash.Error do
 
   def clear_stacktraces(error), do: error
 
-  def choose_error(errors, changeset_or_query \\ nil)
+  def choose_error(errors, changeset_or_query_or_input \\ nil)
 
-  def choose_error([], changeset_or_query) do
+  def choose_error([], changeset_or_query_or_input) do
     error = Ash.Error.Unknown.exception([])
 
-    add_changeset_or_query(error, [], changeset_or_query)
+    add_changeset_or_query_or_input(error, [], changeset_or_query_or_input)
   end
 
-  def choose_error(errors, changeset_or_query) do
+  def choose_error(errors, changeset_or_query_or_input) do
     errors = Enum.map(errors, &to_ash_error/1)
 
     [error | other_errors] =
@@ -494,25 +536,28 @@ defmodule Ash.Error do
         parent_error_module.exception(errors: errors)
       end
 
-    add_changeset_or_query(top_level_error, errors, changeset_or_query)
+    add_changeset_or_query_or_input(top_level_error, errors, changeset_or_query_or_input)
   end
 
-  defp add_changeset_or_query(error, errors, changeset_or_query) do
-    changeset = error.changeset || error.query || changeset_or_query
+  defp add_changeset_or_query_or_input(error, errors, changeset_or_query_or_input) do
+    changeset = error.changeset || error.query || changeset_or_query_or_input
 
-    if changeset_or_query do
-      changeset_or_query = %{
-        changeset_or_query
+    if changeset_or_query_or_input do
+      changeset_or_query_or_input = %{
+        changeset_or_query_or_input
         | action_failed?: true,
           errors: List.wrap(errors) ++ changeset.errors
       }
 
-      case changeset_or_query do
+      case changeset_or_query_or_input do
         %Ash.Changeset{} = changeset ->
           %{error | changeset: %{changeset | errors: Enum.uniq(changeset.errors)}}
 
         %Ash.Query{} = query ->
           %{error | query: %{query | errors: Enum.uniq(query.errors)}}
+
+        %Ash.ActionInput{} = input ->
+          %{error | input: %{input | errors: Enum.uniq(input.errors)}}
       end
     else
       error
