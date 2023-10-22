@@ -84,6 +84,19 @@ defmodule Ash.Test.Actions.GenericActionsTest do
         |> Api.run_action!()
       end
     end
+
+    test "generic actions don't accept unknown keys" do
+      assert {:error, %Ash.Error.Invalid{}} =
+               Post
+               |> Ash.ActionInput.for_action(:hello, %{name: "fred", one: 1})
+               |> Api.run_action()
+
+      assert_raise Ash.Error.Invalid, ~r/Input Invalid/, fn ->
+        Post
+        |> Ash.ActionInput.for_action(:hello, %{name: "fred", one: 1})
+        |> Api.run_action!()
+      end
+    end
   end
 
   describe "authorization" do
