@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.GenericActionsTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  require Ash.Flags
+
   defmodule PassingFredOrGeorge do
     use Ash.Policy.SimpleCheck
 
@@ -85,16 +87,23 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       end
     end
 
-    test "generic actions don't accept unknown keys" do
-      assert {:error, %Ash.Error.Invalid{}} =
-               Post
-               |> Ash.ActionInput.for_action(:hello, %{name: "fred", one: 1})
-               |> Api.run_action()
+    test "generic actions don't accept unknown keys in Ash 3.0" do
+      if Ash.Flags.ash_three?() do
+        assert {:error, %Ash.Error.Invalid{}} =
+                 Post
+                 |> Ash.ActionInput.for_action(:hello, %{name: "fred", one: 1})
+                 |> Api.run_action()
 
-      assert_raise Ash.Error.Invalid, ~r/Input Invalid/, fn ->
-        Post
-        |> Ash.ActionInput.for_action(:hello, %{name: "fred", one: 1})
-        |> Api.run_action!()
+        assert_raise Ash.Error.Invalid, ~r/Input Invalid/, fn ->
+          Post
+          |> Ash.ActionInput.for_action(:hello, %{name: "fred", one: 1})
+          |> Api.run_action!()
+        end
+      else
+        assert "Hello fred" =
+                 Post
+                 |> Ash.ActionInput.for_action(:hello, %{name: "fred", one: 1})
+                 |> Api.run_action!()
       end
     end
   end
