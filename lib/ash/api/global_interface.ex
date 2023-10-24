@@ -1,5 +1,5 @@
 defmodule Ash.Api.GlobalInterface do
-  @moduledoc false
+  @moduledoc "The interface for calling any Ash api. Use `Ash` to call these functions."
   for {function, arity} <- Ash.Api.Functions.functions() do
     if function == :load do
       def load({:ok, result}, load) do
