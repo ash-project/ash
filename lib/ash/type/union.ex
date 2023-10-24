@@ -579,8 +579,8 @@ defmodule Ash.Type.Union do
          {:ok, type} <- Keyword.fetch(type_config, :type),
          type_constraints <- Keyword.get(type_config, :constraints, []),
          true <- :erlang.function_exported(type, :prepare_change, 3),
-         {:ok, value} <- type.prepare_change(old_value, new_value, type_constraints) do
-      {:ok, %Ash.Union{type: type_name, value: value}}
+         {:ok, changed_value} <- type.prepare_change(old_value, new_value, type_constraints) do
+      {:ok, %Ash.Union{type: type_name, value: changed_value}}
     else
       _ ->
         {:ok, %Ash.Union{type: type_name, value: new_value}}
