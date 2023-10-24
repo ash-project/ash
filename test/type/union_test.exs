@@ -84,11 +84,38 @@ defmodule Ash.Test.Type.UnionTest do
     assert {:error, _} = Ash.Type.cast_input(:union, 11, constraints)
   end
 
-  test "it handles changes between native and embedded types" do
+  test "it handles changes between native types" do
     constraints = [
       types: [
         foo: [
-          type: Foo
+          type: :integer
+        ],
+        bar: [
+          type: :string
+        ]
+      ]
+    ]
+
+    assert {:ok, %Ash.Union{type: :bar, value: "bar"}} =
+             Ash.Type.Union.prepare_change(
+               %Ash.Union{type: :foo, value: 1},
+               "bar",
+               constraints
+             )
+
+    assert {:ok, %Ash.Union{type: :bar, value: "bar"}} =
+             Ash.Type.Union.handle_change(
+               %Ash.Union{type: :foo, value: 1},
+               %Ash.Union{type: :bar, value: "bar"},
+               constraints
+             )
+  end
+
+  test "it handles changes between native and tagged types" do
+    constraints = [
+      types: [
+        foo: [
+          type: Foo,
           tag: :type,
           tag_value: :foo
         ],
@@ -98,7 +125,19 @@ defmodule Ash.Test.Type.UnionTest do
       ]
     ]
 
-    assert {:ok, %Ash.Union{type: :bar, value: "bar"}} = Ash.Type.handle_change(%Ash.Union{type: :foo, value: %{}}, %Ash.Union{type: :bar, value: "bar"}, constraints)
+    assert {:ok, %Ash.Union{type: :bar, value: "bar"}} =
+             Ash.Type.Union.prepare_change(
+               %Ash.Union{type: :foo, value: %Foo{}},
+               "bar",
+               constraints
+             )
+
+    assert {:ok, %Ash.Union{type: :bar, value: "bar"}} =
+             Ash.Type.Union.handle_change(
+               %Ash.Union{type: :foo, value: %{}},
+               %Ash.Union{type: :bar, value: "bar"},
+               constraints
+             )
   end
 
   test "it handles tagged types" do

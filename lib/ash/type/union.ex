@@ -521,8 +521,12 @@ defmodule Ash.Type.Union do
          {:ok, type_config} <- Keyword.fetch(type_configs, type_name),
          {:ok, type} <- Keyword.fetch(type_config, :type),
          type_constraints <- Keyword.get(type_config, :constraints, []),
-         {:ok, new_value} <- type.handle_change(nil, new_value, type_constraints) do
-      {:ok, %Ash.Union{type: type_name, value: new_value}}
+         true <- :erlang.function_exported(type, :handle_change, 3),
+         {:ok, handled_new_value} <- type.handle_change(nil, new_value, type_constraints) do
+      {:ok, %Ash.Union{type: type_name, value: handled_new_value}}
+    else
+      _ ->
+        {:ok, %Ash.Union{type: type_name, value: new_value}}
     end
   end
 
@@ -574,8 +578,12 @@ defmodule Ash.Type.Union do
          {:ok, type_config} <- Keyword.fetch(type_configs, type_name),
          {:ok, type} <- Keyword.fetch(type_config, :type),
          type_constraints <- Keyword.get(type_config, :constraints, []),
+         true <- :erlang.function_exported(type, :prepare_change, 3),
          {:ok, value} <- type.prepare_change(old_value, new_value, type_constraints) do
       {:ok, %Ash.Union{type: type_name, value: value}}
+    else
+      _ ->
+        {:ok, %Ash.Union{type: type_name, value: new_value}}
     end
   end
 end
