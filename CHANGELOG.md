@@ -5,6 +5,59 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.15.20](https://github.com/ash-project/ash/compare/v2.15.19...v2.15.20) (2023-10-24)
+
+
+
+
+### Bug Fixes:
+
+* Change heading levels in generated livebook to have only one H1 (#747)
+
+* code gen interfaces check type first argument (#749)
+
+* properly support `get` in `Ash`
+
+* add back in accidentally removed transformer
+
+* properly determine resource from `Ash.get!/2`
+
+* cast functional default values
+
+* temporarily omit overzealous validation
+
+* properly honor `max_concurrency` option
+
+* support tenant option in api.can
+
+* properly use constraints when casting expression values
+
+* don't re-case constraints in the `type` function
+
+### Improvements:
+
+* add `Ash.Test.assert_has_error` and `Ash.Test.refute_has_error`
+
+* support `to_error_class` taking changeset/query/input
+
+* add "filename" parameter to the livebook generator. (#746)
+
+* support an `api` option to `use Ash.Resource` (#715)
+
+* support an `api` option to `use Ash.Resource`
+
+* add functions to `Ash` for resources w/ configured apis
+
+* default code_interface.define_for to resource's ash api
+
+* cast_input for default values at compile time
+
+* optimize bulk creates where results are not returned
+
+* rewrite bulk creates, optimize changeset functions (#744)
+
+* better storage_type handling, undo function change
+
 ## [v2.15.19](https://github.com/ash-project/ash/compare/v2.15.18...v2.15.19) (2023-10-17)
 
 
