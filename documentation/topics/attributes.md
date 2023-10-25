@@ -40,7 +40,7 @@ You may recognise this if you have used Ecto before. This attribute will record 
 
 ```elixir
 attribute :inserted_at, :utc_datetime_usec do
-  writeable? false
+  writable? false
   private? true
   default &DateTime.utc_now/0
   match_other_defaults? true
@@ -56,10 +56,10 @@ This is also similar in Ecto. This attribute records the last time a row was upd
 
 ```elixir
 attribute :updated_at, :utc_datetime_usec do
-  writeable? false
+  writable? false
   private? true
   default &DateTime.utc_now/0
-  updated_default &DateTime.utc_now/0
+  update_default &DateTime.utc_now/0
   match_other_defaults? true
   allow_nil? false
 end
@@ -72,7 +72,7 @@ This attribute is used in almost every resource. It generates a UUID every time 
 
 ```elixir
 attribute :id, :uuid do
-  writeable? false
+  writable? false
   default &Ash.UUID.generate/0
   primary_key? true
   allow_nil? false
@@ -87,7 +87,7 @@ Don't use this attribute unless absolutely necessary, there are [a lot of good r
 
 ```elixir
 attribute :id, :integer do
-  writeable? false
+  writable? false
   generated? true
   primary_key? true
   allow_nil? false
