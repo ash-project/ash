@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.16.0](https://github.com/ash-project/ash/compare/v2.15.20...v2.16.0) (2023-10-25)
+
+
+
+
+### Features:
+
+* Add unknown argument error when passing an unknown key to an action. (#750)
+
+### Bug Fixes:
+
+* don't reorder global validations/changes
+
+* use latest spark, and new persisters callback
+
+* properly validate belongs_to relationships
+
+* remove invalid usages of `unsafe_change_attribute/3`
+
+* handle builtin types in unions (#752)
+
+### Improvements:
+
+* Add ash_three? feature flag for Ash 3.0 related behaviors.
+
 ## [v2.15.20](https://github.com/ash-project/ash/compare/v2.15.19...v2.15.20) (2023-10-24)
 
 
