@@ -140,6 +140,44 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
   end
 
+  defmodule TenantPost do
+    @moduledoc false
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      defaults [:read, :create, :update, :destroy]
+    end
+
+    multitenancy do
+      strategy :attribute
+      attribute :tenant
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string
+      attribute :contents, :string
+      attribute :tenant, :string
+    end
+
+    code_interface do
+      define :create
+    end
+
+    relationships do
+      belongs_to :author, Author
+
+      many_to_many :categories, Ash.Test.Changeset.ChangesetTest.Category,
+        through: Ash.Test.Changeset.ChangesetTest.PostCategory,
+        destination_attribute_on_join_resource: :category_id,
+        source_attribute_on_join_resource: :post_id
+    end
+  end
+
   defmodule CompositeKeyPost do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -839,6 +877,22 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     test "it returns false if the attribute is NOT being changed by the current changeset" do
       changeset = Post |> Changeset.new(%{title: "title1"})
       refute Changeset.changing_attribute?(changeset, :contents)
+    end
+
+    test "it returns true when the tenant is changing" do
+      changeset = TenantPost |> Changeset.for_create(:create, %{title: "title1", tenant: "acme"})
+      assert Changeset.changing_attribute?(changeset, :tenant)
+
+      changeset = TenantPost |> Changeset.for_create(:create, %{title: "title1"}, tenant: "acme")
+      assert Changeset.changing_attribute?(changeset, :tenant)
+    end
+
+    test "it returns false when the tenant is NOT changing" do
+      changeset =
+        TenantPost.create!(%{title: "title1", tenant: "acme"})
+        |> Changeset.for_update(:update, %{title: "new title"}, tenant: "acme")
+
+      refute Changeset.changing_attribute?(changeset, :tenant)
     end
   end
 
