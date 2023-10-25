@@ -109,6 +109,27 @@ defmodule Ash.Test.Type.UnionTest do
                %Ash.Union{type: :bar, value: "bar"},
                constraints
              )
+
+    assert {:ok, %Ash.Union{type: :bar, value: "bar"}} =
+             Ash.Type.Union.handle_change(
+               nil,
+               %Ash.Union{type: :bar, value: "bar"},
+               constraints
+             )
+
+    assert {:ok, %Ash.Union{type: :bar, value: "bar2"}} =
+             Ash.Type.Union.handle_change(
+               %Ash.Union{type: :bar, value: "bar1"},
+               %Ash.Union{type: :bar, value: "bar2"},
+               constraints
+             )
+
+    assert {:ok, %Ash.Union{value: nil, type: :bar}} =
+             Ash.Type.Union.handle_change(
+               %Ash.Union{type: :bar, value: "bar1"},
+               nil,
+               constraints
+             )
   end
 
   test "it handles changes between native and tagged types" do
