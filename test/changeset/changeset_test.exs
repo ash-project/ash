@@ -878,22 +878,6 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       changeset = Post |> Changeset.new(%{title: "title1"})
       refute Changeset.changing_attribute?(changeset, :contents)
     end
-
-    test "it returns true when the tenant is changing" do
-      changeset = TenantPost |> Changeset.for_create(:create, %{title: "title1", tenant: "acme"})
-      assert Changeset.changing_attribute?(changeset, :tenant)
-
-      changeset = TenantPost |> Changeset.for_create(:create, %{title: "title1"}, tenant: "acme")
-      assert Changeset.changing_attribute?(changeset, :tenant)
-    end
-
-    test "it returns false when the tenant is NOT changing" do
-      changeset =
-        TenantPost.create!(%{title: "title1", tenant: "acme"})
-        |> Changeset.for_update(:update, %{title: "new title"}, tenant: "acme")
-
-      refute Changeset.changing_attribute?(changeset, :tenant)
-    end
   end
 
   describe "changing_relationship?/2" do

@@ -363,7 +363,7 @@ defmodule Ash.Actions.ManagedRelationships do
   defp maybe_force_change_attribute(changeset, %{no_attributes?: true}, _, _), do: changeset
 
   defp maybe_force_change_attribute(changeset, relationship, key, value) do
-    Ash.Changeset.unsafe_change_attribute(
+    Ash.Changeset.force_change_attribute(
       changeset,
       Map.get(relationship, key),
       value

@@ -566,7 +566,7 @@ defmodule Ash.Actions.Create.Bulk do
       if Ash.Changeset.changing_attribute?(changeset, key) do
         changeset
       else
-        Ash.Changeset.unsafe_change_attribute(
+        Ash.Changeset.force_change_attribute(
           changeset,
           key,
           value

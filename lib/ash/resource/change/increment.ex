@@ -12,7 +12,7 @@ defmodule Ash.Resource.Change.Increment do
         |> Kernel.+(opts[:amount])
         |> overflow(opts[:amount], opts[:overflow_limit])
 
-      Ash.Changeset.unsafe_change_attribute(changeset, opts[:attribute], value)
+      Ash.Changeset.force_change_attribute(changeset, opts[:attribute], value)
     end)
   end
 
