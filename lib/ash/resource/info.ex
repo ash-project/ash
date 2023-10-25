@@ -219,15 +219,10 @@ defmodule Ash.Resource.Info do
           Ash.Resource.Validation.t()
         ]
   def validations(resource, type) do
-    case Extension.get_persisted(resource, :validations_by_on) do
-      nil ->
-        resource
-        |> validations()
-        |> Enum.filter(&(type in &1.on))
-
-      persisted ->
-        Map.get(persisted, type) || []
-    end
+    Extension.get_persisted(resource, :validations_by_on)[type] ||
+      resource
+      |> validations()
+      |> Enum.filter(&(type in &1.on))
   end
 
   @doc "A list of all validations for the resource"
@@ -243,15 +238,10 @@ defmodule Ash.Resource.Info do
             | Ash.Resource.Change.t()
           )
   def changes(resource, type) do
-    case Extension.get_persisted(resource, :changes_by_on) do
-      nil ->
-        resource
-        |> changes()
-        |> Enum.filter(&(type in &1.on))
-
-      persisted ->
-        Map.get(persisted, type) || []
-    end
+    Extension.get_persisted(resource, :changes_by_on)[type] ||
+      resource
+      |> changes()
+      |> Enum.filter(&(type in &1.on))
   end
 
   @doc "A list of all changes for the resource"
@@ -335,7 +325,11 @@ defmodule Ash.Resource.Info do
 
   @doc "The required belongs_to relationships"
   def required_belongs_to_relationships(resource) do
-    Extension.get_persisted(resource, :required_belongs_to_relationships)
+    Extension.get_persisted(resource, :required_belongs_to_relationships) ||
+      Enum.filter(
+        relationships(resource),
+        &(&1.type == :belongs_to && !&1.allow_nil?)
+      )
   end
 
   @doc "Get a public relationship by name or path"
@@ -592,11 +586,19 @@ defmodule Ash.Resource.Info do
           type :: :create | :update
         ) :: [Ash.Resource.Attribute.t()]
   def lazy_non_matching_default_attributes(resource, :create) do
-    Extension.get_persisted(resource, :create_attributes_with_non_matching_lazy_defaults) || []
+    Extension.get_persisted(resource, :create_attributes_with_non_matching_lazy_defaults) ||
+      Enum.filter(attributes(resource), fn attribute ->
+        !attribute.match_other_defaults? &&
+          (is_function(attribute.default) or match?({_, _, _}, attribute.default))
+      end)
   end
 
   def lazy_non_matching_default_attributes(resource, :update) do
-    Extension.get_persisted(resource, :update_attributes_with_non_matching_lazy_defaults) || []
+    Extension.get_persisted(resource, :update_attributes_with_non_matching_lazy_defaults) ||
+      Enum.filter(attributes(resource), fn attribute ->
+        !attribute.match_other_defaults? &&
+          (is_function(attribute.update_default) or match?({_, _, _}, attribute.update_default))
+      end)
   end
 
   @doc "Returns all attributes of a resource with static defaults"
@@ -605,11 +607,25 @@ defmodule Ash.Resource.Info do
           type :: :create | :update
         ) :: [Ash.Resource.Attribute.t()]
   def static_default_attributes(resource, :create) do
-    Extension.get_persisted(resource, :create_attributes_with_static_defaults) || []
+    Extension.get_persisted(resource, :create_attributes_with_static_defaults) ||
+      resource
+      |> attributes
+      |> Enum.filter(fn attribute ->
+        not is_nil(attribute.default) &&
+          not (is_function(attribute.default) or
+                 match?({_, _, _}, attribute.default))
+      end)
   end
 
   def static_default_attributes(resource, :update) do
-    Extension.get_persisted(resource, :update_attributes_with_static_defaults) || []
+    Extension.get_persisted(resource, :update_attributes_with_static_defaults) ||
+      resource
+      |> attributes
+      |> Enum.filter(fn attribute ->
+        not is_nil(attribute.update_default) &&
+          not (is_function(attribute.update_default) or
+                 match?({_, _, _}, attribute.update_default))
+      end)
   end
 
   @doc "Returns all attributes of a resource with lazy matching defaults"
@@ -618,11 +634,22 @@ defmodule Ash.Resource.Info do
           type :: :create | :update
         ) :: [Ash.Resource.Attribute.t()]
   def lazy_matching_default_attributes(resource, :create) do
-    Extension.get_persisted(resource, :create_attributes_with_matching_defaults) || []
+    Extension.get_persisted(resource, :create_attributes_with_matching_defaults) ||
+      Enum.filter(attributes(resource), fn attribute ->
+        attribute.match_other_defaults? &&
+          (is_function(attribute.default) or match?({_, _, _}, attribute.default))
+      end)
   end
 
   def lazy_matching_default_attributes(resource, :update) do
-    Extension.get_persisted(resource, :update_attributes_with_matching_defaults) || []
+    Extension.get_persisted(resource, :update_attributes_with_matching_defaults) ||
+      resource
+      |> attributes()
+      |> Enum.filter(fn attribute ->
+        not is_nil(attribute.update_default) &&
+          not (is_function(attribute.update_default) or
+                 match?({_, _, _}, attribute.update_default))
+      end)
   end
 
   @doc "Get an attribute name from the resource"

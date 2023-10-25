@@ -887,12 +887,19 @@ defmodule Ash.Changeset do
   def prepare_changeset_for_action(changeset, action, opts) do
     changeset
     |> Map.put(:action, action)
+    |> reset_arguments()
     |> handle_errors(action.error_handler)
     |> set_actor(opts)
     |> set_authorize(opts)
     |> set_tracer(opts)
     |> timeout(changeset.timeout || opts[:timeout])
     |> set_tenant(opts[:tenant] || changeset.tenant || changeset.data.__metadata__[:tenant])
+  end
+
+  defp reset_arguments(%{arguments: arguments} = changeset) do
+    Enum.reduce(arguments, changeset, fn {key, value}, changeset ->
+      set_argument(changeset, key, value)
+    end)
   end
 
   def handle_params(changeset, action, params, handle_params_opts \\ []) do

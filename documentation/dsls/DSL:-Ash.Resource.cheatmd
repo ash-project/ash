@@ -5235,7 +5235,7 @@ validate changing(:email)
       
   </td>
   <td style="text-align: left">
-    <code class="inline">list((any -> any) | module) | (any -> any) | module</code>
+    <code class="inline">(any -> any) | module | list((any -> any) | module)</code>
   </td>
   <td style="text-align: left">
     <code class="inline">[]</code>
@@ -5915,7 +5915,7 @@ end
       
   </td>
   <td style="text-align: left">
-    <code class="inline">list(atom) | atom</code>
+    <code class="inline">atom | list(atom)</code>
   </td>
   <td style="text-align: left">
     
@@ -7187,7 +7187,7 @@ validate changing(:email)
       
   </td>
   <td style="text-align: left">
-    <code class="inline">list((any -> any) | module) | (any -> any) | module</code>
+    <code class="inline">(any -> any) | module | list((any -> any) | module)</code>
   </td>
   <td style="text-align: left">
     <code class="inline">[]</code>
@@ -8268,7 +8268,7 @@ validate changing(:email)
       
   </td>
   <td style="text-align: left">
-    <code class="inline">list((any -> any) | module) | (any -> any) | module</code>
+    <code class="inline">(any -> any) | module | list((any -> any) | module)</code>
   </td>
   <td style="text-align: left">
     <code class="inline">[]</code>
@@ -9001,7 +9001,7 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
       
   </td>
   <td style="text-align: left">
-    <code class="inline">list(atom) | atom</code>
+    <code class="inline">atom | list(atom)</code>
   </td>
   <td style="text-align: left">
     
@@ -9458,7 +9458,7 @@ identity :full_name, [:first_name, :last_name]
 
   </td>
   <td style="text-align: left">
-    <code class="inline">list(atom) | atom</code>
+    <code class="inline">atom | list(atom)</code>
   </td>
   <td style="text-align: left">
     
@@ -9682,7 +9682,7 @@ change {MyCustomChange, :foo}
       
   </td>
   <td style="text-align: left">
-    <code class="inline">list(:create | :update | :destroy) | :create | :update | :destroy</code>
+    <code class="inline">:create | :update | :destroy | list(:create | :update | :destroy)</code>
   </td>
   <td style="text-align: left">
     <code class="inline">[:create, :update]</code>
@@ -9958,7 +9958,7 @@ validate at_least_one_of_present([:first_name, :last_name])
       
   </td>
   <td style="text-align: left">
-    <code class="inline">list((any -> any) | module) | (any -> any) | module</code>
+    <code class="inline">(any -> any) | module | list((any -> any) | module)</code>
   </td>
   <td style="text-align: left">
     <code class="inline">[]</code>
@@ -9979,7 +9979,7 @@ validate at_least_one_of_present([:first_name, :last_name])
       
   </td>
   <td style="text-align: left">
-    <code class="inline">list(:create | :update | :destroy) | :create | :update | :destroy</code>
+    <code class="inline">:create | :update | :destroy | list(:create | :update | :destroy)</code>
   </td>
   <td style="text-align: left">
     <code class="inline">[:create, :update]</code>
@@ -10187,7 +10187,7 @@ end
 
   </td>
   <td style="text-align: left">
-    <code class="inline">list(atom) | atom</code>
+    <code class="inline">atom | list(atom)</code>
   </td>
   <td style="text-align: left">
     
@@ -10492,7 +10492,7 @@ exists :has_ticket, :assigned_tickets
 
   </td>
   <td style="text-align: left">
-    <code class="inline">list(atom) | atom</code>
+    <code class="inline">atom | list(atom)</code>
   </td>
   <td style="text-align: left">
     
@@ -10761,7 +10761,7 @@ end
 
   </td>
   <td style="text-align: left">
-    <code class="inline">list(atom) | atom</code>
+    <code class="inline">atom | list(atom)</code>
   </td>
   <td style="text-align: left">
     
@@ -11068,7 +11068,7 @@ end
 
   </td>
   <td style="text-align: left">
-    <code class="inline">list(atom) | atom</code>
+    <code class="inline">atom | list(atom)</code>
   </td>
   <td style="text-align: left">
     
@@ -11356,7 +11356,7 @@ end
 
   </td>
   <td style="text-align: left">
-    <code class="inline">list(atom) | atom</code>
+    <code class="inline">atom | list(atom)</code>
   </td>
   <td style="text-align: left">
     
@@ -11683,7 +11683,7 @@ end
 
   </td>
   <td style="text-align: left">
-    <code class="inline">list(atom) | atom</code>
+    <code class="inline">atom | list(atom)</code>
   </td>
   <td style="text-align: left">
     
@@ -11970,7 +11970,7 @@ end
 
   </td>
   <td style="text-align: left">
-    <code class="inline">list(atom) | atom</code>
+    <code class="inline">atom | list(atom)</code>
   </td>
   <td style="text-align: left">
     
@@ -12257,7 +12257,7 @@ end
 
   </td>
   <td style="text-align: left">
-    <code class="inline">list(atom) | atom</code>
+    <code class="inline">atom | list(atom)</code>
   </td>
   <td style="text-align: left">
     
@@ -12546,7 +12546,7 @@ end
 
   </td>
   <td style="text-align: left">
-    <code class="inline">list(atom) | atom</code>
+    <code class="inline">atom | list(atom)</code>
   </td>
   <td style="text-align: left">
     

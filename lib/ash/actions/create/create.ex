@@ -442,8 +442,7 @@ defmodule Ash.Actions.Create do
 
                                   {changeset, _} =
                                     Ash.Actions.ManagedRelationships.validate_required_belongs_to(
-                                      {changeset, []},
-                                      false
+                                      {changeset, []}
                                     )
 
                                   changeset

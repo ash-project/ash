@@ -1291,7 +1291,7 @@ A field policy that, if passed, will skip all following field policies for that 
       
   </td>
   <td style="text-align: left">
-    <code class="inline">list(atom) | atom</code>
+    <code class="inline">atom | list(atom)</code>
   </td>
   <td style="text-align: left">
     
@@ -1807,7 +1807,7 @@ for more.
       
   </td>
   <td style="text-align: left">
-    <code class="inline">list(atom) | atom</code>
+    <code class="inline">atom | list(atom)</code>
   </td>
   <td style="text-align: left">
     

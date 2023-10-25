@@ -25,40 +25,39 @@ defmodule Ash.Resource.Transformers.AttributesByName do
     create_attributes_with_static_defaults =
       attributes
       |> Enum.filter(fn attribute ->
-        not is_nil(attribute.default) &&
-          not (is_function(attribute.default) or
-                 match?({_, _, _}, attribute.default))
+        not is_nil(attribute.default) and
+          not is_function(attribute.default) and not match?({_, _, _}, attribute.default)
       end)
 
     create_attributes_with_non_matching_lazy_defaults =
       Enum.filter(attributes, fn attribute ->
-        !attribute.match_other_defaults? &&
+        !attribute.match_other_defaults? and
           (is_function(attribute.default) or match?({_, _, _}, attribute.default))
       end)
 
     create_attributes_with_matching_defaults =
       Enum.filter(attributes, fn attribute ->
-        attribute.match_other_defaults? &&
+        attribute.match_other_defaults? and
           (is_function(attribute.default) or match?({_, _, _}, attribute.default))
       end)
 
     update_attributes_with_static_defaults =
       attributes
       |> Enum.filter(fn attribute ->
-        not is_nil(attribute.update_default) &&
-          not (is_function(attribute.update_default) or
-                 match?({_, _, _}, attribute.update_default))
+        not is_nil(attribute.update_default) and
+          not is_function(attribute.update_default) and
+          not match?({_, _, _}, attribute.update_default)
       end)
 
     update_attributes_with_non_matching_lazy_defaults =
       Enum.filter(attributes, fn attribute ->
-        !attribute.match_other_defaults? &&
+        !attribute.match_other_defaults? and
           (is_function(attribute.update_default) or match?({_, _, _}, attribute.update_default))
       end)
 
     update_attributes_with_matching_defaults =
       Enum.filter(attributes, fn attribute ->
-        attribute.match_other_defaults? &&
+        attribute.match_other_defaults? and
           (is_function(attribute.update_default) or match?({_, _, _}, attribute.update_default))
       end)
 

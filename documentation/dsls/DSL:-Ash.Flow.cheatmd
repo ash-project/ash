@@ -921,7 +921,7 @@ end
       
   </td>
   <td style="text-align: left">
-    <code class="inline">list(module) | module</code>
+    <code class="inline">module | list(module)</code>
   </td>
   <td style="text-align: left">
     
@@ -2470,7 +2470,7 @@ end
       
   </td>
   <td style="text-align: left">
-    <code class="inline">list(list(atom) | atom)</code>
+    <code class="inline">list(atom | list(atom))</code>
   </td>
   <td style="text-align: left">
     

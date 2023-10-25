@@ -302,7 +302,7 @@ defmodule Ash.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:spark, "~> 1.1 and >= 1.1.47"},
+      {:spark, "~> 1.1 and >= 1.1.50"},
       {:ecto, "~> 3.7"},
       {:ets, "~> 0.8"},
       {:decimal, "~> 2.0"},

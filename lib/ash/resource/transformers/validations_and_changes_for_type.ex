@@ -19,6 +19,7 @@ defmodule Ash.Resource.Transformers.ValidationsAndChangesForType do
           Map.update(acc, on, [validation], &[validation | &1])
         end)
       end)
+      |> Map.new(fn {key, value} -> {key, Enum.reverse(value)} end)
 
     changes_by_on =
       dsl_state
@@ -30,6 +31,7 @@ defmodule Ash.Resource.Transformers.ValidationsAndChangesForType do
           Map.update(acc, on, [change], &[change | &1])
         end)
       end)
+      |> Map.new(fn {key, value} -> {key, Enum.reverse(value)} end)
 
     {:ok,
      dsl_state

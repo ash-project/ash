@@ -1314,9 +1314,6 @@ defmodule Ash.Resource.Dsl do
   ]
 
   @transformers [
-    Ash.Resource.Transformers.CacheRelationships,
-    Ash.Resource.Transformers.AttributesByName,
-    Ash.Resource.Transformers.ValidationsAndChangesForType,
     Ash.Resource.Transformers.RequireUniqueActionNames,
     Ash.Resource.Transformers.SetRelationshipSource,
     Ash.Resource.Transformers.BelongsToAttribute,
@@ -1331,6 +1328,12 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.RequireUniqueFieldNames,
     Ash.Resource.Transformers.SetDefineFor,
     Ash.Resource.Transformers.GetByReadActions
+  ]
+
+  @persisters [
+    Ash.Resource.Transformers.CacheRelationships,
+    Ash.Resource.Transformers.AttributesByName,
+    Ash.Resource.Transformers.ValidationsAndChangesForType
   ]
 
   @verifiers [
@@ -1356,7 +1359,8 @@ defmodule Ash.Resource.Dsl do
   use Spark.Dsl.Extension,
     sections: @sections,
     transformers: @transformers,
-    verifiers: @verifiers
+    verifiers: @verifiers,
+    persisters: @persisters
 
   @doc false
   def identity(x), do: x

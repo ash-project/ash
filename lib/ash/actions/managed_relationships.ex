@@ -61,29 +61,6 @@ defmodule Ash.Actions.ManagedRelationships do
     end)
   end
 
-  def setup_managed_belongs_to_relationships(%{relationships: relationships} = changeset, _, _)
-      when relationships in [%{}, nil] do
-    {changeset, %{notifications: []}}
-    |> validate_required_belongs_to()
-    |> case do
-      {:error, error} ->
-        {:error, error}
-
-      {changeset, instructions} ->
-        changeset =
-          Map.update!(changeset, :relationships, fn relationships ->
-            Map.new(relationships, fn {rel, inputs} ->
-              {rel,
-               Enum.map(inputs, fn {input, config} ->
-                 {input, Keyword.put(config, :handled?, true)}
-               end)}
-            end)
-          end)
-
-        {changeset, instructions}
-    end
-  end
-
   def setup_managed_belongs_to_relationships(changeset, actor, engine_opts) do
     changeset.relationships
     |> Enum.map(fn {relationship, val} ->
@@ -318,7 +295,7 @@ defmodule Ash.Actions.ManagedRelationships do
             {:halt, {:error, error}}
         end
     end)
-    |> validate_required_belongs_to()
+    |> validate_required_belongs_to(false)
     |> case do
       {:error, error} ->
         {:error, error}
