@@ -478,51 +478,33 @@ defmodule Ash.Type.Union do
   end
 
   @impl true
-  def handle_change(nil, %Ash.Union{type: type_name, value: new_value}, constraints) do
-    with {:ok, type_configs} <- Keyword.fetch(constraints, :types),
-         {:ok, type_config} <- Keyword.fetch(type_configs, type_name),
-         {:ok, type} <- Keyword.fetch(type_config, :type),
-         type_constraints <- Keyword.get(type_config, :constraints, []),
-         {:ok, new_value} <- type.handle_change(nil, new_value, type_constraints) do
-      {:ok, %Ash.Union{type: type_name, value: new_value}}
-    end
-  end
+  def handle_change(nil, %Ash.Union{type: type_name, value: new_value}, constraints),
+    do: do_handle_change(type_name, nil, new_value, constraints)
 
-  def handle_change(%Ash.Union{type: type_name, value: old_value}, nil, constraints) do
-    with {:ok, type_configs} <- Keyword.fetch(constraints, :types),
-         {:ok, type_config} <- Keyword.fetch(type_configs, type_name),
-         {:ok, type} <- Keyword.fetch(type_config, :type),
-         type_constraints <- Keyword.get(type_config, :constraints, []),
-         {:ok, new_value} <- type.handle_change(old_value, nil, type_constraints) do
-      {:ok, %Ash.Union{type: type_name, value: new_value}}
-    end
-  end
+  def handle_change(%Ash.Union{type: type_name, value: old_value}, nil, constraints),
+    do: do_handle_change(type_name, old_value, nil, constraints)
 
   def handle_change(
         %Ash.Union{type: type_name, value: old_value},
         %Ash.Union{type: type_name, value: new_value},
         constraints
-      ) do
-    with {:ok, type_configs} <- Keyword.fetch(constraints, :types),
-         {:ok, type_config} <- Keyword.fetch(type_configs, type_name),
-         {:ok, type} <- Keyword.fetch(type_config, :type),
-         type_constraints <- Keyword.get(type_config, :constraints, []),
-         {:ok, new_value} <- type.handle_change(old_value, new_value, type_constraints) do
-      {:ok, %Ash.Union{type: type_name, value: new_value}}
-    end
-  end
+      ),
+      do: do_handle_change(type_name, old_value, new_value, constraints)
 
   def handle_change(
         %Ash.Union{},
         %Ash.Union{type: type_name, value: new_value},
         constraints
-      ) do
+      ),
+      do: do_handle_change(type_name, nil, new_value, constraints)
+
+  defp do_handle_change(type_name, old_value, new_value, constraints) do
     with {:ok, type_configs} <- Keyword.fetch(constraints, :types),
          {:ok, type_config} <- Keyword.fetch(type_configs, type_name),
          {:ok, type} <- Keyword.fetch(type_config, :type),
          type_constraints <- Keyword.get(type_config, :constraints, []),
          type <- Ash.Type.get_type(type),
-         {:ok, new_value} <- type.handle_change(nil, new_value, type_constraints) do
+         {:ok, new_value} <- type.handle_change(old_value, new_value, type_constraints) do
       {:ok, %Ash.Union{type: type_name, value: new_value}}
     end
   end
