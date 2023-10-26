@@ -525,7 +525,7 @@ defmodule Ash.EmbeddableType do
         end
       end
 
-      def include_source(changeset, constraints) do
+      def include_source(constraints, changeset) do
         Keyword.put(constraints, :__source__, changeset)
       end
 

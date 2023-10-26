@@ -835,7 +835,7 @@ defmodule Ash.Type do
 
   def include_source(type, changeset_or_query, constraints) do
     type = get_type(type)
-    type.include_source(changeset_or_query, constraints)
+    type.include_source(constraints, changeset_or_query)
   end
 
   @spec load(
@@ -1028,7 +1028,7 @@ defmodule Ash.Type do
       def prepare_change(_old_value, new_value, _constraints), do: {:ok, new_value}
 
       @impl true
-      def include_source(_, constraints), do: constraints
+      def include_source(constraints, _), do: constraints
 
       @impl true
       def array_constraints do
