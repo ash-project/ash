@@ -1564,24 +1564,49 @@ defmodule Ash.Actions.Load do
     end
   end
 
-  defp has_parent_expr?(%{filter: filter}, depth \\ 0) do
+  defp has_parent_expr?(%{filter: filter, sort: sort}) do
+    do_has_parent_expr?(filter) || has_parent_expr_in_sort?(sort)
+  end
+
+  defp has_parent_expr_in_sort?(sort) do
+    sort
+    |> List.wrap()
+    |> Enum.any?(fn
+      # TODO: check any resource calculation references here
+      atom when is_atom(atom) ->
+        false
+
+      {atom, _} when is_atom(atom) ->
+        false
+
+      %Ash.Query.Calculation{} = calculation ->
+        expression = calculation.module.expression(calculation.opts, calculation.context)
+        do_has_parent_expr?(expression)
+
+      {%Ash.Query.Calculation{} = calculation, _} ->
+        expression = calculation.module.expression(calculation.opts, calculation.context)
+        do_has_parent_expr?(expression)
+    end)
+  end
+
+  defp do_has_parent_expr?(filter, depth \\ 0) do
     not is_nil(
       Ash.Filter.find(filter, fn
         %Ash.Query.Call{name: :parent, args: [expr]} ->
           if depth == 0 do
             true
           else
-            has_parent_expr?(expr, depth - 1)
+            do_has_parent_expr?(expr, depth - 1)
           end
 
         %Ash.Query.Exists{expr: expr} ->
-          has_parent_expr?(expr, depth + 1)
+          do_has_parent_expr?(expr, depth + 1)
 
         %Ash.Query.Parent{expr: expr} ->
           if depth == 0 do
             true
           else
-            has_parent_expr?(expr, depth - 1)
+            do_has_parent_expr?(expr, depth - 1)
           end
 
         _ ->
