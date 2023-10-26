@@ -5,8 +5,8 @@ defmodule Ash.Resource.Preparation do
   `c:init/1` is defined automatically by `use Ash.Resource.Preparation`, but can be implemented if you want to validate/transform any
   options passed to the module.
 
-  The main function is `c:prepare/3`. It takes the changeset, any options that were provided
-  when this change was configured on a resource, and the context, which currently only has
+  The main function is `c:prepare/3`. It takes the query, any options that were provided
+  when this preparation was configured on a resource, and the context, which currently only has
   the actor.
 
   To access any query arguments from within a preparation, make sure you are using `Ash.Query.get_argument/2`
