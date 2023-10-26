@@ -1564,7 +1564,8 @@ defmodule Ash.Actions.Load do
     end
   end
 
-  defp has_parent_expr?(%{filter: filter, sort: sort}) do
+  defp has_parent_expr?(%{destination: destination, filter: filter, sort: sort, context: context}) do
+    {:ok, sort} = Ash.Actions.Sort.process(destination, sort, %{}, context)
     do_has_parent_expr?(filter) || has_parent_expr_in_sort?(sort)
   end
 
@@ -1572,7 +1573,6 @@ defmodule Ash.Actions.Load do
     sort
     |> List.wrap()
     |> Enum.any?(fn
-      # TODO: check any resource calculation references here
       atom when is_atom(atom) ->
         false
 
