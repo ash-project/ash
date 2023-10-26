@@ -7,7 +7,7 @@ defmodule Ash.Error do
   alias Ash.Error.Unknown.UnknownError
 
   @type error_class() :: :forbidden | :invalid | :framework | :unknown
-  @type class_module() :: Forbidden.t() | Framework.t() | Invalid.t() | Unknown.t()
+  @type class_module() :: Forbidden | Framework | Invalid | Unknown
 
   @type t :: %{
           required(:__struct__) => module,
