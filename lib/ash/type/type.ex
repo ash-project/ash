@@ -594,7 +594,7 @@ defmodule Ash.Type do
             if is_nil(item) && not nil_items? do
               {[item | items], [[message: "no nil values", index: index] | errors]}
             else
-              case Ash.Type.apply_constraints(__MODULE__, item, item_constraints) do
+              case apply_constraints(type, item, item_constraints) do
                 {:ok, value} ->
                   {[value | items], errors}
 
