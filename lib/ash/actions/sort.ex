@@ -13,8 +13,9 @@ defmodule Ash.Actions.Sort do
 
   def process(_resource, empty, _aggregates, _context) when empty in [nil, []], do: {:ok, []}
 
-  def process(resource, sort, aggregates, context) when is_list(sort) do
+  def process(resource, sort, aggregates, context) do
     sort
+    |> List.wrap()
     |> Enum.map(fn
       {key, {order, context}} when is_atom(order) ->
         {key, {order, context}}
