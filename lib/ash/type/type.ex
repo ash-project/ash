@@ -199,6 +199,7 @@ defmodule Ash.Type do
   @callback embedded?() :: boolean
   @callback generator(constraints) :: Enumerable.t()
   @callback simple_equality?() :: boolean
+  @callback custom_apply_constraints_array?() :: boolean
   @callback load(
               values :: list(term),
               load :: Keyword.t(),
@@ -313,11 +314,7 @@ defmodule Ash.Type do
 
       Ash.Generator.action_input(type, action)
     else
-      if function_exported?(type, :generator, 1) do
-        type.generator(constraints)
-      else
-        raise "generator/1 unimplemented for #{inspect(type)}"
-      end
+      type.generator(constraints)
     end
   end
 
@@ -327,15 +324,18 @@ defmodule Ash.Type do
   This is leveraged by embedded types to know if something is being updated
   or destroyed. This is not called on creates.
   """
+  # Callback does not currently support this
+  def handle_change({:array, {:array, _type}}, _, new_value, _) do
+    {:ok, new_value}
+  end
+
   def handle_change({:array, type}, old_value, new_value, constraints) do
-    if is_atom(type) && :erlang.function_exported(type, :handle_change_array, 3) do
-      type.handle_change_array(old_value, new_value, constraints)
-    else
-      {:ok, new_value}
-    end
+    type = get_type(type)
+    type.handle_change_array(old_value, new_value, constraints)
   end
 
   def handle_change(type, old_value, new_value, constraints) do
+    type = get_type(type)
     type.handle_change(old_value, new_value, constraints)
   end
 
@@ -345,15 +345,18 @@ defmodule Ash.Type do
   This is leveraged by embedded types to know if something is being updated
   or destroyed. This is not called on creates.
   """
+  # Callback does not currently support this
+  def prepare_change({:array, {:array, _type}}, _, new_value, _) do
+    {:ok, new_value}
+  end
+
   def prepare_change({:array, type}, old_value, new_value, constraints) do
-    if is_atom(type) && :erlang.function_exported(type, :prepare_change_array, 3) do
-      type.prepare_change_array(old_value, new_value, constraints)
-    else
-      {:ok, new_value}
-    end
+    type = get_type(type)
+    type.prepare_change_array(old_value, new_value, constraints)
   end
 
   def prepare_change(type, old_value, new_value, constraints) do
+    type = get_type(type)
     type.prepare_change(old_value, new_value, constraints)
   end
 
@@ -448,7 +451,22 @@ defmodule Ash.Type do
     end
   end
 
+  def cast_input({:array, {:array, type}}, term, constraints) do
+    cond do
+      is_nil(term) ->
+        {:ok, nil}
+
+      empty?(term, constraints) ->
+        {:ok, []}
+
+      is_list(term) ->
+        map_while_ok(term, &cast_input({:array, type}, &1, constraints[:items] || []))
+    end
+  end
+
   def cast_input({:array, type}, term, constraints) do
+    type = get_type(type)
+
     cond do
       empty?(term, constraints) ->
         {:ok, []}
@@ -466,47 +484,7 @@ defmodule Ash.Type do
             term
           end
 
-        if is_atom(type) && :erlang.function_exported(type, :cast_input_array, 2) do
-          type.cast_input_array(term, constraints)
-        else
-          single_constraints = constraints[:items] || []
-
-          term
-          |> Enum.with_index()
-          |> Enum.reverse()
-          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
-            case cast_input(type, item, single_constraints) do
-              :error ->
-                {:halt,
-                 {:error, message: "invalid value at %{index}", index: index, path: [index]}}
-
-              {:error, keyword} ->
-                errors =
-                  keyword
-                  |> List.wrap()
-                  |> Ash.Error.flatten_preserving_keywords()
-                  |> Enum.map(fn
-                    message when is_binary(message) ->
-                      [message: message, index: index, path: [index]]
-
-                    error when is_exception(error) ->
-                      error
-                      |> Ash.Error.to_ash_error()
-                      |> Ash.Error.set_path([index])
-
-                    keyword ->
-                      keyword
-                      |> Keyword.put(:index, index)
-                      |> Keyword.update(:path, [index], &[index | &1])
-                  end)
-
-                {:halt, {:error, errors}}
-
-              {:ok, value} ->
-                {:cont, {:ok, [value | casted]}}
-            end
-          end)
-        end
+        type.cast_input_array(term, constraints[:items] || [])
     end
   end
 
@@ -545,6 +523,19 @@ defmodule Ash.Type do
     value in List.wrap(constraints[:empty_values])
   end
 
+  defp map_while_ok(term, func) do
+    Enum.reduce_while(term, {:ok, []}, fn item, {:ok, acc} ->
+      case func.(item) do
+        {:ok, result} -> {:cont, {:ok, [result | acc]}}
+        other -> {:halt, other}
+      end
+    end)
+    |> case do
+      {:ok, result} -> {:ok, Enum.reverse(result)}
+      other -> other
+    end
+  end
+
   @doc """
   Casts a value from the data store to an instance of the type, or errors
 
@@ -553,44 +544,17 @@ defmodule Ash.Type do
   @spec cast_stored(t(), term, constraints | nil) :: {:ok, term} | {:error, keyword()} | :error
   def cast_stored(type, term, constraints \\ [])
 
-  def cast_stored({:array, type}, term, constraints) do
-    if is_atom(type) && :erlang.function_exported(type, :cast_stored_array, 2) do
-      type.cast_stored_array(term, constraints)
+  def cast_stored({:array, {:array, type}}, term, constraints) do
+    if is_nil(term) do
+      {:ok, nil}
     else
-      if is_nil(term) do
-        {:ok, nil}
-      else
-        term
-        |> Enum.with_index()
-        |> Enum.reverse()
-        |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
-          single_constraints = constraints[:items] || []
-
-          case cast_stored(type, item, single_constraints) do
-            :error ->
-              {:halt, {:error, index: index}}
-
-            {:error, keyword} ->
-              errors =
-                keyword
-                |> List.wrap()
-                |> Ash.Error.flatten_preserving_keywords()
-                |> Enum.map(fn
-                  string when is_binary(string) ->
-                    [message: string, index: index]
-
-                  vars ->
-                    Keyword.put(vars, :index, index)
-                end)
-
-              {:halt, {:error, errors}}
-
-            {:ok, value} ->
-              {:cont, {:ok, [value | casted]}}
-          end
-        end)
-      end
+      map_while_ok(term, &cast_stored({:array, type}, &1, constraints[:items] || []))
     end
+  end
+
+  def cast_stored({:array, type}, term, constraints) do
+    type = get_type(type)
+    type.cast_stored_array(term, constraints)
   end
 
   def cast_stored(type, term, constraints) do
@@ -603,19 +567,26 @@ defmodule Ash.Type do
   Confirms if a casted value matches the provided constraints.
   """
   @spec apply_constraints(t(), term, constraints()) :: {:ok, term} | {:error, String.t()}
+  def apply_constraints({:array, {:array, type}}, term, constraints) do
+    type = get_type(type)
+    map_while_ok(term, &apply_constraints({:array, type}, &1, constraints[:items] || []))
+  end
+
   def apply_constraints({:array, type}, term, constraints) when is_list(term) do
-    if is_atom(type) && :erlang.function_exported(type, :apply_constraints_array, 2) do
+    type = get_type(type)
+
+    if type.custom_apply_constraints_array?() do
       case type.apply_constraints_array(term, constraints) do
         :ok -> {:ok, term}
         other -> other
       end
     else
       list_constraint_errors = list_constraint_errors(term, constraints)
+      item_constraints = constraints[:items] || []
 
       case list_constraint_errors do
         [] ->
           nil_items? = Keyword.get(constraints, :nil_items?, false)
-          item_constraints = constraints[:items] || []
 
           term
           |> Enum.with_index()
@@ -623,7 +594,7 @@ defmodule Ash.Type do
             if is_nil(item) && not nil_items? do
               {[item | items], [[message: "no nil values", index: index] | errors]}
             else
-              case apply_constraints(type, item, item_constraints) do
+              case Ash.Type.apply_constraints(__MODULE__, item, item_constraints) do
                 {:ok, value} ->
                   {[value | items], errors}
 
@@ -676,7 +647,8 @@ defmodule Ash.Type do
   @doc false
   def list_constraint_errors(term, constraints) do
     length =
-      if Keyword.has_key?(constraints, :max_length) || Keyword.has_key?(constraints, :min_length) do
+      if Keyword.has_key?(constraints, :max_length) ||
+           Keyword.has_key?(constraints, :min_length) do
         length(term)
       else
         0
@@ -722,11 +694,7 @@ defmodule Ash.Type do
   def cast_in_query?(type, constraints) do
     type = get_type(type)
 
-    if function_exported?(type, :cast_in_query?, 0) do
-      type.cast_in_query?()
-    else
-      type.cast_in_query?(constraints)
-    end
+    type.cast_in_query?(constraints)
   end
 
   @doc """
@@ -734,31 +702,17 @@ defmodule Ash.Type do
 
   Maps to `Ecto.Type.dump/2`
   """
-  @spec dump_to_native(t(), term, constraints | nil) :: {:ok, term} | {:error, keyword()} | :error
+  @spec dump_to_native(t(), term, constraints | nil) ::
+          {:ok, term} | {:error, keyword()} | :error
   def dump_to_native(type, term, constraints \\ [])
 
+  def dump_to_native({:array, {:array, type}}, term, constraints) do
+    map_while_ok(term, &dump_to_native({:array, type}, &1, constraints[:items] || []))
+  end
+
   def dump_to_native({:array, type}, term, constraints) do
-    if is_atom(type) && :erlang.function_exported(type, :dump_to_native_array, 2) do
-      type.dump_to_native_array(term, constraints)
-    else
-      if is_nil(term) do
-        {:ok, nil}
-      else
-        single_constraints = constraints[:items] || []
-
-        term
-        |> Enum.reverse()
-        |> Enum.reduce_while({:ok, []}, fn item, {:ok, dumped} ->
-          case dump_to_native(type, item, single_constraints) do
-            :error ->
-              {:halt, :error}
-
-            {:ok, value} ->
-              {:cont, {:ok, [value | dumped]}}
-          end
-        end)
-      end
-    end
+    type = get_type(type)
+    type.dump_to_native_array(term, constraints)
   end
 
   def dump_to_native(type, term, constraints) do
@@ -776,38 +730,20 @@ defmodule Ash.Type do
           {:ok, term} | {:error, keyword()} | :error
   def dump_to_embedded(type, term, constraints \\ [])
 
+  def dump_to_embedded({:array, {:array, type}}, term, constraints) do
+    map_while_ok(term, &dump_to_embedded({:array, type}, &1, constraints[:items] || []))
+  end
+
   def dump_to_embedded({:array, type}, term, constraints) do
-    if is_atom(type) && :erlang.function_exported(type, :dump_to_embedded_array, 2) do
-      type.dump_to_embedded_array(term, constraints)
-    else
-      if is_nil(term) do
-        {:ok, nil}
-      else
-        single_constraints = constraints[:items] || []
+    type = Ash.Type.get_type(type)
 
-        term
-        |> Enum.reverse()
-        |> Enum.reduce_while({:ok, []}, fn item, {:ok, dumped} ->
-          case dump_to_embedded(type, item, single_constraints) do
-            :error ->
-              {:halt, :error}
-
-            {:ok, value} ->
-              {:cont, {:ok, [value | dumped]}}
-          end
-        end)
-      end
-    end
+    type.dump_to_embedded_array(term, constraints)
   end
 
   def dump_to_embedded(type, term, constraints) do
     type = get_type(type)
 
-    if :erlang.function_exported(type, :dump_to_embedded, 2) do
-      type.dump_to_embedded(term, constraints)
-    else
-      type.dump_to_native(term, constraints)
-    end
+    type.dump_to_embedded(term, constraints)
   end
 
   @doc """
@@ -1043,14 +979,153 @@ defmodule Ash.Type do
       @impl true
       def init(constraints), do: {:ok, constraints}
 
+      @impl true
+      def dump_to_embedded(value, constraints) do
+        dump_to_native(value, constraints)
+      end
+
+      @impl true
+      def handle_change_array(_old_value, new_value, _constraints) do
+        {:ok, new_value}
+      end
+
+      @impl true
+      def prepare_change_array(_old_value, new_value, _constraints) do
+        {:ok, new_value}
+      end
+
+      @impl true
+      def cast_input_array(term, single_constraints) do
+        term
+        |> Enum.with_index()
+        |> Enum.reverse()
+        |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
+          case Ash.Type.cast_input(__MODULE__, item, single_constraints) do
+            :error ->
+              {:halt, {:error, message: "invalid value at %{index}", index: index, path: [index]}}
+
+            {:error, keyword} ->
+              errors =
+                keyword
+                |> List.wrap()
+                |> Ash.Error.flatten_preserving_keywords()
+                |> Enum.map(fn
+                  message when is_binary(message) ->
+                    [message: message, index: index, path: [index]]
+
+                  error when is_exception(error) ->
+                    error
+                    |> Ash.Error.to_ash_error()
+                    |> Ash.Error.set_path([index])
+
+                  keyword ->
+                    keyword
+                    |> Keyword.put(:index, index)
+                    |> Keyword.update(:path, [index], &[index | &1])
+                end)
+
+              {:halt, {:error, errors}}
+
+            {:ok, value} ->
+              {:cont, {:ok, [value | casted]}}
+          end
+        end)
+      end
+
+      @impl true
+      def cast_stored_array(term, single_constraints) do
+        if is_nil(term) do
+          {:ok, nil}
+        else
+          term
+          |> Enum.with_index()
+          |> Enum.reverse()
+          |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
+            case Ash.Type.cast_stored(__MODULE__, item, single_constraints) do
+              :error ->
+                {:halt, {:error, index: index}}
+
+              {:error, keyword} ->
+                errors =
+                  keyword
+                  |> List.wrap()
+                  |> Ash.Error.flatten_preserving_keywords()
+                  |> Enum.map(fn
+                    string when is_binary(string) ->
+                      [message: string, index: index]
+
+                    vars ->
+                      Keyword.put(vars, :index, index)
+                  end)
+
+                {:halt, {:error, errors}}
+
+              {:ok, value} ->
+                {:cont, {:ok, [value | casted]}}
+            end
+          end)
+        end
+      end
+
+      @impl true
+      def dump_to_native_array(term, single_constraints) do
+        if is_nil(term) do
+          {:ok, nil}
+        else
+          term
+          |> Enum.reverse()
+          |> Enum.reduce_while({:ok, []}, fn item, {:ok, dumped} ->
+            case Ash.Type.dump_to_native(__MODULE__, item, single_constraints) do
+              :error ->
+                {:halt, :error}
+
+              {:ok, value} ->
+                {:cont, {:ok, [value | dumped]}}
+            end
+          end)
+        end
+      end
+
+      @impl true
+      def dump_to_embedded_array(term, single_constraints) do
+        if is_nil(term) do
+          {:ok, nil}
+        else
+          term
+          |> Enum.reverse()
+          |> Enum.reduce_while({:ok, []}, fn item, {:ok, dumped} ->
+            case Ash.Type.dump_to_embedded(__MODULE__, item, single_constraints) do
+              :error ->
+                {:halt, :error}
+
+              {:ok, value} ->
+                {:cont, {:ok, [value | dumped]}}
+            end
+          end)
+        end
+      end
+
+      @impl true
+      def generator(constraints) do
+        raise "generator/1 unimplemented for #{inspect(__MODULE__)}"
+      end
+
       defoverridable constraints: 0,
                      init: 1,
                      include_source: 2,
                      describe: 1,
+                     generator: 1,
+                     handle_change_array: 3,
+                     prepare_change_array: 3,
+                     cast_input_array: 2,
+                     dump_to_native_array: 2,
+                     dump_to_embedded: 2,
+                     dump_to_embedded_array: 2,
                      embedded?: 0,
                      ecto_type: 0,
                      array_constraints: 0,
                      apply_constraints: 2,
+                     cast_stored_array: 2,
                      handle_change: 3,
                      prepare_change: 3,
                      cast_in_query?: 1
@@ -1196,6 +1271,13 @@ defmodule Ash.Type do
 
         true ->
           :ok
+      end
+
+      @impl Ash.Type
+      if Module.defines?(__MODULE__, {:apply_constraints_array, 2}, :def) do
+        def custom_apply_constraints_array?, do: true
+      else
+        def custom_apply_constraints_array?, do: false
       end
 
       unless Module.defines?(__MODULE__, {:can_load?, 1}, :def) do

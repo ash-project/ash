@@ -221,9 +221,6 @@ defmodule Ash.Test.GeneratorTest do
 
   describe "built in generators" do
     for type <- Enum.uniq(Ash.Type.builtin_types()), type != Ash.Type.Keyword do
-      Code.ensure_compiled!(type)
-      has_generator? = function_exported?(type, :generator, 1)
-
       for type <- [{:array, type}, type] do
         constraints =
           case type do
@@ -234,17 +231,20 @@ defmodule Ash.Test.GeneratorTest do
               Spark.OptionsHelpers.validate!([], Ash.Type.constraints(type))
           end
 
-        if has_generator? do
-          test "#{inspect(type)} type can be generated" do
+        test "#{inspect(type)} type can be generated" do
+          try do
             check all(input <- Ash.Type.generator(unquote(type), unquote(constraints))) do
               {:ok, _} = Ash.Type.cast_input(unquote(type), input, unquote(constraints))
             end
-          end
-        else
-          test "#{inspect(type)} cannot be generated" do
-            assert_raise RuntimeError, ~r/generator\/1 unimplemented for/, fn ->
-              Ash.Type.generator(unquote(type), unquote(constraints))
-            end
+          rescue
+            e in RuntimeError ->
+              case e do
+                %RuntimeError{message: "generator/1 unimplemented for" <> _} ->
+                  :ok
+
+                other ->
+                  reraise other, __STACKTRACE__
+              end
           end
         end
       end
