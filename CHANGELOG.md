@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.16.1](https://github.com/ash-project/ash/compare/v2.16.0...v2.16.1) (2023-10-27)
+
+
+
+
+### Bug Fixes:
+
+* ensure item constraints are passed to array casting
+
+* handle non-list values in `Ash.Actions.Sort.process/4`
+
+* optimize and make `Ash.Type` more consistent
+
+* fix typespec for `include_source/2`
+
+### Improvements:
+
+* detect more parent expressions
+
 ## [v2.16.0](https://github.com/ash-project/ash/compare/v2.15.20...v2.16.0) (2023-10-25)
 
 
