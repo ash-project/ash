@@ -554,7 +554,7 @@ defmodule Ash.Type do
 
   def cast_stored({:array, type}, term, constraints) do
     type = get_type(type)
-    type.cast_stored_array(term, constraints)
+    type.cast_stored_array(term, constraints[:items] || [])
   end
 
   def cast_stored(type, term, constraints) do
@@ -712,7 +712,7 @@ defmodule Ash.Type do
 
   def dump_to_native({:array, type}, term, constraints) do
     type = get_type(type)
-    type.dump_to_native_array(term, constraints)
+    type.dump_to_native_array(term, constraints[:items] || [])
   end
 
   def dump_to_native(type, term, constraints) do
