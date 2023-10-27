@@ -47,7 +47,6 @@ defmodule Ash.Notifier.PubSub do
       pub_sub do
         module MyEndpoint
         prefix "post"
-        broadcast_type :phoenix_broadcast
 
         publish :destroy, ["foo", :id]
         publish :update, ["bar", :name] event: "name_change"

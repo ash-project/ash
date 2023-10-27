@@ -68,14 +68,6 @@ Would produce the following messages, given a `team_id` of 1, a `tenant` of `org
 "org_1:updated"
 ```
 
-## Usage with Phoenix
-
-Phoenix expects a specific shape of data to be broadcasted, and since it is so often used with Ash, instead of making you define your own notifier that creates the `%Phoenix.Socket.Broadcast` struct and publishes it, Ash has an option to do that automatically, via
-
-```elixir
-broadcast_type :phoenix_broadcast
-```
-
 ## Named Pubsub modules
 
 If you are using a phoenix `Endpoint` module for pubsub then this is unnecessary. If you want to use a custom pub sub started with something like `{Phoenix.PubSub, name: MyName}`, then you can provide `MyName` to
