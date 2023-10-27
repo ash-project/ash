@@ -476,7 +476,7 @@ defmodule Ash.Type do
 
       true ->
         term =
-          if is_map(term) do
+          if is_map(term) and not is_struct(term) do
             term
             |> Enum.sort_by(&elem(&1, 1))
             |> Enum.map(&elem(&1, 0))
