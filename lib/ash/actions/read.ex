@@ -1736,6 +1736,7 @@ defmodule Ash.Actions.Read do
             {name, dep_query} = List.last(dep_path)
 
             path ++
+              :lists.droplast(dep_path) ++
               [:calc_dep] ++
               [
                 %{

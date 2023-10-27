@@ -160,6 +160,10 @@ defmodule Ash.Actions.Action do
     """
   end
 
+  defp authorize(_api, _actor, %{context: %{private: %{authorize?: false}}}) do
+    :ok
+  end
+
   defp authorize(api, actor, input) do
     input.resource
     |> Ash.Resource.Info.authorizers()
