@@ -226,7 +226,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                return_records?: true,
                upsert?: true,
                upsert_identity: :unique_title,
-               upsert_fields: [:title2],
+               upsert_fields: {:replace, [:title2]},
                sorted?: true
              )
   end

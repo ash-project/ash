@@ -73,7 +73,7 @@ defmodule Ash.Test.Resource.UpsertTest do
       create :upsert do
         upsert? true
         upsert_identity :unique_name
-        upsert_fields([:name])
+        upsert_fields({:replace, [:name]})
       end
     end
 
