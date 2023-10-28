@@ -33,7 +33,11 @@ defmodule Ash.Resource.Actions.Create do
           skip_global_validations?: boolean,
           upsert_identity: atom | nil,
           upsert_fields:
-            nil | :replace_all | {:replace, list(atom)} | {:replace_all_except, list(atom)},
+            nil
+            | list(atom)
+            | :replace_all
+            | {:replace, list(atom)}
+            | {:replace_all_except, list(atom)},
           allow_nil_input: list(atom),
           touches_resources: list(atom),
           arguments: list(Ash.Resource.Actions.Argument.t()),
@@ -75,7 +79,14 @@ defmodule Ash.Resource.Actions.Create do
                   """
                 ],
                 upsert_fields: [
-                  type: :any,
+                  type:
+                    {:or,
+                     [
+                       {:literal, :replace_all},
+                       {:tuple, [{:literal, :replace}, {:wrap_list, :atom}]},
+                       {:tuple, [{:literal, :replace_all_except}, {:wrap_list, :atom}]},
+                       {:wrap_list, :atom}
+                     ]},
                   doc: """
                   The fields to overwrite in the case of an upsert. If not provided, all fields except for fields set by defaults will be overwritten.
                   """
