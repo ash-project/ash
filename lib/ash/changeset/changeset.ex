@@ -769,6 +769,9 @@ defmodule Ash.Changeset do
   @spec set_on_upsert(t(), list(atom)) :: Keyword.t()
   def set_on_upsert(changeset, upsert_keys) do
     case changeset.context[:private][:upsert_fields] do
+      fields when is_list(fields) ->
+        create_upsert_list(fields, changeset)
+
       {:replace, fields} ->
         create_upsert_list(fields, changeset)
 
