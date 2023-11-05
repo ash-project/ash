@@ -239,6 +239,23 @@ action :hello, :string do
 end
 ```
 
+> #### Returning resource instances {: .tip}
+>
+> It sometimes happens that you want to make a generic action which returns an
+> instance of the parent resource. It's natural to assume that you would want
+> to set your action's return type to the name of your resource. Unfortunately
+> this will result in a compile error as the resource struct is not yet defined
+> at the time of DSL transformation. The work around is to define an action
+> that returns `:struct` and is constrained to only be of a specific type, eg:
+>
+> ```elixir
+> action :get, :struct do
+>   constraints instance_of: __MODULE__
+>
+>   run # ...
+> end
+> ```
+
 The benefit of using generic actions instead of defining normal functions:
 
 - They can be used with api extensions
