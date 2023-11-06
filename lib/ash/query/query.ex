@@ -1885,12 +1885,12 @@ defmodule Ash.Query do
 
     * query: The query over the destination resource to use as a base for aggregation
     * default: The default value to use if the aggregate returns nil
-    * filterable?: Wether or not this aggregate may be referenced in filters
+    * filterable?: Whether or not this aggregate may be referenced in filters
     * type: The type of the aggregate
     * constraints: Type constraints for the aggregate's type
     * implementation: An implementation used when the aggregate kind is custom
     * read_action: The read action to use on the destination resource
-    * authorize?: Wether or not to authorize access to this aggregate
+    * authorize?: Whether or not to authorize access to this aggregate
   """
   def aggregate(query, name, kind, relationship) do
     aggregate(query, name, kind, relationship, [])

@@ -1246,7 +1246,7 @@ create :create_post, MyApp.Post, :create
     <code class="inline">false</code>
   </td>
   <td style="text-align: left" colspan=2>
-    Wether or not this action is always an upsert.
+    Whether or not this action is always an upsert.
   </td>
 </tr>
 

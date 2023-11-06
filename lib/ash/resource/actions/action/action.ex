@@ -78,7 +78,7 @@ defmodule Ash.Resource.Actions.Action do
                   type: :boolean,
                   default: false,
                   doc: """
-                  Wether or not the action can return nil. Unlike attributes & arguments, this defaults to `false`.
+                  Whether or not the action can return nil. Unlike attributes & arguments, this defaults to `false`.
                   """
                 ],
                 run: [

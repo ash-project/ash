@@ -270,7 +270,7 @@ defmodule Ash.Resource.Info do
     Spark.Dsl.Extension.get_persisted(resource, :primary_key, [])
   end
 
-  @doc "Wether or not all primary key attributes can be compared with simple_equality"
+  @doc "Whether or not all primary key attributes can be compared with simple_equality"
   @spec primary_key_simple_equality?(Spark.Dsl.t() | Ash.Resource.t()) :: boolean()
   def primary_key_simple_equality?(resource) do
     Spark.Dsl.Extension.get_persisted(resource, :primary_key_simple_equality?, [])

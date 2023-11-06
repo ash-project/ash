@@ -18,7 +18,7 @@ defmodule Ash.Flow.Step.Create do
       [
         upsert?: [
           type: :boolean,
-          doc: "Wether or not this action is always an upsert.",
+          doc: "Whether or not this action is always an upsert.",
           default: false
         ],
         upsert_identity: [

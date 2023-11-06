@@ -84,7 +84,7 @@ defmodule Ash.Resource.Aggregate do
       type: :boolean,
       default: true,
       doc: """
-      Wether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
+      Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
       """
     ]
   ]

@@ -258,7 +258,7 @@ defmodule Ash.Actions.Sort do
   Opts
 
   * `:api` - The api to use if data needs to be loaded
-  * `:lazy?` - Wether to use already loaded values or to re-load them when necessary. Defaults to `false`
+  * `:lazy?` - Whether to use already loaded values or to re-load them when necessary. Defaults to `false`
   """
   def runtime_sort(results, sort, opts \\ [])
   def runtime_sort([], _empty, _), do: []
