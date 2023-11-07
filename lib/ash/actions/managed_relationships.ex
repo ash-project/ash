@@ -1226,7 +1226,7 @@ defmodule Ash.Actions.ManagedRelationships do
                relationship
              ) do
           {:ok, notifications} ->
-            {:ok, current_value, notifications, []}
+            {:ok, current_value, notifications, [match]}
 
           {:error, error} ->
             {:error, error}
@@ -1244,7 +1244,7 @@ defmodule Ash.Actions.ManagedRelationships do
                relationship
              ) do
           {:ok, notifications} ->
-            {:ok, current_value, notifications, []}
+            {:ok, current_value, notifications, [match]}
 
           {:error, error} ->
             {:error, error}
