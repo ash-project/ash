@@ -95,7 +95,6 @@ defmodule Ash.Test.Actions.HasManyTest do
     end
   end
 
-  @tag :wip
   test "destroyed items are removed from the relationship" do
     post =
       Post
