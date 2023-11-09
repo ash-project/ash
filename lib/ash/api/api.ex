@@ -145,7 +145,7 @@ defmodule Ash.Api do
                           type: :boolean,
                           default: false,
                           doc: """
-                          Wether or not to reselect all attributes depended on by loads.
+                          Whether or not to reselect all attributes depended on by loads.
                           By default, we only reselect fields that weren't already selected.
                           """
                         ]
@@ -248,7 +248,7 @@ defmodule Ash.Api do
                           type: :boolean,
                           default: false,
                           doc: """
-                          Wether or not to reselect all attributes depended on by loads.
+                          Whether or not to reselect all attributes depended on by loads.
                           By default, we only reselect fields that weren't already selected.
                           """
                         ]
@@ -288,7 +288,7 @@ defmodule Ash.Api do
                        type: :boolean,
                        default: false,
                        doc: """
-                       Wether or not to reselect all attributes depended on by loads.
+                       Whether or not to reselect all attributes depended on by loads.
                        By default, we only reselect fields that weren't already selected.
                        """
                      ]
@@ -397,7 +397,7 @@ defmodule Ash.Api do
                                type: :boolean,
                                default: false,
                                doc:
-                                 "Wether or not to cast attributes and arguments as input. This is an optimization for cases where the input is already casted and/or not in need of casting"
+                                 "Whether or not to cast attributes and arguments as input. This is an optimization for cases where the input is already casted and/or not in need of casting"
                              ],
                              upsert_identity: [
                                type: :atom,
@@ -417,19 +417,19 @@ defmodule Ash.Api do
                                type: :boolean,
                                default: false,
                                doc:
-                                 "Wether or not to sort results by their input position, in cases where `return_records?: true` was provided."
+                                 "Whether or not to sort results by their input position, in cases where `return_records?: true` was provided."
                              ],
                              return_records?: [
                                type: :boolean,
                                default: false,
                                doc:
-                                 "Wether or not to return all of the records that were inserted. Defaults to false to account for large inserts."
+                                 "Whether or not to return all of the records that were inserted. Defaults to false to account for large inserts."
                              ],
                              return_errors?: [
                                type: :boolean,
                                default: false,
                                doc:
-                                 "Wether or not to return all of the errors that occur. Defaults to false to account for large inserts."
+                                 "Whether or not to return all of the errors that occur. Defaults to false to account for large inserts."
                              ],
                              batch_size: [
                                type: :pos_integer,
@@ -463,7 +463,7 @@ defmodule Ash.Api do
                                type: :boolean,
                                default: false,
                                doc: """
-                               Wether or not to send notifications out. If this is set to `true` then the data layer must return
+                               Whether or not to send notifications out. If this is set to `true` then the data layer must return
                                the results from each batch. This may be intensive for large bulk actions.
                                """
                              ],
@@ -471,7 +471,7 @@ defmodule Ash.Api do
                                type: {:one_of, [:all, :batch, false]},
                                default: :batch,
                                doc: """
-                               Wether or not to wrap the entire execution in a transaction, each batch, or not at all.
+                               Whether or not to wrap the entire execution in a transaction, each batch, or not at all.
 
                                Keep in mind:
 
@@ -903,7 +903,7 @@ defmodule Ash.Api do
       type: :boolean,
       default: true,
       doc: """
-      Wether or not the request is being authorized, provided to calculation context.
+      Whether or not the request is being authorized, provided to calculation context.
       """
     ],
     tracer: [
@@ -936,7 +936,7 @@ defmodule Ash.Api do
     authorize?: [
       type: :boolean,
       doc: """
-      Wether or not the request should be authorized.
+      Whether or not the request should be authorized.
       """
     ],
     tracer: [
@@ -1129,10 +1129,10 @@ defmodule Ash.Api do
               {:ok, term} | {:error, Ash.Error.t()}
   @doc "Get the avg of a given field from the given query, raising any errors"
   @callback avg!(Ash.Query.t(), field :: atom, opts :: Keyword.t()) :: term | no_return
-  @doc "Wether or not the given query would return any results"
+  @doc "Whether or not the given query would return any results"
   @callback exists(Ash.Query.t(), opts :: Keyword.t()) ::
               {:ok, boolean} | {:error, Ash.Error.t()}
-  @doc "Wether or not the given query would return any results, raising any errors"
+  @doc "Whether or not the given query would return any results, raising any errors"
   @callback exists?(Ash.Query.t(), opts :: Keyword.t()) ::
               boolean | no_return
   @doc "Get list of a given field from the given query"
@@ -1143,7 +1143,7 @@ defmodule Ash.Api do
   @callback list!(Ash.Query.t(), field :: atom, opts :: Keyword.t()) :: list(term) | no_return
 
   @doc """
-  Returns wether or not the user can perform the action, or raises on errors.
+  Returns whether or not the user can perform the action, or raises on errors.
 
   See `can/3` for more info.
   """
@@ -1166,7 +1166,7 @@ defmodule Ash.Api do
             ) ::
               boolean | no_return
   @doc """
-  Returns wether or not the user can perform the action, or `:maybe`, returning any errors.
+  Returns whether or not the user can perform the action, or `:maybe`, returning any errors.
 
   In cases with "runtime" checks (checks after the action), we may not be able to determine
   an answer, and so the value `:maybe` will be returned from `can/2`. The `can?` function assumes that

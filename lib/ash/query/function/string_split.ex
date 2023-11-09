@@ -4,7 +4,7 @@ defmodule Ash.Query.Function.StringSplit do
       type: :boolean,
       default: false,
       doc:
-        "Wether or not to trim empty strings from the beginning or end of the result. Equivalent to the `trim` option to `String.split/3`"
+        "Whether or not to trim empty strings from the beginning or end of the result. Equivalent to the `trim` option to `String.split/3`"
     ]
   ]
 

@@ -4265,7 +4265,7 @@ end
     <code class="inline">false</code>
   </td>
   <td style="text-align: left" colspan=2>
-    Wether or not the action can return nil. Unlike attributes & arguments, this defaults to `false`.
+    Whether or not the action can return nil. Unlike attributes & arguments, this defaults to `false`.
 
   </td>
 </tr>
@@ -10248,7 +10248,7 @@ end
     <code class="inline">false</code>
   </td>
   <td style="text-align: left" colspan=2>
-    Wether or not to count unique values only
+    Whether or not to count unique values only
   </td>
 </tr>
 
@@ -10409,7 +10409,7 @@ end
     <code class="inline">true</code>
   </td>
   <td style="text-align: left" colspan=2>
-    Wether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
+    Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
 
   </td>
 </tr>
@@ -10674,7 +10674,7 @@ exists :has_ticket, :assigned_tickets
     <code class="inline">true</code>
   </td>
   <td style="text-align: left" colspan=2>
-    Wether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
+    Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
 
   </td>
 </tr>
@@ -10983,7 +10983,7 @@ end
     <code class="inline">true</code>
   </td>
   <td style="text-align: left" colspan=2>
-    Wether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
+    Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
 
   </td>
 </tr>
@@ -11270,7 +11270,7 @@ end
     <code class="inline">true</code>
   </td>
   <td style="text-align: left" colspan=2>
-    Wether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
+    Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
 
   </td>
 </tr>
@@ -11437,7 +11437,7 @@ end
     <code class="inline">false</code>
   </td>
   <td style="text-align: left" colspan=2>
-    Wether or not to count unique values only
+    Whether or not to count unique values only
   </td>
 </tr>
 
@@ -11598,7 +11598,7 @@ end
     <code class="inline">true</code>
   </td>
   <td style="text-align: left" colspan=2>
-    Wether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
+    Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
 
   </td>
 </tr>
@@ -11885,7 +11885,7 @@ end
     <code class="inline">true</code>
   </td>
   <td style="text-align: left" colspan=2>
-    Wether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
+    Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
 
   </td>
 </tr>
@@ -12172,7 +12172,7 @@ end
     <code class="inline">true</code>
   </td>
   <td style="text-align: left" colspan=2>
-    Wether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
+    Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
 
   </td>
 </tr>
@@ -12459,7 +12459,7 @@ end
     <code class="inline">true</code>
   </td>
   <td style="text-align: left" colspan=2>
-    Wether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
+    Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
 
   </td>
 </tr>
@@ -12810,7 +12810,7 @@ end
     <code class="inline">true</code>
   </td>
   <td style="text-align: left" colspan=2>
-    Wether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
+    Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action.
 
   </td>
 </tr>

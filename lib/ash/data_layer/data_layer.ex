@@ -263,7 +263,7 @@ defmodule Ash.DataLayer do
     Extension.get_persisted(resource, :data_layer)
   end
 
-  @doc "Wether or not lateral joins should be used for many to many relationships by default"
+  @doc "Whether or not lateral joins should be used for many to many relationships by default"
   @spec prefer_lateral_join_for_many_to_many?(Ash.DataLayer.t()) :: boolean
   def prefer_lateral_join_for_many_to_many?(data_layer) do
     if function_exported?(data_layer, :prefer_lateral_join_for_many_to_many?, 0) do

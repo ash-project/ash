@@ -63,7 +63,7 @@ defmodule Ash.Query.Aggregate do
     ],
     filterable?: [
       type: :boolean,
-      doc: "Wether or not this aggregate may be used in filters."
+      doc: "Whether or not this aggregate may be used in filters."
     ],
     type: [
       type: :any,
@@ -85,13 +85,13 @@ defmodule Ash.Query.Aggregate do
       type: :boolean,
       default: false,
       doc:
-        "Wether or not to only consider unique values. Only relevant for `count` and `list` aggregates."
+        "Whether or not to only consider unique values. Only relevant for `count` and `list` aggregates."
     ],
     authorize?: [
       type: :boolean,
       default: true,
       doc: """
-      Wether or not the aggregate query should authorize based on the target action.
+      Whether or not the aggregate query should authorize based on the target action.
 
       See `d:Ash.Resource.Dsl.aggregates|count` for more information.
       """

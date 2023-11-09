@@ -16,12 +16,12 @@ Tools like `AshPostgres` will create unique constraints in the database automati
 
 ## Eager Checking
 
-Setting `eager_check_with: ApiName` on an identity will allow that identity to be checked when building a create changeset over the resource. This allows for showing quick up-front validations about wether some value is taken, for example.
+Setting `eager_check_with: ApiName` on an identity will allow that identity to be checked when building a create changeset over the resource. This allows for showing quick up-front validations about whether some value is taken, for example.
 
 If you are using `AshPhoenix.Form`, for example, this looks for a conflicting record on each call to `Form.validate/2`.
 For updates, it is only checked if one of the involved fields is being changed.
 
-For creates, The identity is checked unless your are performing an `upsert`, and the `upsert_identity` is this identity. Keep in mind that for this to work properly, you will need to pass the `upsert?: true, upsert_identity: :identity_name` *when creating the changeset* instead of passing it to the Api when creating. The `primary?` read action is used to search for a record. This will error if you have not configured one.
+For creates, The identity is checked unless your are performing an `upsert`, and the `upsert_identity` is this identity. Keep in mind that for this to work properly, you will need to pass the `upsert?: true, upsert_identity: :identity_name` _when creating the changeset_ instead of passing it to the Api when creating. The `primary?` read action is used to search for a record. This will error if you have not configured one.
 
 ## Pre Checking
 
