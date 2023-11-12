@@ -104,6 +104,54 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
     end
   end
 
+  defmodule BadPolicyRelName do
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    actions do
+      defaults [:create, :read, :update, :destroy]
+    end
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    policies do
+      policy always() do
+        authorize_if relates_to_actor_via(:does_not_exist)
+      end
+    end
+  end
+
+  defmodule BadPolicyRelPathName do
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    actions do
+      defaults [:create, :read, :update, :destroy]
+    end
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    policies do
+      policy always() do
+        authorize_if relates_to_actor_via([:does_not_exist, :neither_does_this])
+      end
+    end
+  end
+
   defmodule Registry do
     @moduledoc false
     use Ash.Registry
@@ -113,6 +161,8 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
       entry Actor
       entry User
       entry Role
+      entry BadPolicyRelName
+      entry BadPolicyRelPathName
     end
   end
 
@@ -174,6 +224,20 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
         |> Api.load!(:type)
 
       assert {:ok, _} = Api.get(Account, account.id, actor: actor)
+    end
+
+    test "relates_to_actor_via raises if relationship does not exist" do
+      assert_raise RuntimeError, ~r/^.*:does_not_exist.*$/, fn ->
+        BadPolicyRelName
+        |> Ash.Changeset.for_create(:create)
+        |> Api.create!(authorize?: true)
+      end
+
+      assert_raise RuntimeError, ~r/^.*:does_not_exist.*$/, fn ->
+        BadPolicyRelPathName
+        |> Ash.Changeset.for_create(:create)
+        |> Api.create!(authorize?: true)
+      end
     end
   end
 end
