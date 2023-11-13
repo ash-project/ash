@@ -73,23 +73,26 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
 
   defp relationship_info(resource, path, to_many? \\ false)
 
-  defp relationship_info(resource, [rel], to_many?) do
-    rel = Ash.Resource.Info.relationship(resource, rel)
+  defp relationship_info(resource, [rel_key], to_many?) do
+    rel = Ash.Resource.Info.relationship(resource, rel_key)
 
-    if !rel do
-      raise "No such relationship #{rel} for #{resource}, required in `relates_to_actor` check"
-    end
+    raise_if_nil(rel, rel_key, resource)
 
     {rel, to_many? || rel.cardinality == :many}
   end
 
-  defp relationship_info(resource, [rel | rest], to_many?) do
-    rel = Ash.Resource.Info.relationship(resource, rel)
+  defp relationship_info(resource, [rel_key | rest], to_many?) do
+    rel = Ash.Resource.Info.relationship(resource, rel_key)
 
-    if !rel do
-      raise "No such relationship #{rel} for #{resource}, required in `relates_to_actor` check"
-    end
+    raise_if_nil(rel, rel_key, resource)
 
     relationship_info(rel.destination, rest, to_many? || rel.cardinality == :many)
+  end
+
+  defp raise_if_nil(nil, rel_key, resource) do
+    raise "No such relationship ':#{rel_key}' for #{resource}, required in `relates_to_actor` check"
+  end
+  defp raise_if_nil(_, _, _) do
+    :ok
   end
 end
