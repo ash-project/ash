@@ -443,13 +443,30 @@ defmodule Ash.Resource.Info do
   end
 
   def aggregate_type(resource, aggregate) do
-    attribute_type =
+    attribute =
       if aggregate.field do
         related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
-        Ash.Resource.Info.attribute(related, aggregate.field).type
+        Ash.Resource.Info.attribute(related, aggregate.field)
       end
 
-    Ash.Query.Aggregate.kind_to_type(aggregate.kind, attribute_type)
+    attribute_type =
+      if attribute do
+        attribute.type
+      end
+
+    attribute_constraints =
+      if attribute do
+        attribute.constraints
+      end
+
+    case Ash.Query.Aggregate.kind_to_type(aggregate.kind, attribute_type, attribute_constraints) do
+      # TODO: pass this back up somehow, maybe optionally.
+      {:ok, type, _constraints} ->
+        {:ok, type}
+
+      other ->
+        other
+    end
   end
 
   @doc "Returns all aggregates of a resource"

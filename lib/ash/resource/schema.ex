@@ -70,11 +70,11 @@ defmodule Ash.Schema do
 
           for aggregate <- Ash.Resource.Info.aggregates(__MODULE__),
               aggregate.name not in Ash.Resource.reserved_names() do
-            {:ok, type} =
+            {:ok, type, _} =
               if aggregate.kind == :custom do
-                {:ok, aggregate.type}
+                {:ok, aggregate.type, []}
               else
-                Aggregate.kind_to_type(aggregate.kind, :string)
+                Aggregate.kind_to_type(aggregate.kind, :string, [])
               end
 
             field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)
@@ -215,11 +215,11 @@ defmodule Ash.Schema do
 
           for aggregate <- Ash.Resource.Info.aggregates(__MODULE__),
               aggregate.name not in Ash.Resource.reserved_names() do
-            {:ok, type} =
+            {:ok, type, _} =
               if aggregate.kind == :custom do
-                {:ok, aggregate.type}
+                {:ok, aggregate.type, []}
               else
-                Aggregate.kind_to_type(aggregate.kind, :string)
+                Aggregate.kind_to_type(aggregate.kind, :string, [])
               end
 
             field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)

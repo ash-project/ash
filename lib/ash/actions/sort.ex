@@ -178,17 +178,28 @@ defmodule Ash.Actions.Sort do
           {name, type}
 
         %Ash.Resource.Aggregate{} = agg ->
-          attribute_type =
+          attribute =
             if agg.field do
               related = Ash.Resource.Info.related(resource, agg.relationship_path)
-              Ash.Resource.Info.attribute(related, agg.field).type
+              Ash.Resource.Info.attribute(related, agg.field)
             end
 
-          {agg.name, Ash.Query.Aggregate.kind_to_type(agg.kind, attribute_type)}
+          attribute_type =
+            if attribute do
+              attribute.type
+            end
+
+          attribute_constraints =
+            if attribute do
+              attribute.constraints
+            end
+
+          {agg.name,
+           Ash.Query.Aggregate.kind_to_type(agg.kind, attribute_type, attribute_constraints)}
       end
 
     case type do
-      {:ok, type} ->
+      {:ok, type, _constraints} ->
         if Ash.DataLayer.data_layer_can?(resource, :aggregate_sort) &&
              Ash.DataLayer.data_layer_can?(
                resource,

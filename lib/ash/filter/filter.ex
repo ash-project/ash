@@ -2854,8 +2854,12 @@ defmodule Ash.Filter do
           attribute = Ash.Resource.Info.attribute(related, field)
 
           if attribute do
-            {:ok, type} = Ash.Query.Aggregate.kind_to_type(kind, attribute.type)
-            Keyword.put(opts, :type, type)
+            {:ok, type, constraints} =
+              Ash.Query.Aggregate.kind_to_type(kind, attribute.type, attribute.constraints)
+
+            opts
+            |> Keyword.put(:type, type)
+            |> Keyword.put(:constraints, constraints)
           else
             opts
           end

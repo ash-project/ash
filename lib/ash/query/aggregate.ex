@@ -182,14 +182,14 @@ defmodule Ash.Query.Aggregate do
     attribute_type =
       if field do
         case Ash.Resource.Info.field(related, field) do
-          %{type: type} ->
-            {:ok, type}
+          %{type: type, constraints: constraints} ->
+            {:ok, type, constraints}
 
           _ ->
             {:error, "No such field for #{inspect(related)}: #{inspect(field)}"}
         end
       else
-        {:ok, nil}
+        {:ok, nil, constraints}
       end
 
     default =
@@ -200,9 +200,10 @@ defmodule Ash.Query.Aggregate do
       end
 
     with :ok <- validate_uniq(uniq?, kind),
-         {:ok, attribute_type} <- attribute_type,
+         {:ok, attribute_type, attribute_constraints} <- attribute_type,
          :ok <- validate_path(resource, List.wrap(relationship)),
-         {:ok, type} <- get_type(kind, type, attribute_type),
+         {:ok, type, constraints} <-
+           get_type(kind, type, attribute_type, attribute_constraints, constraints),
          {:ok, query} <- validate_query(related, query) do
       {:ok,
        %__MODULE__{
@@ -234,10 +235,10 @@ defmodule Ash.Query.Aggregate do
 
   defp validate_uniq(_, _), do: :ok
 
-  defp get_type(:custom, type, _), do: {:ok, type}
+  defp get_type(:custom, type, _, _attribute_constraints, _provided_constraints), do: {:ok, type}
 
-  defp get_type(kind, _, attribute_type) do
-    kind_to_type(kind, attribute_type)
+  defp get_type(kind, _, attribute_type, attribute_constraints, provided_constraints) do
+    kind_to_type(kind, attribute_type, attribute_constraints || provided_constraints)
   end
 
   defp validate_path(_, []), do: :ok
@@ -338,6 +339,22 @@ defmodule Ash.Query.Aggregate do
   end
 
   @doc false
+  def kind_to_type({:custom, type}, _attribute_type, _attribute_constraints), do: {:ok, type, []}
+
+  def kind_to_type(kind, attribute_type, attribute_constraints)
+      when kind in [:first, :sum, :max, :min],
+      do: {:ok, attribute_type, attribute_constraints || []}
+
+  def kind_to_type(:list, attribute_type, attribute_constraints),
+    do: {:ok, {:array, attribute_type}, [items: attribute_constraints || []]}
+
+  def kind_to_type(kind, attribute_type, _attribute_constraints) do
+    with {:ok, type} <- kind_to_type(kind, attribute_type) do
+      {:ok, type, []}
+    end
+  end
+
+  @deprecated "use kind to type/3 instead"
   def kind_to_type({:custom, type}, _attribute_type), do: {:ok, type}
   def kind_to_type(:count, _attribute_type), do: {:ok, Ash.Type.Integer}
   def kind_to_type(:exists, _attribute_type), do: {:ok, Ash.Type.Boolean}

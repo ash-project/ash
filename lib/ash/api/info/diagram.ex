@@ -48,13 +48,24 @@ defmodule Ash.Api.Info.Diagram do
   end
 
   defp aggregate_type(resource, aggregate) do
-    attribute_type =
+    attribute =
       if aggregate.field do
         related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
-        Ash.Resource.Info.attribute(related, aggregate.field).type
+        Ash.Resource.Info.attribute(related, aggregate.field)
       end
 
-    {:ok, type} = Ash.Query.Aggregate.kind_to_type(aggregate.kind, attribute_type)
+    attribute_type =
+      if attribute do
+        attribute.type
+      end
+
+    attribute_constraints =
+      if attribute do
+        attribute.constraints
+      end
+
+    {:ok, type, _constraints} =
+      Ash.Query.Aggregate.kind_to_type(aggregate.kind, attribute_type, attribute_constraints)
 
     short_type(type)
   end
