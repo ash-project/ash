@@ -5,6 +5,29 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.0](https://github.com/ash-project/ash/compare/v2.16.1...v2.17.0) (2023-11-13)
+
+
+
+
+### Features:
+
+* Expand upsert_fields option (#761)
+
+### Bug Fixes:
+
+* properly thread constraints through aggregates
+
+* remove destroyed or unrelated data from the relationship (#767)
+
+* properly strip extra record requested to detect `more?` pages.
+
+* don't attempt to key a struct
+
+### Improvements:
+
+* honor `authorize?: false` option in generic actions
+
 ## [v2.16.1](https://github.com/ash-project/ash/compare/v2.16.0...v2.16.1) (2023-10-27)
 
 
