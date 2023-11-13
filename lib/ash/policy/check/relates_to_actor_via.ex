@@ -92,6 +92,7 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
   defp raise_if_nil(nil, rel_key, resource) do
     raise "No such relationship ':#{rel_key}' for #{resource}, required in `relates_to_actor` check"
   end
+
   defp raise_if_nil(_, _, _) do
     :ok
   end
