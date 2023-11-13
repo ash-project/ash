@@ -235,7 +235,8 @@ defmodule Ash.Query.Aggregate do
 
   defp validate_uniq(_, _), do: :ok
 
-  defp get_type(:custom, type, _, _attribute_constraints, _provided_constraints), do: {:ok, type}
+  defp get_type(:custom, type, _, _attribute_constraints, provided_constraints),
+    do: {:ok, type, provided_constraints || []}
 
   defp get_type(kind, _, attribute_type, attribute_constraints, provided_constraints) do
     kind_to_type(kind, attribute_type, attribute_constraints || provided_constraints)
