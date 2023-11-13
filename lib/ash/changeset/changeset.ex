@@ -768,25 +768,47 @@ defmodule Ash.Changeset do
 
   @spec set_on_upsert(t(), list(atom)) :: Keyword.t()
   def set_on_upsert(changeset, upsert_keys) do
-    keys = upsert_keys || Ash.Resource.Info.primary_key(changeset.resource)
+    case changeset.context[:private][:upsert_fields] do
+      fields when is_list(fields) ->
+        create_upsert_list(fields, changeset)
 
-    if changeset.context[:private][:upsert_fields] do
-      Keyword.new(changeset.context[:private][:upsert_fields], fn key ->
-        {key, Ash.Changeset.get_attribute(changeset, key)}
-      end)
-    else
-      explicitly_changing_attributes =
-        Enum.map(
-          Map.keys(changeset.attributes) -- Map.get(changeset, :defaults, []) -- keys,
-          fn key ->
-            {key, Ash.Changeset.get_attribute(changeset, key)}
-          end
-        )
+      {:replace, fields} ->
+        create_upsert_list(fields, changeset)
 
-      changeset
-      |> upsert_update_defaults()
-      |> Keyword.merge(explicitly_changing_attributes)
+      :replace_all ->
+        changeset.resource
+        |> Ash.Resource.Info.attributes()
+        |> Enum.map(fn %{name: name} -> name end)
+        |> create_upsert_list(changeset)
+
+      {:replace_all_except, except_fields} ->
+        changeset.resource
+        |> Ash.Resource.Info.attributes()
+        |> Enum.map(fn %{name: name} -> name end)
+        |> Enum.reject(fn name -> name in except_fields end)
+        |> create_upsert_list(changeset)
+
+      nil ->
+        keys = upsert_keys || Ash.Resource.Info.primary_key(changeset.resource)
+
+        explicitly_changing_attributes =
+          Enum.map(
+            Map.keys(changeset.attributes) -- Map.get(changeset, :defaults, []) -- keys,
+            fn key ->
+              {key, Ash.Changeset.get_attribute(changeset, key)}
+            end
+          )
+
+        changeset
+        |> upsert_update_defaults()
+        |> Keyword.merge(explicitly_changing_attributes)
     end
+  end
+
+  defp create_upsert_list(fields, changeset) do
+    Keyword.new(fields, fn key ->
+      {key, Ash.Changeset.get_attribute(changeset, key)}
+    end)
   end
 
   defp upsert_update_defaults(changeset) do

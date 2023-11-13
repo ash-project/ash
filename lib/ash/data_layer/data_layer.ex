@@ -166,7 +166,12 @@ defmodule Ash.DataLayer do
           return_records?: boolean,
           upsert?: boolean,
           upsert_keys: nil | list(atom),
-          upsert_fields: nil | list(atom),
+          upsert_fields:
+            nil
+            | list(atom)
+            | :replace_all
+            | {:replace, list(atom)}
+            | {:replace_all_except, list(atom)},
           tenant: String.t() | nil
         }
 

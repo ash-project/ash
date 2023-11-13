@@ -73,7 +73,7 @@ defmodule Ash.Test.Resource.UpsertTest do
       create :upsert do
         upsert? true
         upsert_identity :unique_name
-        upsert_fields([:name])
+        upsert_fields({:replace, [:name]})
       end
     end
 
@@ -188,6 +188,66 @@ defmodule Ash.Test.Resource.UpsertTest do
       assert product.other == "george"
 
       product = Product.upsert!(%{name: "fred", other: "malfoy"})
+      assert product.other == "george"
+    end
+
+    test "upsert with :replace_all" do
+      product = Product.upsert!(%{name: "fred", other: "george", other_2: "hagrid"})
+      assert product.name == "fred"
+      assert product.other == "george"
+
+      product =
+        Product
+        |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy", other_2: "harry"},
+          upsert_fields: :replace_all
+        )
+        |> ProductCatalog.create!()
+
+      assert product.other == "malfoy"
+    end
+
+    test "upsert with replace list" do
+      product = Product.upsert!(%{name: "fred", other: "george"})
+      assert product.name == "fred"
+      assert product.other == "george"
+
+      product =
+        Product
+        |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy"},
+          upsert_fields: [:name]
+        )
+        |> ProductCatalog.create!()
+
+      assert product.other == "george"
+    end
+
+    test "upsert with :replace" do
+      product = Product.upsert!(%{name: "fred", other: "george"})
+      assert product.name == "fred"
+      assert product.other == "george"
+
+      product =
+        Product
+        |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy"},
+          upsert_fields: {:replace, [:name]}
+        )
+        |> ProductCatalog.create!()
+
+      assert product.other == "george"
+    end
+
+    test "upsert with :replace_all_except" do
+      product = Product.upsert!(%{name: "fred", other: "george"})
+      assert product.name == "fred"
+      assert product.other == "george"
+
+      product =
+        Product
+        |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy"},
+          upsert_fields: {:replace_all_except, [:other]}
+        )
+        |> ProductCatalog.create!()
+
       assert product.other == "george"
     end
   end

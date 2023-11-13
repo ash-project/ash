@@ -192,7 +192,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
              )
   end
 
-  test "can upsert" do
+  test "can upsert with list" do
     assert %Ash.BulkResult{
              records: [
                %{title: "title1", title2: "changes", title3: "wont"},
@@ -227,6 +227,123 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                upsert?: true,
                upsert_identity: :unique_title,
                upsert_fields: [:title2],
+               sorted?: true
+             )
+  end
+
+  test "can upsert with :replace" do
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "title1", title2: "changes", title3: "wont"},
+               %{title: "title2", title2: "changes", title3: "wont"}
+             ]
+           } =
+             Api.bulk_create!(
+               [
+                 %{title: "title1", title2: "changes", title3: "wont"},
+                 %{title: "title2", title2: "changes", title3: "wont"}
+               ],
+               Post,
+               :create,
+               return_records?: true,
+               sorted?: true
+             )
+
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "title1", title2: "did_change", title3: "wont"},
+               %{title: "title2", title2: "did_change", title3: "wont"}
+             ]
+           } =
+             Api.bulk_create!(
+               [
+                 %{title: "title1", title2: "did_change", title3: "oh no"},
+                 %{title: "title2", title2: "did_change", title3: "what happened"}
+               ],
+               Post,
+               :create,
+               return_records?: true,
+               upsert?: true,
+               upsert_identity: :unique_title,
+               upsert_fields: {:replace, [:title2]},
+               sorted?: true
+             )
+  end
+
+  test "can upsert with :replace_all" do
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "title1", title2: "changes", title3: "changes"},
+               %{title: "title2", title2: "changes", title3: "changes"}
+             ]
+           } =
+             Api.bulk_create!(
+               [
+                 %{title: "title1", title2: "changes", title3: "changes"},
+                 %{title: "title2", title2: "changes", title3: "changes"}
+               ],
+               Post,
+               :create,
+               return_records?: true,
+               sorted?: true
+             )
+
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "title1", title2: "did_change", title3: "did_change"},
+               %{title: "title2", title2: "did_change", title3: "did_change"}
+             ]
+           } =
+             Api.bulk_create!(
+               [
+                 %{title: "title1", title2: "did_change", title3: "did_change"},
+                 %{title: "title2", title2: "did_change", title3: "did_change"}
+               ],
+               Post,
+               :create,
+               return_records?: true,
+               upsert?: true,
+               upsert_identity: :unique_title,
+               upsert_fields: :replace_all,
+               sorted?: true
+             )
+  end
+
+  test "can upsert with :replace_all_except" do
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "title1", title2: "changes", title3: "wont"},
+               %{title: "title2", title2: "changes", title3: "wont"}
+             ]
+           } =
+             Api.bulk_create!(
+               [
+                 %{title: "title1", title2: "changes", title3: "wont"},
+                 %{title: "title2", title2: "changes", title3: "wont"}
+               ],
+               Post,
+               :create,
+               return_records?: true,
+               sorted?: true
+             )
+
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "title1", title2: "did_change", title3: "wont"},
+               %{title: "title2", title2: "did_change", title3: "wont"}
+             ]
+           } =
+             Api.bulk_create!(
+               [
+                 %{title: "title1", title2: "did_change", title3: "oh no"},
+                 %{title: "title2", title2: "did_change", title3: "what happened"}
+               ],
+               Post,
+               :create,
+               return_records?: true,
+               upsert?: true,
+               upsert_identity: :unique_title,
+               upsert_fields: {:replace_all_except, [:title, :title3]},
                sorted?: true
              )
   end

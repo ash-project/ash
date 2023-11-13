@@ -4771,7 +4771,7 @@ end
       
   </td>
   <td style="text-align: left">
-    <code class="inline">list(atom)</code>
+    <code class="inline">:replace_all | {:replace, atom | list(atom)} | {:replace_all_except, atom | list(atom)} | atom | list(atom)</code>
   </td>
   <td style="text-align: left">
     

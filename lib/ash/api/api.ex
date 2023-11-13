@@ -365,7 +365,14 @@ defmodule Ash.Api do
                             "The identity to use when detecting conflicts for `upsert?`, e.g. `upsert_identity: :full_name`. By default, the primary key is used. Has no effect if `upsert?: true` is not provided"
                         ],
                         upsert_fields: [
-                          type: {:list, :atom},
+                          type:
+                            {:or,
+                             [
+                               {:literal, :replace_all},
+                               {:tuple, [{:literal, :replace}, {:wrap_list, :atom}]},
+                               {:tuple, [{:literal, :replace_all_except}, {:wrap_list, :atom}]},
+                               {:wrap_list, :atom}
+                             ]},
                           doc:
                             "The fields to upsert. If not set, the action's upsert_fields is used, and if that is not set, then any fields not being set to defaults are written."
                         ]
@@ -409,7 +416,15 @@ defmodule Ash.Api do
                                doc: "Context to set on each changeset"
                              ],
                              upsert_fields: [
-                               type: {:list, :atom},
+                               type:
+                                 {:or,
+                                  [
+                                    {:literal, :replace_all},
+                                    {:tuple, [{:literal, :replace}, {:wrap_list, :atom}]},
+                                    {:tuple,
+                                     [{:literal, :replace_all_except}, {:wrap_list, :atom}]},
+                                    {:wrap_list, :atom}
+                                  ]},
                                doc:
                                  "The fields to upsert. If not set, the action's `upsert_fields` is used. Unlike singular `create`, `bulk_create` with `upsert?` requires that `upsert_fields` be specified explicitly in one of these two locations."
                              ],
