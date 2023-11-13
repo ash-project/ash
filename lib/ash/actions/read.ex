@@ -2715,12 +2715,7 @@ defmodule Ash.Actions.Read do
           Ash.Query.ensure_selected(query, field)
       end)
 
-    limited =
-      if query.limit in [0, 1] do
-        query
-      else
-        Ash.Query.limit(query, limit(opts[:limit], query.limit, pagination) + 1)
-      end
+    limited = Ash.Query.limit(query, limit(opts[:limit], query.limit, pagination) + 1)
 
     if opts[:before] || opts[:after] do
       reversed =
@@ -2771,12 +2766,7 @@ defmodule Ash.Actions.Read do
   end
 
   defp limit_offset_pagination(query, pagination, opts) do
-    limited =
-      if query.limit in [0, 1] do
-        query
-      else
-        Ash.Query.limit(query, limit(opts[:limit], query.limit, pagination) + 1)
-      end
+    limited = Ash.Query.limit(query, limit(opts[:limit], query.limit, pagination) + 1)
 
     with_offset =
       if opts[:offset] do

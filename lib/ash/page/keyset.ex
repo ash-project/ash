@@ -11,7 +11,7 @@ defmodule Ash.Page.Keyset do
 
   def new(results, count, _sort, original_query, more?, opts) do
     %__MODULE__{
-      results: results,
+      results: Enum.take(results, (original_query.limit || 1) - 1),
       count: count,
       before: opts[:page][:before],
       after: opts[:page][:after],

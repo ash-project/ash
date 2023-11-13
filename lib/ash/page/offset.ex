@@ -11,7 +11,7 @@ defmodule Ash.Page.Offset do
 
   def new(results, count, original_query, more?, opts) do
     %__MODULE__{
-      results: results,
+      results: Enum.take(results, (original_query.limit || 1) - 1),
       limit: opts[:page][:limit],
       count: count,
       offset: opts[:page][:offset] || 0,
