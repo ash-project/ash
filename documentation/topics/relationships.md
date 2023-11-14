@@ -155,7 +155,7 @@ For example, consider two resources `MyApp.Tweet` and `MyApp.Hashtag` representi
 
 ```elixir
 # on MyApp.Tweet
-many_to_many :hashtags, MyApp.Tweet do
+many_to_many :hashtags, MyApp.Hashtag do
   through MyApp.TweetHashtag
   source_attribute_on_join_resource :tweet_id
   destination_attribute_on_join_resource :hashtag_id
