@@ -235,6 +235,8 @@ defmodule Ash.Test.CalculationTest do
       first :user_is_active, :user, :is_active do
         default(false)
       end
+
+      list :names, :user, :first_name
     end
 
     attributes do
@@ -254,6 +256,16 @@ defmodule Ash.Test.CalculationTest do
       end
 
       calculate :user_is_active_with_calc, :boolean, expr(user.is_active || false)
+
+      calculate :user_name,
+                :string,
+                expr(
+                  if is_nil(^actor(:id)) do
+                    "no actor"
+                  else
+                    at(names, 0)
+                  end
+                )
     end
 
     relationships do
@@ -399,10 +411,14 @@ defmodule Ash.Test.CalculationTest do
           end
         )
       )
+
+      calculate :role_user_name_from_agg, :string, expr(role.user_name)
     end
 
     aggregates do
       first(:best_friends_first_name, :best_friend, :first_name)
+
+      first(:role_user_name, :role, :user_name)
     end
 
     relationships do
@@ -499,9 +515,10 @@ defmodule Ash.Test.CalculationTest do
       |> Ash.Changeset.for_create(:create, %{name: "normie"})
       |> Api.create!()
 
-    Actor
-    |> Ash.Changeset.for_create(:create, %{user_id: user1.id, role_id: admin_role.id})
-    |> Api.create!()
+    actor1 =
+      Actor
+      |> Ash.Changeset.for_create(:create, %{user_id: user1.id, role_id: admin_role.id})
+      |> Api.create!()
 
     user2 =
       User
@@ -510,11 +527,19 @@ defmodule Ash.Test.CalculationTest do
       |> Ash.Changeset.manage_relationship(:friends, user1, type: :append_and_remove)
       |> Api.create!()
 
-    Actor
-    |> Ash.Changeset.for_create(:create, %{user_id: user2.id, role_id: normie_role.id})
-    |> Api.create!()
+    actor2 =
+      Actor
+      |> Ash.Changeset.for_create(:create, %{user_id: user2.id, role_id: normie_role.id})
+      |> Api.create!()
 
-    %{user1: user1, user2: user2}
+    %{
+      user1: user1,
+      user2: user2,
+      admin_role: admin_role,
+      normie_role: normie_role,
+      actor1: actor1,
+      actor2: actor2
+    }
   end
 
   test "calculations can refer to `to_one` relationships in filters" do
@@ -886,6 +911,42 @@ defmodule Ash.Test.CalculationTest do
              |> Ash.Query.load(:active)
              |> Api.read!(authorize?: true)
              |> Enum.map(& &1.active)
+  end
+
+  @tag :focus
+  test "aggregates using calculations pass actor to calculations", %{
+    user1: user,
+    actor1: actor,
+    admin_role: role
+  } do
+    user1 = user
+
+    role
+    |> Ash.Changeset.for_update(:update, %{user_id: user1.id}, actor: actor)
+    |> Ash.Changeset.manage_relationship(:user, user1, type: :append)
+    |> Api.update!(actor: actor)
+
+    roles = Role |> Ash.Query.load(:user_name) |> Api.read!(actor: actor)
+
+    zach_role =
+      Enum.find(roles, fn role ->
+        role.user_name == "zach"
+      end)
+
+    assert zach_role.user_name == "zach"
+
+    users =
+      User
+      |> Ash.Query.select([])
+      |> Ash.Query.load(:role_user_name)
+      |> Api.read!(actor: actor)
+
+    zach_user =
+      Enum.find(users, fn user ->
+        user.id == zach_role.user_id
+      end)
+
+    assert zach_user.role_user_name == "zach"
   end
 
   test "invalid calculation arguments show errors in the query" do
