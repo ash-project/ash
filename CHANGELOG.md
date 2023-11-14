@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.1](https://github.com/ash-project/ash/compare/v2.17.0...v2.17.1) (2023-11-14)
+
+
+
+
+### Bug Fixes:
+
+* properly return constraints in aggregate get_type
+
+* properly include relationship name message when relationship cannot be found (#770)
+
 ## [v2.17.0](https://github.com/ash-project/ash/compare/v2.16.1...v2.17.0) (2023-11-13)
 
 
