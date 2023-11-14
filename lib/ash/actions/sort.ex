@@ -79,10 +79,10 @@ defmodule Ash.Actions.Sort do
 
         cond do
           aggregate = Ash.Resource.Info.aggregate(resource, field) ->
-            aggregate_sort(aggregates, aggregate, order, resource, sorts, errors)
+            aggregate_sort(aggregate, order, resource, sorts, errors)
 
           Map.has_key?(aggregates, field) ->
-            aggregate_sort(aggregates, field, order, resource, sorts, errors)
+            aggregate_sort(Map.get(aggregates, field), order, resource, sorts, errors)
 
           calc = Ash.Resource.Info.calculation(resource, field) ->
             {module, opts} = calc.calculation
@@ -166,14 +166,9 @@ defmodule Ash.Actions.Sort do
     end)
   end
 
-  defp aggregate_sort(aggregates, field, order, resource, sorts, errors) do
+  defp aggregate_sort(field, order, resource, sorts, errors) do
     {field, type} =
       case field do
-        field when is_atom(field) ->
-          aggregate = Map.get(aggregates, field)
-
-          {field, {:ok, aggregate.type}}
-
         %{name: name, kind: :custom, type: type} ->
           {name, type}
 
