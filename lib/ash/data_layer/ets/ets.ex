@@ -606,11 +606,14 @@ defmodule Ash.DataLayer.Ets do
             name: name,
             load: load,
             uniq?: uniq?,
+            context: context,
             default_value: default_value
           },
           {:ok, record} ->
             with {:ok, loaded_record} <-
-                   api.load(record, relationship_path_to_load(relationship_path, field)),
+                   api.load(record, relationship_path_to_load(relationship_path, field),
+                     actor: Map.get(context, :actor)
+                   ),
                  related <-
                    Ash.Filter.Runtime.get_related(loaded_record, relationship_path),
                  {:ok, filtered} <-
