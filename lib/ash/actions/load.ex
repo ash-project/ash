@@ -322,30 +322,43 @@ defmodule Ash.Actions.Load do
         Map.put(record, name, value |> List.wrap() |> Enum.at(0) |> elem(1))
       else
         source_value = Map.get(record, relationship.source_attribute)
+        values = List.wrap(value)
 
         case relationship_type_with_non_simple_equality(relationship) do
           {:ok, type} ->
-            case value do
-              %{__lateral_join_source__: destination_value} when not is_nil(destination_value) ->
-                Ash.Type.equal?(
-                  type,
-                  source_value,
-                  destination_value
-                )
+            related =
+              Enum.find(values, fn value ->
+                case value do
+                  %{__lateral_join_source__: destination_value}
+                  when not is_nil(destination_value) ->
+                    Ash.Type.equal?(
+                      type,
+                      source_value,
+                      destination_value
+                    )
 
-              value ->
-                Map.put(record, name, value |> List.wrap() |> Enum.at(0))
-            end
+                  value ->
+                    value
+                end
+              end)
+
+            Map.put(record, name, related)
 
           :error ->
-            case value do
-              %{__lateral_join_source__: destination_value} when not is_nil(destination_value) ->
-                source_value ==
-                  destination_value
+            related =
+              Enum.find(values, fn value ->
+                case value do
+                  %{__lateral_join_source__: destination_value}
+                  when not is_nil(destination_value) ->
+                    source_value ==
+                      destination_value
 
-              value ->
-                Map.put(record, name, value |> List.wrap() |> Enum.at(0))
-            end
+                  value ->
+                    value
+                end
+              end)
+
+            Map.put(record, name, related)
         end
       end
     end)
