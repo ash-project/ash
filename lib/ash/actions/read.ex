@@ -792,6 +792,12 @@ defmodule Ash.Actions.Read do
           | attribute: add_calc_context(calc, actor, authorize?, tenant, tracer)
         }
 
+      %Ash.Query.Ref{attribute: %Ash.Query.Aggregate{} = agg} = ref ->
+        %{
+          ref
+          | attribute: add_calc_context(agg, actor, authorize?, tenant, tracer)
+        }
+
       other ->
         other
     end)
@@ -2316,6 +2322,10 @@ defmodule Ash.Actions.Read do
 
                 {key, load}
             end
+          end),
+        aggregates:
+          Map.new(query.aggregates, fn {key, agg} ->
+            {key, add_calc_context(agg, actor, authorize?, tenant, tracer)}
           end),
         calculations:
           Map.new(query.calculations, fn {key, calc} ->
