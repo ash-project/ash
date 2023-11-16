@@ -768,7 +768,8 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp add_calc_context_to_filter(filter, actor, authorize?, tenant, tracer) do
+  @doc false
+  def add_calc_context_to_filter(filter, actor, authorize?, tenant, tracer) do
     Ash.Filter.map(filter, fn
       %Ash.Query.Parent{} = parent ->
         %{

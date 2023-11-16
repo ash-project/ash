@@ -412,7 +412,7 @@ defmodule Ash.Test.CalculationTest do
         )
       )
 
-      calculate :role_user_name_from_agg, :string, expr(role.user_name)
+      calculate :role_user_name_from_agg, :string, expr(role_user_name)
     end
 
     aggregates do
@@ -938,7 +938,7 @@ defmodule Ash.Test.CalculationTest do
     users =
       User
       |> Ash.Query.select([])
-      |> Ash.Query.load(:role_user_name)
+      |> Ash.Query.load([:role_user_name, :role_user_name_from_agg])
       |> Api.read!(actor: actor)
 
     zach_user =
@@ -947,6 +947,7 @@ defmodule Ash.Test.CalculationTest do
       end)
 
     assert zach_user.role_user_name == "zach"
+    assert zach_user.role_user_name_from_agg == "zach"
   end
 
   test "invalid calculation arguments show errors in the query" do
