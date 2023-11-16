@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.3](https://github.com/ash-project/ash/compare/v2.17.2...v2.17.3) (2023-11-16)
+
+
+
+
+### Bug Fixes:
+
+* use `sort` and `filter` to `synonymous_relationship` checks
+
 ## [v2.17.2](https://github.com/ash-project/ash/compare/v2.17.1...v2.17.2) (2023-11-16)
 
 
