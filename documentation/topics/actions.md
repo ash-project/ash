@@ -104,6 +104,30 @@ That is the best of both worlds! These same lessons transfer to changeset based 
 
 ## Action Lifecycle
 
+```elixir
+defmodule AshChangesetLifeCycleExample do
+  def change(changeset, _, _) do
+    changeset
+    # execute code both before and after the transaction
+    |> Changeset.around_transaction(fn changeset, callback ->
+      callback.(changeset)
+    end)
+    # execute code before the transaction is started. Useful for external api calls
+    |> Changeset.before_transaction(fn changeset -> changeset end)
+    # execute code in the transaction, but before the data layer is called
+    |> Changeset.before_action(fn changeset -> changeset end)
+    # execute code in the transaction, before and after the data layer is called
+    |> Changeset.around_action(fn changeset, callback ->
+      callback.(changeset)
+    end)
+    # execute code in the transaction, after the data layer is called, only if the action is successful.
+    |> Changeset.after_action(fn changeset, result -> {:ok, result} end)
+    # execute code after the transaction, both in success and error cases
+    |> Changeset.after_transaction(fn changeset, success_or_error_result -> success_or_error_result end
+  end
+end
+```
+
 Ash uses an "engine" internally that takes lists of "requests" that have dependencies on each-other, and resolves them in some acceptable order. This engine allows for things like parallelizing steps and performing complex workflows without having to handwrite all of the control flow. It isn't important that you know how the engine works, but knowing the basic idea of "list of requests get sent to the engine" should help contextualize the following flow charts.
 
 ### Read Actions
