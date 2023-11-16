@@ -611,8 +611,11 @@ defmodule Ash.DataLayer.Ets do
           },
           {:ok, record} ->
             with {:ok, loaded_record} <-
-                   api.load(record, relationship_path_to_load(relationship_path, field),
-                     actor: Map.get(context, :actor)
+                   api.load(
+                     record,
+                     relationship_path_to_load(relationship_path, field),
+                     actor: Map.get(context, :actor),
+                     authorize?: Map.get(context, :authorize?, true)
                    ),
                  related <-
                    Ash.Filter.Runtime.get_related(loaded_record, relationship_path),

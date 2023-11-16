@@ -2325,7 +2325,7 @@ defmodule Ash.Actions.Read do
           end),
         aggregates:
           Map.new(query.aggregates, fn {key, agg} ->
-            {key, add_calc_context(agg, actor, authorize?, tenant, tracer)}
+            {key, add_calc_context(agg, actor, agg.authorize? && authorize?, tenant, tracer)}
           end),
         calculations:
           Map.new(query.calculations, fn {key, calc} ->
