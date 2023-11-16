@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.2](https://github.com/ash-project/ash/compare/v2.17.1...v2.17.2) (2023-11-16)
+
+
+
+
+### Bug Fixes:
+
+* properly set actor context on calc expressions in ets data layer
+
+* properly pass authorize? option when loading aggregates
+
+* properly associate lateral join records with `no_attributes? true`
+
+* set aggregate context as well as calculation context in filters
+
+* set actor when computing aggregates that reference calculations
+
+* dialyzer issues on sort
+
 ## [v2.17.1](https://github.com/ash-project/ash/compare/v2.17.0...v2.17.1) (2023-11-14)
 
 
