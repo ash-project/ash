@@ -390,7 +390,9 @@ defmodule Ash.SatSolver do
           :source_attribute_on_join_resource,
           :destination_attribute_on_join_resource,
           :destination_attribute,
-          :destination
+          :destination,
+          :sort,
+          :filter
         ]
 
         Map.take(relationship, comparison_keys) ==
