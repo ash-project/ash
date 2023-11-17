@@ -17,6 +17,9 @@ on:
       postgres:
         type: boolean
         default: false
+      postgres-version:
+        type: string
+        default: "13"
       sqlite:
         type: boolean
         default: false
@@ -130,7 +133,7 @@ jobs:
     needs: build-test
     services:
       postgres:
-        image: postgres
+        image: postgres:${{inputs.postgres-version}}
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
         options: >-
