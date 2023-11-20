@@ -901,7 +901,7 @@ defmodule Ash.DataLayer.Ets do
       |> Enum.reduce_while({:ok, []}, fn changeset, {:ok, results} ->
         changeset =
           Ash.Changeset.set_context(changeset, %{
-            private: %{upsert_fields: options[:upsert_fields] || {:replace, []}}
+            private: %{upsert_fields: options[:upsert_fields] || []}
           })
 
         case upsert(resource, changeset, options.upsert_keys) do

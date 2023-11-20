@@ -260,7 +260,11 @@ defmodule Ash.Actions.Create.Bulk do
       private: %{
         upsert?: opts[:upsert?] || action.upsert? || false,
         upsert_identity: opts[:upsert_identity] || action.upsert_identity,
-        upsert_fields: opts[:upsert_fields] || action.upsert_fields
+        upsert_fields:
+          Ash.Changeset.expand_upsert_fields(
+            opts[:upsert_fields] || action.upsert_fields,
+            resource
+          )
       }
     })
     |> Ash.Actions.Helpers.add_context(opts)
@@ -885,7 +889,11 @@ defmodule Ash.Actions.Create.Bulk do
                     api: api,
                     upsert?: opts[:upsert?] || action.upsert?,
                     upsert_keys: upsert_keys,
-                    upsert_fields: opts[:upsert_fields] || action.upsert_fields,
+                    upsert_fields:
+                      Ash.Changeset.expand_upsert_fields(
+                        opts[:upsert_fields] || action.upsert_fields,
+                        resource
+                      ),
                     return_records?:
                       opts[:return_records?] || must_return_records? ||
                         must_return_records_for_changes?,
@@ -931,7 +939,11 @@ defmodule Ash.Actions.Create.Bulk do
                           must_return_records_for_changes?,
                       upsert?: opts[:upsert?] || action.upsert? || false,
                       upsert_keys: upsert_keys,
-                      upsert_fields: opts[:upsert_fields] || action.upsert_fields,
+                      upsert_fields:
+                        Ash.Changeset.expand_upsert_fields(
+                          opts[:upsert_fields] || action.upsert_fields,
+                          resource
+                        ),
                       tenant: opts[:tenant]
                     }
                   )
