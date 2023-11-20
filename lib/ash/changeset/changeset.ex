@@ -605,7 +605,11 @@ defmodule Ash.Changeset do
       private: %{
         upsert?: opts[:upsert?] || (action && action.upsert?) || false,
         upsert_identity: opts[:upsert_identity] || (action && action.upsert_identity),
-        upsert_fields: opts[:upsert_fields] || (action && action.upsert_fields)
+        upsert_fields:
+          expand_upsert_fields(
+            opts[:upsert_fields] || (action && action.upsert_fields),
+            changeset.resource
+          )
       }
     })
     |> do_for_action(action, params, opts)
@@ -766,49 +770,50 @@ defmodule Ash.Changeset do
     set_context(changeset, %{private: %{action_result: result}})
   end
 
-  @spec set_on_upsert(t(), list(atom)) :: Keyword.t()
-  def set_on_upsert(changeset, upsert_keys) do
-    case changeset.context[:private][:upsert_fields] do
-      fields when is_list(fields) ->
-        create_upsert_list(fields, changeset)
-
-      {:replace, fields} ->
-        create_upsert_list(fields, changeset)
-
-      :replace_all ->
-        changeset.resource
-        |> Ash.Resource.Info.attributes()
-        |> Enum.map(fn %{name: name} -> name end)
-        |> create_upsert_list(changeset)
-
-      {:replace_all_except, except_fields} ->
-        changeset.resource
-        |> Ash.Resource.Info.attributes()
-        |> Enum.map(fn %{name: name} -> name end)
-        |> Enum.reject(fn name -> name in except_fields end)
-        |> create_upsert_list(changeset)
-
-      nil ->
-        keys = upsert_keys || Ash.Resource.Info.primary_key(changeset.resource)
-
-        explicitly_changing_attributes =
-          Enum.map(
-            Map.keys(changeset.attributes) -- Map.get(changeset, :defaults, []) -- keys,
-            fn key ->
-              {key, Ash.Changeset.get_attribute(changeset, key)}
-            end
-          )
-
-        changeset
-        |> upsert_update_defaults()
-        |> Keyword.merge(explicitly_changing_attributes)
-    end
+  @doc """
+  Turns the special case {:replace, fields}, :replace_all and {:replace_all_except, fields} upsert_fields
+  options into a list of fields
+  """
+  def expand_upsert_fields({:replace, fields}, _) do
+    fields
   end
 
-  defp create_upsert_list(fields, changeset) do
-    Keyword.new(fields, fn key ->
-      {key, Ash.Changeset.get_attribute(changeset, key)}
-    end)
+  def expand_upsert_fields(:replace_all, resource) do
+    resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.map(fn %{name: name} -> name end)
+  end
+
+  def expand_upsert_fields({:replace_all_except, except_fields}, resource) do
+    resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.map(fn %{name: name} -> name end)
+    |> Enum.reject(fn name -> name in except_fields end)
+  end
+
+  def expand_upsert_fields(fields, _), do: fields
+
+  @spec set_on_upsert(t(), list(atom)) :: Keyword.t()
+  def set_on_upsert(changeset, upsert_keys) do
+    keys = upsert_keys || Ash.Resource.Info.primary_key(changeset.resource)
+
+    if changeset.context[:private][:upsert_fields] do
+      Keyword.new(changeset.context[:private][:upsert_fields], fn key ->
+        {key, Ash.Changeset.get_attribute(changeset, key)}
+      end)
+    else
+      explicitly_changing_attributes =
+        Enum.map(
+          Map.keys(changeset.attributes) -- Map.get(changeset, :defaults, []) -- keys,
+          fn key ->
+            {key, Ash.Changeset.get_attribute(changeset, key)}
+          end
+        )
+
+      changeset
+      |> upsert_update_defaults()
+      |> Keyword.merge(explicitly_changing_attributes)
+    end
   end
 
   defp upsert_update_defaults(changeset) do
