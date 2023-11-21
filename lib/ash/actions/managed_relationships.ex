@@ -852,8 +852,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   })
                   |> Ash.Query.for_read(read, input, actor: actor, authorize?: opts[:authorize?])
                   |> Ash.Query.filter(^keys)
-                  |> Ash.Query.do_filter(relationship.filter, parent_stack: relationship.source)
-                  |> Ash.Query.sort(relationship.sort, prepend?: true)
+                  |> sort_and_filter(relationship)
                   |> Ash.Query.set_context(relationship.context)
                   |> Ash.Query.set_tenant(changeset.tenant)
                   |> Ash.Query.limit(1)
@@ -908,6 +907,16 @@ defmodule Ash.Actions.ManagedRelationships do
           {:ok, found} ->
             {:ok, [found | current_value], [], [found]}
         end
+    end
+  end
+
+  defp sort_and_filter(query, relationship) do
+    # We cannot use relationship filters that reference the `parent`
+    # because the parent is not yet related.
+    if Ash.Actions.Load.do_has_parent_expr?(relationship.filter) do
+      query
+    else
+      Ash.Query.do_filter(query, relationship.filter, parent_stack: relationship.source)
     end
   end
 

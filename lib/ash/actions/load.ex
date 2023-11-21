@@ -1577,7 +1577,8 @@ defmodule Ash.Actions.Load do
     end
   end
 
-  defp has_parent_expr?(%{destination: destination, filter: filter, sort: sort, context: context}) do
+  @doc false
+  def has_parent_expr?(%{destination: destination, filter: filter, sort: sort, context: context}) do
     {:ok, sort} = Ash.Actions.Sort.process(destination, sort, %{}, context)
     do_has_parent_expr?(filter) || has_parent_expr_in_sort?(sort)
   end
@@ -1602,7 +1603,8 @@ defmodule Ash.Actions.Load do
     end)
   end
 
-  defp do_has_parent_expr?(filter, depth \\ 0) do
+  @doc false
+  def do_has_parent_expr?(filter, depth \\ 0) do
     not is_nil(
       Ash.Filter.find(filter, fn
         %Ash.Query.Call{name: :parent, args: [expr]} ->
