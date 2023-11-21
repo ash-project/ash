@@ -58,6 +58,22 @@ defmodule Ash.Test.Type.UnionTest do
                       ]
                     ]
       end
+
+      attribute :thing, :union,
+        constraints: [
+          types: [
+            foo: [
+              type: Foo,
+              tag: :type,
+              tag_value: "foo"
+            ],
+            bar: [
+              type: Bar,
+              tag: :type,
+              tag_value: "bar"
+            ]
+          ]
+        ]
     end
   end
 
@@ -232,6 +248,16 @@ defmodule Ash.Test.Type.UnionTest do
         ] do
       assert error[key] == val
     end
+  end
+
+  test "it handles changing union attribute on a resource" do
+    Example
+    |> Ash.Changeset.for_create(:create, %{thing: %Foo{type: "foo", foo: "foo"}})
+    |> Ash.Test.AnyApi.create!()
+    |> Ash.Changeset.new()
+    |> Ash.Changeset.change_attribute(:thing, %Bar{type: "bar", bar: "bar"})
+    |> Ash.Changeset.for_update(:update)
+    |> Ash.Test.AnyApi.update!()
   end
 
   test "it handles paths on a resource" do

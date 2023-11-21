@@ -530,7 +530,7 @@ defmodule Ash.Type.Union do
     |> Map.new()
     |> case do
       %{tag: field, tag_value: tag} ->
-        if new_value[field] == tag || new_value[to_string(field)] == tag,
+        if get_tag(new_value, field) == tag,
           do: do_prepare_change(type_name, old_value, new_value, constraints),
           else: {:ok, new_value}
 
