@@ -914,47 +914,23 @@ defmodule Ash.Filter do
 
   def used_calculations(
         filter,
-        _resource,
+        resource,
         relationship_path \\ [],
         _calculations \\ %{},
-        _aggregates \\ %{},
-        group_by_path? \\ false
+        _aggregates \\ %{}
       ) do
     filter
     |> list_refs()
     |> Enum.filter(fn
       %Ref{attribute: %Calculation{}, relationship_path: ref_relationship_path} ->
-        relationship_path == :all ||
-          (relationship_path in [nil, []] and ref_relationship_path in [nil, []]) ||
+        (relationship_path in [nil, []] and ref_relationship_path in [nil, []]) ||
           relationship_path == ref_relationship_path
 
       _ ->
         false
     end)
-    |> then(fn refs ->
-      refs
-      |> Enum.group_by(& &1.relationship_path)
-      |> Map.new(fn {key, calcs} ->
-        {key,
-         Enum.flat_map(calcs, fn calc_ref ->
-           [
-             calc_ref.attribute
-             | calculations_used_by_calculations(
-                 [calc_ref.attribute],
-                 calc_ref.resource,
-                 calc_ref.relationship_path
-               )
-           ]
-         end)}
-      end)
-    end)
-    |> then(fn grouped ->
-      if group_by_path? do
-        grouped
-      else
-        Enum.flat_map(grouped, &elem(&1, 1))
-      end
-    end)
+    |> Enum.map(& &1.attribute)
+    |> calculations_used_by_calculations(resource, relationship_path)
   end
 
   defp calculations_used_by_calculations(
