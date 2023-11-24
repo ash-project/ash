@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.4](https://github.com/ash-project/ash/compare/v2.17.3...v2.17.4) (2023-11-24)
+
+
+
+
+### Bug Fixes:
+
+* properly resolve nested calculation dependencies
+
+* don't apply sort on manage relationship lookup
+
+* don't apply filter on manage relationship lookup if it has a parent expr
+
+* change_attribute failing on a union attribute (#778)
+
+* convert upsert fields before passing to data layer (#777)
+
 ## [v2.17.3](https://github.com/ash-project/ash/compare/v2.17.2...v2.17.3) (2023-11-16)
 
 
