@@ -220,6 +220,34 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule RoleHasUser do
+    @moduledoc "never do this, this is done for testing only"
+
+    use Ash.Calculation
+
+    def load(_, _, _) do
+      [:user]
+    end
+
+    def calculate(list, _opts, _context) do
+      Enum.map(list, &(not is_nil(&1.user)))
+    end
+  end
+
+  defmodule RolesHaveUser do
+    use Ash.Calculation
+
+    def load(_, _, _) do
+      [roles: [:has_user]]
+    end
+
+    def calculate(list, _, _) do
+      Enum.map(list, fn user ->
+        Enum.all?(user.roles, & &1.has_user)
+      end)
+    end
+  end
+
   defmodule Role do
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
@@ -254,6 +282,8 @@ defmodule Ash.Test.CalculationTest do
         calculation(expr(is_active && user_is_active))
         load([:user_is_active])
       end
+
+      calculate :has_user, :boolean, RoleHasUser
 
       calculate :user_is_active_with_calc, :boolean, expr(user.is_active || false)
 
@@ -413,12 +443,13 @@ defmodule Ash.Test.CalculationTest do
       )
 
       calculate :role_user_name_from_agg, :string, expr(role_user_name)
+      calculate :roles_have_user, :boolean, RolesHaveUser
     end
 
     aggregates do
       first(:best_friends_first_name, :best_friend, :first_name)
 
-      first(:role_user_name, :role, :user_name)
+      first(:role_user_name, :roles, :user_name)
     end
 
     relationships do
@@ -428,7 +459,7 @@ defmodule Ash.Test.CalculationTest do
         destination_attribute(:best_friend_id)
       end
 
-      has_many(:role, Ash.Test.CalculationTest.Role)
+      has_many :roles, Ash.Test.CalculationTest.Role
 
       many_to_many :friends, __MODULE__ do
         through(FriendLink)
@@ -561,6 +592,40 @@ defmodule Ash.Test.CalculationTest do
 
   test "loads dependencies", %{user1: user} do
     assert %{slug: "zach daniel123"} = Api.load!(user, [:slug])
+  end
+
+  test "calculations can depend on relationships directly" do
+    Role
+    |> Ash.Query.load(:has_user)
+    |> Api.read!()
+  end
+
+  test "calculations that depend on relationships directly can be loaded from elsewhere", %{
+    user1: user1,
+    admin_role: role
+  } do
+    role
+    |> Ash.Changeset.for_update(:update, %{user_id: user1.id})
+    |> Ash.Changeset.manage_relationship(:user, user1, type: :append)
+    |> Api.update!()
+
+    User
+    |> Ash.Query.load(roles: :has_user)
+    |> Api.read!()
+  end
+
+  test "calculations can depend on calculations that depend on relationships directly", %{
+    user1: user1,
+    admin_role: role
+  } do
+    role
+    |> Ash.Changeset.for_update(:update, %{user_id: user1.id})
+    |> Ash.Changeset.manage_relationship(:user, user1, type: :append)
+    |> Api.update!()
+
+    User
+    |> Ash.Query.load(:roles_have_user)
+    |> Api.read!()
   end
 
   test "calculations can access the actor", %{user1: user1, user2: user2} do

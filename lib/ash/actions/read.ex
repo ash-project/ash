@@ -1743,7 +1743,6 @@ defmodule Ash.Actions.Read do
             {name, dep_query} = List.last(dep_path)
 
             path ++
-              :lists.droplast(dep_path) ++
               [:calc_dep] ++
               [
                 %{
@@ -1914,7 +1913,8 @@ defmodule Ash.Actions.Read do
             calc_deps =
               dep.calculation
               |> calc_dependencies(query, query.api, actor, authorize?, query.tenant, tracer,
-                recurse?: false
+                recurse?: false,
+                path: dep.path
               )
               |> Enum.reject(&(&1.type in [:attribute, :aggregate]))
 
@@ -1949,7 +1949,15 @@ defmodule Ash.Actions.Read do
                           results
                       end
 
-                    temp_results = calc_temp_results(results, calc_deps, data, path, query)
+                    temp_results =
+                      calc_temp_results(
+                        results,
+                        calc_deps,
+                        data,
+                        path,
+                        query,
+                        Enum.map(dep.path, &elem(&1, 0))
+                      )
 
                     primary_keys = Enum.map(temp_results, &Map.take(&1, primary_key))
 
@@ -2033,7 +2041,16 @@ defmodule Ash.Actions.Read do
 
   defp calc_dependencies(calc, query, api, actor, authorize?, tenant, tracer, opts \\ []) do
     calc.required_loads
-    |> expand_load_paths(query, api, actor, authorize?, tenant, tracer, opts[:recurse?] || false)
+    |> expand_load_paths(
+      query,
+      api,
+      actor,
+      authorize?,
+      tenant,
+      tracer,
+      opts[:recurse?] || false,
+      opts[:path] || []
+    )
     |> Enum.uniq()
   end
 
@@ -2131,7 +2148,7 @@ defmodule Ash.Actions.Read do
          tenant,
          tracer,
          stop?,
-         path \\ []
+         path
        ) do
     required_loads
     |> List.wrap()
@@ -3112,11 +3129,19 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp calc_temp_results(results, dependencies, data, path, query) do
+  defp calc_temp_results(results, dependencies, data, path, query, at_path \\ []) do
+    at_path_count = Enum.count(at_path)
+
     data
     |> get_in(path ++ [:calc_dep])
     |> Kernel.||(%{})
     |> Map.take(dependencies)
+    |> Enum.filter(fn {dep, _config} ->
+      List.starts_with?(dep.path, at_path)
+    end)
+    |> Enum.map(fn {dep, config} ->
+      {%{dep | path: Enum.drop(dep.path, at_path_count)}, config}
+    end)
     |> Enum.group_by(fn {dep, _config} ->
       case dep do
         %{type: :relationship, path: path, relationship: relationship, query: query} ->
