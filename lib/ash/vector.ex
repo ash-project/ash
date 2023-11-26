@@ -11,7 +11,7 @@ defmodule Ash.Vector do
   Creates a new vector from a list or tensor
   """
   def new(binary) when is_binary(binary) do
-    from_binary(binary)
+    new(:erlang.binary_to_list(binary))
   end
 
   def new(%__MODULE__{} = vector), do: {:ok, vector}
