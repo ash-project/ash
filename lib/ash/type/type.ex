@@ -174,8 +174,9 @@ defmodule Ash.Type do
   @callback handle_change(old_term :: term, new_term :: term, constraints) ::
               {:ok, term} | error()
   @callback composite?(constraints) :: boolean
-  @callback composite_types(constraints) :: list({name, type, constraints})
-            when name: atom, type: t
+  @callback composite_types(constraints) ::
+              list({name, type, constraints} | {name, storage_key, type, constraints})
+            when name: atom, type: t, storage_key: atom
   @callback handle_change_array(old_term :: list(term), new_term :: list(term), constraints) ::
               {:ok, term} | error()
   @callback prepare_change(old_term :: term, new_uncasted_term :: term, constraints) ::
