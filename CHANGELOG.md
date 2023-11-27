@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.5](https://github.com/ash-project/ash/compare/v2.17.4...v2.17.5) (2023-11-27)
+
+
+
+
+### Bug Fixes:
+
+* properly create new vectors from strings
+
+### Improvements:
+
+* add `composite?/1` and `composite_types/1` to `Ash.Type`
+
 ## [v2.17.4](https://github.com/ash-project/ash/compare/v2.17.3...v2.17.4) (2023-11-24)
 
 
