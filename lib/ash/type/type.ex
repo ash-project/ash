@@ -285,6 +285,24 @@ defmodule Ash.Type do
     value
   end
 
+  @spec composite?(
+          t(),
+          constraints
+        ) :: Enumerable.t()
+  def composite?(type, constraints) do
+    type = get_type(type)
+    type.composite?(constraints)
+  end
+
+  @spec composite_types(
+          t(),
+          constraints
+        ) :: Enumerable.t()
+  def composite_types(type, constraints) do
+    type = get_type(type)
+    type.composite_types(constraints)
+  end
+
   @spec generator(
           module | {:array, module},
           constraints
