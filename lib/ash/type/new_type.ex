@@ -158,6 +158,16 @@ defmodule Ash.Type.NewType do
         end
       end
 
+      @impl Ash.Type
+      def composite?(constraints) do
+        unquote(subtype_of).composite?(constraints)
+      end
+
+      @impl Ash.Type
+      def composite_types(constraints) do
+        unquote(subtype_of).composite_types(constraints)
+      end
+
       if function_exported?(subtype_of, :dump_to_embedded_array, 2) do
         @impl Ash.Type
         def dump_to_embedded_array(value, constraints) do
