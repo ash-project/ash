@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.6](https://github.com/ash-project/ash/compare/v2.17.5...v2.17.6) (2023-11-27)
+
+
+
+
+### Bug Fixes:
+
+* ensure NewType honors new composite callbacks
+
+### Improvements:
+
+* support key aliases for composite types
+
 ## [v2.17.5](https://github.com/ash-project/ash/compare/v2.17.4...v2.17.5) (2023-11-27)
 
 
