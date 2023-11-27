@@ -1136,6 +1136,8 @@ defmodule Ash.Type do
                      apply_constraints: 2,
                      cast_stored_array: 2,
                      handle_change: 3,
+                     composite?: 1,
+                     composite_types: 1,
                      prepare_change: 3,
                      cast_in_query?: 1
     end

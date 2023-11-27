@@ -306,9 +306,7 @@ defmodule Ash.Type.NewType do
 
       defoverridable storage_type: 1,
                      cast_input: 2,
-                     type_constraints: 2,
-                     composite?: 1,
-                     composite_types: 1
+                     type_constraints: 2
     end
   end
 end
