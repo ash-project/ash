@@ -173,6 +173,9 @@ defmodule Ash.Type do
   @callback dump_to_embedded_array(list(term), constraints) :: {:ok, term} | error()
   @callback handle_change(old_term :: term, new_term :: term, constraints) ::
               {:ok, term} | error()
+  @callback composite?(constraints) :: boolean
+  @callback composite_types(constraints) :: list({name, type, constraints})
+            when name: atom, type: t
   @callback handle_change_array(old_term :: list(term), new_term :: list(term), constraints) ::
               {:ok, term} | error()
   @callback prepare_change(old_term :: term, new_uncasted_term :: term, constraints) ::
@@ -915,6 +918,12 @@ defmodule Ash.Type do
               :error
           end
         end
+
+        @impl true
+        def composite?(_constraints), do: false
+
+        @impl true
+        def composite_types(_constraints), do: []
 
         @impl true
         def dump(term, _dumper, params) do
