@@ -920,12 +920,6 @@ defmodule Ash.Type do
         end
 
         @impl true
-        def composite?(_constraints), do: false
-
-        @impl true
-        def composite_types(_constraints), do: []
-
-        @impl true
         def dump(term, _dumper, params) do
           parent = @parent
 
@@ -965,6 +959,12 @@ defmodule Ash.Type do
 
       @impl true
       def cast_in_query?(_), do: true
+
+      @impl true
+      def composite?(_constraints), do: false
+
+      @impl true
+      def composite_types(_constraints), do: []
 
       @impl true
       def handle_change(_old_value, new_value, _constraints), do: {:ok, new_value}
