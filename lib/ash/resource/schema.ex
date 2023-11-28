@@ -29,9 +29,8 @@ defmodule Ash.Schema do
 
             field(
               attribute.name,
-              Ash.Type.ecto_type(attribute.type),
-              Keyword.merge(
-                constraint_opts,
+              Ash.Type.ecto_type(Ash.Schema.not_a_resource!(attribute.type)),
+              Keyword.merge(constraint_opts,
                 primary_key: attribute.primary_key?,
                 read_after_writes: read_after_writes?,
                 redact: attribute.sensitive?,
@@ -77,7 +76,11 @@ defmodule Ash.Schema do
                 Aggregate.kind_to_type(aggregate.kind, :string, [])
               end
 
-            field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)
+            field(
+              aggregate.name,
+              Ash.Type.ecto_type(Ash.Schema.not_a_resource!(type)),
+              virtual: true
+            )
 
             Module.put_attribute(
               __MODULE__,
@@ -90,7 +93,11 @@ defmodule Ash.Schema do
               calculation.name not in Ash.Resource.reserved_names() do
             {mod, _} = calculation.calculation
 
-            field(calculation.name, Ash.Type.ecto_type(calculation.type), virtual: true)
+            field(
+              calculation.name,
+              Ash.Type.ecto_type(Ash.Schema.not_a_resource!(calculation.type)),
+              virtual: true
+            )
 
             Module.put_attribute(
               __MODULE__,
@@ -137,9 +144,8 @@ defmodule Ash.Schema do
 
             field(
               attribute.name,
-              Ash.Type.ecto_type(attribute.type),
-              Keyword.merge(
-                constraint_opts,
+              Ash.Type.ecto_type(Ash.Schema.not_a_resource!(attribute.type)),
+              Keyword.merge(constraint_opts,
                 primary_key: attribute.primary_key?,
                 read_after_writes: read_after_writes?,
                 redact: attribute.sensitive?,
@@ -222,7 +228,11 @@ defmodule Ash.Schema do
                 Aggregate.kind_to_type(aggregate.kind, :string, [])
               end
 
-            field(aggregate.name, Ash.Type.ecto_type(type), virtual: true)
+            field(
+              aggregate.name,
+              Ash.Type.ecto_type(Ash.Schema.not_a_resource!(type)),
+              virtual: true
+            )
 
             Module.put_attribute(
               __MODULE__,
@@ -235,7 +245,11 @@ defmodule Ash.Schema do
               calculation.name not in Ash.Resource.reserved_names() do
             {mod, _} = calculation.calculation
 
-            field(calculation.name, Ash.Type.ecto_type(calculation.type), virtual: true)
+            field(
+              calculation.name,
+              Ash.Type.ecto_type(Ash.Schema.not_a_resource!(calculation.type)),
+              virtual: true
+            )
 
             Module.put_attribute(
               __MODULE__,
@@ -262,5 +276,45 @@ defmodule Ash.Schema do
         end
       end
     end
+  end
+
+  if Application.compile_env!(:ash, :allow_resources_as_types, false) do
+    def not_a_resource!(other), do: other
+  else
+    @doc false
+    def not_a_resource!({:array, type}) do
+      {:array, not_a_resource!(type)}
+    end
+
+    def not_a_resource!(module) when is_atom(module) do
+      type =
+        if Ash.Type.NewType.new_type?(module) do
+          Ash.Type.NewType.subtype_of(module)
+        else
+          module
+        end
+
+      if Ash.Resource.Info.resource?(type) && !Ash.Resource.Info.embedded?(type) do
+        raise """
+        Non-embedded resources can no longer be used as types.
+
+        Got #{inspect(module)}
+
+        To use them as a type, instead use the `:struct` type, with the `instance_of` constraint.
+
+        For example:
+
+            attribute :foo, :struct, constraints: [instance_of: #{inspect(module)}]
+
+        Or as an array:
+
+            attribute :foo, {:array, :struct}, constraints: [items: [instance_of: #{inspect(module)}]]
+        """
+      else
+        module
+      end
+    end
+
+    def not_a_resource!(type), do: type
   end
 end
