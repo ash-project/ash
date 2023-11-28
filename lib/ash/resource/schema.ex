@@ -278,7 +278,7 @@ defmodule Ash.Schema do
     end
   end
 
-  if Application.compile_env!(:ash, :allow_resources_as_types, false) do
+  if Application.compile_env(:ash, :allow_resources_as_types) || false do
     def not_a_resource!(other), do: other
   else
     @doc false
@@ -309,6 +309,10 @@ defmodule Ash.Schema do
         Or as an array:
 
             attribute :foo, {:array, :struct}, constraints: [items: [instance_of: #{inspect(module)}]]
+
+        You can disable this warning by setting `config :ash, allow_resources_as_types: true` in your config.
+
+        In 3.0, the flag to disable this behaviour will not be available.
         """
       else
         module
