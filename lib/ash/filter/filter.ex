@@ -20,6 +20,7 @@ defmodule Ash.Filter do
     Ago,
     At,
     Contains,
+    CompositeType,
     DateAdd,
     DateTimeAdd,
     FromNow,
@@ -52,6 +53,7 @@ defmodule Ash.Filter do
   @functions [
     Ago,
     At,
+    CompositeType,
     Contains,
     DateAdd,
     DateTimeAdd,
