@@ -156,7 +156,7 @@ defmodule Ash.Type do
   And you can also *construct* composite types in expressions, for example:
 
   ```elixir
-  calculate :coordinates, :composite_point, expr(composite_type({some_value, some_other_value}, Point))
+  calculate :coordinates, :composite_point, expr(composite_type(%{x: some_value, y: some_other_value}, Point))
   ```
   """
 

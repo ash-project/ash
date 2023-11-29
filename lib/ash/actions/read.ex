@@ -834,7 +834,7 @@ defmodule Ash.Actions.Read do
     if multitenancy_attribute && query.tenant do
       {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(query.resource)
       attribute_value = apply(m, f, [query.tenant | a])
-      Ash.Query.filter(query, [{multitenancy_attribute, attribute_value}])
+      Ash.Query.filter(query, ref(^multitenancy_attribute) == ^attribute_value)
     else
       query
     end
