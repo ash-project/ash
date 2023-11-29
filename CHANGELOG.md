@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.7](https://github.com/ash-project/ash/compare/v2.17.6...v2.17.7) (2023-11-29)
+
+
+
+
+### Bug Fixes:
+
+* don't eager evaluate composite type construction
+
+### Improvements:
+
+* forbid using resources as types
+
+* add `composite_type/2` and `composite_type/3`
+
 ## [v2.17.6](https://github.com/ash-project/ash/compare/v2.17.5...v2.17.6) (2023-11-27)
 
 
