@@ -71,10 +71,9 @@ defmodule Ash.Type do
 
   #{Enum.map_join(@builtin_short_names, fn {key, module} -> "* `#{inspect(key)}` - `#{inspect(module)}`\n" end)}
 
-  ## Composite Types
+  ## Lists/Arrays
 
-  Currently, the only composite type supported is a list type, specified via:
-  `{:array, Type}`. The constraints available are:
+  To specify a list of values, use `{:array, Type}`. Arrays are special, and have special constraints:
 
   #{Spark.OptionsHelpers.docs(@doc_array_constraints)}
 
@@ -133,6 +132,31 @@ defmodule Ash.Type do
 
   ```bash
   $ mix deps.compile ash --force
+  ```
+
+  ## Composite Types
+
+  Composite types are composite *in the data layer*. Many data layers do not support this, but some (like AshPostgres),
+  do. To define a composite type, the following things should be true:
+
+  1. A casted value should be a map or struct, for example for a point: `%{x: 1, y: 2}`
+  2. The data layer must support composite types, and the data layer representation will be a tuple, i.e `{1, 2}`
+  3. Define `def composite?(_), do: true` in your composite type
+  4. Define the type & constraints of each item in the tuple, and its name in the map
+     representation: `def composite_types(_), do: [{:x, :integer, []}, {:y, :integer, []}]`.
+     You can also define a storage key for each item in the tuple, if the underlying type implementation
+     has a different reference for an item, i.e `def composite_types(_), do: [{:x, :x_coord, :integer, []}, {:y, :y_coord, :integer, []}]`
+
+  With the above implemented, your composite type can be used in expressions, for example:
+
+  ```elixir
+  Ash.Query.filter(expr(coordinates[:x] == 1))k
+  ```
+
+  And you can also *construct* composite types in expressions, for example:
+
+  ```elixir
+  calculate :coordinates, :composite_point, expr(composite_type({some_value, some_other_value}, Point))
   ```
   """
 
