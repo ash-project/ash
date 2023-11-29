@@ -19,8 +19,8 @@ defmodule Ash.Filter do
   alias Ash.Query.Function.{
     Ago,
     At,
-    Contains,
     CompositeType,
+    Contains,
     DateAdd,
     DateTimeAdd,
     FromNow,
