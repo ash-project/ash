@@ -6,7 +6,7 @@ defmodule Ash.Query.Function.CompositeType do
   Check that type's documentation for this information.
   """
 
-  use Ash.Query.Function, name: :composite_type
+  use Ash.Query.Function, name: :composite_type, eager_evaluate?: false
 
   def args, do: [[:any, :any], [:any, :any, :any]]
 
