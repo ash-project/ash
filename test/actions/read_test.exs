@@ -61,6 +61,10 @@ defmodule Ash.Test.Actions.ReadTest do
         prepare(PostPreparation)
       end
 
+      read :read_with_authors do
+        prepare(build(load: [:author1, :author2]))
+      end
+
       read :get_by_id do
         get_by(:id)
       end
@@ -159,6 +163,29 @@ defmodule Ash.Test.Actions.ReadTest do
 
       assert {:messages, [:around_transaction_start, :before_action, :around_transaction_end]} =
                :erlang.process_info(self(), :messages)
+    end
+  end
+
+  describe "api.get! with action" do
+    setup do
+      author1 =
+        Author
+        |> new(%{name: "bruh"})
+        |> Api.create!()
+        |> strip_metadata()
+
+      post =
+        Post
+        |> new(%{title: "test", contents: "yeet"})
+        |> manage_relationship(:author1, author1, type: :append_and_remove)
+        |> Api.create!()
+
+      %{post: post, author1: author1}
+    end
+
+    test "it uses the action provided", %{post: post, author1: author1} do
+      fetched_post = Api.get!(Post, post.id, action: :read_with_authors)
+      assert ^author1 = strip_metadata(fetched_post.author1)
     end
   end
 
