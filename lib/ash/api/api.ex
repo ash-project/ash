@@ -1612,7 +1612,7 @@ defmodule Ash.Api do
         end
 
       query
-      |> Ash.Actions.Read.unpaginated_read(query.action, read_opts)
+      |> Ash.Actions.Read.unpaginated_read(opts[:action] || query.action, read_opts)
       |> case do
         {:ok, %{results: [single_result]}} ->
           {:ok, single_result}
