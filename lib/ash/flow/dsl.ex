@@ -229,7 +229,9 @@ defmodule Ash.Flow.Dsl do
     no_depend_modules: [:touches_resources],
     examples: [
       """
-      transaction :create_users do
+      transaction :create_user_with_org do
+        touches_resources [User, Org]
+
         create :create_user, User, :create do
           input %{
             first_name: {Faker.Person, :first_name, []},
@@ -237,10 +239,10 @@ defmodule Ash.Flow.Dsl do
           }
         end
 
-        create :create_user, Org, :create do
+        create :create_org, Org, :create do
           input %{
-            first_name: {Faker.Person, :first_name, []},
-            last_name: {Faker.Person, :last_name, []}
+            user_id: path(result(:create_user), :id),
+            name: {Faker.Color, :name, []}
           }
         end
       end
