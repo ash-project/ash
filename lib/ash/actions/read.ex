@@ -1089,6 +1089,9 @@ defmodule Ash.Actions.Read do
           Ash.DataLayer.data_layer_can?(ash_query.resource, :expression_calculation) &&
             !request_opts[:initial_data]
 
+        ash_query =
+          add_calc_context_to_query(ash_query, actor, authorize?, ash_query.tenant, data[:tracer])
+
         {calculations_in_query, calculations_at_runtime} =
           ash_query.calculations
           |> Map.values()
@@ -1096,9 +1099,26 @@ defmodule Ash.Actions.Read do
             has_expression? = :erlang.function_exported(calculation.module, :expression, 2)
 
             with true <- has_expression?,
+                 expression <-
+                   calculation.module.expression(calculation.opts, calculation.context),
+                 expression <-
+                   Ash.Filter.build_filter_from_template(
+                     expression,
+                     calculation.context[:actor],
+                     calculation.context,
+                     calculation.context
+                   ),
+                 expression <-
+                   Ash.Actions.Read.add_calc_context_to_filter(
+                     expression,
+                     calculation.context[:actor],
+                     calculation.context[:authorize?],
+                     calculation.context[:tenant],
+                     calculation.context[:tracer]
+                   ),
                  {:ok, result} <-
                    Ash.Expr.eval(
-                     calculation.module.expression(calculation.opts, calculation.context),
+                     expression,
                      resource: ash_query.resource
                    ) do
               {in_query,
@@ -1120,6 +1140,13 @@ defmodule Ash.Actions.Read do
                 end
             end
           end)
+
+        ash_query = loaded_query(ash_query, calculations_at_runtime)
+
+        # add calc context to all calculations again, in case any new calculations wered added
+        # this could be more efficient
+        ash_query =
+          add_calc_context_to_query(ash_query, actor, authorize?, ash_query.tenant, data[:tracer])
 
         current_calculations = Map.keys(ash_query.calculations)
 
@@ -1147,11 +1174,6 @@ defmodule Ash.Actions.Read do
           |> then(fn fields ->
             unload_forbidden_fields(ash_query, fields)
           end)
-
-        ash_query = loaded_query(ash_query, calculations_at_runtime)
-
-        ash_query =
-          add_calc_context_to_query(ash_query, actor, authorize?, ash_query.tenant, data[:tracer])
 
         calculations_at_runtime =
           ash_query.calculations
@@ -3406,6 +3428,14 @@ defmodule Ash.Actions.Read do
       Enum.reduce_while(calculations_to_add, {:ok, []}, fn calculation, {:ok, calculations} ->
         if Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
           expression = calculation.module.expression(calculation.opts, calculation.context)
+
+          expression =
+            Ash.Filter.build_filter_from_template(
+              expression,
+              calculation.context[:actor],
+              calculation.context,
+              calculation.context
+            )
 
           case Ash.Filter.hydrate_refs(expression, %{
                  resource: query.resource,

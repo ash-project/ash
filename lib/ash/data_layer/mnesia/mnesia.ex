@@ -169,8 +169,8 @@ defmodule Ash.DataLayer.Mnesia do
 
   @doc false
   @impl true
-  def add_calculation(query, calculation, _, _),
-    do: {:ok, %{query | calculations: [calculation | query.calculations]}}
+  def add_calculations(query, calculations, _),
+    do: {:ok, %{query | calculations: query.calculations ++ calculations}}
 
   @doc false
   @impl true

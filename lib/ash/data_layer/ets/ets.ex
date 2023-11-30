@@ -255,8 +255,9 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
-  def add_calculation(query, calculation, _, _),
-    do: {:ok, %{query | calculations: [calculation | query.calculations]}}
+  def add_calculations(query, calculations, _) do
+    {:ok, %{query | calculations: query.calculations ++ calculations}}
+  end
 
   @doc false
   @impl true
@@ -528,9 +529,7 @@ defmodule Ash.DataLayer.Ets do
   def do_add_calculations(records, resource, calculations, api) do
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
       calculations
-      |> Enum.reduce_while({:ok, record}, fn calculation, {:ok, record} ->
-        expression = calculation.module.expression(calculation.opts, calculation.context)
-
+      |> Enum.reduce_while({:ok, record}, fn {calculation, expression}, {:ok, record} ->
         case Ash.Filter.hydrate_refs(expression, %{
                resource: resource,
                public?: false
@@ -596,6 +595,61 @@ defmodule Ash.DataLayer.Ets do
         {:error, Ash.Error.to_ash_error(error)}
     end
   end
+
+  # def do_add_calculations(records, _resource, [], _api), do: {:ok, records}
+
+  # def do_add_calculations(records, resource, calculations, api) do
+  #   Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
+  #     calculations
+  #     |> IO.inspect()
+  #     |> Enum.reduce_while({:ok, record}, fn {calculation, expression}, {:ok, record} ->
+  #       case Ash.Expr.eval_hydrated(expression, record: record, resource: resource, api: api) do
+  #         {:ok, value} ->
+  #           if calculation.load do
+  #             {:cont, {:ok, Map.put(record, calculation.load, value)}}
+  #           else
+  #             {:cont,
+  #              {:ok,
+  #               Map.update!(
+  #                 record,
+  #                 :calculations,
+  #                 &Map.put(&1, calculation.name, value)
+  #               )}}
+  #           end
+
+  #         :unknown ->
+  #           if calculation.load do
+  #             {:cont, {:ok, Map.put(record, calculation.load, nil)}}
+  #           else
+  #             {:cont,
+  #              {:ok,
+  #               Map.update!(
+  #                 record,
+  #                 :calculations,
+  #                 &Map.put(&1, calculation.name, nil)
+  #               )}}
+  #           end
+
+  #         {:error, error} ->
+  #           {:halt, {:error, error}}
+  #       end
+  #     end)
+  #     |> case do
+  #       {:ok, record} ->
+  #         {:cont, {:ok, [record | records]}}
+
+  #       {:error, error} ->
+  #         {:halt, {:error, error}}
+  #     end
+  #   end)
+  #   |> case do
+  #     {:ok, records} ->
+  #       {:ok, Enum.reverse(records)}
+
+  #     {:error, error} ->
+  #       {:error, Ash.Error.to_ash_error(error)}
+  #   end
+  # end
 
   @doc false
   def do_add_aggregates(records, _api, _resource, []), do: {:ok, records}
