@@ -6,7 +6,7 @@ Manual actions are a way to implement an action in a fully custom way. This can 
 
 ## Manual Creates/Updates/Destroy
 
-For manual create, update and destroy actions, a module is passed that uses one of the provided modules (Ash.Resource.ManualCreate, Ash.Resource.ManualUpdate and Ash.Resource.ManualDelete).
+For manual create, update and destroy actions, a module is passed that uses one of the provided modules (Ash.Resource.ManualCreate, Ash.Resource.ManualUpdate and Ash.Resource.ManualDestroy).
 
 For example:
 
