@@ -14,8 +14,8 @@ defmodule Ash.Test.Actions.ReadTest do
     use Ash.Resource.Preparation
 
     def prepare(query, _, _) do
-      Ash.Query.after_action(query, fn _query, authors ->
-        {:ok, Enum.map(authors, &Ash.Resource.set_metadata(&1, %{prepared?: true}))}
+      Ash.Query.after_action(query, fn _query, posts ->
+        {:ok, Enum.map(posts, &Ash.Resource.set_metadata(&1, %{prepared?: true}))}
       end)
     end
   end

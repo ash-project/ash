@@ -69,7 +69,7 @@ defmodule Ash.Actions.MultitenancyTest do
 
     multitenancy do
       strategy(:context)
-      global?(true)
+      global?(false)
     end
 
     actions do
@@ -174,7 +174,7 @@ defmodule Ash.Actions.MultitenancyTest do
       |> Ash.Changeset.set_tenant(tenant1)
       |> Api.create!()
 
-      assert User |> Ash.Query.set_tenant(tenant2) |> Api.read!() == []
+      assert Comment |> Ash.Query.set_tenant(tenant2) |> Api.read!() == []
     end
 
     test "a record can be updated in a tenant", %{tenant1: tenant1, tenant2: tenant2} do
@@ -185,7 +185,7 @@ defmodule Ash.Actions.MultitenancyTest do
       |> Ash.Changeset.new()
       |> Api.update!()
 
-      assert User |> Ash.Query.set_tenant(tenant2) |> Api.read!() == []
+      assert Comment |> Ash.Query.set_tenant(tenant2) |> Api.read!() == []
     end
 
     test "a record can be destroyed in a tenant", %{tenant1: tenant1} do
@@ -205,7 +205,7 @@ defmodule Ash.Actions.MultitenancyTest do
       |> Ash.Changeset.set_tenant(tenant1)
       |> Api.create!()
 
-      result = User |> Api.read()
+      result = Comment |> Api.read()
       assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.TenantRequired{}]}} = result
     end
   end
