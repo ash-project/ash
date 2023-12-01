@@ -1,32 +1,34 @@
 # Manual Actions
 
-Manual actions allow you to control how an action is performed instead of simply dispatching to a data layer. To do this, simply specify the `manual` option with a module that adopts the appropriate behavior. For example:
+Manual actions allow you to control how an action is performed instead of dispatching to a data layer. To do this, specify the `manual` option with a module that adopts the appropriate behavior.
 
 Manual actions are a way to implement an action in a fully custom way. This can be a very useful escape hatch when you have something that you are finding difficult to model with Ash's builtin tools.
 
 ## Manual Creates/Updates/Destroy
 
-For manual create/update/destroy actions, you will provide
- everything works pretty much the same, with the exception that the `after_action` hooks on a resource will receive a `nil` value for creates, and the old unmodified value for updates, and you are expected to add an after action hook that changes that `nil` value into the result of the action.
+For manual create, update and destroy actions, a module is passed that uses one of the provided modules (Ash.Resource.ManualCreate, Ash.Resource.ManualUpdate and Ash.Resource.ManualDelete).
 
 For example:
-
-# in the action
 
 ```elixir
 create :special_create do
   manual MyApp.DoCreate
 end
 
-# The change
+# The implementation
 defmodule MyApp.DoCreate do
   use Ash.Resource.ManualCreate
 
   def create(changeset, _, _) do
-    do_something_that_creates_the_record(changeset)
+    record = create_the_record(changeset)
+    {:ok, record}
+
+    # An `{:error, error}` tuple should be returned if something failed
   end
 end
 ```
+
+The underlying record can be retrieved from `changeset.data` for update and destroy manual actions. The changeset given to the manual action will be after any `before_action` hooks, and before any `after_action` hooks.
 
 ## Manual Read Actions
 
