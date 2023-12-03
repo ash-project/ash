@@ -20,6 +20,7 @@ defmodule Ash.Query.Operator.NotEq do
     {:known, Comp.not_equal?(left, right)}
   end
 
+  @impl Ash.Filter.Predicate
   def simplify(%__MODULE__{left: left, right: right}) do
     %Not{expression: %Eq{left: left, right: right}}
   end

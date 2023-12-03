@@ -13,12 +13,30 @@ defmodule Ash.Query.Function do
   The number and types of arguments supported.
   """
   @callback args() :: [arg]
+  @callback name() :: atom
   @callback new(list(term)) :: {:ok, term} | {:error, String.t() | Exception.t()}
   @callback evaluate(func :: map) :: :unknown | {:known, term}
   @callback partial_evaluate(func) :: func when func: map
+  @callback eager_evaluate?() :: boolean()
   @callback private?() :: boolean
 
+  @doc """
+  If `true`, will be allowed to evaluate `nil` inputs.
+
+  If `false` (the default), any `nil` inputs will cause a `nil` return.
+  """
+  @callback evaluate_nil_inputs?() :: boolean()
+
   @optional_callbacks partial_evaluate: 1
+
+  @doc "Evaluate the operator with provided inputs"
+  def evaluate(%mod{arguments: arguments} = func) do
+    if Enum.any?(arguments, &is_nil/1) && !mod.evaluate_nil_inputs?() do
+      {:known, nil}
+    else
+      mod.evaluate(func)
+    end
+  end
 
   def new(mod, args) do
     args = List.wrap(args)
@@ -163,7 +181,10 @@ defmodule Ash.Query.Function do
 
   defmacro __using__(opts) do
     quote do
-      @behaviour Ash.Filter.Predicate
+      @behaviour Ash.Query.Function
+      if unquote(opts[:predicate?] || false) do
+        @behaviour Ash.Filter.Predicate
+      end
 
       alias Ash.Query.Ref
 
@@ -175,19 +196,25 @@ defmodule Ash.Query.Function do
         __predicate__?: unquote(opts[:predicate?] || false)
       ]
 
+      @impl Ash.Query.Function
       def name, do: unquote(opts[:name])
 
+      @impl Ash.Query.Function
       def new(args), do: {:ok, struct(__MODULE__, arguments: args)}
 
+      @impl Ash.Query.Function
       def evaluate(_), do: :unknown
 
-      def predicate?, do: unquote(opts[:predicate?] || false)
-
+      @impl Ash.Query.Function
       def eager_evaluate?, do: unquote(Keyword.get(opts, :eager_evaluate?, true))
 
+      @impl Ash.Query.Function
+      def evaluate_nil_inputs?, do: false
+
+      @impl Ash.Query.Function
       def private?, do: false
 
-      defoverridable new: 1, evaluate: 1, private?: 0
+      defoverridable new: 1, evaluate: 1, private?: 0, evaluate_nil_inputs?: 0
 
       unless unquote(opts[:no_inspect?]) do
         defimpl Inspect do

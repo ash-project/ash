@@ -94,6 +94,7 @@ defmodule Ash.DataLayer do
           | :offset
           | :transact
           | :filter
+          | :composite_type
           | {:lock, lock_type()}
           | {:filter_expr, struct}
           | {:filter_relationship, Ash.Resource.Relationships.relationship()}

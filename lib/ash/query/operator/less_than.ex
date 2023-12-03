@@ -28,6 +28,7 @@ defmodule Ash.Query.Operator.LessThan do
     {:known, Comp.less_than?(left, right)}
   end
 
+  @impl Ash.Filter.Predicate
   def bulk_compare(all_predicates) do
     all_predicates
     |> Enum.group_by(& &1.left)

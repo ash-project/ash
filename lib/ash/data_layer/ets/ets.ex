@@ -358,6 +358,15 @@ defmodule Ash.DataLayer.Ets do
         _resource,
         parent \\ nil
       ) do
+    used_aggregates =
+      calculations
+      |> List.wrap()
+      |> Enum.flat_map(fn {calc, expr} ->
+        expr
+        |> Ash.Filter.used_aggregates(:all)
+        |> Enum.map(&Ash.Actions.Read.add_calc_context(&1, calc.context))
+      end)
+
     with {:ok, records} <- get_records(resource, tenant),
          {:ok, records} <-
            filter_matches(records, filter, api, parent),
@@ -366,7 +375,8 @@ defmodule Ash.DataLayer.Ets do
          records <- Sort.runtime_sort(records, sort, api: api),
          records <- Enum.drop(records, offset || []),
          records <- do_limit(records, limit),
-         {:ok, records} <- do_add_aggregates(records, api, resource, aggregates),
+         {:ok, records} <-
+           do_add_aggregates(records, api, resource, aggregates ++ used_aggregates),
          {:ok, records} <-
            do_add_calculations(records, resource, calculations, api) do
       {:ok, records}
@@ -596,61 +606,6 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  # def do_add_calculations(records, _resource, [], _api), do: {:ok, records}
-
-  # def do_add_calculations(records, resource, calculations, api) do
-  #   Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
-  #     calculations
-  #     |> IO.inspect()
-  #     |> Enum.reduce_while({:ok, record}, fn {calculation, expression}, {:ok, record} ->
-  #       case Ash.Expr.eval_hydrated(expression, record: record, resource: resource, api: api) do
-  #         {:ok, value} ->
-  #           if calculation.load do
-  #             {:cont, {:ok, Map.put(record, calculation.load, value)}}
-  #           else
-  #             {:cont,
-  #              {:ok,
-  #               Map.update!(
-  #                 record,
-  #                 :calculations,
-  #                 &Map.put(&1, calculation.name, value)
-  #               )}}
-  #           end
-
-  #         :unknown ->
-  #           if calculation.load do
-  #             {:cont, {:ok, Map.put(record, calculation.load, nil)}}
-  #           else
-  #             {:cont,
-  #              {:ok,
-  #               Map.update!(
-  #                 record,
-  #                 :calculations,
-  #                 &Map.put(&1, calculation.name, nil)
-  #               )}}
-  #           end
-
-  #         {:error, error} ->
-  #           {:halt, {:error, error}}
-  #       end
-  #     end)
-  #     |> case do
-  #       {:ok, record} ->
-  #         {:cont, {:ok, [record | records]}}
-
-  #       {:error, error} ->
-  #         {:halt, {:error, error}}
-  #     end
-  #   end)
-  #   |> case do
-  #     {:ok, records} ->
-  #       {:ok, Enum.reverse(records)}
-
-  #     {:error, error} ->
-  #       {:error, Ash.Error.to_ash_error(error)}
-  #   end
-  # end
-
   @doc false
   def do_add_aggregates(records, _api, _resource, []), do: {:ok, records}
 
@@ -689,7 +644,7 @@ defmodule Ash.DataLayer.Ets do
               field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
 
               value =
-                aggregate_value(sorted, kind, field, uniq?, default_value)
+                aggregate_value(sorted, kind, field, uniq?, default_value) |> IO.inspect()
 
               if load do
                 {:cont, {:ok, Map.put(record, load, value)}}

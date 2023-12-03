@@ -74,7 +74,7 @@ defmodule Ash.Policy.FilterCheckWithContext do
                public?: false
              }) do
           {:ok, hydrated} ->
-            Ash.Expr.eval_hydrated(hydrated, resource: resource)
+            Ash.Expr.eval_hydrated(hydrated, resource: resource, unknown_on_unknown_refs?: true)
 
           {:error, error} ->
             {:error, error}
@@ -92,7 +92,7 @@ defmodule Ash.Policy.FilterCheckWithContext do
                public?: false
              }) do
           {:ok, hydrated} ->
-            Ash.Expr.eval_hydrated(hydrated, resource: resource)
+            Ash.Expr.eval_hydrated(hydrated, resource: resource, unknown_on_unknown_refs?: true)
 
           {:error, error} ->
             {:error, error}
@@ -120,7 +120,11 @@ defmodule Ash.Policy.FilterCheckWithContext do
                 nil
               end
 
-            Ash.Expr.eval_hydrated(hydrated, record: data, resource: resource)
+            Ash.Expr.eval_hydrated(hydrated,
+              record: data,
+              resource: resource,
+              unknown_on_unknown_refs?: true
+            )
 
           {:error, error} ->
             {:error, error}
@@ -135,7 +139,7 @@ defmodule Ash.Policy.FilterCheckWithContext do
                public?: false
              }) do
           {:ok, hydrated} ->
-            Ash.Expr.eval_hydrated(hydrated, resource: resource)
+            Ash.Expr.eval_hydrated(hydrated, resource: resource, unknown_on_unknown_refs?: true)
 
           {:error, error} ->
             {:error, error}

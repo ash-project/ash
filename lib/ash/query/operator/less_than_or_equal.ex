@@ -17,6 +17,7 @@ defmodule Ash.Query.Operator.LessThanOrEqual do
     {:known, Comp.less_or_equal?(left, right)}
   end
 
+  @impl Ash.Filter.Predicate
   def simplify(%__MODULE__{left: %Ref{} = same_ref, right: %Date{} = value}) do
     {:ok, op} = Ash.Query.Operator.new(Ash.Query.Operator.LessThan, same_ref, Date.add(value, 1))
 

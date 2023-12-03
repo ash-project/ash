@@ -1119,7 +1119,8 @@ defmodule Ash.Actions.Read do
                  {:ok, result} <-
                    Ash.Expr.eval(
                      expression,
-                     resource: ash_query.resource
+                     resource: ash_query.resource,
+                     unknown_on_unknown_refs?: true
                    ) do
               {in_query,
                [
@@ -2374,7 +2375,8 @@ defmodule Ash.Actions.Read do
     }
   end
 
-  defp add_calc_context(calc, actor, authorize?, tenant, tracer) do
+  @doc false
+  def add_calc_context(calc, actor, authorize?, tenant, tracer) do
     %{
       calc
       | context:
@@ -2385,6 +2387,21 @@ defmodule Ash.Actions.Read do
               tenant: tenant,
               tracer: tracer
             },
+            calc.context
+          )
+    }
+  end
+
+  @doc false
+  def add_calc_context(calc, map) do
+    %{
+      calc
+      | context:
+          Map.merge(
+            Map.take(
+              map,
+              [:actor, :authorize?, :tenant, :tracer]
+            ),
             calc.context
           )
     }

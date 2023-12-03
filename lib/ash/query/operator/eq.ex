@@ -24,6 +24,7 @@ defmodule Ash.Query.Operator.Eq do
     {:known, Comp.equal?(left, right)}
   end
 
+  @impl Ash.Filter.Predicate
   def bulk_compare(predicates) do
     predicates
     |> Enum.filter(&match?(%struct{} when struct == __MODULE__, &1))

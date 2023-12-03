@@ -27,6 +27,38 @@ defmodule Ash.Query.Operator do
   """
   @callback to_string(struct, Inspect.Opts.t()) :: term
 
+  @doc """
+  Evaluates the operator in Elixir
+  """
+  @callback evaluate(term) :: term
+
+  @doc """
+  If `true`, will be allowed to evaluate `nil` inputs.
+
+  If `false` (the default), any `nil` inputs will cause a `nil` return.
+  """
+  @callback evaluate_nil_inputs?() :: boolean()
+
+  @doc """
+  The types accepted by the operator. Defaults to `[:same, :any]`, which is any values of the same type.
+  """
+  @callback types() :: [
+              :any | :same | [Ash.Type.t() | {Ash.Type.t(), constraints :: Keyword.t()}]
+            ]
+
+  @doc "Evaluate the operator with provided inputs"
+  def evaluate(%mod{left: left, right: right} = op) when is_nil(left) or is_nil(right) do
+    if mod.evaluate_nil_inputs?() do
+      mod.evaluate(op)
+    else
+      {:known, nil}
+    end
+  end
+
+  def evaluate(%mod{} = op) do
+    mod.evaluate(op)
+  end
+
   @doc "Create a new operator. Pass the module and the left and right values"
   def new(mod, %Ref{} = left, right) do
     try_cast_with_ref(mod, left, right)
@@ -289,23 +321,26 @@ defmodule Ash.Query.Operator do
         @behaviour Ash.Filter.Predicate
       end
 
+      @behaviour Ash.Query.Operator
+
       alias Ash.Query.Ref
+      import Inspect.Algebra
 
       def operator, do: unquote(opts[:operator])
       def name, do: unquote(opts[:name] || opts[:operator])
 
-      def predicate? do
-        unquote(opts[:predicate?])
-      end
-
+      @impl Ash.Query.Operator
       def types do
         unquote(opts[:types] || [:same, :any])
       end
 
+      @impl Ash.Query.Operator
       def new(left, right), do: {:ok, struct(__MODULE__, left: left, right: right)}
 
-      import Inspect.Algebra
+      @impl Ash.Query.Operator
+      def evaluate_nil_inputs?, do: false
 
+      @impl Ash.Query.Operator
       def to_string(%{left: left, right: right, operator: operator}, opts) do
         concat([
           to_doc(left, opts),
@@ -316,7 +351,7 @@ defmodule Ash.Query.Operator do
         ])
       end
 
-      defoverridable to_string: 2, new: 2
+      defoverridable to_string: 2, new: 2, evaluate_nil_inputs?: 0
 
       defimpl Inspect do
         def inspect(%mod{} = op, opts) do

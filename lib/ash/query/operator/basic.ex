@@ -55,6 +55,7 @@ defmodule Ash.Query.Operator.Basic do
           types: unquote(opts[:types] || [:same, :any])
 
         if unquote(opts[:no_nils]) do
+          @impl Ash.Query.Operator
           def evaluate(%{left: left, right: right}) do
             if is_nil(left) || is_nil(right) do
               {:known, nil}
@@ -64,12 +65,19 @@ defmodule Ash.Query.Operator.Basic do
               do_evaluate(unquote(opts[:symbol]), left, right)
             end
           end
+
+          @impl Ash.Query.Operator
+          def evaluate_nil_inputs?, do: false
         else
+          @impl Ash.Query.Operator
           def evaluate(%{left: left, right: right}) do
             # delegate to function to avoid dialyzer warning
             # that this can only ever be one value (for each module we define)
             do_evaluate(unquote(opts[:symbol]), left, right)
           end
+
+          @impl Ash.Query.Operator
+          def evaluate_nil_inputs?, do: true
         end
 
         defp do_evaluate(:<>, %Ash.CiString{string: left}, %Ash.CiString{string: right}) do

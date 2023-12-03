@@ -39,7 +39,11 @@ defmodule Ash.Resource.Calculation.Expression do
              public?: false
            }) do
         {:ok, expression} ->
-          case Ash.Expr.eval_hydrated(expression, record: record, resource: resource) do
+          case Ash.Expr.eval_hydrated(expression,
+                 record: record,
+                 resource: resource,
+                 unknown_on_unknown_refs?: true
+               ) do
             {:ok, value} ->
               value = try_cast_stored(value, context[:ash][:type], context[:ash][:constraints])
               {:cont, {:ok, [value | values]}}

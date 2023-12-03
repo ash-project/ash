@@ -28,6 +28,7 @@ defmodule Ash.Query.Operator.In do
     {:known, Enum.any?(right, &Comp.equal?(&1, left))}
   end
 
+  @impl Ash.Filter.Predicate
   def compare(%__MODULE__{left: left, right: %MapSet{} = left_right}, %__MODULE__{
         left: left,
         right: %MapSet{} = right_right

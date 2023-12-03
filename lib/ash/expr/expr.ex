@@ -45,7 +45,8 @@ defmodule Ash.Expr do
       expression,
       opts[:parent],
       opts[:resource],
-      opts[:api]
+      opts[:api],
+      opts[:unknown_on_unknown_refs?]
     )
   end
 

@@ -16,6 +16,7 @@ defmodule Ash.Query.Operator.GreaterThanOrEqual do
   def evaluate(%{left: left, right: right}),
     do: {:known, Comp.greater_or_equal?(left, right)}
 
+  @impl Ash.Filter.Predicate
   def simplify(%__MODULE__{left: %Ref{} = ref, right: value}) do
     {:ok, op} = Ash.Query.Operator.new(Ash.Query.Operator.LessThan, ref, value)
 

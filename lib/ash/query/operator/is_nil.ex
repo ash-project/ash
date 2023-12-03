@@ -17,6 +17,10 @@ defmodule Ash.Query.Operator.IsNil do
     super(left, right)
   end
 
+  @impl Ash.Query.Operator
+  def evaluate_nil_inputs?, do: true
+
+  @impl Ash.Query.Operator
   def evaluate(%{right: nil}), do: {:known, nil}
 
   def evaluate(%{left: left, right: is_nil?}) do
@@ -26,19 +30,30 @@ defmodule Ash.Query.Operator.IsNil do
   def to_string(%{left: left, right: right}, opts) do
     import Inspect.Algebra
 
-    text =
-      if right do
-        " is nil"
-      else
-        " is not nil"
-      end
+    cond do
+      right == true ->
+        concat([
+          to_doc(left, opts),
+          " is nil"
+        ])
 
-    concat([
-      to_doc(left, opts),
-      text
-    ])
+      right == false ->
+        concat([
+          to_doc(left, opts),
+          " is not nil"
+        ])
+
+      true ->
+        concat([
+          " is_nil(",
+          to_doc(left, opts),
+          ") == ",
+          to_doc(right, opts)
+        ])
+    end
   end
 
+  @impl Ash.Filter.Predicate
   def compare(%__MODULE__{left: %Ref{} = same_ref, right: true}, %Ash.Query.Operator.Eq{
         left: %Ref{} = same_ref,
         right: nil
