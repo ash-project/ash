@@ -1,6 +1,7 @@
 # Get Started
 
 <!--- ash-hq-hide-start --> <!--- -->
+
 > #### HexDocs {: .tip}
 >
 > Hexdocs does not support multi-package search. To assist with this, we provide a mirror of this documentation at [ash-hq.org](https://ash-hq.org). Use Ctrl+K or Cmd+K to search all packages on that site. For the best way to use the hex documentation, see the [hexdocs guide](/documentation/tutorials/using-hexdocs.md).
@@ -14,7 +15,7 @@ The Livebook tutorial is self contained and separate from the documentation belo
 
 [![Run in Livebook](https://livebook.dev/badge/v1/pink.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2Fash-project%2Fash_tutorial%2Fblob%2Fmaster%2Foverview.livemd)
 
-##  Watch the ElixirConf Talk
+## Watch the ElixirConf Talk
 
 <iframe width="560" height="315" class="rounded-xl w-full aspect-video" src="https://www.youtube.com/embed/c4iou77kOFc?si=gxPdzGng5cQTrr7P" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen />
 
@@ -79,7 +80,7 @@ Open the project in your text editor, and we'll get started.
 
 ### Add Ash to your application
 
-Add the ash dependency to your `mix.exs`
+Add the `ash` dependency to your `mix.exs`
 
 ```elixir
 defp deps do
@@ -91,20 +92,21 @@ defp deps do
 end
 ```
 
-Add `:ash` to your `.formatter.exs` file
+To ensure that your code stays formatted like the examples here, you can add `:ash` as an import dependency in your `.formatter.exs`:
 
 ```elixir
-# Used by "mix format"
 [
-  import_deps: [:ash], # <-- add this line, if you have more import_deps, just add it within the list
-  inputs: [
-    "{mix,.formatter}.exs",
-    "{config,lib,test}/**/*.{ex,exs}"
-  ]
+  # ...
+  import_deps: [..., :ash],
+  # ...
 ]
 ```
 
-And run `mix deps.get`
+> #### Note {: .neutral}
+>
+> For more auto-formatting options, see the [Auto-Format Code guide](/how_to/auto-format-code.md).
+
+And run `mix deps.get`, to install the dependency.
 
 ### Building your first Ash API
 
