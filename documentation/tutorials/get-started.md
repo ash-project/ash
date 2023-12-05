@@ -80,7 +80,7 @@ Open the project in your text editor, and we'll get started.
 
 ### Add Ash to your application
 
-Add the ash dependency to your `mix.exs`
+Add the `ash` dependency to your `mix.exs`
 
 ```elixir
 defp deps do
@@ -92,7 +92,21 @@ defp deps do
 end
 ```
 
-And run `mix deps.get`
+To ensure that your code stays formatted like the examples here, you can add `:ash` as an import dependency in your `.formatter.exs`:
+
+```elixir
+[
+  # ...
+  import_deps: [..., :ash],
+  # ...
+]
+```
+
+> #### Note {: .neutral}
+>
+> For more auto-formatting options, see the [Auto-Format Code guide](/how_to/auto-format-code.md).
+
+And run `mix deps.get`, to install the dependency.
 
 ### Building your first Ash API
 
