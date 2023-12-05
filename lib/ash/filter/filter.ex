@@ -197,6 +197,7 @@ defmodule Ash.Filter do
   def builtins, do: @builtins
   def builtin_functions, do: @functions
   def builtin_operators, do: @operators
+  def builtin_predicate_operators, do: Enum.filter(@operators, & &1.predicate?())
 
   defmodule Simple do
     @moduledoc "Represents a simplified filter, with a simple list of predicates"
