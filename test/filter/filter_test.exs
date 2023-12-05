@@ -767,21 +767,16 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     test "when nil" do
-      user1 =
-        User
-        |> new(%{roles: [:user]})
-        |> Api.create!()
-
-      _user2 =
+      user =
         User
         |> new()
         |> Api.create!()
 
-      user1_id = user1.id
+      user_id = user.id
 
-      assert [%User{id: ^user1_id}] =
+      assert [%User{id: ^user_id}] =
                User
-               |> Ash.Query.filter(length(roles || []) > 0)
+               |> Ash.Query.filter(is_nil(length(roles)))
                |> Api.read!()
     end
 
