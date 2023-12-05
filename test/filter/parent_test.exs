@@ -1,4 +1,4 @@
-defmodule Ash.Test.Filter.ThisTest do
+defmodule Ash.Test.Filter.ParentTest do
   use ExUnit.Case, async: false
 
   import Ash.Changeset
@@ -23,7 +23,7 @@ defmodule Ash.Test.Filter.ThisTest do
     end
 
     relationships do
-      has_many(:posts, Ash.Test.Filter.ThisTest.Post, destination_attribute: :author_id)
+      has_many(:posts, Ash.Test.Filter.ParentTest.Post, destination_attribute: :author_id)
     end
   end
 
