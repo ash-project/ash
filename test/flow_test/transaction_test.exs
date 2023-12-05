@@ -38,6 +38,8 @@ defmodule Ash.FlowTest.TransactionTest do
     |> Api.update!()
 
     UnapproveAllUsers.run!("Org 1")
+
+    assert User |> Api.read!() |> Enum.all?(&(not &1.approved))
   end
 
   test "a flow in a transaction will be rolled back if an error is raised" do

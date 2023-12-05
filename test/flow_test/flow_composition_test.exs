@@ -32,12 +32,10 @@ defmodule Ash.FlowTest.FlowCompositionTest do
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "abc", org: org.id})
-    |> Ash.Changeset.force_change_attribute(:approved, true)
     |> Api.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "def", org: org.id})
-    |> Ash.Changeset.force_change_attribute(:approved, true)
     |> Api.create!()
 
     org_id = org.id
@@ -56,10 +54,12 @@ defmodule Ash.FlowTest.FlowCompositionTest do
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "abc", org: org.id})
+    |> Ash.Changeset.force_change_attribute(:approved, true)
     |> Api.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "def", org: org.id})
+    |> Ash.Changeset.force_change_attribute(:approved, true)
     |> Api.create!()
 
     GetOrgAndUsersAndUnapproveThem.run!("Org 1")

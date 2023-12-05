@@ -644,7 +644,7 @@ defmodule Ash.DataLayer.Ets do
               field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
 
               value =
-                aggregate_value(sorted, kind, field, uniq?, default_value) |> IO.inspect()
+                aggregate_value(sorted, kind, field, uniq?, default_value)
 
               if load do
                 {:cont, {:ok, Map.put(record, load, value)}}
