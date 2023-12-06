@@ -358,15 +358,6 @@ defmodule Ash.DataLayer.Ets do
         _resource,
         parent \\ nil
       ) do
-    used_aggregates =
-      calculations
-      |> List.wrap()
-      |> Enum.flat_map(fn {calc, expr} ->
-        expr
-        |> Ash.Filter.used_aggregates(:all)
-        |> Enum.map(&Ash.Actions.Read.add_calc_context(&1, calc.context))
-      end)
-
     with {:ok, records} <- get_records(resource, tenant),
          {:ok, records} <-
            filter_matches(records, filter, api, parent),
@@ -376,7 +367,7 @@ defmodule Ash.DataLayer.Ets do
          records <- Enum.drop(records, offset || []),
          records <- do_limit(records, limit),
          {:ok, records} <-
-           do_add_aggregates(records, api, resource, aggregates ++ used_aggregates),
+           do_add_aggregates(records, api, resource, aggregates),
          {:ok, records} <-
            do_add_calculations(records, resource, calculations, api) do
       {:ok, records}

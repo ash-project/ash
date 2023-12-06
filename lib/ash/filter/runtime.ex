@@ -682,6 +682,8 @@ defmodule Ash.Filter.Runtime do
            attribute: %Ash.Query.Calculation{
              module: module,
              opts: opts,
+             name: name,
+             load: load,
              context: context
            }
          },
@@ -690,63 +692,88 @@ defmodule Ash.Filter.Runtime do
          resource,
          unknown_on_unknown_refs?
        ) do
-    if function_exported?(module, :expression, 2) do
-      expression = module.expression(opts, context)
-
-      hydrated =
-        case record do
-          %resource{} ->
-            Ash.Filter.hydrate_refs(expression, %{
-              resource: resource,
-              public?: false,
-              parent_stack: parent_stack(parent)
-            })
-
-          _ ->
-            if resource do
-              Ash.Filter.hydrate_refs(expression, %{
-                resource: resource,
-                public?: false,
-                parent_stack: parent_stack(parent)
-              })
-            else
-              {:ok, expression}
-            end
-        end
-
-      with {:ok, hydrated} <- hydrated do
-        hydrated
-        |> Ash.Filter.prefix_refs(relationship_path)
-        |> resolve_expr(record, parent, resource, unknown_on_unknown_refs?)
-      end
-    else
-      # We need to rewrite this
-      # As it stands now, it will evaluate the calculation
-      # once per expanded result. I'm not sure what that will
-      # look like though.
-
-      if record do
-        case module.calculate([record], opts, context) do
-          [result] ->
-            {:ok, result}
-
-          {:ok, [result]} ->
-            {:ok, result}
-
-          :unknown when unknown_on_unknown_refs? ->
+    result =
+      if load do
+        case Map.get(record || %{}, load) do
+          %Ash.NotLoaded{} ->
             :unknown
 
-          _ ->
-            {:ok, nil}
+          other ->
+            {:ok, other}
         end
       else
-        if unknown_on_unknown_refs? do
-          :unknown
-        else
-          raise "WHAT"
-          {:ok, nil}
+        case Map.fetch(Map.get(record || %{}, :calculations, %{}), name) do
+          {:ok, value} ->
+            {:ok, value}
+
+          :error ->
+            :unknown
         end
       end
+
+    case result do
+      {:ok, result} ->
+        {:ok, result}
+
+      :unknown ->
+        if function_exported?(module, :expression, 2) do
+          expression = module.expression(opts, context)
+
+          hydrated =
+            case record do
+              %resource{} ->
+                Ash.Filter.hydrate_refs(expression, %{
+                  resource: resource,
+                  public?: false,
+                  parent_stack: parent_stack(parent)
+                })
+
+              _ ->
+                if resource do
+                  Ash.Filter.hydrate_refs(expression, %{
+                    resource: resource,
+                    public?: false,
+                    parent_stack: parent_stack(parent)
+                  })
+                else
+                  {:ok, expression}
+                end
+            end
+
+          with {:ok, hydrated} <- hydrated do
+            hydrated
+            |> Ash.Filter.prefix_refs(relationship_path)
+            |> resolve_expr(record, parent, resource, unknown_on_unknown_refs?)
+          end
+        else
+          # We need to rewrite this
+          # As it stands now, it will evaluate the calculation
+          # once per expanded result. I'm not sure what that will
+          # look like though.
+
+          if record do
+            case module.calculate([record], opts, context) do
+              [result] ->
+                {:ok, result}
+
+              {:ok, [result]} ->
+                {:ok, result}
+
+              :unknown when unknown_on_unknown_refs? ->
+                :unknown
+
+              _ ->
+                {:ok, nil}
+            end
+          else
+            if unknown_on_unknown_refs? do
+              :unknown
+            else
+              raise "WHAT"
+              {:ok, nil}
+            end
+          end
+        end
     end
   end
 

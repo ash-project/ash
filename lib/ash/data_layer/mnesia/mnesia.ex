@@ -231,15 +231,6 @@ defmodule Ash.DataLayer.Mnesia do
         },
         _resource
       ) do
-    used_aggregates =
-      calculations
-      |> List.wrap()
-      |> Enum.flat_map(fn {calc, expr} ->
-        expr
-        |> Ash.Filter.used_aggregates(:all)
-        |> Enum.map(&Ash.Actions.Read.add_calc_context(&1, calc.context))
-      end)
-
     with {:atomic, records} <-
            Mnesia.transaction(fn ->
              Mnesia.select(table(resource), [{:_, [], [:"$_"]}])
@@ -255,7 +246,7 @@ defmodule Ash.DataLayer.Mnesia do
              limited_records,
              api,
              resource,
-             aggregates ++ used_aggregates
+             aggregates
            ),
          {:ok, records} <-
            Ash.DataLayer.Ets.do_add_calculations(
