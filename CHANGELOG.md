@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.8](https://github.com/ash-project/ash/compare/v2.17.7...v2.17.8) (2023-12-06)
+
+
+
+
+### Bug Fixes:
+
+* add back in `builtin_predicate_operators/0`
+
+* various runtime expression evaluation fixes
+
+* honor read action for `Api.get` calls.
+
+* various fixes to calculation expansion and execution
+
+### Improvements:
+
+* use loaded calculation values in expressions
+
 ## [v2.17.7](https://github.com/ash-project/ash/compare/v2.17.6...v2.17.7) (2023-11-29)
 
 
