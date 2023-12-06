@@ -2693,7 +2693,14 @@ defmodule Ash.Actions.Read do
           {:ok, starting_query, starting_query, false}
         end
 
-      page_opts[:limit] ->
+      page_opts[:limit] || action.pagination.default_limit ->
+        page_opts =
+          Keyword.put(
+            page_opts || [],
+            :limit,
+            page_opts[:limit] || action.pagination.default_limit
+          )
+
         case do_paginate(starting_query, action.pagination, opts) do
           {:ok, initial_query, query} ->
             {:ok, initial_query, query, page_opts}
