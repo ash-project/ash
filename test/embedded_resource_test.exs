@@ -100,6 +100,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
 
     attributes do
       uuid_primary_key :id
+      attribute :type, :string
       attribute :name, :string
       attribute :score, :integer
     end
@@ -110,6 +111,20 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
       validate {Increasing, field: :score}, on: :update
       validate present(:score), on: :create
     end
+  end
+
+  defmodule UnionTagWithId do
+    use Ash.Type.NewType,
+      subtype_of: :union,
+      constraints: [
+        types: [
+          tag: [
+            type: TagWithId,
+            tag: :type,
+            tag_value: :tag_with_id
+          ]
+        ]
+      ]
   end
 
   defmodule Author do
@@ -144,6 +159,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
       end
 
       attribute :tags_with_id, {:array, TagWithId}
+      attribute :union_tags_with_id, {:array, UnionTagWithId}
     end
   end
 
@@ -446,15 +462,51 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
 
     assert Enum.at(exception.errors, 0).path == [:tags_with_id, 0]
 
-    Changeset.for_update(
-      author,
-      :update,
-      %{
-        tags_with_id: [
-          %{id: tag.id, score: 100}
-        ]
-      }
-    )
-    |> Api.update!()
+    applied_author =
+      Changeset.for_update(
+        author,
+        :update,
+        %{
+          tags_with_id: [
+            %{id: tag.id, score: 100}
+          ]
+        }
+      )
+      |> Api.update!()
+
+    # The ID of the Tag should not change
+    assert Enum.map(applied_author.tags_with_id, & &1.id) ==
+             Enum.map(author.tags_with_id, & &1.id)
+  end
+
+  test "a list of union embeds are updated where appropriate" do
+    assert %{union_tags_with_id: [%Ash.Union{value: tag}]} =
+             author =
+             Changeset.for_create(
+               Author,
+               :create,
+               %{
+                 union_tags_with_id: [
+                   %{name: "trainer", score: 10, type: "tag_with_id"}
+                 ]
+               }
+             )
+             |> Api.create!()
+
+    applied_author =
+      Changeset.for_update(
+        author,
+        :update,
+        %{
+          union_tags_with_id: [
+            %{id: tag.id, score: 100, type: "tag_with_id"}
+          ]
+        }
+      )
+      |> Api.update!()
+
+    # The id of the Union Tag should not change
+    assert Enum.map(applied_author.union_tags_with_id, & &1.value.id) ==
+             Enum.map(author.union_tags_with_id, & &1.value.id)
   end
 end
