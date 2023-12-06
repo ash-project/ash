@@ -18,6 +18,7 @@ defmodule Ash.Query.Function do
   @callback evaluate(func :: map) :: :unknown | {:known, term}
   @callback partial_evaluate(func) :: func when func: map
   @callback eager_evaluate?() :: boolean()
+  @callback predicate?() :: boolean()
   @callback private?() :: boolean
 
   @doc """
@@ -195,6 +196,9 @@ defmodule Ash.Query.Function do
         __function__?: true,
         __predicate__?: unquote(opts[:predicate?] || false)
       ]
+
+      @impl Ash.Query.Function
+      def predicate?, do: unquote(opts[:predicate?] || false)
 
       @impl Ash.Query.Function
       def name, do: unquote(opts[:name])
