@@ -126,84 +126,90 @@ defmodule Ash.Type.Union do
 
   @impl true
   def load(unions, load, constraints, context) do
-    unions
-    |> Stream.with_index()
-    |> Stream.map(fn {item, index} ->
-      Map.put(item, :__index__, index)
-    end)
-    |> Enum.group_by(& &1.type)
-    |> Enum.reduce_while({:ok, []}, fn {name, values}, {:ok, acc} ->
-      value_indexes_to_full_index =
-        values
-        |> Enum.with_index()
-        |> Map.new(fn {value, index} ->
-          {index, value.__index__}
-        end)
+    if Enum.any?(constraints[:types], fn {_name, config} ->
+         Ash.Type.can_load?(config[:type], config[:constraints])
+       end) do
+      unions
+      |> Stream.with_index()
+      |> Stream.map(fn {item, index} ->
+        Map.put(item, :__index__, index)
+      end)
+      |> Enum.group_by(& &1.type)
+      |> Enum.reduce_while({:ok, []}, fn {name, values}, {:ok, acc} ->
+        value_indexes_to_full_index =
+          values
+          |> Enum.with_index()
+          |> Map.new(fn {value, index} ->
+            {index, value.__index__}
+          end)
 
-      values = Enum.map(values, & &1.value)
+        values = Enum.map(values, & &1.value)
 
-      our_load =
-        if load[:*] || load[name] do
-          List.wrap(load[:*]) ++ List.wrap(load[name])
-        end
+        our_load =
+          if load[:*] || load[name] do
+            List.wrap(load[:*]) ++ List.wrap(load[name])
+          end
 
-      result =
-        if our_load do
-          type = constraints[:types][name][:type]
+        result =
+          if our_load do
+            type = constraints[:types][name][:type]
 
-          Ash.Type.load(
-            type,
-            values,
-            our_load,
-            constraints[:types][name][:constraints],
-            context
-          )
-        else
-          type = constraints[:types][name][:type]
-          constraints = constraints[:types][name][:constraints]
-
-          if Ash.Type.can_load?(type, constraints) do
             Ash.Type.load(
               type,
               values,
-              [],
-              constraints,
+              our_load,
+              constraints[:types][name][:constraints],
               context
             )
           else
-            {:ok, values}
-          end
-        end
+            type = constraints[:types][name][:type]
+            constraints = constraints[:types][name][:constraints]
 
-      case result do
-        {:ok, values} ->
-          values_with_index =
-            values
-            |> Enum.with_index()
-            |> Enum.map(fn {value, index} ->
-              Map.put(
-                %Ash.Union{value: value, type: name},
-                :__index__,
-                Map.get(value_indexes_to_full_index, index)
+            if Ash.Type.can_load?(type, constraints) do
+              Ash.Type.load(
+                type,
+                values,
+                [],
+                constraints,
+                context
               )
-            end)
+            else
+              {:ok, values}
+            end
+          end
 
-          {:cont, {:ok, [values_with_index | acc]}}
+        case result do
+          {:ok, values} ->
+            values_with_index =
+              values
+              |> Enum.with_index()
+              |> Enum.map(fn {value, index} ->
+                Map.put(
+                  %Ash.Union{value: value, type: name},
+                  :__index__,
+                  Map.get(value_indexes_to_full_index, index)
+                )
+              end)
+
+            {:cont, {:ok, [values_with_index | acc]}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end)
+      |> case do
+        {:ok, batches} ->
+          {:ok,
+           batches
+           |> Stream.flat_map(& &1)
+           |> Enum.sort_by(& &1.__index__)
+           |> Enum.map(&Map.delete(&1, :__index__))}
 
         {:error, error} ->
-          {:halt, {:error, error}}
+          {:error, error}
       end
-    end)
-    |> case do
-      {:ok, batches} ->
-        {:ok,
-         batches
-         |> Stream.flat_map(& &1)
-         |> Enum.sort_by(& &1.__index__)
-         |> Enum.map(&Map.delete(&1, :__index__))}
-
-      {:error, error} ->
-        {:error, error}
+    else
+      {:ok, unions}
     end
   end
 
@@ -504,8 +510,199 @@ defmodule Ash.Type.Union do
          {:ok, type} <- Keyword.fetch(type_config, :type),
          type_constraints <- Keyword.get(type_config, :constraints, []),
          type <- Ash.Type.get_type(type),
-         {:ok, new_value} <- type.handle_change(old_value, new_value, type_constraints) do
+         {:ok, new_value} <- Ash.Type.handle_change(type, old_value, new_value, type_constraints) do
       {:ok, %Ash.Union{type: type_name, value: new_value}}
+    end
+  end
+
+  @impl true
+  def prepare_change_array(
+        old_values,
+        new_values,
+        constraints
+      ) do
+    if Enum.any?(constraints[:types] || [], fn {_name, config} ->
+         Ash.Type.prepare_change_array?(config[:type])
+       end) do
+      old_values_by_type =
+        old_values
+        |> Stream.with_index()
+        |> Stream.map(fn {item, index} ->
+          Map.put(item, :__index__, index)
+        end)
+        |> Enum.group_by(& &1.type, & &1.value)
+
+      new_values
+      |> Stream.with_index()
+      |> Stream.map(fn {item, index} ->
+        if is_map(item) do
+          Map.put(item, :__index__, index)
+        else
+          {:untagged, item, index}
+        end
+      end)
+      |> Enum.group_by(fn
+        {:untagged, _item, _index} ->
+          :__ash_untagged_unions__
+
+        item ->
+          Enum.find_value(
+            constraints[:types] || [],
+            :__ash_untagged_unions__,
+            fn {name, config} ->
+              field = config[:tag]
+              tag = config[:tag_value]
+
+              if field && tag && tags_equal?(get_tag(item, field), tag) do
+                name
+              end
+            end
+          )
+      end)
+      |> Enum.reduce_while({:ok, []}, fn
+        {:__ash_untagged_unions__, values}, {:ok, acc} ->
+          {:cont, {:ok, [values | acc]}}
+
+        {name, new_values}, {:ok, acc} ->
+          value_indexes_to_full_index =
+            new_values
+            |> Enum.with_index()
+            |> Map.new(fn {value, index} ->
+              {index, value.__index__}
+            end)
+
+          type = constraints[:types][name][:type]
+
+          result =
+            Ash.Type.prepare_change(
+              {:array, type},
+              old_values_by_type[name] || [],
+              new_values,
+              items: constraints[:types][name][:constraints]
+            )
+
+          case result do
+            {:ok, values} ->
+              values_with_index =
+                values
+                |> Enum.with_index()
+                |> Enum.map(fn {value, index} ->
+                  Map.put(
+                    %Ash.Union{value: value, type: name},
+                    :__index__,
+                    Map.get(value_indexes_to_full_index, index)
+                  )
+                end)
+
+              {:cont, {:ok, [values_with_index | acc]}}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+      end)
+      |> case do
+        {:ok, batches} ->
+          {:ok,
+           batches
+           |> Stream.flat_map(& &1)
+           |> Enum.sort_by(fn
+             {:untagged, _item, index} ->
+               index
+
+             item ->
+               item.__index__
+           end)
+           |> Enum.map(fn
+             {:untagged, item, _} ->
+               item
+
+             item ->
+               Map.delete(item, :__index__)
+           end)}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      {:ok, new_values}
+    end
+  end
+
+  @impl true
+  def handle_change_array(
+        old_values,
+        new_values,
+        constraints
+      ) do
+    if Enum.any?(constraints[:types] || [], fn {_name, config} ->
+         Ash.Type.handle_change_array?(config[:type])
+       end) do
+      old_values_by_type =
+        old_values
+        |> Stream.with_index()
+        |> Stream.map(fn {item, index} ->
+          Map.put(item, :__index__, index)
+        end)
+        |> Enum.group_by(& &1.type, & &1.value)
+
+      new_values
+      |> Stream.with_index()
+      |> Stream.map(fn {item, index} ->
+        Map.put(item, :__index__, index)
+      end)
+      |> Enum.group_by(& &1.type)
+      |> Enum.reduce_while({:ok, []}, fn {name, new_values}, {:ok, acc} ->
+        value_indexes_to_full_index =
+          new_values
+          |> Enum.with_index()
+          |> Map.new(fn {value, index} ->
+            {index, value.__index__}
+          end)
+
+        new_values = Enum.map(new_values, & &1.value)
+
+        type = constraints[:types][name][:type]
+
+        result =
+          Ash.Type.handle_change(
+            {:array, type},
+            old_values_by_type[name] || [],
+            new_values,
+            items: constraints[:types][name][:constraints]
+          )
+
+        case result do
+          {:ok, values} ->
+            values_with_index =
+              values
+              |> Enum.with_index()
+              |> Enum.map(fn {value, index} ->
+                Map.put(
+                  %Ash.Union{value: value, type: name},
+                  :__index__,
+                  Map.get(value_indexes_to_full_index, index)
+                )
+              end)
+
+            {:cont, {:ok, [values_with_index | acc]}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end)
+      |> case do
+        {:ok, batches} ->
+          {:ok,
+           batches
+           |> Stream.flat_map(& &1)
+           |> Enum.sort_by(& &1.__index__)
+           |> Enum.map(&Map.delete(&1, :__index__))}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      {:ok, new_values}
     end
   end
 
@@ -530,7 +727,7 @@ defmodule Ash.Type.Union do
     |> Map.new()
     |> case do
       %{tag: field, tag_value: tag} ->
-        if get_tag(new_value, field) == tag,
+        if tags_equal?(get_tag(new_value, field), tag),
           do: do_prepare_change(type_name, old_value, new_value, constraints),
           else: {:ok, new_value}
 

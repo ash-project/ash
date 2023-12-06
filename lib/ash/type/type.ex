@@ -235,6 +235,8 @@ defmodule Ash.Type do
               context :: load_context()
             ) ::
               {:ok, list(term)} | {:error, Ash.Error.t()}
+  @callback prepare_change_array?() :: boolean()
+  @callback handle_change_array?() :: boolean()
 
   @optional_callbacks [
     init: 1,
@@ -377,7 +379,7 @@ defmodule Ash.Type do
 
   def handle_change({:array, type}, old_value, new_value, constraints) do
     type = get_type(type)
-    type.handle_change_array(old_value, new_value, constraints)
+    type.handle_change_array(old_value, new_value, constraints[:items] || [])
   end
 
   def handle_change(type, old_value, new_value, constraints) do
@@ -398,7 +400,7 @@ defmodule Ash.Type do
 
   def prepare_change({:array, type}, old_value, new_value, constraints) do
     type = get_type(type)
-    type.prepare_change_array(old_value, new_value, constraints)
+    type.prepare_change_array(old_value, new_value, constraints[:items] || [])
   end
 
   def prepare_change(type, old_value, new_value, constraints) do
@@ -897,6 +899,25 @@ defmodule Ash.Type do
     type.can_load?(constraints)
   end
 
+  @spec prepare_change_array?(t()) :: boolean
+
+  def prepare_change_array?({:array, type}),
+    do: prepare_change_array?(type)
+
+  def prepare_change_array?(type) do
+    type = get_type(type)
+    type.prepare_change_array?()
+  end
+
+  @spec handle_change_array?(t()) :: boolean
+  def handle_change_array?({:array, type}),
+    do: handle_change_array?(type)
+
+  def handle_change_array?(type) do
+    type = get_type(type)
+    type.handle_change_array?()
+  end
+
   @doc """
   Determines if a type can be compared using ==
   """
@@ -1037,16 +1058,6 @@ defmodule Ash.Type do
       end
 
       @impl true
-      def handle_change_array(_old_value, new_value, _constraints) do
-        {:ok, new_value}
-      end
-
-      @impl true
-      def prepare_change_array(_old_value, new_value, _constraints) do
-        {:ok, new_value}
-      end
-
-      @impl true
       def cast_input_array(term, single_constraints) do
         term
         |> Enum.with_index()
@@ -1167,8 +1178,6 @@ defmodule Ash.Type do
                      include_source: 2,
                      describe: 1,
                      generator: 1,
-                     handle_change_array: 3,
-                     prepare_change_array: 3,
                      cast_input_array: 2,
                      dump_to_native_array: 2,
                      dump_to_embedded: 2,
@@ -1312,6 +1321,32 @@ defmodule Ash.Type do
 
         @impl true
         def equal?(left, right), do: left == right
+      end
+
+      if Module.defines?(__MODULE__, {:handle_change_array, 3}, :def) do
+        @impl true
+        def handle_change_array?, do: true
+      else
+        @impl true
+        def handle_change_array(_old_value, new_value, _constraints) do
+          {:ok, new_value}
+        end
+
+        @impl true
+        def handle_change_array?, do: false
+      end
+
+      if Module.defines?(__MODULE__, {:prepare_change_array, 3}, :def) do
+        @impl true
+        def prepare_change_array?, do: true
+      else
+        @impl true
+        def prepare_change_array(_old_value, new_value, _constraints) do
+          {:ok, new_value}
+        end
+
+        @impl true
+        def prepare_change_array?, do: false
       end
 
       cond do

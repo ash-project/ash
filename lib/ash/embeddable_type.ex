@@ -586,7 +586,8 @@ defmodule Ash.EmbeddableType do
                 else
                   value_updating_from =
                     Enum.find(old_values, fn old_value ->
-                      Map.take(old_value, pkey_fields) == pkey
+                      Map.take(old_value, pkey_fields) ==
+                        pkey
                     end)
 
                   if value_updating_from do
