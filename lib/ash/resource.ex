@@ -27,6 +27,12 @@ defmodule Ash.Resource do
         type: :atom,
         doc:
           "The api to use when interacting with this resource. Also sets defaults for various options that ask for an api."
+      ],
+      embed_nil_values?: [
+        type: :boolean,
+        default: true,
+        doc:
+          "Whether or not to include keys with `nil` values in an embedded representation. Has no effect unless resource is an embedded resource."
       ]
     ]
 
@@ -82,7 +88,8 @@ defmodule Ash.Resource do
   def handle_opts(opts) do
     quote bind_quoted: [
             embedded?: opts[:embedded?],
-            api: opts[:api]
+            api: opts[:api],
+            embed_nil_values?: opts[:embed_nil_values?]
           ] do
       if api do
         @persist {:api, api}
@@ -93,7 +100,7 @@ defmodule Ash.Resource do
 
         require Ash.EmbeddableType
 
-        Ash.EmbeddableType.define_embeddable_type()
+        Ash.EmbeddableType.define_embeddable_type(embed_nil_values?: embed_nil_values?)
       else
         use Ash.Type
 

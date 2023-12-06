@@ -95,6 +95,22 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
     end
   end
 
+  defmodule TagWithNoNils do
+    use Ash.Resource, data_layer: :embedded, embed_nil_values?: false
+
+    attributes do
+      attribute :name, :string
+      attribute :score, :integer
+    end
+
+    validations do
+      # You can't remove a tag unless you first set its score to 0
+      validate absent(:score), on: :destroy
+      validate {Increasing, field: :score}, on: :update
+      validate present(:score), on: :create
+    end
+  end
+
   defmodule TagWithId do
     use Ash.Resource, data_layer: :embedded
 
@@ -198,6 +214,12 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                }
              )
              |> Api.create!()
+  end
+
+  test "embed_nil_values?: false causes nil values not to be dumped" do
+    value = %TagWithNoNils{name: "foo", score: nil}
+    assert {:ok, dumped} = Ash.Type.dump_to_embedded(TagWithNoNils, value, [])
+    assert Map.keys(dumped) == [:name]
   end
 
   test "embedded resources can be constrained with min/max length" do

@@ -35,6 +35,18 @@ defmodule MyApp.User do
 end
 ```
 
+## Nil values
+
+By default, all fields on an embedded resource will be included in the data layer, including keys with nil values. To prevent this, add the `embed_nil_values?` option to `use Ash.Resource`. For example:
+
+```elixir
+defmodule YourEmbed do
+  use Ash.Resource, 
+    data_layer: :embedded, 
+    embed_nil_values?: false
+end
+```
+
 ## Editing embedded attributes
 
 If you manually supply instances of the embedded structs, the structs you provide are used with no validation. For example:

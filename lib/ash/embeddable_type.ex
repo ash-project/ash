@@ -136,9 +136,9 @@ defmodule Ash.EmbeddableType do
     [message: "Something went wrong"]
   end
 
-  defmacro single_embed_implementation do
+  defmacro single_embed_implementation(opts) do
     # credo:disable-for-next-line Credo.Check.Refactor.LongQuoteBlocks
-    quote location: :keep do
+    quote generated: true, location: :keep, bind_quoted: [opts: opts] do
       alias Ash.EmbeddableType.ShadowApi
 
       def storage_type(_), do: :map
@@ -246,6 +246,9 @@ defmodule Ash.EmbeddableType do
                    ) do
                 :error ->
                   {:halt, :error}
+
+                {:ok, nil} when unquote(!opts[:embed_nil_values?]) ->
+                  {:cont, {:ok, acc}}
 
                 {:ok, dumped} ->
                   {:cont, {:ok, Map.put(acc, attribute.name, dumped)}}
@@ -623,11 +626,11 @@ defmodule Ash.EmbeddableType do
     end
   end
 
-  defmacro define_embeddable_type do
-    quote location: :keep do
+  defmacro define_embeddable_type(opts) do
+    quote location: :keep, bind_quoted: [opts: opts] do
       use Ash.Type, embedded?: true
 
-      Ash.EmbeddableType.single_embed_implementation()
+      Ash.EmbeddableType.single_embed_implementation(opts)
       Ash.EmbeddableType.array_embed_implementation()
     end
   end
