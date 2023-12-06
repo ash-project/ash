@@ -46,6 +46,8 @@ defmodule Ash.Query.Operator do
               :any | :same | [Ash.Type.t() | {Ash.Type.t(), constraints :: Keyword.t()}]
             ]
 
+  @callback predicate?() :: boolean()
+
   @doc "Evaluate the operator with provided inputs"
   def evaluate(%mod{left: left, right: right} = op) when is_nil(left) or is_nil(right) do
     if mod.evaluate_nil_inputs?() do
@@ -328,6 +330,9 @@ defmodule Ash.Query.Operator do
 
       def operator, do: unquote(opts[:operator])
       def name, do: unquote(opts[:name] || opts[:operator])
+
+      @impl Ash.Query.Operator
+      def predicate?, do: unquote(opts[:predicate?] || false)
 
       @impl Ash.Query.Operator
       def types do
