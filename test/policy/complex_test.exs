@@ -43,9 +43,7 @@ defmodule Ash.Test.Policy.ComplexTest do
       Comment.create!(
         post_by_my_friend.id,
         "comment by a friend of a friend on my post",
-        actor: a_friend_of_my_friend,
-        # bypass auth to make a comment in this state
-        authorize?: false
+        actor: a_friend_of_my_friend
       )
 
     [
@@ -62,16 +60,28 @@ defmodule Ash.Test.Policy.ComplexTest do
     ]
   end
 
-  test "it properly limits on reads", %{me: me} do
-    assert [_, _] =
+  test "it properly limits on reads", %{
+    me: me,
+    post_by_me: post_by_me,
+    post_by_my_friend: post_by_my_friend
+  } do
+    assert [post_by_me.id, post_by_my_friend.id] |> Enum.sort() ==
              Post
              |> Api.read!(actor: me)
+             |> Enum.map(& &1.id)
+             |> Enum.sort()
   end
 
-  test "it properly limits on reads of comments", %{me: me} do
-    assert [_, _] =
+  test "it properly limits on reads of comments", %{
+    me: me,
+    comment_by_me_on_my_post: comment_by_me_on_my_post,
+    comment_by_my_friend_on_my_post: comment_by_my_friend_on_my_post
+  } do
+    assert [comment_by_me_on_my_post.id, comment_by_my_friend_on_my_post.id] |> Enum.sort() ==
              Comment
              |> Api.read!(actor: me)
+             |> Enum.map(& &1.id)
+             |> Enum.sort()
   end
 
   test "it properly scopes filters", %{me: me} do
