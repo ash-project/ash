@@ -2693,7 +2693,7 @@ defmodule Ash.Actions.Read do
           {:ok, starting_query, starting_query, false}
         end
 
-      page_opts[:limit] || action.pagination.default_limit ->
+      page_opts[:limit] || (action.pagination.required? && action.pagination.default_limit) ->
         page_opts =
           Keyword.put(
             page_opts || [],

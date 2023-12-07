@@ -40,10 +40,11 @@ defmodule Ash.Resource.Validation do
   @type path :: [atom | integer]
   @type ref :: {module(), Keyword.t()} | module()
 
-  @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, String.t()}
-  @callback validate(Ash.Changeset.t(), Keyword.t()) :: :ok | {:error, term}
-  @callback describe(Keyword.t()) :: String.t() | [{:message, String.t()} | {:vars, Keyword.t()}]
-  @callback atomic?(Keyword.t()) :: boolean
+  @callback init(opts :: Keyword.t()) :: {:ok, Keyword.t()} | {:error, String.t()}
+  @callback validate(changeset :: Ash.Changeset.t(), opts :: Keyword.t()) :: :ok | {:error, term}
+  @callback describe(opts :: Keyword.t()) ::
+              String.t() | [{:message, String.t()} | {:vars, Keyword.t()}]
+  @callback atomic?(opts :: Keyword.t()) :: boolean
 
   @optional_callbacks describe: 1
 

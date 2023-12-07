@@ -96,28 +96,37 @@ defmodule Ash.Resource.Change do
           optional(any) => any
         }
 
-  @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
-  @callback change(Ash.Changeset.t(), Keyword.t(), context) :: Ash.Changeset.t()
+  @callback init(opts :: Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
+  @callback change(changeset :: Ash.Changeset.t(), opts :: Keyword.t(), context :: context) ::
+              Ash.Changeset.t()
 
   @doc """
   Replaces `change/3` for batch actions, allowing to optimize changes for bulk actions.
   """
-  @callback batch_change([Ash.Changeset.t()], Keyword.t(), context) ::
+  @callback batch_change(
+              changesets :: [Ash.Changeset.t()],
+              opts :: Keyword.t(),
+              context :: context
+            ) ::
               Enumerable.t(Ash.Changeset.t() | Ash.Notifier.Notification.t())
 
   @doc """
   Runs on each batch before it is dispatched to the data layer.
   """
-  @callback before_batch([Ash.Changeset.t()], Keyword.t(), context) ::
+  @callback before_batch(
+              changesets :: [Ash.Changeset.t()],
+              opts :: Keyword.t(),
+              context :: context
+            ) ::
               Enumerable.t(Ash.Changeset.t() | Ash.Notifier.Notification.t())
 
   @doc """
   Runs on each batch result after it is dispatched to the data layer.
   """
   @callback after_batch(
-              [{Ash.Changeset.t(), Ash.Resource.record()}],
-              Keyword.t(),
-              context
+              changesets_and_results :: [{Ash.Changeset.t(), Ash.Resource.record()}],
+              opts :: Keyword.t(),
+              context :: context
             ) ::
               Enumerable.t(
                 {:ok, Ash.Resource.record()}

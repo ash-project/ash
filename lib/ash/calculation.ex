@@ -33,13 +33,14 @@ defmodule Ash.Calculation do
 
   @type opts :: Keyword.t()
 
-  @callback init(opts) :: {:ok, opts} | {:error, term}
-  @callback describe(opts) :: String.t()
-  @callback calculate([Ash.Resource.record()], opts, context) ::
+  @callback init(opts :: opts) :: {:ok, opts} | {:error, term}
+  @callback describe(opts :: opts) :: String.t()
+  @callback calculate(records :: [Ash.Resource.record()], opts :: opts, context :: context) ::
               {:ok, [term]} | [term] | {:error, term} | :unknown
-  @callback expression(opts, context) :: any
-  @callback load(Ash.Query.t(), opts, context) :: atom | [atom] | Keyword.t()
-  @callback select(Ash.Query.t(), opts, context) :: list(atom)
+  @callback expression(otps :: opts, context :: context) :: any
+  @callback load(query :: Ash.Query.t(), opts :: opts, context :: context) ::
+              atom | [atom] | Keyword.t()
+  @callback select(query :: Ash.Query.t(), opts :: opts, context :: context) :: list(atom)
 
   @optional_callbacks expression: 2, calculate: 3
 end

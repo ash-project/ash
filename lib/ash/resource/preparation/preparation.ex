@@ -51,8 +51,9 @@ defmodule Ash.Resource.Preparation do
           optional(:actor) => Ash.Resource.record(),
           optional(any) => any
         }
-  @callback init(Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
-  @callback prepare(query, Keyword.t(), context) :: query when query: struct
+  @callback init(opts :: Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
+  @callback prepare(query :: Ash.Query.t(), opts :: Keyword.t(), context :: context) ::
+              Ash.Query.t()
 
   defmacro __using__(_) do
     quote do
