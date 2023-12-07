@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.9](https://github.com/ash-project/ash/compare/v2.17.8...v2.17.9) (2023-12-07)
+
+
+
+
+### Bug Fixes:
+
+* don't apply default limit unless pagination is required
+
+* properly handle union changes for lists of embeds
+
+* honor `default_limit` option in pagination
+
+### Improvements:
+
+* support `embed_nil_values?` for trimming down stored embeds
+
 ## [v2.17.8](https://github.com/ash-project/ash/compare/v2.17.7...v2.17.8) (2023-12-06)
 
 
