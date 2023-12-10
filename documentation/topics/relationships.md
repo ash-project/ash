@@ -194,7 +194,7 @@ See the docs for more: `d:Ash.Resource.Dsl.relationships.many_to_many`
 
 ### Relationships across APIs
 
-You will need to specify the `api` option in the relationship if the destination resource and the join table are both parts of a different API:
+You will need to specify the `api` option in the relationship if the destination resource and/or the join table are parts of a different API:
 
 ```elixir
 many_to_many :authors, MyApp.OtherApi.Resource do
