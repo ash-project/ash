@@ -138,6 +138,12 @@ defmodule Ash.Api.Dsl do
 
   @sections [@api, @resources, @execution, @authorization]
 
+  @verifiers [
+    Ash.Api.Verifiers.EnsureNoEmbeds,
+    Ash.Api.Verifiers.EnsureResourcesCompiled,
+    Ash.Api.Verifiers.ValidateRelatedResourceInclusion
+  ]
+
   @moduledoc """
   Apis are the entrypoints for working with your resources.
 
@@ -148,5 +154,5 @@ defmodule Ash.Api.Dsl do
   environment variables called `:ash_apis` and `:ash_registries` to find any potential registries
   """
 
-  use Spark.Dsl.Extension, sections: @sections
+  use Spark.Dsl.Extension, sections: @sections, verifiers: @verifiers
 end

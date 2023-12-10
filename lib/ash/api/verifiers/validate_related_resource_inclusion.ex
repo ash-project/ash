@@ -11,6 +11,7 @@ defmodule Ash.Api.Verifiers.ValidateRelatedResourceInclusion do
       dsl
       |> Verifier.get_entities([:resources])
       |> Enum.map(& &1.resource)
+      |> IO.inspect()
 
     for resource <- resources do
       for relationship <- Ash.Resource.Info.relationships(resource) do
