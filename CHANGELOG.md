@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.10](https://github.com/ash-project/ash/compare/v2.17.9...v2.17.10) (2023-12-10)
+
+
+
+
+### Bug Fixes:
+
+* add back in api level verifiers
+
+### Improvements:
+
+* support `nil` values in struct type callbacks
+
 ## [v2.17.9](https://github.com/ash-project/ash/compare/v2.17.8...v2.17.9) (2023-12-07)
 
 
