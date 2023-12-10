@@ -25,7 +25,7 @@ defmodule Ash.Test.Resource.NoPkTest do
     end
 
     relationships do
-      belongs_to :location, Location do
+      belongs_to :location, Ash.Test.Resource.NoPkTest.Location do
         attribute_writable? true
       end
     end
