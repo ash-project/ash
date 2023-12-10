@@ -169,9 +169,18 @@ defmodule MyApp.TweetHashtag do
   use Ash.Resource,
     data_layer: your_data_layer
 
+  postgres do
+    table "tweet_hashtags"
+    repo MyApp.Repo
+  end
+
   relationships do
     belongs_to :tweet, MyApp.Tweet, primary_key?: true, allow_nil?: false
     belongs_to :hashtag, MyApp.Hashtag, primary_key?: true, allow_nil?: false
+  end
+
+  actions do
+    defaults [:create, :read, :update, :destroy]
   end
 end
 ```
@@ -185,12 +194,29 @@ See the docs for more: `d:Ash.Resource.Dsl.relationships.many_to_many`
 
 ### Relationships across APIs
 
-You will need to specify the `api` option in the relationship if the destination resource is part of a different API:
+You will need to specify the `api` option in the relationship if the destination resource and/or the join table are parts of a different API:
 
 ```elixir
 many_to_many :authors, MyApp.OtherApi.Resource do
   api MyApp.OtherApi
   ...
+end
+```
+
+However, if the join table is a part of the same API but the destination resource is a part of a different API, you will have to add a custom `has_many` association to the source API as well. Suppose you have an API called `MyApp.Organizations` with a resource named `MyApp.Organizations.Organization`, an API called `MyApp.Accounts` with a resource named `MyApp.Accounts.User`, as well as a join resource `MyApp.Organizations.OrganizationUsers`. Then, in order to add `many_to_many :users` for `MyApp.Organizations.Organization`, you'll need the following setup:
+
+```elixir
+relationships do
+  ...
+
+  has_many :users_join_assoc, MyApp.Organizations.OrganizationUsers
+
+  many_to_many :users, MyApp.Accounts.User do
+    api MyApp.Accounts
+    through MyApp.Organizations.OrganizationUsers
+    source_attribute_on_join_resource :organization_id
+    destination_attribute_on_join_resource :user_id
+  end
 end
 ```
 
