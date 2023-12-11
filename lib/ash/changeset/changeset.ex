@@ -1260,6 +1260,7 @@ defmodule Ash.Changeset do
 
               module.change(changeset, opts, %{
                 actor: actor,
+                tenant: changeset.tenant,
                 authorize?: authorize? || false,
                 tracer: tracer
               })

@@ -409,7 +409,8 @@ defmodule Ash.Actions.Create.Bulk do
         action,
         opts[:actor],
         opts[:authorize?],
-        opts[:tracer]
+        opts[:tracer],
+        opts[:tenant]
       )
 
     batch =
@@ -639,6 +640,7 @@ defmodule Ash.Actions.Create.Bulk do
       if changes[index] == :all do
         module.before_batch(batch, change_opts, %{
           actor: opts[:actor],
+          tenant: opts[:tenant],
           tracer: opts[:tracer],
           authorize?: opts[:authorize?]
         })
@@ -656,6 +658,7 @@ defmodule Ash.Actions.Create.Bulk do
         before_batch_results =
           module.before_batch(matches, change_opts, %{
             actor: opts[:actor],
+            tenant: opts[:tenant],
             tracer: opts[:tracer],
             authorize?: opts[:authorize?]
           })
@@ -815,7 +818,8 @@ defmodule Ash.Actions.Create.Bulk do
                    changeset,
                    opts[:actor],
                    authorize?: opts[:authorize?],
-                   actor: opts[:actor]
+                   actor: opts[:actor],
+                   tenant: opts[:tenant]
                  ) do
               {:error, error} ->
                 {Ash.Changeset.add_error(changeset, error), new_notifications}
@@ -1098,6 +1102,7 @@ defmodule Ash.Actions.Create.Bulk do
 
         module.after_batch(results, change_opts, %{
           actor: opts[:actor],
+          tenant: opts[:tenant],
           tracer: opts[:tracer],
           authorize?: opts[:authorize?]
         })
@@ -1121,6 +1126,7 @@ defmodule Ash.Actions.Create.Bulk do
         after_batch_results =
           module.after_batch(matches, change_opts, %{
             actor: opts[:actor],
+            tenant: opts[:tenant],
             tracer: opts[:tracer],
             authorize?: opts[:authorize?]
           })
@@ -1170,7 +1176,7 @@ defmodule Ash.Actions.Create.Bulk do
     )
   end
 
-  defp run_action_changes(batch, all_changes, _action, actor, authorize?, tracer) do
+  defp run_action_changes(batch, all_changes, _action, actor, authorize?, tracer, tenant) do
     Enum.reduce(
       all_changes,
       %{must_return_records?: false, batch: batch, changes: %{}},
@@ -1210,7 +1216,8 @@ defmodule Ash.Actions.Create.Bulk do
             context = %{
               actor: actor,
               authorize?: authorize? || false,
-              tracer: tracer
+              tracer: tracer,
+              tenant: tenant
             }
 
             batch = batch_change(module, batch, change_opts, context, actor)
