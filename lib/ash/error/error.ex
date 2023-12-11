@@ -384,6 +384,10 @@ defmodule Ash.Error do
     to_ash_error(errors, stacktrace, opts)
   end
 
+  def to_ash_error(%Ash.ActionInput{errors: errors}, stacktrace, opts) do
+    to_ash_error(errors, stacktrace, opts)
+  end
+
   def to_ash_error(error, stacktrace, opts) when is_binary(error) do
     [error: error]
     |> UnknownError.exception()
