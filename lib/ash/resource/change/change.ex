@@ -92,7 +92,10 @@ defmodule Ash.Resource.Change do
   end
 
   @type context :: %{
-          optional(:actor) => Ash.Resource.record(),
+          optional(:actor) => Ash.Resource.record() | nil,
+          optional(:tenant) => String.t() | nil,
+          optional(:authorize?) => boolean() | nil,
+          optional(:tracer) => Ash.Tracer.t() | [Ash.Tracer.t()] | nil,
           optional(any) => any
         }
 
