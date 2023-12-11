@@ -1900,7 +1900,8 @@ defmodule Ash.Changeset do
   defp warn_on_transaction_hooks(_, [], _), do: :ok
 
   defp warn_on_transaction_hooks(changeset, _, type) do
-    if changeset.context[:warn_on_transaction_hooks?] != false &&
+    if Application.get_env(:ash, :warn_on_transaction_hooks?) != false &&
+         changeset.context[:warn_on_transaction_hooks?] != false &&
          Ash.DataLayer.in_transaction?(changeset.resource) &&
          (changeset.before_transaction != [] or changeset.around_transaction != []) do
       message =
@@ -1917,9 +1918,10 @@ defmodule Ash.Changeset do
       This means that you may be running an action in a transaction that you did not design with the intent of running in a surrounding transaction.
       You should either
 
-      1. Create another action that is safe to use in a surrounding transaction, and use that instead of this one
-      2. Silence this warning using `set_context(%{warn_on_transaction_hooks?: false})` in the action definition
-      3. If building a changeset manually, do #2 except programmatically, `Ash.Changeset.set_context(changeset, %{warn_on_transaction_hooks?: false})`
+      1. If you are testing, and your data layer runs in a transaction/sandbox mode, set `config :ash, warn_on_transaction_hooks?: false` in `config/test.exs`
+      2. Create another action that is safe to use in a surrounding transaction, and use that instead of this one
+      3. Silence this warning using `set_context(%{warn_on_transaction_hooks?: false})` in the action definition
+      4. If building a changeset manually, do #2 except programmatically, `Ash.Changeset.set_context(changeset, %{warn_on_transaction_hooks?: false})`
       """)
     end
   end
