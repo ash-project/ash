@@ -24,6 +24,7 @@ defmodule Ash.Resource.Validation do
     :message,
     :before_action?,
     :where,
+    :always_atomic?,
     on: []
   ]
 
@@ -44,9 +45,13 @@ defmodule Ash.Resource.Validation do
   @callback validate(changeset :: Ash.Changeset.t(), opts :: Keyword.t()) :: :ok | {:error, term}
   @callback describe(opts :: Keyword.t()) ::
               String.t() | [{:message, String.t()} | {:vars, Keyword.t()}]
-  @callback atomic?(opts :: Keyword.t()) :: boolean
+  @callback atomic?() :: boolean
+  @callback atomic(Ash.Changeset.t(), Keyword.t()) ::
+              :ok
+              | {:atomic, Ash.Expr.t()}
+              | {:error, term()}
 
-  @optional_callbacks describe: 1
+  @optional_callbacks describe: 1, validate: 2, atomic: 2
 
   @validation_type {:spark_function_behaviour, Ash.Resource.Validation,
                     Ash.Resource.Validation.Builtins, {Ash.Resource.Validation.Function, 1}}
@@ -91,6 +96,12 @@ defmodule Ash.Resource.Validation do
       type: :boolean,
       default: false,
       doc: "If set to `true`, the validation will be run in a before_action hook"
+    ],
+    always_atomic?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/2` callback defined. Set this to `true` to run it atomically always."
     ]
   ]
 
@@ -99,9 +110,10 @@ defmodule Ash.Resource.Validation do
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.Validation
+      @before_compile Ash.Resource.Validation
 
+      @impl Ash.Resource.Validation
       def init(opts), do: {:ok, opts}
-      def atomic?(_), do: false
 
       defp with_description(keyword, opts) do
         if Kernel.function_exported?(__MODULE__, :describe, 1) do
@@ -111,7 +123,7 @@ defmodule Ash.Resource.Validation do
         end
       end
 
-      defoverridable init: 1, atomic?: 1
+      defoverridable init: 1
     end
   end
 
@@ -129,4 +141,17 @@ defmodule Ash.Resource.Validation do
   def opt_schema, do: @schema
   def action_schema, do: @action_schema
   def validation_type, do: @validation_type
+
+  defmacro __before_compile__(_env) do
+    quote generated: true do
+      unless Module.defines?(__MODULE__, {:atomic?, 0}, :def) do
+        @impl Ash.Resource.Validation
+        if Module.defines?(__MODULE__, {:atomic, 2}, :def) do
+          def atomic?, do: true
+        else
+          def atomic?, do: false
+        end
+      end
+    end
+  end
 end

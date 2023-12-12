@@ -15,7 +15,7 @@ defmodule Ash.Query.Function do
   @callback args() :: [arg]
   @callback name() :: atom
   @callback new(list(term)) :: {:ok, term} | {:error, String.t() | Exception.t()}
-  @callback evaluate(func :: map) :: :unknown | {:known, term}
+  @callback evaluate(func :: map) :: :unknown | {:known, term} | {:error, term}
   @callback partial_evaluate(func) :: func when func: map
   @callback eager_evaluate?() :: boolean()
   @callback predicate?() :: boolean()

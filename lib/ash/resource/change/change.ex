@@ -9,7 +9,7 @@ defmodule Ash.Resource.Change do
   when this change was configured on a resource, and the context, which currently only has
   the actor.
   """
-  defstruct [:change, :on, :only_when_valid?, :description, where: []]
+  defstruct [:change, :on, :only_when_valid?, :description, :always_atomic?, where: []]
 
   @type t :: %__MODULE__{}
   @type ref :: {module(), Keyword.t()} | module()
@@ -54,21 +54,14 @@ defmodule Ash.Resource.Change do
         doc: """
         Validations that should pass in order for this validation to apply. These validations failing will result in this validation being ignored.
         """
+      ],
+      always_atomic?: [
+        type: :boolean,
+        default: false,
+        doc:
+          "By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always."
       ]
     ]
-  end
-
-  def atomic_schema do
-    schema()
-    |> Keyword.take([:description, :where])
-    |> Keyword.put(:attribute, type: :atom, required: true, doc: "The attribute to update")
-    |> Keyword.put(:expr,
-      type: :any,
-      required: true,
-      doc: """
-      The expression to use to set the attribute
-      """
-    )
   end
 
   @doc false
@@ -137,7 +130,20 @@ defmodule Ash.Resource.Change do
                 | Ash.Notifier.Notification.t()
               )
 
-  @optional_callbacks before_batch: 3, after_batch: 3, batch_change: 3
+  @callback atomic(Ash.Changeset.t(), Keyword.t(), context()) ::
+              {:atomic, %{atom() => Ash.Expr.t()}}
+              | {:non_atomic, Ash.Changeset.t()}
+              | {:error, term()}
+
+  @callback after_atomic(Ash.Changeset.t(), Keyword.t(), Ash.Resource.record()) ::
+              {:ok, Ash.Resource.record()} | {:error, term()}
+
+  @optional_callbacks before_batch: 3,
+                      after_batch: 3,
+                      batch_change: 3,
+                      change: 3,
+                      atomic: 3,
+                      after_atomic: 3
 
   defmacro __using__(_) do
     quote do
@@ -148,6 +154,19 @@ defmodule Ash.Resource.Change do
       def atomic(_opts, _context), do: :not_atomic
 
       defoverridable init: 1, atomic: 2
+    end
+  end
+
+  defmacro __before_compile__(_env) do
+    quote generated: true do
+      unless Module.defines?(__MODULE__, {:atomic?, 0}, :def) do
+        @impl Ash.Resource.Validation
+        if Module.defines?(__MODULE__, {:atomic, 3}, :def) do
+          def atomic?, do: true
+        else
+          def atomic?, do: false
+        end
+      end
     end
   end
 end

@@ -23,9 +23,9 @@ defmodule Ash.Type.Keyword do
         ]
       ],
       doc: """
-      The types of the fields in the map, and their constraints.
+      The types of the fields in the keyword, and their constraints.
 
-      If constraints are specified, only those fields will be in the casted map.
+      If constraints are specified, only those fields will be in the casted keyword.
 
       For example:
 
@@ -92,7 +92,7 @@ defmodule Ash.Type.Keyword do
 
   def cast_input(value, constraints) do
     if Keyword.keyword?(value) do
-      {:ok, Keyword.take(value, Keyword.keys(constraints[:fields]))}
+      {:ok, Keyword.take(value, Keyword.keys(constraints[:fields] || []))}
     else
       :error
     end
@@ -195,6 +195,7 @@ defmodule Ash.Type.Keyword do
 
   defp try_map_to_keyword(map, constraints) do
     constraints[:fields]
+    |> Kernel.||([])
     |> Enum.flat_map(fn {key, _} ->
       with :error <- Map.fetch(map, key),
            :error <- Map.fetch(map, to_string(key)) do

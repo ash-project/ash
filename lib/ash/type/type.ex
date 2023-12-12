@@ -785,7 +785,7 @@ defmodule Ash.Type do
   def dump_to_embedded({:array, type}, term, constraints) do
     type = Ash.Type.get_type(type)
 
-    type.dump_to_embedded_array(term, constraints)
+    type.dump_to_embedded_array(term, constraints[:items] || [])
   end
 
   def dump_to_embedded(type, term, constraints) do
