@@ -5147,6 +5147,26 @@ change {MyCustomChange, :foo}
   </td>
 </tr>
 
+<tr>
+  <td style="text-align: left">
+    <a id="actions-create-change-always_atomic?" href="#actions-create-change-always_atomic?">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        always_atomic?
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">boolean</code>
+  </td>
+  <td style="text-align: left">
+    <code class="inline">false</code>
+  </td>
+  <td style="text-align: left" colspan=2>
+    By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always.
+  </td>
+</tr>
+
   </tbody>
 </table>
 
@@ -5323,6 +5343,26 @@ validate changing(:email)
   </td>
   <td style="text-align: left" colspan=2>
     If set to `true`, the validation will be run in a before_action hook
+  </td>
+</tr>
+
+<tr>
+  <td style="text-align: left">
+    <a id="actions-create-validate-always_atomic?" href="#actions-create-validate-always_atomic?">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        always_atomic?
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">boolean</code>
+  </td>
+  <td style="text-align: left">
+    <code class="inline">false</code>
+  </td>
+  <td style="text-align: left" colspan=2>
+    By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/2` callback defined. Set this to `true` to run it atomically always.
   </td>
 </tr>
 
@@ -7099,6 +7139,26 @@ change {MyCustomChange, :foo}
   </td>
 </tr>
 
+<tr>
+  <td style="text-align: left">
+    <a id="actions-update-change-always_atomic?" href="#actions-update-change-always_atomic?">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        always_atomic?
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">boolean</code>
+  </td>
+  <td style="text-align: left">
+    <code class="inline">false</code>
+  </td>
+  <td style="text-align: left" colspan=2>
+    By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always.
+  </td>
+</tr>
+
   </tbody>
 </table>
 
@@ -7275,6 +7335,26 @@ validate changing(:email)
   </td>
   <td style="text-align: left" colspan=2>
     If set to `true`, the validation will be run in a before_action hook
+  </td>
+</tr>
+
+<tr>
+  <td style="text-align: left">
+    <a id="actions-update-validate-always_atomic?" href="#actions-update-validate-always_atomic?">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        always_atomic?
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">boolean</code>
+  </td>
+  <td style="text-align: left">
+    <code class="inline">false</code>
+  </td>
+  <td style="text-align: left" colspan=2>
+    By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/2` callback defined. Set this to `true` to run it atomically always.
   </td>
 </tr>
 
@@ -8180,6 +8260,26 @@ change {MyCustomChange, :foo}
   </td>
 </tr>
 
+<tr>
+  <td style="text-align: left">
+    <a id="actions-destroy-change-always_atomic?" href="#actions-destroy-change-always_atomic?">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        always_atomic?
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">boolean</code>
+  </td>
+  <td style="text-align: left">
+    <code class="inline">false</code>
+  </td>
+  <td style="text-align: left" colspan=2>
+    By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always.
+  </td>
+</tr>
+
   </tbody>
 </table>
 
@@ -8356,6 +8456,26 @@ validate changing(:email)
   </td>
   <td style="text-align: left" colspan=2>
     If set to `true`, the validation will be run in a before_action hook
+  </td>
+</tr>
+
+<tr>
+  <td style="text-align: left">
+    <a id="actions-destroy-validate-always_atomic?" href="#actions-destroy-validate-always_atomic?">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        always_atomic?
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">boolean</code>
+  </td>
+  <td style="text-align: left">
+    <code class="inline">false</code>
+  </td>
+  <td style="text-align: left" colspan=2>
+    By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/2` callback defined. Set this to `true` to run it atomically always.
   </td>
 </tr>
 
@@ -9755,6 +9875,26 @@ change {MyCustomChange, :foo}
   </td>
 </tr>
 
+<tr>
+  <td style="text-align: left">
+    <a id="changes-change-always_atomic?" href="#changes-change-always_atomic?">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        always_atomic?
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">boolean</code>
+  </td>
+  <td style="text-align: left">
+    <code class="inline">false</code>
+  </td>
+  <td style="text-align: left" colspan=2>
+    By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always.
+  </td>
+</tr>
+
   </tbody>
 </table>
 
@@ -10067,6 +10207,26 @@ validate at_least_one_of_present([:first_name, :last_name])
   </td>
   <td style="text-align: left" colspan=2>
     If set to `true`, the validation will be run in a before_action hook
+  </td>
+</tr>
+
+<tr>
+  <td style="text-align: left">
+    <a id="validations-validate-always_atomic?" href="#validations-validate-always_atomic?">
+      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
+        always_atomic?
+      </span>
+    </a>
+      
+  </td>
+  <td style="text-align: left">
+    <code class="inline">boolean</code>
+  </td>
+  <td style="text-align: left">
+    <code class="inline">false</code>
+  </td>
+  <td style="text-align: left" colspan=2>
+    By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/2` callback defined. Set this to `true` to run it atomically always.
   </td>
 </tr>
 

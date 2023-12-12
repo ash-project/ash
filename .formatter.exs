@@ -9,6 +9,7 @@ spark_locals_without_parens = [
   allow_nil?: 1,
   allow_nil_input: 1,
   allow_unregistered?: 1,
+  always_atomic?: 1,
   always_select?: 1,
   api: 1,
   args: 1,
