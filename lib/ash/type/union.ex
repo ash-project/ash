@@ -719,6 +719,21 @@ defmodule Ash.Type.Union do
     end
   end
 
+  def prepare_change(
+        %Ash.Union{type: type_name, value: old_value},
+        %Ash.Union{type: type_name, value: new_value},
+        constraints
+      ) do
+    with {:ok, type_configs} <- Keyword.fetch(constraints, :types),
+         {:ok, type_config} <- Keyword.fetch(type_configs, type_name),
+         {:ok, type} <- Keyword.fetch(type_config, :type),
+         type_constraints <- Keyword.get(type_config, :constraints, []),
+         type <- Ash.Type.get_type(type),
+         {:ok, value} <- type.prepare_change(old_value, new_value, type_constraints) do
+      {:ok, %Ash.Union{type: type_name, value: value}}
+    end
+  end
+
   def prepare_change(%Ash.Union{type: type_name, value: old_value}, new_value, constraints)
       when is_map(new_value) do
     constraints
