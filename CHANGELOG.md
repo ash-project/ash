@@ -5,6 +5,33 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.11](https://github.com/ash-project/ash/compare/v2.17.10...v2.17.11) (2023-12-13)
+
+
+
+
+### Bug Fixes:
+
+* don't create invalid datetimes when scrubbing microseconds
+
+* prepare change with `nil` old value on union type change
+
+* properly prepare union value changes when old & new are union structs
+
+* fix `dump_to_embedded_array`
+
+* test failures and credo issue
+
+### Improvements:
+
+* additional atomic callbacks
+
+* add `warn_on_transaction_hooks?: false` config
+
+* accept an action input in `Ash.Error.to_ash_error/3`
+
+* include tenant in change context
+
 ## [v2.17.10](https://github.com/ash-project/ash/compare/v2.17.9...v2.17.10) (2023-12-10)
 
 
