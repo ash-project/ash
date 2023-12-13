@@ -57,10 +57,11 @@ defmodule Ash.Type.DateTime do
   end
 
   def cast_input(
-        %DateTime{microsecond: {_, _}} = datetime,
+        %DateTime{microsecond: {_, _} = microseconds} = datetime,
         [{:precision, :second} | _] = constraints
-      ) do
-    cast_input(%{datetime | microsecond: nil}, constraints)
+      )
+      when microseconds != {0, 0} do
+    cast_input(%{datetime | microsecond: {0, 0}}, constraints)
   end
 
   def cast_input(value, constraints) do
