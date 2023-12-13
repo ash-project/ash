@@ -152,7 +152,7 @@ defmodule Ash.EmbeddableType do
 
         __MODULE__
         |> Ash.Changeset.new()
-        |> Ash.Changeset.set_context(%{__source__: constraints[:__source__]})
+        |> Ash.EmbeddableType.copy_source(constraints[:__source__])
         |> Ash.Changeset.for_create(action, value)
         |> ShadowApi.create()
         |> case do
@@ -347,7 +347,7 @@ defmodule Ash.EmbeddableType do
 
           old_value
           |> Ash.Changeset.new()
-          |> Ash.Changeset.set_context(%{__source__: constraints[:__source__]})
+          |> Ash.EmbeddableType.copy_source(constraints[:__source__])
           |> Ash.Changeset.for_update(action, new_uncasted_value)
           |> ShadowApi.update()
           |> case do
@@ -379,7 +379,7 @@ defmodule Ash.EmbeddableType do
 
               old_value
               |> Ash.Changeset.new()
-              |> Ash.Changeset.set_context(%{__source__: constraints[:__source__]})
+              |> Ash.EmbeddableType.copy_source(constraints[:__source__])
               |> Ash.Changeset.for_update(action, new_uncasted_value)
               |> ShadowApi.update()
               |> case do
@@ -419,6 +419,7 @@ defmodule Ash.EmbeddableType do
             query =
               __MODULE__
               |> Ash.DataLayer.Simple.set_data(term)
+              |> Ash.EmbeddableType.copy_source(constraints[:__source__])
               |> Ash.Query.load(constraints[:load] || [])
 
             query =
@@ -593,7 +594,7 @@ defmodule Ash.EmbeddableType do
                   if value_updating_from do
                     value_updating_from
                     |> Ash.Changeset.new()
-                    |> Ash.Changeset.set_context(%{__source__: constraints[:__source__]})
+                    |> Ash.EmbeddableType.copy_source(constraints[:__source__])
                     |> Ash.Changeset.for_update(action, new)
                     |> ShadowApi.update()
                     |> case do
@@ -635,4 +636,13 @@ defmodule Ash.EmbeddableType do
       Ash.EmbeddableType.array_embed_implementation()
     end
   end
+
+  def copy_source(changeset, %Ash.Changeset{} = source) do
+    changeset
+    |> Ash.Changeset.set_context(%{__source__: source})
+    |> Ash.Changeset.set_tenant(source.tenant)
+    |> Ash.Changeset.set_context(source.context)
+  end
+
+  def copy_source(changeset, _), do: changeset
 end
