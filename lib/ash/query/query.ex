@@ -38,6 +38,7 @@ defmodule Ash.Query do
     :tenant,
     :timeout,
     :lock,
+    sort_input_indices: [],
     around_transaction: [],
     invalid_keys: MapSet.new(),
     load_through: %{},
@@ -266,6 +267,60 @@ defmodule Ash.Query do
 
       {:error, error} ->
         add_error(query, :filter, error)
+    end
+  end
+
+  @doc """
+  Attach a sort statement to the query labelled as user input.
+
+  Sorts added as user input (or filters constructed with `Ash.Filter.parse_input`)
+  will honor any field policies on resources by replacing any references to the field
+  with `nil` in cases where the actor should not be able to see the given field.
+  """
+  def sort_input(query, sorts, opts \\ []) do
+    query = to_query(query)
+
+    if sorts == [] || sorts == nil do
+      query
+    else
+      if Ash.DataLayer.data_layer_can?(query.resource, :sort) do
+        if opts[:prepend?] && query.sort != [] do
+          validated =
+            query
+            |> Map.put(:sort, [])
+            |> sort_input(sorts)
+            |> Map.get(:sort)
+
+          new_sort_input_indices =
+            (0..Enum.count(validated - 1)) ++ Enum.map(query.sort_input_indices, &(&1 + 1))
+
+          %{query | sort: validated ++ query.sort, sort_input_indices: new_sort_input_indices}
+        else
+          last_index = Enum.count(query.sort || [])
+
+          sorts
+          |> List.wrap()
+          |> Enum.with_index(last_index)
+          |> Enum.reduce(query, fn
+            {{sort, direction}, index}, query ->
+              %{
+                query
+                | sort: query.sort ++ [{sort, direction}],
+                  sort_input_indices: query.sort_input_indices ++ [index]
+              }
+
+            {sort, index}, query ->
+              %{
+                query
+                | sort: query.sort ++ [{sort, :asc}],
+                  sort_input_indices: query.sort_input_indices ++ [index]
+              }
+          end)
+          |> validate_sort()
+        end
+      else
+        add_error(query, :sort, "Data layer does not support sorting")
+      end
     end
   end
 
@@ -2389,12 +2444,16 @@ defmodule Ash.Query do
     else
       if Ash.DataLayer.data_layer_can?(query.resource, :sort) do
         if opts[:prepend?] && query.sort != [] do
-          query_sort = query.sort
+          validated =
+            query
+            |> Map.put(:sort, [])
+            |> sort(sorts)
+            |> Map.get(:sort)
 
-          query
-          |> Map.put(:sort, [])
-          |> sort(sorts)
-          |> sort(query_sort)
+          new_sort_input_indices =
+            Enum.map(query.sort_input_indices, &(&1 + 1))
+
+          %{query | sort: validated ++ query.sort, sort_input_indices: new_sort_input_indices}
         else
           sorts
           |> List.wrap()
@@ -2516,6 +2575,10 @@ defmodule Ash.Query do
     query = unset(query, [:calculations, :aggregates])
 
     struct(query, [{:load, Map.get(new, :load)}])
+  end
+
+  defp do_unset(query, :sort, _new) do
+    %{query | sort: [], sort_input_indices: []}
   end
 
   defp do_unset(query, key, new) do

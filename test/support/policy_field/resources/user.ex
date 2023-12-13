@@ -18,6 +18,10 @@ defmodule Ash.Test.Support.PolicyField.User do
     attribute :role, :atom do
       constraints one_of: [:user, :representative, :admin]
     end
+
+    attribute :points, :integer do
+      # only you can see your own points
+    end
   end
 
   relationships do
@@ -44,6 +48,10 @@ defmodule Ash.Test.Support.PolicyField.User do
 
     field_policy :role do
       authorize_if actor_attribute_equals(:role, :representative)
+    end
+
+    field_policy :points do
+      authorize_if expr(id == ^actor(:id))
     end
 
     field_policy :ticket_count, [

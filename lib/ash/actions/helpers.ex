@@ -551,13 +551,13 @@ defmodule Ash.Actions.Helpers do
 
               record
               |> Map.put(field, %Ash.ForbiddenField{field: field, type: type})
-              |> Map.update!(
-                :calculations,
-                &Map.delete(&1, {:__ash_fields_are_visible__, fields})
-              )
               |> replace_dynamic_loads(field, type, query_or_changeset)
             end)
           end
+          |> Map.update!(
+            :calculations,
+            &Map.delete(&1, {:__ash_fields_are_visible__, fields})
+          )
 
         _, record ->
           record

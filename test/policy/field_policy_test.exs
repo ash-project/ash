@@ -7,10 +7,10 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
   alias Ash.Test.Support.PolicyField.{Api, Ticket, User}
 
   setup do
-    rep = Api.create!(Ash.Changeset.new(User, %{role: :representative}))
-    user = Api.create!(Ash.Changeset.new(User, %{role: :user}))
-    admin = Api.create!(Ash.Changeset.new(User, %{role: :admin}))
-    other_user = Api.create!(Ash.Changeset.new(User, %{role: :user}))
+    rep = Api.create!(Ash.Changeset.new(User, %{role: :representative, points: 4}))
+    user = Api.create!(Ash.Changeset.new(User, %{role: :user, points: 3}))
+    admin = Api.create!(Ash.Changeset.new(User, %{role: :admin, points: 2}))
+    other_user = Api.create!(Ash.Changeset.new(User, %{role: :user, points: 1}))
 
     [
       user: user,
@@ -29,6 +29,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
     test "introspection returns field policies" do
       assert [
                %Ash.Policy.FieldPolicy{bypass?: true},
+               %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false},
                %Ash.Policy.FieldPolicy{bypass?: false}
@@ -211,10 +212,11 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Api.read!(authorize?: true)
     end
 
-    test "it's possible to filter on values that are only allowed to be accesed from a parent", %{
-      representative: representative,
-      user: user
-    } do
+    test "it's possible to filter on values that are only allowed to be accessed from a parent",
+         %{
+           representative: representative,
+           user: user
+         } do
       # someone who is allowed because it's accessed through the ticket
       assert [ticket] =
                Ticket
@@ -242,6 +244,33 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                field: :ticket_count,
                type: :aggregate
              }
+    end
+  end
+
+  describe "sorts" do
+    test "sorts are replaced with the appropriate field policies", %{
+      user: %{id: user_id} = user
+    } do
+      assert [%{id: ^user_id} | _] =
+               User
+               |> Ash.Query.select([:points])
+               |> Ash.Query.sort_input(points: :asc_nils_last)
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
+               |> Api.read!()
+
+      assert [_, _, _, %{id: ^user_id}] =
+               User
+               |> Ash.Query.select([:points])
+               |> Ash.Query.sort_input(points: :asc_nils_first)
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
+               |> Api.read!()
+
+      assert [_, _, %{id: ^user_id}, _] =
+               User
+               |> Ash.Query.select([:points])
+               |> Ash.Query.sort(points: :asc_nils_first)
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
+               |> Api.read!()
     end
   end
 end
