@@ -292,11 +292,12 @@ defmodule Ash.Query do
             |> Map.get(:sort)
 
           new_sort_input_indices =
-            (0..Enum.count(validated - 1)) ++ Enum.map(query.sort_input_indices, &(&1 + 1))
+            Enum.to_list(0..(Enum.count(List.wrap(validated)) - 1)) ++
+              Enum.map(query.sort_input_indices, &(&1 + 1))
 
           %{query | sort: validated ++ query.sort, sort_input_indices: new_sort_input_indices}
         else
-          last_index = Enum.count(query.sort || [])
+          last_index = Enum.count(List.wrap(query.sort))
 
           sorts
           |> List.wrap()
