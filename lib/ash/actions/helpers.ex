@@ -656,7 +656,7 @@ defmodule Ash.Actions.Helpers do
     |> Enum.reduce(result, fn key, record ->
       default_field_value =
         if Ash.Flags.ash_three?() do
-          %Ash.NotSelected{}
+          %Ash.NotSelected{field: key}
         else
           nil
         end
