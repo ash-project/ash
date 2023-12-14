@@ -653,7 +653,16 @@ defmodule Ash.Actions.Helpers do
       end
     end)
     |> Enum.reduce(result, fn key, record ->
-      Map.put(record, key, nil)
+      version = 3
+
+      default =
+        if version >= 3 do
+          %Ash.NotSelected{}
+        else
+          nil
+        end
+
+      Map.put(record, key, default)
     end)
     |> Ash.Resource.put_metadata(:selected, select)
   end

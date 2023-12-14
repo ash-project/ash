@@ -511,7 +511,7 @@ defmodule Ash.Test.Actions.ReadTest do
       |> Api.create!()
 
       assert [%{name: "bruh"}] = Api.read!(Author)
-      assert [%{name: nil}] = Api.read!(Ash.Query.deselect(Author, :name))
+      assert [%{name: %Ash.NotSelected{}}] = Api.read!(Ash.Query.deselect(Author, :name))
     end
 
     test "you can select fields, but the primary key is always present" do
