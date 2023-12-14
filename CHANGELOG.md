@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.12](https://github.com/ash-project/ash/compare/v2.17.11...v2.17.12) (2023-12-14)
+
+
+
+
+### Bug Fixes:
+
+* thread context through when setting source constraint on embeds
+
+### Improvements:
+
+* honor field policies in sort expressions
+
 ## [v2.17.11](https://github.com/ash-project/ash/compare/v2.17.10...v2.17.11) (2023-12-13)
 
 
