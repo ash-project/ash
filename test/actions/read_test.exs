@@ -8,6 +8,7 @@ defmodule Ash.Test.Actions.ReadTest do
   require Ash.Query
 
   alias Ash.Test.AnyApi, as: Api
+  require Ash.Flags
 
   defmodule PostPreparation do
     @moduledoc false
@@ -512,6 +513,18 @@ defmodule Ash.Test.Actions.ReadTest do
 
       assert [%{name: "bruh"}] = Api.read!(Author)
       assert [%{name: nil}] = Api.read!(Ash.Query.deselect(Author, :name))
+    end
+
+    @tag :ash_three
+    test "deselected fields don't return nil after Ash 3.0.0" do
+      Author
+      |> new(%{name: "bruh"})
+      |> Api.create!()
+
+      assert [%{name: "bruh"}] = Api.read!(Author)
+
+      assert [%{name: %Ash.NotSelected{field: :name}}] =
+               Api.read!(Ash.Query.deselect(Author, :name))
     end
 
     test "you can select fields, but the primary key is always present" do

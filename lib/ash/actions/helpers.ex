@@ -1,6 +1,7 @@
 defmodule Ash.Actions.Helpers do
   @moduledoc false
   require Logger
+  require Ash.Flags
 
   def rollback_if_in_transaction({:error, error}, changeset) do
     if Ash.DataLayer.in_transaction?(changeset.resource) do
@@ -653,7 +654,14 @@ defmodule Ash.Actions.Helpers do
       end
     end)
     |> Enum.reduce(result, fn key, record ->
-      Map.put(record, key, nil)
+      default_field_value =
+        if Ash.Flags.ash_three?() do
+          %Ash.NotSelected{field: key}
+        else
+          nil
+        end
+
+      Map.put(record, key, default_field_value)
     end)
     |> Ash.Resource.put_metadata(:selected, select)
   end
