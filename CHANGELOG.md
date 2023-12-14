@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.13](https://github.com/ash-project/ash/compare/v2.17.12...v2.17.13) (2023-12-14)
+
+
+
+
+### Bug Fixes:
+
+* properly unnested union values passed into `Ash.Type.Union.prepare_change_array`
+
+### Improvements:
+
+* add `Ash.Error.from_json/2`
+
+* accept expressions in `Ash.Query.calculate`
+
 ## [v2.17.12](https://github.com/ash-project/ash/compare/v2.17.11...v2.17.12) (2023-12-14)
 
 
