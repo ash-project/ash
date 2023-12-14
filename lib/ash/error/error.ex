@@ -270,6 +270,76 @@ defmodule Ash.Error do
   end
 
   @doc """
+  Converts a combination of a module and json input into an Ash exception.
+
+  This is necessary for certain data layers to be able to encode and decode Ash exceptions
+  from structs.
+  """
+  def from_json(module, json) do
+    {handled, unhandled} = process_known_json_keys(json)
+
+    unhandled =
+      Map.update(unhandled, "vars", [], fn vars ->
+        Map.to_list(vars)
+      end)
+
+    json = Map.merge(unhandled, handled)
+
+    if function_exported?(module, :from_json, 1) do
+      module.from_json(json)
+    else
+      keyword =
+        json |> Map.to_list() |> Enum.map(fn {key, value} -> {atomize_safely(key), value} end)
+
+      module.exception(keyword)
+    end
+  end
+
+  defp process_known_json_keys(json) do
+    {handled, unhandled} = Map.split(json, ~w(field fields message path))
+
+    handled =
+      handled
+      |> update_if_present("field", &String.to_existing_atom/1)
+      |> update_if_present("fields", fn fields ->
+        fields
+        |> List.wrap()
+        |> Enum.map(&atomize_safely/1)
+      end)
+      |> update_if_present("path", fn item ->
+        item
+        |> List.wrap()
+        |> Enum.map(fn
+          item when is_integer(item) ->
+            item
+
+          item when is_binary(item) ->
+            case Integer.parse(item) do
+              {integer, ""} -> integer
+              _ -> item
+            end
+        end)
+      end)
+
+    {handled, unhandled}
+  end
+
+  defp update_if_present(handled, key, fun) do
+    if Map.has_key?(handled, key) do
+      Map.update!(handled, key, fun)
+    else
+      handled
+    end
+  end
+
+  defp atomize_safely(value) do
+    String.to_existing_atom(value)
+  rescue
+    _ ->
+      :unknown
+  end
+
+  @doc """
   Converts a term into an Ash Error.
 
   The term could be a simple string, the second element in an `{:error, error}` tuple, an Ash Error, or a list of any of these.

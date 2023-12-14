@@ -2080,8 +2080,14 @@ defmodule Ash.Query do
 
     {module, opts} =
       case module_and_opts do
-        {module, opts} -> {module, opts}
-        module -> {module, []}
+        {module, opts} ->
+          {module, opts}
+
+        module when is_atom(module) ->
+          {module, []}
+
+        value ->
+          {Ash.Resource.Calculation.Expression, expr: value}
       end
 
     case Calculation.new(
