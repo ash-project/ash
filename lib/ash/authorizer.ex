@@ -84,6 +84,14 @@ defmodule Ash.Authorizer do
     end
   end
 
+  def alter_sort(module, state, sort, context) do
+    if function_exported?(module, :alter_sort, 3) do
+      module.alter_sort(sort, state, context)
+    else
+      {:ok, sort}
+    end
+  end
+
   def check_context(module, state) do
     module.check_context(state)
   end

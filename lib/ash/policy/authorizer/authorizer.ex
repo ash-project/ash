@@ -20,6 +20,7 @@ defmodule Ash.Policy.Authorizer do
   @type t :: %__MODULE__{}
 
   require Ash.Expr
+  require Ash.Sort
 
   alias Ash.Policy.{Checker, Policy}
 
@@ -508,20 +509,130 @@ defmodule Ash.Policy.Authorizer do
 
       _ ->
         {expr, _acc} =
-          replace_refs(expression, %{
-            stack: [{resource, [], context.query.action}],
-            authorizers: %{
-              {resource, context.query.action} => %{authorizer | query: context.query}
-            },
-            verbose?: authorizer.verbose?,
-            actor: authorizer.actor
-          })
+          replace_refs(expression, authorizer_acc(authorizer, resource, context))
 
         {:ok, %{filter | expression: expr}}
     end
   end
 
   def alter_filter(filter, _, _), do: {:ok, filter}
+
+  defp authorizer_acc(authorizer, resource, context) do
+    %{
+      stack: [{resource, [], context.query.action}],
+      authorizers: %{
+        {resource, context.query.action} => %{authorizer | query: context.query}
+      },
+      verbose?: authorizer.verbose?,
+      actor: authorizer.actor
+    }
+  end
+
+  def alter_sort(
+        sort,
+        authorizer,
+        context
+      ) do
+    case Ash.Policy.Info.field_policies(authorizer.resource) do
+      [] ->
+        {:ok, sort}
+
+      _ ->
+        altered =
+          sort
+          |> Enum.with_index()
+          |> Enum.reduce(
+            {[], authorizer_acc(authorizer, authorizer.resource, context)},
+            fn {sort, index}, {new_sorts, acc} ->
+              {sort, acc} =
+                if index in context.query.sort_input_indices do
+                  authorize_sort(sort, authorizer, context, acc)
+                else
+                  {sort, acc}
+                end
+
+              {new_sorts ++ [sort], acc}
+            end
+          )
+          |> elem(0)
+
+        {:ok, altered}
+    end
+  end
+
+  defp authorize_sort({field, data}, authorizer, context, acc) do
+    field_name =
+      case field do
+        %Ash.Query.Calculation{} = calculation ->
+          calculation.calc_name
+
+        field when is_atom(field) ->
+          field
+      end
+
+    field =
+      case {field_name, field} do
+        {nil, %Ash.Query.Calculation{} = calculation} ->
+          raise Ash.Error.Framework.AssumptionFailed,
+            message: """
+            It should not be possible to provide a non-resource calculation as user input.
+            In the future it will be, and that will need to be addressed here.
+            This error message is to prevent forgetting to address that reality.
+
+            Got:
+
+              #{inspect(calculation)}
+            """
+
+        {_other, field} ->
+          field
+      end
+
+    if field_name do
+      case field_condition(
+             authorizer.resource,
+             field_name,
+             context.query.action,
+             acc
+           ) do
+        {:none, acc} ->
+          {{field, data}, acc}
+
+        {:expr, expr, acc} ->
+          field =
+            case field do
+              %Ash.Query.Calculation{} = calculation ->
+                %Ash.Query.Ref{
+                  attribute: calculation,
+                  relationship_path: [],
+                  resource: context.query.resource,
+                  input?: false
+                }
+
+              field when is_atom(field) ->
+                %Ash.Query.Ref{
+                  attribute: Ash.Resource.Info.field(context.query.resource, field),
+                  relationship_path: [],
+                  resource: context.query.resource,
+                  input?: false
+                }
+            end
+
+          expr =
+            Ash.Sort.expr_sort(
+              if ^expr do
+                ^field
+              else
+                nil
+              end
+            )
+
+          {{expr, data}, acc}
+      end
+    else
+      {{field, data}, acc}
+    end
+  end
 
   defp replace_refs(expression, acc) do
     case expression do
@@ -581,7 +692,7 @@ defmodule Ash.Policy.Authorizer do
          %{stack: [{resource, _path, action} | _]} = acc
        )
        when struct in [Ash.Resource.Attribute, Ash.Resource.Aggregate, Ash.Resource.Calculation] do
-    {expr, acc} = expression_for_field(resource, name, action, ref, acc)
+    {expr, acc} = expression_for_ref(resource, name, action, ref, acc)
 
     {expr, acc}
   end
@@ -608,9 +719,26 @@ defmodule Ash.Policy.Authorizer do
     end
   end
 
-  defp expression_for_field(resource, field, action, ref, acc) do
-    policies = Ash.Policy.Info.field_policies_for_field(resource, field)
+  defp expression_for_ref(resource, field, action, ref, acc) do
+    case field_condition(resource, field, action, acc) do
+      {:none, acc} ->
+        {%{ref | input?: false}, acc}
 
+      {:expr, expr, acc} ->
+        expr =
+          Ash.Expr.expr(
+            if ^expr do
+              ^%{ref | input?: false}
+            else
+              nil
+            end
+          )
+
+        {expr, acc}
+    end
+  end
+
+  defp field_condition(resource, field, action, acc) do
     {authorizer, acc} =
       case Map.fetch(acc.authorizers, {resource, action}) do
         {:ok, authorizer} ->
@@ -622,6 +750,8 @@ defmodule Ash.Policy.Authorizer do
           {authorizer,
            %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
       end
+
+    policies = Ash.Policy.Info.field_policies_for_field(resource, field)
 
     {expr, authorizer} =
       case strict_check_result(
@@ -638,7 +768,7 @@ defmodule Ash.Policy.Authorizer do
         {:error, _} ->
           {false, authorizer}
 
-        {:filter, filter, authorizer} ->
+        {:filter, authorizer, filter} ->
           {filter, authorizer}
 
         {:filter_and_continue, filter, _authorizer} ->
@@ -658,16 +788,14 @@ defmodule Ash.Policy.Authorizer do
           """
       end
 
-    expr =
-      Ash.Expr.expr(
-        if ^expr do
-          ^%{ref | input?: false}
-        else
-          nil
-        end
-      )
+    new_acc = %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}
 
-    {expr, %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
+    if expr == true do
+      {:none, new_acc}
+    else
+      {:expr, expr,
+       %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
+    end
   end
 
   @impl true

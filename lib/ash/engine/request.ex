@@ -554,6 +554,7 @@ defmodule Ash.Engine.Request do
     case missing_strict_check_dependencies(authorizer, request) do
       [] ->
         with {:ok, request} <- alter_filter(request, authorizer),
+             {:ok, request} <- alter_sort(request, authorizer),
              {:ok, request} <- add_calculations(request, authorizer) do
           case strict_check_authorizer(authorizer, request) do
             {:authorized, _authorizer} ->
@@ -673,6 +674,29 @@ defmodule Ash.Engine.Request do
           {:error, error} ->
             {:error, error}
         end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp alter_sort(%{query: nil} = request, _), do: {:ok, request}
+
+  defp alter_sort(request, authorizer) do
+    log(request, fn -> "altering sort for #{inspect(authorizer)}" end)
+
+    authorizer_state = authorizer_state(request, authorizer)
+
+    keys = Authorizer.strict_check_context(authorizer, authorizer_state)
+
+    case Authorizer.alter_sort(
+           authorizer,
+           authorizer_state,
+           request.query.sort,
+           Map.take(request, keys)
+         ) do
+      {:ok, new_sort} ->
+        {:ok, %{request | query: %{request.query | sort: new_sort}}}
 
       {:error, error} ->
         {:error, error}

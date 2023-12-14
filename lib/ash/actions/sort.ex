@@ -275,7 +275,7 @@ defmodule Ash.Actions.Sort do
     results
     |> load_field(field, resource, opts)
     |> Enum.group_by(&resolve_field(&1, field, resource, api: opts))
-    |> sort_by(fn {key, _value} -> key end, direction)
+    |> Enum.sort_by(fn {key, _value} -> key end, to_sort_by_fun(direction))
     |> Enum.flat_map(fn {_, records} ->
       runtime_sort(records, rest, Keyword.put(opts, :rekey?, false))
     end)
@@ -301,7 +301,7 @@ defmodule Ash.Actions.Sort do
     results
     |> load_field(field, resource, opts)
     |> Enum.group_by(&resolve_field(&1, field, resource, api: opts))
-    |> sort_by(fn {key, _value} -> key end, direction)
+    |> Enum.sort_by(fn {key, _value} -> key end, to_sort_by_fun(direction))
     |> Enum.map(fn {_key, [first | _]} ->
       first
     end)
@@ -326,7 +326,11 @@ defmodule Ash.Actions.Sort do
     cond do
       :erlang.function_exported(calc.module, :calculate, 3) ->
         context = Map.put(calc.context, :api, opts[:api])
-        calc.module.calculate([record], calc.opts, context)
+
+        case calc.module.calculate([record], calc.opts, context) do
+          {:ok, [value]} -> value
+          _ -> nil
+        end
 
       :erlang.function_exported(calc.module, :expression, 2) ->
         expression = calc.module.expression(calc.opts, calc.context)
@@ -340,7 +344,7 @@ defmodule Ash.Actions.Sort do
           {:ok, expression} ->
             case Ash.Expr.eval_hydrated(expression, record: record, resource: resource) do
               {:ok, value} ->
-                {:ok, value}
+                value
 
               _ ->
                 nil
@@ -353,22 +357,20 @@ defmodule Ash.Actions.Sort do
       true ->
         nil
     end
+    |> case do
+      %Ash.ForbiddenField{} -> nil
+      other -> other
+    end
   end
 
   defp resolve_field(record, field, _resource, _) do
-    Map.get(record, field)
+    record
+    |> Map.get(field)
+    |> case do
+      %Ash.ForbiddenField{} -> nil
+      other -> other
+    end
   end
-
-  # :asc/:desc added to elixir in 1.10. sort_by and to_sort_by_fun copied from core
-  defp sort_by(enumerable, mapper, sorter) do
-    enumerable
-    |> Enum.map(&{&1, mapper.(&1)})
-    |> Enum.sort(to_sort_by_fun(sorter))
-    |> Enum.map(&elem(&1, 0))
-  end
-
-  defp to_sort_by_fun(sorter) when is_function(sorter, 2),
-    do: &sorter.(elem(&1, 1), elem(&2, 1))
 
   defp to_sort_by_fun(:desc) do
     to_sort_by_fun(:desc_nils_first)
@@ -380,54 +382,73 @@ defmodule Ash.Actions.Sort do
 
   defp to_sort_by_fun(:asc_nils_last) do
     fn x, y ->
-      if is_nil(elem(x, 1)) && !is_nil(elem(y, 1)) do
-        false
-      else
-        Comp.less_or_equal?(elem(x, 1), elem(y, 1))
-      end
-    end
-  end
+      cond do
+        is_nil(x) and is_nil(y) ->
+          true
 
-  defp to_sort_by_fun(:asc_nils_first) do
-    fn x, y ->
-      if is_nil(elem(x, 1)) && !is_nil(elem(y, 1)) do
-        true
-      else
-        Comp.less_or_equal?(elem(x, 1), elem(y, 1))
-      end
-    end
-  end
+        is_nil(x) ->
+          false
 
-  defp to_sort_by_fun(:desc_nils_first) do
-    fn x, y ->
-      if is_nil(elem(x, 1)) && !is_nil(elem(y, 1)) do
-        true
-      else
-        Comp.greater_or_equal?(elem(x, 1), elem(y, 1))
+        is_nil(y) ->
+          true
+
+        true ->
+          Comp.less_or_equal?(x, y)
       end
     end
   end
 
   defp to_sort_by_fun(:desc_nils_last) do
     fn x, y ->
-      if is_nil(elem(x, 1)) && !is_nil(elem(y, 1)) do
-        false
-      else
-        Comp.greater_or_equal?(elem(x, 1), elem(y, 1))
+      cond do
+        is_nil(x) and is_nil(y) ->
+          true
+
+        is_nil(x) ->
+          false
+
+        is_nil(y) ->
+          true
+
+        true ->
+          Comp.greater_or_equal?(x, y)
       end
     end
   end
 
-  defp to_sort_by_fun({direction, _input}) do
-    to_sort_by_fun(direction)
+  defp to_sort_by_fun(:asc_nils_first) do
+    fn x, y ->
+      cond do
+        is_nil(x) and is_nil(y) ->
+          true
+
+        is_nil(x) ->
+          true
+
+        is_nil(y) ->
+          false
+
+        true ->
+          Comp.less_or_equal?(x, y)
+      end
+    end
   end
 
-  defp to_sort_by_fun(module) when is_atom(module),
-    do: &(module.compare(elem(&1, 1), elem(&2, 1)) != :gt)
+  defp to_sort_by_fun(:desc_nils_first) do
+    fn x, y ->
+      cond do
+        is_nil(x) and is_nil(y) ->
+          true
 
-  defp to_sort_by_fun({:asc, module}) when is_atom(module),
-    do: &(module.compare(elem(&1, 1), elem(&2, 1)) != :gt)
+        is_nil(x) ->
+          true
 
-  defp to_sort_by_fun({:desc, module}) when is_atom(module),
-    do: &(module.compare(elem(&1, 1), elem(&2, 1)) != :lt)
+        is_nil(y) ->
+          false
+
+        true ->
+          Comp.greater_or_equal?(x, y)
+      end
+    end
+  end
 end
