@@ -54,17 +54,13 @@ defmodule Ash.Test.Type.UnionTest do
       private? true
     end
 
-    code_interface do
-      define :add_thing
-    end
-
     actions do
       defaults [:create, :read, :update, :destroy]
 
       update :add_thing do
         argument :new_thing, FooBarUnion, allow_nil?: false
 
-        change fn changeset, _ -> 
+        change fn changeset, _ ->
           new_thing = Ash.Changeset.get_argument(changeset, :new_thing)
           things = Ash.Changeset.get_attribute(changeset, :things)
 
@@ -357,11 +353,12 @@ defmodule Ash.Test.Type.UnionTest do
              {:ok, %{type: :foo, bar: 1}}
   end
 
-  test "it should cast union arguments appropriately" do 
-    Example
-    |> Ash.Changeset.for_create(:create, %{things: []})
-    |> Ash.Test.AnyApi.create!()
-    |> Ash.Changeset.for_update(:add_thing, %{new_thing: %{type: :foo, foo: "foo"}})
-    |> Ash.Test.AnyApi.update!()
+  test "it should cast union arguments appropriately" do
+    assert {:ok, _} =
+             Example
+             |> Ash.Changeset.for_create(:create, %{things: []})
+             |> Ash.Test.AnyApi.create!()
+             |> Ash.Changeset.for_update(:add_thing, %{new_thing: %{type: :foo, foo: "foo"}})
+             |> Ash.Test.AnyApi.update()
   end
 end
