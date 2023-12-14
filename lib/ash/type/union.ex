@@ -541,24 +541,36 @@ defmodule Ash.Type.Union do
           {:untagged, item, index}
         end
       end)
-      |> Enum.group_by(fn
-        {:untagged, _item, _index} ->
-          :__ash_untagged_unions__
+      |> Enum.group_by(
+        fn
+          {:untagged, _item, _index} ->
+            :__ash_untagged_unions__
 
-        item ->
-          Enum.find_value(
-            constraints[:types] || [],
-            :__ash_untagged_unions__,
-            fn {name, config} ->
-              field = config[:tag]
-              tag = config[:tag_value]
+          %Ash.Union{type: type} ->
+            type
 
-              if field && tag && tags_equal?(get_tag(item, field), tag) do
-                name
+          item ->
+            Enum.find_value(
+              constraints[:types] || [],
+              :__ash_untagged_unions__,
+              fn {name, config} ->
+                field = config[:tag]
+                tag = config[:tag_value]
+
+                if field && tag && tags_equal?(get_tag(item, field), tag) do
+                  name
+                end
               end
-            end
-          )
-      end)
+            )
+        end,
+        fn
+          %Ash.Union{value: value} = union ->
+            {:union_value, value, Map.get(union, :__index__)}
+
+          other ->
+            other
+        end
+      )
       |> Enum.reduce_while({:ok, []}, fn
         {:__ash_untagged_unions__, values}, {:ok, acc} ->
           {:cont, {:ok, [values | acc]}}
@@ -567,8 +579,21 @@ defmodule Ash.Type.Union do
           value_indexes_to_full_index =
             new_values
             |> Enum.with_index()
-            |> Map.new(fn {value, index} ->
-              {index, value.__index__}
+            |> Map.new(fn
+              {{:union_value, _value, value_index}, index} ->
+                {index, value_index}
+
+              {value, index} ->
+                {index, value.__index__}
+            end)
+
+          new_values =
+            Enum.map(new_values, fn
+              {:union_value, value, _} ->
+                value
+
+              other ->
+                other
             end)
 
           type = constraints[:types][name][:type]
