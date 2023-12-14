@@ -28,6 +28,25 @@ defmodule Ash.Test.Type.UnionTest do
     end
   end
 
+  defmodule FooBarUnion do
+    use Ash.Type.NewType,
+      subtype_of: :union,
+      constraints: [
+        types: [
+          foo: [
+            type: Foo,
+            tag: :type,
+            tag_value: :foo
+          ],
+          bar: [
+            type: Bar,
+            tag: :type,
+            tag_value: :bar
+          ]
+        ]
+      ]
+  end
+
   defmodule Example do
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
 
@@ -35,8 +54,27 @@ defmodule Ash.Test.Type.UnionTest do
       private? true
     end
 
+    code_interface do
+      define :add_thing
+    end
+
     actions do
       defaults [:create, :read, :update, :destroy]
+
+      update :add_thing do
+        argument :new_thing, FooBarUnion, allow_nil?: false
+
+        change fn changeset, _ -> 
+          new_thing = Ash.Changeset.get_argument(changeset, :new_thing)
+          things = Ash.Changeset.get_attribute(changeset, :things)
+
+          Ash.Changeset.change_attribute(
+            changeset,
+            :things,
+            things ++ [new_thing]
+          )
+        end
+      end
     end
 
     attributes do
@@ -317,5 +355,13 @@ defmodule Ash.Test.Type.UnionTest do
 
     assert Ash.Type.dump_to_native(Ash.Type.Union, union, constraints) ==
              {:ok, %{type: :foo, bar: 1}}
+  end
+
+  test "it should cast union arguments appropriately" do 
+    Example
+    |> Ash.Changeset.for_create(:create, %{things: []})
+    |> Ash.Test.AnyApi.create!()
+    |> Ash.Changeset.for_update(:add_thing, %{new_thing: %{type: :foo, foo: "foo"}})
+    |> Ash.Test.AnyApi.update!()
   end
 end
