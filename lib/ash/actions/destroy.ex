@@ -90,12 +90,6 @@ defmodule Ash.Actions.Destroy do
         changeset
       end
 
-    # engine_timeout =
-    #   if Keyword.get(opts, :transaction?, true) && action.transaction? do
-    #     nil
-    #   else
-    #     opts[:timeout] || changeset.timeout || Ash.Api.Info.timeout(api)
-    #   end
     with %{valid?: true} = changeset <- changeset(changeset, api, action, opts),
          %{valid?: true} = changeset <- authorize(changeset, api, opts),
          {:ok, result, instructions} <- commit(changeset, api, opts) do
