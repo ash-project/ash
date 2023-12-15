@@ -12,7 +12,7 @@ defmodule Ash.Query.Function do
   @doc """
   The number and types of arguments supported.
   """
-  @callback args() :: [arg]
+  @callback args() :: [arg] | :var_args
   @callback name() :: atom
   @callback new(list(term)) :: {:ok, term} | {:error, String.t() | Exception.t()}
   @callback evaluate(func :: map) :: :unknown | {:known, term} | {:error, term}
