@@ -233,7 +233,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
         |> Api.create!(authorize?: true)
       end
 
-      assert_raise RuntimeError, ~r/^.*:does_not_exist.*$/, fn ->
+      assert_raise Ash.Error.Unknown, ~r/:does_not_exist/, fn ->
         BadPolicyRelPathName
         |> Ash.Changeset.for_create(:create)
         |> Api.create!(authorize?: true)
