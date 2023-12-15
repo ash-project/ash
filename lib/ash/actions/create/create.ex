@@ -70,6 +70,9 @@ defmodule Ash.Actions.Create do
         end
       end
     end
+  rescue
+    e ->
+      reraise Ash.Error.to_error_class(e, changeset: changeset), __STACKTRACE__
   end
 
   defp do_run(api, changeset, action, opts) do

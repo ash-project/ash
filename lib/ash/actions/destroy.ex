@@ -60,6 +60,9 @@ defmodule Ash.Actions.Destroy do
         end
       end
     end
+  rescue
+    e ->
+      reraise Ash.Error.to_error_class(e, changeset: changeset), __STACKTRACE__
   end
 
   def do_run(api, changeset, %{soft?: true} = action, opts) do

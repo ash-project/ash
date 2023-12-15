@@ -227,7 +227,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
     end
 
     test "relates_to_actor_via raises if relationship does not exist" do
-      assert_raise RuntimeError, ~r/^.*:does_not_exist.*$/, fn ->
+      assert_raise Ash.Error.Unknown, ~r/does_not_exist/, fn ->
         BadPolicyRelName
         |> Ash.Changeset.for_create(:create)
         |> Api.create!(authorize?: true)

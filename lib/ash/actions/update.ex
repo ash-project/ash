@@ -70,6 +70,9 @@ defmodule Ash.Actions.Update do
         end
       end
     end
+  rescue
+    e ->
+      reraise Ash.Error.to_error_class(e, changeset: changeset), __STACKTRACE__
   end
 
   @doc false

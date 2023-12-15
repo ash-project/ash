@@ -76,7 +76,7 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
 
       start_supervised({Ash.Test.Authorizer, strict_check: :forbidden})
 
-      assert_raise Ash.Error.Forbidden.ApiRequiresActor, fn ->
+      assert_raise Ash.Error.Forbidden, fn ->
         Post
         |> Ash.Changeset.for_create(:create, %{title: "test"})
         |> Api.create!()
