@@ -583,6 +583,7 @@ defmodule Ash.Api do
     case can(api, action_or_query_or_changeset, actor, opts) do
       {:ok, :maybe} -> opts[:maybe_is]
       {:ok, result} -> result
+      {:ok, true, _} -> {:ok, true}
       {:error, error} -> raise Ash.Error.to_ash_error(error)
     end
   end
@@ -598,7 +599,10 @@ defmodule Ash.Api do
           actor :: term,
           opts :: Keyword.t()
         ) ::
-          {:ok, boolean | :maybe} | {:ok, false, Exception.t()} | {:error, term}
+          {:ok, boolean | :maybe}
+          | {:ok, true, Ash.Changeset.t() | Ash.Query.t()}
+          | {:ok, false, Exception.t()}
+          | {:error, term}
   def can(api, action_or_query_or_changeset, actor, opts \\ []) do
     opts = Keyword.put_new(opts, :maybe_is, :maybe)
     opts = Keyword.put_new(opts, :run_queries?, true)
@@ -700,8 +704,92 @@ defmodule Ash.Api do
 
     subject = %{subject | api: api}
 
-    run_check(api, actor, subject, opts)
+    api
+    |> run_check(actor, subject, opts)
+    |> alter_source(api, actor, subject, opts)
   end
+
+  defp alter_source({:ok, true}, api, actor, subject, opts) do
+    if opts[:alter_source?] do
+      subject.resource
+      |> Ash.Resource.Info.authorizers()
+      |> case do
+        [] ->
+          {:ok, true, subject}
+
+        authorizers ->
+          authorizers
+          |> Enum.reduce(
+            {:ok, true, subject},
+            fn authorizer, {:ok, true, subject} ->
+              authorizer_state =
+                authorizer.initial_state(
+                  actor,
+                  subject.resource,
+                  subject.action,
+                  false
+                )
+
+              context = %{api: api, query: nil, changeset: nil, action_input: nil}
+
+              case subject do
+                %Ash.Query{} = query ->
+                  context = Map.put(context, :query, query)
+
+                  with {:ok, query, _} <-
+                         Ash.Authorizer.add_calculations(
+                           authorizer,
+                           query,
+                           authorizer_state,
+                           context
+                         ),
+                       {:ok, new_filter} <-
+                         Ash.Authorizer.alter_filter(
+                           authorizer,
+                           authorizer_state,
+                           query.filter,
+                           context
+                         ),
+                       {:ok, hydrated} <-
+                         Ash.Filter.hydrate_refs(new_filter, %{
+                           resource: query.resource,
+                           public?: false
+                         }),
+                       {:ok, new_sort} <-
+                         Ash.Authorizer.alter_sort(
+                           authorizer,
+                           authorizer_state,
+                           query.sort,
+                           context
+                         ) do
+                    {:ok, true, %{query | filter: hydrated, sort: new_sort}}
+                  end
+
+                %Ash.Changeset{} = changeset ->
+                  context = Map.put(context, :changeset, changeset)
+
+                  with {:ok, changeset, _} <-
+                         Ash.Authorizer.add_calculations(
+                           authorizer,
+                           changeset,
+                           authorizer_state,
+                           context
+                         ) do
+                    {:ok, true, changeset}
+                  end
+
+                %Ash.ActionInput{} = subject ->
+                  {:ok, true, subject}
+              end
+            end
+          )
+      end
+    else
+      {:ok, true}
+    end
+  end
+
+  defp alter_source(other, _, _, _, _), do: other
 
   defp run_check(api, actor, subject, opts) do
     subject.resource
@@ -1197,6 +1285,9 @@ defmodule Ash.Api do
       The default value is `true`.
     - `data` - A record or list of records. For authorizing reads with filter checks, this can be provided and a filter
       check will only be `true` if all records match the filter. This is detected by running a query.
+    - `alter_source?` - If true, the query or changeset will be returned with authorization modifications made. For a query,
+      this mans adding field visibility calculations and altering the filter or the sort. For a changeset, this means only adding
+      field visibility calculations. The default value is `false`.
   """
   @callback can(
               action_or_query_or_changeset ::

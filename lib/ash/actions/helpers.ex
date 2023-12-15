@@ -233,6 +233,53 @@ defmodule Ash.Actions.Helpers do
     end)
   end
 
+  @doc false
+  def notify({:ok, record, instructions}, changeset, opts) do
+    resource_notification = resource_notification(changeset, record, opts)
+
+    if opts[:return_notifications?] do
+      {:ok, record,
+       Map.update(
+         instructions,
+         :notifications,
+         [resource_notification],
+         &[resource_notification | &1]
+       )}
+    else
+      if Process.get(:ash_started_transaction?) do
+        current_notifications = Process.get(:ash_notifications, [])
+
+        Process.put(
+          :ash_notifications,
+          [resource_notification | current_notifications]
+        )
+      else
+        unsent_notifications = Ash.Notifier.notify([resource_notification])
+
+        warn_missed!(changeset.resource, changeset.action, %{
+          resource_notifications: unsent_notifications
+        })
+      end
+
+      {:ok, record, instructions}
+    end
+  end
+
+  def notify(other, _changeset, _opts), do: other
+
+  defp resource_notification(changeset, result, opts) do
+    %Ash.Notifier.Notification{
+      resource: changeset.resource,
+      api: changeset.api,
+      actor: changeset.context[:private][:actor],
+      action: changeset.action,
+      data: result,
+      changeset: changeset,
+      from: self(),
+      metadata: opts[:notification_metadata] || %{}
+    }
+  end
+
   def warn_missed!(resource, action, result) do
     case Map.get(result, :resource_notifications, Map.get(result, :notifications, [])) do
       empty when empty in [nil, []] ->
@@ -458,13 +505,7 @@ defmodule Ash.Actions.Helpers do
 
   def load({:ok, result, instructions}, changeset, api, opts) do
     if changeset.load in [nil, []] do
-      {:ok, result,
-       Map.update(
-         instructions,
-         :set_keys,
-         %{notification_data: result},
-         &Map.put(&1, :notification_data, result)
-       )}
+      {:ok, result, %{}}
     else
       query =
         changeset.resource
@@ -473,13 +514,7 @@ defmodule Ash.Actions.Helpers do
 
       case api.load(result, query, opts) do
         {:ok, result} ->
-          {:ok, result,
-           Map.update(
-             instructions,
-             :set_keys,
-             %{notification_data: result},
-             &Map.put(&1, :notification_data, result)
-           )}
+          {:ok, result, instructions}
 
         {:error, error} ->
           {:error, error}
@@ -489,7 +524,7 @@ defmodule Ash.Actions.Helpers do
 
   def load({:ok, result}, changeset, api, opts) do
     if changeset.load in [nil, []] do
-      {:ok, result, %{set_keys: %{notification_data: result}}}
+      {:ok, result, %{}}
     else
       query =
         changeset.resource
@@ -498,7 +533,7 @@ defmodule Ash.Actions.Helpers do
 
       case api.load(result, query, opts) do
         {:ok, result} ->
-          {:ok, result, %{set_keys: %{notification_data: result}}}
+          {:ok, result, %{}}
 
         {:error, error} ->
           {:error, error}

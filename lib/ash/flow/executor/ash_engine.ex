@@ -984,7 +984,8 @@ defmodule Ash.Flow.Executor.AshEngine do
           wait_for: wait_for,
           halt_if: halt_if,
           upsert?: upsert?,
-          upsert_identity: upsert_identity
+          upsert_identity: upsert_identity,
+          halt_reason: halt_reason
         } = create
 
         List.wrap(
@@ -1018,37 +1019,53 @@ defmodule Ash.Flow.Executor.AshEngine do
                   [wait_for, halt_if]
                 )
 
-              Ash.Actions.Create.as_requests([name], resource, api, action,
-                error_path: List.wrap(name),
-                authorize?: opts[:authorize?],
-                actor: opts[:actor],
-                tracer: opts[:tracer],
-                upsert?: upsert?,
-                upsert_identity: upsert_identity,
-                changeset_dependencies: request_deps,
-                tenant: fn context ->
-                  context = Ash.Helpers.deep_merge_maps(context, additional_context)
-                  results = results(dep_paths, context)
+              Ash.Engine.Request.new(
+                resource: resource,
+                path: [name],
+                name: inspect([name]),
+                authorize?: false,
+                data:
+                  Ash.Engine.Request.resolve(request_deps, fn data ->
+                    data = Ash.Helpers.deep_merge_maps(data, additional_context)
+                    results = results(dep_paths, data)
 
-                  tenant
-                  |> Ash.Flow.Template.set_dependent_values(%{
-                    results: results,
-                    elements: Map.get(context, :_ash_engine_elements)
-                  })
-                  |> Ash.Flow.handle_modifiers()
-                end,
-                changeset_input: fn context ->
-                  context = Ash.Helpers.deep_merge_maps(context, additional_context)
+                    case halt_if(halt_if, halt_reason, name, results, data, fn ->
+                           {:ok, Ash.Changeset.new(resource)}
+                         end) do
+                      {:error, error} ->
+                        {:error, error}
 
-                  results = results(dep_paths, context)
+                      {:ok, changeset} ->
+                        tenant =
+                          tenant
+                          |> Ash.Flow.Template.set_dependent_values(%{
+                            results: results,
+                            elements: Map.get(data, :_ash_engine_elements)
+                          })
+                          |> Ash.Flow.handle_modifiers()
 
-                  action_input
-                  |> Ash.Flow.Template.set_dependent_values(%{
-                    results: results,
-                    elements: Map.get(context, :_ash_engine_elements)
-                  })
-                  |> Ash.Flow.handle_modifiers()
-                end
+                        action_input =
+                          action_input
+                          |> Ash.Flow.Template.set_dependent_values(%{
+                            results: results,
+                            elements: Map.get(data, :_ash_engine_elements)
+                          })
+                          |> Ash.Flow.handle_modifiers()
+                          |> Kernel.||(%{})
+
+                        changeset
+                        |> Ash.Changeset.set_tenant(tenant)
+                        |> Ash.Changeset.for_create(action.name, action_input,
+                          actor: data[:actor],
+                          tenant: tenant,
+                          authorize?: data[:authorize?],
+                          tracer: data[:tracer],
+                          upsert?: upsert?,
+                          upsert_identity: upsert_identity
+                        )
+                        |> api.create()
+                    end
+                  end)
               )
             end
           )
@@ -1904,7 +1921,7 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   defp result_path(%Ash.Flow.Step.Create{name: name}) do
-    [name, :commit, :data]
+    [name, :data]
   end
 
   defp result_path(%Ash.Flow.Step.Destroy{name: name}) do
@@ -1948,7 +1965,7 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   defp completion_path(%Ash.Flow.Step.Create{name: name}) do
-    [name, :commit, :completion]
+    [name, :completion]
   end
 
   defp completion_path(%Ash.Flow.Step.Validate{name: name}) do
@@ -2000,7 +2017,7 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   defp data_path(%Ash.Flow.Step.Create{name: name}) do
-    [name, :commit]
+    [name]
   end
 
   defp data_path(%Ash.Flow.Step.Destroy{name: name}) do

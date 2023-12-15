@@ -199,14 +199,6 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
            ] = Ash.Tracer.Simple.gather_spans()
 
     assert_receive {:telemetry,
-                    {[:ash, :request_step, :start], %{system_time: _},
-                     %{name: "perform Ash.Test.TracerTest.AsyncLoadTest.Post.create"}, _}}
-
-    assert_receive {:telemetry,
-                    {[:ash, :request_step, :stop], %{duration: _},
-                     %{name: "perform Ash.Test.TracerTest.AsyncLoadTest.Post.create"}, _}}
-
-    assert_receive {:telemetry,
                     {[:ash, :api, :create, :start], %{system_time: _},
                      %{resource_short_name: :post}, _}}
 

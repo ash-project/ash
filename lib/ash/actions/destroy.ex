@@ -90,7 +90,8 @@ defmodule Ash.Actions.Destroy do
         changeset
       end
 
-    with %{valid?: true} = changeset <- changeset(changeset, api, action, opts),
+    with %{valid?: true} = changeset <- Ash.Changeset.validate_multitenancy(changeset),
+         %{valid?: true} = changeset <- changeset(changeset, api, action, opts),
          %{valid?: true} = changeset <- authorize(changeset, api, opts),
          {:ok, result, instructions} <- commit(changeset, api, opts) do
       changeset.resource
@@ -123,8 +124,12 @@ defmodule Ash.Actions.Destroy do
 
   defp authorize(changeset, api, opts) do
     if opts[:authorize?] do
-      case api.can(changeset, opts[:actor], return_forbidden_error?: true, maybe_is: false) do
-        {:ok, true} ->
+      case api.can(changeset, opts[:actor],
+             alter_source?: true,
+             return_forbidden_error?: true,
+             maybe_is: false
+           ) do
+        {:ok, true, changeset} ->
           changeset
 
         {:ok, false, error} ->
@@ -182,20 +187,32 @@ defmodule Ash.Actions.Destroy do
             end
           end
           |> then(fn result ->
-            if opts[:return_destroyed?] do
-              Helpers.load(result, changeset, api,
-                actor: opts[:actor],
-                authorize?: opts[:authorize?],
-                tracer: opts[:tracer]
-              )
-              |> Helpers.restrict_field_access(changeset)
-            else
-              result
+            case result do
+              {:ok, destroyed} ->
+                if opts[:return_destroyed?] do
+                  {:ok, destroyed, %{notifications: []}}
+                  |> Helpers.load(changeset, api,
+                    actor: opts[:actor],
+                    authorize?: opts[:authorize?],
+                    tracer: opts[:tracer]
+                  )
+                  |> Helpers.notify(changeset, opts)
+                  |> Helpers.select(changeset)
+                  |> Helpers.restrict_field_access(changeset)
+                else
+                  {:ok, destroyed, %{notifications: []}}
+                  |> Helpers.notify(changeset, opts)
+                end
+
+              {:error, %Ash.Changeset{} = changeset} ->
+                {:error, changeset}
+
+              other ->
+                other
             end
           end)
       end,
       transaction?: Keyword.get(opts, :transaction?, true) && changeset.action.transaction?,
-      timeout: opts[:timeout],
       rollback_on_error?: opts[:rollback_on_error?],
       notification_metadata: opts[:notification_metadata],
       return_notifications?: opts[:return_notifications?],
@@ -292,5 +309,6 @@ defmodule Ash.Actions.Destroy do
     else
       Ash.Changeset.for_destroy(changeset, action.name, %{}, opts)
     end
+    |> Ash.Changeset.timeout(opts[:timeout] || changeset.timeout)
   end
 end

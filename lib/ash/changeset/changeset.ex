@@ -1875,8 +1875,6 @@ defmodule Ash.Changeset do
     end
     |> case do
       {:ok, value, changeset, instructions} ->
-        instructions = add_resource_notification(instructions, changeset, value, opts)
-
         if opts[:return_notifications?] do
           {:ok, value, changeset, instructions}
         else
@@ -1904,22 +1902,6 @@ defmodule Ash.Changeset do
       other ->
         other
     end
-  end
-
-  defp add_resource_notification(instructions, changeset, result, opts) do
-    notification =
-      %Ash.Notifier.Notification{
-        resource: changeset.resource,
-        api: changeset.api,
-        actor: changeset.context[:private][:actor],
-        action: changeset.action,
-        data: result,
-        changeset: changeset,
-        from: self(),
-        metadata: opts[:notification_metadata] || %{}
-      }
-
-    Map.update(instructions, :notifications, [notification], &[notification | &1])
   end
 
   defp warn_on_transaction_hooks(_, [], _), do: :ok

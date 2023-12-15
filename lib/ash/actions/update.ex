@@ -76,7 +76,8 @@ defmodule Ash.Actions.Update do
   def do_run(api, changeset, action, opts) do
     {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
 
-    with %{valid?: true} = changeset <- changeset(changeset, api, action, opts),
+    with %{valid?: true} = changeset <- Ash.Changeset.validate_multitenancy(changeset),
+         %{valid?: true} = changeset <- changeset(changeset, api, action, opts),
          %{valid?: true} = changeset <- authorize(changeset, api, opts),
          {:ok, result, instructions} <- commit(changeset, api, opts) do
       add_notifications(
@@ -110,8 +111,12 @@ defmodule Ash.Actions.Update do
 
   defp authorize(changeset, api, opts) do
     if opts[:authorize?] do
-      case api.can(changeset, opts[:actor], return_forbidden_error?: true, maybe_is: false) do
-        {:ok, true} ->
+      case api.can(changeset, opts[:actor],
+             alter_source?: true,
+             return_forbidden_error?: true,
+             maybe_is: false
+           ) do
+        {:ok, true, changeset} ->
           changeset
 
         {:ok, false, error} ->
@@ -170,6 +175,7 @@ defmodule Ash.Actions.Update do
     else
       Ash.Changeset.for_update(changeset, action.name, %{}, opts)
     end
+    |> Ash.Changeset.timeout(opts[:timeout] || changeset.timeout)
   end
 
   defp commit(changeset, api, opts) do
@@ -303,7 +309,6 @@ defmodule Ash.Actions.Update do
             end
         end,
         transaction?: Keyword.get(opts, :transaction?, true) && changeset.action.transaction?,
-        timeout: opts[:timeout],
         rollback_on_error?: opts[:rollback_on_error?],
         notification_metadata: opts[:notification_metadata],
         return_notifications?: opts[:return_notifications?],
@@ -326,6 +331,7 @@ defmodule Ash.Actions.Update do
           authorize?: opts[:authorize?],
           tracer: opts[:tracer]
         )
+        |> Helpers.notify(changeset, opts)
         |> Helpers.select(changeset)
         |> Helpers.restrict_field_access(changeset)
 
