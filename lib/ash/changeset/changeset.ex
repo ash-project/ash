@@ -1855,24 +1855,28 @@ defmodule Ash.Changeset do
         end
       end)
     else
-      transaction_hooks(changeset, fn changeset ->
-        if changeset.timeout do
-          Ash.Engine.task_with_timeout(
-            fn ->
+      if changeset.timeout do
+        Ash.Engine.task_with_timeout(
+          fn ->
+            transaction_hooks(changeset, fn changeset ->
               run_around_actions(changeset, func)
-            end,
-            changeset.resource,
-            changeset.timeout,
-            "#{inspect(changeset.resource)}.#{changeset.action.name}",
-            opts[:tracer]
-          )
-        else
+            end)
+          end,
+          changeset.resource,
+          changeset.timeout,
+          "#{inspect(changeset.resource)}.#{changeset.action.name}",
+          opts[:tracer]
+        )
+      else
+        transaction_hooks(changeset, fn changeset ->
           run_around_actions(changeset, func)
-        end
-      end)
+        end)
+      end
     end
     |> case do
       {:ok, value, changeset, instructions} ->
+        instructions = add_resource_notification(instructions, changeset, value, opts)
+
         if opts[:return_notifications?] do
           {:ok, value, changeset, instructions}
         else
@@ -1886,7 +1890,12 @@ defmodule Ash.Changeset do
 
             {:ok, value, changeset, Map.put(instructions, :notifications, [])}
           else
-            notifications = Ash.Notifier.notify(instructions[:notifications] || [])
+            notifications =
+              if opts[:return_notifications?] do
+                instructions[:notifications] || []
+              else
+                Ash.Notifier.notify(instructions[:notifications] || [])
+              end
 
             {:ok, value, changeset, Map.put(instructions, :notifications, notifications)}
           end
@@ -1895,6 +1904,22 @@ defmodule Ash.Changeset do
       other ->
         other
     end
+  end
+
+  defp add_resource_notification(instructions, changeset, result, opts) do
+    notification =
+      %Ash.Notifier.Notification{
+        resource: changeset.resource,
+        api: changeset.api,
+        actor: changeset.context[:private][:actor],
+        action: changeset.action,
+        data: result,
+        changeset: changeset,
+        from: self(),
+        metadata: opts[:notification_metadata] || %{}
+      }
+
+    Map.update(instructions, :notifications, [notification], &[notification | &1])
   end
 
   defp warn_on_transaction_hooks(_, [], _), do: :ok

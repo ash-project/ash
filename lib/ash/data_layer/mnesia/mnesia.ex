@@ -101,6 +101,7 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, :transact), do: true
   def can?(_, :aggregate_filter), do: true
   def can?(_, :aggregate_sort), do: true
+  def can?(_, :expr_error), do: true
   def can?(_, {:aggregate_relationship, _}), do: true
   def can?(_, {:aggregate, :count}), do: true
   def can?(_, {:aggregate, :first}), do: true

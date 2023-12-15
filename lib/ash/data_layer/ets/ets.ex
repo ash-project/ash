@@ -231,6 +231,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:query_aggregate, :min}), do: true
   def can?(_, {:query_aggregate, :avg}), do: true
   def can?(_, {:query_aggregate, :exists}), do: true
+  def can?(_, :expr_error), do: true
   def can?(_, {:sort, _}), do: true
   def can?(_, {:atomic, :update}), do: true
   def can?(_, {:atomic, :upsert}), do: true

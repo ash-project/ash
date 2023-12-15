@@ -234,7 +234,7 @@ defmodule Ash.Actions.Helpers do
   end
 
   def warn_missed!(resource, action, result) do
-    case Map.get(result, :resource_notifications, []) do
+    case Map.get(result, :resource_notifications, Map.get(result, :notifications, [])) do
       empty when empty in [nil, []] ->
         :ok
 

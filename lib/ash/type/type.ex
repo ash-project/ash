@@ -227,6 +227,9 @@ defmodule Ash.Type do
   @callback embedded?() :: boolean
   @callback generator(constraints) :: Enumerable.t()
   @callback simple_equality?() :: boolean
+  @callback atomic_update(constraints, new_value :: term) :: {:atomic, Ash.Expr.t()} | :not_atomic
+  @callback atomic_update_array(constraints, new_value :: term) ::
+              {:atomic, Ash.Expr.t()} | :not_atomic
   @callback custom_apply_constraints_array?() :: boolean
   @callback load(
               values :: list(term),
@@ -930,8 +933,6 @@ defmodule Ash.Type do
     type.simple_equality?()
   end
 
-  # @callback equal?(term, term) :: boolean
-
   defmacro __using__(opts) do
     quote location: :keep, generated: true do
       @behaviour Ash.Type
@@ -1169,6 +1170,16 @@ defmodule Ash.Type do
       end
 
       @impl true
+      def atomic_update(constraints, new_value) do
+        {:atomic, new_value}
+      end
+
+      @impl true
+      def atomic_update_array(constraints, new_value) do
+        {:atomic, new_value}
+      end
+
+      @impl true
       def generator(constraints) do
         raise "generator/1 unimplemented for #{inspect(__MODULE__)}"
       end
@@ -1178,6 +1189,8 @@ defmodule Ash.Type do
                      include_source: 2,
                      describe: 1,
                      generator: 1,
+                     atomic_update: 2,
+                     atomic_update_array: 2,
                      cast_input_array: 2,
                      dump_to_native_array: 2,
                      dump_to_embedded: 2,

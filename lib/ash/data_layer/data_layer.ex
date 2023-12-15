@@ -81,6 +81,7 @@ defmodule Ash.DataLayer do
           | {:aggregate_relationship, Ash.Resource.Relationships.relationship()}
           | {:query_aggregate, Ash.Query.Aggregate.kind()}
           | :select
+          | :expr_error
           | :expression_calculation_sort
           | :aggregate_filter
           | :aggregate_sort

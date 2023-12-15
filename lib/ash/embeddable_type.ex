@@ -143,6 +143,10 @@ defmodule Ash.EmbeddableType do
 
       def storage_type(_), do: :map
 
+      def atomic_update(_, _) do
+        :not_atomic
+      end
+
       def cast_input(%{__struct__: __MODULE__} = input, _constraints), do: {:ok, input}
 
       def cast_input(value, constraints) when is_map(value) do
@@ -399,6 +403,10 @@ defmodule Ash.EmbeddableType do
     # credo:disable-for-next-line Credo.Check.Refactor.LongQuoteBlocks
     quote location: :keep do
       alias Ash.EmbeddableType.ShadowApi
+
+      def atomic_update_array(_, _) do
+        :not_atomic
+      end
 
       def load(record, load, _constraints, %{api: api} = context) do
         opts = Ash.context_to_opts(context)

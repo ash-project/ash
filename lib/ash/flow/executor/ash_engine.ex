@@ -1242,48 +1242,63 @@ defmodule Ash.Flow.Executor.AshEngine do
                   additional_context
                 )
 
+              update_request =
+                Ash.Engine.Request.new(
+                  resource: resource,
+                  path: [name],
+                  name: inspect([name]),
+                  authorize?: false,
+                  data:
+                    Ash.Engine.Request.resolve([[name, :fetch, :data] | request_deps], fn data ->
+                      case Ash.Flow.do_get_in(data, [name, :fetch, :data]) do
+                        nil ->
+                          {:ok, nil}
+
+                        record ->
+                          data = Ash.Helpers.deep_merge_maps(data, additional_context)
+                          results = results(dep_paths, data)
+
+                          case halt_if(halt_if, halt_reason, name, results, data, fn ->
+                                 {:ok, Ash.Changeset.new(record)}
+                               end) do
+                            {:error, error} ->
+                              {:error, error}
+
+                            {:ok, changeset} ->
+                              tenant =
+                                tenant
+                                |> Ash.Flow.Template.set_dependent_values(%{
+                                  results: results,
+                                  elements: Map.get(data, :_ash_engine_elements)
+                                })
+                                |> Ash.Flow.handle_modifiers()
+
+                              action_input =
+                                action_input
+                                |> Ash.Flow.Template.set_dependent_values(%{
+                                  results: results,
+                                  elements: Map.get(data, :_ash_engine_elements)
+                                })
+                                |> Ash.Flow.handle_modifiers()
+                                |> Kernel.||(%{})
+
+                              changeset
+                              |> Ash.Changeset.set_tenant(tenant)
+                              |> Ash.Changeset.for_update(action.name, action_input,
+                                actor: data[:actor],
+                                tenant: tenant,
+                                authorize?: data[:authorize?],
+                                tracer: data[:tracer]
+                              )
+                              |> api.update()
+                          end
+                      end
+                    end)
+                )
+
               [
-                get_request
-                | Ash.Actions.Update.as_requests([name], resource, api, action,
-                    error_path: List.wrap(name),
-                    authorize?: opts[:authorize?],
-                    actor: opts[:actor],
-                    tracer: opts[:tracer],
-                    changeset_dependencies: [[name, :fetch, :data] | request_deps],
-                    skip_on_nil_record?: true,
-                    modify_changeset: fn changeset, context ->
-                      context = Ash.Helpers.deep_merge_maps(context, additional_context)
-                      results = results(dep_paths, context)
-
-                      halt_if(halt_if, halt_reason, name, results, context, fn -> changeset end)
-                    end,
-                    tenant: fn context ->
-                      context = Ash.Helpers.deep_merge_maps(context, additional_context)
-                      results = results(dep_paths, context)
-
-                      tenant
-                      |> Ash.Flow.Template.set_dependent_values(%{
-                        results: results,
-                        elements: Map.get(context, :_ash_engine_elements)
-                      })
-                      |> Ash.Flow.handle_modifiers()
-                    end,
-                    record: fn context ->
-                      Ash.Flow.do_get_in(context, [name, :fetch, :data])
-                    end,
-                    changeset_input: fn context ->
-                      context = Ash.Helpers.deep_merge_maps(context, additional_context)
-
-                      results = results(dep_paths, context)
-
-                      action_input
-                      |> Ash.Flow.Template.set_dependent_values(%{
-                        results: results,
-                        elements: Map.get(context, :_ash_engine_elements)
-                      })
-                      |> Ash.Flow.handle_modifiers()
-                    end
-                  )
+                get_request,
+                update_request
               ]
             end
           )
@@ -1345,48 +1360,70 @@ defmodule Ash.Flow.Executor.AshEngine do
                   additional_context
                 )
 
+              destroy_request =
+                Ash.Engine.Request.new(
+                  resource: resource,
+                  path: [name],
+                  name: inspect([name]),
+                  authorize?: false,
+                  data:
+                    Ash.Engine.Request.resolve([[name, :fetch, :data] | request_deps], fn data ->
+                      case Ash.Flow.do_get_in(data, [name, :fetch, :data]) do
+                        nil ->
+                          {:ok, nil}
+
+                        record ->
+                          data = Ash.Helpers.deep_merge_maps(data, additional_context)
+                          results = results(dep_paths, data)
+
+                          case halt_if(halt_if, halt_reason, name, results, data, fn ->
+                                 {:ok, Ash.Changeset.new(record)}
+                               end) do
+                            {:error, error} ->
+                              {:error, error}
+
+                            {:ok, changeset} ->
+                              tenant =
+                                tenant
+                                |> Ash.Flow.Template.set_dependent_values(%{
+                                  results: results,
+                                  elements: Map.get(data, :_ash_engine_elements)
+                                })
+                                |> Ash.Flow.handle_modifiers()
+
+                              action_input =
+                                action_input
+                                |> Ash.Flow.Template.set_dependent_values(%{
+                                  results: results,
+                                  elements: Map.get(data, :_ash_engine_elements)
+                                })
+                                |> Ash.Flow.handle_modifiers()
+                                |> Kernel.||(%{})
+
+                              changeset
+                              |> Ash.Changeset.set_tenant(tenant)
+                              |> Ash.Changeset.for_destroy(action.name, action_input,
+                                actor: data[:actor],
+                                tenant: tenant,
+                                authorize?: data[:authorize?],
+                                tracer: data[:tracer]
+                              )
+                              |> api.destroy()
+                              |> case do
+                                :ok ->
+                                  {:ok, record}
+
+                                other ->
+                                  other
+                              end
+                          end
+                      end
+                    end)
+                )
+
               [
-                get_request
-                | Ash.Actions.Destroy.as_requests([name], resource, api, action,
-                    error_path: List.wrap(name),
-                    authorize?: opts[:authorize?],
-                    actor: opts[:actor],
-                    tracer: opts[:tracer],
-                    changeset_dependencies: [[name, :fetch, :data] | request_deps],
-                    skip_on_nil_record?: true,
-                    record: fn context ->
-                      Ash.Flow.do_get_in(context, [name, :fetch, :data])
-                    end,
-                    modify_changeset: fn changeset, context ->
-                      context = Ash.Helpers.deep_merge_maps(context, additional_context)
-                      results = results(dep_paths, context)
-
-                      halt_if(halt_if, halt_reason, name, results, context, fn -> changeset end)
-                    end,
-                    tenant: fn context ->
-                      context = Ash.Helpers.deep_merge_maps(context, additional_context)
-                      results = results(dep_paths, context)
-
-                      tenant
-                      |> Ash.Flow.Template.set_dependent_values(%{
-                        results: results,
-                        elements: Map.get(context, :_ash_engine_elements)
-                      })
-                      |> Ash.Flow.handle_modifiers()
-                    end,
-                    changeset_input: fn context ->
-                      context = Ash.Helpers.deep_merge_maps(context, additional_context)
-
-                      results = results(dep_paths, context)
-
-                      action_input
-                      |> Ash.Flow.Template.set_dependent_values(%{
-                        results: results,
-                        elements: Map.get(context, :_ash_engine_elements)
-                      })
-                      |> Ash.Flow.handle_modifiers()
-                    end
-                  )
+                get_request,
+                destroy_request
               ]
             end
           )
@@ -1871,7 +1908,7 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   defp result_path(%Ash.Flow.Step.Destroy{name: name}) do
-    [name, :commit, :data]
+    [name, :data]
   end
 
   defp result_path(%Ash.Flow.Step.Validate{name: name}) do
@@ -1879,7 +1916,7 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   defp result_path(%Ash.Flow.Step.Update{name: name}) do
-    [name, :commit, :data]
+    [name, :data]
   end
 
   defp result_path(%Ash.Flow.Step.Transaction{name: name}) do
@@ -1919,11 +1956,11 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   defp completion_path(%Ash.Flow.Step.Update{name: name}) do
-    [name, :commit, :completion]
+    [name, :completion]
   end
 
   defp completion_path(%Ash.Flow.Step.Destroy{name: name}) do
-    [name, :commit, :completion]
+    [name, :completion]
   end
 
   defp completion_path(%Ash.Flow.Step.Transaction{name: name}) do
@@ -1967,7 +2004,7 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   defp data_path(%Ash.Flow.Step.Destroy{name: name}) do
-    [name, :commit]
+    [name]
   end
 
   defp data_path(%Ash.Flow.Step.Validate{name: name}) do
@@ -1975,7 +2012,7 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   defp data_path(%Ash.Flow.Step.Update{name: name}) do
-    [name, :commit]
+    [name]
   end
 
   defp data_path(%Ash.Flow.Step.RunFlow{name: name}) do
