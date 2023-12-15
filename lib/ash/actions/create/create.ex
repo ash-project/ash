@@ -72,7 +72,8 @@ defmodule Ash.Actions.Create do
     end
   rescue
     e ->
-      reraise Ash.Error.to_error_class(e, changeset: changeset), __STACKTRACE__
+      reraise Ash.Error.to_error_class(e, changeset: changeset, stacktrace: __STACKTRACE__),
+              __STACKTRACE__
   end
 
   defp do_run(api, changeset, action, opts) do
@@ -266,12 +267,12 @@ defmodule Ash.Actions.Create do
 
                 if changeset.valid? do
                   if changeset.action.manual do
-                    {mod, opts} = changeset.action.manual
+                    {mod, action_opts} = changeset.action.manual
 
                     if result = changeset.context[:private][:action_result] do
                       result
                     else
-                      mod.create(changeset, opts, %{
+                      mod.create(changeset, action_opts, %{
                         actor: opts[:actor],
                         tenant: changeset.tenant,
                         authorize?: opts[:authorize?],

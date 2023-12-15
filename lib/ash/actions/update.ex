@@ -72,13 +72,12 @@ defmodule Ash.Actions.Update do
     end
   rescue
     e ->
-      reraise Ash.Error.to_error_class(e, changeset: changeset), __STACKTRACE__
+      reraise Ash.Error.to_error_class(e, changeset: changeset, stacktrace: __STACKTRACE__),
+              __STACKTRACE__
   end
 
   @doc false
   def do_run(api, changeset, action, opts) do
-    {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
-
     with %{valid?: true} = changeset <- Ash.Changeset.validate_multitenancy(changeset),
          %{valid?: true} = changeset <- changeset(changeset, api, action, opts),
          %{valid?: true} = changeset <- authorize(changeset, api, opts),
@@ -233,17 +232,21 @@ defmodule Ash.Actions.Update do
 
                 if changeset.valid? do
                   if changeset.action.manual do
-                    {mod, opts} = changeset.action.manual
+                    {mod, action_opts} = changeset.action.manual
 
                     if result = changeset.context[:private][:action_result] do
                       result
                     else
-                      mod.update(changeset, opts, %{
-                        actor: opts[:actor],
-                        tenant: changeset.tenant,
-                        authorize?: opts[:authorize?],
-                        api: changeset.api
-                      })
+                      mod.update(
+                        changeset,
+                        action_opts,
+                        %{
+                          actor: opts[:actor],
+                          tenant: changeset.tenant,
+                          authorize?: opts[:authorize?],
+                          api: changeset.api
+                        }
+                      )
                       |> validate_manual_action_return_result!(
                         changeset.resource,
                         changeset.action

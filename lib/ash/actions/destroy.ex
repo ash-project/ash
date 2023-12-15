@@ -62,12 +62,11 @@ defmodule Ash.Actions.Destroy do
     end
   rescue
     e ->
-      reraise Ash.Error.to_error_class(e, changeset: changeset), __STACKTRACE__
+      reraise Ash.Error.to_error_class(e, changeset: changeset, stacktrace: __STACKTRACE__),
+              __STACKTRACE__
   end
 
   def do_run(api, changeset, %{soft?: true} = action, opts) do
-    {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
-
     changeset =
       if changeset.__validated_for_action__ == action.name do
         %{changeset | action_type: :destroy}
@@ -156,12 +155,12 @@ defmodule Ash.Actions.Destroy do
 
         changeset ->
           if changeset.action.manual do
-            {mod, opts} = changeset.action.manual
+            {mod, action_opts} = changeset.action.manual
 
             if result = changeset.context[:private][:action_result] do
               result
             else
-              mod.destroy(changeset, opts, %{
+              mod.destroy(changeset, action_opts, %{
                 actor: opts[:actor],
                 tenant: changeset.tenant,
                 authorize?: opts[:authorize?],
