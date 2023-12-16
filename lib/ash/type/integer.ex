@@ -32,58 +32,61 @@ defmodule Ash.Type.Integer do
   end
 
   def cast_atomic_update(expr, constraints) do
-    case {constraints[:max], constraints[:max]} do
-      {nil, nil} ->
-        expr
+    expr =
+      case {constraints[:max], constraints[:max]} do
+        {nil, nil} ->
+          expr
 
-      {max, nil} ->
-        Ash.Expr.expr(
-          if ^expr > ^max do
-            error(
-              Ash.Error.Changes.InvalidChanges,
-              message: "must be less than or equal to %{max}",
-              vars: [max: max]
-            )
-          else
-            ^expr
-          end
-        )
-
-      {nil, min} ->
-        Ash.Expr.expr(
-          if ^expr > ^min do
-            error(
-              Ash.Error.Changes.InvalidChanges,
-              message: "must be greater than or equal to %{min}",
-              vars: [min: min]
-            )
-          else
-            ^expr
-          end
-        )
-
-      {max, min} ->
-        Ash.Expr.expr(
-          cond do
-            ^expr < ^min ->
-              error(
-                Ash.Error.Changes.InvalidChanges,
-                message: "must be greater than or equal to %{min}",
-                vars: [min: min]
-              )
-
-            ^expr > ^max ->
+        {max, nil} ->
+          Ash.Expr.expr(
+            if ^expr > ^max do
               error(
                 Ash.Error.Changes.InvalidChanges,
                 message: "must be less than or equal to %{max}",
                 vars: [max: max]
               )
-
-            true ->
+            else
               ^expr
-          end
-        )
-    end
+            end
+          )
+
+        {nil, min} ->
+          Ash.Expr.expr(
+            if ^expr > ^min do
+              error(
+                Ash.Error.Changes.InvalidChanges,
+                message: "must be greater than or equal to %{min}",
+                vars: [min: min]
+              )
+            else
+              ^expr
+            end
+          )
+
+        {max, min} ->
+          Ash.Expr.expr(
+            cond do
+              ^expr < ^min ->
+                error(
+                  Ash.Error.Changes.InvalidChanges,
+                  message: "must be greater than or equal to %{min}",
+                  vars: [min: min]
+                )
+
+              ^expr > ^max ->
+                error(
+                  Ash.Error.Changes.InvalidChanges,
+                  message: "must be less than or equal to %{max}",
+                  vars: [max: max]
+                )
+
+              true ->
+                ^expr
+            end
+          )
+      end
+
+    {:atomic, expr}
   end
 
   @impl true
