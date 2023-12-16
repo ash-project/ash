@@ -828,7 +828,8 @@ defmodule Ash.Actions.Read do
     |> Keyword.put(:verbose?, verbose?)
   end
 
-  defp handle_attribute_multitenancy(query) do
+  @doc false
+  def handle_attribute_multitenancy(query) do
     multitenancy_attribute = Ash.Resource.Info.multitenancy_attribute(query.resource)
 
     if multitenancy_attribute && query.tenant do

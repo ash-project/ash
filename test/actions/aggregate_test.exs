@@ -56,6 +56,14 @@ defmodule Ash.Test.Actions.AggregateTest do
       attribute :public, :boolean do
         default false
       end
+
+      attribute :tenant, :string
+    end
+
+    multitenancy do
+      global? true
+      strategy :attribute
+      attribute :tenant
     end
 
     aggregates do
@@ -115,6 +123,27 @@ defmodule Ash.Test.Actions.AggregateTest do
       |> Api.create!()
 
       assert %{count: 2} = Api.aggregate!(Post, {:count, :count})
+    end
+
+    test "honors tenant" do
+      assert %{count: 0} = Api.aggregate!(Post, {:count, :count})
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "title", tenant: "foo"})
+      |> Api.create!()
+
+      assert %{count: 1} = Api.aggregate!(Post, {:count, :count}, tenant: "foo")
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "title", tenant: "foo"})
+      |> Api.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "title", tenant: "bar"})
+      |> Api.create!()
+
+      assert %{count: 2} = Api.aggregate!(Post, {:count, :count}, tenant: "foo")
+      assert %{count: 3} = Api.aggregate!(Post, {:count, :count})
     end
 
     test "runs authorization" do

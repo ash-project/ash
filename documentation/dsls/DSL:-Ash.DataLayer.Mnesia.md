@@ -33,41 +33,14 @@ end
 
 ### Options
 
-<table>
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Type</th>
-      <th>Default</th>
-      <th colspan=2>Docs</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-  <td style="text-align: left">
-    <a id="mnesia-table" href="#mnesia-table">
-      <span style="font-family: Inconsolata, Menlo, Courier, monospace;">
-        table
-      </span>
-    </a>
-      
-  </td>
-  <td style="text-align: left">
-    <code class="inline">atom</code>
-  </td>
-  <td style="text-align: left">
-    
-  </td>
-  <td style="text-align: left" colspan=2>
-    The table name to use, defaults to the name of the resource
-  </td>
-</tr>
-
-  </tbody>
-</table>
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`table`](#mnesia-table){: #mnesia-table } | `atom` |  | The table name to use, defaults to the name of the resource |
 
 
 
 
 
 
+
+<style type="text/css">.spark-required::after { content: "*"; color: red !important; }</style>

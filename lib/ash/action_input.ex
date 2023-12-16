@@ -11,6 +11,7 @@ defmodule Ash.ActionInput do
     :action,
     :api,
     :resource,
+    :tenant,
     invalid_keys: MapSet.new(),
     arguments: %{},
     params: %{},
@@ -22,6 +23,7 @@ defmodule Ash.ActionInput do
   @type t :: %__MODULE__{
           arguments: map(),
           params: map(),
+          tenant: String.t() | nil,
           action: Ash.Resource.Actions.Action.t() | nil,
           resource: Ash.Resource.t(),
           invalid_keys: MapSet.t(),
@@ -59,6 +61,11 @@ defmodule Ash.ActionInput do
     input
     |> cast_params(params)
     |> require_arguments()
+  end
+
+  @spec set_tenant(t(), String.t() | nil) :: t()
+  def set_tenant(input, tenant) do
+    %{input | tenant: tenant}
   end
 
   defp require_arguments(input) do

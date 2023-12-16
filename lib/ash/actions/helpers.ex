@@ -104,11 +104,13 @@ defmodule Ash.Actions.Helpers do
         query_or_changeset
         |> Ash.ActionInput.set_context(context)
         |> Ash.ActionInput.set_context(%{private: private_context})
+        |> Ash.ActionInput.set_tenant(query_or_changeset.tenant || opts[:tenant])
 
       %{__struct__: Ash.Query} ->
         query_or_changeset
         |> Ash.Query.set_context(context)
         |> Ash.Query.set_context(%{private: private_context})
+        |> Ash.Query.set_tenant(query_or_changeset.tenant || opts[:tenant])
 
       %{__struct__: Ash.Changeset} ->
         query_or_changeset
@@ -116,6 +118,7 @@ defmodule Ash.Actions.Helpers do
         |> Ash.Changeset.set_context(%{
           private: private_context
         })
+        |> Ash.Changeset.set_tenant(query_or_changeset.tenant || opts[:tenant])
     end
   end
 
