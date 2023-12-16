@@ -45,17 +45,21 @@ defmodule Ash.Error.Exception do
       end
 
       def exception(opts) do
-        case Process.info(self(), :current_stacktrace) do
-          {:current_stacktrace, stacktrace} ->
-            super(
-              Keyword.put_new(opts, :stacktrace, %{
-                __struct__: Ash.Error.Stacktrace,
-                stacktrace: Enum.drop(stacktrace, 2)
-              })
-            )
+        if opts[:stacktrace] do
+          super(opts)
+        else
+          case Process.info(self(), :current_stacktrace) do
+            {:current_stacktrace, stacktrace} ->
+              super(
+                Keyword.put_new(opts, :stacktrace, %{
+                  __struct__: Ash.Error.Stacktrace,
+                  stacktrace: Enum.drop(stacktrace, 2)
+                })
+              )
 
-          _ ->
-            super(opts)
+            _ ->
+              super(opts)
+          end
         end
       end
 

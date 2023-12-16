@@ -224,9 +224,12 @@ defmodule Ash.Error do
   def to_error_class(values, opts) when is_list(values) do
     values =
       if Keyword.keyword?(opts) do
-        [to_ash_error(values, nil, Keyword.delete(opts, :error_context))]
+        [to_ash_error(values, opts[:stacktrace], Keyword.delete(opts, :error_context))]
       else
-        Enum.map(values, &to_ash_error(&1, nil, Keyword.delete(opts, :error_context)))
+        Enum.map(
+          values,
+          &to_ash_error(&1, opts[:stacktrace], Keyword.delete(opts, :error_context))
+        )
       end
 
     case values do
@@ -242,7 +245,14 @@ defmodule Ash.Error do
             if ash_error?(value) do
               value
             else
-              UnknownError.exception(error: value)
+              exception_opts =
+                if opts[:stacktrace] do
+                  [error: value, stacktrace: %Stacktrace{stacktrace: opts[:stacktrace]}]
+                else
+                  [error: values]
+                end
+
+              UnknownError.exception(exception_opts)
             end
           end)
           |> Enum.uniq()
@@ -255,7 +265,7 @@ defmodule Ash.Error do
   end
 
   def to_error_class(value, opts) do
-    value = to_ash_error(value, nil, Keyword.delete(opts, :error_context))
+    value = to_ash_error(value, opts[:stacktrace], Keyword.delete(opts, :error_context))
 
     if value.__struct__ in Keyword.values(@error_modules) do
       value
