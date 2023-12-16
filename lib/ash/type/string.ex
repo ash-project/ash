@@ -38,8 +38,101 @@ defmodule Ash.Type.String do
   """
   use Ash.Type
 
+  require Ash.Expr
+
   @impl true
   def storage_type(_), do: :string
+
+  def cast_atomic_update(expr, constraints) when is_binary(expr) do
+    case cast_input(expr, constraints) do
+      {:ok, value} -> {:atomic, value}
+      {:error, other} -> {:error, other}
+    end
+  end
+
+  @impl true
+  def cast_atomic_update(expr, constraints) do
+    # We can't support `match` currently, as we don't have a multi-target regex
+    if constraints[:match] do
+      :not_atomic
+    else
+      expr =
+        if constraints[:trim?] do
+          Ash.Expr.expr(string_trim(^expr))
+        else
+          expr
+        end
+
+      expr =
+        if constraints[:allow_empty?] do
+          expr
+        else
+          Ash.Expr.expr(
+            if ^expr == "" do
+              nil
+            else
+              ^expr
+            end
+          )
+        end
+
+      validated =
+        case {constraints[:max_length], constraints[:min_length]} do
+          {nil, nil} ->
+            expr
+
+          {max, nil} ->
+            Ash.Expr.expr(
+              if string_length(^expr) > ^max do
+                error(
+                  Ash.Error.Changes.InvalidChanges,
+                  message: "length must be less than or equal to %{max}",
+                  vars: [max: max]
+                )
+              else
+                ^expr
+              end
+            )
+
+          {nil, min} ->
+            Ash.Expr.expr(
+              if string_length(^expr) < ^min do
+                error(
+                  Ash.Error.Changes.InvalidChanges,
+                  message: "length must be greater than or equal to %{min}",
+                  vars: [min: min]
+                )
+              else
+                ^expr
+              end
+            )
+
+          {max, min} ->
+            Ash.Expr.expr(
+              cond do
+                string_length(^expr) < ^min ->
+                  error(
+                    Ash.Error.Changes.InvalidChanges,
+                    message: "length must be greater than or equal to %{min}",
+                    vars: [min: min]
+                  )
+
+                string_length(^expr) > ^max ->
+                  error(
+                    Ash.Error.Changes.InvalidChanges,
+                    message: "length must be less than or equal to %{max}",
+                    vars: [max: max]
+                  )
+
+                true ->
+                  ^expr
+              end
+            )
+        end
+
+      {:atomic, validated}
+    end
+  end
 
   @impl true
   def constraints, do: @constraints

@@ -2,7 +2,6 @@ defmodule Ash.Test.Actions.LoadTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
-  import Ash.Changeset
   require Ash.Query
 
   defmodule Campaign do
@@ -364,6 +363,8 @@ defmodule Ash.Test.Actions.LoadTest do
       registry(Registry2)
     end
   end
+
+  import Ash.Changeset
 
   setup do
     start_supervised(

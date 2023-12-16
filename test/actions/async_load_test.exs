@@ -3,7 +3,6 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
   use ExUnit.Case, async: false
 
   import ExUnit.CaptureLog
-  import Ash.Changeset
   require Ash.Query
 
   defmodule Author do
@@ -176,6 +175,8 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       registry Registry
     end
   end
+
+  import Ash.Changeset
 
   describe "context" do
     setup do

@@ -227,9 +227,10 @@ defmodule Ash.Type do
   @callback embedded?() :: boolean
   @callback generator(constraints) :: Enumerable.t()
   @callback simple_equality?() :: boolean
-  @callback atomic_update(constraints, new_value :: term) :: {:atomic, Ash.Expr.t()} | :not_atomic
-  @callback atomic_update_array(constraints, new_value :: term) ::
-              {:atomic, Ash.Expr.t()} | :not_atomic
+  @callback cast_atomic_update(new_value :: Ash.Expr.t(), constraints) ::
+              {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | :not_atomic
+  @callback cast_atomic_update_array(new_value :: Ash.Expr.t(), constraints) ::
+              {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | :not_atomic
   @callback custom_apply_constraints_array?() :: boolean
   @callback load(
               values :: list(term),
@@ -771,6 +772,23 @@ defmodule Ash.Type do
     type.dump_to_native(term, constraints)
   end
 
+  @spec cast_atomic_update(t(), term, constraints()) ::
+          {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | :not_atomic
+  # not currently supported
+  def cast_atomic_update({:array, {:array, _}}, _term, _constraints), do: :not_atomic
+
+  def cast_atomic_update({:array, type}, term, constraints) do
+    type = get_type(type)
+
+    type.cast_atomic_update_array(term, constraints[:items] || [])
+  end
+
+  def cast_atomic_update(type, term, constraints) do
+    type = get_type(type)
+
+    type.cast_atomic_update(term, constraints)
+  end
+
   @doc """
   Casts a value from the Elixir type to a value that can be embedded in another data structure.
 
@@ -1170,13 +1188,26 @@ defmodule Ash.Type do
       end
 
       @impl true
-      def atomic_update(constraints, new_value) do
+      def cast_atomic_update(new_value, constraints) do
         {:atomic, new_value}
       end
 
       @impl true
-      def atomic_update_array(constraints, new_value) do
-        {:atomic, new_value}
+      def cast_atomic_update_array(new_value, constraints) do
+        new_value
+        |> Enum.reduce_while({:atomic, []}, fn val, {:atomic, vals} ->
+          case cast_atomic_update(constraints, val) do
+            {:atomic, atomic} ->
+              {:atomic, [atomic | vals]}
+
+            _ ->
+              {:halt, :not_atomic}
+          end
+        end)
+        |> case do
+          {:atomic, vals} -> {:atomic, Enum.reverse(vals)}
+          :not_atomic -> :not_atomic
+        end
       end
 
       @impl true
@@ -1189,8 +1220,8 @@ defmodule Ash.Type do
                      include_source: 2,
                      describe: 1,
                      generator: 1,
-                     atomic_update: 2,
-                     atomic_update_array: 2,
+                     cast_atomic_update: 2,
+                     cast_atomic_update_array: 2,
                      cast_input_array: 2,
                      dump_to_native_array: 2,
                      dump_to_embedded: 2,

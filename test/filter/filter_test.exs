@@ -2,7 +2,6 @@ defmodule Ash.Test.Filter.FilterTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  import Ash.Changeset
   import Ash.Test
 
   alias Ash.Filter
@@ -203,11 +202,11 @@ defmodule Ash.Test.Filter.FilterTest do
   describe "in" do
     test "in can be done with references on both sides" do
       Post
-      |> new(%{title: "dawg"})
+      |> Ash.Changeset.new(%{title: "dawg"})
       |> Api.create!()
 
       Post
-      |> new(%{title: "lame"})
+      |> Ash.Changeset.new(%{title: "lame"})
       |> Api.create!()
 
       assert [_] =
@@ -294,13 +293,13 @@ defmodule Ash.Test.Filter.FilterTest do
     setup do
       post1 =
         Post
-        |> new(%{title: "title1", contents: "contents1", points: 1})
+        |> Ash.Changeset.new(%{title: "title1", contents: "contents1", points: 1})
         |> Api.create!()
         |> strip_metadata()
 
       post2 =
         Post
-        |> new(%{title: "title2", contents: "contents2", points: 2})
+        |> Ash.Changeset.new(%{title: "title2", contents: "contents2", points: 2})
         |> Api.create!()
         |> strip_metadata()
 
@@ -380,11 +379,11 @@ defmodule Ash.Test.Filter.FilterTest do
   describe "embedded filters" do
     setup do
       Profile
-      |> new(%{embedded_bio: %{title: "Dr.", bio: "foo"}})
+      |> Ash.Changeset.new(%{embedded_bio: %{title: "Dr.", bio: "foo"}})
       |> Api.create!()
 
       Profile
-      |> new(%{embedded_bio: %{title: "Highlander", bio: "There can be only one"}})
+      |> Ash.Changeset.new(%{embedded_bio: %{title: "Highlander", bio: "There can be only one"}})
       |> Api.create!()
 
       :ok
@@ -409,55 +408,57 @@ defmodule Ash.Test.Filter.FilterTest do
     setup do
       post1 =
         Post
-        |> new(%{title: "title1", contents: "contents1", points: 1})
+        |> Ash.Changeset.new(%{title: "title1", contents: "contents1", points: 1})
         |> Api.create!()
         |> strip_metadata()
 
       post2 =
         Post
-        |> new(%{title: "title2", contents: "contents2", points: 2})
+        |> Ash.Changeset.new(%{title: "title2", contents: "contents2", points: 2})
         |> Api.create!()
         |> strip_metadata()
 
       post3 =
         Post
-        |> new(%{title: "title3", contents: "contents3", points: 3})
-        |> manage_relationship(:related_posts, [post1, post2], type: :append_and_remove)
+        |> Ash.Changeset.new(%{title: "title3", contents: "contents3", points: 3})
+        |> Ash.Changeset.manage_relationship(:related_posts, [post1, post2],
+          type: :append_and_remove
+        )
         |> Api.create!()
         |> strip_metadata()
 
       post4 =
         Post
-        |> new(%{title: "title4", contents: "contents4", points: 4})
-        |> manage_relationship(:related_posts, [post3], type: :append_and_remove)
+        |> Ash.Changeset.new(%{title: "title4", contents: "contents4", points: 4})
+        |> Ash.Changeset.manage_relationship(:related_posts, [post3], type: :append_and_remove)
         |> Api.create!()
         |> strip_metadata()
 
       profile1 =
         Profile
-        |> new(%{bio: "dope"})
+        |> Ash.Changeset.new(%{bio: "dope"})
         |> Api.create!()
         |> strip_metadata()
 
       user1 =
         User
-        |> new(%{name: "broseph"})
-        |> manage_relationship(:posts, [post1, post2], type: :append_and_remove)
-        |> manage_relationship(:profile, profile1, type: :append_and_remove)
+        |> Ash.Changeset.new(%{name: "broseph"})
+        |> Ash.Changeset.manage_relationship(:posts, [post1, post2], type: :append_and_remove)
+        |> Ash.Changeset.manage_relationship(:profile, profile1, type: :append_and_remove)
         |> Api.create!()
         |> strip_metadata()
 
       user2 =
         User
-        |> new(%{name: "broseph", special: false})
-        |> manage_relationship(:posts, [post2], type: :append_and_remove)
+        |> Ash.Changeset.new(%{name: "broseph", special: false})
+        |> Ash.Changeset.manage_relationship(:posts, [post2], type: :append_and_remove)
         |> Api.create!()
         |> strip_metadata()
 
       profile2 =
         Profile
-        |> new(%{bio: "dope2"})
-        |> manage_relationship(:user, user2, type: :append_and_remove)
+        |> Ash.Changeset.new(%{bio: "dope2"})
+        |> Ash.Changeset.manage_relationship(:user, user2, type: :append_and_remove)
         |> Api.create!()
         |> strip_metadata()
 
@@ -625,20 +626,18 @@ defmodule Ash.Test.Filter.FilterTest do
 
   describe "parse!" do
     test "raises an error if the statement is invalid" do
-      filter = Filter.parse!(Post, points: 1)
-
       err =
         assert_raise(Ash.Error.Invalid, fn ->
-          Filter.parse!(filter, 1)
+          Filter.parse!(Post, flarb: 1)
         end)
 
       [error_context] = err.error_context
-      assert error_context =~ "parsing addition of filter statement: 1"
+      assert error_context =~ "parsing addition of filter statement: [flarb: 1]"
       assert error_context =~ ", to resource: " <> (Post |> Module.split() |> Enum.join("."))
 
       [inner_error] = err.errors
       [inner_error_context] = inner_error.error_context
-      assert inner_error_context =~ "parsing addition of filter statement: 1"
+      assert inner_error_context =~ "parsing addition of filter statement: [flarb: 1]"
 
       assert inner_error_context =~
                ", to resource: " <> (Post |> Module.split() |> Enum.join("."))
@@ -663,7 +662,7 @@ defmodule Ash.Test.Filter.FilterTest do
     test "resources that apply to the base filter are returned" do
       %{id: id} =
         SoftDeletePost
-        |> new(%{})
+        |> Ash.Changeset.new(%{})
         |> Api.create!()
 
       assert [%{id: ^id}] = Api.read!(SoftDeletePost)
@@ -671,7 +670,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
     test "resources that don't apply to the base filter are not returned" do
       SoftDeletePost
-      |> new(%{})
+      |> Ash.Changeset.new(%{})
       |> Api.create!()
       |> Api.destroy!()
 
@@ -682,11 +681,11 @@ defmodule Ash.Test.Filter.FilterTest do
   describe "contains/2" do
     test "works for simple strings" do
       Post
-      |> new(%{title: "foobar"})
+      |> Ash.Changeset.new(%{title: "foobar"})
       |> Api.create!()
 
       Post
-      |> new(%{title: "bazbuz"})
+      |> Ash.Changeset.new(%{title: "bazbuz"})
       |> Api.create!()
 
       assert [%{title: "foobar"}] =
@@ -697,11 +696,11 @@ defmodule Ash.Test.Filter.FilterTest do
 
     test "works for simple strings with a case insensitive search term" do
       Post
-      |> new(%{title: "foobar"})
+      |> Ash.Changeset.new(%{title: "foobar"})
       |> Api.create!()
 
       Post
-      |> new(%{title: "bazbuz"})
+      |> Ash.Changeset.new(%{title: "bazbuz"})
       |> Api.create!()
 
       assert [%{title: "foobar"}] =
@@ -712,11 +711,11 @@ defmodule Ash.Test.Filter.FilterTest do
 
     test "works for case insensitive strings" do
       Post
-      |> new(%{category: "foobar"})
+      |> Ash.Changeset.new(%{category: "foobar"})
       |> Api.create!()
 
       Post
-      |> new(%{category: "bazbuz"})
+      |> Ash.Changeset.new(%{category: "bazbuz"})
       |> Api.create!()
 
       assert [%{category: %Ash.CiString{string: "foobar"}}] =
@@ -730,12 +729,12 @@ defmodule Ash.Test.Filter.FilterTest do
     test "with an attribute" do
       user1 =
         User
-        |> new(%{roles: [:user]})
+        |> Ash.Changeset.new(%{roles: [:user]})
         |> Api.create!()
 
       _user2 =
         User
-        |> new(%{roles: []})
+        |> Ash.Changeset.new(%{roles: []})
         |> Api.create!()
 
       user1_id = user1.id
@@ -749,7 +748,7 @@ defmodule Ash.Test.Filter.FilterTest do
     test "with an explicit list" do
       user1 =
         User
-        |> new(%{roles: [:user]})
+        |> Ash.Changeset.new(%{roles: [:user]})
         |> Api.create!()
 
       user1_id = user1.id
@@ -769,12 +768,12 @@ defmodule Ash.Test.Filter.FilterTest do
     test "when nil" do
       user1 =
         User
-        |> new(%{roles: [:user]})
+        |> Ash.Changeset.new(%{roles: [:user]})
         |> Api.create!()
 
       _user2 =
         User
-        |> new()
+        |> Ash.Changeset.new()
         |> Api.create!()
 
       user1_id = user1.id
@@ -787,7 +786,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
     test "with bad input" do
       User
-      |> new(%{name: "fred"})
+      |> Ash.Changeset.new(%{name: "fred"})
       |> Api.create!()
 
       assert_raise(Ash.Error.Unknown, fn ->
@@ -840,7 +839,7 @@ defmodule Ash.Test.Filter.FilterTest do
     test "calls are evaluated and can be used in predicates" do
       post1 =
         Post
-        |> new(%{title: "title1", contents: "contents1", points: 2})
+        |> Ash.Changeset.new(%{title: "title1", contents: "contents1", points: 2})
         |> Api.create!()
 
       post_id = post1.id
@@ -854,14 +853,14 @@ defmodule Ash.Test.Filter.FilterTest do
     test "function calls are evaluated properly" do
       post1 =
         Post
-        |> new(%{
+        |> Ash.Changeset.new(%{
           title: "title1",
           approved_at: DateTime.new!(Date.utc_today() |> Date.add(-7), Time.utc_now())
         })
         |> Api.create!()
 
       Post
-      |> new(%{
+      |> Ash.Changeset.new(%{
         title: "title1",
         approved_at: DateTime.new!(Date.utc_today() |> Date.add(-7 * 4), Time.utc_now())
       })
@@ -878,14 +877,14 @@ defmodule Ash.Test.Filter.FilterTest do
     test "now() evaluates to the current datetime" do
       post1 =
         Post
-        |> new(%{
+        |> Ash.Changeset.new(%{
           title: "title1",
           approved_at: DateTime.new!(Date.utc_today() |> Date.add(7), Time.utc_now())
         })
         |> Api.create!()
 
       Post
-      |> new(%{
+      |> Ash.Changeset.new(%{
         title: "title1",
         approved_at: DateTime.new!(Date.utc_today() |> Date.add(-7), Time.utc_now())
       })

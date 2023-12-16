@@ -16,6 +16,22 @@ defmodule Ash.Resource.Validation.AttributeEquals do
 
   use Ash.Resource.Validation
   alias Ash.Error.Changes.InvalidAttribute
+  require Ash.Expr
+
+  @impl true
+  def atomic(changeset, opts) do
+    field_value = Ash.Changeset.atomic_ref(changeset, opts[:attribute])
+
+    {:atomic, Ash.Expr.expr(^field_value != ^opts[:value]),
+     Ash.Expr.expr(
+       error(^InvalidAttribute, %{
+         field: ^opts[:attribute],
+         value: ^field_value,
+         message: "must equal %{value}",
+         vars: %{field: opts[:attribute], value: opts[:value]}
+       })
+     )}
+  end
 
   @impl true
   def init(opts) do

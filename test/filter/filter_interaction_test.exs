@@ -1,7 +1,6 @@
 defmodule Ash.Test.Filter.FilterInteractionTest do
   use ExUnit.Case, async: false
 
-  import Ash.Changeset
   import ExUnit.CaptureLog
   import Ash.Test
 
@@ -124,6 +123,8 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       registry Registry
     end
   end
+
+  import Ash.Changeset
 
   setup do
     capture_log(fn ->

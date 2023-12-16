@@ -97,6 +97,13 @@ defmodule Ash.Changeset do
           empty()
         end
 
+      atomics =
+        if Enum.empty?(changeset.atomics) do
+          empty()
+        else
+          concat("atomics: ", to_doc(changeset.atomics, opts))
+        end
+
       container_doc(
         "#Ash.Changeset<",
         [
@@ -105,6 +112,7 @@ defmodule Ash.Changeset do
           concat("action: ", inspect(changeset.action && changeset.action.name)),
           tenant,
           concat("attributes: ", to_doc(changeset.attributes, opts)),
+          atomics,
           concat("relationships: ", to_doc(changeset.relationships, opts)),
           arguments(changeset, opts),
           concat("errors: ", to_doc(changeset.errors, opts)),
@@ -477,6 +485,173 @@ defmodule Ash.Changeset do
     |> Ash.Query.accessing(types)
   end
 
+  @spec fully_atomic_changeset(
+          resource :: Ash.Resource.t(),
+          action :: atom() | Ash.Resource.Actions.action(),
+          params :: map(),
+          opts :: Keyword.t()
+        ) :: Ash.Changeset.t() | :not_atomic
+  def fully_atomic_changeset(resource, action, params, opts \\ []) do
+    action =
+      case action do
+        action when is_atom(action) -> Ash.Resource.Info.action(resource, action)
+        action -> action
+      end
+
+    changeset =
+      resource
+      |> Ash.Changeset.new()
+      |> Map.put(:params, params)
+      |> Map.put(:action, action)
+
+    {changeset, _opts} = Ash.Actions.Helpers.add_process_context(opts[:api], changeset, opts)
+
+    with %Ash.Changeset{} = changeset <- atomic_params(changeset, action, params) do
+      atomic_changes(changeset, action)
+    end
+  end
+
+  defp atomic_changes(changeset, action) do
+    changes =
+      action.changes
+      |> Enum.concat(Ash.Resource.Info.changes(changeset.resource, changeset.action_type))
+      |> Enum.concat(Ash.Resource.Info.validations(changeset.resource))
+
+    context = %{
+      actor: changeset.context[:private][:actor],
+      tenant: changeset.tenant,
+      authorize?: changeset.context[:private][:authorize?] || false,
+      tracer: changeset.context[:private][:tracer]
+    }
+
+    Enum.reduce_while(changes, changeset, fn
+      %{change: {module, change_opts}, where: where}, changeset ->
+        with {:atomic, atomic_changes} <- module.atomic(changeset, change_opts, context),
+             {:atomic, condition} <- atomic_condition(where, changeset) do
+          case condition do
+            true ->
+              {:cont, atomic_update(changeset, atomic_changes)}
+
+            false ->
+              {:cont, changeset}
+
+            condition ->
+              atomic_changes =
+                Map.new(atomic_changes, fn {key, value} ->
+                  new_value =
+                    Ash.Expr.expr(
+                      if ^condition do
+                        ^value
+                      else
+                        ref(^key)
+                      end
+                    )
+
+                  {key, new_value}
+                end)
+
+              {:cont, atomic_update(changeset, atomic_changes)}
+          end
+        else
+          :not_atomic ->
+            {:halt, :not_atomic}
+        end
+
+      %{validation: {module, validation_opts}, where: where}, changeset ->
+        with {:atomic, condition_expr, error_expr} <-
+               module.atomic(changeset, validation_opts),
+             {:atomic, condition} <- atomic_condition(where, changeset) do
+          case condition do
+            true ->
+              {:cont, validate_atomically(changeset, condition_expr, error_expr)}
+
+            false ->
+              {:cont, changeset}
+
+            condition ->
+              condition_expr =
+                Ash.Expr.expr(^condition and condition_expr)
+
+              {:cont, validate_atomically(changeset, condition_expr, error_expr)}
+          end
+        else
+          :not_atomic ->
+            {:halt, :not_atomic}
+        end
+    end)
+  end
+
+  defp validate_atomically(changeset, condition_expr, error_expr) do
+    [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
+
+    atomic_update(
+      changeset,
+      first_pkey_field,
+      Ash.Expr.expr(
+        if ^condition_expr do
+          ^error_expr
+        else
+          ^atomic_ref(changeset, first_pkey_field)
+        end
+      )
+    )
+  end
+
+  @doc """
+  Gets a reference to a field, or the current atomic update expression of that field.
+  """
+  def atomic_ref(changeset, field) do
+    if base_value = changeset.atomics[field] do
+      base_value
+    else
+      Ash.Expr.expr(ref(^field))
+    end
+  end
+
+  defp atomic_condition(where, changeset) do
+    Enum.reduce_while(where, {:atomic, true}, fn {module, validation_opts},
+                                                 {:atomic, condition} ->
+      case module.atomic(changeset, validation_opts) do
+        {:atomic, expr, _as_error} ->
+          new_expr =
+            if condition == true do
+              expr
+            else
+              Ash.Expr.expr(^condition and ^expr)
+            end
+
+          {:cont, {:atomic, new_expr}}
+
+        :not_atomic ->
+          {:halt, :not_atomic}
+      end
+    end)
+  end
+
+  defp atomic_params(changeset, action, params) do
+    Enum.reduce_while(params, changeset, fn {key, value}, changeset ->
+      cond do
+        has_argument?(action, key) ->
+          {:cont, set_argument(changeset, key, value)}
+
+        attribute = Ash.Resource.Info.attribute(changeset.resource, key) ->
+          case Ash.Type.cast_atomic_update(attribute.type, value, attribute.constraints) do
+            {:atomic, atomic} ->
+              {:cont, atomic_update(changeset, key, {:atomic, atomic})}
+
+            {:error, error} ->
+              {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
+
+            :not_atomic ->
+              {:halt, :not_atomic}
+          end
+
+        true ->
+          {:cont, changeset}
+      end
+    end)
+  end
+
   @manage_types [:append_and_remove, :append, :remove, :direct_control, :create]
 
   @doc """
@@ -747,7 +922,8 @@ defmodule Ash.Changeset do
 
   i.e `Ash.Changeset.atomic_update(changeset, score: [Ash.Expr.expr(score + 1)])`
   """
-  def atomic_update(changeset, atomics) when is_list(atomics) do
+  @spec atomic_update(t(), map() | Keyword.t()) :: t()
+  def atomic_update(changeset, atomics) when is_list(atomics) or is_map(atomics) do
     Enum.reduce(atomics, changeset, fn {key, value}, changeset ->
       atomic_update(changeset, key, value)
     end)
@@ -758,8 +934,24 @@ defmodule Ash.Changeset do
 
   i.e `Ash.Changeset.atomic_update(changeset, :score, [Ash.Expr.expr(score + 1)])`
   """
-  def atomic_update(changeset, key, value) do
+  @spec atomic_update(t(), atom(), {:atomic, Ash.Expr.t()} | Ash.Expr.t()) :: t()
+  def atomic_update(changeset, key, {:atomic, value}) do
     %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+  end
+
+  def atomic_update(changeset, key, value) do
+    attribute = Ash.Resource.Info.attribute(changeset.resource, key)
+
+    case Ash.Type.cast_atomic_update(attribute.type, value, attribute.constraints) do
+      {:atomic, value} ->
+        %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+
+      :not_atomic ->
+        add_error(
+          changeset,
+          "Cannot atomically update #{inspect(changeset.resource)}.#{attribute.name}"
+        )
+    end
   end
 
   @doc """

@@ -1,8 +1,6 @@
 defmodule Ash.Test.Filter.ParentTest do
   use ExUnit.Case, async: false
 
-  import Ash.Changeset
-
   require Ash.Query
 
   defmodule User do
@@ -72,6 +70,8 @@ defmodule Ash.Test.Filter.ParentTest do
       registry Registry
     end
   end
+
+  import Ash.Changeset
 
   test "exists/2 can use `parent` to refer to the root record" do
     author =

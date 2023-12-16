@@ -2,8 +2,6 @@ defmodule Ash.Test.Type.TimeTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  import Ash.Changeset
-
   defmodule Post do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -41,6 +39,8 @@ defmodule Ash.Test.Type.TimeTest do
       registry Registry
     end
   end
+
+  import Ash.Changeset
 
   test "it handles non-empty values" do
     post =

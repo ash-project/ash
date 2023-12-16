@@ -20,6 +20,72 @@ defmodule Ash.Type.Integer do
   """
   use Ash.Type
 
+  require Ash.Expr
+
+  @impl true
+
+  def cast_atomic_update(new_value, constraints) when is_integer(new_value) do
+    case cast_input(new_value, constraints) do
+      {:ok, value} -> {:atomic, value}
+      {:error, other} -> {:error, other}
+    end
+  end
+
+  def cast_atomic_update(expr, constraints) do
+    case {constraints[:max], constraints[:max]} do
+      {nil, nil} ->
+        expr
+
+      {max, nil} ->
+        Ash.Expr.expr(
+          if ^expr > ^max do
+            error(
+              Ash.Error.Changes.InvalidChanges,
+              message: "must be less than or equal to %{max}",
+              vars: [max: max]
+            )
+          else
+            ^expr
+          end
+        )
+
+      {nil, min} ->
+        Ash.Expr.expr(
+          if ^expr > ^min do
+            error(
+              Ash.Error.Changes.InvalidChanges,
+              message: "must be greater than or equal to %{min}",
+              vars: [min: min]
+            )
+          else
+            ^expr
+          end
+        )
+
+      {max, min} ->
+        Ash.Expr.expr(
+          cond do
+            ^expr < ^min ->
+              error(
+                Ash.Error.Changes.InvalidChanges,
+                message: "must be greater than or equal to %{min}",
+                vars: [min: min]
+              )
+
+            ^expr > ^max ->
+              error(
+                Ash.Error.Changes.InvalidChanges,
+                message: "must be less than or equal to %{max}",
+                vars: [max: max]
+              )
+
+            true ->
+              ^expr
+          end
+        )
+    end
+  end
+
   @impl true
   def storage_type(_), do: :integer
 

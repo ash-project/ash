@@ -2,7 +2,6 @@ defmodule Ash.Test.Type.ModuleTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  import Ash.Changeset
   require Ash.Query
 
   defmodule StinkyBehaviour do
@@ -114,6 +113,8 @@ defmodule Ash.Test.Type.ModuleTest do
       registry Registry
     end
   end
+
+  import Ash.Changeset
 
   test "module attribute with no constraints" do
     ModuleAttr

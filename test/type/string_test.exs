@@ -2,8 +2,6 @@ defmodule Ash.Test.Type.StringTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  import Ash.Changeset
-
   defmodule Post do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -53,6 +51,8 @@ defmodule Ash.Test.Type.StringTest do
       registry Registry
     end
   end
+
+  import Ash.Changeset
 
   test "it handles non-empty values" do
     post =

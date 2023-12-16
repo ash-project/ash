@@ -2,7 +2,6 @@ defmodule Ash.Test.Actions.UpdateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  import Ash.Changeset
   import Ash.Test
   require Ash.Query
   require Ash.Expr
@@ -100,6 +99,12 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       update :only_allow_name do
         accept([:name])
+      end
+
+      update :with_validation do
+        accept([:name])
+
+        validate attribute_equals(:name, "fred")
       end
 
       update :duplicate_name do
@@ -236,11 +241,11 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows updating a record with valid attributes" do
       post =
         Post
-        |> new(%{title: "foo", contents: "bar"})
+        |> Ash.Changeset.new(%{title: "foo", contents: "bar"})
         |> Api.create!()
 
       assert %Post{title: "bar", contents: "foo"} =
-               post |> new(%{title: "bar", contents: "foo"}) |> Api.update!()
+               post |> Ash.Changeset.new(%{title: "bar", contents: "foo"}) |> Api.update!()
     end
   end
 
@@ -248,10 +253,11 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "the update occurs properly" do
       author =
         Author
-        |> new(%{name: "auto"})
+        |> Ash.Changeset.new(%{name: "auto"})
         |> Api.create!()
 
-      assert %Author{name: "manual"} = author |> new() |> Api.update!(action: :manual_update)
+      assert %Author{name: "manual"} =
+               author |> Ash.Changeset.new() |> Api.update!(action: :manual_update)
     end
   end
 
@@ -259,35 +265,37 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it does not allow updating a value to `nil` when `allow_nil?: false`" do
       profile =
         Profile
-        |> new(%{bio: "foobar"})
+        |> Ash.Changeset.new(%{bio: "foobar"})
         |> Api.create!()
 
       assert_raise Ash.Error.Invalid, ~r/attribute bio is required/, fn ->
-        profile |> new(%{bio: ""}) |> Api.update!()
+        profile |> Ash.Changeset.new(%{bio: ""}) |> Api.update!()
       end
     end
 
     test "it does not allow updating a private attribute's value to `nil` when `allow_nil?: false`" do
       profile =
         Profile
-        |> new(%{bio: "foobar"})
+        |> Ash.Changeset.new(%{bio: "foobar"})
         |> Api.create!()
 
       assert_raise Ash.Error.Invalid, ~r/attribute non_nil_private is required/, fn ->
-        profile |> new(%{bio: "foobar"}) |> Api.update!(action: :set_private_attribute_to_nil)
+        profile
+        |> Ash.Changeset.new(%{bio: "foobar"})
+        |> Api.update!(action: :set_private_attribute_to_nil)
       end
     end
 
     test "it passes through an argument's value" do
       profile =
         Profile
-        |> new(%{bio: "foobar"})
+        |> Ash.Changeset.new(%{bio: "foobar"})
         |> Api.create!()
 
       profile =
         profile
-        |> new(%{bio: "foobar"})
-        |> for_update(:set_private_attribute_from_arg, %{private: "blah"})
+        |> Ash.Changeset.new(%{bio: "foobar"})
+        |> Ash.Changeset.for_update(:set_private_attribute_from_arg, %{private: "blah"})
         |> Api.update!()
 
       assert profile.private == "blah"
@@ -298,12 +306,12 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows selecting fields on the changeset" do
       post =
         Post
-        |> new(%{title: "foo", contents: "bar"})
+        |> Ash.Changeset.new(%{title: "foo", contents: "bar"})
         |> Api.create!()
 
       assert %Post{title: "bar", contents: nil} =
                post
-               |> new(%{title: "bar", contents: "foo"})
+               |> Ash.Changeset.new(%{title: "bar", contents: "foo"})
                |> Ash.Changeset.select(:title)
                |> Api.update!()
     end
@@ -313,23 +321,23 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows attributes in the list" do
       author =
         Author
-        |> new(%{name: "fred"})
+        |> Ash.Changeset.new(%{name: "fred"})
         |> Api.create!()
 
       author
-      |> new(%{name: "joe"})
+      |> Ash.Changeset.new(%{name: "joe"})
       |> Api.update!(action: :only_allow_name)
     end
 
     test "does not allow attributes in the list" do
       author =
         Author
-        |> new(%{name: "fred"})
+        |> Ash.Changeset.new(%{name: "fred"})
         |> Api.create!()
 
       assert_raise Ash.Error.Invalid, ~r/Invalid value provided for bio: cannot be changed/, fn ->
         author
-        |> new(%{bio: "bio"})
+        |> Ash.Changeset.new(%{bio: "bio"})
         |> Api.update!(action: :only_allow_name)
       end
     end
@@ -339,7 +347,7 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "atomics can be added to a changeset" do
       author =
         Author
-        |> new(%{name: "fred"})
+        |> Ash.Changeset.new(%{name: "fred"})
         |> Api.create!()
 
       author =
@@ -350,18 +358,26 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       assert author.name == "fred weasley"
     end
+
+    test "a changeset can be fully atomic" do
+      changeset =
+        Ash.Changeset.fully_atomic_changeset(Author, :with_validation, %{name: "fred weasly"})
+
+      assert changeset.valid?
+      assert changeset.atomics[:name]
+    end
   end
 
   describe "changeset" do
     test "changes are run properly" do
       author =
         Author
-        |> new(%{name: "fred"})
+        |> Ash.Changeset.new(%{name: "fred"})
         |> Api.create!()
 
       author =
         author
-        |> new(%{name: "joe"})
+        |> Ash.Changeset.new(%{name: "joe"})
         |> Api.update!(action: :duplicate_name)
 
       assert author.name == "joejoe"
@@ -372,37 +388,41 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows updating with a many_to_many relationship" do
       post =
         Post
-        |> new(%{title: "title"})
+        |> Ash.Changeset.new(%{title: "title"})
         |> Api.create!()
 
       post2 =
         Post
-        |> new(%{title: "title2"})
+        |> Ash.Changeset.new(%{title: "title2"})
         |> Api.create!()
 
       post3 =
         Post
-        |> new(%{title: "title3"})
+        |> Ash.Changeset.new(%{title: "title3"})
         |> Api.create!()
 
       post
-      |> new()
-      |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.manage_relationship(:related_posts, [post2, post3],
+        type: :append_and_remove
+      )
       |> Api.update!()
     end
 
     test "allows directly managing a many_to_many relationship" do
       post =
         Post
-        |> new(%{title: "title"})
-        |> manage_relationship(:related_posts, [%{title: "title0"}], type: :direct_control)
+        |> Ash.Changeset.new(%{title: "title"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [%{title: "title0"}],
+          type: :direct_control
+        )
         |> Api.create!()
 
       other_post = Post |> Ash.Query.filter(title == "title0") |> Api.read_one!()
 
       post
-      |> new()
-      |> manage_relationship(
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.manage_relationship(
         :related_posts,
         [%{title: "title3", id: other_post.id}, %{title: "title1"}],
         type: :direct_control
@@ -416,22 +436,24 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it updates the join resource properly" do
       post =
         Post
-        |> new(%{title: "title"})
+        |> Ash.Changeset.new(%{title: "title"})
         |> Api.create!()
 
       post2 =
         Post
-        |> new(%{title: "title2"})
+        |> Ash.Changeset.new(%{title: "title2"})
         |> Api.create!()
 
       post3 =
         Post
-        |> new(%{title: "title3"})
+        |> Ash.Changeset.new(%{title: "title3"})
         |> Api.create!()
 
       post
-      |> new()
-      |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.manage_relationship(:related_posts, [post2, post3],
+        type: :append_and_remove
+      )
       |> Api.update!()
 
       assert [_, _] = Api.read!(PostLink)
@@ -440,23 +462,25 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it responds with the relationship filled in" do
       post =
         Post
-        |> new(%{title: "title"})
+        |> Ash.Changeset.new(%{title: "title"})
         |> Api.create!()
 
       post2 =
         Post
-        |> new(%{title: "title2"})
+        |> Ash.Changeset.new(%{title: "title2"})
         |> Api.create!()
 
       post3 =
         Post
-        |> new(%{title: "title3"})
+        |> Ash.Changeset.new(%{title: "title3"})
         |> Api.create!()
 
       new_post =
         post
-        |> new()
-        |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:related_posts, [post2, post3],
+          type: :append_and_remove
+        )
         |> Api.update!()
 
       assert Enum.sort(strip_metadata(new_post.related_posts)) ==
@@ -470,23 +494,23 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it updates any join fields" do
       post =
         Post
-        |> new(%{title: "title"})
+        |> Ash.Changeset.new(%{title: "title"})
         |> Api.create!()
 
       post2 =
         Post
-        |> new(%{title: "title2"})
+        |> Ash.Changeset.new(%{title: "title2"})
         |> Api.create!()
 
       post3 =
         Post
-        |> new(%{title: "title3"})
+        |> Ash.Changeset.new(%{title: "title3"})
         |> Api.create!()
 
       new_post =
         post
-        |> new()
-        |> manage_relationship(
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(
           :related_posts,
           [
             Ash.Resource.set_metadata(post2, %{join_keys: %{type: "a"}}),
@@ -503,8 +527,8 @@ defmodule Ash.Test.Actions.UpdateTest do
 
       new_post =
         new_post
-        |> new()
-        |> manage_relationship(
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(
           :related_posts,
           [
             Ash.Resource.set_metadata(post2, %{join_keys: %{type: "c"}}),
@@ -527,46 +551,46 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows updating with has_one relationship" do
       profile =
         Profile
-        |> new(%{bio: "best dude"})
+        |> Ash.Changeset.new(%{bio: "best dude"})
         |> Api.create!()
 
       profile2 =
         Profile
-        |> new(%{bio: "second best dude"})
+        |> Ash.Changeset.new(%{bio: "second best dude"})
         |> Api.create!()
 
       author =
         Author
-        |> new(%{name: "fred"})
-        |> manage_relationship(:profile, profile, type: :append_and_remove)
+        |> Ash.Changeset.new(%{name: "fred"})
+        |> Ash.Changeset.manage_relationship(:profile, profile, type: :append_and_remove)
         |> Api.create!()
 
       author
-      |> new()
-      |> manage_relationship(:profile, profile2, type: :append_and_remove)
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.manage_relationship(:profile, profile2, type: :append_and_remove)
       |> Api.update!()
     end
 
     test "it sets the relationship on the destination record accordingly" do
       profile =
         Profile
-        |> new(%{bio: "best dude"})
+        |> Ash.Changeset.new(%{bio: "best dude"})
         |> Api.create!()
 
       profile2 =
         Profile
-        |> new(%{bio: "second best dude"})
+        |> Ash.Changeset.new(%{bio: "second best dude"})
         |> Api.create!()
 
       author =
         Author
-        |> new(%{name: "fred"})
-        |> manage_relationship(:profile, profile, type: :append_and_remove)
+        |> Ash.Changeset.new(%{name: "fred"})
+        |> Ash.Changeset.manage_relationship(:profile, profile, type: :append_and_remove)
         |> Api.create!()
 
       author
-      |> new()
-      |> manage_relationship(:profile, profile2, type: :append_and_remove)
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.manage_relationship(:profile, profile2, type: :append_and_remove)
       |> Api.update!()
 
       assert Api.get!(Profile, profile.id).author_id == nil
@@ -576,24 +600,24 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it responds with the relationship filled in" do
       profile =
         Profile
-        |> new(%{bio: "best dude"})
+        |> Ash.Changeset.new(%{bio: "best dude"})
         |> Api.create!()
 
       profile2 =
         Profile
-        |> new(%{bio: "second best dude"})
+        |> Ash.Changeset.new(%{bio: "second best dude"})
         |> Api.create!()
 
       author =
         Author
-        |> new(%{name: "fred"})
-        |> manage_relationship(:profile, profile, type: :append_and_remove)
+        |> Ash.Changeset.new(%{name: "fred"})
+        |> Ash.Changeset.manage_relationship(:profile, profile, type: :append_and_remove)
         |> Api.create!()
 
       updated_author =
         author
-        |> new()
-        |> manage_relationship(:profile, profile2, type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:profile, profile2, type: :append_and_remove)
         |> Api.update!()
 
       assert %{updated_author.profile | __metadata__: nil} == %{
@@ -608,47 +632,47 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows updating with a has_many relationship" do
       post =
         Post
-        |> new(%{title: "sup"})
+        |> Ash.Changeset.new(%{title: "sup"})
         |> Api.create!()
 
       post2 =
         Post
-        |> new(%{title: "sup2"})
+        |> Ash.Changeset.new(%{title: "sup2"})
         |> Api.create!()
 
       author =
         Author
-        |> new(%{name: "foobar"})
-        |> manage_relationship(:posts, [post], type: :append_and_remove)
+        |> Ash.Changeset.new(%{name: "foobar"})
+        |> Ash.Changeset.manage_relationship(:posts, [post], type: :append_and_remove)
         |> Api.create!()
 
       author
-      |> new()
-      |> manage_relationship(:posts, [post, post2], type: :append_and_remove)
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.manage_relationship(:posts, [post, post2], type: :append_and_remove)
       |> Api.update!()
     end
 
     test "it sets the relationship on the destination records accordingly" do
       post =
         Post
-        |> new(%{title: "sup"})
+        |> Ash.Changeset.new(%{title: "sup"})
         |> Api.create!()
 
       post2 =
         Post
-        |> new(%{title: "sup2"})
+        |> Ash.Changeset.new(%{title: "sup2"})
         |> Api.create!()
 
       author =
         Author
-        |> new(%{name: "foobar"})
-        |> manage_relationship(:posts, [post], type: :append_and_remove)
+        |> Ash.Changeset.new(%{name: "foobar"})
+        |> Ash.Changeset.manage_relationship(:posts, [post], type: :append_and_remove)
         |> Api.create!()
 
       author =
         author
-        |> new()
-        |> manage_relationship(:posts, [post2.id], type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:posts, [post2.id], type: :append_and_remove)
         |> Api.update!()
 
       assert Api.get!(Post, post.id).author_id == nil
@@ -658,24 +682,24 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it responds with the relationship field filled in" do
       post =
         Post
-        |> new(%{title: "sup"})
+        |> Ash.Changeset.new(%{title: "sup"})
         |> Api.create!()
 
       post2 =
         Post
-        |> new(%{title: "sup2"})
+        |> Ash.Changeset.new(%{title: "sup2"})
         |> Api.create!()
 
       author =
         Author
-        |> new(%{name: "foobar"})
-        |> manage_relationship(:posts, [post], type: :append_and_remove)
+        |> Ash.Changeset.new(%{name: "foobar"})
+        |> Ash.Changeset.manage_relationship(:posts, [post], type: :append_and_remove)
         |> Api.create!()
 
       updated_author =
         author
-        |> new()
-        |> manage_relationship(:posts, [post2], type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:posts, [post2], type: :append_and_remove)
         |> Api.update!()
 
       post = Api.get!(Post, post2.id)
@@ -690,46 +714,46 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows updating with belongs_to relationship" do
       author =
         Author
-        |> new(%{name: "best dude"})
+        |> Ash.Changeset.new(%{name: "best dude"})
         |> Api.create!()
 
       author2 =
         Author
-        |> new(%{name: "best dude2"})
+        |> Ash.Changeset.new(%{name: "best dude2"})
         |> Api.create!()
 
       post =
         Post
-        |> new(%{title: "foobar"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.new(%{title: "foobar"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       post
-      |> new()
-      |> manage_relationship(:author, author2, type: :append_and_remove)
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.manage_relationship(:author, author2, type: :append_and_remove)
       |> Api.update!()
     end
 
     test "sets the relationship on the destination records accordingly" do
       author =
         Author
-        |> new(%{name: "best dude"})
+        |> Ash.Changeset.new(%{name: "best dude"})
         |> Api.create!()
 
       author2 =
         Author
-        |> new(%{name: "best dude2"})
+        |> Ash.Changeset.new(%{name: "best dude2"})
         |> Api.create!()
 
       post =
         Post
-        |> new(%{title: "foobar"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.new(%{title: "foobar"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       post
-      |> new()
-      |> manage_relationship(:author, author2, type: :append_and_remove)
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.manage_relationship(:author, author2, type: :append_and_remove)
       |> Api.update!()
 
       author2 = Api.get!(Author, author2.id, load: :posts)
@@ -742,24 +766,24 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it responds with the relationship field filled in" do
       author =
         Author
-        |> new(%{name: "best dude"})
+        |> Ash.Changeset.new(%{name: "best dude"})
         |> Api.create!()
 
       author2 =
         Author
-        |> new(%{name: "best dude2"})
+        |> Ash.Changeset.new(%{name: "best dude2"})
         |> Api.create!()
 
       post =
         Post
-        |> new(%{title: "foobar"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.new(%{title: "foobar"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Api.create!()
 
       updated_post =
         post
-        |> new()
-        |> manage_relationship(:author, author2, type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:author, author2, type: :append_and_remove)
         |> Api.update!()
 
       assert updated_post.author.id ==
@@ -771,14 +795,14 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it does not update the record" do
       record =
         Authorized
-        |> new(%{name: "bar"})
+        |> Ash.Changeset.new(%{name: "bar"})
         |> Api.create!()
 
       start_supervised({Ash.Test.Authorizer, check: :forbidden, strict_check: :continue})
 
       assert_raise(Ash.Error.Forbidden, fn ->
         record
-        |> new(%{name: "foo"})
+        |> Ash.Changeset.new(%{name: "foo"})
         |> Api.update!(authorize?: true)
       end)
 

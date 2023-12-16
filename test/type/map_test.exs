@@ -1,8 +1,6 @@
 defmodule Type.MapTest do
   use ExUnit.Case, async: true
 
-  import Ash.Changeset
-
   defmodule Post do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -46,6 +44,8 @@ defmodule Type.MapTest do
       registry Registry
     end
   end
+
+  import Ash.Changeset
 
   test "it handles valid maps" do
     changeset =

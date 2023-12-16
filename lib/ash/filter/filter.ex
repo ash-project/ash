@@ -33,7 +33,9 @@ defmodule Ash.Filter do
     Now,
     Round,
     StringJoin,
+    StringLength,
     StringSplit,
+    StringTrim,
     Today,
     Type
   }
@@ -70,7 +72,9 @@ defmodule Ash.Filter do
     Today,
     Type,
     StringJoin,
-    StringSplit
+    StringLength,
+    StringSplit,
+    StringTrim
   ]
 
   @inline_aggregates [:count, :first, :sum, :list, :max, :min, :avg, :custom_aggregate]

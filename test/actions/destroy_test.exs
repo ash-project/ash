@@ -2,7 +2,6 @@ defmodule Ash.Test.Actions.DestroyTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  import Ash.Changeset
   require Ash.Query
 
   defmodule Profile do
@@ -123,6 +122,8 @@ defmodule Ash.Test.Actions.DestroyTest do
       registry Registry
     end
   end
+
+  import Ash.Changeset
 
   describe "simple destroy" do
     test "allows destroying a record" do

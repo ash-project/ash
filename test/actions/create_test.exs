@@ -2,7 +2,6 @@ defmodule Ash.Test.Actions.CreateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  import Ash.Changeset
   import Ash.Test
 
   defmodule Authorized do
@@ -331,6 +330,8 @@ defmodule Ash.Test.Actions.CreateTest do
       end
     end
   end
+
+  import Ash.Changeset
 
   describe "simple creates" do
     test "allows creating a record with valid attributes" do
