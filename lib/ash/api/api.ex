@@ -792,9 +792,30 @@ defmodule Ash.Api do
   defp alter_source(other, _, _, _, _), do: other
 
   defp run_check(api, actor, subject, opts) do
-    subject.resource
-    |> Ash.Resource.Info.authorizers()
-    |> case do
+    authorizers =
+      Ash.Resource.Info.authorizers(subject.resource)
+      |> Enum.map(fn authorizer ->
+        authorizer_state =
+          authorizer.initial_state(
+            actor,
+            subject.resource,
+            subject.action,
+            false
+          )
+
+        context = %{api: api, query: nil, changeset: nil, action_input: nil}
+
+        context =
+          case subject do
+            %Ash.Query{} -> Map.put(context, :query, subject)
+            %Ash.Changeset{} -> Map.put(context, :changeset, subject)
+            %Ash.ActionInput{} -> Map.put(context, :action_input, subject)
+          end
+
+        {authorizer, authorizer_state, context}
+      end)
+
+    case authorizers do
       [] ->
         {:ok, true}
 
@@ -802,24 +823,7 @@ defmodule Ash.Api do
         authorizers
         |> Enum.reduce_while(
           {false, nil},
-          fn authorizer, {_authorized?, query} ->
-            authorizer_state =
-              authorizer.initial_state(
-                actor,
-                subject.resource,
-                subject.action,
-                false
-              )
-
-            context = %{api: api, query: nil, changeset: nil, action_input: nil}
-
-            context =
-              case subject do
-                %Ash.Query{} -> Map.put(context, :query, subject)
-                %Ash.Changeset{} -> Map.put(context, :changeset, subject)
-                %Ash.ActionInput{} -> Map.put(context, :action_input, subject)
-              end
-
+          fn {authorizer, authorizer_state, context}, {_authorized?, query} ->
             case authorizer.strict_check(authorizer_state, context) do
               {:error, %{class: :forbidden} = e} when is_exception(e) ->
                 {:halt, {false, e}}
@@ -899,7 +903,7 @@ defmodule Ash.Api do
                                 {:ok, true}
                               else
                                 if opts[:return_forbidden_error?] do
-                                  {:ok, false, Ash.Error.Forbidden.exception([])}
+                                  {:ok, false, authorizer_exception(authorizers)}
                                 else
                                   {:ok, false}
                                 end
@@ -936,7 +940,7 @@ defmodule Ash.Api do
 
                           _ ->
                             if opts[:return_forbidden_error?] do
-                              {:ok, false, Ash.Error.Forbidden.exception([])}
+                              {:ok, false, authorizer_exception(authorizers)}
                             else
                               {:ok, false}
                             end
@@ -946,7 +950,7 @@ defmodule Ash.Api do
 
                 %Ash.Changeset{} ->
                   if opts[:return_forbidden_error?] do
-                    {:ok, false, Ash.Error.Forbidden.exception([])}
+                    {:ok, false, authorizer_exception(authorizers)}
                   else
                     {:ok, false}
                   end
@@ -957,7 +961,7 @@ defmodule Ash.Api do
 
           {false, error} ->
             if opts[:return_forbidden_error?] do
-              {:ok, false, error || Ash.Error.Forbidden.exception([])}
+              {:ok, false, error || authorizer_exception(authorizers)}
             else
               {:ok, false}
             end
@@ -973,6 +977,16 @@ defmodule Ash.Api do
             other
         end
     end
+  end
+
+  defp authorizer_exception([{authorizer, authorizer_state, _context}]) do
+    Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)
+  end
+
+  defp authorizer_exception(authorizers) do
+    authorizers
+    |> Enum.map(&authorizer_exception([&1]))
+    |> Ash.Error.to_error_class()
   end
 
   @calculate_opts [
