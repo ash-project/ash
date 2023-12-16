@@ -28,7 +28,7 @@ defmodule Ash.Resource.Validation.AttributeEquals do
          field: ^opts[:attribute],
          value: ^field_value,
          message: "must equal %{value}",
-         vars: %{field: opts[:attribute], value: opts[:value]}
+         vars: %{field: ^opts[:attribute], value: ^opts[:value]}
        })
      )}
   end
