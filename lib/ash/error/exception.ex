@@ -8,7 +8,7 @@ defmodule Ash.Error.Exception do
   end
 
   defmacro def_ash_error(fields, opts \\ []) do
-    quote do
+    quote location: :keep, generated: true do
       defexception unquote(fields) ++
                      [
                        :changeset,
@@ -45,22 +45,17 @@ defmodule Ash.Error.Exception do
       end
 
       def exception(opts) do
-        if opts[:stacktrace] do
-          super(opts)
-        else
-          case Process.info(self(), :current_stacktrace) do
-            {:current_stacktrace, stacktrace} ->
-              super(
-                Keyword.put_new(opts, :stacktrace, %{
-                  __struct__: Ash.Error.Stacktrace,
-                  stacktrace: Enum.drop(stacktrace, 2)
-                })
-              )
+        opts =
+          Keyword.put_new_lazy(opts, :stacktrace, fn ->
+            {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
 
-            _ ->
-              super(opts)
-          end
-        end
+            %{
+              __struct__: Ash.Error.Stacktrace,
+              stacktrace: Enum.drop(stacktrace, 2)
+            }
+          end)
+
+        super(opts)
       end
 
       defoverridable exception: 1, message: 1

@@ -266,12 +266,9 @@ defmodule Ash.Actions.Update do
                           authorize?: opts[:authorize?]
                         )
 
-                      Ash.Changeset.changing_attributes?(changeset) ||
-                          !Enum.empty?(changeset.atomics) ->
+                      changeset.context.changed? ->
                         changeset =
-                          changeset
-                          |> Ash.Changeset.set_defaults(:update, true)
-                          |> Ash.Changeset.put_context(:changed?, true)
+                          Ash.Changeset.set_defaults(changeset, :update, true)
 
                         changeset.resource
                         |> Ash.DataLayer.update(changeset)
@@ -283,9 +280,6 @@ defmodule Ash.Actions.Update do
                         )
 
                       true ->
-                        changeset =
-                          Ash.Changeset.put_context(changeset, :changed?, false)
-
                         {:ok, changeset.data}
                         |> add_tenant(changeset)
                         |> manage_relationships(api, changeset,

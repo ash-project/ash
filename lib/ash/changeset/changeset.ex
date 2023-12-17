@@ -2406,6 +2406,13 @@ defmodule Ash.Changeset do
         {:error, error}
 
       {changeset, %{notifications: before_action_notifications}} ->
+        changed? =
+          Ash.Changeset.changing_attributes?(changeset) or
+            not Enum.empty?(changeset.atomics)
+
+        changeset =
+          Ash.Changeset.put_context(changeset, :changed?, changed?)
+
         changeset
         |> clear_phase()
         |> func.()
@@ -2413,7 +2420,7 @@ defmodule Ash.Changeset do
           {:ok, result, instructions} ->
             run_after_actions(
               result,
-              instructions[:new_changeset] || changeset,
+              changeset,
               List.wrap(instructions[:notifications]) ++ before_action_notifications
             )
 
