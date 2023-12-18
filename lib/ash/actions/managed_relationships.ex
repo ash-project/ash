@@ -1703,7 +1703,7 @@ defmodule Ash.Actions.ManagedRelationships do
     record
     |> Ash.Changeset.new()
     |> Ash.Changeset.set_context(%{
-      accessing_from: %{source: relationship.source, name: relationship.name}
+      accessing_from: %{source: relationship.source, name: relationship.name, unrelating?: true}
     })
     |> Ash.Changeset.for_update(action_name, %{},
       relationships: opts[:relationships] || [],

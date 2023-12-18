@@ -25,10 +25,10 @@ defmodule Ash.Resource.Validation.Present do
   def validate(changeset, opts) do
     {present, count} =
       Enum.reduce(opts[:attributes], {0, 0}, fn attribute, {present, count} ->
-        if is_nil(Ash.Changeset.get_argument_or_attribute(changeset, attribute)) do
-          {present, count + 1}
-        else
+        if Ash.Changeset.present?(changeset, attribute) do
           {present + 1, count + 1}
+        else
+          {present, count + 1}
         end
       end)
 

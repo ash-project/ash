@@ -1103,6 +1103,17 @@ defmodule Ash.Changeset do
     end
   end
 
+  @doc """
+  Checks if an attribute is not nil, either in the original data, or that it is not being changed to a `nil` value if it is changing.
+
+  This also accounts for the `accessing_from` context that is set when using `manage_relationship`, so it is aware that a particular value
+  *will* be set by `manage_relationship` even if it isn't currently being set.
+  """
+  def present?(changeset, attribute) do
+    belongs_to_attr_of_rel_being_managed?(attribute, changeset, true) ||
+      not is_nil(Ash.Changeset.get_argument_or_attribute(changeset, attribute))
+  end
+
   def prepare_changeset_for_action(changeset, action, opts) do
     changeset
     |> Map.put(:action, action)
@@ -1778,7 +1789,7 @@ defmodule Ash.Changeset do
       if private_and_belongs_to? do
         attributes
       else
-        Enum.reject(attributes, &belongs_to_attr_of_rel_being_managed?(&1, changeset))
+        Enum.reject(attributes, &belongs_to_attr_of_rel_being_managed?(&1.name, changeset))
       end
     end)
     |> Enum.reduce(changeset, fn required_attribute, changeset ->
@@ -1838,7 +1849,7 @@ defmodule Ash.Changeset do
       if private_and_belongs_to? do
         attributes
       else
-        Enum.reject(attributes, &belongs_to_attr_of_rel_being_managed?(&1, changeset))
+        Enum.reject(attributes, &belongs_to_attr_of_rel_being_managed?(&1.name, changeset))
       end
     end)
     |> Enum.reduce(changeset, fn required_attribute, changeset ->
@@ -1867,29 +1878,38 @@ defmodule Ash.Changeset do
 
   def require_values(changeset, _, _, _), do: changeset
 
-  defp belongs_to_attr_of_rel_being_managed?(attribute, changeset) do
+  defp belongs_to_attr_of_rel_being_managed?(attribute, changeset, only_if_relating? \\ false) do
     do_belongs_to_attr_of_rel_being_managed?(changeset, attribute) ||
-      belongs_to_attr_of_being_managed_through?(changeset, attribute)
+      belongs_to_attr_of_being_managed_through?(changeset, attribute, only_if_relating?)
   end
 
   defp do_belongs_to_attr_of_rel_being_managed?(changeset, attribute) do
     Enum.any?(changeset.relationships, fn {key, _} ->
       relationship = Ash.Resource.Info.relationship(changeset.resource, key)
-      relationship.type == :belongs_to && relationship.source_attribute == attribute.name
+      relationship.type == :belongs_to && relationship.source_attribute == attribute
     end)
   end
 
   defp belongs_to_attr_of_being_managed_through?(
+         %{context: %{accessing_from: %{source: source, name: relationship, unrelating?: true}}},
+         _attribute,
+         true
+       ) do
+    false
+  end
+
+  defp belongs_to_attr_of_being_managed_through?(
          %{context: %{accessing_from: %{source: source, name: relationship}}},
-         attribute
+         attribute,
+         _
        ) do
     case Ash.Resource.Info.relationship(source, relationship) do
       %{type: :belongs_to} -> false
-      relationship -> relationship.destination_attribute == attribute.name
+      relationship -> relationship.destination_attribute == attribute
     end
   end
 
-  defp belongs_to_attr_of_being_managed_through?(_, _), do: false
+  defp belongs_to_attr_of_being_managed_through?(_, _, _), do: false
 
   # Attributes that are private and/or are the source field of a belongs_to relationship
   # are typically not set by input, so they aren't required until the actual action
