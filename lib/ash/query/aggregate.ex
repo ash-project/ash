@@ -204,7 +204,7 @@ defmodule Ash.Query.Aggregate do
          :ok <- validate_path(resource, List.wrap(relationship)),
          {:ok, type, constraints} <-
            get_type(kind, type, attribute_type, attribute_constraints, constraints),
-         {:ok, query} <- validate_query(related, query) do
+         {:ok, query} <- build_query(related, query) do
       {:ok,
        %__MODULE__{
          name: name,
@@ -311,32 +311,20 @@ defmodule Ash.Query.Aggregate do
   def default_value(:list), do: []
   def default_value(:custom), do: nil
 
-  defp validate_query(_resource, nil), do: {:ok, nil}
+  defp build_query(_resource, nil), do: {:ok, nil}
 
-  defp validate_query(resource, build_opts) when is_list(build_opts) do
+  defp build_query(resource, build_opts) when is_list(build_opts) do
     case Ash.Query.build(resource, build_opts) do
       %{valid?: true} = query ->
-        {:ok, query}
+        build_query(resource, query)
 
       %{valid?: false} = query ->
         {:error, query.errors}
     end
   end
 
-  defp validate_query(_resource, %Ash.Query{} = query) do
-    cond do
-      query.load != [] ->
-        {:error, "Cannot load in an aggregate."}
-
-      not is_nil(query.limit) ->
-        {:error, "Cannot limit an aggregate."}
-
-      not (is_nil(query.offset) || query.offset == 0) ->
-        {:error, "Cannot offset an aggregate."}
-
-      true ->
-        {:ok, query}
-    end
+  defp build_query(_resource, %Ash.Query{} = query) do
+    {:ok, Ash.Query.unset(query, [:load, :limit, :offset])}
   end
 
   @doc false
