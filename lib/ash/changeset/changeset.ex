@@ -1891,7 +1891,7 @@ defmodule Ash.Changeset do
   end
 
   defp belongs_to_attr_of_being_managed_through?(
-         %{context: %{accessing_from: %{source: source, name: relationship, unrelating?: true}}},
+         %{context: %{accessing_from: %{unrelating?: true}}},
          _attribute,
          true
        ) do
