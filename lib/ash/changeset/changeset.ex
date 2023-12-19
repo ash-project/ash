@@ -966,14 +966,16 @@ defmodule Ash.Changeset do
   Turns the special case {:replace, fields}, :replace_all and {:replace_all_except, fields} upsert_fields
   options into a list of fields
   """
-  def expand_upsert_fields({:replace, fields}, _) do
+  def expand_upsert_fields({:replace, fields}, resource) do
     fields
+    |> get_source_for_upsert_field(resource)
   end
 
   def expand_upsert_fields(:replace_all, resource) do
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.map(fn %{name: name} -> name end)
+    |> get_source_for_upsert_field(resource)
   end
 
   def expand_upsert_fields({:replace_all_except, except_fields}, resource) do
@@ -981,9 +983,23 @@ defmodule Ash.Changeset do
     |> Ash.Resource.Info.attributes()
     |> Enum.map(fn %{name: name} -> name end)
     |> Enum.reject(fn name -> name in except_fields end)
+    |> get_source_for_upsert_field(resource)
   end
 
+  def expand_upsert_fields(fields, resource) when is_list(fields),
+    do: get_source_for_upsert_field(fields, resource)
+
   def expand_upsert_fields(fields, _), do: fields
+
+  defp get_source_for_upsert_field(fields, resource) do
+    resource
+    |> Ash.Resource.Info.attributes()
+    |> Stream.filter(fn %{name: name} -> name in fields end)
+    |> Enum.map(fn
+      %{source: source} when not is_nil(source) -> source
+      %{name: name} -> name
+    end)
+  end
 
   @spec set_on_upsert(t(), list(atom)) :: Keyword.t()
   def set_on_upsert(changeset, upsert_keys) do
