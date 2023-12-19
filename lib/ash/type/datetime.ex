@@ -64,6 +64,20 @@ defmodule Ash.Type.DateTime do
     cast_input(%{datetime | microsecond: {0, 0}}, constraints)
   end
 
+  def cast_input(
+        %DateTime{microsecond: {0, 0}} = datetime,
+        [{:precision, :microsecond} | _] = constraints
+      ) do
+    cast_input(%{datetime | microsecond: {0, 6}}, constraints)
+  end
+
+  def cast_input(
+        %DateTime{microsecond: nil} = datetime,
+        [{:precision, :microsecond} | _] = constraints
+      ) do
+    cast_input(%{datetime | microsecond: {0, 6}}, constraints)
+  end
+
   def cast_input(value, constraints) do
     Ecto.Type.cast(storage_type(constraints), value)
   end
