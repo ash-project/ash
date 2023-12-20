@@ -119,14 +119,12 @@ It might be helpful to think of an Ash API as a Bounded Context (in the Domain D
 Let's start by creating our first resource along with our first API. We will create the following files:
 
 - The API [Helpdesk.Support] - `lib/helpdesk/support.ex`
-- An accompanying registry which lists the resources for our api. - `lib/helpdesk/support/registry.ex`
 - Our Ticket resource [Helpdesk.Support.Ticket] - `lib/helpdesk/support/resources/ticket.ex`.
 
 To create the required folders and files, you can use the following command in your terminal:
 
 ```bash
-mkdir -p lib/helpdesk/support/resources && touch $_/ticket.ex
-touch lib/helpdesk/support/registry.ex
+mkdir -p lib/helpdesk/support && touch $_/ticket.ex
 touch lib/helpdesk/support.ex
 ```
 
@@ -136,16 +134,14 @@ Your project structure should now look like this:
 lib/
 ├─ helpdesk/
 │  ├─ support/
-│  │  ├─ registry.ex
-│  │  ├─ resources/
-│  │  │  ├─ ticket.ex
+│  │  ├─ ticket.ex
 │  ├─ support.ex
 ```
 
 Add the following to the files we created
 
 ```elixir
-# lib/helpdesk/support/resources/ticket.ex
+# lib/helpdesk/support/ticket.ex
 
 defmodule Helpdesk.Support.Ticket do
   # This turns this module into a resource
@@ -168,26 +164,13 @@ end
 ```
 
 ```elixir
-# lib/helpdesk/support/registry.ex
-
-defmodule Helpdesk.Support.Registry do
-  use Ash.Registry
-
-  entries do
-    entry Helpdesk.Support.Ticket
-  end
-end
-```
-
-```elixir
 # lib/helpdesk/support.ex
 
 defmodule Helpdesk.Support do
   use Ash.Api
 
   resources do
-    # This defines the set of resources that can be used with this API
-    registry Helpdesk.Support.Registry
+    resource Helpdesk.Support.Ticket
   end
 end
 ```
@@ -240,7 +223,7 @@ One thing you may have noticed earlier is that we created a ticket without provi
 We'll start with the attribute changes:
 
 ```elixir
-# lib/helpdesk/support/resources/ticket.ex
+# lib/helpdesk/support/ticket.ex
 
 attributes do
   ...
@@ -270,7 +253,7 @@ end
 And then add our customized `open` action which should take a `subject` argument:
 
 ```elixir
-# lib/helpdesk/support/resources/ticket.ex
+# lib/helpdesk/support/ticket.ex
 
 actions do
   ...
@@ -322,7 +305,7 @@ Now let's add some logic to close a ticket. This time we'll add an `update` acti
 Here we will use a `change`. Changes allow you to customize how an action executes with very fine-grained control. There are built-in changes that are automatically available as functions, but you can define your own and pass it in as shown below. You can add multiple, and they will be run in order. See the [Actions guide](/documentation/topics/actions.md) for more.
 
 ```elixir
-# lib/helpdesk/support/resources/ticket.ex
+# lib/helpdesk/support/ticket.ex
 
 actions do
   ...
@@ -432,7 +415,7 @@ There is a built in data layer that is useful for testing and prototyping, that 
 To add it to your resource, modify it like so:
 
 ```elixir
-# lib/helpdesk/support/resources/ticket.ex
+# lib/helpdesk/support/ticket.ex
 
 use Ash.Resource,
   data_layer: Ash.DataLayer.Ets
@@ -475,7 +458,7 @@ Helpdesk.Support.Ticket
 Now we want to be able to assign a Ticket to a Representative. First, let's create the Representative resource:
 
 ```elixir
-# lib/helpdesk/support/resources/representative.ex
+# lib/helpdesk/support/representative.ex
 
 defmodule Helpdesk.Support.Representative do
   # This turns this module into a resource using the in memory ETS data layer
@@ -508,7 +491,7 @@ end
 Now let's modify our Ticket resource to have the inverse relationship to the Representative.
 
 ```elixir
-# lib/helpdesk/support/resources/ticket.ex
+# lib/helpdesk/support/ticket.ex
 
 relationships do
   # belongs_to means that the destination attribute is unique, meaning only one related record could exist.
@@ -519,18 +502,18 @@ relationships do
 end
 ```
 
-Finally, let's add our new Representative resource to our registry
+Finally, let's add our new Representative resource to our Api module
 
 ```elixir
-# lib/helpdesk/support/registry.ex
+# lib/helpdesk/support.ex
 
-entries do
+resources do
  ...
- entry Helpdesk.Support.Representative
+ resource Helpdesk.Support.Representative
 end
 ```
 
-You may notice that if you don't add the resource to the registry, or if you don't add the `belongs_to` relationship, that you'll get helpful errors at compile time. Helpful compile time validations are a core concept of Ash as we really want to ensure that your application is valid.
+You may notice that if you don't add the resource to your api, or if you don't add the `belongs_to` relationship, that you'll get helpful errors at compile time. Helpful compile time validations are a core concept of Ash as we really want to ensure that your application is valid.
 
 ## Working with relationships
 
@@ -541,7 +524,7 @@ In this example we'll demonstrate the use of action arguments, the method by whi
 Add the `assign` action to allow us to assign a Ticket to a Representative.
 
 ```elixir
-# lib/helpdesk/support/resources/ticket.ex
+# lib/helpdesk/support/ticket.ex
 
 update :assign do
   # No attributes should be accepted
@@ -611,7 +594,7 @@ The reason is that `belongs_to` relationships are not marked as public and writa
 With the following modification the attribute can be written to, during the `:create` action:
 
 ```elixir
-# lib/helpdesk/support/resources/ticket.ex
+# lib/helpdesk/support/ticket.ex
 ...
 actions do
   create :open do
