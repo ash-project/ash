@@ -223,6 +223,7 @@ jobs:
       - unused-deps
       # - doctor
       - spark-formatter
+      - spark-cheat-sheets
       - sobelow
       - formatter
       - auditor
