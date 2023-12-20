@@ -10,6 +10,6 @@ jobs:
   ash-ci:
     uses: ash-project/ash/.github/workflows/ash-ci.yml@main
     with:
-      ash_three: true
+      ash-three: true
     secrets:
       HEX_API_KEY: ${{ secrets.HEX_API_KEY }}

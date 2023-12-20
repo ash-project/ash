@@ -28,6 +28,7 @@ jobs:
           ]
         otp: ["24"]
         elixir: ["1.15.0"]
+        ash_three: ["true", "false"]
     services:
       pg:
         image: postgres:13
@@ -40,6 +41,7 @@ jobs:
     env:
       ASH_CI: true
       ASH_VERSION: local
+      ASH_THREE: ${{matrix.ash_three}}
     steps:
       - run: sudo apt-get install --yes erlang-dev
       - uses: actions/checkout@v2

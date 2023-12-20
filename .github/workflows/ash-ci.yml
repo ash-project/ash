@@ -25,6 +25,11 @@ on:
         default: false
       hex-api-key:
         type: string
+      ash-three:
+        type: boolean
+        default: false
+env:
+  ASH_THREE: ${{inputs.ash-three}}
 jobs:
   deps:
     name: mix deps.get
