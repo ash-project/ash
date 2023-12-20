@@ -1,4 +1,4 @@
-name: Ash CI
+name: Ash Upcoming CI
 on:
   push:
     tags:
