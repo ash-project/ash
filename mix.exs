@@ -35,7 +35,7 @@ defmodule Ash.MixProject do
   end
 
   defp extras do
-    # Sorting can done adding numbers at the begining of filenames
+    # Sorting can be done adding numbers at the begining of filenames
     "documentation/**/*.{md,livemd,cheatmd}"
     |> Path.wildcard()
     |> Enum.map(fn path ->
