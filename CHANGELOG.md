@@ -5,6 +5,41 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.14](https://github.com/ash-project/ash/compare/v2.17.13...v2.17.14) (2023-12-20)
+
+
+
+
+### Bug Fixes:
+
+* empty milliseconds for utc datetime must have precision 6
+
+* ensure actor & authorize? contexts are set even if not provided
+
+* ignore load/limit/offset in aggregate queries, instead of raising
+
+* properly set `changed?` for all changesets
+
+* honor tenant option on aggregates
+
+* pass proper context into manual actions, remove unnecessary changeset code
+
+* ensure actions always raise an error class
+
+### Improvements:
+
+* detect impending `manage_relationship` calls when checking attribute presence
+
+* add stacktrace context to errors better
+
+* support tenancy on manual actions
+
+* lay the groundwork for fully atomic actions
+
+* rewrite creates to not use `Ash.Engine`
+
+* remove Ash.Engine from update/destroy actions
+
 ## [v2.17.13](https://github.com/ash-project/ash/compare/v2.17.12...v2.17.13) (2023-12-14)
 
 
