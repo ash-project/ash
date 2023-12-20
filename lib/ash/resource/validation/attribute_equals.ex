@@ -22,7 +22,7 @@ defmodule Ash.Resource.Validation.AttributeEquals do
   def atomic(changeset, opts) do
     field_value = Ash.Changeset.atomic_ref(changeset, opts[:attribute])
 
-    {:atomic, Ash.Expr.expr(^field_value != ^opts[:value]),
+    {:atomic, [opts[:attribute]], Ash.Expr.expr(^field_value != ^opts[:value]),
      Ash.Expr.expr(
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],

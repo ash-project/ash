@@ -359,6 +359,20 @@ defmodule Ash.Api.Interface do
         end
       end
 
+      def bulk_update!(stream_or_query, action, input, opts \\ []) do
+        Api.bulk_update!(__MODULE__, stream_or_query, action, input, opts)
+      end
+
+      def bulk_update(stream_or_query, action, input, opts \\ []) do
+        case Api.bulk_update(__MODULE__, stream_or_query, action, input, opts) do
+          {:error, error} ->
+            {:error, Ash.Error.to_error_class(error)}
+
+          other ->
+            other
+        end
+      end
+
       def create!(changeset, params \\ []) do
         Api.create!(__MODULE__, changeset, params)
       end

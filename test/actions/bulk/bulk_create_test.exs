@@ -86,7 +86,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
     identities do
       identity :unique_title, :title do
-        pre_check_with Ash.Test.Actions.BulkCreateTest
+        pre_check_with Ash.Test.Actions.BulkCreateTest.Api
       end
     end
 

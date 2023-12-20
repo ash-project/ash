@@ -256,8 +256,6 @@ defmodule Ash.Changeset do
           IO.warn("""
           Changeset has already been validated for action #{inspect(changeset.__validated_for_action__)}.
 
-          In the future, this will become an error.
-
           For safety, we prevent any changes after that point because they will bypass validations or other action logic.. To proceed anyway,
           you can use `#{unquote(alternative)}/#{unquote(arity)}`. However, you should prefer a pattern like the below, which makes
           any custom changes *before* calling the action.
@@ -276,8 +274,6 @@ defmodule Ash.Changeset do
         if changeset.__validated_for_action__ && !changeset.context[:private][:in_before_action?] do
           IO.warn("""
           Changeset has already been validated for action #{inspect(changeset.__validated_for_action__)}.
-
-          In the future, this will become an error.
 
           For safety, we prevent any changes using `#{unquote(function)}/#{unquote(arity)}` after that point because they will bypass validations or other action logic.
           Instead, you should change or set this value before calling the action, like so:
@@ -528,6 +524,8 @@ defmodule Ash.Changeset do
       %{change: {module, change_opts}, where: where}, changeset ->
         with {:atomic, atomic_changes} <- module.atomic(changeset, change_opts, context),
              {:atomic, condition} <- atomic_condition(where, changeset) do
+          changeset = add_after_atomic(changeset, module, change_opts)
+
           case condition do
             true ->
               {:cont, atomic_update(changeset, atomic_changes)}
@@ -558,8 +556,10 @@ defmodule Ash.Changeset do
         end
 
       %{validation: {module, validation_opts}, where: where}, changeset ->
-        with {:atomic, condition_expr, error_expr} <-
+        with {:atomic, fields, condition_expr, error_expr} <-
                module.atomic(changeset, validation_opts),
+             {:changing?, true} <-
+               {:changing?, Enum.any?(fields, &changing_attribute?(changeset, &1))},
              {:atomic, condition} <- atomic_condition(where, changeset) do
           case condition do
             true ->
@@ -577,8 +577,26 @@ defmodule Ash.Changeset do
         else
           :not_atomic ->
             {:halt, :not_atomic}
+
+          {:changing?, false} ->
+            {:cont, changeset}
         end
     end)
+  end
+
+  defp add_after_atomic(changeset, module, opts) do
+    if function_exported?(module, :after_atomic?, 3) do
+      after_action(changeset, fn changeset, result ->
+        context = %{
+          actor: changeset.context[:private][:actor],
+          tenant: changeset.tenant,
+          authorize?: changeset.context[:private][:authorize?],
+          tracer: changeset.context[:private][:tracer]
+        }
+
+        module.after_atomic(changeset, opts, result, context)
+      end)
+    end
   end
 
   defp validate_atomically(changeset, condition_expr, error_expr) do
@@ -612,7 +630,7 @@ defmodule Ash.Changeset do
     Enum.reduce_while(where, {:atomic, true}, fn {module, validation_opts},
                                                  {:atomic, condition} ->
       case module.atomic(changeset, validation_opts) do
-        {:atomic, expr, _as_error} ->
+        {:atomic, _, expr, _as_error} ->
           new_expr =
             if condition == true do
               expr
@@ -918,9 +936,9 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Adds atomic changes to the changeset
+  Adds multiple atomic changes to the changeset
 
-  i.e `Ash.Changeset.atomic_update(changeset, score: [Ash.Expr.expr(score + 1)])`
+  See `atomic_update/3` for more information.
   """
   @spec atomic_update(t(), map() | Keyword.t()) :: t()
   def atomic_update(changeset, atomics) when is_list(atomics) or is_map(atomics) do
@@ -930,9 +948,44 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Adds an atomic change to the changeset
+  Adds an atomic change to the changeset.
 
-  i.e `Ash.Changeset.atomic_update(changeset, :score, [Ash.Expr.expr(score + 1)])`
+  Atomic changes are applied by the data layer, and as such have guarantees that are not
+  given by changes that are based on looking at the previous value and updating it. Here
+  is an example of a change that is not safe to do concurrently:
+
+  ```elixir
+  change fn changeset, _ ->
+    Ash.Changeset.set_attribute(changeset, :score, changeset.data.score + 1)
+  end
+  ```
+
+  If two processes run this concurrently, they will both read the same value of `score`, and
+  set the new score to the same value. This means that one of the increments will be lost.
+  If you were to instead do this using `atomic_update`, you would get the correct result:
+
+  ```elixir
+  Ash.Changeset.atomic_update(changeset, :score, [Ash.Expr.expr(score + 1)])
+  ```
+
+  There are drawbacks/things to consider, however. The first is that atomic update results
+  are not known until after the action is run. The following functional validation would not
+  be able to enforce the score being less than 10, because the atomic happens after the validation.
+
+  ```elixir
+  validate fn changeset, _ ->
+    if Ash.Changeset.get_attribute(changeset, :score) < 10 do
+      :ok
+    else
+      {:error, field: :score, message: "must be less than 10"}
+    end
+  end
+  ```
+
+  If you want to use atomic updates, it is suggested to write module-based validations & changes,
+  and implement the appropriate atomic callbacks on those modules. All builtin validations and changes
+  implement these callbacks in addition to the standard callbacks. Validations will only be run atomically
+  when the entire action is being run atomically or if one of the relevant fields is being updated atomically.
   """
   @spec atomic_update(t(), atom(), {:atomic, Ash.Expr.t()} | Ash.Expr.t()) :: t()
   def atomic_update(changeset, key, {:atomic, value}) do
@@ -1512,7 +1565,7 @@ defmodule Ash.Changeset do
           changeset
         else
           changeset
-          |> unsafe_change_attribute(attribute.name, default(:create, attribute))
+          |> force_change_attribute(attribute.name, default(:create, attribute))
           |> Map.update!(:defaults, fn defaults ->
             [attribute.name | defaults]
           end)
@@ -1537,7 +1590,7 @@ defmodule Ash.Changeset do
           changeset
         else
           changeset
-          |> unsafe_change_attribute(attribute.name, default(:update, attribute))
+          |> force_change_attribute(attribute.name, default(:update, attribute))
           |> Map.update!(:defaults, fn defaults ->
             [attribute.name | defaults]
           end)
@@ -1605,7 +1658,7 @@ defmodule Ash.Changeset do
           changeset
         else
           changeset
-          |> unsafe_change_attribute(attribute.name, default_value)
+          |> force_change_attribute(attribute.name, default_value)
           |> Map.update!(:defaults, fn defaults ->
             [attribute.name | defaults]
           end)
@@ -3520,7 +3573,8 @@ defmodule Ash.Changeset do
   @doc "Returns true if an attribute exists in the changes"
   @spec changing_attribute?(t(), atom) :: boolean
   def changing_attribute?(changeset, attribute) do
-    Map.has_key?(changeset.attributes, attribute)
+    Map.has_key?(changeset.attributes, attribute) ||
+      Keyword.has_key?(changeset.atomics, attribute)
   end
 
   @doc "Returns true if a relationship exists in the changes"
@@ -3864,20 +3918,6 @@ defmodule Ash.Changeset do
             add_invalid_errors(value, :attribute, changeset, attribute, error_or_errors)
         end
     end
-  end
-
-  @doc "Calls `unsafe_change_attribute/3` for each key/value pair provided."
-  @spec unsafe_change_attributes(t(), map | Keyword.t()) :: t()
-  def unsafe_change_attributes(changeset, changes) do
-    Enum.reduce(changes, changeset, fn {key, value}, changeset ->
-      unsafe_change_attribute(changeset, key, value)
-    end)
-  end
-
-  @doc "Changes an attribute even if it isn't writable, doing no type casting or validation"
-  @spec unsafe_change_attribute(t(), atom, any) :: t()
-  def unsafe_change_attribute(changeset, attribute, value) do
-    %{changeset | attributes: Map.put(changeset.attributes, attribute, value)}
   end
 
   @doc """

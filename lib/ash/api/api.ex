@@ -387,6 +387,116 @@ defmodule Ash.Api do
                         "Shared create/update/destroy Options"
                       )
 
+  @shared_bulk_opts_schema [
+    assume_casted?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Whether or not to cast attributes and arguments as input. This is an optimization for cases where the input is already casted and/or not in need of casting"
+    ],
+    context: [
+      type: :map,
+      doc: "Context to set on each changeset"
+    ],
+    sorted?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Whether or not to sort results by their input position, in cases where `return_records?: true` was provided."
+    ],
+    return_records?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Whether or not to return all of the records that were inserted. Defaults to false to account for large inserts."
+    ],
+    return_errors?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Whether or not to return all of the errors that occur. Defaults to false to account for large inserts."
+    ],
+    batch_size: [
+      type: :pos_integer,
+      doc: """
+      The number of records to include in each batch. Defaults to the `default_limit`
+      or `max_page_size` of the action, or 100.
+      """
+    ],
+    return_stream?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      If set to `true`, instead of an `Ash.BulkResult`, a mixed stream is returned.
+
+      Potential elements:
+
+      `{:notification, notification}` - if `return_notifications?` is set to `true`
+      `{:ok, record}` - if `return_records?` is set to `true`
+      `{:error, error}` - an error that occurred. May be changeset or an invidual error.
+      """
+    ],
+    stop_on_error?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      If true, the first encountered error will stop the action and be returned. Otherwise, errors
+      will be skipped.
+      """
+    ],
+    notify?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Whether or not to send notifications out. If this is set to `true` then the data layer must return
+      the results from each batch. This may be intensive for large bulk actions.
+      """
+    ],
+    transaction: [
+      type: {:one_of, [:all, :batch, false]},
+      default: :batch,
+      doc: """
+      Whether or not to wrap the entire execution in a transaction, each batch, or not at all.
+
+      Keep in mind:
+
+      `before_transaction` and `after_transaction` hooks attached to changesets will have to be run
+      *inside* the transaction if you choose `transaction: :all`.
+      """
+    ],
+    max_concurrency: [
+      type: :non_neg_integer,
+      default: 0,
+      doc:
+        "If set to a value greater than 0, up to that many tasks will be started to run batches asynchronously"
+    ]
+  ]
+
+  @bulk_update_opts_schema [
+                             resource: [
+                               type: {:spark, Ash.Resource},
+                               doc:
+                                 "The resource being updated. This must be provided if the input given is a stream, so we know ahead of time what the resource being updated is."
+                             ],
+                             atomic_update: [
+                               type: :map,
+                               doc:
+                                 "A map of atomic updates to apply. See `Ash.Changeset.atomic_update/3` for more."
+                             ]
+                           ]
+                           |> merge_schemas(
+                             Keyword.delete(@global_opts, :action),
+                             "Global options"
+                           )
+                           |> merge_schemas(
+                             @shared_created_update_and_destroy_opts_schema,
+                             "Shared create/update/destroy options"
+                           )
+                           |> merge_schemas(
+                             @shared_bulk_opts_schema,
+                             "Shared bulk options"
+                           )
+
   @bulk_create_opts_schema [
                              upsert?: [
                                type: :boolean,
@@ -394,26 +504,10 @@ defmodule Ash.Api do
                                doc:
                                  "If a conflict is found based on the primary key, the record is updated in the database (requires upsert support)"
                              ],
-                             max_concurrency: [
-                               type: :non_neg_integer,
-                               default: 0,
-                               doc:
-                                 "If set to a value greater than 0, up to that many tasks will be started to run batches asynchronously"
-                             ],
-                             assume_casted?: [
-                               type: :boolean,
-                               default: false,
-                               doc:
-                                 "Whether or not to cast attributes and arguments as input. This is an optimization for cases where the input is already casted and/or not in need of casting"
-                             ],
                              upsert_identity: [
                                type: :atom,
                                doc:
                                  "The identity to use when detecting conflicts for `upsert?`, e.g. `upsert_identity: :full_name`. By default, the primary key is used. Has no effect if `upsert?: true` is not provided"
-                             ],
-                             context: [
-                               type: :map,
-                               doc: "Context to set on each changeset"
                              ],
                              upsert_fields: [
                                type:
@@ -427,81 +521,19 @@ defmodule Ash.Api do
                                   ]},
                                doc:
                                  "The fields to upsert. If not set, the action's `upsert_fields` is used. Unlike singular `create`, `bulk_create` with `upsert?` requires that `upsert_fields` be specified explicitly in one of these two locations."
-                             ],
-                             sorted?: [
-                               type: :boolean,
-                               default: false,
-                               doc:
-                                 "Whether or not to sort results by their input position, in cases where `return_records?: true` was provided."
-                             ],
-                             return_records?: [
-                               type: :boolean,
-                               default: false,
-                               doc:
-                                 "Whether or not to return all of the records that were inserted. Defaults to false to account for large inserts."
-                             ],
-                             return_errors?: [
-                               type: :boolean,
-                               default: false,
-                               doc:
-                                 "Whether or not to return all of the errors that occur. Defaults to false to account for large inserts."
-                             ],
-                             batch_size: [
-                               type: :pos_integer,
-                               doc: """
-                               The number of records to include in each batch. Defaults to the `default_limit`
-                               or `max_page_size` of the action, or 100.
-                               """
-                             ],
-                             return_stream?: [
-                               type: :boolean,
-                               default: false,
-                               doc: """
-                               If set to `true`, instead of an `Ash.BulkResult`, a mixed stream is returned.
-
-                               Potential elements:
-
-                               `{:notification, notification}` - if `return_notifications?` is set to `true`
-                               `{:ok, record}` - if `return_records?` is set to `true`
-                               `{:error, error}` - an error that occurred. May be changeset or an invidual error.
-                               """
-                             ],
-                             stop_on_error?: [
-                               type: :boolean,
-                               default: false,
-                               doc: """
-                               If true, the first encountered error will stop the action and be returned. Otherwise, errors
-                               will be skipped.
-                               """
-                             ],
-                             notify?: [
-                               type: :boolean,
-                               default: false,
-                               doc: """
-                               Whether or not to send notifications out. If this is set to `true` then the data layer must return
-                               the results from each batch. This may be intensive for large bulk actions.
-                               """
-                             ],
-                             transaction: [
-                               type: {:one_of, [:all, :batch, false]},
-                               default: :batch,
-                               doc: """
-                               Whether or not to wrap the entire execution in a transaction, each batch, or not at all.
-
-                               Keep in mind:
-
-                               `before_transaction` and `after_transaction` hooks attached to changesets will have to be run
-                               *inside* the transaction if you choose `transaction: :all`.
-                               """
                              ]
                            ]
                            |> merge_schemas(
                              Keyword.delete(@global_opts, :action),
-                             "Global Options"
+                             "Global options"
                            )
                            |> merge_schemas(
                              @shared_created_update_and_destroy_opts_schema,
-                             "Shared create/update/destroy Options"
+                             "Shared create/update/destroy options"
+                           )
+                           |> merge_schemas(
+                             @shared_bulk_opts_schema,
+                             "Shared bulk options"
                            )
 
   @doc false
@@ -1264,24 +1296,19 @@ defmodule Ash.Api do
 
   See `can/3` for more info.
   """
-  @callback can?(
-              query_or_changeset_or_action ::
-                Ash.Query.t()
-                | Ash.Changeset.t()
-                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()},
-              actor :: term,
-              opts :: Keyword.t()
-            ) ::
-              boolean | no_return
 
   @callback can?(
               query_or_changeset_or_action ::
                 Ash.Query.t()
                 | Ash.Changeset.t()
-                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()},
-              actor :: term
+                | Ash.ActionInput.t()
+                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()}
+                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action(), input :: map},
+              actor :: term,
+              opts :: Keyword.t()
             ) ::
               boolean | no_return
+
   @doc """
   Returns whether or not the user can perform the action, or `:maybe`, returning any errors.
 
@@ -1303,24 +1330,21 @@ defmodule Ash.Api do
       this mans adding field visibility calculations and altering the filter or the sort. For a changeset, this means only adding
       field visibility calculations. The default value is `false`.
   """
-  @callback can(
-              action_or_query_or_changeset ::
-                Ash.Query.t()
-                | Ash.Changeset.t()
-                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()},
-              actor :: term,
-              opts :: Keyword.t()
-            ) ::
-              {:ok, boolean | :maybe} | {:error, term}
 
   @callback can(
               action_or_query_or_changeset ::
                 Ash.Query.t()
                 | Ash.Changeset.t()
-                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()},
-              actor :: term
+                | Ash.ActionInput.t()
+                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()}
+                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action(), input :: map},
+              actor :: term,
+              opts :: Keyword.t()
             ) ::
-              {:ok, boolean | :maybe} | {:error, term}
+              {:ok, boolean | :maybe}
+              | {:ok, true, Ash.Changeset.t() | Ash.Query.t()}
+              | {:ok, false, Exception.t()}
+              | {:error, term}
 
   @callback calculate(resource :: Ash.Resource.t(), calculation :: atom, opts :: Keyword.t()) ::
               {:ok, term} | {:error, term}
@@ -2283,6 +2307,81 @@ defmodule Ash.Api do
         case Spark.OptionsHelpers.validate(opts, @bulk_create_opts_schema) do
           {:ok, opts} ->
             Create.Bulk.run(api, resource, action, inputs, opts)
+
+          {:error, error} ->
+            %Ash.BulkResult{status: :error, errors: [Ash.Error.to_ash_error(error)]}
+        end
+    end
+  end
+
+  @doc false
+  @spec bulk_update!(
+          Ash.Api.t(),
+          Enumerable.t(Ash.Resource.record()),
+          atom,
+          input :: map,
+          Keyword.t()
+        ) ::
+          Ash.BulkResult.t() | no_return
+  def bulk_update!(api, stream_or_query, action, input, opts) do
+    api
+    |> bulk_update(stream_or_query, action, input, opts)
+    |> case do
+      %Ash.BulkResult{status: :error, errors: errors} when errors in [nil, []] ->
+        if opts[:return_errors?] do
+          raise Ash.Error.to_error_class(
+                  Ash.Error.Unknown.UnknownError.exception(
+                    error: "Something went wrong with bulk update, but no errors were produced."
+                  )
+                )
+        else
+          raise Ash.Error.to_error_class(
+                  Ash.Error.Unknown.UnknownError.exception(
+                    error:
+                      "Something went wrong with bulk update, but no errors were produced due to `return_errors?` being set to `false`."
+                  )
+                )
+        end
+
+      %Ash.BulkResult{status: :error, errors: errors} ->
+        raise Ash.Error.to_error_class(errors)
+
+      bulk_result ->
+        bulk_result
+    end
+  end
+
+  @doc false
+  @spec bulk_update(
+          Ash.Api.t(),
+          Enumerable.t(Ash.Resource.record()),
+          atom,
+          input :: map,
+          Keyword.t()
+        ) ::
+          Ash.BulkResult.t()
+  def bulk_update(api, query_or_stream, action, input, opts) do
+    case query_or_stream do
+      [] ->
+        result = %Ash.BulkResult{status: :success, errors: []}
+
+        result =
+          if opts[:return_records?] do
+            %{result | records: []}
+          else
+            result
+          end
+
+        if opts[:return_notifications?] do
+          %{result | notifications: []}
+        else
+          result
+        end
+
+      query_or_stream ->
+        case Spark.OptionsHelpers.validate(opts, @bulk_update_opts_schema) do
+          {:ok, opts} ->
+            Update.Bulk.run(api, query_or_stream, action, input, opts)
 
           {:error, error} ->
             %Ash.BulkResult{status: :error, errors: [Ash.Error.to_ash_error(error)]}
