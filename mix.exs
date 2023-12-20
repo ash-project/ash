@@ -35,14 +35,20 @@ defmodule Ash.MixProject do
   end
 
   defp extras do
+    # Sorting can done adding numbers at the begining of filenames
     "documentation/**/*.{md,livemd,cheatmd}"
     |> Path.wildcard()
     |> Enum.map(fn path ->
-      title =
+      html_filename =
         path
         |> Path.basename(".md")
         |> Path.basename(".livemd")
         |> Path.basename(".cheatmd")
+        # We want to keep permalinks, so we remove the sorting number
+        |> String.replace(~r/^\d+\-/, "")
+
+      title =
+        html_filename
         |> String.split(~r/[-_]/)
         |> Enum.map_join(" ", &capitalize/1)
         |> case do
@@ -55,6 +61,7 @@ defmodule Ash.MixProject do
 
       {String.to_atom(path),
        [
+         filename: html_filename,
          title: title,
          default: title == "Get Started"
        ]}
@@ -73,9 +80,9 @@ defmodule Ash.MixProject do
   defp groups_for_extras do
     [
       Tutorials: [
-        "documentation/tutorials/get-started.md",
-        "documentation/tutorials/philosophy.md",
-        "documentation/tutorials/why-ash.md",
+        "documentation/tutorials/1-get-started.md",
+        "documentation/tutorials/2-philosophy.md",
+        "documentation/tutorials/3-why-ash.md",
         ~r'documentation/tutorials'
       ],
       "How To": ~r'documentation/how_to',
