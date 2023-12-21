@@ -22,7 +22,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
 
     def validate(changeset, _opts) do
       case changeset.context do
-        %{__source__: %{context: %{private: %{actor: _, authorize?: _}}}} ->
+        %{__source__: %{data: %{name: _}, context: %{private: %{actor: _, authorize?: _}}}} ->
           :ok
 
         _ ->
@@ -31,7 +31,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
     end
   end
 
-  defmodule EmbeddedResource do
+  defmodule SubSubEmbeddedResource do
     use Ash.Resource, data_layer: :embedded
 
     attributes do
@@ -46,7 +46,59 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
     changes do
       change fn changeset, _ ->
         case changeset.context do
-          %{private: %{actor: _, authorize?: _}} ->
+          %{__source__: %{data: %{name: _}}, private: %{actor: _, authorize?: _}} ->
+            changeset
+
+          _ ->
+            Ash.Changeset.add_error(changeset, "uh oh!")
+        end
+      end
+    end
+  end
+
+  defmodule SubEmbeddedResource do
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, allow_nil?: true
+      attribute :sub_sub_embedded_resource, SubSubEmbeddedResource
+    end
+
+    validations do
+      validate {ActorAndAuthorizeMustBeInSourceContext, []}
+    end
+
+    changes do
+      change fn changeset, _ ->
+        case changeset.context do
+          %{__source__: %{data: %{name: _}}, private: %{actor: _, authorize?: _}} ->
+            changeset
+
+          _ ->
+            Ash.Changeset.add_error(changeset, "uh oh!")
+        end
+      end
+    end
+  end
+
+  defmodule EmbeddedResource do
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, allow_nil?: true
+      attribute :sub_embedded_resources, {:array, SubEmbeddedResource}, allow_nil?: true
+    end
+
+    validations do
+      validate {ActorAndAuthorizeMustBeInSourceContext, []}
+    end
+
+    changes do
+      change fn changeset, _ ->
+        case changeset.context do
+          %{__source__: %{data: %{name: _}}, private: %{actor: _, authorize?: _}} ->
             changeset
 
           _ ->
@@ -98,7 +150,12 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
 
   test "changeset during validation and changes includes actor, authorize and tenant for an embedded resource" do
     # The embedded resource's validation will raise an error if the context is missing the actor or authorize? keys
-    params = %{embedded_resource: %{name: "anything will trigger a validation"}}
+    params = %{
+      embedded_resource: %{
+        name: "anything will trigger a validation",
+        sub_embedded_resources: [%{name: "foo", sub_sub_embedded_resource: %{name: "bar"}}]
+      }
+    }
 
     assert {:ok, _} =
              Resource
@@ -112,7 +169,12 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
 
   test "changeset during validation and changes includes actor, authorize and tenant for an embedded resource used as an argument" do
     # The embedded resource's validation will raise an error if the context is missing the actor or authorize? keys
-    params = %{embedded_resource_arg: %{name: "anything will trigger a validation"}}
+    params = %{
+      embedded_resource_arg: %{
+        name: "anything will trigger a validation",
+        sub_embedded_resources: [%{name: "foo", sub_sub_embedded_resource: %{name: "bar"}}]
+      }
+    }
 
     assert {:ok, _} =
              %Resource{}
