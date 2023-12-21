@@ -1,4 +1,4 @@
-defmodule Ash.Test.Actions.BulkUpdateTest do
+defmodule Ash.Test.Actions.BulkDestroyTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
@@ -45,14 +45,14 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     actions do
       defaults [:create, :read, :update, :destroy]
 
-      update :update_with_change do
+      destroy :destroy_with_change do
         change fn changeset, _ ->
           title = Ash.Changeset.get_attribute(changeset, :title)
           Ash.Changeset.force_change_attribute(changeset, :title, title <> "_stuff")
         end
       end
 
-      update :update_with_argument do
+      destroy :destroy_with_argument do
         argument :a_title, :string do
           allow_nil? false
         end
@@ -60,24 +60,24 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
         change set_attribute(:title2, arg(:a_title))
       end
 
-      update :update_with_after_action do
+      destroy :destroy_with_after_action do
         change after_action(fn _changeset, result ->
                  {:ok, %{result | title: result.title <> "_stuff"}}
                end)
       end
 
-      update :update_with_after_batch do
+      destroy :destroy_with_after_batch do
         change AddAfterToTitle
         change AddBeforeToTitle
       end
 
-      update :update_with_after_transaction do
+      destroy :destroy_with_after_transaction do
         change after_transaction(fn _changeset, {:ok, result} ->
                  {:ok, %{result | title: result.title <> "_stuff"}}
                end)
       end
 
-      update :update_with_policy do
+      destroy :destroy_with_policy do
         argument :authorize?, :boolean, allow_nil?: false
 
         change set_context(%{authorize?: arg(:authorize?)})
@@ -91,7 +91,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
 
     policies do
-      policy action(:update_with_policy) do
+      policy action(:destroy_with_policy) do
         authorize_if context_equals(:authorize?, true)
       end
     end
@@ -115,8 +115,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
-  test "returns updated records" do
-    assert %Ash.BulkResult{records: [%{title2: "updated value"}, %{title2: "updated value"}]} =
+  test "returns destroyed records" do
+    assert %Ash.BulkResult{records: [%{}, %{}]} =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
                return_records?: true
@@ -124,18 +124,20 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_update!(:update, %{title2: "updated value"},
+             |> Api.bulk_destroy!(:destroy, %{},
                resource: Post,
                return_records?: true,
                return_errors?: true
              )
+
+    assert [] = Api.read!(Post)
   end
 
   test "runs changes" do
     assert %Ash.BulkResult{
              records: [
-               %{title: "title1_stuff", title2: "updated value"},
-               %{title: "title2_stuff", title2: "updated value"}
+               %{title: "title1_stuff"},
+               %{title: "title2_stuff"}
              ]
            } =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
@@ -145,7 +147,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_update!(:update_with_change, %{title2: "updated value"},
+             |> Api.bulk_destroy!(:destroy_with_change, %{},
                resource: Post,
                return_records?: true,
                return_errors?: true
@@ -153,6 +155,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
              end)
+
+    assert [] = Api.read!(Post)
   end
 
   test "accepts arguments" do
@@ -169,7 +173,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_update!(:update_with_argument, %{a_title: "updated value"},
+             |> Api.bulk_destroy!(:destroy_with_argument, %{a_title: "updated value"},
                resource: Post,
                return_records?: true,
                return_errors?: true
@@ -177,13 +181,15 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
              end)
+
+    assert [] = Api.read!(Post)
   end
 
   test "runs after batch hooks" do
     assert %Ash.BulkResult{
              records: [
-               %{title: "before_title1_after", title2: "updated value"},
-               %{title: "before_title2_after", title2: "updated value"}
+               %{title: "before_title1_after"},
+               %{title: "before_title2_after"}
              ]
            } =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
@@ -193,7 +199,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_update!(:update_with_after_batch, %{title2: "updated value"},
+             |> Api.bulk_destroy!(:destroy_with_after_batch, %{},
                resource: Post,
                return_records?: true,
                return_errors?: true
@@ -201,6 +207,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
              end)
+
+    assert [] = Api.read!(Post)
   end
 
   test "will return error count" do
@@ -214,10 +222,12 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_update(:update, %{title2: %{invalid: :value}},
+             |> Api.bulk_destroy(:destroy, %{title2: "what"},
                resource: Post,
                return_records?: true
              )
+
+    assert [_, _] = Api.read!(Post)
   end
 
   test "will return errors on request" do
@@ -232,17 +242,19 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_update(:update, %{title2: %{invalid: :value}},
+             |> Api.bulk_destroy(:destroy, %{title: %{invalid: :value}},
                resource: Post,
                return_errors?: true
              )
+
+    assert [_] = Api.read!(Post)
   end
 
   test "runs after action hooks" do
     assert %Ash.BulkResult{
              records: [
-               %{title: "title1_stuff", title2: "updated value"},
-               %{title: "title2_stuff", title2: "updated value"}
+               %{title: "title1_stuff"},
+               %{title: "title2_stuff"}
              ]
            } =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
@@ -252,7 +264,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_update!(:update_with_after_action, %{title2: "updated value"},
+             |> Api.bulk_destroy!(:destroy_with_after_action, %{},
                resource: Post,
                return_records?: true,
                return_errors?: true
@@ -260,13 +272,15 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
              end)
+
+    assert [] = Api.read!(Post)
   end
 
   test "runs after transaction hooks" do
     assert %Ash.BulkResult{
              records: [
-               %{title: "title1_stuff", title2: "updated value"},
-               %{title: "title2_stuff", title2: "updated value"}
+               %{title: "title1_stuff"},
+               %{title: "title2_stuff"}
              ]
            } =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
@@ -276,7 +290,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_update!(:update_with_after_transaction, %{title2: "updated value"},
+             |> Api.bulk_destroy!(:destroy_with_after_transaction, %{},
                resource: Post,
                return_records?: true,
                return_errors?: true
@@ -284,6 +298,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
              end)
+
+    assert [] = Api.read!(Post)
   end
 
   describe "authorization" do
@@ -296,9 +312,9 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                |> Stream.map(fn {:ok, result} ->
                  result
                end)
-               |> Api.bulk_update(
-                 :update_with_policy,
-                 %{title2: "updated value", authorize?: true},
+               |> Api.bulk_destroy(
+                 :destroy_with_policy,
+                 %{authorize?: true},
                  authorize?: true,
                  resource: Post,
                  return_records?: true,
@@ -315,9 +331,9 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                |> Stream.map(fn {:ok, result} ->
                  result
                end)
-               |> Api.bulk_update(
-                 :update_with_policy,
-                 %{title2: "updated value", authorize?: false},
+               |> Api.bulk_destroy(
+                 :destroy_with_policy,
+                 %{authorize?: false},
                  authorize?: true,
                  resource: Post,
                  return_records?: true,

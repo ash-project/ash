@@ -1,4 +1,4 @@
-defmodule Ash.Actions.Update.Bulk do
+defmodule Ash.Actions.Destroy.Bulk do
   @moduledoc false
   @spec run(Ash.Api.t(), Enumerable.t() | Ash.Query.t(), atom(), input :: map, Keyword.t()) ::
           :ok
@@ -25,7 +25,7 @@ defmodule Ash.Actions.Update.Bulk do
       raise Ash.Error.Invalid.NonStreamableAction,
         resource: query.resource,
         action: query.action,
-        for_bulk_update: action.name
+        for_bulk_destroy: action.name
     end
 
     run(api, api.stream!(query), action, input, Keyword.put(opts, :resource, query.resource))
@@ -44,89 +44,84 @@ defmodule Ash.Actions.Update.Bulk do
 
     if !resource do
       raise ArgumentError,
-            "Could not determine resource for bulk #{action.type}. Please provide the `resource` option if providing a stream of inputs."
+            "Could not determine resource for bulk destroy. Please provide the `resource` option if providing a stream of inputs."
     end
 
     action = Ash.Resource.Info.action(resource, action)
 
     if !action do
-      raise Ash.Error.Invalid.NoSuchAction, resource: resource, action: action, type: :update
+      raise Ash.Error.Invalid.NoSuchAction, resource: resource, action: action, type: :destroy
     end
 
-    if opts[:transaction] == :all && opts[:return_stream?] do
-      raise ArgumentError,
-            "Cannot specify `transaction: :all` and `return_stream?: true` together"
-    end
-
-    if opts[:return_stream?] && opts[:sorted?] do
-      raise ArgumentError, "Cannot specify `sorted?: true` and `return_stream?: true` together"
-    end
-
-    {context_key, metadata_key} =
-      case action.type do
-        :update ->
-          {:bulk_update, :bulk_update_index}
-
-        :destroy ->
-          {:bulk_destroy, :bulk_destroy_index}
-      end
-
-    if opts[:transaction] == :all &&
-         Ash.DataLayer.data_layer_can?(resource, :transact) do
-      notify? =
-        if opts[:notify?] do
-          if Process.get(:ash_started_transaction?) do
-            false
-          else
-            Process.put(:ash_started_transaction?, true)
-            true
-          end
-        else
-          false
-        end
-
-      Ash.DataLayer.transaction(
-        List.wrap(resource) ++ action.touches_resources,
-        fn ->
-          do_run(api, stream, action, input, opts, metadata_key, context_key)
-        end,
-        opts[:timeout],
-        %{
-          type: context_key,
-          metadata: %{
-            resource: resource,
-            action: action.name,
-            actor: opts[:actor]
-          },
-          data_layer_context: opts[:data_layer_context] || %{}
-        }
-      )
-      |> case do
-        {:ok, bulk_result} ->
-          bulk_result =
-            if notify? do
-              %{
-                bulk_result
-                | notifications:
-                    bulk_result.notifications ++ Process.delete(:ash_notifications) || []
-              }
-            else
-              bulk_result
-            end
-
-          handle_bulk_result(bulk_result, metadata_key, opts)
-
-        {:error, error} ->
-          {:error, error}
-      end
+    if action.soft? do
+      Ash.Actions.Update.Bulk.run(api, stream, action.name, input, opts)
     else
-      api
-      |> do_run(stream, action, input, opts, metadata_key, context_key)
-      |> handle_bulk_result(metadata_key, opts)
+      if opts[:transaction] == :all && opts[:return_stream?] do
+        raise ArgumentError,
+              "Cannot specify `transaction: :all` and `return_stream?: true` together"
+      end
+
+      if opts[:return_stream?] && opts[:sorted?] do
+        raise ArgumentError, "Cannot specify `sorted?: true` and `return_stream?: true` together"
+      end
+
+      if opts[:transaction] == :all &&
+           Ash.DataLayer.data_layer_can?(resource, :transact) do
+        notify? =
+          if opts[:notify?] do
+            if Process.get(:ash_started_transaction?) do
+              false
+            else
+              Process.put(:ash_started_transaction?, true)
+              true
+            end
+          else
+            false
+          end
+
+        Ash.DataLayer.transaction(
+          List.wrap(resource) ++ action.touches_resources,
+          fn ->
+            do_run(api, stream, action, input, opts)
+          end,
+          opts[:timeout],
+          %{
+            type: :bulk_destroy,
+            metadata: %{
+              resource: resource,
+              action: action.name,
+              actor: opts[:actor]
+            },
+            data_layer_context: opts[:data_layer_context] || %{}
+          }
+        )
+        |> case do
+          {:ok, bulk_result} ->
+            bulk_result =
+              if notify? do
+                %{
+                  bulk_result
+                  | notifications:
+                      bulk_result.notifications ++ Process.delete(:ash_notifications) || []
+                }
+              else
+                bulk_result
+              end
+
+            handle_bulk_result(bulk_result, resource, action, opts)
+
+          {:error, error} ->
+            {:error, error}
+        end
+      else
+        api
+        |> do_run(stream, action, input, opts)
+        |> handle_bulk_result(resource, action, opts)
+      end
     end
   end
 
-  def do_run(api, stream, action, input, opts, metadata_key, context_key) do
+  def do_run(api, stream, action, input, opts) do
     resource = opts[:resource]
     opts = Ash.Actions.Helpers.set_opts(opts, api)
 
@@ -135,7 +130,7 @@ defmodule Ash.Actions.Update.Bulk do
     manual_action_can_bulk? =
       case action.manual do
         {mod, _opts} ->
-          function_exported?(mod, :bulk_update, 3)
+          function_exported?(mod, :bulk_destroy, 3)
 
         _ ->
           false
@@ -175,24 +170,14 @@ defmodule Ash.Actions.Update.Bulk do
                 opts,
                 input,
                 argument_names,
-                api,
-                context_key
+                api
               )
             )
             |> reject_and_maybe_store_errors(ref, opts)
-            |> handle_batch(
-              api,
-              resource,
-              action,
-              all_changes,
-              opts,
-              ref,
-              context_key,
-              metadata_key
-            )
+            |> handle_batch(api, resource, action, all_changes, opts, ref)
           after
             if opts[:notify?] && !opts[:return_notifications?] do
-              Ash.Notifier.notify(Process.delete({:bulk_update_notifications, ref}))
+              Ash.Notifier.notify(Process.delete({:bulk_destroy_notifications, ref}))
             end
           end
         end
@@ -212,16 +197,16 @@ defmodule Ash.Actions.Update.Bulk do
 
         notifications =
           if opts[:notify?] && opts[:return_notifications?] do
-            Process.delete({:bulk_update_notifications, ref})
+            Process.delete({:bulk_destroy_notifications, ref})
           else
             if opts[:notify?] do
-              Ash.Notifier.notify(Process.delete({:bulk_update_notifications, ref}))
+              Ash.Notifier.notify(Process.delete({:bulk_destroy_notifications, ref}))
             end
 
             []
           end
 
-        {errors, error_count} = Process.get({:bulk_update_errors, ref}) || {[], 0}
+        {errors, error_count} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
 
         bulk_result = %Ash.BulkResult{
           records: records,
@@ -246,15 +231,15 @@ defmodule Ash.Actions.Update.Bulk do
 
           result = %Ash.BulkResult{
             status: status,
-            notifications: Process.delete({:bulk_update_notifications, ref})
+            notifications: Process.delete({:bulk_destroy_notifications, ref})
           }
 
           {error_count, errors} = errors(result, error, opts)
 
           %{result | errors: errors, error_count: error_count}
       after
-        Process.delete({:bulk_update_errors, ref})
-        Process.delete({:bulk_update_notifications, ref})
+        Process.delete({:bulk_destroy_errors, ref})
+        Process.delete({:bulk_destroy_notifications, ref})
       end
     end
   end
@@ -289,7 +274,7 @@ defmodule Ash.Actions.Update.Bulk do
     |> Ash.Changeset.set_arguments(arguments)
   end
 
-  defp pre_template_all_changes(action, resource, _type, base, actor) do
+  defp pre_template_all_changes(action, resource, :destroy, base, actor) do
     action.changes
     |> Enum.concat(Ash.Resource.Info.validations(resource, action.type))
     |> Enum.concat(Ash.Resource.Info.changes(resource, action.type))
@@ -333,7 +318,7 @@ defmodule Ash.Actions.Update.Bulk do
 
   defp error_stream(ref) do
     Stream.resource(
-      fn -> Process.delete({:bulk_update_errors, ref}) end,
+      fn -> Process.delete({:bulk_destroy_errors, ref}) end,
       fn
         {errors, _count} ->
           {Stream.map(errors || [], &{:error, &1}), []}
@@ -347,7 +332,7 @@ defmodule Ash.Actions.Update.Bulk do
 
   defp notification_stream(ref) do
     Stream.resource(
-      fn -> Process.delete({:bulk_update_notifications, ref}) end,
+      fn -> Process.delete({:bulk_destroy_notifications, ref}) end,
       fn
         [] ->
           {:halt, []}
@@ -359,17 +344,7 @@ defmodule Ash.Actions.Update.Bulk do
     )
   end
 
-  defp handle_batch(
-         batch,
-         api,
-         resource,
-         action,
-         all_changes,
-         opts,
-         ref,
-         context_key,
-         metadata_key
-       ) do
+  defp handle_batch(batch, api, resource, action, all_changes, opts, ref) do
     if opts[:transaction] == :batch &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
       context = batch |> Enum.at(0) |> Kernel.||(%{}) |> Map.get(:context)
@@ -397,9 +372,7 @@ defmodule Ash.Actions.Update.Bulk do
               action,
               opts,
               all_changes,
-              ref,
-              metadata_key,
-              context_key
+              ref
             )
             |> case do
               {:error, error} ->
@@ -411,7 +384,7 @@ defmodule Ash.Actions.Update.Bulk do
           end,
           opts[:timeout],
           %{
-            type: context_key,
+            type: :bulk_destroy,
             metadata: %{
               resource: resource,
               action: action.name,
@@ -439,31 +412,11 @@ defmodule Ash.Actions.Update.Bulk do
         end
       end
     else
-      do_handle_batch(
-        batch,
-        api,
-        resource,
-        action,
-        opts,
-        all_changes,
-        ref,
-        metadata_key,
-        context_key
-      )
+      do_handle_batch(batch, api, resource, action, opts, all_changes, ref)
     end
   end
 
-  defp do_handle_batch(
-         batch,
-         api,
-         resource,
-         action,
-         opts,
-         all_changes,
-         ref,
-         metadata_key,
-         context_key
-       ) do
+  defp do_handle_batch(batch, api, resource, action, opts, all_changes, ref) do
     must_return_records? =
       opts[:notify?] ||
         Enum.any?(batch, fn item ->
@@ -482,8 +435,7 @@ defmodule Ash.Actions.Update.Bulk do
         opts[:actor],
         opts[:authorize?],
         opts[:tracer],
-        opts[:tenant],
-        context_key
+        opts[:tenant]
       )
 
     batch =
@@ -494,13 +446,12 @@ defmodule Ash.Actions.Update.Bulk do
         changes,
         all_changes,
         opts,
-        ref,
-        context_key
+        ref
       )
 
     # TODO: We will likely need to store the changeset in record metadata after calling the
     # data layer instead of passing this in, as this is a stale changeset
-    changesets_by_index = index_changesets(batch, context_key)
+    changesets_by_index = index_changesets(batch)
 
     run_batch(
       resource,
@@ -510,12 +461,10 @@ defmodule Ash.Actions.Update.Bulk do
       must_return_records?,
       must_return_records_for_changes?,
       api,
-      ref,
-      metadata_key,
-      context_key
+      ref
     )
-    |> run_after_action_hooks(opts, api, ref, changesets_by_index, metadata_key)
-    |> process_results(changes, all_changes, opts, ref, changesets_by_index, metadata_key)
+    |> run_after_action_hooks(opts, api, ref, changesets_by_index)
+    |> process_results(changes, all_changes, opts, ref, changesets_by_index)
     |> then(fn stream ->
       if opts[:return_stream?] do
         stream
@@ -534,15 +483,13 @@ defmodule Ash.Actions.Update.Bulk do
          opts,
          input,
          argument_names,
-         api,
-         context_key
+         api
        ) do
     record
     |> Ash.Changeset.new()
     |> Map.put(:api, api)
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
-    |> Ash.Changeset.put_context(context_key, %{index: index})
-    |> Ash.Changeset.atomic_update(opts[:atomic_update] || [])
+    |> Ash.Changeset.put_context(:bulk_destroy, %{index: index})
     |> handle_params(
       Keyword.get(opts, :assume_casted?, false),
       action,
@@ -581,12 +528,12 @@ defmodule Ash.Actions.Update.Bulk do
           try do
             Process.put(:ash_started_transaction?, true)
             batch_result = callback.(batch)
-            {errors, _} = Process.get({:bulk_update_errors, ref}) || {[], 0}
+            {errors, _} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
 
             notifications =
               if opts[:notify?] do
                 process_notifications = Process.get(:ash_notifications, [])
-                bulk_notifications = Process.get({:bulk_update_notifications, ref}) || []
+                bulk_notifications = Process.get({:bulk_destroy_notifications, ref}) || []
 
                 if opts[:return_notifications?] do
                   process_notifications ++ bulk_notifications
@@ -628,11 +575,11 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp index_changesets(batch, context_key) do
+  defp index_changesets(batch) do
     Enum.reduce(batch, %{}, fn changeset, changesets_by_index ->
       Map.put(
         changesets_by_index,
-        changeset.context[context_key].index,
+        changeset.context.bulk_destroy.index,
         changeset
       )
     end)
@@ -670,8 +617,7 @@ defmodule Ash.Actions.Update.Bulk do
          changes,
          all_changes,
          opts,
-         ref,
-         context_key
+         ref
        ) do
     all_changes
     |> Enum.filter(fn
@@ -697,7 +643,7 @@ defmodule Ash.Actions.Update.Bulk do
               false
 
             changeset ->
-              changeset.context[context_key].index in List.wrap(changes[index])
+              changeset.context.bulk_destroy.index in List.wrap(changes[index])
           end)
 
         before_batch_results =
@@ -739,7 +685,7 @@ defmodule Ash.Actions.Update.Bulk do
       throw({:error, Ash.Error.to_error_class(error), 0, []})
     else
       if opts[:return_errors?] do
-        {errors, count} = Process.get({:bulk_update_errors, ref}) || {[], 0}
+        {errors, count} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
 
         error =
           case error do
@@ -751,12 +697,12 @@ defmodule Ash.Actions.Update.Bulk do
           end
 
         Process.put(
-          {:bulk_update_errors, ref},
+          {:bulk_destroy_errors, ref},
           {[error | errors], count + 1}
         )
       else
-        {errors, count} = Process.get({:bulk_update_errors, ref}) || {[], 0}
-        Process.put({:bulk_update_errors, ref}, {errors, count + 1})
+        {errors, count} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
+        Process.put({:bulk_destroy_errors, ref}, {errors, count + 1})
       end
     end
   end
@@ -765,7 +711,7 @@ defmodule Ash.Actions.Update.Bulk do
 
   defp store_notification(ref, notification, opts) do
     if opts[:notify?] || opts[:return_notifications?] do
-      notifications = Process.get({:bulk_update_notifications, ref}) || []
+      notifications = Process.get({:bulk_destroy_notifications, ref}) || []
 
       new_notifications =
         if is_list(notification) do
@@ -774,7 +720,7 @@ defmodule Ash.Actions.Update.Bulk do
           [notification | notifications]
         end
 
-      Process.put({:bulk_update_notifications, ref}, new_notifications)
+      Process.put({:bulk_destroy_notifications, ref}, new_notifications)
     end
   end
 
@@ -783,7 +729,12 @@ defmodule Ash.Actions.Update.Bulk do
       batch
       |> Enum.map(fn changeset ->
         if changeset.valid? do
-          case api.can(changeset, opts[:actor], return_forbidden_error?: true, maybe_is: false) do
+          case api.can(
+                 changeset,
+                 opts[:actor],
+                 return_forbidden_error?: true,
+                 maybe_is: false
+               ) do
             {:ok, true} ->
               changeset
 
@@ -802,15 +753,15 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp handle_bulk_result(%Ash.BulkResult{} = bulk_result, metadata_key, opts) do
+  defp handle_bulk_result(%Ash.BulkResult{} = bulk_result, _resource, _action, opts) do
     bulk_result
-    |> sort(metadata_key, opts)
+    |> sort(opts)
     |> ensure_records_return_type(opts)
     |> ensure_errors_return_type(opts)
   end
 
   # for when we return a stream
-  defp handle_bulk_result(stream, _, _), do: stream
+  defp handle_bulk_result(stream, _, _, _), do: stream
 
   defp ensure_records_return_type(result, opts) do
     if opts[:return_records?] do
@@ -828,15 +779,15 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp sort(%{records: records} = result, metadata_key, opts) when is_list(records) do
+  defp sort(%{records: records} = result, opts) when is_list(records) do
     if opts[:sorted?] do
-      %{result | records: Enum.sort_by(records, & &1.__metadata__[metadata_key])}
+      %{result | records: Enum.sort_by(records, & &1.__metadata__.bulk_destroy_index)}
     else
       result
     end
   end
 
-  defp sort(result, _action, _), do: result
+  defp sort(result, _), do: result
 
   defp run_batch(
          resource,
@@ -846,9 +797,7 @@ defmodule Ash.Actions.Update.Bulk do
          must_return_records?,
          must_return_records_for_changes?,
          api,
-         ref,
-         metadata_key,
-         context_key
+         ref
        ) do
     batch
     |> Enum.map(fn changeset ->
@@ -903,37 +852,29 @@ defmodule Ash.Actions.Update.Bulk do
           result =
             case action.manual do
               {mod, opts} ->
-                if function_exported?(mod, context_key, 3) do
-                  apply(mod, context_key, [
-                    batch,
-                    opts,
-                    %{
-                      actor: opts[:actor],
-                      batch_size: opts[:batch_size],
-                      authorize?: opts[:authorize?],
-                      tracer: opts[:tracer],
-                      api: api,
-                      return_records?:
-                        opts[:return_records?] || must_return_records? ||
-                          must_return_records_for_changes?,
-                      tenant: opts[:tenant]
-                    }
-                  ])
+                if function_exported?(mod, :bulk_destroy, 3) do
+                  mod.bulk_destroy(batch, opts, %{
+                    actor: opts[:actor],
+                    batch_size: opts[:batch_size],
+                    authorize?: opts[:authorize?],
+                    tracer: opts[:tracer],
+                    api: api,
+                    return_records?:
+                      opts[:return_records?] || must_return_records? ||
+                        must_return_records_for_changes?,
+                    tenant: opts[:tenant]
+                  })
                 else
                   [changeset] = batch
 
                   result =
-                    apply(mod, action.type, [
-                      changeset,
-                      opts,
-                      %{
-                        actor: opts[:actor],
-                        tenant: opts[:tenant],
-                        authorize?: opts[:authorize?],
-                        tracer: opts[:tracer],
-                        api: api
-                      }
-                    ])
+                    mod.destroy(changeset, opts, %{
+                      actor: opts[:actor],
+                      tenant: opts[:tenant],
+                      authorize?: opts[:authorize?],
+                      tracer: opts[:tracer],
+                      api: api
+                    })
 
                   case result do
                     {:ok, result} ->
@@ -941,8 +882,8 @@ defmodule Ash.Actions.Update.Bulk do
                        [
                          Ash.Resource.put_metadata(
                            result,
-                           metadata_key,
-                           changeset.context[context_key].index
+                           :bulk_destroy_index,
+                           changeset.context.bulk_destroy.index
                          )
                        ]}
 
@@ -955,16 +896,22 @@ defmodule Ash.Actions.Update.Bulk do
                 [changeset] = batch
 
                 result =
-                  Ash.DataLayer.update(resource, changeset)
+                  Ash.DataLayer.destroy(resource, changeset)
 
                 case result do
-                  {:ok, result} ->
+                  :ok ->
+                    {:ok, data} = Ash.Changeset.apply_attributes(changeset, force?: true)
+
                     {:ok,
                      [
-                       Ash.Resource.put_metadata(
-                         result,
-                         metadata_key,
-                         changeset.context[context_key].index
+                       data
+                       |> Ash.Resource.set_meta(%Ecto.Schema.Metadata{
+                         state: :deleted,
+                         schema: changeset.resource
+                       })
+                       |> Ash.Resource.put_metadata(
+                         :bulk_destroy_index,
+                         changeset.context.bulk_destroy.index
                        )
                      ]}
 
@@ -988,9 +935,9 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp manage_relationships(updated, api, changeset, engine_opts) do
+  defp manage_relationships(destroyed, api, changeset, engine_opts) do
     with {:ok, loaded} <-
-           Ash.Actions.ManagedRelationships.load(api, updated, changeset, engine_opts),
+           Ash.Actions.ManagedRelationships.load(api, destroyed, changeset, engine_opts),
          {:ok, with_relationships, new_notifications} <-
            Ash.Actions.ManagedRelationships.manage_relationships(
              loaded,
@@ -1007,11 +954,10 @@ defmodule Ash.Actions.Update.Bulk do
          opts,
          api,
          ref,
-         changesets_by_index,
-         metadata_key
+         changesets_by_index
        ) do
     Enum.flat_map(batch_results, fn result ->
-      changeset = changesets_by_index[result.__metadata__[metadata_key]]
+      changeset = changesets_by_index[result.__metadata__.bulk_destroy_index]
 
       case manage_relationships(result, api, changeset,
              actor: opts[:actor],
@@ -1043,12 +989,11 @@ defmodule Ash.Actions.Update.Bulk do
          all_changes,
          opts,
          ref,
-         changesets_by_index,
-         metadata_key
+         changesets_by_index
        ) do
     results =
       Enum.flat_map(batch, fn result ->
-        changeset = changesets_by_index[result.__metadata__[metadata_key]]
+        changeset = changesets_by_index[result.__metadata__.bulk_destroy_index]
 
         if opts[:notify?] || opts[:return_notifications?] do
           store_notification(ref, notification(changeset, result, opts), opts)
@@ -1077,26 +1022,10 @@ defmodule Ash.Actions.Update.Bulk do
         end
       end)
 
-    run_bulk_after_changes(
-      changes,
-      all_changes,
-      results,
-      changesets_by_index,
-      opts,
-      ref,
-      metadata_key
-    )
+    run_bulk_after_changes(changes, all_changes, results, changesets_by_index, opts, ref)
   end
 
-  defp run_bulk_after_changes(
-         changes,
-         all_changes,
-         results,
-         changesets_by_index,
-         opts,
-         ref,
-         metadata_key
-       ) do
+  defp run_bulk_after_changes(changes, all_changes, results, changesets_by_index, opts, ref) do
     all_changes
     |> Enum.filter(fn
       {%{change: {module, _opts}}, _} ->
@@ -1109,7 +1038,7 @@ defmodule Ash.Actions.Update.Bulk do
       if changes[index] == :all do
         results =
           Enum.map(results, fn result ->
-            {changesets_by_index[result.__metadata__[metadata_key]], result}
+            {changesets_by_index[result.__metadata__.bulk_destroy_index], result}
           end)
 
         module.after_batch(results, change_opts, %{
@@ -1124,7 +1053,7 @@ defmodule Ash.Actions.Update.Bulk do
           results
           |> Enum.split_with(fn
             {:ok, result} ->
-              result.__metadata__[metadata_key] in List.wrap(changes[index])
+              result.__metadata__.bulk_destroy_index in List.wrap(changes[index])
 
             _ ->
               false
@@ -1132,7 +1061,7 @@ defmodule Ash.Actions.Update.Bulk do
 
         matches =
           Enum.map(matches, fn match ->
-            {changesets_by_index[match.__metadata__[metadata_key]], match}
+            {changesets_by_index[match.__metadata__.bulk_destroy_index], match}
           end)
 
         after_batch_results =
@@ -1177,16 +1106,7 @@ defmodule Ash.Actions.Update.Bulk do
     }
   end
 
-  defp run_action_changes(
-         batch,
-         all_changes,
-         _action,
-         actor,
-         authorize?,
-         tracer,
-         tenant,
-         context_key
-       ) do
+  defp run_action_changes(batch, all_changes, _action, actor, authorize?, tracer, tenant) do
     Enum.reduce(
       all_changes,
       %{must_return_records?: false, batch: batch, changes: %{}},
@@ -1289,7 +1209,7 @@ defmodule Ash.Actions.Update.Bulk do
                     Map.put(
                       state.changes,
                       change_index,
-                      Enum.map(matches, & &1.context[context_key].index)
+                      Enum.map(matches, & &1.context.bulk_destroy.index)
                     )
               }
             end

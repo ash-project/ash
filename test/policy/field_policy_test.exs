@@ -55,6 +55,23 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Map.get(:internal_status)
     end
 
+    test "when destroying as a user that cannot see the field, its value is not displayed", %{
+      representative: rep,
+      user: user
+    } do
+      assert %Ash.ForbiddenField{field: :internal_status, type: :attribute} ==
+               Ticket
+               |> Ash.Changeset.for_create(
+                 :create,
+                 %{representative_id: rep.id, reporter_id: user.id, internal_status: :new},
+                 authorize?: true,
+                 actor: user
+               )
+               |> Api.create!(authorize?: false)
+               |> Api.destroy!(authorize?: true, actor: user, return_destroyed?: true)
+               |> Map.get(:internal_status)
+    end
+
     test "when reading as a user that can see the field, its value is displayed", %{
       representative: representative
     } do

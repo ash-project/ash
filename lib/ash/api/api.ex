@@ -497,6 +497,26 @@ defmodule Ash.Api do
                              "Shared bulk options"
                            )
 
+  @bulk_destroy_opts_schema [
+                              resource: [
+                                type: {:spark, Ash.Resource},
+                                doc:
+                                  "The resource being updated. This must be provided if the input given is a stream, so we know ahead of time what the resource being updated is."
+                              ]
+                            ]
+                            |> merge_schemas(
+                              Keyword.delete(@global_opts, :action),
+                              "Global options"
+                            )
+                            |> merge_schemas(
+                              @shared_created_update_and_destroy_opts_schema,
+                              "Shared create/update/destroy options"
+                            )
+                            |> merge_schemas(
+                              @shared_bulk_opts_schema,
+                              "Shared bulk options"
+                            )
+
   @bulk_create_opts_schema [
                              upsert?: [
                                type: :boolean,
@@ -633,6 +653,7 @@ defmodule Ash.Api do
         ) ::
           {:ok, boolean | :maybe}
           | {:ok, true, Ash.Changeset.t() | Ash.Query.t()}
+          | {:ok, true, Ash.Changeset.t(), Ash.Query.t()}
           | {:ok, false, Exception.t()}
           | {:error, term}
   def can(api, action_or_query_or_changeset, actor, opts \\ []) do
@@ -739,6 +760,13 @@ defmodule Ash.Api do
     api
     |> run_check(actor, subject, opts)
     |> alter_source(api, actor, subject, opts)
+  end
+
+  defp alter_source({:ok, true, query}, api, actor, %Ash.Changeset{} = subject, opts) do
+    case alter_source({:ok, true}, api, actor, subject, opts) do
+      {:ok, true, new_subject} -> {:ok, true, new_subject, query}
+      other -> other
+    end
   end
 
   defp alter_source({:ok, true}, api, actor, subject, opts) do
@@ -988,7 +1016,11 @@ defmodule Ash.Api do
                   end
               end
             else
-              {:ok, :maybe}
+              if opts[:alter_source?] do
+                {:ok, true, query}
+              else
+                {:ok, :maybe}
+              end
             end
 
           {false, error} ->
@@ -1343,6 +1375,7 @@ defmodule Ash.Api do
             ) ::
               {:ok, boolean | :maybe}
               | {:ok, true, Ash.Changeset.t() | Ash.Query.t()}
+              | {:ok, true, Ash.Changeset.t(), Ash.Query.t()}
               | {:ok, false, Exception.t()}
               | {:error, term}
 
@@ -2317,7 +2350,7 @@ defmodule Ash.Api do
   @doc false
   @spec bulk_update!(
           Ash.Api.t(),
-          Enumerable.t(Ash.Resource.record()),
+          Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
           atom,
           input :: map,
           Keyword.t()
@@ -2354,7 +2387,7 @@ defmodule Ash.Api do
   @doc false
   @spec bulk_update(
           Ash.Api.t(),
-          Enumerable.t(Ash.Resource.record()),
+          Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
           atom,
           input :: map,
           Keyword.t()
@@ -2382,6 +2415,81 @@ defmodule Ash.Api do
         case Spark.OptionsHelpers.validate(opts, @bulk_update_opts_schema) do
           {:ok, opts} ->
             Update.Bulk.run(api, query_or_stream, action, input, opts)
+
+          {:error, error} ->
+            %Ash.BulkResult{status: :error, errors: [Ash.Error.to_ash_error(error)]}
+        end
+    end
+  end
+
+  @doc false
+  @spec bulk_destroy!(
+          Ash.Api.t(),
+          Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
+          atom,
+          input :: map,
+          Keyword.t()
+        ) ::
+          Ash.BulkResult.t() | no_return
+  def bulk_destroy!(api, stream_or_query, action, input, opts) do
+    api
+    |> bulk_destroy(stream_or_query, action, input, opts)
+    |> case do
+      %Ash.BulkResult{status: :error, errors: errors} when errors in [nil, []] ->
+        if opts[:return_errors?] do
+          raise Ash.Error.to_error_class(
+                  Ash.Error.Unknown.UnknownError.exception(
+                    error: "Something went wrong with bulk update, but no errors were produced."
+                  )
+                )
+        else
+          raise Ash.Error.to_error_class(
+                  Ash.Error.Unknown.UnknownError.exception(
+                    error:
+                      "Something went wrong with bulk update, but no errors were produced due to `return_errors?` being set to `false`."
+                  )
+                )
+        end
+
+      %Ash.BulkResult{status: :error, errors: errors} ->
+        raise Ash.Error.to_error_class(errors)
+
+      bulk_result ->
+        bulk_result
+    end
+  end
+
+  @doc false
+  @spec bulk_destroy(
+          Ash.Api.t(),
+          Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
+          atom,
+          input :: map,
+          Keyword.t()
+        ) ::
+          Ash.BulkResult.t()
+  def bulk_destroy(api, query_or_stream, action, input, opts) do
+    case query_or_stream do
+      [] ->
+        result = %Ash.BulkResult{status: :success, errors: []}
+
+        result =
+          if opts[:return_records?] do
+            %{result | records: []}
+          else
+            result
+          end
+
+        if opts[:return_notifications?] do
+          %{result | notifications: []}
+        else
+          result
+        end
+
+      query_or_stream ->
+        case Spark.OptionsHelpers.validate(opts, @bulk_destroy_opts_schema) do
+          {:ok, opts} ->
+            Destroy.Bulk.run(api, query_or_stream, action, input, opts)
 
           {:error, error} ->
             %Ash.BulkResult{status: :error, errors: [Ash.Error.to_ash_error(error)]}
