@@ -15,7 +15,7 @@ defmodule Ash.Test.Actions.StreamTest do
 
       read :read do
         primary? true
-        pagination keyset?: true
+        pagination keyset?: true, offset?: true, required?: false
       end
 
       read :read_with_no_pagination
@@ -55,6 +55,32 @@ defmodule Ash.Test.Actions.StreamTest do
     count =
       Post
       |> Api.stream!(batch_size: 5)
+      |> Enum.count()
+
+    assert count == 10
+  end
+
+  test "records can be streamed using limit/offset strategy" do
+    1..10
+    |> Stream.map(&%{title: "title#{&1}"})
+    |> Api.bulk_create!(Post, :create)
+
+    count =
+      Post
+      |> Api.stream!(batch_size: 5, stream_with: :offset)
+      |> Enum.count()
+
+    assert count == 10
+  end
+
+  test "records can be streamed using full_read strategy" do
+    1..10
+    |> Stream.map(&%{title: "title#{&1}"})
+    |> Api.bulk_create!(Post, :create)
+
+    count =
+      Post
+      |> Api.stream!(batch_size: 5, stream_with: :full_read)
       |> Enum.count()
 
     assert count == 10

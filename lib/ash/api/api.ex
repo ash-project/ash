@@ -157,11 +157,66 @@ defmodule Ash.Api do
   @doc false
   def read_opts_schema, do: @read_opts_schema
 
+  @stream_opts [
+                 batch_size: [
+                   type: :integer,
+                   doc:
+                     "How many records to request in each query run. Defaults to the pagination limits on the resource, or 250."
+                 ],
+                 allow_stream_with: [
+                   type: {:one_of, [:keyset, :offset, :full_read]},
+                   doc:
+                     "The 'worst' strategy allowed to be used to fetch records. See `Ash.Api.stream!/2` docs for more.",
+                   default: :keyset
+                 ],
+                 stream_with: [
+                   type: {:one_of, [:keyset, :offset, :full_read]},
+                   doc:
+                     "The specific strategy to use to fetch records. See `Ash.Api.stream!/2` docs for more."
+                 ]
+               ]
+               |> merge_schemas(
+                 @read_opts_schema,
+                 "Read Options"
+               )
+
   @doc """
   Streams the results of a query.
 
-  This utilizes keyset pagination to accomplish this stream, and for that reason,
-  the action for the query must support keyset pagination.
+  ## Strategies
+
+  There are three strategies supported, and the best one available is always chosen. They are,
+  in order from best to worst:
+
+  - `:keyset`
+  - `:offset`
+  - `:full_read`
+
+  By default, only `:keyset` is supported. If you want to allow worse strategies to be used, pass
+  the worst one you wish to allow as the `allow_stream_with` option, i.e `allow_stream_with: :full_read`.
+  If you wish to specify a specific strategy to use, pass `stream_with: :strategy_name`.
+
+  ### Keyset
+
+  This utilizes keyset pagination to accomplish this stream. The action must support keyset pagination.
+  This is the most efficient way to stream a query, because it works by using filters which can benefit
+  from indexes in the data layer.
+
+  ### Offset
+
+  This utilizes offset/limit to accomplish this stream. If the action supports offset pagination, that will
+  be used. Otherwise, if the data layer supports limit/offset, then explicit limits/offsets will be used.
+  This is a much less efficient way of streaming a resource than `keyset`. To use limit/offset to reliably
+  stream, a sort must always be applied, and limit/offset in the data layer will generally require sorting
+  the entire table to figure out what is in each batch.
+
+  ### Full Read
+
+  This reads the entire table into memory with no limit. This is, generally speaking, the least efficient.
+
+  ## Options
+
+  #{Spark.OptionsHelpers.docs(@stream_opts)}
   """
   @callback stream!(Ash.Query.t(), opts :: Keyword.t()) :: Enumerable.t(Ash.Resource.record())
 
@@ -482,11 +537,20 @@ defmodule Ash.Api do
                                type: :map,
                                doc:
                                  "A map of atomic updates to apply. See `Ash.Changeset.atomic_update/3` for more."
+                             ],
+                             stream_batch_size: [
+                               type: :integer,
+                               doc:
+                                 "Batch size to use if provided a query and the query must be streamed"
                              ]
                            ]
                            |> merge_schemas(
                              Keyword.delete(@global_opts, :action),
                              "Global options"
+                           )
+                           |> merge_schemas(
+                             Keyword.delete(@stream_opts, :batch_size),
+                             "Stream Options"
                            )
                            |> merge_schemas(
                              @shared_created_update_and_destroy_opts_schema,
@@ -502,11 +566,20 @@ defmodule Ash.Api do
                                 type: {:spark, Ash.Resource},
                                 doc:
                                   "The resource being updated. This must be provided if the input given is a stream, so we know ahead of time what the resource being updated is."
+                              ],
+                              stream_batch_size: [
+                                type: :integer,
+                                doc:
+                                  "Batch size to use if provided a query and the query must be streamed"
                               ]
                             ]
                             |> merge_schemas(
                               Keyword.delete(@global_opts, :action),
                               "Global options"
+                            )
+                            |> merge_schemas(
+                              Keyword.delete(@stream_opts, :batch_size),
+                              "Stream Options"
                             )
                             |> merge_schemas(
                               @shared_created_update_and_destroy_opts_schema,
@@ -2086,70 +2159,9 @@ defmodule Ash.Api do
   @spec stream!(api :: module(), query :: Ash.Query.t(), opts :: Keyword.t()) ::
           Enumerable.t(Ash.Resource.record())
   def stream!(api, query, opts \\ []) do
-    query = Ash.Query.to_query(query)
+    opts = Spark.OptionsHelpers.validate!(opts, @stream_opts)
 
-    query =
-      if query.action do
-        query
-      else
-        Ash.Query.for_read(
-          query,
-          Ash.Resource.Info.primary_action!(query.resource, :read).name
-        )
-      end
-
-    if !query.action.pagination || !query.action.pagination.keyset? do
-      raise Ash.Error.Invalid.NonStreamableAction,
-        resource: query.resource,
-        action: query.action
-    end
-
-    {batch_size, opts} =
-      Keyword.pop(
-        opts,
-        :batch_size,
-        query.action.pagination.default_limit || query.action.pagination.max_page_size || 100
-      )
-
-    Stream.resource(
-      fn -> nil end,
-      fn
-        false ->
-          {:halt, nil}
-
-        after_keyset ->
-          keyset = if after_keyset != nil, do: [after: after_keyset], else: []
-          page_opts = Keyword.merge(keyset, limit: batch_size)
-
-          opts =
-            [
-              page: page_opts
-            ]
-            |> Keyword.merge(opts)
-
-          case api.read!(query, opts) do
-            %{more?: true, results: results} ->
-              {results, List.last(results).__metadata__.keyset}
-
-            %{results: results} ->
-              {results, false}
-          end
-      end,
-      & &1
-    )
-    |> take_query_limit(query)
-  end
-
-  # This is technically an inefficient way to do this
-  # because the last request we make will take `query.limit` instead of
-  # calculating a smaller limit based on how many records we've received
-  # so far.
-  defp take_query_limit(stream, query) do
-    if query.limit do
-      Stream.take(stream, query.limit)
-    else
-      stream
-    end
+    Ash.Actions.Read.Stream.run!(api, query, opts)
   end
 
   @doc false

@@ -28,7 +28,18 @@ defmodule Ash.Actions.Destroy.Bulk do
         for_bulk_destroy: action.name
     end
 
-    run(api, api.stream!(query), action, input, Keyword.put(opts, :resource, query.resource))
+    read_opts =
+      opts
+      |> Keyword.drop([:resource, :stream_batch_size, :batch_size])
+      |> Keyword.put(:batch_size, opts[:stream_batch_size])
+
+    run(
+      api,
+      api.stream!(query, read_opts),
+      action,
+      input,
+      Keyword.put(opts, :resource, query.resource)
+    )
   end
 
   def run(api, stream, action, input, opts) do
