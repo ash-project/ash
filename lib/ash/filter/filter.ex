@@ -2569,13 +2569,23 @@ defmodule Ash.Filter do
               {input || %{}, nested}
 
             nested ->
-              {%{}, nested}
+              cond do
+                is_map(nested) and Map.has_key?(nested, "input") ->
+                  {Map.get(nested, "input"), Map.delete(nested, "input")}
+
+                is_map(nested) and Map.has_key?(nested, :input) ->
+                  {Map.get(nested, :input), Map.delete(nested, :input)}
+
+                true ->
+                  {%{}, nested}
+              end
           end
 
         with {:ok, args} <-
                Ash.Query.validate_calculation_arguments(
                  resource_calculation,
-                 input
+                 input,
+                 !context[:input?]
                ),
              {:ok, calculation} <-
                Calculation.new(
@@ -3439,6 +3449,10 @@ defmodule Ash.Filter do
 
   defp parse_predicates(value, field, context) when not is_list(value) and not is_map(value) do
     parse_predicates([eq: value], field, context)
+  end
+
+  defp parse_predicates(value, field, context) when value == %{} do
+    parse_predicates([eq: true], field, context)
   end
 
   defp parse_predicates(%struct{} = value, field, context)

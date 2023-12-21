@@ -1446,7 +1446,7 @@ defmodule Ash.Query do
   end
 
   @doc false
-  def validate_calculation_arguments(calculation, args) do
+  def validate_calculation_arguments(calculation, args, allow_expr? \\ true) do
     args =
       if Keyword.keyword?(args) do
         Map.new(args)
@@ -1464,7 +1464,7 @@ defmodule Ash.Query do
         )
 
       cond do
-        expr?(value) && argument.allow_expr? ->
+        expr?(value) && argument.allow_expr? && allow_expr? ->
           {:cont,
            {:ok,
             Map.put(
