@@ -864,6 +864,18 @@ defmodule Ash.Actions.Destroy.Bulk do
                         must_return_records_for_changes?,
                     tenant: opts[:tenant]
                   })
+                  |> Enum.flat_map(fn
+                    {:ok, result} ->
+                      [result]
+
+                    {:error, error} ->
+                      store_error(ref, error, opts)
+                      []
+
+                    {:notifications, notifications} ->
+                      store_notification(ref, notifications, opts)
+                      []
+                  end)
                 else
                   [changeset] = batch
 
@@ -923,9 +935,6 @@ defmodule Ash.Actions.Destroy.Bulk do
           case result do
             {:ok, result} ->
               result
-
-            :ok ->
-              []
 
             {:error, error} ->
               store_error(ref, error, opts)

@@ -21,6 +21,19 @@ defmodule Ash.Resource.ManualCreate do
               | {:ok, Ash.Resource.record(), %{notifications: [Ash.Notifier.Notification.t()]}}
               | {:error, term}
 
+  @callback bulk_create(
+              changesets :: Enumerable.t(Ash.Changeset.t()),
+              opts :: Keyword.t(),
+              context :: context()
+            ) ::
+              list(
+                {:ok, Ash.Resource.record()}
+                | {:error, Ash.Error.t()}
+                | {:notifications, list(Ash.Notifier.Notification.t())}
+              )
+
+  @optional_callbacks [bulk_create: 3]
+
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.ManualCreate
