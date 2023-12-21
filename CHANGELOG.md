@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.15](https://github.com/ash-project/ash/compare/v2.17.14...v2.17.15) (2023-12-21)
+
+
+
+
+### Improvements:
+
+* support streaming without keyset pagination
+
+* add callbacks for bulk actions on manual actions
+
+* base case iterative bulk destroy implemented
+
+* add iterative, streaming implementation for bulk updates
+
+* test `ASH_THREE` subprojects
+
 ## [v2.17.14](https://github.com/ash-project/ash/compare/v2.17.13...v2.17.14) (2023-12-20)
 
 
