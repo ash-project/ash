@@ -5,6 +5,7 @@ defmodule Ash.Query.Call do
 
   defimpl Inspect do
     import Inspect.Algebra
+    import Ash.Query.InspectHelpers
 
     def inspect(%{name: :if, operator?: false, args: [condition, blocks]} = call, opts) do
       if Keyword.keyword?(blocks) do
@@ -54,17 +55,34 @@ defmodule Ash.Query.Call do
     end
 
     defp do_inspect(call, inspect_opts) do
+      container_type = container_type(inspect_opts)
+
       if call.operator? do
-        concat([
-          to_doc(
-            Enum.at(call.args, 0),
-            inspect_opts
-          ),
-          " ",
-          to_string(call.name),
-          " ",
-          to_doc(Enum.at(call.args, 1), inspect_opts)
-        ])
+        if container_type do
+          concat([
+            "(",
+            to_doc(
+              Enum.at(call.args, 0),
+              inspect_opts
+            ),
+            " ",
+            to_string(call.name),
+            " ",
+            to_doc(Enum.at(call.args, 1), inspect_opts),
+            ")"
+          ])
+        else
+          concat([
+            to_doc(
+              Enum.at(call.args, 0),
+              inspect_opts
+            ),
+            " ",
+            to_string(call.name),
+            " ",
+            to_doc(Enum.at(call.args, 1), inspect_opts)
+          ])
+        end
       else
         prefix =
           if call.relationship_path == [] do

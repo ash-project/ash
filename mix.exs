@@ -14,7 +14,7 @@ defmodule Ash.MixProject do
       app: :ash,
       version: @version,
       elixir: "~> 1.11",
-      consolidate_protocols: Mix.env() != :test,
+      consolidate_protocols: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       package: package(),

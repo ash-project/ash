@@ -416,12 +416,20 @@ defmodule Ash.Expr do
 
   defp soft_escape(other, _), do: other
 
+  defp do_ref({left, _, nil}, _right) when left in @operator_symbols do
+    raise ArgumentError, "invalid use of `.` in expression. Use `[]` to access nested fields"
+  end
+
   defp do_ref({left, _, nil}, right) do
     %Ash.Query.Ref{relationship_path: [left], attribute: right}
   end
 
   defp do_ref({{:., _, [_, _]} = left, _, _}, right) do
     do_ref(left, right)
+  end
+
+  defp do_ref({:., _, [_left, _right]}, far_right) when far_right in @operator_symbols do
+    raise ArgumentError, "invalid use of `.` in expression. Use `[]` to access nested fields"
   end
 
   defp do_ref({:., _, [left, right]}, far_right) do
@@ -432,6 +440,14 @@ defmodule Ash.Expr do
       :error ->
         :error
     end
+  end
+
+  defp do_ref({left, _, _}, right) when left in @operator_symbols and is_atom(right) do
+    raise ArgumentError, "invalid use of `.` in expression. Use `[]` to access nested fields"
+  end
+
+  defp do_ref({left, _, _}, right) when is_atom(left) and right in @operator_symbols do
+    raise ArgumentError, "invalid use of `.` in expression. Use `[]` to access nested fields"
   end
 
   defp do_ref({left, _, _}, right) when is_atom(left) and is_atom(right) do
