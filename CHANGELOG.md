@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.16](https://github.com/ash-project/ash/compare/v2.17.15...v2.17.16) (2023-12-23)
+
+
+
+
+### Improvements:
+
+* simplify used aggregate detection
+
+* add `lazy/1` to expressions
+
+* support providing an `input` key in predicate maps
+
 ## [v2.17.15](https://github.com/ash-project/ash/compare/v2.17.14...v2.17.15) (2023-12-21)
 
 
