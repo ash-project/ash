@@ -3463,6 +3463,15 @@ defmodule Ash.Filter do
       %__MODULE__{expression: expression} = filter ->
         %{filter | expression: move_to_relationship_path(expression, relationship_path)}
 
+      list when is_list(list) ->
+        Enum.map(list, &move_to_relationship_path(&1, relationship_path))
+
+      value when is_map(value) and not is_struct(value) ->
+        Map.new(value, fn {key, value} ->
+          {move_to_relationship_path(key, relationship_path),
+           move_to_relationship_path(value, relationship_path)}
+        end)
+
       other ->
         other
     end

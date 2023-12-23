@@ -1051,7 +1051,7 @@ defmodule Ash.Api do
                     {:ok, true}
                   end
 
-                %Ash.Changeset{data: data, action_type: type, resource: resource}
+                %Ash.Changeset{data: data, action_type: type, resource: resource, tenant: tenant}
                 when type in [:update, :destroy] ->
                   pkey = Ash.Resource.Info.primary_key(resource)
                   pkey_value = Map.take(data, pkey)
@@ -1061,6 +1061,7 @@ defmodule Ash.Api do
                   else
                     query
                     |> Ash.Query.do_filter(pkey_value)
+                    |> Ash.Query.set_tenant(tenant)
                     |> Ash.Query.data_layer_query()
                     |> case do
                       {:ok, data_layer_query} ->
