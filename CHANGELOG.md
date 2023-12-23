@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.17](https://github.com/ash-project/ash/compare/v2.17.16...v2.17.17) (2023-12-23)
+
+
+
+
+### Bug Fixes:
+
+* properly move maps & lists to expression paths
+
+* set tenant when running authorization queries
+
 ## [v2.17.16](https://github.com/ash-project/ash/compare/v2.17.15...v2.17.16) (2023-12-23)
 
 
