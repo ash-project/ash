@@ -681,6 +681,7 @@ defmodule Ash.Filter.Runtime do
   defp resolve_ref(
          %Ash.Query.Ref{
            relationship_path: relationship_path,
+           resource: resource,
            attribute: %Ash.Query.Calculation{
              module: module,
              opts: opts,
@@ -691,7 +692,7 @@ defmodule Ash.Filter.Runtime do
          },
          record,
          parent,
-         resource,
+         _resource,
          unknown_on_unknown_refs?
        ) do
     result =
@@ -722,25 +723,11 @@ defmodule Ash.Filter.Runtime do
           expression = module.expression(opts, context)
 
           hydrated =
-            case record do
-              %resource{} ->
-                Ash.Filter.hydrate_refs(expression, %{
-                  resource: resource,
-                  public?: false,
-                  parent_stack: parent_stack(parent)
-                })
-
-              _ ->
-                if resource do
-                  Ash.Filter.hydrate_refs(expression, %{
-                    resource: resource,
-                    public?: false,
-                    parent_stack: parent_stack(parent)
-                  })
-                else
-                  {:ok, expression}
-                end
-            end
+            Ash.Filter.hydrate_refs(expression, %{
+              resource: resource,
+              public?: false,
+              parent_stack: parent_stack(parent)
+            })
 
           with {:ok, hydrated} <- hydrated do
             hydrated
@@ -771,7 +758,6 @@ defmodule Ash.Filter.Runtime do
             if unknown_on_unknown_refs? do
               :unknown
             else
-              raise "WHAT"
               {:ok, nil}
             end
           end

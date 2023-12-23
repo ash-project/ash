@@ -302,6 +302,10 @@ defmodule Ash.Expr do
     |> do_expr(escape?)
   end
 
+  def do_expr({:lazy, _, args}, escape?) do
+    soft_escape(%Ash.Query.Call{name: :lazy, args: args, operator?: false}, escape?)
+  end
+
   def do_expr({:fragment, _, [first | _]}, _escape?) when not is_binary(first) do
     raise "to prevent SQL injection attacks, fragment(...) does not allow strings " <>
             "to be interpolated as the first argument via the `^` operator, got: `#{inspect(first)}`"

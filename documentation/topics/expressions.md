@@ -46,6 +46,8 @@ The following functions are built in:
 - `string_split/1` | Splits a string on spaces
 - `string_split/2` | As above, but with a specific delimiter
 - `string_split/3` | As above, but with options. See the function for the available options.
+- `string_length/1` | Returns the length of a given string, as reported by `String.length/1`
+- `string_trim/1` | Trims unicode whitespace from the beginning and the end of a string
 - `at/2` | Get an element from a list, i.e `at(list, 1)`
 - `round/1` | Round a float, decimal or int to 0 precision, i.e `round(num)`
 - `round/2` | Round a float, decimal or int to the provided precision or less, i.e `round(1.1234, 3) == 1.1234` and `round(1.12, 3) == 1.12`
@@ -69,6 +71,10 @@ The following functions are built in:
 
 - `cond` - `cond` is transformed to a series of `if` expressions under the hood
 - `item[:key] or item["key"]` - accesses keys in a map. In both cases, it prefers a matching atom key, falling back to a matching string key. This is to aid with data stores that store embeds as JSON with string keys (like AshPostgres), so that this expression behaves the same in the data layer as it does in Elixir.
+
+## Escape Hatches
+
+- `lazy/1` - Takes an MFA and evaluates it just before running the query. This is important for calculations, because the `expression/2` callback should be *stable* (returns the same value given the same input). For example `lazy({ULID, :generate, [timestamp_input]})`
 
 ## Inline Aggregates
 

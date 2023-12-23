@@ -91,43 +91,9 @@ defmodule Ash.Resource.Calculation.Expression do
            public?: false
          }) do
       {:ok, expression} ->
-        further_calculations =
-          expression
-          |> Ash.Filter.used_calculations(
-            query.resource,
-            query.calculations,
-            query.aggregates
-          )
-
-        aggs_from_this_calc =
-          expression
-          |> Ash.Filter.used_aggregates()
-
-        aggs_from_calcs =
-          further_calculations
-          |> Enum.flat_map(fn calculation ->
-            calculation_context =
-              calculation.context
-              |> Map.put(:context, query.context)
-
-            case Ash.Filter.hydrate_refs(
-                   calculation.module.expression(calculation.opts, calculation_context),
-                   %{
-                     resource: query.resource,
-                     calculations: query.calculations,
-                     aggregates: query.aggregates,
-                     public?: false
-                   }
-                 ) do
-              {:ok, expression} ->
-                Ash.Filter.used_aggregates(expression)
-
-              _ ->
-                []
-            end
-          end)
-
-        Enum.uniq(aggs_from_calcs ++ aggs_from_this_calc)
+        expression
+        |> Ash.Filter.used_aggregates()
+        |> Enum.uniq()
 
       {:error, _} ->
         []
