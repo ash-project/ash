@@ -22,7 +22,6 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
         accept []
 
         change fn changeset, context ->
-          IO.inspect(context)
           Ash.Changeset.change_attribute(changeset, :title, context.authorize?)
         end
       end
