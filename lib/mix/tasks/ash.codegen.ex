@@ -29,6 +29,8 @@ defmodule Mix.Tasks.Ash.Codegen do
         ]
       )
 
+    opts = Keyword.put_new(opts, :name, name)
+
     if !opts[:name] && !opts[:dry_run] && !opts[:check] do
       raise ArgumentError, """
       Name must be provided when running `ash.codegen`, unless `--dry-run` or `--check` is also provided.
