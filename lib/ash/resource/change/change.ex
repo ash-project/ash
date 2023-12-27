@@ -135,7 +135,7 @@ defmodule Ash.Resource.Change do
               | {:non_atomic, Ash.Changeset.t()}
               | {:error, term()}
 
-  @callback after_atomic(Ash.Changeset.t(), Keyword.t(), Ash.Resource.record()) ::
+  @callback after_atomic(Ash.Changeset.t(), Keyword.t(), Ash.Resource.record(), context()) ::
               {:ok, Ash.Resource.record()} | {:error, term()}
 
   @optional_callbacks before_batch: 3,
@@ -143,7 +143,7 @@ defmodule Ash.Resource.Change do
                       batch_change: 3,
                       change: 3,
                       atomic: 3,
-                      after_atomic: 3
+                      after_atomic: 4
 
   defmacro __using__(_) do
     quote do

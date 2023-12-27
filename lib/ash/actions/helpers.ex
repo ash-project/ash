@@ -514,7 +514,7 @@ defmodule Ash.Actions.Helpers do
 
   def load({:ok, result, instructions}, changeset, api, opts) do
     if changeset.load in [nil, []] do
-      {:ok, result, %{}}
+      {:ok, result, instructions}
     else
       query =
         changeset.resource

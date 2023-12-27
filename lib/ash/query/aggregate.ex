@@ -366,7 +366,6 @@ defmodule Ash.Query.Aggregate do
     initial_query.aggregates
     |> Map.values()
     |> Enum.map(&{{&1.resource, &1.relationship_path, []}, &1})
-    |> Enum.concat(aggregates_from_filter(initial_query))
     |> Enum.group_by(fn {{resource, relationship_path, ref_path}, aggregate} ->
       action =
         aggregate.read_action ||
@@ -461,44 +460,6 @@ defmodule Ash.Query.Aggregate do
         end
       end
     end)
-  end
-
-  @doc false
-  def aggregates_from_filter(query) do
-    aggs =
-      query.filter
-      |> Ash.Filter.used_aggregates(:all, true)
-      |> Enum.reject(&(&1.relationship_path == []))
-      |> Enum.map(fn ref ->
-        {{ref.resource, ref.attribute.relationship_path, ref.attribute.relationship_path},
-         ref.attribute}
-      end)
-
-    calculations =
-      query.filter
-      |> Ash.Filter.used_calculations(query.resource)
-      |> Enum.flat_map(fn calculation ->
-        expression = calculation.module.expression(calculation.opts, calculation.context)
-
-        case Ash.Filter.hydrate_refs(expression, %{
-               resource: query.resource,
-               aggregates: query.aggregates,
-               calculations: query.calculations,
-               relationship_path: [],
-               public?: false
-             }) do
-          {:ok, expression} ->
-            Ash.Filter.used_aggregates(expression)
-
-          _ ->
-            []
-        end
-      end)
-      |> Enum.map(fn aggregate ->
-        {{query.resource, aggregate.relationship_path, []}, aggregate}
-      end)
-
-    Enum.uniq_by(aggs ++ calculations, &elem(&1, 1).name)
   end
 
   defp auth_request(

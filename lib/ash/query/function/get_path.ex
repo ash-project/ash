@@ -75,8 +75,11 @@ defmodule Ash.Query.Function.GetPath do
 
   defimpl Inspect do
     import Inspect.Algebra
+    import Ash.Query.InspectHelpers
 
     def inspect(%{arguments: [value, path]}, opts) do
+      opts = put_container_type(opts, :get_path)
+
       path_items =
         path
         |> Enum.map(fn item ->

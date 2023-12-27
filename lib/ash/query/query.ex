@@ -1446,7 +1446,7 @@ defmodule Ash.Query do
   end
 
   @doc false
-  def validate_calculation_arguments(calculation, args) do
+  def validate_calculation_arguments(calculation, args, allow_expr? \\ true) do
     args =
       if Keyword.keyword?(args) do
         Map.new(args)
@@ -1464,7 +1464,7 @@ defmodule Ash.Query do
         )
 
       cond do
-        expr?(value) && argument.allow_expr? ->
+        expr?(value) && argument.allow_expr? && allow_expr? ->
           {:cont,
            {:ok,
             Map.put(
@@ -2602,26 +2602,6 @@ defmodule Ash.Query do
   def data_layer_query(%{resource: resource, api: api} = ash_query, opts) do
     query = opts[:initial_query] || Ash.DataLayer.resource_to_query(resource, api)
 
-    filter_aggregates =
-      if ash_query.filter do
-        Ash.Filter.used_aggregates(ash_query.filter)
-      else
-        []
-      end
-
-    sort_aggregates =
-      Enum.flat_map(ash_query.sort, fn {field, _} ->
-        case Map.fetch(ash_query.aggregates, field) do
-          :error ->
-            []
-
-          {:ok, agg} ->
-            [agg]
-        end
-      end)
-
-    aggregates = Enum.uniq_by(filter_aggregates ++ sort_aggregates, & &1.name)
-
     with {:ok, query} <-
            Ash.DataLayer.set_context(
              resource,
@@ -2631,8 +2611,6 @@ defmodule Ash.Query do
          {:ok, query} <-
            add_tenant(query, ash_query),
          {:ok, query} <- Ash.DataLayer.select(query, ash_query.select, ash_query.resource),
-         {:ok, query} <-
-           add_aggregates(query, ash_query, aggregates),
          {:ok, query} <-
            Ash.DataLayer.sort(query, ash_query.sort, resource),
          {:ok, query} <-
@@ -2668,45 +2646,6 @@ defmodule Ash.Query do
     else
       {:error, error} -> {:error, error}
       _ -> {:ok, query}
-    end
-  end
-
-  defp add_aggregates(query, ash_query, aggregates) do
-    resource = ash_query.resource
-
-    used =
-      ash_query
-      |> Ash.Query.Aggregate.aggregates_from_filter()
-      |> Enum.map(&elem(&1, 1))
-
-    aggregates =
-      aggregates
-      |> Enum.concat(used)
-      |> Enum.map(&add_tenant_to_aggregate_query(&1, ash_query))
-
-    Ash.DataLayer.add_aggregates(query, aggregates, resource)
-  end
-
-  defp add_tenant_to_aggregate_query(aggregate, %{tenant: nil}), do: aggregate
-
-  defp add_tenant_to_aggregate_query(%{query: nil} = aggregate, ash_query) do
-    aggregate_with_query = %{aggregate | query: new(aggregate.resource)}
-    add_tenant_to_aggregate_query(aggregate_with_query, ash_query)
-  end
-
-  defp add_tenant_to_aggregate_query(aggregate, ash_query) do
-    case Ash.Resource.Info.multitenancy_strategy(aggregate.resource) do
-      nil ->
-        aggregate
-
-      :attribute ->
-        attribute = Ash.Resource.Info.multitenancy_attribute(aggregate.resource)
-        {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(ash_query.resource)
-        attribute_value = apply(m, f, [ash_query.tenant | a])
-        %{aggregate | query: filter(aggregate.query, ^[{attribute, attribute_value}])}
-
-      :context ->
-        %{aggregate | query: set_tenant(aggregate.query, ash_query.tenant)}
     end
   end
 

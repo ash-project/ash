@@ -154,65 +154,74 @@ defmodule Ash.Actions.Destroy do
           {:error, changeset}
 
         changeset ->
-          if changeset.action.manual do
-            {mod, action_opts} = changeset.action.manual
+          case Helpers.load({:ok, changeset.data, %{}}, changeset, api,
+                 actor: opts[:actor],
+                 authorize?: opts[:authorize?],
+                 tracer: opts[:tracer]
+               ) do
+            {:ok, new_data, _} ->
+              changeset = %{changeset | data: new_data}
 
-            if result = changeset.context[:private][:action_result] do
-              result
-            else
-              mod.destroy(changeset, action_opts, %{
-                actor: opts[:actor],
-                tenant: changeset.tenant,
-                authorize?: opts[:authorize?],
-                api: changeset.api
-              })
-              |> validate_manual_action_return_result!(changeset.resource, changeset.action)
-            end
-          else
-            if result = changeset.context[:private][:action_result] do
-              result
-            else
-              changeset.resource
-              |> Ash.DataLayer.destroy(changeset)
-              |> Ash.Actions.Helpers.rollback_if_in_transaction(changeset)
-              |> case do
-                :ok ->
-                  {:ok,
-                   Ash.Resource.set_meta(changeset.data, %Ecto.Schema.Metadata{
-                     state: :deleted,
-                     schema: changeset.resource
-                   })}
+              if changeset.action.manual do
+                {mod, action_opts} = changeset.action.manual
 
-                {:error, error} ->
-                  {:error, Ash.Changeset.add_error(changeset, error)}
-              end
-            end
-          end
-          |> then(fn result ->
-            case result do
-              {:ok, destroyed} ->
-                if opts[:return_destroyed?] do
-                  {:ok, destroyed, %{notifications: []}}
-                  |> Helpers.load(changeset, api,
-                    actor: opts[:actor],
-                    authorize?: opts[:authorize?],
-                    tracer: opts[:tracer]
-                  )
-                  |> Helpers.notify(changeset, opts)
-                  |> Helpers.select(changeset)
-                  |> Helpers.restrict_field_access(changeset)
+                if result = changeset.context[:private][:action_result] do
+                  result
                 else
-                  {:ok, destroyed, %{notifications: []}}
-                  |> Helpers.notify(changeset, opts)
+                  mod.destroy(changeset, action_opts, %{
+                    actor: opts[:actor],
+                    tenant: changeset.tenant,
+                    authorize?: opts[:authorize?],
+                    api: changeset.api
+                  })
+                  |> validate_manual_action_return_result!(changeset.resource, changeset.action)
                 end
+              else
+                if result = changeset.context[:private][:action_result] do
+                  result
+                else
+                  changeset.resource
+                  |> Ash.DataLayer.destroy(changeset)
+                  |> Ash.Actions.Helpers.rollback_if_in_transaction(changeset)
+                  |> case do
+                    :ok ->
+                      {:ok, data} = Ash.Changeset.apply_attributes(changeset, force?: true)
 
-              {:error, %Ash.Changeset{} = changeset} ->
-                {:error, changeset}
+                      {:ok,
+                       Ash.Resource.set_meta(data, %Ecto.Schema.Metadata{
+                         state: :deleted,
+                         schema: changeset.resource
+                       })}
 
-              other ->
-                other
-            end
-          end)
+                    {:error, error} ->
+                      {:error, Ash.Changeset.add_error(changeset, error)}
+                  end
+                end
+              end
+              |> then(fn result ->
+                case result do
+                  {:ok, destroyed} ->
+                    if opts[:return_destroyed?] do
+                      {:ok, destroyed, %{notifications: []}}
+                      |> Helpers.notify(changeset, opts)
+                      |> Helpers.select(changeset)
+                      |> Helpers.restrict_field_access(changeset)
+                    else
+                      {:ok, destroyed, %{notifications: []}}
+                      |> Helpers.notify(changeset, opts)
+                    end
+
+                  {:error, %Ash.Changeset{} = changeset} ->
+                    {:error, changeset}
+
+                  other ->
+                    other
+                end
+              end)
+
+            other ->
+              other
+          end
       end,
       transaction?: Keyword.get(opts, :transaction?, true) && changeset.action.transaction?,
       rollback_on_error?: opts[:rollback_on_error?],

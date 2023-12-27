@@ -5,6 +5,47 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.17](https://github.com/ash-project/ash/compare/v2.17.16...v2.17.17) (2023-12-23)
+
+
+
+
+### Bug Fixes:
+
+* properly move maps & lists to expression paths
+
+* set tenant when running authorization queries
+
+## [v2.17.16](https://github.com/ash-project/ash/compare/v2.17.15...v2.17.16) (2023-12-23)
+
+
+
+
+### Improvements:
+
+* simplify used aggregate detection
+
+* add `lazy/1` to expressions
+
+* support providing an `input` key in predicate maps
+
+## [v2.17.15](https://github.com/ash-project/ash/compare/v2.17.14...v2.17.15) (2023-12-21)
+
+
+
+
+### Improvements:
+
+* support streaming without keyset pagination
+
+* add callbacks for bulk actions on manual actions
+
+* base case iterative bulk destroy implemented
+
+* add iterative, streaming implementation for bulk updates
+
+* test `ASH_THREE` subprojects
+
 ## [v2.17.14](https://github.com/ash-project/ash/compare/v2.17.13...v2.17.14) (2023-12-20)
 
 

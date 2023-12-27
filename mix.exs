@@ -7,14 +7,14 @@ defmodule Ash.MixProject do
   designed to be used by multiple front ends.
   """
 
-  @version "2.17.14"
+  @version "2.17.17"
 
   def project do
     [
       app: :ash,
       version: @version,
       elixir: "~> 1.11",
-      consolidate_protocols: Mix.env() != :test,
+      consolidate_protocols: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       package: package(),
