@@ -451,7 +451,12 @@ defmodule Ash.Query do
   def for_read(query, action_name, args \\ %{}, opts \\ []) do
     query = to_query(query)
 
-    {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
+    {query, opts} =
+      Ash.Actions.Helpers.add_process_context(
+        query.api || opts[:api] || Ash.Resource.Info.api(query.resource),
+        query,
+        opts
+      )
 
     query =
       query
