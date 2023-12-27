@@ -1,9 +1,6 @@
 defmodule Ash.Resource.Transformers.CreateJoinRelationship do
   @moduledoc """
   Creates an automatically named `has_many` relationship for each many_to_many.
-
-  This will likely not be around for long, as our logic around many to many relationships
-  will update soon.
   """
   use Spark.Dsl.Transformer
 
