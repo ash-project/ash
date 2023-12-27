@@ -1663,6 +1663,56 @@ defmodule Ash.Api do
                 )
 
   @doc """
+  Updates all items in the provided enumerable or query with the provided input. See `c:bulk_update/4` for more.
+  """
+  @callback bulk_update!(
+              Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
+              atom,
+              input :: map,
+              Keyword.t()
+            ) ::
+              Ash.BulkResult.t() | no_return
+
+  @doc """
+  Updates all items in the provided enumerable or query with the provided input.
+
+  Currently, this streams each record and updates it. Soon, this will use special data layer
+  callbacks to run these update statements in a single query.
+  """
+  @callback bulk_update(
+              Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
+              atom,
+              input :: map,
+              Keyword.t()
+            ) ::
+              Ash.BulkResult.t()
+
+  @doc """
+  Destroys all items in the provided enumerable or query with the provided input. See `c:bulk_destroy/4` for more.
+  """
+  @callback bulk_destroy!(
+              Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
+              atom,
+              input :: map,
+              Keyword.t()
+            ) ::
+              Ash.BulkResult.t() | no_return
+
+  @doc """
+  Destroys all items in the provided enumerable or query with the provided input.
+
+  Currently, this streams each record and destroys it. Soon, this will use special data layer
+  callbacks to run these update statements in a single query.
+  """
+  @callback bulk_destroy(
+              Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
+              atom,
+              input :: map,
+              Keyword.t()
+            ) ::
+              Ash.BulkResult.t()
+
+  @doc """
   Creates many records, raising on any errors. See `bulk_create/2` for more.
 
   #{Spark.OptionsHelpers.docs(@bulk_create_opts_schema)}
