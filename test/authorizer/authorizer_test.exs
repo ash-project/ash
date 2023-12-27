@@ -74,23 +74,22 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       end
     end
 
-    # TODO: this needs to be addressed in ash 3.0
-    # test "authorize :by_default authorizes if actor is set" do
-    #   Application.put_env(:ash, Api,
-    #     authorization: [
-    #       authorize: :by_default
-    #     ]
-    #   )
+    test "authorize :by_default authorizes if actor is set" do
+      Application.put_env(:ash, Api,
+        authorization: [
+          authorize: :by_default
+        ]
+      )
 
-    #   start_supervised({Ash.Test.Authorizer, strict_check: :authorized})
+      start_supervised({Ash.Test.Authorizer, strict_check: :authorized})
 
-    #   post =
-    #     Post
-    #     |> Ash.Changeset.for_create(:title_is_authorization, %{}, actor: :an_actor)
-    #     |> Api.create!()
+      post =
+        Post
+        |> Ash.Changeset.for_create(:title_is_authorization, %{}, actor: :an_actor)
+        |> Api.create!()
 
-    #   assert post.title == "true"
-    # end
+      assert post.title == "true"
+    end
 
     test "require_actor? requires an actor for all requests" do
       Application.put_env(:ash, Api,

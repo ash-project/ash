@@ -882,7 +882,7 @@ defmodule Ash.Changeset do
           do_for_action(%{changeset | action_type: :destroy}, action, params, opts)
         else
           {changeset, opts} =
-            Ash.Actions.Helpers.add_process_context(changeset.api || opts[:api], changeset, opts)
+            Ash.Actions.Helpers.add_process_context(changeset.api, changeset, opts)
 
           name =
             "changeset:" <> Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
@@ -916,7 +916,9 @@ defmodule Ash.Changeset do
               |> require_arguments(action)
               |> run_action_changes(
                 action,
-                Map.new(Keyword.take(opts, [:actor, :authorize?, :tracer])),
+                opts[:actor],
+                opts[:authorize?],
+                opts[:tracer],
                 metadata
               )
               |> add_validations(opts[:tracer], metadata, opts[:actor])
@@ -1097,8 +1099,7 @@ defmodule Ash.Changeset do
   end
 
   defp do_for_action(changeset, action_or_name, params, opts) do
-    {changeset, opts} =
-      Ash.Actions.Helpers.add_process_context(changeset.api || opts[:api], changeset, opts)
+    {changeset, opts} = Ash.Actions.Helpers.add_process_context(changeset.api, changeset, opts)
 
     if changeset.valid? do
       action = get_action_entity(changeset.resource, action_or_name)
@@ -1130,7 +1131,9 @@ defmodule Ash.Changeset do
               |> handle_params(action, params)
               |> run_action_changes(
                 action,
-                Map.new(Keyword.take(opts, [:actor, :authorize?, :tracer])),
+                opts[:actor],
+                opts[:authorize?],
+                opts[:tracer],
                 metadata
               )
               |> add_validations(opts[:tracer], metadata, opts[:actor])
@@ -1466,7 +1469,7 @@ defmodule Ash.Changeset do
     end)
   end
 
-  defp run_action_changes(changeset, %{changes: changes}, context, metadata) do
+  defp run_action_changes(changeset, %{changes: changes}, actor, authorize?, tracer, metadata) do
     changes = changes ++ Ash.Resource.Info.changes(changeset.resource, changeset.action_type)
 
     Enum.reduce(changes, changeset, fn
@@ -1475,19 +1478,17 @@ defmodule Ash.Changeset do
 
       %{change: {module, opts}, where: where}, changeset ->
         if Enum.all?(where || [], fn {module, opts} ->
-             Ash.Tracer.span :validation,
-                             "change condition: #{inspect(module)}",
-                             context[:tracer] do
+             Ash.Tracer.span :validation, "change condition: #{inspect(module)}", tracer do
                Ash.Tracer.telemetry_span [:ash, :validation], %{
                  resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
                  validation: inspect(module)
                } do
-                 Ash.Tracer.set_metadata(context[:tracer], :validation, metadata)
+                 Ash.Tracer.set_metadata(tracer, :validation, metadata)
 
                  opts =
                    Ash.Filter.build_filter_from_template(
                      opts,
-                     context[:actor],
+                     actor,
                      changeset.arguments,
                      changeset.context
                    )
@@ -1496,24 +1497,29 @@ defmodule Ash.Changeset do
                end
              end
            end) do
-          Ash.Tracer.span :change, "change: #{inspect(module)}", context[:tracer] do
+          Ash.Tracer.span :change, "change: #{inspect(module)}", tracer do
             Ash.Tracer.telemetry_span [:ash, :change], %{
               resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
               change: inspect(module)
             } do
               {:ok, opts} = module.init(opts)
 
-              Ash.Tracer.set_metadata(context[:tracer], :change, metadata)
+              Ash.Tracer.set_metadata(tracer, :change, metadata)
 
               opts =
                 Ash.Filter.build_filter_from_template(
                   opts,
-                  context[:actor],
+                  actor,
                   changeset.arguments,
                   changeset.context
                 )
 
-              module.change(changeset, opts, Map.put(context, :tenant, changeset.tenant))
+              module.change(changeset, opts, %{
+                actor: actor,
+                tenant: changeset.tenant,
+                authorize?: authorize? || false,
+                tracer: tracer
+              })
             end
           end
         else
@@ -1521,7 +1527,7 @@ defmodule Ash.Changeset do
         end
 
       %{validation: _} = validation, changeset ->
-        validate(changeset, validation, context[:tracer], metadata, context[:actor])
+        validate(changeset, validation, tracer, metadata, actor)
     end)
   end
 
