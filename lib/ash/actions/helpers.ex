@@ -143,7 +143,7 @@ defmodule Ash.Actions.Helpers do
     if api do
       if !internal?(query_or_changeset) && !Keyword.has_key?(opts, :actor) &&
            Ash.Api.Info.require_actor?(api) do
-        raise Ash.Error.Forbidden.ApiRequiresActor, api: api
+        raise Ash.Error.to_error_class(Ash.Error.Forbidden.ApiRequiresActor.exception(api: api))
       end
 
       opts

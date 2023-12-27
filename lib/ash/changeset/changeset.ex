@@ -500,7 +500,12 @@ defmodule Ash.Changeset do
       |> Map.put(:params, params)
       |> Map.put(:action, action)
 
-    {changeset, _opts} = Ash.Actions.Helpers.add_process_context(opts[:api], changeset, opts)
+    {changeset, _opts} =
+      Ash.Actions.Helpers.add_process_context(
+        opts[:api] || Ash.Resource.Info.api(resource),
+        changeset,
+        opts
+      )
 
     with %Ash.Changeset{} = changeset <- atomic_params(changeset, action, params) do
       atomic_changes(changeset, action)
@@ -882,7 +887,11 @@ defmodule Ash.Changeset do
           do_for_action(%{changeset | action_type: :destroy}, action, params, opts)
         else
           {changeset, opts} =
-            Ash.Actions.Helpers.add_process_context(changeset.api || opts[:api], changeset, opts)
+            Ash.Actions.Helpers.add_process_context(
+              changeset.api || opts[:api] || Ash.Resource.Info.api(changeset.resource),
+              changeset,
+              opts
+            )
 
           name =
             "changeset:" <> Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
@@ -1100,7 +1109,11 @@ defmodule Ash.Changeset do
 
   defp do_for_action(changeset, action_or_name, params, opts) do
     {changeset, opts} =
-      Ash.Actions.Helpers.add_process_context(changeset.api || opts[:api], changeset, opts)
+      Ash.Actions.Helpers.add_process_context(
+        changeset.api || opts[:api] || Ash.Resource.Info.api(changeset.resource),
+        changeset,
+        opts
+      )
 
     if changeset.valid? do
       action = get_action_entity(changeset.resource, action_or_name)
