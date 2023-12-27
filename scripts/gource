@@ -1,0 +1,22 @@
+#! /bin/bash
+
+projects=("ash" "ash_phoenix" "ash_postgres" "ash_admin" "ash_json_api" "ash_graphql" "reactor"
+"spark" "ash_csv" "ash_money" "ash_cubdb" "ash_blog" "ash_double_entry" "ash_paper_trail" "ash_sqlite"
+"ash_archival" "ash_json_api_wrapper" "ash_oban" "ash_state_machine" "ash_authentication" "ash_authentication_phoenix")
+
+cd ..
+
+rm gource-*.txt
+rm gource-*.txt-r
+
+for project in "${projects[@]}"
+do
+  gource --output-custom-log "gource-${project}-log.txt" "${project}"
+  sed -i'' -e "s#^\(.*\)|#\1|/${project}#" "gource-${project}-log.txt"
+done
+
+cat gource-*-log.txt | sort -n > gource-combined.txt
+
+gource gource-combined.txt --time-scale 3 --auto-skip-seconds 1 -1280x720 --frameless --hide-root --seconds-per-day 1 --disable-auto-rotate  --file-filter ".*\/assets\/vendor.*"
+
+rm gource-*.txt
