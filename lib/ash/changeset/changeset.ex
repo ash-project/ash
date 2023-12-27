@@ -882,7 +882,7 @@ defmodule Ash.Changeset do
           do_for_action(%{changeset | action_type: :destroy}, action, params, opts)
         else
           {changeset, opts} =
-            Ash.Actions.Helpers.add_process_context(changeset.api, changeset, opts)
+            Ash.Actions.Helpers.add_process_context(changeset.api || opts[:api], changeset, opts)
 
           name =
             "changeset:" <> Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
@@ -1099,7 +1099,8 @@ defmodule Ash.Changeset do
   end
 
   defp do_for_action(changeset, action_or_name, params, opts) do
-    {changeset, opts} = Ash.Actions.Helpers.add_process_context(changeset.api, changeset, opts)
+    {changeset, opts} =
+      Ash.Actions.Helpers.add_process_context(changeset.api || opts[:api], changeset, opts)
 
     if changeset.valid? do
       action = get_action_entity(changeset.resource, action_or_name)
