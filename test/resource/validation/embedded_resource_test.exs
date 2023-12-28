@@ -115,6 +115,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
       uuid_primary_key :id
 
       attribute :embedded_resource, EmbeddedResource
+      attribute :name, :string
     end
 
     actions do

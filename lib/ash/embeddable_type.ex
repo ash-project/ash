@@ -647,9 +647,9 @@ defmodule Ash.EmbeddableType do
 
   def copy_source(changeset, %Ash.Changeset{} = source) do
     changeset
-    |> Ash.Changeset.set_context(%{__source__: source})
     |> Ash.Changeset.set_tenant(source.tenant)
     |> Ash.Changeset.set_context(source.context)
+    |> Ash.Changeset.set_context(%{__source__: source})
   end
 
   def copy_source(changeset, _), do: changeset

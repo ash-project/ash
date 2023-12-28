@@ -334,6 +334,15 @@ defmodule Ash.Type do
     type.composite_types(constraints)
   end
 
+  defp item_constraints(constraints) do
+    item_constraints = Keyword.get(constraints, :items) || []
+
+    case Keyword.fetch(constraints, :__source__) do
+      {:ok, source} -> Keyword.put(item_constraints, :__source__, source)
+      :error -> item_constraints
+    end
+  end
+
   @spec generator(
           module | {:array, module},
           constraints
@@ -343,7 +352,7 @@ defmodule Ash.Type do
   end
 
   defp do_generator({:array, type}, constraints) do
-    generator = do_generator(type, constraints[:items] || [])
+    generator = do_generator(type, item_constraints(constraints))
 
     generator =
       if constraints[:nil_items?] do
@@ -383,7 +392,7 @@ defmodule Ash.Type do
 
   def handle_change({:array, type}, old_value, new_value, constraints) do
     type = get_type(type)
-    type.handle_change_array(old_value, new_value, constraints[:items] || [])
+    type.handle_change_array(old_value, new_value, item_constraints(constraints))
   end
 
   def handle_change(type, old_value, new_value, constraints) do
@@ -404,7 +413,7 @@ defmodule Ash.Type do
 
   def prepare_change({:array, type}, old_value, new_value, constraints) do
     type = get_type(type)
-    type.prepare_change_array(old_value, new_value, constraints[:items] || [])
+    type.prepare_change_array(old_value, new_value, item_constraints(constraints))
   end
 
   def prepare_change(type, old_value, new_value, constraints) do
@@ -417,7 +426,7 @@ defmodule Ash.Type do
   """
   @spec init(t(), constraints) :: {:ok, constraints} | {:error, Ash.Error.t()}
   def init({:array, type}, constraints) do
-    item_constraints = constraints[:items] || []
+    item_constraints = item_constraints(constraints)
 
     case init(type, item_constraints) do
       {:ok, new_item_constraints} ->
@@ -512,7 +521,7 @@ defmodule Ash.Type do
         {:ok, []}
 
       is_list(term) ->
-        map_while_ok(term, &cast_input({:array, type}, &1, constraints[:items] || []))
+        map_while_ok(term, &cast_input({:array, type}, &1, item_constraints(constraints)))
     end
   end
 
@@ -536,7 +545,7 @@ defmodule Ash.Type do
             term
           end
 
-        type.cast_input_array(term, constraints[:items] || [])
+        type.cast_input_array(term, item_constraints(constraints))
     end
   end
 
@@ -600,13 +609,13 @@ defmodule Ash.Type do
     if is_nil(term) do
       {:ok, nil}
     else
-      map_while_ok(term, &cast_stored({:array, type}, &1, constraints[:items] || []))
+      map_while_ok(term, &cast_stored({:array, type}, &1, item_constraints(constraints)))
     end
   end
 
   def cast_stored({:array, type}, term, constraints) do
     type = get_type(type)
-    type.cast_stored_array(term, constraints[:items] || [])
+    type.cast_stored_array(term, item_constraints(constraints))
   end
 
   def cast_stored(type, term, constraints) do
@@ -621,7 +630,7 @@ defmodule Ash.Type do
   @spec apply_constraints(t(), term, constraints()) :: {:ok, term} | {:error, String.t()}
   def apply_constraints({:array, {:array, type}}, term, constraints) do
     type = get_type(type)
-    map_while_ok(term, &apply_constraints({:array, type}, &1, constraints[:items] || []))
+    map_while_ok(term, &apply_constraints({:array, type}, &1, item_constraints(constraints)))
   end
 
   def apply_constraints({:array, type}, term, constraints) when is_list(term) do
@@ -634,7 +643,7 @@ defmodule Ash.Type do
       end
     else
       list_constraint_errors = list_constraint_errors(term, constraints)
-      item_constraints = constraints[:items] || []
+      item_constraints = item_constraints(constraints)
 
       case list_constraint_errors do
         [] ->
@@ -740,7 +749,7 @@ defmodule Ash.Type do
   def cast_in_query?(type, constraints \\ [])
 
   def cast_in_query?({:array, type}, constraints) do
-    cast_in_query?(type, constraints[:items] || [])
+    cast_in_query?(type, item_constraints(constraints))
   end
 
   def cast_in_query?(type, constraints) do
@@ -759,12 +768,12 @@ defmodule Ash.Type do
   def dump_to_native(type, term, constraints \\ [])
 
   def dump_to_native({:array, {:array, type}}, term, constraints) do
-    map_while_ok(term, &dump_to_native({:array, type}, &1, constraints[:items] || []))
+    map_while_ok(term, &dump_to_native({:array, type}, &1, item_constraints(constraints)))
   end
 
   def dump_to_native({:array, type}, term, constraints) do
     type = get_type(type)
-    type.dump_to_native_array(term, constraints[:items] || [])
+    type.dump_to_native_array(term, item_constraints(constraints))
   end
 
   def dump_to_native(type, term, constraints) do
@@ -780,7 +789,7 @@ defmodule Ash.Type do
   def cast_atomic_update({:array, type}, term, constraints) do
     type = get_type(type)
 
-    type.cast_atomic_update_array(term, constraints[:items] || [])
+    type.cast_atomic_update_array(term, item_constraints(constraints))
   end
 
   def cast_atomic_update(type, term, constraints) do
@@ -800,13 +809,13 @@ defmodule Ash.Type do
   def dump_to_embedded(type, term, constraints \\ [])
 
   def dump_to_embedded({:array, {:array, type}}, term, constraints) do
-    map_while_ok(term, &dump_to_embedded({:array, type}, &1, constraints[:items] || []))
+    map_while_ok(term, &dump_to_embedded({:array, type}, &1, item_constraints(constraints)))
   end
 
   def dump_to_embedded({:array, type}, term, constraints) do
     type = Ash.Type.get_type(type)
 
-    type.dump_to_embedded_array(term, constraints[:items] || [])
+    type.dump_to_embedded_array(term, item_constraints(constraints))
   end
 
   def dump_to_embedded(type, term, constraints) do
@@ -835,7 +844,11 @@ defmodule Ash.Type do
 
   @spec include_source(t(), Ash.Changeset.t() | Ash.Query.t(), constraints()) :: constraints()
   def include_source({:array, type}, changeset_or_query, constraints) do
-    include_source(type, changeset_or_query, constraints)
+    Keyword.put(
+      constraints,
+      :items,
+      include_source(type, changeset_or_query, constraints[:items] || [])
+    )
   end
 
   def include_source(type, changeset_or_query, constraints) do
@@ -856,7 +869,7 @@ defmodule Ash.Type do
   def load(_, %Ash.ForbiddenField{} = value, _, _, _), do: {:ok, value}
 
   def load({:array, type}, values, loads, constraints, context) do
-    load(type, values, loads, constraints[:items] || [], context)
+    load(type, values, loads, item_constraints(constraints), context)
   end
 
   def load(
@@ -913,7 +926,7 @@ defmodule Ash.Type do
 
   @spec can_load?(t(), Keyword.t()) :: boolean
   def can_load?(type, constraints \\ [])
-  def can_load?({:array, type}, constraints), do: can_load?(type, constraints[:items] || [])
+  def can_load?({:array, type}, constraints), do: can_load?(type, item_constraints(constraints))
 
   def can_load?(type, constraints) do
     type = get_type(type)
@@ -1319,7 +1332,7 @@ defmodule Ash.Type do
                  Keyword.delete(constraints || [], :items),
                  Keyword.delete(array_constraints, :items)
                ),
-             {:ok, item_constraints} <- validate_constraints(type, constraints[:items] || []) do
+             {:ok, item_constraints} <- validate_constraints(type, item_constraints(constraints)) do
           {:ok, Keyword.put(new_constraints, :items, item_constraints)}
         end
 
