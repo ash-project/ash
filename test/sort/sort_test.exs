@@ -52,7 +52,7 @@ defmodule Ash.Test.Sort.SortTest do
                Ash.Sort.parse_input(Post, "+title,-contents")
     end
 
-    test "public attributes cannot be used" do
+    test "private attributes cannot be used" do
       assert {:error, %Ash.Error.Query.NoSuchAttribute{}} = Ash.Sort.parse_input(Post, "points")
     end
 
