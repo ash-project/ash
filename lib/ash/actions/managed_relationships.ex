@@ -1350,39 +1350,35 @@ defmodule Ash.Actions.ManagedRelationships do
             )
             |> case do
               {:ok, result} ->
-                if join_params == %{} do
-                  {:ok, [updated | current_value], update_notifications, [match]}
-                else
-                  join_relationship =
-                    Ash.Resource.Info.relationship(
-                      relationship.source,
-                      relationship.join_relationship
-                    )
-
-                  result
-                  |> Ash.Changeset.new()
-                  |> Ash.Changeset.set_context(%{
-                    accessing_from: %{
-                      source: join_relationship.source,
-                      name: join_relationship.name
-                    }
-                  })
-                  |> Ash.Changeset.for_update(join_action_name, join_params,
-                    actor: actor,
-                    authorize?: opts[:authorize?]
+                join_relationship =
+                  Ash.Resource.Info.relationship(
+                    relationship.source,
+                    relationship.join_relationship
                   )
-                  |> Ash.Changeset.set_context(join_relationship.context)
-                  |> Ash.Changeset.set_tenant(changeset.tenant)
-                  |> api(changeset, join_relationship).update(return_notifications?: true)
-                  # credo:disable-for-next-line Credo.Check.Refactor.Nesting
-                  |> case do
-                    {:ok, _updated_join, join_update_notifications} ->
-                      {:ok, [updated | current_value],
-                       update_notifications ++ join_update_notifications, [updated]}
 
-                    {:error, error} ->
-                      {:error, error}
-                  end
+                result
+                |> Ash.Changeset.new()
+                |> Ash.Changeset.set_context(%{
+                  accessing_from: %{
+                    source: join_relationship.source,
+                    name: join_relationship.name
+                  }
+                })
+                |> Ash.Changeset.for_update(join_action_name, join_params,
+                  actor: actor,
+                  authorize?: opts[:authorize?]
+                )
+                |> Ash.Changeset.set_context(join_relationship.context)
+                |> Ash.Changeset.set_tenant(changeset.tenant)
+                |> api(changeset, join_relationship).update(return_notifications?: true)
+                # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+                |> case do
+                  {:ok, _updated_join, join_update_notifications} ->
+                    {:ok, [updated | current_value],
+                     update_notifications ++ join_update_notifications, [updated]}
+
+                  {:error, error} ->
+                    {:error, error}
                 end
 
               {:error, error} ->
