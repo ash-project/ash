@@ -5,6 +5,35 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.18](https://github.com/ash-project/ash/compare/v2.17.17...v2.17.18) (2023-12-29)
+
+
+
+
+### Bug Fixes:
+
+* ensure `__source__` is set on nested embedded attributes
+
+* don't include unknown `authorize?` value in changesets
+
+### Improvements:
+
+* support `{:error, :no_rollback, error}` from data layer callbacks
+
+* always update the join relationship
+
+* use new `api` option in `Ash.Query.for_read/4`
+
+* support using the new `api` option in actions
+
+* accept `api` option in `Ash.Changeset.for_*` functions
+
+* update `Ash` interface for working with new style resources
+
+* better formatting of nested expressions
+
+* helpful errors when misusing `.` in expressions
+
 ## [v2.17.17](https://github.com/ash-project/ash/compare/v2.17.16...v2.17.17) (2023-12-23)
 
 
