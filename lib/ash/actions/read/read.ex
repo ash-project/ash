@@ -1473,6 +1473,8 @@ defmodule Ash.Actions.Read do
                  {:ok, query} <- set_tenant(query, ash_query),
                  {:ok, query} <-
                    Ash.DataLayer.lock(query, ash_query.lock, ash_query.resource),
+                 {:ok, query} <-
+                   Ash.DataLayer.return_query(query, ash_query.resource),
                  {:ok, results} <-
                    run_query(
                      set_phase(ash_query, :executing),

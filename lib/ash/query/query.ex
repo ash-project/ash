@@ -2626,7 +2626,8 @@ defmodule Ash.Query do
            Ash.DataLayer.limit(query, ash_query.limit, resource),
          {:ok, query} <-
            Ash.DataLayer.offset(query, ash_query.offset, resource),
-         {:ok, query} <- Ash.DataLayer.lock(query, ash_query.lock, resource) do
+         {:ok, query} <- Ash.DataLayer.lock(query, ash_query.lock, resource),
+         {:ok, query} <- Ash.DataLayer.return_query(query, resource) do
       if opts[:no_modify?] || !ash_query.action || !ash_query.action.modify_query do
         {:ok, query}
       else

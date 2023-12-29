@@ -163,6 +163,9 @@ defmodule Ash.DataLayer do
             ) ::
               {:ok, list(Ash.Resource.record())} | {:error, term}
 
+  @callback return_query(data_layer_query(), Ash.Resource.t()) ::
+              {:ok, data_layer_query()} | {:error, term}
+
   @type bulk_options :: %{
           batch_size: pos_integer,
           return_records?: boolean,
@@ -238,6 +241,7 @@ defmodule Ash.DataLayer do
                       run_query: 2,
                       bulk_create: 3,
                       distinct: 3,
+                      return_query: 2,
                       lock: 3,
                       run_query_with_lateral_join: 4,
                       create: 2,
@@ -383,6 +387,18 @@ defmodule Ash.DataLayer do
           {:ok, Ash.Resource.record()} | {:error, term}
   def create(resource, changeset) do
     Ash.DataLayer.data_layer(resource).create(resource, changeset)
+  end
+
+  @spec return_query(data_layer_query(), Ash.Resource.t()) ::
+          {:ok, data_layer_query()} | {:error, term}
+  def return_query(query, resource) do
+    data_layer = Ash.DataLayer.data_layer(resource)
+
+    if function_exported?(data_layer, :return_query, 2) do
+      data_layer.return_query(query, resource)
+    else
+      {:ok, query}
+    end
   end
 
   @spec bulk_create(
