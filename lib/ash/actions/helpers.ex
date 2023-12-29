@@ -5,10 +5,18 @@ defmodule Ash.Actions.Helpers do
 
   def rollback_if_in_transaction({:error, error}, changeset) do
     if Ash.DataLayer.in_transaction?(changeset.resource) do
-      Ash.DataLayer.rollback(changeset.resource, Ash.Changeset.add_error(changeset, error))
+      if changeset do
+        Ash.DataLayer.rollback(changeset.resource, Ash.Changeset.add_error(changeset, error))
+      else
+        Ash.DataLayer.rollback(changeset.resource, Ash.Error.to_error_class(error))
+      end
     else
       {:error, error}
     end
+  end
+
+  def rollback_if_in_transaction({:error, :no_rollback, error}, _changeset) do
+    {:error, error}
   end
 
   def rollback_if_in_transaction(success, _), do: success

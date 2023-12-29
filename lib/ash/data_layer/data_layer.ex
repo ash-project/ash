@@ -138,7 +138,7 @@ defmodule Ash.DataLayer do
   @callback resource_to_query(Ash.Resource.t(), Ash.Api.t()) :: data_layer_query()
   @callback transform_query(Ash.Query.t()) :: Ash.Query.t()
   @callback run_query(data_layer_query(), Ash.Resource.t()) ::
-              {:ok, list(Ash.Resource.record())} | {:error, term}
+              {:ok, list(Ash.Resource.record())} | {:error, term} | {:error, :no_rollback, term}
   @callback lock(data_layer_query(), lock_type(), resource :: Ash.Resource.t()) ::
               {:ok, data_layer_query()} | {:error, term}
   @callback run_aggregate_query(
@@ -184,12 +184,13 @@ defmodule Ash.DataLayer do
             ) ::
               {:ok, Enumerable.t(:ok | {:ok, Ash.Resource.record()} | {:error, Ash.Error.t()})}
               | {:error, Ash.Error.t()}
+              | {:error, :no_rollback, term}
   @callback create(Ash.Resource.t(), Ash.Changeset.t()) ::
-              {:ok, Ash.Resource.record()} | {:error, term}
+              {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
   @callback upsert(Ash.Resource.t(), Ash.Changeset.t(), list(atom)) ::
-              {:ok, Ash.Resource.record()} | {:error, term}
+              {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
   @callback update(Ash.Resource.t(), Ash.Changeset.t()) ::
-              {:ok, Ash.Resource.record()} | {:error, term}
+              {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
   @callback add_aggregate(
               data_layer_query(),
               Ash.Query.Aggregate.t(),
