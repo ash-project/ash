@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.19](https://github.com/ash-project/ash/compare/v2.17.18...v2.17.19) (2023-12-30)
+
+
+
+
+### Improvements:
+
+* support `:no_rollback` and `return_query/2` callback
+
+* add a `return_query/2` callback for data layers
+
 ## [v2.17.18](https://github.com/ash-project/ash/compare/v2.17.17...v2.17.18) (2023-12-29)
 
 
