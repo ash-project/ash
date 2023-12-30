@@ -903,7 +903,7 @@ defmodule Ash.Actions.Create.Bulk do
                         must_return_records_for_changes?,
                     tenant: opts[:tenant]
                   })
-                  |> Ash.Actions.Helpers.rollback_if_in_transaction(nil)
+                  |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
                   |> Enum.flat_map(fn
                     {:ok, result} ->
                       [result]
@@ -927,7 +927,7 @@ defmodule Ash.Actions.Create.Bulk do
                       tracer: opts[:tracer],
                       api: api
                     })
-                    |> Ash.Actions.Helpers.rollback_if_in_transaction(nil)
+                    |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
 
                   case result do
                     {:ok, result} ->
@@ -965,7 +965,7 @@ defmodule Ash.Actions.Create.Bulk do
                       tenant: opts[:tenant]
                     }
                   )
-                  |> Ash.Actions.Helpers.rollback_if_in_transaction(nil)
+                  |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
                 else
                   [changeset] = batch
                   upsert? = opts[:upsert?] || action.upsert? || false

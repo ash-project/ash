@@ -2627,7 +2627,7 @@ defmodule Ash.Query do
          {:ok, query} <-
            Ash.DataLayer.offset(query, ash_query.offset, resource),
          {:ok, query} <- Ash.DataLayer.lock(query, ash_query.lock, resource),
-         {:ok, query} <- Ash.DataLayer.return_query(query, resource) do
+         {:ok, query} <- maybe_return_query(query, resource, opts) do
       if opts[:no_modify?] || !ash_query.action || !ash_query.action.modify_query do
         {:ok, query}
       else
@@ -2641,6 +2641,14 @@ defmodule Ash.Query do
       end
     else
       {:error, error} -> {:error, error}
+    end
+  end
+
+  defp maybe_return_query(query, resource, opts) do
+    if Keyword.get(opts, :run_return_query?, true) do
+      Ash.DataLayer.return_query(query, resource)
+    else
+      {:ok, query}
     end
   end
 

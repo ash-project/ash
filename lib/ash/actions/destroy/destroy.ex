@@ -182,7 +182,7 @@ defmodule Ash.Actions.Destroy do
                 else
                   changeset.resource
                   |> Ash.DataLayer.destroy(changeset)
-                  |> Ash.Actions.Helpers.rollback_if_in_transaction(changeset)
+                  |> Ash.Actions.Helpers.rollback_if_in_transaction(changeset.resource, changeset)
                   |> case do
                     :ok ->
                       {:ok, data} = Ash.Changeset.apply_attributes(changeset, force?: true)

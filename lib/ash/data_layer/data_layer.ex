@@ -378,13 +378,13 @@ defmodule Ash.DataLayer do
   end
 
   @spec update(Ash.Resource.t(), Ash.Changeset.t()) ::
-          {:ok, Ash.Resource.record()} | {:error, term}
+          {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
   def update(resource, changeset) do
     Ash.DataLayer.data_layer(resource).update(resource, changeset)
   end
 
   @spec create(Ash.Resource.t(), Ash.Changeset.t()) ::
-          {:ok, Ash.Resource.record()} | {:error, term}
+          {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
   def create(resource, changeset) do
     Ash.DataLayer.data_layer(resource).create(resource, changeset)
   end
@@ -409,11 +409,13 @@ defmodule Ash.DataLayer do
           :ok
           | {:ok, Enumerable.t(Ash.Resource.record())}
           | {:error, Ash.Error.t()}
+          | {:error, :no_rollback, Ash.Error.t()}
   def bulk_create(resource, changesets, options) do
     Ash.DataLayer.data_layer(resource).bulk_create(resource, changesets, options)
   end
 
-  @spec destroy(Ash.Resource.t(), Ash.Changeset.t()) :: :ok | {:error, term}
+  @spec destroy(Ash.Resource.t(), Ash.Changeset.t()) ::
+          :ok | {:error, term} | {:error, :no_rollback, term}
   def destroy(resource, changeset) do
     Ash.DataLayer.data_layer(resource).destroy(resource, changeset)
   end
@@ -615,7 +617,7 @@ defmodule Ash.DataLayer do
   end
 
   @spec run_query(data_layer_query(), central_resource :: Ash.Resource.t()) ::
-          {:ok, list(Ash.Resource.record())} | {:error, term}
+          {:ok, list(Ash.Resource.record())} | {:error, term} | {:error, :no_rollback, term}
   def run_query(query, central_resource) do
     Ash.DataLayer.data_layer(central_resource).run_query(query, central_resource)
   end

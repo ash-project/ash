@@ -1030,7 +1030,10 @@ defmodule Ash.Api do
                       |> Ash.Query.data_layer_query()
                       |> case do
                         {:ok, data_layer_query} ->
-                          case Ash.DataLayer.run_query(data_layer_query, query.resource) do
+                          data_layer_query
+                          |> Ash.DataLayer.run_query(query.resource)
+                          |> Ash.Actions.Helpers.rollback_if_in_transaction(query.resource, query)
+                          |> case do
                             {:ok, results} ->
                               if Enum.count(results) == Enum.count(data) do
                                 {:ok, true}
@@ -1065,7 +1068,10 @@ defmodule Ash.Api do
                     |> Ash.Query.data_layer_query()
                     |> case do
                       {:ok, data_layer_query} ->
-                        case Ash.DataLayer.run_query(data_layer_query, resource) do
+                        data_layer_query
+                        |> Ash.DataLayer.run_query(resource)
+                        |> Ash.Actions.Helpers.rollback_if_in_transaction(query.resource, query)
+                        |> case do
                           {:ok, [_]} ->
                             {:ok, true}
 

@@ -1405,7 +1405,10 @@ defmodule Ash.Actions.Read do
                    ])
                    |> Map.put(:context, ash_query.context)
                    |> Ash.Query.set_context(%{action: ash_query.action})
-                   |> Ash.Query.data_layer_query(only_validate_filter?: true),
+                   |> Ash.Query.data_layer_query(
+                     only_validate_filter?: true,
+                     run_return_query?: false
+                   ),
                  {:ok, filter} <-
                    filter_with_related(
                      Enum.map(filter_requests, & &1.path),
@@ -1450,7 +1453,11 @@ defmodule Ash.Actions.Read do
                      ash_query.resource
                    ),
                  {:ok, query} <-
-                   Ash.DataLayer.sort(query, ash_query.sort, ash_query.resource),
+                   Ash.DataLayer.sort(
+                     query,
+                     ash_query.sort,
+                     ash_query.resource
+                   ),
                  {:ok, query} <-
                    Ash.DataLayer.distinct_sort(query, ash_query.distinct_sort, ash_query.resource),
                  {:ok, query} <-
@@ -2947,6 +2954,7 @@ defmodule Ash.Actions.Read do
     else
       query
       |> Ash.DataLayer.run_query(resource)
+      |> Helpers.rollback_if_in_transaction(ash_query.resource, ash_query)
       |> Helpers.select(ash_query)
       |> Helpers.load_runtime_types(ash_query, load_attributes?)
     end

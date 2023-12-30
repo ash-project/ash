@@ -3,23 +3,28 @@ defmodule Ash.Actions.Helpers do
   require Logger
   require Ash.Flags
 
-  def rollback_if_in_transaction({:error, error}, changeset) do
-    if Ash.DataLayer.in_transaction?(changeset.resource) do
-      if changeset do
-        Ash.DataLayer.rollback(changeset.resource, Ash.Changeset.add_error(changeset, error))
-      else
-        Ash.DataLayer.rollback(changeset.resource, Ash.Error.to_error_class(error))
+  def rollback_if_in_transaction({:error, error}, resource, changeset) do
+    if Ash.DataLayer.in_transaction?(resource) do
+      case changeset do
+        %Ash.Changeset{} = changeset ->
+          Ash.DataLayer.rollback(resource, Ash.Changeset.add_error(changeset, error))
+
+        %Ash.Query{} = query ->
+          Ash.DataLayer.rollback(resource, Ash.Query.add_error(query, error))
+
+        _ ->
+          Ash.DataLayer.rollback(resource, Ash.Error.to_error_class(error))
       end
     else
       {:error, error}
     end
   end
 
-  def rollback_if_in_transaction({:error, :no_rollback, error}, _changeset) do
+  def rollback_if_in_transaction({:error, :no_rollback, error}, _, _changeset) do
     {:error, error}
   end
 
-  def rollback_if_in_transaction(success, _), do: success
+  def rollback_if_in_transaction(success, _, _), do: success
 
   def validate_calculation_load!(%{__struct__: Ash.Query}, module) do
     raise """

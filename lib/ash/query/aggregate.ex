@@ -588,7 +588,8 @@ defmodule Ash.Query.Aggregate do
                      Ash.DataLayer.run_query(
                        data_layer_query,
                        query.resource
-                     ) do
+                     )
+                     |> Ash.Actions.Helpers.rollback_if_in_transaction(query.resource, query) do
                 loaded_aggregates =
                   aggregates
                   |> Enum.map(& &1.load)

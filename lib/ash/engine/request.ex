@@ -919,6 +919,7 @@ defmodule Ash.Engine.Request do
       {:ok, data_layer_query} ->
         data_layer_query
         |> Ash.DataLayer.run_query(request.resource)
+        |> Ash.Actions.Helpers.rollback_if_in_transaction(request.resource, new_query)
         |> case do
           {:ok, results} ->
             pkey = Ash.Resource.Info.primary_key(request.resource)
@@ -971,6 +972,10 @@ defmodule Ash.Engine.Request do
       {:ok, data_layer_query} ->
         data_layer_query
         |> Ash.DataLayer.run_query(request.resource)
+        |> Ash.Actions.Helpers.rollback_if_in_transaction(
+          request.resource,
+          query_with_pkey_filter
+        )
         |> case do
           {:ok, []} ->
             {:error,
