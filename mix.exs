@@ -59,7 +59,6 @@ defmodule Ash.MixProject do
 
       {String.to_atom(path),
        [
-         filename: html_filename,
          title: title,
          default: title == "Get Started"
        ]}
