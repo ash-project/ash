@@ -44,8 +44,6 @@ defmodule Ash.MixProject do
         |> Path.basename(".md")
         |> Path.basename(".livemd")
         |> Path.basename(".cheatmd")
-        # We want to keep permalinks, so we remove the sorting number
-        |> String.replace(~r/^\d+\-/, "")
 
       title =
         html_filename

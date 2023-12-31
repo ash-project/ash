@@ -51,7 +51,7 @@ defmodule Ash.Error.Exception do
 
             %{
               __struct__: Ash.Error.Stacktrace,
-              stacktrace: Enum.drop(stacktrace, 2)
+              stacktrace: Enum.drop(stacktrace, 4)
             }
           end)
 

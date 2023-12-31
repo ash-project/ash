@@ -5,6 +5,10 @@ defmodule Ash.Actions.Update.Bulk do
           | {:ok, [Ash.Resource.record()]}
           | {:ok, [Ash.Resource.record()], [Ash.Notifier.Notification.t()]}
           | {:error, term}
+  def run(api, resource, action, input, opts) when is_atom(resource) do
+    run(api, Ash.Query.new(resource), action, input, opts)
+  end
+
   def run(api, %Ash.Query{} = query, action, input, opts) do
     query =
       if query.action do
@@ -21,25 +25,78 @@ defmodule Ash.Actions.Update.Bulk do
         query
       end
 
-    if !query.action.pagination || !query.action.pagination.keyset? do
-      raise Ash.Error.Invalid.NonStreamableAction,
-        resource: query.resource,
-        action: query.action,
-        for_bulk_update: action.name
+    query = %{query | api: api}
+
+    fully_atomic_changeset =
+      if Ash.DataLayer.data_layer_can?(query.resource, :update_query) do
+        Ash.Changeset.fully_atomic_changeset(query.resource, action, input, opts)
+      else
+        :not_atomic
+      end
+
+    case fully_atomic_changeset do
+      :not_atomic ->
+        read_opts =
+          opts
+          |> Keyword.drop([
+            :resource,
+            :atomic_update,
+            :stream_batch_size,
+            :batch_size,
+            :stream_with,
+            :allow_stream_with
+          ])
+          |> Keyword.put(:batch_size, opts[:stream_batch_size])
+
+        run(
+          api,
+          api.stream!(query, read_opts),
+          action,
+          input,
+          Keyword.put(opts, :resource, query.resource)
+        )
+
+      %Ash.Changeset{valid?: false, errors: errors} ->
+        %Ash.BulkResult{
+          status: :error,
+          errors: [Ash.Error.to_error_class(errors)]
+        }
+
+      atomic_changeset ->
+        with {:ok, query} <- authorize_bulk_query(query, opts),
+             {:ok, atomic_changeset, query} <-
+               authorize_atomic_changeset(query, atomic_changeset, opts),
+             {:ok, data_layer_query} <- Ash.Query.data_layer_query(query) do
+          case Ash.DataLayer.update_query(
+                 data_layer_query,
+                 atomic_changeset,
+                 Map.new(Keyword.take(opts, [:return_records?, :tenant]))
+               ) do
+            :ok ->
+              %Ash.BulkResult{
+                status: :success
+              }
+
+            {:ok, results} ->
+              %Ash.BulkResult{
+                status: :success,
+                records: results
+              }
+
+            {:error, error} ->
+              %Ash.BulkResult{
+                status: :error,
+                errors: [Ash.Error.to_error_class(error)]
+              }
+          end
+        else
+          {:error, error} ->
+            %Ash.BulkResult{
+              status: :error,
+              errors: [Ash.Error.to_error_class(error)]
+            }
+        end
     end
-
-    read_opts =
-      opts
-      |> Keyword.drop([:resource, :atomic_update, :stream_batch_size, :batch_size])
-      |> Keyword.put(:batch_size, opts[:stream_batch_size])
-
-    run(
-      api,
-      api.stream!(query, read_opts),
-      action,
-      input,
-      Keyword.put(opts, :resource, query.resource)
-    )
   end
 
   def run(api, stream, action, input, opts) do
@@ -267,6 +324,58 @@ defmodule Ash.Actions.Update.Bulk do
         Process.delete({:bulk_update_errors, ref})
         Process.delete({:bulk_update_notifications, ref})
       end
+    end
+  end
+
+  defp authorize_bulk_query(query, opts) do
+    if opts[:authorize?] do
+      case query.api.can(query, opts[:actor],
+             return_forbidden_error?: true,
+             maybe_is: false,
+             modify_source?: true
+           ) do
+        {:ok, true} ->
+          {:ok, query}
+
+        {:ok, true, query} ->
+          {:ok, query}
+
+        {:ok, false, error} ->
+          {:error, error}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      {:ok, query}
+    end
+  end
+
+  defp authorize_atomic_changeset(query, changeset, opts) do
+    if opts[:authorize?] do
+      case query.api.can(query, opts[:actor],
+             return_forbidden_error?: true,
+             maybe_is: false,
+             modify_source?: true,
+             base_query: query
+           ) do
+        {:ok, true} ->
+          {:ok, changeset, query}
+
+        {:ok, true, %Ash.Query{} = query} ->
+          {:ok, changeset, query}
+
+        {:ok, true, %Ash.Changeset{} = changeset, %Ash.Query{} = query} ->
+          {:ok, changeset, query}
+
+        {:ok, false, error} ->
+          {:error, error}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      {:ok, changeset, query}
     end
   end
 

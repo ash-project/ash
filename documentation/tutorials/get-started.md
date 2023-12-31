@@ -4,7 +4,7 @@
 
 > #### HexDocs {: .tip}
 >
-> Hexdocs does not support multi-package search. To assist with this, we provide a mirror of this documentation at [ash-hq.org](https://ash-hq.org). Use Ctrl+K or Cmd+K to search all packages on that site. For the best way to use the hex documentation, see the [hexdocs guide](/documentation/tutorials/5-using-hexdocs.md).
+> Hexdocs does not support multi-package search. To assist with this, we provide a mirror of this documentation at [ash-hq.org](https://ash-hq.org). Use Ctrl+K or Cmd+K to search all packages on that site. For the best way to use the hex documentation, see the [hexdocs guide](/documentation/tutorials/using-hexdocs.md).
 
 <!--- ash-hq-hide-stop --> <!--- -->
 
@@ -31,8 +31,8 @@ In this guide we will:
 ## Things you may want to read first
 
 - [Install Elixir](https://elixir-lang.org/install.html)
-- [Philosophy Guide](/documentation/tutorials/2-philosophy.md)
-- [Using Hexdocs](/documentation/tutorials/5-using-hexdocs.md)
+- [Philosophy Guide](/documentation/tutorials/philosophy.md)
+- [Using Hexdocs](/documentation/tutorials/using-hexdocs.md)
 
 ## Requirements
 

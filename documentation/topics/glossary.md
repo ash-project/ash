@@ -57,7 +57,7 @@ See `Ash.Changeset` for more information.
 
 A packaged bundle of code that can be included in a resource to provide additional functionality. Built-in functionality such as the resource DSL itself is provided by an extension, and libraries like AshPostgres and AshAdmin also provide extensions that you can add to your resources with just one line of code.
 
-See [Extending Resources](/documentation/tutorials/4-extending-resources.md) for more information.
+See [Extending Resources](/documentation/tutorials/extending-resources.md) for more information.
 
 ## Filter
 

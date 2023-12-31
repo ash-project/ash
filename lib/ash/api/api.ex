@@ -955,7 +955,7 @@ defmodule Ash.Api do
       authorizers ->
         authorizers
         |> Enum.reduce_while(
-          {false, nil},
+          {false, opts[:base_query]},
           fn {authorizer, authorizer_state, context}, {_authorized?, query} ->
             case authorizer.strict_check(authorizer_state, context) do
               {:error, %{class: :forbidden} = e} when is_exception(e) ->
@@ -1441,6 +1441,9 @@ defmodule Ash.Api do
     - `alter_source?` - If true, the query or changeset will be returned with authorization modifications made. For a query,
       this mans adding field visibility calculations and altering the filter or the sort. For a changeset, this means only adding
       field visibility calculations. The default value is `false`.
+    - `base_query` - If authorizing an update, some cases can return both a new changeset and a query filtered for only things
+      that will be authorized to update. Providing the `base_query` will cause that query to be altered instead of a new one to be
+      generated.
   """
 
   @callback can(
@@ -1653,6 +1656,8 @@ defmodule Ash.Api do
   or `after_action` hooks that can operate on the entire list at once.  See the documentation for that callback for more on
   how to do accomplish that.
 
+  ## Options
+
   #{Spark.OptionsHelpers.docs(@bulk_create_opts_schema)}
   """
   @callback bulk_create(
@@ -1682,8 +1687,14 @@ defmodule Ash.Api do
   @doc """
   Updates all items in the provided enumerable or query with the provided input.
 
-  Currently, this streams each record and updates it. Soon, this will use special data layer
-  callbacks to run these update statements in a single query.
+  If the data layer supports updating from a query, and the update action can be done fully atomically,
+  it will be updated in a single pass using the data layer.
+
+  Otherwise, this will stream each record and update it.
+
+  ## Options
+
+  #{Spark.OptionsHelpers.docs(@bulk_update_opts_schema)}
   """
   @callback bulk_update(
               Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
@@ -1707,8 +1718,14 @@ defmodule Ash.Api do
   @doc """
   Destroys all items in the provided enumerable or query with the provided input.
 
-  Currently, this streams each record and destroys it. Soon, this will use special data layer
-  callbacks to run these update statements in a single query.
+  If the data layer supports destroying from a query, and the destroy action can be done fully atomically,
+  it will be updated in a single pass using the data layer.
+
+  Otherwise, this will stream each record and update it.
+
+  ## Options
+
+  #{Spark.OptionsHelpers.docs(@bulk_destroy_opts_schema)}
   """
   @callback bulk_destroy(
               Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),

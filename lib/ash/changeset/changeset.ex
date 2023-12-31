@@ -507,8 +507,14 @@ defmodule Ash.Changeset do
         opts
       )
 
-    with %Ash.Changeset{} = changeset <- atomic_params(changeset, action, params) do
-      atomic_changes(changeset, action)
+    with %Ash.Changeset{} = changeset <-
+           atomic_update(changeset, opts[:atomic_update] || []),
+         %Ash.Changeset{} = changeset <- atomic_params(changeset, action, params),
+         %Ash.Changeset{} = changeset <- atomic_changes(changeset, action) do
+      hydrate_atomic_refs(changeset, opts[:actor])
+    else
+      _ ->
+        :not_atomic
     end
   end
 
@@ -625,7 +631,10 @@ defmodule Ash.Changeset do
   """
   def atomic_ref(changeset, field) do
     if base_value = changeset.atomics[field] do
-      base_value
+      %{type: type, constraints: constraints} =
+        Ash.Resource.Info.attribute(changeset.resource, field)
+
+      Ash.Expr.expr(type(^base_value, ^type, ^constraints))
     else
       Ash.Expr.expr(ref(^field))
     end
@@ -1565,6 +1574,28 @@ defmodule Ash.Changeset do
             {key, expr}
           end)
     }
+    |> add_known_atomic_errors()
+  end
+
+  defp add_known_atomic_errors(changeset) do
+    Enum.reduce(changeset.atomics, changeset, fn
+      {_,
+       %Ash.Query.Function.Error{
+         arguments: [exception, input]
+       }},
+      changeset ->
+        if Ash.Filter.TemplateHelpers.expr?(input) do
+          changeset
+        else
+          add_error(
+            changeset,
+            Ash.Error.from_json(exception, Jason.decode!(Jason.encode!(input)))
+          )
+        end
+
+      _other, changeset ->
+        changeset
+    end)
   end
 
   @doc false
