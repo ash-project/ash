@@ -216,7 +216,8 @@ defmodule Ash.Actions.Read.Stream do
   end
 
   def requires_keyset_pagination?(query) do
-    query.action.pagination.keyset? && not query.action.pagination.offset? &&
+    query.action.pagination && query.action.pagination.keyset? &&
+      not query.action.pagination.offset? &&
       query.action.pagination.required?
   end
 
