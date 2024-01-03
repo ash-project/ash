@@ -105,6 +105,7 @@ defmodule Ash.Test.Actions.UpdateTest do
         accept([:name])
 
         validate attribute_equals(:name, "fred")
+        validate compare(:score, greater_than_or_equal_to: 0, less_than_or_equal_to: 10)
       end
 
       update :duplicate_name do
@@ -128,6 +129,7 @@ defmodule Ash.Test.Actions.UpdateTest do
       uuid_primary_key :id
       attribute :name, :string
       attribute :bio, :string
+      attribute :score, :integer
     end
 
     relationships do

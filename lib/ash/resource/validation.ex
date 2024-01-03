@@ -48,8 +48,12 @@ defmodule Ash.Resource.Validation do
   @callback atomic?() :: boolean
   @callback atomic(changeset :: Ash.Changeset.t(), opts :: Keyword.t()) ::
               :ok
-              | {:atomic, involved_fields :: list(atom), condition_expr :: Ash.Expr.t(),
+              | {:atomic, involved_fields :: list(atom) | :*, condition_expr :: Ash.Expr.t(),
                  error_expr :: Ash.Expr.t()}
+              | [
+                  {:atomic, involved_fields :: list(atom) | :*, condition_expr :: Ash.Expr.t(),
+                   error_expr :: Ash.Expr.t()}
+                ]
               | :not_atomic
               | {:error, term()}
 
