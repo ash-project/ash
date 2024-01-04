@@ -325,7 +325,6 @@ defmodule Ash.Actions.Read do
                   initial_offset: query.offset,
                   page_opts: nil,
                   initial_query: query,
-                  filter_requests: [],
                   query_opts: query_opts
                 })
                 |> Ash.Query.select(query.select || [])
@@ -368,8 +367,6 @@ defmodule Ash.Actions.Read do
                      {:ok, initial_query, query, page_opts} <-
                        paginate(query, action, page: request_opts[:page]),
                      page_opts <- page_opts && Keyword.delete(page_opts, :filter),
-                     {:ok, filter_requests} <-
-                       filter_requests(query, path, request_opts, actor, tenant),
                      {:ok, sort} <-
                        Ash.Actions.Sort.process(
                          query.resource,
@@ -385,7 +382,6 @@ defmodule Ash.Actions.Read do
                      initial_offset: initial_offset,
                      page_opts: page_opts,
                      initial_query: initial_query,
-                     filter_requests: filter_requests,
                      query_opts: query_opts
                    }),
                    %{
@@ -1002,22 +998,6 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp filter_requests(query, request_path, opts, actor, tenant) do
-    authorizing? =
-      if opts[:authorize?] == false do
-        false
-      else
-        Keyword.has_key?(opts, :actor) || opts[:authorize?]
-      end
-
-    if not Keyword.has_key?(opts, :initial_data) &&
-         authorizing? do
-      Filter.read_requests(query.api, query.filter, request_path, actor, tenant)
-    else
-      {:ok, []}
-    end
-  end
-
   defp query_with_initial_data(query, opts) do
     case Keyword.fetch(opts, :initial_data) do
       :error ->
@@ -1079,7 +1059,6 @@ defmodule Ash.Actions.Read do
         authorize? = request_opts[:authorize?]
 
         initial_query = ash_query.context[:initial_query]
-        filter_requests = ash_query.context[:filter_requests] || []
         initial_limit = initial_query.context[:initial_limit]
         initial_offset = initial_query.context[:initial_offset]
 
@@ -1274,9 +1253,6 @@ defmodule Ash.Actions.Read do
           !Enum.empty?(aggregate_auth_requests) && !get_in(data, path ++ [:aggregate]) ->
             {:requests, Enum.map(aggregate_auth_requests, &{&1, :authorization_filter})}
 
-          !Enum.empty?(filter_requests) && !get_in(data, path ++ [:filter]) ->
-            {:requests, Enum.map(filter_requests, &{&1, :authorization_filter})}
-
           request_opts[:initial_data] && !Enum.empty?(must_be_reselected) ->
             primary_key = Ash.Resource.Info.primary_key(ash_query.resource)
 
@@ -1411,9 +1387,10 @@ defmodule Ash.Actions.Read do
                    ),
                  {:ok, filter} <-
                    filter_with_related(
-                     Enum.map(filter_requests, & &1.path),
-                     ash_query.filter,
-                     data
+                     ash_query,
+                     actor,
+                     ash_query.tenant,
+                     authorize?
                    ),
                  {:ok, filter} <-
                    Filter.run_other_data_layer_filters(
@@ -1522,9 +1499,6 @@ defmodule Ash.Actions.Read do
                      calculation_dependency_requests
                }}
             else
-              {:filter_requests, other_data_layer_filter_requests} ->
-                {:requests, other_data_layer_filter_requests}
-
               %{valid?: false} = query ->
                 {:error, query.errors}
 
@@ -3532,22 +3506,32 @@ defmodule Ash.Actions.Read do
   end
 
   defp filter_with_related(
-         relationship_filter_paths,
-         filter_expr,
-         data,
-         prefix \\ []
-       )
+         query,
+         actor,
+         tenant,
+         authorize?
+       ) do
+    if authorize? do
+      case Ash.Filter.relationship_filters(query.api, query, actor, tenant) do
+        {:ok, path_filters} ->
+          do_filter_with_related(query.filter, path_filters, [])
 
-  defp filter_with_related(
-         relationship_filter_paths,
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      {:ok, query.filter}
+    end
+  end
+
+  defp do_filter_with_related(
          %Ash.Filter{expression: expression} = filter,
-         data,
+         path_filters,
          prefix
        ) do
-    case filter_with_related(
-           relationship_filter_paths,
+    case do_filter_with_related(
            expression,
-           data,
+           path_filters,
            prefix
          ) do
       {:ok, new_expr} ->
@@ -3558,34 +3542,33 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp filter_with_related(
-         relationship_filter_paths,
+  defp do_filter_with_related(
          %Ash.Query.BooleanExpression{op: :and, left: left, right: right},
-         data,
+         path_filters,
          prefix
        ) do
     with {:ok, left} <-
-           filter_with_related(relationship_filter_paths, left, data, prefix),
+           do_filter_with_related(left, path_filters, prefix),
          {:ok, right} <-
-           filter_with_related(relationship_filter_paths, right, data, prefix) do
+           do_filter_with_related(right, path_filters, prefix) do
       {:ok, Ash.Query.BooleanExpression.optimized_new(:and, left, right)}
     end
   end
 
-  defp filter_with_related(relationship_filter_paths, filter_expr, data, prefix) do
+  defp do_filter_with_related(filter_expr, path_filters, prefix) do
     paths_to_global_filter_on =
       filter_expr
       |> Ash.Filter.list_refs()
       |> Enum.filter(& &1.input?)
       |> Enum.map(& &1.relationship_path)
       |> Enum.uniq()
-      |> Enum.filter(&([:data, :filter, prefix ++ &1] in relationship_filter_paths))
+      |> Enum.filter(&Map.has_key?(path_filters, prefix ++ &1))
 
     paths_to_global_filter_on
     |> Enum.reduce_while(
       {:ok, filter_expr},
       fn path, {:ok, filter} ->
-        case get_in(data, [:data, :filter, prefix ++ path, :authorization_filter]) do
+        case Map.get(path_filters, path) do
           nil ->
             {:cont, {:ok, filter}}
 
@@ -3595,7 +3578,7 @@ defmodule Ash.Actions.Read do
               Ash.Query.BooleanExpression.optimized_new(
                 :and,
                 filter_expr,
-                Ash.Filter.move_to_relationship_path(authorization_filter, path)
+                authorization_filter
               )}}
         end
       end
@@ -3606,14 +3589,15 @@ defmodule Ash.Actions.Read do
          filter
          |> Ash.Filter.map(fn
            %Ash.Query.Exists{at_path: at_path, path: exists_path, expr: exists_expr} = exists ->
-             paths =
-               Enum.filter(
-                 relationship_filter_paths,
-                 &List.starts_with?(&1, prefix ++ at_path ++ exists_path)
-               )
+             path_filters =
+               path_filters
+               |> Enum.filter(fn {path, _} ->
+                 List.starts_with?(path, prefix ++ at_path ++ exists_path)
+               end)
+               |> Map.new()
 
              {:ok, new_expr} =
-               filter_with_related(paths, exists_expr, data, prefix ++ at_path ++ exists_path)
+               do_filter_with_related(exists_expr, path_filters, prefix ++ at_path ++ exists_path)
 
              {:halt, %{exists | expr: new_expr}}
 
