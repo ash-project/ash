@@ -56,22 +56,24 @@ defmodule Ash.Resource.Validation.OneOf do
   @impl true
   def atomic(changeset, opts) do
     value =
-      case Changeset.fetch_argument_or_change(changeset, opts[:attribute]) do
+      case Ash.Changeset.fetch_argument_or_change(changeset, opts[:attribute]) do
         {:ok, value} ->
           value
 
         :error ->
-          Changeset.atomic_ref(changeset, opts[:attribute])
+          Ash.Changeset.atomic_ref(changeset, opts[:attribute])
       end
 
     {:atomic, [opts[:attribute]], Ash.Expr.expr(^value not in ^opts[:values]),
      Ash.Expr.expr(
        error(
          Ash.Error.Changes.InvalidAttribute,
-         field: ^opts[:attribute],
-         value: ^value,
-         message: "expected one of %{values}",
-         vars: [values: Enum.map_join(opts[:values], ", ", &to_string/1)]
+         %{
+           field: ^opts[:attribute],
+           value: ^value,
+           message: "expected one of %{values}",
+           vars: [values: Enum.map_join(opts[:values], ", ", &to_string/1)]
+         }
        )
      )}
   end
