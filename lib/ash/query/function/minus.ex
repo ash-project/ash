@@ -7,6 +7,7 @@ defmodule Ash.Query.Function.Minus do
   def args, do: [[:any]]
 
   def evaluate(%{arguments: [val]}) do
-    {:known, -val}
+    {:ok, op} = Ash.Query.Operator.Basic.Times.new(val, -1)
+    Ash.Query.Operator.evaluate(op)
   end
 end
