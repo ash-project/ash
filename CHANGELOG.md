@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.20](https://github.com/ash-project/ash/compare/v2.17.19...v2.17.20) (2024-01-04)
+
+
+
+
+### Bug Fixes:
+
+* add required check for stream pagination
+
+### Improvements:
+
+* atomic validation implementations for most validations
+
+* support type operator overloading
+
+* add some atomic implementations
+
 ## [v2.17.19](https://github.com/ash-project/ash/compare/v2.17.18...v2.17.19) (2023-12-30)
 
 
