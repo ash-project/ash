@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.21](https://github.com/ash-project/ash/compare/v2.17.20...v2.17.21) (2024-01-05)
+
+
+
+
+### Bug Fixes:
+
+* don't consider ash field signals as present
+
+### Improvements:
+
+* refactor filter requests to not use `Ash.Engine`
+
 ## [v2.17.20](https://github.com/ash-project/ash/compare/v2.17.19...v2.17.20) (2024-01-04)
 
 
