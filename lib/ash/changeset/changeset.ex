@@ -1209,8 +1209,15 @@ defmodule Ash.Changeset do
   *will* be set by `manage_relationship` even if it isn't currently being set.
   """
   def present?(changeset, attribute) do
-    belongs_to_attr_of_rel_being_managed?(attribute, changeset, true) ||
-      not is_nil(Ash.Changeset.get_argument_or_attribute(changeset, attribute))
+    arg_or_attribute_value =
+      case Ash.Changeset.get_argument_or_attribute(changeset, attribute) do
+        %Ash.NotLoaded{} -> nil
+        %Ash.ForbiddenField{} -> nil
+        other -> other
+      end
+
+    not is_nil(arg_or_attribute_value) ||
+      belongs_to_attr_of_rel_being_managed?(attribute, changeset, true)
   end
 
   def prepare_changeset_for_action(changeset, action, opts) do
@@ -2000,8 +2007,10 @@ defmodule Ash.Changeset do
   def require_values(changeset, _, _, _), do: changeset
 
   defp belongs_to_attr_of_rel_being_managed?(attribute, changeset, only_if_relating? \\ false) do
-    do_belongs_to_attr_of_rel_being_managed?(changeset, attribute) ||
-      belongs_to_attr_of_being_managed_through?(changeset, attribute, only_if_relating?)
+    IO.inspect(do_belongs_to_attr_of_rel_being_managed?(changeset, attribute)) ||
+      IO.inspect(
+        belongs_to_attr_of_being_managed_through?(changeset, attribute, only_if_relating?)
+      )
   end
 
   defp do_belongs_to_attr_of_rel_being_managed?(changeset, attribute) do
