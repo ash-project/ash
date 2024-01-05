@@ -53,7 +53,7 @@ Resource
 
 # DON'T DO THIS
 Resource
-|> Ash.Query.for_read(:read, input, actor: current_user)
+|> Ash.Query.for_read(:read, input)
 |> Api.read(actor: current_user)
 ```
 
