@@ -4,6 +4,7 @@ defmodule Ash.Resource.Validation.Changing do
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.InvalidAttribute
+  require Ash.Expr
 
   @opt_schema [
     field: [
@@ -49,6 +50,22 @@ defmodule Ash.Resource.Validation.Changing do
           {:error, exception(opts)}
         end
     end
+  end
+
+  @impl true
+  def atomic(changeset, opts) do
+    new_value = Ash.Changeset.atomic_ref(changeset, opts[:field])
+    old_value = Ash.Expr.expr(ref(^opts[:field]))
+
+    {:atomic, [opts[:field]], Ash.Expr.expr(^new_value != ^old_value),
+     Ash.Expr.expr(
+       error(^InvalidAttribute, %{
+         field: ^opts[:field],
+         value: ^new_value,
+         message: "must be changing",
+         vars: %{field: ^opts[:field]}
+       })
+     )}
   end
 
   @impl true

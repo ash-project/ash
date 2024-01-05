@@ -16,6 +16,11 @@ defmodule Ash.Resource.Validation.ActionIs do
   end
 
   @impl true
+  def atomic(changeset, opts) do
+    validate(changeset, opts)
+  end
+
+  @impl true
   def describe(opts) do
     [message: "must be %{action}", vars: %{action: opts[:action]}]
   end

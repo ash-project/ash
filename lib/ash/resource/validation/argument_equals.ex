@@ -43,6 +43,11 @@ defmodule Ash.Resource.Validation.ArgumentEquals do
   end
 
   @impl true
+  def atomic(changeset, opts) do
+    validate(changeset, opts)
+  end
+
+  @impl true
   def describe(opts) do
     [
       message: "must equal %{value}",

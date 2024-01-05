@@ -45,11 +45,14 @@ defmodule Ash.Resource.Validation do
   @callback validate(changeset :: Ash.Changeset.t(), opts :: Keyword.t()) :: :ok | {:error, term}
   @callback describe(opts :: Keyword.t()) ::
               String.t() | [{:message, String.t()} | {:vars, Keyword.t()}]
-  @callback atomic?() :: boolean
   @callback atomic(changeset :: Ash.Changeset.t(), opts :: Keyword.t()) ::
               :ok
-              | {:atomic, involved_fields :: list(atom), condition_expr :: Ash.Expr.t(),
+              | {:atomic, involved_fields :: list(atom) | :*, condition_expr :: Ash.Expr.t(),
                  error_expr :: Ash.Expr.t()}
+              | [
+                  {:atomic, involved_fields :: list(atom) | :*, condition_expr :: Ash.Expr.t(),
+                   error_expr :: Ash.Expr.t()}
+                ]
               | :not_atomic
               | {:error, term()}
 
@@ -112,7 +115,6 @@ defmodule Ash.Resource.Validation do
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.Validation
-      @before_compile Ash.Resource.Validation
 
       @impl Ash.Resource.Validation
       def init(opts), do: {:ok, opts}
@@ -146,17 +148,4 @@ defmodule Ash.Resource.Validation do
   def opt_schema, do: @schema
   def action_schema, do: @action_schema
   def validation_type, do: @validation_type
-
-  defmacro __before_compile__(_env) do
-    quote generated: true do
-      unless Module.defines?(__MODULE__, {:atomic?, 0}, :def) do
-        @impl Ash.Resource.Validation
-        if Module.defines?(__MODULE__, {:atomic, 2}, :def) do
-          def atomic?, do: true
-        else
-          def atomic?, do: false
-        end
-      end
-    end
-  end
 end

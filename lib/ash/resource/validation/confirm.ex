@@ -3,6 +3,7 @@ defmodule Ash.Resource.Validation.Confirm do
   use Ash.Resource.Validation
   alias Ash.Changeset
   alias Ash.Error.Changes.InvalidAttribute
+  require Ash.Expr
 
   @impl true
   def init(opts) do
@@ -45,6 +46,35 @@ defmodule Ash.Resource.Validation.Confirm do
        |> with_description(opts)
        |> InvalidAttribute.exception()}
     end
+  end
+
+  def atomic(changeset, opts) do
+    confirmation =
+      case Changeset.fetch_argument_or_change(changeset, opts[:confirmation]) do
+        {:ok, value} ->
+          value
+
+        :error ->
+          Changeset.atomic_ref(changeset, opts[:confirmation])
+      end
+
+    value =
+      case Changeset.fetch_argument_or_change(changeset, opts[:field]) do
+        {:ok, value} ->
+          value
+
+        :error ->
+          Changeset.atomic_ref(changeset, opts[:field])
+      end
+
+    {:atomic, [opts[:confirmation], opts[:field]], Ash.Expr.expr(^confirmation != ^value),
+     Ash.Expr.expr(
+       error(^InvalidAttribute, %{
+         field: ^opts[:confirmation],
+         value: ^value,
+         message: "confirmation did not match value"
+       })
+     )}
   end
 
   @impl true

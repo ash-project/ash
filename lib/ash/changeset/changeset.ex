@@ -567,30 +567,42 @@ defmodule Ash.Changeset do
         end
 
       %{validation: {module, validation_opts}, where: where}, changeset ->
-        with {:atomic, fields, condition_expr, error_expr} <-
-               module.atomic(changeset, validation_opts),
-             {:changing?, true} <-
-               {:changing?, Enum.any?(fields, &changing_attribute?(changeset, &1))},
-             {:atomic, condition} <- atomic_condition(where, changeset) do
-          case condition do
-            true ->
-              {:cont, validate_atomically(changeset, condition_expr, error_expr)}
+        case List.wrap(module.atomic(changeset, validation_opts)) do
+          [{:atomic, _, _, _} | _] = atomics ->
+            Enum.reduce_while(atomics, changeset, fn
+              {:atomic, fields, condition_expr, error_expr}, changeset ->
+                with {:changing?, true} <-
+                       {:changing?,
+                        fields == :* || Enum.any?(fields, &changing_attribute?(changeset, &1))},
+                     {:atomic, condition} <- atomic_condition(where, changeset) do
+                  case condition do
+                    true ->
+                      {:cont, validate_atomically(changeset, condition_expr, error_expr)}
 
-            false ->
-              {:cont, changeset}
+                    false ->
+                      {:cont, changeset}
 
-            condition ->
-              condition_expr =
-                Ash.Expr.expr(^condition and condition_expr)
+                    condition ->
+                      condition_expr =
+                        Ash.Expr.expr(^condition and condition_expr)
 
-              {:cont, validate_atomically(changeset, condition_expr, error_expr)}
-          end
-        else
-          :not_atomic ->
-            {:halt, :not_atomic}
+                      {:cont, validate_atomically(changeset, condition_expr, error_expr)}
+                  end
+                else
+                  {:changing?, false} ->
+                    {:cont, changeset}
 
-          {:changing?, false} ->
-            {:cont, changeset}
+                  :not_atomic ->
+                    {:halt, :not_atomic}
+                end
+            end)
+            |> case do
+              :not_atomic -> {:halt, :not_atomic}
+              changeset -> {:cont, changeset}
+            end
+
+          [value] ->
+            {:halt, value}
         end
     end)
   end
@@ -630,13 +642,24 @@ defmodule Ash.Changeset do
   Gets a reference to a field, or the current atomic update expression of that field.
   """
   def atomic_ref(changeset, field) do
-    if base_value = changeset.atomics[field] do
-      %{type: type, constraints: constraints} =
-        Ash.Resource.Info.attribute(changeset.resource, field)
+    case Keyword.fetch(changeset.atomics, field) do
+      {:ok, atomic} ->
+        %{type: type, constraints: constraints} =
+          Ash.Resource.Info.attribute(changeset.resource, field)
 
-      Ash.Expr.expr(type(^base_value, ^type, ^constraints))
-    else
-      Ash.Expr.expr(ref(^field))
+        Ash.Expr.expr(type(^atomic, ^type, ^constraints))
+
+      :error ->
+        case Map.fetch(changeset.attributes, field) do
+          {:ok, new_value} ->
+            %{type: type, constraints: constraints} =
+              Ash.Resource.Info.attribute(changeset.resource, field)
+
+            Ash.Expr.expr(type(^new_value, ^type, ^constraints))
+
+          :error ->
+            Ash.Expr.expr(ref(^field))
+        end
     end
   end
 
@@ -1186,8 +1209,15 @@ defmodule Ash.Changeset do
   *will* be set by `manage_relationship` even if it isn't currently being set.
   """
   def present?(changeset, attribute) do
-    belongs_to_attr_of_rel_being_managed?(attribute, changeset, true) ||
-      not is_nil(Ash.Changeset.get_argument_or_attribute(changeset, attribute))
+    arg_or_attribute_value =
+      case Ash.Changeset.get_argument_or_attribute(changeset, attribute) do
+        %Ash.NotLoaded{} -> nil
+        %Ash.ForbiddenField{} -> nil
+        other -> other
+      end
+
+    not is_nil(arg_or_attribute_value) ||
+      belongs_to_attr_of_rel_being_managed?(attribute, changeset, true)
   end
 
   def prepare_changeset_for_action(changeset, action, opts) do

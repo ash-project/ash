@@ -51,14 +51,44 @@ defmodule Ash.Query.Operator do
   @doc "Evaluate the operator with provided inputs"
   def evaluate(%mod{left: left, right: right} = op) when is_nil(left) or is_nil(right) do
     if mod.evaluate_nil_inputs?() do
-      mod.evaluate(op)
+      do_evaluate(op)
     else
       {:known, nil}
     end
   end
 
-  def evaluate(%mod{} = op) do
-    mod.evaluate(op)
+  def evaluate(op) do
+    do_evaluate(op)
+  end
+
+  defp do_evaluate(%mod{left: left, right: right} = op) do
+    overloads = operator_overloads(mod.operator()) || []
+
+    overloads
+    |> Enum.find_value(fn {types, mod} ->
+      case Ash.Type.determine_types([types], [left, right]) do
+        [] ->
+          nil
+
+        _types ->
+          if function_exported?(mod, :evaluate_operator, 1) do
+            case mod.evaluate_operator(op) do
+              {:known, value} ->
+                {:known, value}
+
+              _ ->
+                nil
+            end
+          end
+      end
+    end)
+    |> case do
+      nil ->
+        mod.evaluate(op)
+
+      {:known, value} ->
+        {:known, value}
+    end
   end
 
   @doc "Create a new operator. Pass the module and the left and right values"
@@ -110,6 +140,26 @@ defmodule Ash.Query.Operator do
           {:error, error}
       end
     end
+  end
+
+  @doc "Get type overloads for the given operator"
+  def operator_overloads(operator) do
+    :ash
+    |> Application.get_env(:known_types, [])
+    |> List.wrap()
+    |> Enum.reduce(%{}, fn type, acc ->
+      Code.ensure_compiled!(type)
+
+      if function_exported?(type, :operator_overloads, 0) do
+        Map.merge(acc, type.operator_overloads()[operator] || %{}, fn _, left, right ->
+          Map.merge(left, right, fn _, left, right ->
+            List.wrap(left) ++ List.wrap(right)
+          end)
+        end)
+      else
+        acc
+      end
+    end)
   end
 
   @doc false

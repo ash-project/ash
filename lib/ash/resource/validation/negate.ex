@@ -11,6 +11,8 @@ defmodule Ash.Resource.Validation.Negate do
 
   use Ash.Resource.Validation
   alias Ash.Error.Changes.InvalidAttribute
+  alias Ash.Error.Changes.InvalidChanges
+  require Ash.Expr
 
   @impl true
   def init(opts) do
@@ -51,6 +53,50 @@ defmodule Ash.Resource.Validation.Negate do
          |> describe()
          |> InvalidAttribute.exception()}
     end
+  end
+
+  def atomic(changeset, opts) do
+    {validation, validation_opts} = opts[:validation]
+
+    {message, vars} =
+      case validation.describe(validation_opts) do
+        message when is_binary(message) ->
+          {message, []}
+
+        options ->
+          {"must not pass validation: #{options[:message]}", options[:vars] || []}
+      end
+
+    case validation.atomic(changeset, validation_opts) do
+      list when is_list(list) ->
+        Enum.map(list, &negate_atomic(&1, message, vars))
+
+      {:atomic, _fields, _condition, _error_expr} = atomic ->
+        negate_atomic(atomic, message, vars)
+
+      {:error, _} ->
+        :ok
+
+      :ok ->
+        {:error,
+         opts
+         |> describe()
+         |> InvalidAttribute.exception()}
+
+      :not_atomic ->
+        :not_atomic
+    end
+  end
+
+  defp negate_atomic({:atomic, fields, condition, _error_expr}, message, vars) do
+    {:atomic, fields, Ash.Expr.expr(not (^condition)),
+     Ash.Expr.expr(
+       error(^InvalidChanges, %{
+         fields: fields,
+         message: ^message,
+         vars: ^Map.new(vars)
+       })
+     )}
   end
 
   @impl true

@@ -4,8 +4,6 @@ defmodule Ash.Filter do
   require Logger
   require Ash.Expr
 
-  alias Ash.Engine.Request
-
   alias Ash.Error.Query.{
     InvalidFilterValue,
     NoSuchAttributeOrRelationship,
@@ -1089,11 +1087,10 @@ defmodule Ash.Filter do
     strict_subset_of(filter, candidate) == true
   end
 
-  def read_requests(_, nil, _, _, _), do: {:ok, []}
-
-  def read_requests(api, %{resource: resource} = filter, request_path, actor, tenant) do
+  @doc false
+  def relationship_filters(api, query, actor, tenant) do
     paths_with_refs =
-      filter
+      query.filter
       |> relationship_paths(true, true)
       |> Enum.map(fn {path, refs} ->
         {path, Enum.filter(refs, &(&1 && &1.input?))}
@@ -1104,44 +1101,49 @@ defmodule Ash.Filter do
 
     paths_with_refs
     |> Enum.map(&elem(&1, 0))
-    |> Enum.reduce_while({:ok, []}, fn path, {:ok, requests} ->
+    |> Enum.reduce_while({:ok, %{}}, fn path, {:ok, filters} ->
       last_relationship =
         Enum.reduce(path, nil, fn
           relationship, nil ->
-            Ash.Resource.Info.relationship(resource, relationship)
+            Ash.Resource.Info.relationship(query.resource, relationship)
 
           relationship, acc ->
             Ash.Resource.Info.relationship(acc.destination, relationship)
         end)
 
-      case relationship_query(resource, path, actor, tenant) do
-        %{errors: []} = query ->
-          request =
-            Request.new(
-              resource: query.resource,
-              api: api,
-              query:
-                query
-                |> Ash.Query.set_context(%{
-                  accessing_from: %{
-                    source: last_relationship.source,
-                    name: last_relationship.name
-                  }
-                })
-                |> Ash.Query.set_context(%{
-                  filter_only?: true,
-                  filter_references: refs[path] || []
-                })
-                |> Ash.Query.select([]),
-              async?: false,
-              path: request_path ++ [:filter, path],
-              strict_check_only?: true,
-              action: query.action,
-              name: "authorize filter #{Enum.join(path, ".")}",
-              data: []
-            )
+      case relationship_query(query.resource, path, actor, tenant) do
+        %{errors: []} = related_query ->
+          related_query
+          |> Ash.Query.set_context(%{
+            accessing_from: %{
+              source: last_relationship.source,
+              name: last_relationship.name
+            }
+          })
+          |> Ash.Query.set_context(%{
+            filter_only?: true,
+            filter_references: refs[path] || []
+          })
+          |> Ash.Query.select([])
+          |> api.can(actor,
+            run_queries?: false,
+            alter_source?: true,
+            return_forbidden_error?: true,
+            maybe_is: false
+          )
+          |> case do
+            {:ok, true, authorized_related_query} ->
+              {:cont,
+               {:ok,
+                Map.put(
+                  filters,
+                  path,
+                  Ash.Filter.move_to_relationship_path(authorized_related_query.filter, path)
+                )}}
 
-          {:cont, {:ok, [request | requests]}}
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
 
         %{errors: errors} ->
           {:halt, {:error, errors}}

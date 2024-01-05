@@ -4,6 +4,7 @@ defmodule Ash.Resource.Validation.Compare do
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.InvalidAttribute
+  require Ash.Expr
 
   @impl true
   def init(opts) do
@@ -64,6 +65,66 @@ defmodule Ash.Resource.Validation.Compare do
 
       _ ->
         :ok
+    end
+  end
+
+  def atomic(changeset, opts) do
+    case Ash.Changeset.fetch_argument(changeset, opts[:attribute]) do
+      :error ->
+        ref = Ash.Changeset.atomic_ref(changeset, opts[:attribute])
+
+        opts
+        |> Keyword.take([
+          :greater_than,
+          :less_than,
+          :greater_than_or_equal_to,
+          :less_than_or_equal_to
+        ])
+        |> Enum.map(fn
+          {:greater_than, value} ->
+            {:atomic, [opts[:attribute]], Ash.Expr.expr(^ref <= ^value),
+             Ash.Expr.expr(
+               error(^InvalidAttribute, %{
+                 field: ^opts[:attribute],
+                 value: ^ref,
+                 message: "must be greater than %{greater_than}",
+                 vars: %{field: ^opts[:attribute], greater_than: ^value}
+               })
+             )}
+
+          {:less_than, value} ->
+            {:atomic, [opts[:attribute]], Ash.Expr.expr(^ref >= ^value),
+             Ash.Expr.expr(
+               error(^InvalidAttribute, %{
+                 field: ^opts[:attribute],
+                 value: ^ref,
+                 message: "must be less than %{less_than}",
+                 vars: %{field: ^opts[:attribute], less_than: ^value}
+               })
+             )}
+
+          {:greater_than_or_equal_to, value} ->
+            {:atomic, [opts[:attribute]], Ash.Expr.expr(^ref < ^value),
+             Ash.Expr.expr(
+               error(^InvalidAttribute, %{
+                 field: ^opts[:attribute],
+                 value: ^ref,
+                 message: "must be greater than or equal to %{greater_than_or_equal_to}",
+                 vars: %{field: ^opts[:attribute], greater_than_or_equal_to: ^value}
+               })
+             )}
+
+          {:less_than_or_equal_to, value} ->
+            {:atomic, [opts[:attribute]], Ash.Expr.expr(^ref > ^value),
+             Ash.Expr.expr(
+               error(^InvalidAttribute, %{
+                 field: ^opts[:attribute],
+                 value: ^ref,
+                 message: "must be less than or equal to %{less_than_or_equal_to}",
+                 vars: %{field: ^opts[:attribute], less_than_or_equal_to: ^value}
+               })
+             )}
+        end)
     end
   end
 

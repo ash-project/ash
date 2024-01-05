@@ -7,7 +7,7 @@ defmodule Ash.MixProject do
   designed to be used by multiple front ends.
   """
 
-  @version "2.17.19"
+  @version "2.17.21"
 
   def project do
     [
@@ -77,9 +77,9 @@ defmodule Ash.MixProject do
   defp groups_for_extras do
     [
       Tutorials: [
-        "documentation/tutorials/1-get-started.md",
-        "documentation/tutorials/2-philosophy.md",
-        "documentation/tutorials/3-why-ash.md",
+        "documentation/tutorials/get-started.md",
+        "documentation/tutorials/philosophy.md",
+        "documentation/tutorials/why-ash.md",
         ~r'documentation/tutorials'
       ],
       "How To": ~r'documentation/how_to',

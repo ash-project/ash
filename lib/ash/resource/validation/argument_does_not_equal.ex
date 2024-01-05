@@ -44,6 +44,11 @@ defmodule Ash.Resource.Validation.ArgumentDoesNotEqual do
   end
 
   @impl true
+  def atomic(changeset, opts) do
+    validate(changeset, opts)
+  end
+
+  @impl true
   def describe(opts) do
     [
       message: "must not equal %{value}",

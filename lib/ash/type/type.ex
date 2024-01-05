@@ -176,6 +176,21 @@ defmodule Ash.Type do
   @callback storage_type() :: Ecto.Type.t()
   @callback storage_type(constraints) :: Ecto.Type.t()
   @callback include_source(constraints, Ash.Changeset.t()) :: constraints
+
+  @doc """
+  A map of operators with overloaded implementations.
+
+  These will only be honored if the type is placed in `config :ash, :known_types, [...Type]`
+
+  A corresponding `evaluate_operator/1` clause should match.
+  """
+  @callback operator_overloads() :: %{optional(atom) => %{optional(term) => module()}}
+
+  @doc """
+  The implementation for any overloaded implementations.
+  """
+  @callback evaluate_operator(term) :: {:known, term} | :unknown | {:error, term()}
+
   @doc """
   Useful for typed data layers (like ash_postgres) to instruct them not to attempt to cast input values.
 
@@ -256,7 +271,9 @@ defmodule Ash.Type do
     dump_to_embedded: 2,
     dump_to_embedded_array: 2,
     include_source: 2,
-    load: 4
+    load: 4,
+    operator_overloads: 0,
+    evaluate_operator: 1
   ]
 
   @builtin_types Keyword.values(@builtin_short_names)
@@ -1257,6 +1274,114 @@ defmodule Ash.Type do
   rescue
     _ -> false
   end
+
+  @doc """
+  Determine types for a given function or operator.
+  """
+  def determine_types(types, values) do
+    Enum.map(types, fn types ->
+      case types do
+        :same ->
+          types =
+            for _ <- values do
+              :same
+            end
+
+          closest_fitting_type(types, values)
+
+        :any ->
+          for _ <- values do
+            :any
+          end
+
+        types ->
+          closest_fitting_type(types, values)
+      end
+    end)
+    |> Enum.filter(fn types ->
+      Enum.all?(types, &(vagueness(&1) == 0))
+    end)
+    |> Enum.map(fn
+      :any ->
+        nil
+
+      {:array, :any} ->
+        nil
+
+      type ->
+        type
+    end)
+    |> Enum.filter(& &1)
+  end
+
+  defp closest_fitting_type(types, values) do
+    types_with_values = Enum.zip(types, values)
+
+    types_with_values
+    |> fill_in_known_types()
+    |> clarify_types()
+  end
+
+  defp clarify_types(types) do
+    basis =
+      types
+      |> Enum.map(&elem(&1, 0))
+      |> Enum.min_by(&vagueness(&1))
+
+    Enum.map(types, fn {type, _value} ->
+      replace_same(type, basis)
+    end)
+  end
+
+  defp replace_same({:array, type}, basis) do
+    {:array, replace_same(type, basis)}
+  end
+
+  defp replace_same(:same, :same) do
+    :any
+  end
+
+  defp replace_same(:same, {:array, :same}) do
+    {:array, :any}
+  end
+
+  defp replace_same(:same, basis) do
+    basis
+  end
+
+  defp replace_same(other, _basis) do
+    other
+  end
+
+  defp fill_in_known_types(types) do
+    Enum.map(types, &fill_in_known_type/1)
+  end
+
+  defp fill_in_known_type({vague_type, %Ash.Query.Ref{attribute: %{type: type}}} = ref)
+       when vague_type in [:any, :same] do
+    if Ash.Type.ash_type?(type) do
+      {type || :any, ref}
+    else
+      {type, ref}
+    end
+  end
+
+  defp fill_in_known_type(
+         {{:array, type}, %Ash.Query.Ref{attribute: %{type: {:array, type}} = attribute} = ref}
+       ) do
+    {:array, fill_in_known_type({type, %{ref | attribute: %{attribute | type: type}}})}
+  end
+
+  defp fill_in_known_type({type, value}), do: {array_to_in(type), value}
+
+  defp array_to_in({:array, v}), do: {:array, array_to_in(v)}
+
+  defp array_to_in(v), do: v
+
+  defp vagueness({:array, type}), do: vagueness(type)
+  defp vagueness(:same), do: 2
+  defp vagueness(:any), do: 1
+  defp vagueness(_), do: 0
 
   @doc false
   def set_type_transformation(%{type: original_type, constraints: constraints} = thing) do
