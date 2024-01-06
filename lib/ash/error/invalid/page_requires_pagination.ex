@@ -15,7 +15,7 @@ defmodule Ash.Error.Invalid.PageRequiresPagination do
       enabled pagination in your action. For example:
 
 
-      read #{action.name} do
+      read :#{action.name} do
         pagination offset?: true, keyset?: true, required?: false
       end
       """
