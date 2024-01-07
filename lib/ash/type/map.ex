@@ -154,7 +154,7 @@ defmodule Ash.Type.Map do
             {:ok, Map.put(result, field, field_value)}
 
           {:error, errors} ->
-            {:error, Enum.map(errors, fn error -> [field: field, message: error[:message]] end)}
+            {:error, Enum.map(errors, fn error -> Keyword.put(error, :field, field) end)}
         end
 
       :error ->

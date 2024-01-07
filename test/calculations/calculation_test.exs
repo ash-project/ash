@@ -978,7 +978,6 @@ defmodule Ash.Test.CalculationTest do
              |> Enum.map(& &1.active)
   end
 
-  @tag :focus
   test "aggregates using calculations pass actor to calculations", %{
     user1: user,
     actor1: actor,

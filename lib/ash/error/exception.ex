@@ -55,7 +55,11 @@ defmodule Ash.Error.Exception do
             }
           end)
 
-        super(opts)
+        super(opts) |> Map.update(:vars, [], &clean_vars/1)
+      end
+
+      defp clean_vars(vars) do
+        vars |> Keyword.drop([:field, :message, :path])
       end
 
       defoverridable exception: 1, message: 1
