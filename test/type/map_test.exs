@@ -124,7 +124,7 @@ defmodule Type.MapTest do
                changeset: nil,
                query: nil,
                error_context: [],
-               vars: [field: :foo, message: "field must be present", path: [:metadata]],
+               vars: [],
                path: [:metadata]
              }
            ] = changeset.errors
@@ -148,11 +148,7 @@ defmodule Type.MapTest do
                changeset: nil,
                query: nil,
                error_context: [],
-               vars: [
-                 field: :bar,
-                 message: "must be more than or equal to %{min}",
-                 path: [:metadata]
-               ],
+               vars: [min: 0],
                path: [:metadata]
              }
            ] = changeset.errors
@@ -202,7 +198,7 @@ defmodule Type.MapTest do
                changeset: nil,
                query: nil,
                error_context: [],
-               vars: [field: :foo, message: "value must not be nil", path: [:metadata]],
+               vars: [],
                path: [:metadata]
              }
            ] = changeset.errors

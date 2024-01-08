@@ -175,7 +175,7 @@ defmodule Ash.Type.Keyword do
             {:ok, [{field, field_value} | result]}
 
           {:error, errors} ->
-            {:error, Enum.map(errors, fn error -> [field: field, message: error[:message]] end)}
+            {:error, Enum.map(errors, fn error -> Keyword.put(error, :field, field) end)}
         end
 
       :error ->
