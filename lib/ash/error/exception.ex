@@ -59,7 +59,7 @@ defmodule Ash.Error.Exception do
       end
 
       defp clean_vars(vars) do
-        vars |> Keyword.drop([:field, :message, :path])
+        vars |> Kernel.||([]) |> Keyword.drop([:field, :message, :path])
       end
 
       defoverridable exception: 1, message: 1
