@@ -36,7 +36,7 @@ defmodule Ash.Resource.Builder do
           Spark.Dsl.Builder.result()
   defbuilder add_action(dsl_state, type, name, opts \\ []) do
     with {:ok, action} <- build_action(type, name, opts) do
-      Transformer.add_entity(dsl_state, [:actions], action)
+      Transformer.add_entity(dsl_state, [:actions], action, type: :append)
     end
   end
 
@@ -99,7 +99,7 @@ defmodule Ash.Resource.Builder do
           Spark.Dsl.Builder.result()
   defbuilder add_relationship(dsl_state, type, name, destination, opts \\ []) do
     with {:ok, relationship} <- build_relationship(type, name, destination, opts) do
-      Transformer.add_entity(dsl_state, [:relationships], relationship)
+      Transformer.add_entity(dsl_state, [:relationships], relationship, type: :append)
     end
   end
 
@@ -154,7 +154,7 @@ defmodule Ash.Resource.Builder do
           Spark.Dsl.Builder.result()
   defbuilder add_identity(dsl_state, name, fields, opts \\ []) do
     with {:ok, identity} <- build_identity(name, fields, opts) do
-      Transformer.add_entity(dsl_state, [:identities], identity)
+      Transformer.add_entity(dsl_state, [:identities], identity, type: :append)
     end
   end
 
@@ -195,7 +195,7 @@ defmodule Ash.Resource.Builder do
       end
 
     with {:ok, change} <- build_change(ref, opts) do
-      Transformer.add_entity(dsl_state, [:changes], change)
+      Transformer.add_entity(dsl_state, [:changes], change, type: :append)
     end
   end
 
@@ -233,7 +233,7 @@ defmodule Ash.Resource.Builder do
       end
 
     with {:ok, preparation} <- build_preparation(ref, opts) do
-      Transformer.add_entity(dsl_state, [:preparations], preparation)
+      Transformer.add_entity(dsl_state, [:preparations], preparation, type: :append)
     end
   end
 
@@ -348,7 +348,7 @@ defmodule Ash.Resource.Builder do
           Spark.Dsl.Builder.result()
   defbuilder add_update_timestamp(dsl_state, name, opts \\ []) do
     with {:ok, update_timestamp} <- build_update_timestamp(name, opts) do
-      Transformer.add_entity(dsl_state, [:attributes], update_timestamp)
+      Transformer.add_entity(dsl_state, [:attributes], update_timestamp, type: :append)
     end
   end
 
@@ -390,7 +390,7 @@ defmodule Ash.Resource.Builder do
           Spark.Dsl.Builder.result()
   defbuilder add_create_timestamp(dsl_state, name, opts \\ []) do
     with {:ok, create_timestamp} <- build_create_timestamp(name, opts) do
-      Transformer.add_entity(dsl_state, [:attributes], create_timestamp)
+      Transformer.add_entity(dsl_state, [:attributes], create_timestamp, type: :append)
     end
   end
 
@@ -438,7 +438,7 @@ defmodule Ash.Resource.Builder do
           Spark.Dsl.Builder.result()
   defbuilder add_attribute(dsl_state, name, type, opts \\ []) do
     with {:ok, attribute} <- build_attribute(name, type, opts) do
-      Transformer.add_entity(dsl_state, [:attributes], attribute)
+      Transformer.add_entity(dsl_state, [:attributes], attribute, type: :append)
     end
   end
 
@@ -489,7 +489,7 @@ defmodule Ash.Resource.Builder do
   defbuilder add_calculation(dsl_state, name, type, calculation, opts \\ []) do
     with {:ok, opts} <- handle_nested_builders(opts, [:arguments]),
          {:ok, calculation} <- build_calculation(name, type, calculation, opts) do
-      Transformer.add_entity(dsl_state, [:calculations], calculation)
+      Transformer.add_entity(dsl_state, [:calculations], calculation, type: :append)
     end
   end
 
@@ -546,7 +546,7 @@ defmodule Ash.Resource.Builder do
           Spark.Dsl.Builder.result()
   defbuilder add_aggregate(dsl_state, name, kind, relationship_path, opts \\ []) do
     with {:ok, aggregate} <- build_aggregate(name, kind, relationship_path, opts) do
-      Transformer.add_entity(dsl_state, [:aggregates], aggregate)
+      Transformer.add_entity(dsl_state, [:aggregates], aggregate, type: :append)
     end
   end
 
