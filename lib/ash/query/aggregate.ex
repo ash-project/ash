@@ -122,8 +122,13 @@ defmodule Ash.Query.Aggregate do
       end)
 
     with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @schema) do
+      related = Ash.Resource.Info.related(resource, opts[:path] || [])
+
       query =
-        opts[:query] || Ash.Query.new(Ash.Resource.Info.related(resource, opts[:path] || []))
+        case opts[:query] || Ash.Query.new(related) do
+          %Ash.Query{} = query -> query
+          build_opts -> Ash.Query.build(related, build_opts)
+        end
 
       read_action = opts[:read_action] || Ash.Resource.Info.primary_action(resource, :read).name
 
