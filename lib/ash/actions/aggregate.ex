@@ -15,13 +15,26 @@ defmodule Ash.Actions.Aggregate do
         agg_authorize? = aggregate.authorize? && opts[:authorize?]
 
         read_action =
-          aggregate.read_action ||
+          aggregate.read_action || query.action ||
             Ash.Resource.Info.primary_action!(query.resource, :read).name
 
         {agg_authorize?, read_action}
       end)
       |> Enum.reduce_while({:ok, %{}}, fn {{agg_authorize?, read_action}, aggregates},
                                           {:ok, acc} ->
+        query =
+          if query.__validated_for_action__ == read_action do
+            query
+          else
+            Ash.Query.for_read(query, read_action, %{},
+              tenant: opts[:tenant],
+              actor: opts[:actor],
+              authorize?: opts[:authorize?]
+            )
+          end
+
+        query = %{query | api: api}
+
         Ash.Tracer.span :action,
                         Ash.Api.Info.span_name(query.api, query.resource, :aggregate),
                         opts[:tracer] do
@@ -41,80 +54,43 @@ defmodule Ash.Actions.Aggregate do
             Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
             query = Map.put(query, :aggregates, Map.new(aggregates, &{&1.name, &1}))
 
-            {aggregate_auth_requests, [], aggregates_in_query} =
-              Ash.Query.Aggregate.requests(
-                query,
-                true,
-                opts[:authorize?],
-                [],
-                []
-              )
-
-            query = %{query | aggregates: %{}}
-            resource = query.resource
-
-            case aggregate_auth_requests do
-              [] ->
-                case Ash.Query.data_layer_query(query) do
-                  {:ok, query} ->
-                    case Ash.DataLayer.run_aggregate_query(query, aggregates_in_query, resource) do
-                      {:ok, result} ->
-                        {:cont, {:ok, Map.merge(acc, result)}}
-
-                      other ->
-                        {:halt, other}
-                    end
-
-                  {:error, error} ->
-                    {:halt, {:error, error}}
-                end
-
-              requests ->
-                case Ash.Engine.run(requests,
-                       verbose?: opts[:verbose?],
-                       actor: opts[:actor],
-                       authorize?: opts[:authorize?],
-                       api: query.api,
-                       resource: query.resource,
-                       tracer: opts[:tracer],
-                       query: query
-                     ) do
-                  {:ok,
-                   %{
-                     data: %{
-                       aggregate: %{
-                         [] => %{{^agg_authorize?, ^read_action} => filter}
-                       }
-                     }
-                   }} ->
-                    query
-                    |> Ash.Query.do_filter(filter)
-                    |> Ash.Query.data_layer_query()
-                    |> case do
-                      {:ok, query} ->
-                        case Ash.DataLayer.run_aggregate_query(
-                               query,
-                               aggregates_in_query,
-                               resource
-                             ) do
-                          {:ok, results} ->
-                            {:cont, {:ok, Map.merge(acc, results)}}
-
-                          other ->
-                            {:halt, other}
-                        end
-
-                      {:error, error} ->
-                        {:halt, {:error, error}}
-                    end
-
-                  {:error, error} ->
-                    {:halt, {:error, Ash.Error.to_ash_error(error)}}
-                end
+            with {:ok, query} <- authorize_query(query, opts, agg_authorize?),
+                 {:ok, query} <- Ash.Query.data_layer_query(query),
+                 {:ok, result} <-
+                   Ash.DataLayer.run_aggregate_query(query, aggregates, query.resource) do
+              {:cont, {:ok, Map.merge(acc, result)}}
+            else
+              {:error, error} ->
+                {:halt, {:error, error}}
             end
           end
         end
       end)
+    end
+  end
+
+  defp authorize_query(query, opts, agg_authorize?) do
+    if agg_authorize? do
+      case query.api.can(query, opts[:actor],
+             return_forbidden_error?: true,
+             maybe_is: false,
+             run_queries?: false,
+             alter_source?: true
+           ) do
+        {:ok, true} ->
+          {:ok, query}
+
+        {:ok, true, query} ->
+          {:ok, query}
+
+        {:ok, false, error} ->
+          {:error, error}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      {:ok, query}
     end
   end
 

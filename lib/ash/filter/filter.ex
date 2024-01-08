@@ -1088,31 +1088,57 @@ defmodule Ash.Filter do
   end
 
   @doc false
-  def relationship_filters(api, query, actor, tenant) do
-    paths_with_refs =
-      query.filter
-      |> relationship_paths(true, true)
-      |> Enum.map(fn {path, refs} ->
-        {path, Enum.filter(refs, &(&1 && &1.input?))}
-      end)
-      |> Enum.reject(fn {path, refs} -> path == [] || refs == [] end)
+  def relationship_filters(api, query, actor, tenant, aggregates, authorize?) do
+    if authorize? do
+      paths_with_refs =
+        query.filter
+        |> relationship_paths(true, true)
+        |> Enum.map(fn {path, refs} ->
+          refs = Enum.filter(refs, &(&1 && &1.input?))
 
-    refs = group_refs_by_all_paths(paths_with_refs)
-
-    paths_with_refs
-    |> Enum.map(&elem(&1, 0))
-    |> Enum.reduce_while({:ok, %{}}, fn path, {:ok, filters} ->
-      last_relationship =
-        Enum.reduce(path, nil, fn
-          relationship, nil ->
-            Ash.Resource.Info.relationship(query.resource, relationship)
-
-          relationship, acc ->
-            Ash.Resource.Info.relationship(acc.destination, relationship)
+          {path, refs}
         end)
+        |> Enum.reject(fn {path, refs} -> path == [] || refs == [] end)
 
-      case relationship_query(query.resource, path, actor, tenant) do
-        %{errors: []} = related_query ->
+      refs =
+        group_refs_by_all_paths(paths_with_refs)
+
+      paths_with_refs
+      |> Enum.map(&elem(&1, 0))
+      |> Enum.reduce_while({:ok, %{}}, fn path, {:ok, filters} ->
+        add_authorization_path_filter(filters, path, api, query, actor, tenant, refs)
+      end)
+      |> add_aggregate_path_authorization(api, refs, aggregates, query, actor, tenant, refs)
+    else
+      {:ok, %{}}
+    end
+  end
+
+  defp add_authorization_path_filter(
+         filters,
+         path,
+         api,
+         query,
+         actor,
+         tenant,
+         refs,
+         base_related_query \\ nil,
+         aggregate? \\ false
+       ) do
+    last_relationship =
+      Enum.reduce(path, nil, fn
+        relationship, nil ->
+          Ash.Resource.Info.relationship(query.resource, relationship)
+
+        relationship, acc ->
+          Ash.Resource.Info.relationship(acc.destination, relationship)
+      end)
+
+    case relationship_query(query.resource, path, actor, tenant, base_related_query) do
+      %{errors: []} = related_query ->
+        if filters[{path, related_query.action.name}] do
+          {:cont, {:ok, filters}}
+        else
           related_query
           |> Ash.Query.set_context(%{
             accessing_from: %{
@@ -1121,7 +1147,7 @@ defmodule Ash.Filter do
             }
           })
           |> Ash.Query.set_context(%{
-            filter_only?: true,
+            filter_only?: !aggregate?,
             filter_references: refs[path] || []
           })
           |> Ash.Query.select([])
@@ -1137,42 +1163,90 @@ defmodule Ash.Filter do
                {:ok,
                 Map.put(
                   filters,
-                  path,
-                  Ash.Filter.move_to_relationship_path(authorized_related_query.filter, path)
+                  {path, related_query.action.name},
+                  authorized_related_query.filter
                 )}}
+
+            {:ok, false, error} ->
+              {:halt, {:error, error}}
 
             {:error, error} ->
               {:halt, {:error, error}}
           end
+        end
 
-        %{errors: errors} ->
-          {:halt, {:error, errors}}
-      end
+      %{errors: errors} ->
+        {:halt, {:error, errors}}
+    end
+  end
+
+  defp add_aggregate_path_authorization(
+         {:ok, path_filters},
+         api,
+         refs,
+         aggregates,
+         query,
+         actor,
+         tenant,
+         refs
+       ) do
+    Enum.flat_map(refs, fn {path, refs} ->
+      refs
+      |> Enum.filter(
+        &match?(
+          %Ref{attribute: %Ash.Query.Aggregate{}, input?: true},
+          &1
+        )
+      )
+      |> Enum.map(fn ref ->
+        {path, ref.attribute}
+      end)
+    end)
+    |> Enum.concat(Enum.map(aggregates, &{[], &1}))
+    |> Enum.reduce_while({:ok, path_filters}, fn {path, aggregate}, {:ok, filters} ->
+      add_authorization_path_filter(
+        filters,
+        path ++ aggregate.relationship_path,
+        api,
+        query,
+        actor,
+        tenant,
+        refs,
+        aggregate.query,
+        true
+      )
     end)
   end
 
-  defp relationship_query(resource, [last], actor, tenant) do
+  defp relationship_query(resource, [last], actor, tenant, base) do
     relationship = Ash.Resource.Info.relationship(resource, last)
+    base_query = base || Ash.Query.new(relationship.destination)
 
     action =
-      relationship.read_action ||
+      relationship.read_action || (base_query.action && base_query.action.name) ||
         Ash.Resource.Info.primary_action!(relationship.destination, :read).name
 
-    relationship.destination
-    |> Ash.Query.set_context(relationship.context)
-    |> Ash.Query.sort(relationship.sort, prepend?: true)
-    |> Ash.Query.do_filter(relationship.filter, parent_stack: relationship.source)
-    |> Ash.Query.for_read(action, %{},
-      actor: actor,
-      authorize?: true,
-      tenant: tenant
-    )
+    query =
+      relationship.destination
+      |> Ash.Query.set_context(relationship.context)
+      |> Ash.Query.sort(relationship.sort, prepend?: true)
+      |> Ash.Query.do_filter(relationship.filter, parent_stack: relationship.source)
+
+    if query.__validated_for_action__ == action do
+      query
+    else
+      Ash.Query.for_read(query, action, %{},
+        actor: actor,
+        authorize?: true,
+        tenant: tenant
+      )
+    end
   end
 
-  defp relationship_query(resource, [next | rest], actor, tenant) do
+  defp relationship_query(resource, [next | rest], actor, tenant, base) do
     resource
     |> Ash.Resource.Info.related(next)
-    |> relationship_query(rest, actor, tenant)
+    |> relationship_query(rest, actor, tenant, base)
   end
 
   defp group_refs_by_all_paths(paths_with_refs) do

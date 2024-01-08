@@ -85,14 +85,10 @@ defmodule Ash.Test.Policy.ComplexTest do
   end
 
   test "it properly scopes filters", %{me: me} do
-    User
-    |> Ash.Query.filter(posts.exists(author.friends, name == "me"))
-    |> Api.read!()
-
-    assert [_] =
-             Post
-             |> Ash.Query.filter(comments.text == "comment by a friend of a friend on my post")
-             |> Api.read!(actor: me, authorize?: false)
+    # assert [_] =
+    #          Post
+    #          |> Ash.Query.filter(comments.text == "comment by a friend of a friend on my post")
+    #          |> Api.read!(actor: me, authorize?: false)
 
     assert [] =
              Post

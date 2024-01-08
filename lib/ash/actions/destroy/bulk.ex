@@ -347,7 +347,7 @@ defmodule Ash.Actions.Destroy.Bulk do
       case query.api.can(query, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,
-             modify_source?: true
+             alter_source?: true
            ) do
         {:ok, true} ->
           {:ok, query}
@@ -371,7 +371,7 @@ defmodule Ash.Actions.Destroy.Bulk do
       case query.api.can(query, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,
-             modify_source?: true,
+             alter_source?: true,
              base_query: query
            ) do
         {:ok, true} ->

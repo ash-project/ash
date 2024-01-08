@@ -1115,7 +1115,11 @@ defmodule Ash.Api do
         end
         |> case do
           {:ok, :maybe} ->
-            {:ok, opts[:maybe_is]}
+            if opts[:maybe_is] == false && opts[:return_forbidden_error?] do
+              {:ok, false, authorizer_exception(authorizers)}
+            else
+              {:ok, opts[:maybe_is]}
+            end
 
           other ->
             other

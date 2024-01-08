@@ -66,7 +66,12 @@ defmodule Ash.Filter.Runtime do
           records
 
         refs_to_load ->
-          api.load!(records, refs_to_load)
+          load =
+            resource
+            |> Ash.Query.load(refs_to_load)
+            |> Ash.Query.set_context(%{private: %{internal?: true}})
+
+          api.load!(records, load, authorize?: false)
       end
 
     filter
@@ -259,7 +264,12 @@ defmodule Ash.Filter.Runtime do
             record
 
           refs ->
-            api.load!(record, refs)
+            load =
+              resource
+              |> Ash.Query.load(refs)
+              |> Ash.Query.set_context(%{private: %{internal?: true}})
+
+            api.load!(record, load, authorize?: false)
         end
 
       expression
@@ -278,7 +288,7 @@ defmodule Ash.Filter.Runtime do
             |> Ash.Query.load(need_to_load)
             |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-          case api.load(record, query) do
+          case api.load(record, query, authorize?: false) do
             {:ok, loaded} ->
               do_match(loaded, expression, parent, resource, unknown_on_unknown_refs?)
 

@@ -532,38 +532,13 @@ defmodule Ash.Changeset do
     }
 
     Enum.reduce_while(changes, changeset, fn
-      %{change: {module, change_opts}, where: where}, changeset ->
-        with {:atomic, atomic_changes} <- module.atomic(changeset, change_opts, context),
-             {:atomic, condition} <- atomic_condition(where, changeset) do
-          changeset = add_after_atomic(changeset, module, change_opts)
-
-          case condition do
-            true ->
-              {:cont, atomic_update(changeset, atomic_changes)}
-
-            false ->
-              {:cont, changeset}
-
-            condition ->
-              atomic_changes =
-                Map.new(atomic_changes, fn {key, value} ->
-                  new_value =
-                    Ash.Expr.expr(
-                      if ^condition do
-                        ^value
-                      else
-                        ref(^key)
-                      end
-                    )
-
-                  {key, new_value}
-                end)
-
-              {:cont, atomic_update(changeset, atomic_changes)}
-          end
-        else
+      %{change: _} = change, changeset ->
+        case run_atomic_change(changeset, change, context) do
           :not_atomic ->
             {:halt, :not_atomic}
+
+          changeset ->
+            {:cont, changeset}
         end
 
       %{validation: {module, validation_opts}, where: where}, changeset ->
@@ -607,6 +582,48 @@ defmodule Ash.Changeset do
     end)
   end
 
+  defp run_atomic_change(
+         changeset,
+         %{change: {module, change_opts}, where: where},
+         context
+       ) do
+    with {:atomic, atomic_changes} <- module.atomic(changeset, change_opts, context),
+         {:atomic, condition} <- atomic_condition(where, changeset) do
+      changeset = add_after_atomic(changeset, module, change_opts)
+
+      case condition do
+        true ->
+          atomic_update(changeset, atomic_changes)
+
+        false ->
+          changeset
+
+        condition ->
+          atomic_changes =
+            Map.new(atomic_changes, fn {key, value} ->
+              new_value =
+                Ash.Expr.expr(
+                  if ^condition do
+                    ^value
+                  else
+                    ref(^key)
+                  end
+                )
+
+              {key, new_value}
+            end)
+
+          atomic_update(changeset, atomic_changes)
+      end
+    else
+      :not_atomic ->
+        :not_atomic
+
+      :ok ->
+        changeset
+    end
+  end
+
   defp add_after_atomic(changeset, module, opts) do
     if function_exported?(module, :after_atomic?, 3) do
       after_action(changeset, fn changeset, result ->
@@ -619,6 +636,8 @@ defmodule Ash.Changeset do
 
         module.after_atomic(changeset, opts, result, context)
       end)
+    else
+      changeset
     end
   end
 
@@ -1525,9 +1544,19 @@ defmodule Ash.Changeset do
   defp run_action_changes(changeset, %{changes: changes}, actor, authorize?, tracer, metadata) do
     changes = changes ++ Ash.Resource.Info.changes(changeset.resource, changeset.action_type)
 
+    context = %{
+      actor: actor,
+      tenant: changeset.tenant,
+      authorize?: authorize? || false,
+      tracer: tracer
+    }
+
     Enum.reduce(changes, changeset, fn
       %{only_when_valid?: true}, %{valid?: false} = changeset ->
         changeset
+
+      %{always_atomic?: true} = change, changeset ->
+        run_atomic_change(changeset, change, context)
 
       %{change: {module, opts}, where: where}, changeset ->
         if Enum.all?(where || [], fn {module, opts} ->
@@ -1567,12 +1596,7 @@ defmodule Ash.Changeset do
                   changeset.context
                 )
 
-              module.change(changeset, opts, %{
-                actor: actor,
-                tenant: changeset.tenant,
-                authorize?: authorize? || false,
-                tracer: tracer
-              })
+              module.change(changeset, opts, context)
             end
           end
         else

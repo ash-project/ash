@@ -4,7 +4,7 @@ defmodule Ash.Policy.Check.FilteringOn do
 
   @impl true
   def describe(opts) do
-    "selecting #{opts[:attribute]}"
+    "filtering on #{opts[:attribute]}"
   end
 
   @impl true

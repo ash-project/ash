@@ -617,7 +617,8 @@ defmodule Ash.DataLayer.Ets do
             load: load,
             uniq?: uniq?,
             context: context,
-            default_value: default_value
+            default_value: default_value,
+            authorize?: authorize?
           },
           {:ok, record} ->
             with {:ok, loaded_record} <-
@@ -625,7 +626,7 @@ defmodule Ash.DataLayer.Ets do
                      record,
                      relationship_path_to_load(relationship_path, field),
                      actor: Map.get(context, :actor),
-                     authorize?: Map.get(context, :authorize?, true)
+                     authorize?: Map.get(context, :authorize?, true) && authorize?
                    ),
                  related <-
                    Ash.Filter.Runtime.get_related(loaded_record, relationship_path),
@@ -1096,21 +1097,9 @@ defmodule Ash.DataLayer.Ets do
   def update(resource, changeset, pkey \\ nil) do
     pkey = pkey || pkey_map(resource, changeset.data)
 
-    atomic_changes =
-      Enum.reduce_while(changeset.atomics, {:ok, %{}}, fn {key, value}, {:ok, acc} ->
-        case Ash.Expr.eval(value, resource: resource, record: changeset.data) do
-          {:ok, value} ->
-            {:cont, {:ok, Map.put(acc, key, value)}}
-
-          {:error, error} ->
-            {:halt, {:error, error}}
-        end
-      end)
-
-    with {:ok, atomics} <- atomic_changes,
-         {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
+    with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          {:ok, record} <-
-           do_update(table, {pkey, Map.merge(changeset.attributes, atomics)}, resource),
+           do_update(table, {pkey, changeset.attributes, changeset.atomics}, resource),
          {:ok, record} <- cast_record(record, resource) do
       new_pkey = pkey_map(resource, record)
 
@@ -1140,23 +1129,25 @@ defmodule Ash.DataLayer.Ets do
     end)
   end
 
-  defp do_update(table, {pkey, record}, resource) do
+  defp do_update(table, {pkey, record, atomics}, resource) do
     attributes = resource |> Ash.Resource.Info.attributes()
 
     case dump_to_native(record, attributes) do
       {:ok, casted} ->
         case ETS.Set.get(table, pkey) do
           {:ok, {_key, record}} when is_map(record) ->
-            case ETS.Set.put(
-                   table,
-                   {pkey, Map.merge(record, casted)}
-                 ) do
-              {:ok, set} ->
-                {_key, record} = ETS.Set.get!(set, pkey)
-                {:ok, record}
+            case atomics do
+              empty when empty in [nil, []] ->
+                data = Map.merge(record, casted)
 
-              error ->
-                error
+                put_data(table, pkey, data)
+
+              atomics ->
+                with {:ok, casted_existing} <- cast_record(record, resource),
+                     {:ok, atomics} <- make_atomics(atomics, resource, casted_existing) do
+                  data = record |> Map.merge(casted) |> Map.merge(atomics)
+                  put_data(table, pkey, data)
+                end
             end
 
           {:ok, _} ->
@@ -1169,6 +1160,31 @@ defmodule Ash.DataLayer.Ets do
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  defp put_data(table, pkey, data) do
+    case ETS.Set.put(
+           table,
+           {pkey, data}
+         ) do
+      {:ok, _set} ->
+        {:ok, data}
+
+      error ->
+        error
+    end
+  end
+
+  defp make_atomics(atomics, resource, record) do
+    Enum.reduce_while(atomics, {:ok, %{}}, fn {key, value}, {:ok, acc} ->
+      case Ash.Expr.eval(value, resource: resource, record: record) do
+        {:ok, value} ->
+          {:cont, {:ok, Map.put(acc, key, value)}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
   end
 
   defp unload_relationships(resource, record) do
