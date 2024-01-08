@@ -3555,7 +3555,7 @@ defmodule Ash.Actions.Read do
     paths_to_global_filter_on =
       filter_expr
       |> Ash.Filter.list_refs()
-      |> Enum.filter(& &1.input?)
+      |> Enum.filter(&(&1.input? && &1.relationship_path != []))
       |> Enum.map(& &1.relationship_path)
       |> Enum.uniq()
 
