@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.22](https://github.com/ash-project/ash/compare/v2.17.21...v2.17.22) (2024-01-09)
+
+
+
+
+### Bug Fixes:
+
+* only put keywords to be interpolated in message in error vars (#821)
+
+* only put keywords to be interpolated in message in error vars
+
+* ignore empty relationship paths when authorizing relationships
+
+* properly build query from opts in aggregates
+
+### Improvements:
+
+* append new entities in `Ash.Resource.Builder`
+
+* simplify aggregate loading, remove `Ash.Engine` from it
+
+* add atomic implementation for builtin `increment` change
+
+* simplify related path authorization, use same tool as aggregates now use
+
 ## [v2.17.21](https://github.com/ash-project/ash/compare/v2.17.20...v2.17.21) (2024-01-05)
 
 
