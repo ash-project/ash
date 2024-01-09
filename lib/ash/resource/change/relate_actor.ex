@@ -15,6 +15,8 @@ defmodule Ash.Resource.Change.RelateActor do
   end
 
   def change(changeset, opts, %{actor: nil}) do
+    validate_type!(changeset, opts)
+
     if opts[:allow_nil?] do
       changeset
     else
@@ -29,6 +31,7 @@ defmodule Ash.Resource.Change.RelateActor do
   end
 
   def change(changeset, opts, %{actor: actor}) do
+    validate_type!(changeset, opts)
     field = opts[:field]
 
     Changeset.manage_relationship(
@@ -37,6 +40,22 @@ defmodule Ash.Resource.Change.RelateActor do
       actor_or_field(actor, field),
       type: :append_and_remove
     )
+  end
+
+  defp validate_type!(changeset, opts) do
+    case Ash.Resource.Info.relationship(changeset.resource, opts[:relationship]) do
+      %{type: type} when type in [:belongs_to, :has_one] ->
+        :ok
+
+      %{type: type} ->
+        raise ArgumentError, """
+        Cannot use `relate_actor` change with relationship of type #{inspect(type)}.
+
+        It can only be used with a `:belongs_to` or `:has_one` relationship. If you would like to
+        add the actor to a list, or something else along those lines, use a custom change
+        along with `Ash.Changeset.manage_relationship`.
+        """
+    end
   end
 
   defp actor_or_field(actor, field) when is_nil(field) do
