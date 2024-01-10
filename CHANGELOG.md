@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.23](https://github.com/ash-project/ash/compare/v2.17.22...v2.17.23) (2024-01-10)
+
+
+
+
+### Bug Fixes:
+
+* authorize aggregate references in calculations
+
+### Improvements:
+
+* error on using `relate_actor` with `:many` cardinality relationships
+
 ## [v2.17.22](https://github.com/ash-project/ash/compare/v2.17.21...v2.17.22) (2024-01-09)
 
 
