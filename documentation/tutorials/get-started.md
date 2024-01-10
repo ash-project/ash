@@ -119,7 +119,7 @@ It might be helpful to think of an Ash API as a Bounded Context (in the Domain D
 Let's start by creating our first resource along with our first API. We will create the following files:
 
 - The API [Helpdesk.Support] - `lib/helpdesk/support.ex`
-- Our Ticket resource [Helpdesk.Support.Ticket] - `lib/helpdesk/support/resources/ticket.ex`.
+- Our Ticket resource [Helpdesk.Support.Ticket] - `lib/helpdesk/support/ticket.ex`.
 
 To create the required folders and files, you can use the following command in your terminal:
 
