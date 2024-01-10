@@ -7,15 +7,9 @@ defmodule Ash.Test.Support.PolicyComplex.Comment do
     ]
 
   policies do
-    # you can't see comments on your post by people who aren't your friend
-    # for testing purposes :)
     policy action_type(:read) do
-      # authorize_if expr(author == ^actor(:id))
-      # authorize_if expr(post.author == ^actor(:id))
-      # authorize_if expr(exists(author.friends, id == ^actor(:id)))
-
       authorize_if relates_to_actor_via(:author)
-      authorize_if relates_to_actor_via([:post, :author])
+      # authorize_if relates_to_actor_via([:post, :author])
       authorize_if relates_to_actor_via([:author, :friends])
     end
 

@@ -1048,7 +1048,7 @@ metadata name, type
 
 
 A special kind of attribute that is only added to specific actions. Nothing sets this value, it must be set in a custom
-change via `Ash.Resource.put_metadata/3`.
+change after_action hook via `Ash.Resource.put_metadata/3`.
 
 
 
@@ -1256,7 +1256,7 @@ metadata name, type
 
 
 A special kind of attribute that is only added to specific actions. Nothing sets this value, it must be set in a custom
-change via `Ash.Resource.put_metadata/3`.
+change after_action hook via `Ash.Resource.put_metadata/3`.
 
 
 
@@ -1447,7 +1447,7 @@ metadata name, type
 
 
 A special kind of attribute that is only added to specific actions. Nothing sets this value, it must be set in a custom
-change via `Ash.Resource.put_metadata/3`.
+change after_action hook via `Ash.Resource.put_metadata/3`.
 
 
 
@@ -1685,7 +1685,7 @@ metadata name, type
 
 
 A special kind of attribute that is only added to specific actions. Nothing sets this value, it must be set in a custom
-change via `Ash.Resource.put_metadata/3`.
+change after_action hook via `Ash.Resource.put_metadata/3`.
 
 
 

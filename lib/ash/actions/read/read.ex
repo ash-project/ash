@@ -1347,14 +1347,26 @@ defmodule Ash.Actions.Read do
                 end
               end)
 
-            with {:ok, relationship_path_filters} <-
+            with {:ok, data_layer_calculations} <-
+                   hydrate_calculations(
+                     ash_query,
+                     calculations_in_query
+                   ),
+                 {:ok, relationship_path_filters} <-
                    Ash.Filter.relationship_filters(
                      ash_query.api,
                      ash_query,
                      actor,
                      ash_query.tenant,
-                     Map.values(ash_query.aggregates),
+                     Map.values(ash_query.aggregates) ++
+                       aggregates_from_calculations(data_layer_calculations),
                      authorize?
+                   ),
+                 data_layer_calculations <-
+                   authorize_calculation_expressions(
+                     data_layer_calculations,
+                     authorize?,
+                     relationship_path_filters
                    ),
                  ash_query <-
                    authorize_loaded_aggregates(
@@ -1413,7 +1425,7 @@ defmodule Ash.Actions.Read do
                    add_calculations(
                      query,
                      ash_query,
-                     calculations_in_query
+                     data_layer_calculations
                    ),
                  {:ok, query} <-
                    Ash.DataLayer.filter(
@@ -1479,6 +1491,7 @@ defmodule Ash.Actions.Read do
                  load_paths: load_paths,
                  results: results,
                  ultimate_query: %{ash_query | filter: filter},
+                 relationship_path_filters: relationship_path_filters,
                  count: count,
                  calculations_at_runtime: calculations_at_runtime
                },
@@ -1498,6 +1511,18 @@ defmodule Ash.Actions.Read do
         end
       end
     )
+  end
+
+  defp aggregates_from_calculations(data_layer_calculations) do
+    data_layer_calculations
+    |> Enum.map(&elem(&1, 1))
+    |> Ash.Filter.used_aggregates(:all, true)
+    |> Enum.map(fn ref ->
+      %{
+        ref.attribute
+        | relationship_path: ref.relationship_path ++ ref.attribute.relationship_path
+      }
+    end)
   end
 
   defp add_keysets(original_query, data, sort) do
@@ -2529,11 +2554,12 @@ defmodule Ash.Actions.Read do
   @doc false
   def update_aggregate_filters(filter, authorize?, relationship_path_filters) do
     if authorize? do
-      Filter.update_aggregates(filter, fn aggregate, _ref ->
+      Filter.update_aggregates(filter, fn aggregate, ref ->
         if aggregate.authorize? do
           case Map.fetch(
                  relationship_path_filters,
-                 {aggregate.relationship_path, aggregate.query.action.name}
+                 {ref.relationship_path ++ aggregate.relationship_path,
+                  aggregate.query.action.name}
                ) do
             {:ok, authorization_filter} ->
               %{aggregate | query: Ash.Query.do_filter(aggregate.query, authorization_filter)}
@@ -3391,7 +3417,14 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp run_calculation_query(results, calculations, query, actor, authorize?, tenant) do
+  defp run_calculation_query(
+         results,
+         calculations,
+         query,
+         actor,
+         authorize?,
+         tenant
+       ) do
     pkey = Ash.Resource.Info.primary_key(query.resource)
 
     results
@@ -3420,8 +3453,33 @@ defmodule Ash.Actions.Read do
              query <- Ash.Query.set_tenant(query, tenant),
              query <- Ash.Query.filter(query, ^[or: pkey_filter]),
              {:ok, data_layer_query} <- Ash.Query.data_layer_query(query),
+             # TODO: this shouldn't be done one-off here
+             {:ok, data_layer_calculations} <-
+               hydrate_calculations(
+                 query,
+                 calculations
+               ),
+             {:ok, relationship_path_filters} <-
+               Ash.Filter.relationship_filters(
+                 query.api,
+                 %{query | filter: nil},
+                 actor,
+                 query.tenant,
+                 aggregates_from_calculations(data_layer_calculations),
+                 authorize?
+               ),
+             data_layer_calculations <-
+               authorize_calculation_expressions(
+                 data_layer_calculations,
+                 authorize?,
+                 relationship_path_filters
+               ),
              {:ok, data_layer_query} <-
-               add_calculations(data_layer_query, query, calculations) do
+               add_calculations(
+                 data_layer_query,
+                 query,
+                 data_layer_calculations
+               ) do
           run_query(
             query,
             data_layer_query,
@@ -3437,48 +3495,56 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp add_calculations(data_layer_query, query, calculations_to_add) do
-    calculations =
-      Enum.reduce_while(calculations_to_add, {:ok, []}, fn calculation, {:ok, calculations} ->
-        if Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
-          expression = calculation.module.expression(calculation.opts, calculation.context)
+  defp hydrate_calculations(
+         query,
+         calculations_to_add
+       ) do
+    Enum.reduce_while(calculations_to_add, {:ok, []}, fn calculation, {:ok, calculations} ->
+      if Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
+        expression = calculation.module.expression(calculation.opts, calculation.context)
 
-          expression =
-            Ash.Filter.build_filter_from_template(
-              expression,
-              calculation.context[:actor],
-              calculation.context,
-              calculation.context
-            )
+        expression =
+          Ash.Filter.build_filter_from_template(
+            expression,
+            calculation.context[:actor],
+            calculation.context,
+            calculation.context
+          )
 
-          case Ash.Filter.hydrate_refs(expression, %{
-                 resource: query.resource,
-                 aggregates: query.aggregates,
-                 calculations: query.calculations,
-                 public?: false
-               }) do
-            {:ok, expression} ->
-              {:cont, {:ok, [{calculation, expression} | calculations]}}
+        case Ash.Filter.hydrate_refs(expression, %{
+               resource: query.resource,
+               aggregates: query.aggregates,
+               calculations: query.calculations,
+               public?: false
+             }) do
+          {:ok, expression} ->
+            {:cont, {:ok, [{calculation, expression} | calculations]}}
 
-            {:error, error} ->
-              {:halt, {:error, error}}
-          end
-        else
-          {:halt, {:error, "Expression calculations are not supported"}}
+          {:error, error} ->
+            {:halt, {:error, error}}
         end
-      end)
+      else
+        {:halt, {:error, "Expression calculations are not supported"}}
+      end
+    end)
+  end
 
-    case calculations do
-      {:ok, calculations} ->
-        Ash.DataLayer.add_calculations(
-          data_layer_query,
-          calculations,
-          query.resource
-        )
+  defp authorize_calculation_expressions(
+         hydrated_calculations,
+         authorize?,
+         relationship_path_filters
+       ) do
+    Enum.map(hydrated_calculations, fn {calculation, expression} ->
+      {calculation, update_aggregate_filters(expression, authorize?, relationship_path_filters)}
+    end)
+  end
 
-      {:error, error} ->
-        {:error, error}
-    end
+  defp add_calculations(data_layer_query, query, hydrated_calculations) do
+    Ash.DataLayer.add_calculations(
+      data_layer_query,
+      hydrated_calculations,
+      query.resource
+    )
   end
 
   defp authorize_loaded_aggregates(query, path_filters, actor, authorize?, tenant, tracer) do

@@ -1167,8 +1167,8 @@ defmodule Ash.Filter do
                   authorized_related_query.filter
                 )}}
 
-            {:ok, false, error} ->
-              {:halt, {:error, error}}
+            {:ok, false, _error} ->
+              {:halt, {:ok, Map.put(filters, {path, related_query.action.name}, false)}}
 
             {:error, error} ->
               {:halt, {:error, error}}

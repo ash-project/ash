@@ -50,6 +50,10 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
     count :count_of_comments, :comments
   end
 
+  calculations do
+    calculate :count_of_comments_calc, :integer, expr(count_of_comments)
+  end
+
   code_interface do
     define_for Ash.Test.Support.PolicyComplex.Api
     define :create, args: [:text]

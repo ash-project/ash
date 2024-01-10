@@ -32,6 +32,14 @@ defmodule Ash.Test.Policy.ComplexTest do
     comment_by_my_friend_on_my_post =
       Comment.create!(post_by_me.id, "comment by my friend on my", actor: my_friend)
 
+    # comment_by_a_friend_of_a_friend_on_my_post =
+    Comment.create!(
+      post_by_me.id,
+      "comment by a friend of a friend on my post",
+      actor: a_friend_of_my_friend,
+      authorize?: false
+    )
+
     comment_by_a_friend_of_a_friend_on_his_own_post =
       Comment.create!(
         post_by_a_friend_of_my_friend.id,
@@ -42,7 +50,7 @@ defmodule Ash.Test.Policy.ComplexTest do
     comment_by_a_friend_of_a_friend_on_my_friends_post =
       Comment.create!(
         post_by_my_friend.id,
-        "comment by a friend of a friend on my post",
+        "comment by a friend of a friend on my friend's post",
         actor: a_friend_of_my_friend
       )
 
@@ -85,10 +93,10 @@ defmodule Ash.Test.Policy.ComplexTest do
   end
 
   test "it properly scopes filters", %{me: me} do
-    # assert [_] =
-    #          Post
-    #          |> Ash.Query.filter(comments.text == "comment by a friend of a friend on my post")
-    #          |> Api.read!(actor: me, authorize?: false)
+    assert [_] =
+             Post
+             |> Ash.Query.filter(comments.text == "comment by a friend of a friend on my post")
+             |> Api.read!(actor: me, authorize?: false)
 
     assert [] =
              Post
@@ -106,11 +114,17 @@ defmodule Ash.Test.Policy.ComplexTest do
              |> Api.load!(:best_friend)
   end
 
-  test "aggregates can be loaded", %{me: me} do
+  test "aggregates can be loaded and filtered on", %{me: me} do
     Post
     |> Ash.Query.load(:count_of_comments)
     |> Ash.Query.filter(count_of_comments == 10)
     |> Api.read!(actor: me)
+  end
+
+  test "aggregates in calculations are authorized", %{me: me} do
+    Post
+    |> Ash.Query.load([:count_of_comments_calc, :count_of_comments])
+    |> Api.read!(actor: me, authorize?: true)
   end
 
   test "data can be loaded without forbidden errors from selecting", %{me: me} do
