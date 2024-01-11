@@ -90,10 +90,20 @@ defmodule Ash.Resource.Info do
     end)
   end
 
+  @doc "Get an interface by name from the resource"
+  @spec interface(Spark.Dsl.t() | Ash.Resource.t(), atom) :: Ash.Resource.Interface.t() | nil
+  def interface(resource, name) do
+    resource
+    |> identities()
+    |> Enum.find(&(&1.name == name))
+  end
+
   @doc """
   The list of code interface calculation definitions.
   """
-  @spec calculation_interfaces(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Resource.Interface.t()]
+  @spec calculation_interfaces(Spark.Dsl.t() | Ash.Resource.t()) :: [
+          Ash.Resource.CalculationInterface.t()
+        ]
   def calculation_interfaces(resource) do
     resource
     |> Extension.get_entities([:code_interface])
@@ -104,6 +114,15 @@ defmodule Ash.Resource.Info do
       _ ->
         false
     end)
+  end
+
+  @doc "Get an calculation interface by name from the resource"
+  @spec calculation_interface(Spark.Dsl.t() | Ash.Resource.t(), atom) ::
+          Ash.Resource.CalculationInterface.t() | nil
+  def calculation_interface(resource, name) do
+    resource
+    |> calculation_interfaces()
+    |> Enum.find(&(&1.name == name))
   end
 
   @doc """
