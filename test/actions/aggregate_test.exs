@@ -19,6 +19,8 @@ defmodule Ash.Test.Actions.AggregateTest do
       attribute :public, :boolean do
         default false
       end
+
+      attribute :thing, :string
     end
 
     relationships do
@@ -58,6 +60,7 @@ defmodule Ash.Test.Actions.AggregateTest do
       end
 
       attribute :tenant, :string
+      attribute :thing, :string
     end
 
     multitenancy do
@@ -68,6 +71,12 @@ defmodule Ash.Test.Actions.AggregateTest do
 
     aggregates do
       count :count_of_comments, :comments
+
+      count :count_of_posts, [:comments, :post]
+
+      count :count_of_comment_posts_with_matching_things, [:comments, :post] do
+        join_filter(:comments, expr(parent(thing) == thing))
+      end
 
       count :count_of_comments_unauthorized, :comments do
         authorize? false
@@ -200,6 +209,39 @@ defmodule Ash.Test.Actions.AggregateTest do
                Api.load!(post, [:count_of_comments, :count_of_comments_unauthorized],
                  authorize?: true
                )
+    end
+
+    test "join filters are applied" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{
+          title: "title",
+          public: true,
+          thing: "not the same"
+        })
+        |> Api.create!()
+
+      Comment
+      |> Ash.Changeset.for_create(:create, %{
+        post_id: post.id,
+        public: true,
+        thing: "doesnt match"
+      })
+      |> Api.create!()
+
+      assert Api.load!(post, :count_of_comment_posts_with_matching_things).count_of_comment_posts_with_matching_things ==
+               0
+
+      Comment
+      |> Ash.Changeset.for_create(:create, %{
+        post_id: post.id,
+        public: true,
+        thing: "not the same"
+      })
+      |> Api.create!()
+
+      assert Api.load!(post, :count_of_comment_posts_with_matching_things).count_of_comment_posts_with_matching_things ==
+               1
     end
   end
 end

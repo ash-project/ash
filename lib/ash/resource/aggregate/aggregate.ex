@@ -15,9 +15,14 @@ defmodule Ash.Resource.Aggregate do
     :sort,
     :default,
     :uniq?,
+    join_filters: [],
     authorize?: true,
     filterable?: true
   ]
+
+  defmodule JoinFilter do
+    defstruct [:relationship_path, :filter]
+  end
 
   @schema [
     name: [
@@ -99,7 +104,8 @@ defmodule Ash.Resource.Aggregate do
           private?: boolean,
           authorize?: boolean,
           read_action: atom | nil,
-          default: term
+          default: term,
+          join_filters: %{list(atom) => term()}
         }
 
   @doc false

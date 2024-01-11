@@ -120,32 +120,46 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  def load_parent_requirements(api, expression, %resource{} = parent) do
-    expression
-    |> Ash.Filter.flat_map(fn %Ash.Query.Parent{expr: expr} ->
-      Ash.Filter.list_refs(expr)
-    end)
-    |> Enum.reject(&match?(%{attribute: %Ash.Resource.Attribute{}}, &1))
-    |> Enum.uniq()
-    |> case do
-      [] ->
-        {:ok, parent}
+  # it looks like this somehow isn't used? I think something was removed that shouldn't have been
 
-      refs ->
-        to_load =
-          refs
-          |> Enum.map(& &1.relationship_path)
-          |> Enum.uniq()
-          |> Enum.map(&path_to_load(resource, &1, refs))
+  # This is bad, as parent requirements are loaded iteratively instead of up front.
+  # we can improve this
+  # def load_parent_requirements(api, expression, [first | rest]) do
+  #   case load_parent_requirements(api, expression, first) do
+  #     {:ok, first} ->
+  #       {:ok, [first | rest]}
 
-        query =
-          resource
-          |> Ash.Query.load(to_load)
-          |> Ash.Query.set_context(%{private: %{internal?: true}})
+  #     other ->
+  #       other
+  #   end
+  # end
 
-        api.load(parent, query)
-    end
-  end
+  # def load_parent_requirements(api, expression, %resource{} = parent) do
+  #   expression
+  #   |> Ash.Filter.flat_map(fn %Ash.Query.Parent{expr: expr} ->
+  #     Ash.Filter.list_refs(expr)
+  #   end)
+  #   |> Enum.reject(&match?(%{attribute: %Ash.Resource.Attribute{}}, &1))
+  #   |> Enum.uniq()
+  #   |> case do
+  #     [] ->
+  #       {:ok, parent}
+
+  #     refs ->
+  #       to_load =
+  #         refs
+  #         |> Enum.map(& &1.relationship_path)
+  #         |> Enum.uniq()
+  #         |> Enum.map(&path_to_load(resource, &1, refs))
+
+  #       query =
+  #         resource
+  #         |> Ash.Query.load(to_load)
+  #         |> Ash.Query.set_context(%{private: %{internal?: true}})
+
+  #       api.load(parent, query)
+  #   end
+  # end
 
   defp matches(%resource{} = record, expression, opts) do
     relationship_paths =
@@ -486,15 +500,43 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  defp resolve_expr(%Ash.Query.Parent{expr: expr}, _, parent, resource, unknown_on_unknown_refs?) do
-    resolve_expr(expr, parent, nil, resource, unknown_on_unknown_refs?)
+  defp resolve_expr(
+         %Ash.Query.Parent{},
+         _,
+         parent,
+         _resource,
+         unknown_on_unknown_refs?
+       )
+       when is_nil(parent) do
+    if unknown_on_unknown_refs? do
+      :unknown
+    else
+      nil
+    end
+  end
+
+  defp resolve_expr(
+         %Ash.Query.Parent{} = parent_expr,
+         record,
+         parent,
+         resource,
+         unknown_on_unknown_refs?
+       )
+       when not is_list(parent) do
+    resolve_expr(parent_expr, record, [parent], resource, unknown_on_unknown_refs?)
+  end
+
+  defp resolve_expr(
+         %Ash.Query.Parent{expr: expr},
+         _,
+         [parent | rest],
+         resource,
+         unknown_on_unknown_refs?
+       ) do
+    resolve_expr(expr, parent, rest, resource, unknown_on_unknown_refs?)
   end
 
   defp resolve_expr(%Ash.Query.Exists{}, nil, _parent, _resource, unknown_on_unknown_refs?) do
-    if is_nil(unknown_on_unknown_refs?) do
-      raise "WHAT"
-    end
-
     if unknown_on_unknown_refs? do
       :unknown
     else
@@ -505,7 +547,7 @@ defmodule Ash.Filter.Runtime do
   defp resolve_expr(
          %Ash.Query.Exists{at_path: [], path: path, expr: expr},
          record,
-         _parent,
+         parent,
          resource,
          unknown_on_unknown_refs?
        ) do
@@ -521,7 +563,13 @@ defmodule Ash.Filter.Runtime do
         related
         |> List.wrap()
         |> Enum.reduce_while({:ok, false}, fn related, {:ok, false} ->
-          case resolve_expr(expr, related, record, resource, unknown_on_unknown_refs?) do
+          case resolve_expr(
+                 expr,
+                 related,
+                 [record | List.wrap(parent)],
+                 resource,
+                 unknown_on_unknown_refs?
+               ) do
             {:ok, falsy} when falsy in [nil, false] ->
               {:cont, {:ok, false}}
 
@@ -958,9 +1006,16 @@ defmodule Ash.Filter.Runtime do
   end
 
   @doc false
-  def get_related(source, path, unknown_on_unknown_refs? \\ false)
+  def get_related(
+        source,
+        path,
+        unknown_on_unknown_refs? \\ false,
+        join_filters \\ %{},
+        parent_stack \\ [],
+        api
+      )
 
-  def get_related(nil, _, unknown_on_unknown_refs?) do
+  def get_related(nil, _, unknown_on_unknown_refs?, _join_filters, _parent_stack, _api) do
     if unknown_on_unknown_refs? do
       :unknown
     else
@@ -968,7 +1023,14 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  def get_related(%Ash.NotLoaded{}, [], unknown_on_unknown_refs?) do
+  def get_related(
+        %Ash.NotLoaded{},
+        [],
+        unknown_on_unknown_refs?,
+        _join_filters,
+        _parent_stack,
+        _api
+      ) do
     if unknown_on_unknown_refs? do
       :unknown
     else
@@ -976,54 +1038,87 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  def get_related(record, [], _) do
+  def get_related(record, [], _, _, _parent_stack, _api) do
     List.wrap(record)
   end
 
-  def get_related(records, paths, unknown_on_unknown_refs?) when is_list(records) do
-    records
-    |> Enum.reduce_while([], fn
-      :unknown, records ->
-        {:cont, records}
+  def get_related(
+        records,
+        [key | rest],
+        unknown_on_unknown_refs?,
+        join_filters,
+        parent_stack,
+        api
+      )
+      when is_list(records) do
+    {join_filter, rest_join_filters} = Map.pop(join_filters, [])
 
-      record, records ->
-        case get_related(record, paths, unknown_on_unknown_refs?) do
-          :unknown ->
-            {:cont, records}
-
-          related ->
-            {:cont, [related | records]}
+    rest_join_filters =
+      Enum.reduce(rest_join_filters, %{}, fn {path, filter}, acc ->
+        if List.starts_with?(path, [key]) do
+          Map.put(acc, Enum.drop(path, 1), filter)
+        else
+          acc
         end
-    end)
-    |> case do
-      :unknown ->
-        :unknown
+      end)
 
-      records ->
-        records
-        |> List.flatten()
-        |> Enum.reverse()
+    api
+    |> filter_matches(records, join_filter, parent: parent_stack)
+    |> case do
+      {:ok, matches} ->
+        matches
+        |> Enum.flat_map(fn match ->
+          case Map.get(match, key) do
+            :unknown ->
+              []
+
+            nil ->
+              []
+
+            matches ->
+              matches
+              |> List.wrap()
+              |> Enum.flat_map(&List.wrap/1)
+              |> Enum.flat_map(
+                &get_related(
+                  &1,
+                  rest,
+                  unknown_on_unknown_refs?,
+                  rest_join_filters,
+                  [match | parent_stack],
+                  api
+                )
+              )
+              |> List.flatten()
+          end
+        end)
+
+      _ ->
+        if unknown_on_unknown_refs? do
+          :unknown
+        else
+          []
+        end
     end
   end
 
-  def get_related(record, [key | rest], unknown_on_unknown_refs?) do
-    case Map.get(record, key) do
-      nil ->
-        []
-
-      value ->
-        case get_related(value, rest, unknown_on_unknown_refs?) do
-          :unknown ->
-            :unknown
-
-          related ->
-            List.wrap(related)
+  def get_related(record, path, unknown_on_unknown_refs?, join_filters, parent_stack, api) do
+    case get_related([record], path, unknown_on_unknown_refs?, join_filters, parent_stack, api) do
+      :unknown ->
+        if unknown_on_unknown_refs? do
+          :unknown
+        else
+          []
         end
+
+      related ->
+        List.wrap(related)
     end
   end
 
   defp parent_stack(nil), do: []
   defp parent_stack(%resource{}), do: [resource]
+  defp parent_stack(value) when is_list(value), do: value
 
   defp evaluate(
          %{__function__?: true} = func,

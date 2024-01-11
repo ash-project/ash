@@ -618,7 +618,8 @@ defmodule Ash.DataLayer.Ets do
             uniq?: uniq?,
             context: context,
             default_value: default_value,
-            authorize?: authorize?
+            authorize?: authorize?,
+            join_filters: join_filters
           },
           {:ok, record} ->
             with {:ok, loaded_record} <-
@@ -629,7 +630,14 @@ defmodule Ash.DataLayer.Ets do
                      authorize?: Map.get(context, :authorize?, true) && authorize?
                    ),
                  related <-
-                   Ash.Filter.Runtime.get_related(loaded_record, relationship_path),
+                   Ash.Filter.Runtime.get_related(
+                     loaded_record,
+                     relationship_path,
+                     false,
+                     join_filters,
+                     [record],
+                     api
+                   ),
                  {:ok, filtered} <-
                    filter_matches(related, query.filter, api),
                  sorted <-

@@ -14,6 +14,7 @@ defmodule Ash.Query.Aggregate do
     :load,
     :read_action,
     :agg_name,
+    join_filters: %{},
     context: %{},
     authorize?: true,
     uniq?: false,
@@ -86,6 +87,13 @@ defmodule Ash.Query.Aggregate do
       doc:
         "Whether or not to only consider unique values. Only relevant for `count` and `list` aggregates."
     ],
+    join_filters: [
+      type: {:map, {:wrap_list, :atom}, :any},
+      default: %{},
+      doc: """
+      A map of relationship paths (an atom or list of atoms), to an expression to apply when fetching the aggregate data. See the aggregates guide for more.
+      """
+    ],
     authorize?: [
       type: :boolean,
       default: true,
@@ -130,7 +138,7 @@ defmodule Ash.Query.Aggregate do
           build_opts -> Ash.Query.build(related, build_opts)
         end
 
-      read_action = opts[:read_action] || Ash.Resource.Info.primary_action(resource, :read).name
+      read_action = opts[:read_action] || Ash.Resource.Info.primary_action(related, :read).name
 
       query =
         if query.__validated_for_action__ != read_action do
@@ -139,22 +147,40 @@ defmodule Ash.Query.Aggregate do
           query
         end
 
-      new(
-        resource,
-        name,
-        kind,
-        opts[:path] || [],
-        query,
-        opts[:field],
-        opts[:default],
-        Keyword.get(opts, :filterable?, true),
-        opts[:type],
-        Keyword.get(opts, :constraints, []),
-        opts[:implementation],
-        opts[:uniq?],
-        opts[:read_action],
-        Keyword.get(opts, :authorize?, true)
-      )
+      opts[:join_filters]
+      |> Kernel.||(%{})
+      |> Enum.reduce_while({:ok, %{}}, fn {path, filter}, {:ok, acc} ->
+        case parse_join_filter(resource, path, filter) do
+          {:ok, filter} ->
+            {:cont, {:ok, Map.put(acc, path, filter)}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end)
+      |> case do
+        {:ok, join_filters} ->
+          new(
+            resource,
+            name,
+            kind,
+            opts[:path] || [],
+            query,
+            opts[:field],
+            opts[:default],
+            Keyword.get(opts, :filterable?, true),
+            opts[:type],
+            Keyword.get(opts, :constraints, []),
+            opts[:implementation],
+            opts[:uniq?],
+            opts[:read_action],
+            Keyword.get(opts, :authorize?, true),
+            join_filters
+          )
+
+        {:error, error} ->
+          {:error, error}
+      end
     end
   end
 
@@ -173,7 +199,8 @@ defmodule Ash.Query.Aggregate do
         implementation \\ nil,
         uniq? \\ false,
         read_action \\ nil,
-        authorize? \\ true
+        authorize? \\ true,
+        join_filters \\ %{}
       ) do
     if kind == :custom && !type do
       raise ArgumentError, "Must supply type when building a `custom` aggregate"
@@ -227,9 +254,39 @@ defmodule Ash.Query.Aggregate do
          query: query,
          filterable?: filterable?,
          authorize?: authorize?,
-         read_action: read_action
+         read_action: read_action,
+         join_filters: Map.new(join_filters, fn {key, value} -> {List.wrap(key), value} end)
        }}
     end
+  end
+
+  defp parse_join_filter(resource, path, filter) do
+    [last_relationship | relationships] =
+      path_to_reversed_relationships(resource, path)
+
+    top_parent_resource = (List.last(relationships) || last_relationship).source
+
+    parent_resources =
+      relationships |> Enum.map(& &1.destination) |> Enum.concat([top_parent_resource])
+
+    Ash.Filter.parse(last_relationship.destination, filter, %{}, %{}, %{
+      parent_stack: parent_resources
+    })
+  end
+
+  defp path_to_reversed_relationships(resource, path, acc \\ [])
+  defp path_to_reversed_relationships(_resource, [], acc), do: acc
+
+  defp path_to_reversed_relationships(resource, [first | rest], acc) do
+    relationship = Ash.Resource.Info.relationship(resource, first)
+
+    if !relationship do
+      raise ArgumentError, "No such relationship: #{inspect(resource)}.#{first} in join_filter"
+    end
+
+    path_to_reversed_relationships(relationship.destination, rest, [
+      relationship | acc
+    ])
   end
 
   defp validate_uniq(true, kind) when kind in [:count, :list], do: :ok

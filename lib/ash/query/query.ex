@@ -1409,7 +1409,8 @@ defmodule Ash.Query do
                  implementation: aggregate.implementation,
                  uniq?: aggregate.uniq?,
                  read_action: aggregate.read_action,
-                 authorize?: aggregate.authorize?
+                 authorize?: aggregate.authorize?,
+                 join_filters: Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
                ) do
           query_aggregate = %{query_aggregate | load: field}
           new_aggregates = Map.put(query.aggregates, aggregate.name, query_aggregate)
@@ -1952,6 +1953,7 @@ defmodule Ash.Query do
     * implementation: An implementation used when the aggregate kind is custom
     * read_action: The read action to use on the destination resource
     * authorize?: Whether or not to authorize access to this aggregate
+    * join_filters: A map of relationship paths to filter expressions. See the aggregates guide for more.
   """
   def aggregate(query, name, kind, relationship) do
     aggregate(query, name, kind, relationship, [])
@@ -1971,7 +1973,8 @@ defmodule Ash.Query do
       opts[:implementation],
       opts[:uniq?],
       opts[:read_action],
-      Keyword.get(opts, :authorize?, true)
+      Keyword.get(opts, :authorize?, true),
+      Keyword.get(opts, :join_filters, %{})
     )
   end
 
@@ -2003,7 +2006,8 @@ defmodule Ash.Query do
         implementation \\ nil,
         uniq? \\ false,
         read_action \\ nil,
-        authorize? \\ true
+        authorize? \\ true,
+        join_filters \\ %{}
       ) do
     {field, agg_query} =
       case agg_query do
@@ -2053,7 +2057,8 @@ defmodule Ash.Query do
              implementation: implementation,
              uniq?: uniq?,
              read_action: read_action,
-             authorize?: authorize?
+             authorize?: authorize?,
+             join_filters: join_filters
            ) do
         {:ok, aggregate} ->
           new_aggregates = Map.put(query.aggregates, aggregate.name, aggregate)

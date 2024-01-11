@@ -303,6 +303,7 @@ defmodule Ash.Filter do
   be sure to use `parse_input/2` instead! The only difference is that it only accepts
   filters over public attributes/relationships.
   """
+  # TODO: remove aggregates/calculation arguments. They are old and are no longer necessary (unused)
   def parse(resource, statement, aggregates \\ %{}, calculations \\ %{}, context \\ %{})
 
   def parse(_resource, nil, _aggregates, _calculations, _context) do
@@ -1230,7 +1231,7 @@ defmodule Ash.Filter do
       relationship.destination
       |> Ash.Query.set_context(relationship.context)
       |> Ash.Query.sort(relationship.sort, prepend?: true)
-      |> Ash.Query.do_filter(relationship.filter, parent_stack: relationship.source)
+      |> Ash.Query.do_filter(relationship.filter, parent_stack: [relationship.source])
 
     if query.__validated_for_action__ == action do
       query
@@ -1773,7 +1774,7 @@ defmodule Ash.Filter do
     relationship.destination
     |> Ash.Query.new(api)
     |> Ash.Query.do_filter(filter)
-    |> Ash.Query.do_filter(relationship.filter, parent_stack: relationship.source)
+    |> Ash.Query.do_filter(relationship.filter, parent_stack: [relationship.source])
     |> Ash.Query.sort(relationship.sort, prepend?: true)
     |> Ash.Query.set_context(relationship.context)
     |> filter_related_in(relationship, :lists.droplast(path), api, data)
@@ -2659,7 +2660,8 @@ defmodule Ash.Filter do
                        Ash.Resource.Info.related(context.resource, aggregate.relationship_path),
                        :read
                      ).name,
-                 authorize?: aggregate.authorize?
+                 authorize?: aggregate.authorize?,
+                 join_filters: Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
                ) do
           case parse_predicates(nested_statement, query_aggregate, context) do
             {:ok, nested_statement} ->
@@ -3279,7 +3281,9 @@ defmodule Ash.Filter do
                      implementation: aggregate.implementation,
                      uniq?: aggregate.uniq?,
                      read_action: aggregate.read_action,
-                     authorize?: aggregate.authorize?
+                     authorize?: aggregate.authorize?,
+                     join_filters:
+                       Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
                    ) do
               {:ok, %{ref | attribute: query_aggregate, resource: related}}
             else

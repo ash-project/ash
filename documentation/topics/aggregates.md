@@ -47,3 +47,21 @@ User
 ```
 
 See the documentation for `Ash.Query.aggregate/4` for more information.
+
+## Join Filters
+
+Join filters allows for more complex aggregate queries, including joining with predicates based on multiple related values.
+
+### Example
+      
+```elixir
+  aggregates do
+    sum :saved_money, [:redeems, :deal], :amount do
+      # where any redeem of the deal is redeemed
+      filter expr(redeems.redeemed == true)
+  
+      join_filter :redeems, expr(redeemed == true)
+      join_filter [:redeems, :deal], expr(active == parent(require_active))
+    end
+  end     
+```

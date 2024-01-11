@@ -22,8 +22,16 @@ defmodule Ash.Resource.Verifiers.ValidateAggregatesSupported do
 
   defp check_aggregatable(_resource, _root_resource, _name, []), do: :ok
 
-  defp check_aggregatable(resource, root_resource, name, [relationship | rest]) do
-    relationship = Ash.Resource.Info.relationship(resource, relationship)
+  defp check_aggregatable(resource, root_resource, name, [relationship_name | rest]) do
+    relationship = Ash.Resource.Info.relationship(resource, relationship_name)
+
+    if !relationship do
+      raise DslError,
+        module: root_resource,
+        message:
+          "relationship referenced in aggregate `#{inspect(resource)}.#{relationship_name}` does not exist",
+        path: [:aggregates, name]
+    end
 
     if Ash.DataLayer.data_layer_can?(
          resource,

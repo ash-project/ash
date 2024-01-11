@@ -910,6 +910,30 @@ defmodule Ash.Resource.Dsl do
     ]
   }
 
+  @join_filter %Spark.Dsl.Entity{
+    name: :join_filter,
+    describe: """
+    Declares a join filter on an aggregate. See the aggregates guide for more.
+    """,
+    examples: [
+      """
+      join_filter [:comments, :author], expr(active == true)
+      """
+    ],
+    target: Ash.Resource.Aggregate.JoinFilter,
+    args: [:relationship_path, :filter],
+    schema: [
+      relationship_path: [
+        type: {:wrap_list, :atom},
+        doc: "The relationship path on which to apply the join filter"
+      ],
+      filter: [
+        type: :any,
+        doc: "The filter to apply. Can be an expression or a filter template."
+      ]
+    ]
+  }
+
   @count %Spark.Dsl.Entity{
     name: :count,
     describe: """
@@ -925,6 +949,9 @@ defmodule Ash.Resource.Dsl do
         filter [active: true]
       end
       """
+    ],
+    entities: [
+      join_filters: [@join_filter]
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path],
@@ -955,6 +982,9 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
+    entities: [
+      join_filters: [@join_filter]
+    ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
     schema: Ash.Resource.Aggregate.schema(),
@@ -976,6 +1006,9 @@ defmodule Ash.Resource.Dsl do
         filter [active: true]
       end
       """
+    ],
+    entities: [
+      join_filters: [@join_filter]
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
@@ -999,6 +1032,9 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
+    entities: [
+      join_filters: [@join_filter]
+    ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
     schema: Ash.Resource.Aggregate.schema() |> Keyword.delete(:sort),
@@ -1020,6 +1056,9 @@ defmodule Ash.Resource.Dsl do
         filter [active: true]
       end
       """
+    ],
+    entities: [
+      join_filters: [@join_filter]
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
@@ -1043,6 +1082,9 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
+    entities: [
+      join_filters: [@join_filter]
+    ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
     schema: Keyword.delete(Ash.Resource.Aggregate.schema(), :sort),
@@ -1062,6 +1104,9 @@ defmodule Ash.Resource.Dsl do
       """
       exists :has_ticket, :assigned_tickets
       """
+    ],
+    entities: [
+      join_filters: [@join_filter]
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path],
@@ -1089,6 +1134,9 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :type],
+    entities: [
+      join_filters: [@join_filter]
+    ],
     schema:
       Ash.Resource.Aggregate.schema()
       |> Keyword.put(:type,
@@ -1120,6 +1168,9 @@ defmodule Ash.Resource.Dsl do
         filter [active: true]
       end
       """
+    ],
+    entities: [
+      join_filters: [@join_filter]
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],

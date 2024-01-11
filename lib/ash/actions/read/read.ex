@@ -2433,6 +2433,23 @@ defmodule Ash.Actions.Read do
   end
 
   @doc false
+  def add_calc_context(%Ash.Query.Aggregate{} = agg, actor, authorize?, tenant, tracer) do
+    %{
+      agg
+      | context:
+          Map.merge(
+            %{
+              actor: actor,
+              authorize?: authorize?,
+              tenant: tenant,
+              tracer: tracer
+            },
+            agg.context
+          ),
+        query: add_calc_context(agg.query, actor, authorize?, tenant, tracer)
+    }
+  end
+
   def add_calc_context(calc, actor, authorize?, tenant, tracer) do
     %{
       calc
