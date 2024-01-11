@@ -1102,17 +1102,40 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  def get_related(record, path, unknown_on_unknown_refs?, join_filters, parent_stack, api) do
-    case get_related([record], path, unknown_on_unknown_refs?, join_filters, parent_stack, api) do
-      :unknown ->
-        if unknown_on_unknown_refs? do
-          :unknown
-        else
-          []
-        end
+  def get_related(
+        record,
+        [key | _] = path,
+        unknown_on_unknown_refs?,
+        join_filters,
+        parent_stack,
+        api
+      ) do
+    case Map.get(record, key) do
+      %Ash.NotLoaded{} when unknown_on_unknown_refs? ->
+        :unknown
 
-      related ->
-        List.wrap(related)
+      nil when unknown_on_unknown_refs? ->
+        :unknown
+
+      _value ->
+        case get_related(
+               [record],
+               path,
+               unknown_on_unknown_refs?,
+               join_filters,
+               parent_stack,
+               api
+             ) do
+          :unknown ->
+            if unknown_on_unknown_refs? do
+              :unknown
+            else
+              []
+            end
+
+          related ->
+            List.wrap(related)
+        end
     end
   end
 
