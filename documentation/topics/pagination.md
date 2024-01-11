@@ -63,6 +63,12 @@ Keyset pagination is done via providing an `after` or `before` option, as well a
 * The `limit` determines how many records should be returned in the query.
 * The `after` or `before` value should be a `keyset` value that has been returned from a previous request. Keyset values are returned whenever there is any read action on a resource that supports keyset pagination, and they are stored in the `__metadata__` key of each record.
 
+
+> #### Keysets are directly tied to the sorting applied to the query {: .warning}
+>
+>  You can't change the sort applied to a request being paginated, and use the same keyset. If you want to change the sort, but *keep* the record who's keyset you are using in the `before` or `after` option,  you must first request the individual record, with the new sort applied. Then, you can use the new keyset.
+
+
 For example:
 
 ```elixir
