@@ -61,7 +61,7 @@ Next/previous page requests can also be made in memory, using an existing page o
 Keyset pagination is done via providing an `after` or `before` option, as well as a `limit`.
 
 * The `limit` determines how many records should be returned in the query.
-* The `after` or `before` value should be a `keyset` value that has been returned from a previous request. Keyset values are returned when a request is made with a `limit` to an action that supports keyset pagination, and they are stored in the `__metadata__` key of each record.
+* The `after` or `before` value should be a `keyset` value that has been returned from a previous request. Keyset values are returned whenever there is any read action on a resource that supports keyset pagination, and they are stored in the `__metadata__` key of each record.
 
 For example:
 
