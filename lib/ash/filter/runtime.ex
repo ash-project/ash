@@ -1098,7 +1098,6 @@ defmodule Ash.Filter.Runtime do
                        api
                      ) do
                   :unknown -> []
-                  nil -> []
                   value -> value
                 end
               end)
