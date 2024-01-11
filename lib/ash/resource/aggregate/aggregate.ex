@@ -21,6 +21,7 @@ defmodule Ash.Resource.Aggregate do
   ]
 
   defmodule JoinFilter do
+    @moduledoc "Represents a join filter on a resource aggregate"
     defstruct [:relationship_path, :filter]
   end
 

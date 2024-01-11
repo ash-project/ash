@@ -121,6 +121,8 @@ spark_locals_without_parens = [
   input: 1,
   integer_primary_key: 1,
   integer_primary_key: 2,
+  join_filter: 2,
+  join_filter: 3,
   join_relationship: 1,
   keyset?: 1,
   kind: 1,

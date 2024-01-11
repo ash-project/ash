@@ -2214,14 +2214,23 @@ See the [aggregates guide](/documentation/topics/aggregates.md) for more.
 
 ### Nested DSLs
  * [count](#aggregates-count)
+   * join_filter
  * [exists](#aggregates-exists)
+   * join_filter
  * [first](#aggregates-first)
+   * join_filter
  * [sum](#aggregates-sum)
+   * join_filter
  * [list](#aggregates-list)
+   * join_filter
  * [max](#aggregates-max)
+   * join_filter
  * [min](#aggregates-min)
+   * join_filter
  * [avg](#aggregates-avg)
+   * join_filter
  * [custom](#aggregates-custom)
+   * join_filter
 
 
 ### Examples
@@ -2250,6 +2259,8 @@ Supports `filter`, but not `sort` (because that wouldn't affect the count)
 See the [aggregates guide](/documentation/topics/aggregates.md) for more.
 
 
+### Nested DSLs
+ * [join_filter](#aggregates-count-join_filter)
 
 
 ### Examples
@@ -2284,6 +2295,41 @@ end
 | [`authorize?`](#aggregates-count-authorize?){: #aggregates-count-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
+## aggregates.count.join_filter
+```elixir
+join_filter relationship_path, filter
+```
+
+
+Declares a join filter on an aggregate. See the aggregates guide for more.
+
+
+
+
+### Examples
+```
+join_filter [:comments, :author], expr(active == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`relationship_path`](#aggregates-count-join_filter-relationship_path){: #aggregates-count-join_filter-relationship_path } | `atom \| list(atom)` |  | The relationship path on which to apply the join filter |
+| [`filter`](#aggregates-count-join_filter-filter){: #aggregates-count-join_filter-filter } | ``any`` |  | The filter to apply. Can be an expression or a filter template. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Aggregate.JoinFilter`
+
 
 
 
@@ -2304,6 +2350,8 @@ Supports `filter`, but not `sort` (because that wouldn't affect if something exi
 See the [aggregates guide](/documentation/topics/aggregates.md) for more.
 
 
+### Nested DSLs
+ * [join_filter](#aggregates-exists-join_filter)
 
 
 ### Examples
@@ -2334,6 +2382,41 @@ exists :has_ticket, :assigned_tickets
 | [`authorize?`](#aggregates-exists-authorize?){: #aggregates-exists-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
+## aggregates.exists.join_filter
+```elixir
+join_filter relationship_path, filter
+```
+
+
+Declares a join filter on an aggregate. See the aggregates guide for more.
+
+
+
+
+### Examples
+```
+join_filter [:comments, :author], expr(active == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`relationship_path`](#aggregates-exists-join_filter-relationship_path){: #aggregates-exists-join_filter-relationship_path } | `atom \| list(atom)` |  | The relationship path on which to apply the join filter |
+| [`filter`](#aggregates-exists-join_filter-filter){: #aggregates-exists-join_filter-filter } | ``any`` |  | The filter to apply. Can be an expression or a filter template. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Aggregate.JoinFilter`
+
 
 
 
@@ -2355,6 +2438,8 @@ that matches. Supports both `filter` and `sort`.
 See the [aggregates guide](/documentation/topics/aggregates.md) for more.
 
 
+### Nested DSLs
+ * [join_filter](#aggregates-first-join_filter)
 
 
 ### Examples
@@ -2390,6 +2475,41 @@ end
 | [`authorize?`](#aggregates-first-authorize?){: #aggregates-first-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
+## aggregates.first.join_filter
+```elixir
+join_filter relationship_path, filter
+```
+
+
+Declares a join filter on an aggregate. See the aggregates guide for more.
+
+
+
+
+### Examples
+```
+join_filter [:comments, :author], expr(active == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`relationship_path`](#aggregates-first-join_filter-relationship_path){: #aggregates-first-join_filter-relationship_path } | `atom \| list(atom)` |  | The relationship path on which to apply the join filter |
+| [`filter`](#aggregates-first-join_filter-filter){: #aggregates-first-join_filter-filter } | ``any`` |  | The filter to apply. Can be an expression or a filter template. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Aggregate.JoinFilter`
+
 
 
 
@@ -2410,6 +2530,8 @@ Supports `filter`, but not `sort` (because that wouldn't affect the sum)
 See the [aggregates guide](/documentation/topics/aggregates.md) for more.
 
 
+### Nested DSLs
+ * [join_filter](#aggregates-sum-join_filter)
 
 
 ### Examples
@@ -2443,6 +2565,41 @@ end
 | [`authorize?`](#aggregates-sum-authorize?){: #aggregates-sum-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
+## aggregates.sum.join_filter
+```elixir
+join_filter relationship_path, filter
+```
+
+
+Declares a join filter on an aggregate. See the aggregates guide for more.
+
+
+
+
+### Examples
+```
+join_filter [:comments, :author], expr(active == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`relationship_path`](#aggregates-sum-join_filter-relationship_path){: #aggregates-sum-join_filter-relationship_path } | `atom \| list(atom)` |  | The relationship path on which to apply the join filter |
+| [`filter`](#aggregates-sum-join_filter-filter){: #aggregates-sum-join_filter-filter } | ``any`` |  | The filter to apply. Can be an expression or a filter template. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Aggregate.JoinFilter`
+
 
 
 
@@ -2464,6 +2621,8 @@ and relationship combination.
 See the [aggregates guide](/documentation/topics/aggregates.md) for more.
 
 
+### Nested DSLs
+ * [join_filter](#aggregates-list-join_filter)
 
 
 ### Examples
@@ -2499,6 +2658,41 @@ end
 | [`authorize?`](#aggregates-list-authorize?){: #aggregates-list-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
+## aggregates.list.join_filter
+```elixir
+join_filter relationship_path, filter
+```
+
+
+Declares a join filter on an aggregate. See the aggregates guide for more.
+
+
+
+
+### Examples
+```
+join_filter [:comments, :author], expr(active == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`relationship_path`](#aggregates-list-join_filter-relationship_path){: #aggregates-list-join_filter-relationship_path } | `atom \| list(atom)` |  | The relationship path on which to apply the join filter |
+| [`filter`](#aggregates-list-join_filter-filter){: #aggregates-list-join_filter-filter } | ``any`` |  | The filter to apply. Can be an expression or a filter template. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Aggregate.JoinFilter`
+
 
 
 
@@ -2519,6 +2713,8 @@ Supports `filter`, but not `sort` (because that wouldn't affect the max)
 See the [aggregates guide](/documentation/topics/aggregates.md) for more.
 
 
+### Nested DSLs
+ * [join_filter](#aggregates-max-join_filter)
 
 
 ### Examples
@@ -2552,6 +2748,41 @@ end
 | [`authorize?`](#aggregates-max-authorize?){: #aggregates-max-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
+## aggregates.max.join_filter
+```elixir
+join_filter relationship_path, filter
+```
+
+
+Declares a join filter on an aggregate. See the aggregates guide for more.
+
+
+
+
+### Examples
+```
+join_filter [:comments, :author], expr(active == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`relationship_path`](#aggregates-max-join_filter-relationship_path){: #aggregates-max-join_filter-relationship_path } | `atom \| list(atom)` |  | The relationship path on which to apply the join filter |
+| [`filter`](#aggregates-max-join_filter-filter){: #aggregates-max-join_filter-filter } | ``any`` |  | The filter to apply. Can be an expression or a filter template. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Aggregate.JoinFilter`
+
 
 
 
@@ -2572,6 +2803,8 @@ Supports `filter`, but not `sort` (because that wouldn't affect the min)
 See the [aggregates guide](/documentation/topics/aggregates.md) for more.
 
 
+### Nested DSLs
+ * [join_filter](#aggregates-min-join_filter)
 
 
 ### Examples
@@ -2605,6 +2838,41 @@ end
 | [`authorize?`](#aggregates-min-authorize?){: #aggregates-min-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
+## aggregates.min.join_filter
+```elixir
+join_filter relationship_path, filter
+```
+
+
+Declares a join filter on an aggregate. See the aggregates guide for more.
+
+
+
+
+### Examples
+```
+join_filter [:comments, :author], expr(active == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`relationship_path`](#aggregates-min-join_filter-relationship_path){: #aggregates-min-join_filter-relationship_path } | `atom \| list(atom)` |  | The relationship path on which to apply the join filter |
+| [`filter`](#aggregates-min-join_filter-filter){: #aggregates-min-join_filter-filter } | ``any`` |  | The filter to apply. Can be an expression or a filter template. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Aggregate.JoinFilter`
+
 
 
 
@@ -2625,6 +2893,8 @@ Supports `filter`, but not `sort` (because that wouldn't affect the avg)
 See the [aggregates guide](/documentation/topics/aggregates.md) for more.
 
 
+### Nested DSLs
+ * [join_filter](#aggregates-avg-join_filter)
 
 
 ### Examples
@@ -2658,6 +2928,41 @@ end
 | [`authorize?`](#aggregates-avg-authorize?){: #aggregates-avg-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
+## aggregates.avg.join_filter
+```elixir
+join_filter relationship_path, filter
+```
+
+
+Declares a join filter on an aggregate. See the aggregates guide for more.
+
+
+
+
+### Examples
+```
+join_filter [:comments, :author], expr(active == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`relationship_path`](#aggregates-avg-join_filter-relationship_path){: #aggregates-avg-join_filter-relationship_path } | `atom \| list(atom)` |  | The relationship path on which to apply the join filter |
+| [`filter`](#aggregates-avg-join_filter-filter){: #aggregates-avg-join_filter-filter } | ``any`` |  | The filter to apply. Can be an expression or a filter template. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Aggregate.JoinFilter`
+
 
 
 
@@ -2680,6 +2985,8 @@ Custom aggregates provide an `implementation` which must implement data layer sp
 See the relevant data layer documentation and the [aggregates guide](/documentation/topics/aggregates.md) for more.
 
 
+### Nested DSLs
+ * [join_filter](#aggregates-custom-join_filter)
 
 
 ### Examples
@@ -2715,6 +3022,41 @@ end
 | [`filterable?`](#aggregates-custom-filterable?){: #aggregates-custom-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`authorize?`](#aggregates-custom-authorize?){: #aggregates-custom-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
+
+## aggregates.custom.join_filter
+```elixir
+join_filter relationship_path, filter
+```
+
+
+Declares a join filter on an aggregate. See the aggregates guide for more.
+
+
+
+
+### Examples
+```
+join_filter [:comments, :author], expr(active == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`relationship_path`](#aggregates-custom-join_filter-relationship_path){: #aggregates-custom-join_filter-relationship_path } | `atom \| list(atom)` |  | The relationship path on which to apply the join filter |
+| [`filter`](#aggregates-custom-join_filter-filter){: #aggregates-custom-join_filter-filter } | ``any`` |  | The filter to apply. Can be an expression or a filter template. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Aggregate.JoinFilter`
 
 
 
