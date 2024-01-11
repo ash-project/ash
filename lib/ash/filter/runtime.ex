@@ -174,7 +174,7 @@ defmodule Ash.Filter.Runtime do
         record
         |> flatten_relationships(relationship_paths)
         |> Enum.reduce_while({:ok, false}, fn scenario, {:ok, false} ->
-          case do_match(scenario, expression, opts[:parent]) do
+          case do_match(scenario, expression, opts[:parent], nil, opts[:unknown_on_unknown_refs?]) do
             {:error, error} ->
               {:halt, {:error, error}}
 
@@ -1009,10 +1009,10 @@ defmodule Ash.Filter.Runtime do
   def get_related(
         source,
         path,
-        unknown_on_unknown_refs? \\ false,
+        unknown_on_unknown_refs?,
         join_filters \\ %{},
         parent_stack \\ [],
-        api
+        api \\ nil
       )
 
   def get_related(nil, _, unknown_on_unknown_refs?, _join_filters, _parent_stack, _api) do
@@ -1062,9 +1062,17 @@ defmodule Ash.Filter.Runtime do
         end
       end)
 
-    api
-    |> filter_matches(records, join_filter, parent: parent_stack)
-    |> case do
+    filtered =
+      if Map.has_key?(join_filters, []) do
+        filter_matches(api, records, join_filter,
+          parent: parent_stack,
+          unknown_on_unknown_refs?: unknown_on_unknown_refs?
+        )
+      else
+        {:ok, records}
+      end
+
+    case filtered do
       {:ok, matches} ->
         matches
         |> Enum.flat_map(fn match ->
