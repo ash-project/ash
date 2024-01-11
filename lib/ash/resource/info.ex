@@ -94,7 +94,7 @@ defmodule Ash.Resource.Info do
   @spec interface(Spark.Dsl.t() | Ash.Resource.t(), atom) :: Ash.Resource.Interface.t() | nil
   def interface(resource, name) do
     resource
-    |> identities()
+    |> interfaces()
     |> Enum.find(&(&1.name == name))
   end
 

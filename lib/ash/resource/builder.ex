@@ -568,4 +568,96 @@ defmodule Ash.Resource.Builder do
       Keyword.merge(opts, name: name, relationship_path: List.wrap(relationship_path))
     )
   end
+
+  @doc """
+  Builds and adds an interface unless an interface with that name already exists
+  """
+  @spec add_new_interface(
+          Spark.Dsl.Builder.input(),
+          name :: atom,
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder add_new_interface(dsl_state, name, opts \\ []) do
+    if Ash.Resource.Info.interface(dsl_state, name) do
+      {:ok, dsl_state}
+    else
+      add_interface(dsl_state, name, opts)
+    end
+  end
+
+  @doc """
+  Builds and adds an interface to a resource
+  """
+  @spec add_interface(
+          Spark.Dsl.Builder.input(),
+          name :: atom,
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder add_interface(dsl_state, name, opts \\ []) do
+    with {:ok, interface} <- build_interface(name, opts) do
+      Transformer.add_entity(dsl_state, [:code_interface], interface, type: :append)
+    end
+  end
+
+  @doc """
+  Builds an interface with the given name, type, and options
+  """
+  @spec build_interface(name :: atom, opts :: Keyword.t()) ::
+          {:ok, Ash.Resource.Interface.t()} | {:error, term}
+  def build_interface(name, opts \\ []) do
+    Transformer.build_entity(
+      Ash.Resource.Dsl,
+      [:code_interface],
+      :define,
+      Keyword.merge(opts, name: name)
+    )
+  end
+
+  @doc """
+  Builds and adds an calculation interface unless an calculation interface with that name already exists
+  """
+  @spec add_new_calculation_interface(
+          Spark.Dsl.Builder.input(),
+          name :: atom,
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder add_new_calculation_interface(dsl_state, name, opts \\ []) do
+    if Ash.Resource.Info.calculation_interface(dsl_state, name) do
+      {:ok, dsl_state}
+    else
+      add_calculation_interface(dsl_state, name, opts)
+    end
+  end
+
+  @doc """
+  Builds and adds an calculation interface to a resource
+  """
+  @spec add_calculation_interface(
+          Spark.Dsl.Builder.input(),
+          name :: atom,
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder add_calculation_interface(dsl_state, name, opts \\ []) do
+    with {:ok, calculation_interface} <- build_calculation_interface(name, opts) do
+      Transformer.add_entity(dsl_state, [:code_interface], calculation_interface, type: :append)
+    end
+  end
+
+  @doc """
+  Builds an calculation interface with the given name, type, and options
+  """
+  @spec build_calculation_interface(name :: atom, opts :: Keyword.t()) ::
+          {:ok, Ash.Resource.CalculationInterface.t()} | {:error, term}
+  def build_calculation_interface(name, opts \\ []) do
+    Transformer.build_entity(
+      Ash.Resource.Dsl,
+      [:code_interface],
+      :define_calculation,
+      Keyword.merge(opts, name: name)
+    )
+  end
 end
