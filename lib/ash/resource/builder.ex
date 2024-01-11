@@ -114,14 +114,12 @@ defmodule Ash.Resource.Builder do
         ) ::
           {:ok, Ash.Resource.Relationships.relationship()} | {:error, term}
   def build_relationship(type, name, destination, opts \\ []) do
-    with {:ok, opts} <- handle_nested_builders(opts, [:changes, :arguments, :metadata]) do
-      Transformer.build_entity(
-        Ash.Resource.Dsl,
-        [:relationships],
-        type,
-        Keyword.merge(opts, name: name, destination: destination)
-      )
-    end
+    Transformer.build_entity(
+      Ash.Resource.Dsl,
+      [:relationships],
+      type,
+      Keyword.merge(opts, name: name, destination: destination)
+    )
   end
 
   @doc """
@@ -166,16 +164,14 @@ defmodule Ash.Resource.Builder do
           fields :: atom | list(atom),
           opts :: Keyword.t()
         ) ::
-          {:ok, Ash.Resource.Relationships.relationship()} | {:error, term}
+          {:ok, Ash.Resource.Identity.t()} | {:error, term}
   def build_identity(name, fields, opts \\ []) do
-    with {:ok, opts} <- handle_nested_builders(opts, [:changes, :arguments, :metadata]) do
-      Transformer.build_entity(
-        Ash.Resource.Dsl,
-        [:identities],
-        :identity,
-        Keyword.merge(opts, name: name, keys: fields)
-      )
-    end
+    Transformer.build_entity(
+      Ash.Resource.Dsl,
+      [:identities],
+      :identity,
+      Keyword.merge(opts, name: name, keys: fields)
+    )
   end
 
   @doc """
@@ -288,7 +284,7 @@ defmodule Ash.Resource.Builder do
   Builds a calculation argument
   """
   @spec build_calculation_argument(name :: atom, type :: Ash.Type.t(), opts :: Keyword.t()) ::
-          {:ok, Ash.Resource.Actions.Argument.t()} | {:error, term}
+          {:ok, Ash.Resource.Calculation.Argument.t()} | {:error, term}
   def build_calculation_argument(name, type, opts \\ []) do
     Transformer.build_entity(
       Ash.Resource.Dsl,
