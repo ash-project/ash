@@ -1088,9 +1088,9 @@ defmodule Ash.Filter.Runtime do
               |> List.wrap()
               |> Enum.flat_map(&List.wrap/1)
               |> Enum.reject(&(&1 in [:unknown, nil]))
-              |> Enum.flat_map(fn match ->
+              |> Enum.flat_map(fn this_match ->
                 case get_related(
-                       match,
+                       this_match,
                        rest,
                        unknown_on_unknown_refs?,
                        rest_join_filters,
