@@ -1087,16 +1087,21 @@ defmodule Ash.Filter.Runtime do
               matches
               |> List.wrap()
               |> Enum.flat_map(&List.wrap/1)
-              |> Enum.flat_map(
-                &get_related(
-                  &1,
-                  rest,
-                  unknown_on_unknown_refs?,
-                  rest_join_filters,
-                  [match | parent_stack],
-                  api
-                )
-              )
+              |> Enum.reject(&(&1 in [:unknown, nil]))
+              |> Enum.flat_map(fn match ->
+                case get_related(
+                       match,
+                       rest,
+                       unknown_on_unknown_refs?,
+                       rest_join_filters,
+                       [match | parent_stack],
+                       api
+                     ) do
+                  :unknown -> []
+                  nil -> []
+                  value -> value
+                end
+              end)
               |> List.flatten()
           end
         end)
