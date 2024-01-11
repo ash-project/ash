@@ -1,84 +1,138 @@
 # Pagination
 
-Pagination is configured at the action level. There are two kinds of pagination supported: `keyset` and `offset`. There are
-pros and cons to each. An action can support both at the same time, or only one (or none). A full count of records can be
-requested by passing `page: [count: true]`, but it should be kept in mind that doing this requires running the same query
-twice, one of which is a count of all records. Ash does these in parallel, but it can still be quite expensive on large
-datasets. For more information on the options for configuring actions to support pagination, see `d:Ash.Resource.Dsl.actions.read|prepare`
+Pagination when reading records is configured on a per-action basis. Ash supports two kinds of pagination: `keyset` and `offset`.
+
+A single action can use both kinds of pagination if desired, but typically you would use one or the other.
+
+For information on configuring actions to support pagination, see `d:Ash.Resource.Dsl.actions.read|prepare`.
+
+> #### Counting records {: .tip}
+>
+> When calling an action that uses pagination, the full count of records can be requested by adding the option `page: [count: true]`.
+> Note that this will perform a similar query a second time to fetch the count, which can be expensive on large data sets.
 
 ## Offset Pagination
 
-Offset pagination is done via providing a `limit` and an `offset`. A `limit` is how many records that should be returned on the page.
-An `offset` is how many records from the beginning should be skipped. Using this, you might make requests like the following:
+Offset pagination is done via providing a `limit` and an `offset` when making queries.
+
+* The `limit` determines how many records should be returned in the query.
+* The `offset` describes how many records from the beginning should be skipped.
+
+Using this, you might make requests like the following:
 
 ```elixir
 # Get the first ten records
 Api.read(Resource, page: [limit: 10])
-# Get the second ten records
+# or by using an action named `read` directly
+Resource.read(page: [limit: 10])
+
+# Get the next ten records
 Api.read(Resource, page: [limit: 10, offset: 10])
-# No need to do this in practice, see `c:Ash.Api.page/2`
+# or by using an action named `read` directly
+Resource.read(page: [limit: 10, offset: 10])
 ```
 
-### Offset Pros
+Next/previous page requests can also be made in memory, using an existing page of search results:
+
+```elixir
+# Return page three of search results
+{:ok, third_page} = Resource.read(page: [limit: 10, offset: 20])
+
+# Use `:prev` and `:next` to go backwards and forwards.
+# `:first`, `:last` and specifying a page number are also supported.
+{:ok, second_page} = Api.page(third_page, :prev)
+{:ok, fourth_page} = Api.page(third_page, :next)
+```
+
+### Pros of offset pagination
 
 - Simple to think about
 - Possible to skip to a page by number. E.g the 5th page of 10 records is `offset: 40`
 - Easy to reason about what page you are currently on (if the total number of records is requested)
-- Can go to the last page (even though, if done by using the full count, the data could have changed)
+- Can go to the last page (though data may have changed between calculating the last page details, and requesting it)
 
-### Offset Cons
+### Cons of offset pagination
 
 - Does not perform well on large datasets (if you have to ask if your dataset is "large", it probably isn't)
-- When moving between pages, if data was created or deleted, records may appear on multiple pages
+- When moving between pages, if data was created or deleted, individual records may be missing or appear on multiple pages
 
 ## Keyset Pagination
 
-Keyset pagination is done via providing an `after` or `before` option, as well as a `limit`. The value of this option should be
-a `keyset` that has been returned from a previous request. Keysets are returned when a request is made with a `limit` to an action
-that supports `keyset` pagination, and they are stored in the `__metadata__` key of each record. The `keyset` is a special value that
-can be passed into the `after` or `before` options, to get records that occur after or before.
+Keyset pagination is done via providing an `after` or `before` option, as well as a `limit`.
+
+* The `limit` determines how many records should be returned in the query.
+* The `after` or `before` value should be a `keyset` value that has been returned from a previous request. Keyset values are returned whenever there is any read action on a resource that supports keyset pagination, and they are stored in the `__metadata__` key of each record.
+
+
+> #### Keysets are directly tied to the sorting applied to the query {: .warning}
+>
+>  You can't change the sort applied to a request being paginated, and use the same keyset. If you want to change the sort, but *keep* the record who's keyset you are using in the `before` or `after` option,  you must first request the individual record, with the new sort applied. Then, you can use the new keyset.
+
 
 For example:
 
 ```elixir
-page = Api.read(Resource, page: [limit: 10])
+{:ok, page} = Api.read(Resource, page: [limit: 10])
+# Returns `{:ok, %Ash.Page.Keyset{results: [...], before: nil, after: nil}}`
+# The `before`/`after` values are the keysets used for this request.
 
+# Fetch the keyset for the next request from the results list
 last_record = List.last(page.results)
+# Returns `%Resource{__metadata__: %{keyset: "g2wAAAABbQAAACQzOWNjNTcwNy00NjlmL..."}, ...}``
 
-# No need to do this in practice, see `c:Ash.Api.page/2`
-next_page = Api.read(Resource, page: [limit: 10, after: last_record.__metadata__.keyset])
+# Use this keyset value to fetch the next page
+{:ok, next_page} = Api.read(Resource, page: [limit: 10, after: last_record.__metadata__.keyset])
 ```
 
-### Keyset Pros
+Like offset pagination, next/previous page requests can also be made in memory, using an existing page of search results:
+
+```elixir
+# Return page three of search results
+{:ok, third_page} = Resource.read(page: [limit: 10])
+
+# Use `:prev` and `:next` to go backwards and forwards.
+# `:first` can also be used, but `:last` and specifying a page number are not supported.
+{:ok, second_page} = Api.page(third_page, :prev)
+{:ok, fourth_page} = Api.page(third_page, :next)
+```
+
+### Pros of keyset pagination
 
 - Performs very well on large datasets (assuming indices exist on the columns being sorted on)
 - Behaves well as data changes. The record specified will always be the first or last item in the page
 
-### Keyset Cons
+### Cons of keyset paginations
 
 - A bit more complex to use
 - Can't go to a specific page number
 
-## Setting up overview
+## Example implementation
 
-### Resource Action pagination setup
+### Setting up the resource
 
-Setup the pagination for the [Resource's](https://hexdocs.pm/ash/glossary.html#resource) [Action](https://hexdocs.pm/ash/glossary.html#action) you want to be paginated.
+Add the `pagination` macro call to the [action](glossary.md#action) of the [resource](glossary.md#resource) that you want to be paginated.
 
-(In the defmodule which has `use Ash.Resource` as per Resource docs):
+```elixir
+defmodule AppName.ResourceName do
+  use Ash.Resource
+
+  actions do
+    read :read_action_name do
+      pagination offset?: true, default_limit: 3, countable: true
+    end
+
+    # ...
 ```
-actions do
-  ... 
-  read :name_of_the_action do
-        ...
-        pagination offset?: true, default_limit: 3, countable: true
-        ...
-      end
-  ...
-end
-```
-All the options for setting the pagination in the Actions of a Resource are available [here](https://hexdocs.pm/ash/dsl-ash-resource.html#actions-read-pagination)
 
-### Querying the paginated Resource
+For all available pagination options, see `d:Ash.Resource.Dsl.actions.read|pagination`.
 
-All the options for Querying the paginated Resource via `Api.read(Resource, page: [options])` are available [here](https://hexdocs.pm/ash/Ash.Api.html#c:read/2-pagination)
+### Querying the paginated resource
+
+For all available querying options, see [`Ash.Api.read.pagination`](https://hexdocs.pm/ash/Ash.Api.html#c:read/2-pagination).
+
+> #### Check the updated query return type! {: .info}
+> Pagination will modify the return type of calling the query action.
+>
+> Without pagination, Ash will return a list of records.
+>
+> But _with_ pagination, Ash will return an `Ash.Page.Offset` struct (for offset pagination) or `Ash.Page.Keyset` struct (for keyset pagination). Both structs contain the list of records in the `results` key of the struct.
