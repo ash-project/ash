@@ -65,7 +65,7 @@ defmodule Ash.Api do
   @type t() :: module
 
   @type page_request ::
-          :next | :prev | :first | :last | integer
+          :next | :prev | :first | :last | :self | integer
 
   @global_opts [
     internal?: [
@@ -2065,6 +2065,10 @@ defmodule Ash.Api do
     read(api, query, Keyword.put(opts, :page, page_opts))
   end
 
+  def page(api, %Ash.Page.Keyset{rerun: {query, opts}}, :self) do
+    read(api, query, opts)
+  end
+
   def page(
         api,
         %Ash.Page.Offset{count: count, limit: limit, offset: offset, rerun: {query, opts}},
@@ -2087,6 +2091,9 @@ defmodule Ash.Api do
           else
             [offset: 0, limit: limit]
           end
+
+        :self ->
+          opts[:page]
 
         page_num when is_integer(page_num) ->
           [offset: (page_num - 1) * limit, limit: limit]
