@@ -1,4 +1,4 @@
-# Defining Idiomatic Actions
+# Define Idiomatic Actions
 
 The best practice is typically to try to push things as far down into your resources as possible. 
 

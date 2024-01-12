@@ -1,4 +1,4 @@
-# Defining Manual Relationships
+# Define Manual Relationships
 
 Manual relationships allow you to express complex or non-typical relationships between resources in a standard way.
 Individual data layers may interact with manual relationships in their own way, so see their corresponding guides.

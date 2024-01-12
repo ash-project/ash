@@ -1,4 +1,4 @@
-# Auto-formatting Ash code
+# Auto-Format Ash code
 
 Ash comes with several utilities that can help keep your modules consistently formatted and organized.
 
@@ -14,7 +14,7 @@ Add `:ash` (and any other Ash libraries you are using) to your `.formatter.exs` 
 ]
 ```
 
-This means that when you autoformat your code, either via `mix format` or via an integration in your code editor, the exported data from Ash's `.formatter.exs` will be included and followed.
+This means that when you auto-format your code, either via `mix format` or via an integration in your code editor, the exported data from Ash's `.formatter.exs` will be included and followed.
 
 It includes definitions for `locals_without_parens`, meaning that your DSL builder code such as `attribute :name, :string` won't have parentheses added (to make it `attribute(:name, :string)`) when formatting the file. The parentheses won't be removed if they currently exist, but they won't be added if missing when formatting.
 

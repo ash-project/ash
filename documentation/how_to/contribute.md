@@ -1,4 +1,4 @@
-# Contributing to Ash
+# Contribute to Ash
 
 ## Welcome!
 

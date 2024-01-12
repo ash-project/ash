@@ -1,4 +1,4 @@
-# Upgrading
+# Upgrade
 
 ## Upgrading to 2.0
 

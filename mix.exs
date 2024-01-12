@@ -35,43 +35,59 @@ defmodule Ash.MixProject do
   end
 
   defp extras do
-    # Sorting can be done adding numbers at the begining of filenames
-    "documentation/**/*.{md,livemd,cheatmd}"
-    |> Path.wildcard()
-    |> Enum.map(fn path ->
-      html_filename =
-        path
-        |> Path.basename(".md")
-        |> Path.basename(".livemd")
-        |> Path.basename(".cheatmd")
-
-      title =
-        html_filename
-        |> String.split(~r/[-_]/)
-        |> Enum.map_join(" ", &capitalize/1)
-        |> case do
-          "F A Q" ->
-            "FAQ"
-
-          other ->
-            other
-        end
-
-      {String.to_atom(path),
-       [
-         title: title,
-         default: title == "Get Started"
-       ]}
-    end)
-  end
-
-  defp capitalize(string) do
-    string
-    |> String.split(" ")
-    |> Enum.map(fn string ->
-      [hd | tail] = String.graphemes(string)
-      String.capitalize(hd) <> Enum.join(tail)
-    end)
+    [
+      "documentation/tutorials/get-started.md",
+      "documentation/tutorials/why-ash.md",
+      "documentation/tutorials/philosophy.md",
+      "documentation/tutorials/using-hexdocs.md",
+      "documentation/tutorials/extending-resources.md",
+      "documentation/how_to/contribute.md",
+      "documentation/how_to/define-idiomatic-actions.md",
+      "documentation/how_to/defining-manual-relationships.md",
+      "documentation/how_to/handle-errors.md",
+      "documentation/how_to/structure-your-project.md",
+      "documentation/how_to/upgrade.md",
+      "documentation/how_to/use-without-data-layers.md",
+      "documentation/how_to/validate-changes.md",
+      "documentation/how_to/auto-format-code.md",
+      "documentation/topics/actions.md",
+      "documentation/topics/aggregates.md",
+      "documentation/topics/atomics.md",
+      "documentation/topics/attributes.md",
+      "documentation/topics/bulk-actions.md",
+      "documentation/topics/calculations.md",
+      "documentation/topics/code-interface.md",
+      "documentation/topics/constraints.md",
+      "documentation/topics/development-utilities.md",
+      "documentation/topics/embedded-resources.md",
+      "documentation/topics/expressions.md",
+      "documentation/topics/flows.md",
+      "documentation/topics/glossary.md",
+      "documentation/topics/identities.md",
+      "documentation/topics/managing-relationships.md",
+      "documentation/topics/manual-actions.md",
+      "documentation/topics/monitoring.md",
+      "documentation/topics/multitenancy.md",
+      "documentation/topics/notifiers.md",
+      "documentation/topics/pagination.md",
+      "documentation/topics/phoenix.md",
+      "documentation/topics/policies.md",
+      "documentation/topics/pub_sub.md",
+      "documentation/topics/relationships.md",
+      "documentation/topics/security.md",
+      "documentation/topics/store-context-in-process.md",
+      "documentation/topics/testing.md",
+      "documentation/topics/timeouts.md",
+      "documentation/topics/validations.md",
+      "documentation/dsls/DSL:-Ash.Api.md",
+      "documentation/dsls/DSL:-Ash.DataLayer.Ets.md",
+      "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md",
+      "documentation/dsls/DSL:-Ash.Flow.md",
+      "documentation/dsls/DSL:-Ash.Notifier.PubSub.md",
+      "documentation/dsls/DSL:-Ash.Policy.Authorizer.md",
+      "documentation/dsls/DSL:-Ash.Registry.md",
+      "documentation/dsls/DSL:-Ash.Resource.md"
+    ]
   end
 
   defp groups_for_extras do
