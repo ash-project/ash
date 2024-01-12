@@ -1990,7 +1990,7 @@ identity :full_name, [:first_name, :last_name]
 | [`pre_check_with`](#identities-identity-pre_check_with){: #identities-identity-pre_check_with } | `module` |  | Validates that the unique identity provided is unique in a before_action hook. |
 | [`description`](#identities-identity-description){: #identities-identity-description } | `String.t` |  | An optional description for the identity |
 | [`message`](#identities-identity-message){: #identities-identity-message } | `String.t` |  | An error message to use when the unique identity would be violated |
-| [`all_tenants?`](#identities-identity-all_tenants?){: #identities-identity-all_tenants? } | `boolean` | `true` | Whether or not this identity is unique across all tenants. If the resource is not multitenant, has no effect. |
+| [`all_tenants?`](#identities-identity-all_tenants?){: #identities-identity-all_tenants? } | `boolean` | `false` | Whether or not this identity is unique across all tenants. If the resource is not multitenant, has no effect. |
 
 
 
