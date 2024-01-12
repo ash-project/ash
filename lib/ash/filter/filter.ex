@@ -602,6 +602,9 @@ defmodule Ash.Filter do
           relationship_path: build_filter_from_template(path, actor, args, context)
         }
 
+      %Call{name: :sigil_i, args: [%Call{name: :<<>>, args: [str]}, mods]} ->
+        Ash.CiString.sigil_i(str, mods)
+
       other ->
         other
     end)

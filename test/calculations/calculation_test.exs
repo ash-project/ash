@@ -848,7 +848,7 @@ defmodule Ash.Test.CalculationTest do
       User
       |> Ash.Query.load(:string_join_full_name_ci)
       |> Api.read!()
-      |> Enum.map(&CiString.value(&1.string_join_full_name_ci))
+      |> Enum.map(&Ash.CiString.value(&1.string_join_full_name_ci))
       |> Enum.sort()
 
     assert ci_full_names == ["bob", "brian cranston", "zach daniel"]
