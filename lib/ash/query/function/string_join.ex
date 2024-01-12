@@ -46,8 +46,7 @@ defmodule Ash.Query.Function.StringJoin do
 
     values
     |> Enum.reject(&is_nil/1)
-    |> Enum.map(&normalize/1)
-    |> Enum.join(joiner)
+    |> Enum.map_join(joiner, &normalize/1)
   end
 
   defp normalize(%CiString{} = ci_string), do: ci_string |> CiString.value()
