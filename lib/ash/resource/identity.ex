@@ -9,7 +9,15 @@ defmodule Ash.Resource.Identity do
   Eventually, features could be added to support including `nil` or `null` values, but they would
   need to include a corresponding feature for data layers.
   """
-  defstruct [:name, :keys, :description, :message, :eager_check_with, :pre_check_with]
+  defstruct [
+    :name,
+    :keys,
+    :description,
+    :message,
+    :eager_check_with,
+    :pre_check_with,
+    :all_tenants?
+  ]
 
   @schema [
     name: [
@@ -41,6 +49,12 @@ defmodule Ash.Resource.Identity do
     message: [
       type: :string,
       doc: "An error message to use when the unique identity would be violated"
+    ],
+    all_tenants?: [
+      type: :boolean,
+      default: true,
+      doc:
+        "Whether or not this identity is unique across all tenants. If the resource is not multitenant, has no effect."
     ]
   ]
 
@@ -49,6 +63,7 @@ defmodule Ash.Resource.Identity do
   @type t :: %__MODULE__{
           name: atom(),
           keys: list(atom()),
-          description: String.t() | nil
+          description: String.t() | nil,
+          all_tenants?: boolean()
         }
 end

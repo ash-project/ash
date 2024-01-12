@@ -1350,9 +1350,24 @@ defmodule Ash.Changeset do
             {key, Ash.Changeset.get_attribute(changeset, key)}
           end)
 
+        tenant =
+          if identity.all_tenants? do
+            unless Ash.Resource.Info.multitenancy_global?(changeset.resource) do
+              raise ArgumentError,
+                message: """
+                Cannot pre or eager check an identity that has `all_tenants?: true`
+                unless the resource supports global multitenancy.
+                """
+            end
+
+            nil
+          else
+            changeset.tenant
+          end
+
         changeset.resource
         |> Ash.Query.for_read(action, %{},
-          tenant: changeset.tenant,
+          tenant: tenant,
           actor: changeset.context[:private][:actor],
           authorize?: changeset.context[:private][:authorize?],
           tracer: changeset.context[:private][:tracer]
