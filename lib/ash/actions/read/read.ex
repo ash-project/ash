@@ -3106,10 +3106,13 @@ defmodule Ash.Actions.Read do
           action: %{
             name: read_action
           }
-        },
+        } = ash_query,
         query
       ) do
-    case Ash.Query.Aggregate.new(destination_resource, :count, :count, read_action: read_action) do
+    case Ash.Query.Aggregate.new(destination_resource, :count, :count,
+           read_action: read_action,
+           query: ash_query
+         ) do
       {:ok, aggregate} ->
         Ash.DataLayer.run_aggregate_query_with_lateral_join(
           query,
