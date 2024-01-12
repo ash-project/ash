@@ -24,6 +24,18 @@ defmodule Ash.Sort do
 
   alias Ash.Error.Query.{InvalidSortOrder, NoSuchAttribute}
 
+  @doc """
+  Builds an expression to be used in a sort statement.
+
+  For example:
+
+  ```elixir
+  Ash.Query.sort(Ash.Sort.expr_sort(author.full_name))
+
+  Ash.Query.sort([{Ash.Sort.expr_sort(author.full_name), :desc_nils_first}])
+  ```
+  """
+  @spec expr_sort(Ash.Expr.t(), Ash.Type.t() | nil) :: Ash.Expr.t()
   defmacro expr_sort(expression, type \\ nil) do
     quote do
       require Ash.Expr
