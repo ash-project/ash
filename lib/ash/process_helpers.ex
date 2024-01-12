@@ -1,4 +1,8 @@
 defmodule Ash.ProcessHelpers do
+  @moduledoc """
+  Helpers for working with processes and Ash actions.
+  """
+
   @doc """
   Gets all of the ash context so it can be set into a new process.
 

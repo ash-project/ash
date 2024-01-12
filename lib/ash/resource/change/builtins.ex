@@ -72,7 +72,7 @@ defmodule Ash.Resource.Change.Builtins do
     {Ash.Resource.Change.RelateActor, opts}
   end
 
-  @spec debug_log(label :: String.t()) :: Ash.Resource.Change.ref()
+  @spec debug_log(label :: String.t() | nil) :: Ash.Resource.Change.ref()
   def debug_log(label \\ nil) do
     {Ash.Resource.Change.DebugLog, label: label}
   end
