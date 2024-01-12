@@ -4,6 +4,7 @@ spark_locals_without_parens = [
   action: 1,
   action: 2,
   action: 3,
+  all_tenants?: 1,
   allow: 1,
   allow_expr?: 1,
   allow_nil?: 1,
