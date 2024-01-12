@@ -39,7 +39,7 @@ Next/previous page requests can also be made in memory, using an existing page o
 {:ok, third_page} = Resource.read(page: [limit: 10, offset: 20])
 
 # Use `:prev` and `:next` to go backwards and forwards.
-# `:first`, `:last` and specifying a page number are also supported.
+# `:first`, `:last`, `:self` and specifying a page number are also supported.
 {:ok, second_page} = Api.page(third_page, :prev)
 {:ok, fourth_page} = Api.page(third_page, :next)
 ```
@@ -91,7 +91,7 @@ Like offset pagination, next/previous page requests can also be made in memory, 
 {:ok, third_page} = Resource.read(page: [limit: 10])
 
 # Use `:prev` and `:next` to go backwards and forwards.
-# `:first` can also be used, but `:last` and specifying a page number are not supported.
+# `:first` and `:self` can also be used, but `:last` and specifying a page number are not supported.
 {:ok, second_page} = Api.page(third_page, :prev)
 {:ok, fourth_page} = Api.page(third_page, :next)
 ```
