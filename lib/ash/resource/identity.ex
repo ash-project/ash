@@ -52,7 +52,7 @@ defmodule Ash.Resource.Identity do
     ],
     all_tenants?: [
       type: :boolean,
-      default: true,
+      default: false,
       doc:
         "Whether or not this identity is unique across all tenants. If the resource is not multitenant, has no effect."
     ]
