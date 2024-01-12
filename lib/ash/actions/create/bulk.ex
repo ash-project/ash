@@ -269,6 +269,7 @@ defmodule Ash.Actions.Create.Bulk do
     })
     |> Ash.Actions.Helpers.add_context(opts)
     |> Ash.Changeset.set_context(opts[:context] || %{})
+    |> set_tenant()
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
   end
 
@@ -472,6 +473,19 @@ defmodule Ash.Actions.Create.Bulk do
     )
     |> set_lazy_non_matching_defaults()
     |> set_lazy_matching_defaults(lazy_matching_default_values)
+  end
+
+  defp set_tenant(changeset) do
+    if changeset.tenant &&
+         Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
+      attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
+      {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(changeset.resource)
+      attribute_value = apply(m, f, [changeset.tenant | a])
+
+      Ash.Changeset.force_change_attribute(changeset, attribute, attribute_value)
+    else
+      changeset
+    end
   end
 
   defp handle_params(changeset, false, action, _opts, input, _argument_names) do

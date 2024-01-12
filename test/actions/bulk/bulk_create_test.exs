@@ -32,14 +32,35 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
+  defmodule Org do
+    @moduledoc false
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    actions do
+      defaults [:create]
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
+    alias Ash.Test.Actions.BulkCreateTest.Org
+
     ets do
       private? true
+    end
+
+    multitenancy do
+      strategy :attribute
+      attribute :org_id
     end
 
     actions do
@@ -104,6 +125,13 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
       timestamps()
     end
+
+    relationships do
+      belongs_to :org, Org do
+        allow_nil? false
+        attribute_writable? true
+      end
+    end
   end
 
   defmodule Registry do
@@ -111,6 +139,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     use Ash.Registry
 
     entries do
+      entry Org
       entry Post
     end
   end
@@ -125,11 +154,17 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   end
 
   test "returns created records" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Api.create!()
+
     assert %Ash.BulkResult{records: [%{title: "title1"}, %{title: "title2"}]} =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_records?: true,
                return_errors?: true,
-               sorted?: true
+               sorted?: true,
+               tenant: org.id
              )
   end
 
