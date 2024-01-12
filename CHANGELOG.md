@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.18.1](https://github.com/ash-project/ash/compare/v2.18.0...v2.18.1) (2024-01-12)
+
+
+
+
+### Bug Fixes:
+
+* use current read action for counting
+
 ## [v2.18.0](https://github.com/ash-project/ash/compare/v2.17.24...v2.18.0) (2024-01-12)
 
 
