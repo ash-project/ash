@@ -1,5 +1,5 @@
 defmodule Ash.Policy.Check.RelatingToActor do
-  @moduledoc false
+  @moduledoc "This check is true when the specified relationship is being changed to the current actor."
   use Ash.Policy.SimpleCheck
 
   @impl true

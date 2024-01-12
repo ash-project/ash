@@ -2,7 +2,6 @@ import Config
 
 config :ash,
   flags: [
-    read_uses_flow?: System.get_env("FLAG_READ_USES_FLOW", "false") == "true",
     ash_three?: System.get_env("FLAG_ASH_THREE", "false") == "true"
   ]
 

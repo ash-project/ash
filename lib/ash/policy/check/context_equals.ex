@@ -1,5 +1,5 @@
 defmodule Ash.Policy.Check.ContextEquals do
-  @moduledoc false
+  @moduledoc "This check is true when the value of the specified key or path in the changeset or query context equals the specified value."
   use Ash.Policy.SimpleCheck
 
   @impl true

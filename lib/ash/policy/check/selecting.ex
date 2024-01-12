@@ -1,5 +1,5 @@
 defmodule Ash.Policy.Check.Selecting do
-  @moduledoc false
+  @moduledoc "This check is true when the field is being selected and false when it is not."
   use Ash.Policy.SimpleCheck
 
   @impl true

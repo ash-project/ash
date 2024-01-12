@@ -1,9 +1,5 @@
 defmodule Ash.Engine.Request do
-  @moduledoc """
-  Represents an individual request to be processed by the engine.
-
-  See `new/1` for more information
-  """
+  @moduledoc false
   defstruct [
     :async?,
     :resource,
@@ -50,9 +46,7 @@ defmodule Ash.Engine.Request do
   require Logger
 
   defmodule UnresolvedField do
-    @moduledoc """
-    Represents an unresolved field to be resolved by the engine.
-    """
+    @moduledoc false
     defstruct [:resolver, deps: [], data?: false]
 
     @type t :: %__MODULE__{}

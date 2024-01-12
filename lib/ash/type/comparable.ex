@@ -26,6 +26,7 @@ defmodule Ash.Type.Comparable do
         end
 
         defimpl Comparable, for: unquote(lr_type) do
+          @moduledoc false
           def compare(%unquote(lr_type){
                 left: unquote(left_expression),
                 right: unquote(right_expression)
@@ -48,6 +49,7 @@ defmodule Ash.Type.Comparable do
         end
 
         defimpl Comparable, for: unquote(rl_type) do
+          @moduledoc false
           def compare(%unquote(rl_type){
                 left: unquote(right_expression),
                 right: unquote(left_expression)

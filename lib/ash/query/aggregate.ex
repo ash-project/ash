@@ -145,7 +145,7 @@ defmodule Ash.Query.Aggregate do
           build_opts -> Ash.Query.build(related, build_opts)
         end
 
-      read_action = opts[:read_action] || Ash.Resource.Info.primary_action(related, :read).name
+      read_action = opts[:read_action] || Ash.Resource.Info.primary_action!(related, :read).name
 
       query =
         if query.__validated_for_action__ != read_action do

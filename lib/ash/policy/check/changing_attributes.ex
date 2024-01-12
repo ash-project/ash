@@ -1,5 +1,5 @@
 defmodule Ash.Policy.Check.ChangingAttributes do
-  @moduledoc false
+  @moduledoc "This check is true when attribute changes correspond to the provided options."
   use Ash.Policy.SimpleCheck
 
   @impl true

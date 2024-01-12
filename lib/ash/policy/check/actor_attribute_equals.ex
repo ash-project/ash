@@ -1,5 +1,5 @@
 defmodule Ash.Policy.Check.ActorAttributeEquals do
-  @moduledoc false
+  @moduledoc "This check is true when the value of the specified attribute of the actor equals the specified value."
   use Ash.Policy.SimpleCheck
 
   @impl true

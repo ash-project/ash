@@ -4,7 +4,6 @@ defmodule Ash.Policy.Info do
 
   For more information, see `Ash.Policy.Authorizer`
   """
-  @type request :: Ash.Engine.Request.t()
 
   alias Spark.Dsl.Extension
 

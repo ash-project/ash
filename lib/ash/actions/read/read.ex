@@ -70,56 +70,52 @@ defmodule Ash.Actions.Read do
           | {:error, term}
   def run(query, action, opts \\ [])
 
-  if Ash.Flags.read_uses_flow?() do
-    def run(query, action, opts), do: Ash.Actions.Flows.Read.run(query, action, opts)
-  else
-    def run(query, action, opts) do
-      {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
+  def run(query, action, opts) do
+    {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
 
-      Ash.Tracer.span :action,
-                      Ash.Api.Info.span_name(query.api, query.resource, action.name),
-                      opts[:tracer] do
-        metadata = %{
-          api: query.api,
-          resource: query.resource,
-          resource_short_name: Ash.Resource.Info.short_name(query.resource),
-          actor: opts[:actor],
-          tenant: opts[:tenant],
-          action: action.name,
-          authorize?: opts[:authorize?]
-        }
+    Ash.Tracer.span :action,
+                    Ash.Api.Info.span_name(query.api, query.resource, action.name),
+                    opts[:tracer] do
+      metadata = %{
+        api: query.api,
+        resource: query.resource,
+        resource_short_name: Ash.Resource.Info.short_name(query.resource),
+        actor: opts[:actor],
+        tenant: opts[:tenant],
+        action: action.name,
+        authorize?: opts[:authorize?]
+      }
 
-        Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(query.api), :read], metadata do
-          Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
+      Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(query.api), :read], metadata do
+        Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
-          run_around_transaction_hooks(query, fn query ->
-            case do_run(query, action, opts) do
-              {:error, error} ->
-                if opts[:tracer] do
-                  stacktrace =
-                    case error do
-                      %{stacktrace: %{stacktrace: stacktrace}} ->
-                        stacktrace || []
+        run_around_transaction_hooks(query, fn query ->
+          case do_run(query, action, opts) do
+            {:error, error} ->
+              if opts[:tracer] do
+                stacktrace =
+                  case error do
+                    %{stacktrace: %{stacktrace: stacktrace}} ->
+                      stacktrace || []
 
-                      _ ->
-                        {:current_stacktrace, stacktrace} =
-                          Process.info(self(), :current_stacktrace)
+                    _ ->
+                      {:current_stacktrace, stacktrace} =
+                        Process.info(self(), :current_stacktrace)
 
-                        stacktrace
-                    end
+                      stacktrace
+                  end
 
-                  Ash.Tracer.set_handled_error(opts[:tracer], Ash.Error.to_error_class(error),
-                    stacktrace: stacktrace
-                  )
-                end
+                Ash.Tracer.set_handled_error(opts[:tracer], Ash.Error.to_error_class(error),
+                  stacktrace: stacktrace
+                )
+              end
 
-                {:error, error}
+              {:error, error}
 
-              other ->
-                other
-            end
-          end)
-        end
+            other ->
+              other
+          end
+        end)
       end
     end
   end
@@ -3106,11 +3102,14 @@ defmodule Ash.Actions.Read do
           resource: destination_resource,
           context: %{
             data_layer: %{lateral_join_source: {root_data, path}}
+          },
+          action: %{
+            name: read_action
           }
         },
         query
       ) do
-    case Ash.Query.Aggregate.new(destination_resource, :count, :count) do
+    case Ash.Query.Aggregate.new(destination_resource, :count, :count, read_action: read_action) do
       {:ok, aggregate} ->
         Ash.DataLayer.run_aggregate_query_with_lateral_join(
           query,

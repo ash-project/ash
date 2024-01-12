@@ -2718,6 +2718,20 @@ defmodule Ash.Changeset do
     end
   end
 
+  def get_argument(changeset, argument) when is_binary(argument) do
+    changeset.arguments
+    |> Enum.find(fn {key, _} ->
+      to_string(key) == argument
+    end)
+    |> case do
+      {_key, value} ->
+        value
+
+      _ ->
+        nil
+    end
+  end
+
   @doc "Fetches the value of an argument provided to the changeset or `:error`."
   @spec fetch_argument(t, atom) :: {:ok, term} | :error
   def fetch_argument(changeset, argument) when is_atom(argument) do
@@ -2730,6 +2744,20 @@ defmodule Ash.Changeset do
           {:ok, value} -> {:ok, value}
           :error -> :error
         end
+    end
+  end
+
+  def fetch_argument(changeset, argument) when is_binary(argument) do
+    changeset.arguments
+    |> Enum.find(fn {key, _} ->
+      to_string(key) == argument
+    end)
+    |> case do
+      {_key, value} ->
+        {:ok, value}
+
+      _ ->
+        :error
     end
   end
 

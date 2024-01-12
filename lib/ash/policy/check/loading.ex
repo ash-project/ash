@@ -1,5 +1,5 @@
 defmodule Ash.Policy.Check.Loading do
-  @moduledoc false
+  @moduledoc "This check is true when the field or relationship, or path to field, is being loaded and false when it is not."
   use Ash.Policy.SimpleCheck
   require Logger
 

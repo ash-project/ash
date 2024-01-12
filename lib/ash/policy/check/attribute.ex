@@ -1,5 +1,5 @@
 defmodule Ash.Policy.Check.Attribute do
-  @moduledoc false
+  @moduledoc "This check is true when a field on the record matches a specific filter."
 
   use Ash.Policy.FilterCheck
 

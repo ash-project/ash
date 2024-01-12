@@ -1,5 +1,5 @@
 defmodule Ash.Policy.Check.AccessingFrom do
-  @moduledoc false
+  @moduledoc "This check is true when the current action is being run \"through\" a relationship."
   use Ash.Policy.SimpleCheck
 
   @impl true

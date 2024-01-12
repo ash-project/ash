@@ -4,14 +4,111 @@ defmodule Ash do
   """
 
   for {function, arity} <- Ash.Api.Functions.functions() do
+    if function == :load do
+      def load({:ok, result}, load) do
+        load(result, load)
+      end
+
+      def load({:error, error}, _), do: {:error, error}
+
+      def load([], _), do: {:ok, []}
+      def load(nil, _), do: {:ok, nil}
+
+      def load(%page_struct{results: []} = page, _)
+          when page_struct in [Ash.Page.Keyset, Ash.Page.Offset] do
+        {:ok, page}
+      end
+    end
+
+    if function == :load! do
+      def load!({:ok, result}, load) do
+        {:ok, load!(result, load)}
+      end
+
+      def load!({:error, error}, _), do: raise(Ash.Error.to_error_class(error))
+      def load!([], _), do: []
+      def load!(nil, _), do: nil
+
+      def load!(%page_struct{results: []} = page, _)
+          when page_struct in [Ash.Page.Keyset, Ash.Page.Offset] do
+        page
+      end
+    end
+
     args = Macro.generate_arguments(arity, __MODULE__)
 
-    defdelegate unquote(function)(unquote_splicing(args)), to: Ash.Api.GlobalInterface
+    docs_arity =
+      if function in Ash.Api.Functions.no_opts_functions() do
+        arity
+      else
+        arity + 1
+      end
+
+    @doc "Calls `c:Ash.Api.#{function}/#{docs_arity}` on the resource's configured api. See those callback docs for more."
+    def unquote(function)(unquote_splicing(args)) do
+      resource =
+        Ash.Api.GlobalInterface.resource_from_args!(unquote(function), unquote(arity), [
+          unquote_splicing(args)
+        ])
+
+      api = Ash.Resource.Info.api(resource)
+
+      if !api do
+        Ash.Api.GlobalInterface.raise_no_api_error!(resource, unquote(function), unquote(arity))
+      end
+
+      apply(api, unquote(function), [unquote_splicing(args)])
+    end
 
     unless function in Ash.Api.Functions.no_opts_functions() do
       args = Macro.generate_arguments(arity + 1, __MODULE__)
 
-      defdelegate unquote(function)(unquote_splicing(args)), to: Ash.Api.GlobalInterface
+      if function == :load! do
+        def load!({:ok, result}, load, opts) do
+          {:ok, load(result, load, opts)}
+        end
+
+        def load!({:error, error}, _, _), do: raise(Ash.Error.to_error_class(error))
+
+        def load!(nil, _, _), do: nil
+        def load!([], _, _), do: []
+
+        def load!(%page_struct{results: []} = page, _, _)
+            when page_struct in [Ash.Page.Keyset, Ash.Page.Offset] do
+          page
+        end
+      end
+
+      if function == :load do
+        def load({:ok, result}, load, opts) do
+          load(result, load, opts)
+        end
+
+        def load({:error, error}, _, _), do: {:error, error}
+        def load([], _, _), do: {:ok, []}
+        def load(nil, _, _), do: {:ok, nil}
+
+        def load(%page_struct{results: []} = page, _, _)
+            when page_struct in [Ash.Page.Keyset, Ash.Page.Offset] do
+          {:ok, page}
+        end
+      end
+
+      @doc "Calls `c:Ash.Api.#{function}/#{arity + 1}` on the resource's configured api. See those callback docs for more."
+      def unquote(function)(unquote_splicing(args)) do
+        resource =
+          Ash.Api.GlobalInterface.resource_from_args!(unquote(function), unquote(arity), [
+            unquote_splicing(args)
+          ])
+
+        api = Ash.Resource.Info.api(resource)
+
+        if !api do
+          Ash.Api.GlobalInterface.raise_no_api_error!(resource, unquote(function), unquote(arity))
+        end
+
+        apply(api, unquote(function), [unquote_splicing(args)])
+      end
     end
   end
 
@@ -32,87 +129,14 @@ defmodule Ash do
     end
   end
 
-  @doc """
-  Gets all of the ash context so it can be set into a new process.
+  @doc deprecated: "See `Ash.ProcessHelpers`. This alias will be removed in 3.0"
+  defdelegate get_context_for_transfer(opts \\ []), to: Ash.ProcessHelpers
+  @doc deprecated: "See `Ash.ProcessHelpers`. This alias will be removed in 3.0"
+  defdelegate transfer_context(term, opts \\ []), to: Ash.ProcessHelpers
 
-  Use `transfer_context/1` in the new process to set the context.
-  """
-  @spec get_context_for_transfer(opts :: Keyword.t()) :: term
-  def get_context_for_transfer(opts \\ []) do
-    context = Ash.get_context()
-    actor = Process.get(:ash_actor)
-    authorize? = Process.get(:ash_authorize?)
-    tenant = Process.get(:ash_tenant)
-    tracer = Process.get(:ash_tracer)
-
-    tracer_context =
-      opts[:tracer]
-      |> List.wrap()
-      |> Enum.concat(List.wrap(tracer))
-      |> Map.new(fn tracer ->
-        {tracer, Ash.Tracer.get_span_context(tracer)}
-      end)
-
-    %{
-      context: context,
-      actor: actor,
-      tenant: tenant,
-      authorize?: authorize?,
-      tracer: tracer,
-      tracer_context: tracer_context
-    }
-  end
-
-  @spec transfer_context(term, opts :: Keyword.t()) :: :ok
-  def transfer_context(
-        %{
-          context: context,
-          actor: actor,
-          tenant: tenant,
-          authorize?: authorize?,
-          tracer: tracer,
-          tracer_context: tracer_context
-        },
-        _opts \\ []
-      ) do
-    case actor do
-      {:actor, actor} ->
-        Ash.set_actor(actor)
-
-      _ ->
-        :ok
-    end
-
-    case tenant do
-      {:tenant, tenant} ->
-        Ash.set_tenant(tenant)
-
-      _ ->
-        :ok
-    end
-
-    case authorize? do
-      {:authorize?, authorize?} ->
-        Ash.set_authorize?(authorize?)
-
-      _ ->
-        :ok
-    end
-
-    Ash.set_tracer(tracer)
-
-    Enum.each(tracer_context || %{}, fn {tracer, tracer_context} ->
-      Ash.Tracer.set_span_context(tracer, tracer_context)
-    end)
-
-    Ash.set_context(context)
-  end
-
-  @doc """
-  Sets context into the process dictionary that is used for all changesets and queries.
-
-  In Ash 3.0, this will be updated to deep merge
-  """
+  @doc deprecated: """
+       Sets context into the process dictionary that is used for all changesets and queries.
+       """
   @spec set_context(map) :: :ok
   def set_context(map) do
     Process.put(:ash_context, map)
@@ -120,9 +144,9 @@ defmodule Ash do
     :ok
   end
 
-  @doc """
-  Deep merges context into the process dictionary that is used for all changesets and queries.
-  """
+  @doc deprecated: """
+       Deep merges context into the process dictionary that is used for all changesets and queries.
+       """
   @spec merge_context(map) :: :ok
   def merge_context(map) do
     update_context(&Ash.Helpers.deep_merge_maps(&1, map))
@@ -130,9 +154,9 @@ defmodule Ash do
     :ok
   end
 
-  @doc """
-  Updates the context into the process dictionary that is used for all changesets and queries.
-  """
+  @doc deprecated: """
+       Updates the context into the process dictionary that is used for all changesets and queries.
+       """
   @spec update_context((map -> map)) :: :ok
   def update_context(fun) do
     context = Process.get(:ash_context, %{})
@@ -141,9 +165,9 @@ defmodule Ash do
     :ok
   end
 
-  @doc """
-  Sets actor into the process dictionary that is used for all changesets and queries.
-  """
+  @doc deprecated: """
+       Sets actor into the process dictionary that is used for all changesets and queries.
+       """
   @spec set_actor(map) :: :ok
   def set_actor(map) do
     Process.put(:ash_actor, {:actor, map})
@@ -151,9 +175,9 @@ defmodule Ash do
     :ok
   end
 
-  @doc """
-  Sets authorize? into the process dictionary that is used for all changesets and queries.
-  """
+  @doc deprecated: """
+       Sets authorize? into the process dictionary that is used for all changesets and queries.
+       """
   @spec set_authorize?(map) :: :ok
   def set_authorize?(map) do
     Process.put(:ash_authorize?, {:authorize?, map})
@@ -161,9 +185,9 @@ defmodule Ash do
     :ok
   end
 
-  @doc """
-  Sets the tracer into the process dictionary that will be used to trace requests
-  """
+  @doc deprecated: """
+       Sets the tracer into the process dictionary that will be used to trace requests
+       """
   @spec set_tracer(module | list(module)) :: :ok
   def set_tracer(module) do
     case Process.get(:ash_tracer, module) do
@@ -174,9 +198,9 @@ defmodule Ash do
     :ok
   end
 
-  @doc """
-  Removes a tracer from the process dictionary.
-  """
+  @doc deprecated: """
+       Removes a tracer from the process dictionary.
+       """
   @spec remove_tracer(module | list(module)) :: :ok
   def remove_tracer(module) do
     case Process.get(:ash_tracer, module) do
@@ -187,9 +211,9 @@ defmodule Ash do
     :ok
   end
 
-  @doc """
-  Gets the current actor from the process dictionary
-  """
+  @doc deprecated: """
+       Gets the current actor from the process dictionary
+       """
   @spec get_actor() :: term()
   def get_actor do
     case Process.get(:ash_actor) do
@@ -201,9 +225,9 @@ defmodule Ash do
     end
   end
 
-  @doc """
-  Gets the current tracer
-  """
+  @doc deprecated: """
+       Gets the current tracer
+       """
   @spec get_tracer() :: term()
   def get_tracer do
     case Process.get(:ash_tracer) do
@@ -215,9 +239,9 @@ defmodule Ash do
     end
   end
 
-  @doc """
-  Gets the current authorize? from the process dictionary
-  """
+  @doc deprecated: """
+       Gets the current authorize? from the process dictionary
+       """
   @spec get_authorize?() :: term()
   def get_authorize? do
     case Process.get(:ash_authorize?) do
@@ -229,9 +253,9 @@ defmodule Ash do
     end
   end
 
-  @doc """
-  Sets tenant into the process dictionary that is used for all changesets and queries.
-  """
+  @doc deprecated: """
+       Sets tenant into the process dictionary that is used for all changesets and queries.
+       """
   @spec set_tenant(String.t()) :: :ok
   def set_tenant(tenant) do
     Process.put(:ash_tenant, {:tenant, tenant})
@@ -239,9 +263,9 @@ defmodule Ash do
     :ok
   end
 
-  @doc """
-  Gets the current tenant from the process dictionary
-  """
+  @doc deprecated: """
+       Gets the current tenant from the process dictionary
+       """
   @spec get_tenant() :: term()
   def get_tenant do
     case Process.get(:ash_tenant) do
@@ -253,9 +277,9 @@ defmodule Ash do
     end
   end
 
-  @doc """
-  Gets the current context from the process dictionary
-  """
+  @doc deprecated: """
+       Gets the current context from the process dictionary
+       """
   @spec get_context() :: term()
   def get_context do
     Process.get(:ash_context, %{}) || %{}

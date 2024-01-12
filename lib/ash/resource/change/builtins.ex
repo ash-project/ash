@@ -72,6 +72,11 @@ defmodule Ash.Resource.Change.Builtins do
     {Ash.Resource.Change.RelateActor, opts}
   end
 
+  @spec debug_log(label :: String.t()) :: Ash.Resource.Change.ref()
+  def debug_log(label \\ nil) do
+    {Ash.Resource.Change.DebugLog, label: label}
+  end
+
   @doc """
   Apply an "optimistic lock" on a record being updated or destroyed.
 

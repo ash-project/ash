@@ -1,5 +1,5 @@
 defmodule Ash.Policy.Check.Static do
-  @moduledoc false
+  @moduledoc "This check is always the result provided"
   use Ash.Policy.SimpleCheck
 
   @impl true

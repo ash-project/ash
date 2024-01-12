@@ -1,5 +1,5 @@
 defmodule Ash.Policy.Check.ActorPresent do
-  @moduledoc false
+  @moduledoc "This check is true when there is an actor specified, and false when the actor is `nil`."
   use Ash.Policy.SimpleCheck
 
   @impl true

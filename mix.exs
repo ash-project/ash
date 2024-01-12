@@ -34,85 +34,87 @@ defmodule Ash.MixProject do
     ]
   end
 
-  defp extras do
-    [
-      "documentation/tutorials/get-started.md",
-      "documentation/tutorials/why-ash.md",
-      "documentation/tutorials/philosophy.md",
-      "documentation/tutorials/using-hexdocs.md",
-      "documentation/tutorials/extending-resources.md",
-      "documentation/how_to/contribute.md",
-      "documentation/how_to/define-idiomatic-actions.md",
-      "documentation/how_to/defining-manual-relationships.md",
-      "documentation/how_to/handle-errors.md",
-      "documentation/how_to/structure-your-project.md",
-      "documentation/how_to/upgrade.md",
-      "documentation/how_to/use-without-data-layers.md",
-      "documentation/how_to/validate-changes.md",
-      "documentation/how_to/auto-format-code.md",
-      "documentation/topics/actions.md",
-      "documentation/topics/aggregates.md",
-      "documentation/topics/atomics.md",
-      "documentation/topics/attributes.md",
-      "documentation/topics/bulk-actions.md",
-      "documentation/topics/calculations.md",
-      "documentation/topics/code-interface.md",
-      "documentation/topics/constraints.md",
-      "documentation/topics/development-utilities.md",
-      "documentation/topics/embedded-resources.md",
-      "documentation/topics/expressions.md",
-      "documentation/topics/flows.md",
-      "documentation/topics/glossary.md",
-      "documentation/topics/identities.md",
-      "documentation/topics/managing-relationships.md",
-      "documentation/topics/manual-actions.md",
-      "documentation/topics/monitoring.md",
-      "documentation/topics/multitenancy.md",
-      "documentation/topics/notifiers.md",
-      "documentation/topics/pagination.md",
-      "documentation/topics/phoenix.md",
-      "documentation/topics/policies.md",
-      "documentation/topics/pub_sub.md",
-      "documentation/topics/relationships.md",
-      "documentation/topics/security.md",
-      "documentation/topics/store-context-in-process.md",
-      "documentation/topics/testing.md",
-      "documentation/topics/timeouts.md",
-      "documentation/topics/validations.md",
-      "documentation/dsls/DSL:-Ash.Api.md",
-      "documentation/dsls/DSL:-Ash.DataLayer.Ets.md",
-      "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md",
-      "documentation/dsls/DSL:-Ash.Flow.md",
-      "documentation/dsls/DSL:-Ash.Notifier.PubSub.md",
-      "documentation/dsls/DSL:-Ash.Policy.Authorizer.md",
-      "documentation/dsls/DSL:-Ash.Registry.md",
-      "documentation/dsls/DSL:-Ash.Resource.md"
-    ]
-  end
-
-  defp groups_for_extras do
-    [
-      Tutorials: [
-        "documentation/tutorials/get-started.md",
-        "documentation/tutorials/philosophy.md",
-        "documentation/tutorials/why-ash.md",
-        ~r'documentation/tutorials'
-      ],
-      "How To": ~r'documentation/how_to',
-      Topics: ~r'documentation/topics',
-      DSLs: ~r'documentation/dsls'
-    ]
-  end
-
   defp docs do
-    # The main page in the docs
     [
       main: "get-started",
       source_ref: "v#{@version}",
       logo: "logos/small-logo.png",
       extra_section: "GUIDES",
-      extras: extras(),
-      groups_for_extras: groups_for_extras(),
+      extras: [
+        "documentation/tutorials/get-started.md",
+        "documentation/tutorials/why-ash.md",
+        "documentation/tutorials/philosophy.md",
+        "documentation/tutorials/using-hexdocs.md",
+        "documentation/tutorials/extending-resources.md",
+        "documentation/how_to/contribute.md",
+        "documentation/how_to/define-idiomatic-actions.md",
+        "documentation/how_to/defining-manual-relationships.md",
+        "documentation/how_to/handle-errors.md",
+        "documentation/how_to/structure-your-project.md",
+        "documentation/how_to/upgrade.md",
+        "documentation/how_to/use-without-data-layers.md",
+        "documentation/how_to/validate-changes.md",
+        "documentation/how_to/auto-format-code.md",
+        "documentation/topics/actions.md",
+        "documentation/topics/aggregates.md",
+        "documentation/topics/atomics.md",
+        "documentation/topics/attributes.md",
+        "documentation/topics/bulk-actions.md",
+        "documentation/topics/calculations.md",
+        "documentation/topics/code-interface.md",
+        "documentation/topics/constraints.md",
+        "documentation/topics/development-utilities.md",
+        "documentation/topics/embedded-resources.md",
+        "documentation/topics/expressions.md",
+        "documentation/topics/flows.md",
+        "documentation/topics/glossary.md",
+        "documentation/topics/identities.md",
+        "documentation/topics/managing-relationships.md",
+        "documentation/topics/manual-actions.md",
+        "documentation/topics/monitoring.md",
+        "documentation/topics/multitenancy.md",
+        "documentation/topics/notifiers.md",
+        "documentation/topics/pagination.md",
+        "documentation/topics/phoenix.md",
+        "documentation/topics/policies.md",
+        "documentation/topics/pub_sub.md",
+        "documentation/topics/relationships.md",
+        "documentation/topics/security.md",
+        "documentation/topics/store-context-in-process.md",
+        "documentation/topics/testing.md",
+        "documentation/topics/timeouts.md",
+        "documentation/topics/validations.md",
+        "documentation/dsls/DSL:-Ash.Resource.md",
+        "documentation/dsls/DSL:-Ash.Api.md",
+        "documentation/dsls/DSL:-Ash.Notifier.PubSub.md",
+        "documentation/dsls/DSL:-Ash.Policy.Authorizer.md",
+        "documentation/dsls/DSL:-Ash.Flow.md",
+        "documentation/dsls/DSL:-Ash.DataLayer.Ets.md",
+        "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md",
+        "documentation/dsls/DSL:-Ash.Registry.md"
+      ],
+      groups_for_extras: [
+        Tutorials: ~r'documentation/tutorials',
+        "How To": ~r'documentation/how_to',
+        Topics: ~r'documentation/topics',
+        DSLs: ~r'documentation/dsls'
+      ],
+      nest_modules_by_prefix: [
+        Ash.Error,
+        Ash.Flow.Transformers,
+        Ash.Policy.Authorizer,
+        Ash.Api.Transformers,
+        Ash.Api.Verifiers,
+        Ash.Registry.Transformers,
+        Ash.Resource.Transformers,
+        Ash.Resource.Verifiers,
+        Ash.Registry.ResourceValidations,
+        Ash.Query.Function,
+        Ash.Query.Operator,
+        Ash.Resource.Change,
+        Ash.Resource.Validation,
+        Ash.Policy.Check
+      ],
       before_closing_head_tag: fn type ->
         if type == :html do
           """
@@ -128,86 +130,8 @@ defmodule Ash.MixProject do
           """
         end
       end,
-      spark: [
-        extensions: [
-          %{
-            module: Ash.Resource.Dsl,
-            name: "Resource",
-            target: "Ash.Resource",
-            type: "Resource",
-            default_for_target?: true
-          },
-          %{
-            module: Ash.Api.Dsl,
-            name: "Api",
-            target: "Ash.Api",
-            type: "Api",
-            default_for_target?: true
-          },
-          %{
-            module: Ash.DataLayer.Ets,
-            name: "Ets",
-            target: "Ash.Resource",
-            type: "DataLayer"
-          },
-          %{
-            module: Ash.DataLayer.Mnesia,
-            name: "Mnesia",
-            target: "Ash.Resource",
-            type: "DataLayer"
-          },
-          %{
-            module: Ash.Policy.Authorizer,
-            name: "Policy Authorizer",
-            target: "Ash.Resource",
-            type: "Authorizer"
-          },
-          %{
-            module: Ash.Flow.Dsl,
-            name: "Flow",
-            target: "Ash.Flow",
-            type: "Flow",
-            default_for_target?: true
-          },
-          %{
-            module: Ash.Notifier.PubSub,
-            name: "PubSub",
-            target: "Ash.Resource",
-            type: "Notifier"
-          },
-          %{
-            module: Ash.Registry.Dsl,
-            name: "Registry",
-            target: "Ash.Registry",
-            type: "Registry",
-            default_for_target?: true
-          },
-          %{
-            module: Ash.Registry.ResourceValidations,
-            name: "Resource Validations",
-            type: "Extension",
-            target: "Ash.Registry"
-          }
-        ],
-        mix_tasks: [
-          Charts: [
-            Mix.Tasks.Ash.GenerateFlowCharts
-          ]
-        ]
-      ],
       groups_for_modules: [
-        Extensions: [
-          Ash.Api,
-          Ash.Resource,
-          Ash.DataLayer.Ets,
-          Ash.DataLayer.Mnesia,
-          Ash.DataLayer.Simple,
-          Ash.Notifier.PubSub,
-          Ash.Policy.Authorizer,
-          Ash.Registry
-        ],
         Resources: [
-          Ash.Api,
           Ash.Filter.TemplateHelpers,
           Ash.Calculation,
           Ash.Resource.Calculation.Builtins,
@@ -221,6 +145,14 @@ defmodule Ash.MixProject do
           Ash.Resource.ManualDestroy,
           Ash.Resource.ManualRelationship,
           Ash.Resource.Attribute.Helpers
+        ],
+        "Action Input & Interface": [
+          Ash,
+          Ash.Api,
+          Ash.Query,
+          Ash.Changeset,
+          Ash.ActionInput,
+          Ash.BulkResult
         ],
         Queries: [
           Ash.Query,
@@ -244,6 +176,15 @@ defmodule Ash.MixProject do
           Ash.Policy.FilterCheckWithContext,
           Ash.Policy.SimpleCheck
         ],
+        Extensions: [
+          Ash.Resource,
+          Ash.DataLayer.Ets,
+          Ash.DataLayer.Mnesia,
+          Ash.DataLayer.Simple,
+          Ash.Notifier.PubSub,
+          Ash.Policy.Authorizer,
+          Ash.Registry
+        ],
         Introspection: [
           Ash.Api.Info,
           Ash.Registry.Info,
@@ -252,10 +193,10 @@ defmodule Ash.MixProject do
           Ash.Policy.Info,
           Ash.DataLayer.Ets.Info,
           Ash.DataLayer.Mnesia.Info,
-          Ash.Notifier.PubSub.Info
+          Ash.Notifier.PubSub.Info,
+          ~r/Ash.Api.Dsl.*/
         ],
         Utilities: [
-          Ash,
           Ash.Expr,
           Ash.Page,
           Ash.Page.Keyset,
@@ -264,24 +205,41 @@ defmodule Ash.MixProject do
           Ash.Filter.Runtime,
           Ash.Sort,
           Ash.CiString,
+          Ash.Vector,
           Ash.Union,
           Ash.UUID,
           Ash.NotLoaded,
+          Ash.ForbiddenField,
+          Ash.NotSelected,
           Ash.Changeset.ManagedRelationshipHelpers,
           Ash.DataLayer.Simple,
           Ash.Filter.Simple,
           Ash.Filter.Simple.Not,
           Ash.OptionsHelpers,
           Ash.Resource.Builder,
-          Ash.Tracer
+          Ash.ProcessHelpers,
+          Ash.Mix.Tasks.Helpers,
+          Ash.PlugHelpers,
+          Ash.SatSolver
+        ],
+        Visualizations: [
+          Ash.Api.Info.Diagram,
+          Ash.Api.Info.Livebook,
+          Ash.Policy.Chart.Mermaid
         ],
         Testing: [
           Ash.Generator,
           Ash.Seed,
           Ash.Test
         ],
+        Tracing: [
+          Ash.Tracer,
+          Ash.Tracer.Simple,
+          Ash.Tracer.Simple.Span
+        ],
         Flow: [
           Ash.Flow,
+          Ash.Flow.Result,
           Ash.Flow.Executor,
           Ash.Flow.Step,
           Ash.Flow.Chart.Mermaid,
@@ -295,8 +253,46 @@ defmodule Ash.MixProject do
           Ash.Error,
           ~r/Ash.Error\./
         ],
-        Transformers: [~r/\.Transformers\./, Ash.Registry.ResourceValidations],
-        Internals: ~r/.*/
+        "DSL Transformers": [
+          ~r/\.Transformers\./,
+          ~r/\.Verifiers\./,
+          Ash.Registry.ResourceValidations
+        ],
+        Expressions: [
+          Ash.Filter.Predicate,
+          Ash.Filter.Simple,
+          Ash.Filter.Simple.Not,
+          ~r/Ash.Query.Operator/,
+          ~r/Ash.Query.Function/,
+          ~r/Ash.Query.Ref/,
+          Ash.Query.Not,
+          Ash.Query.Call,
+          Ash.Query.BooleanExpression,
+          Ash.Query.Exists,
+          Ash.Query.Parent
+        ],
+        Builtins: [
+          ~r/Ash.Resource.Validation/,
+          ~r/Ash.Resource.Change/,
+          ~r/Ash.Policy.Check/
+        ],
+        Introspection: [
+          ~r/Ash.Resource.Relationships/,
+          ~r/Ash.Resource.Calculation/,
+          ~r/Ash.Resource.Interface/,
+          ~r/Ash.Resource.Identity/,
+          ~r/Ash.Resource.Attribute/,
+          ~r/Ash.Resource.Attribute/,
+          ~r/Ash.Resource.Aggregate/,
+          ~r/Ash.Resource.Actions/,
+          ~r/Ash.Flow.Step/,
+          ~r/Ash.Flow/,
+          Ash.Mix.Tasks.Helpers,
+          Ash.Policy.FieldPolicy,
+          ~r/Ash.Registry/,
+          Ash.Policy.Policy,
+          Ash.Notifier.PubSub.Publication
+        ]
       ]
     ]
   end

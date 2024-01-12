@@ -1,5 +1,5 @@
 defmodule Ash.Policy.Check.ActionType do
-  @moduledoc false
+  @moduledoc "This check is true when the action type matches the provided type"
   use Ash.Policy.SimpleCheck
 
   @impl true

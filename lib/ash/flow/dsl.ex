@@ -349,14 +349,7 @@ defmodule Ash.Flow.Dsl do
 
   @sections [@flow, @steps]
 
-  @moduledoc """
-  The built in flow DSL.
-
-  ## Halting
-
-  Steps can be halted, which will stop the flow from continuing and return a halted flow. To attach a specific reason, use a `halt_reason`.
-  If you need more complex halting logic, then you'd want to use a custom step, and return `{:error, Ash.Error.Flow.Halted.exception(...)}`
-  """
+  @moduledoc false
 
   use Spark.Dsl.Extension,
     sections: @sections,

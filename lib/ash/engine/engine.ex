@@ -1,49 +1,5 @@
 defmodule Ash.Engine do
-  @moduledoc """
-  The Ash engine handles the parallelization/running of requests to Ash.
-
-  Much of the complexity of this doesn't come into play for simple requests.
-  The way it works is that it accepts a list of `Ash.Engine.Request` structs.
-  Some of values on those structs will be instances of `Ash.Engine.Request.UnresolvedField`.
-  These unresolved fields can express a dependence on the field values from other requests.
-  This allows the engine to wait on executing some code until it has its required inputs,
-  or if all of its dependencies are met, it can execute it immediately. The engine's job is
-  to resolve its unresolved fields in the proper order, potentially in parallel.
-  It also has knowledge baked in about certain special fields, like `data` which is the
-  field we are ultimately trying to resolve, and `query` which is the field that drives authorization
-  for read requests. Authorization is done on a *per engine request* basis.
-
-  As the complexity of a system grows, it becomes very difficult to write code that
-  is both imperative and performant. This is especially true of a framework that is
-  designed to be configurable. What exactly is done, as well as the order it is done in,
-  and whether or not is can be parallelized, varies wildly based on factors like how
-  the resources are configured and what capabilities the data layer has. By implementing
-  a generic "parallel engine", we can let the engine solve that problem. We only
-  have to express the various operations that must happen, and what other pieces of data
-  they need in order to happen, and the engine handles the rest.
-
-  There are various tradeoffs in the current design. The original version of the engine started a process
-  for each request. While this had the least constrained performance characteristics of all the designs,
-  it was problematic for various reasons. The primary reason being that it could deadlock without any
-  reasonable way to debug said deadlock because the various states were distributed. The second version
-  of the engine introduced a central `Engine` process that helped with some of these issues, but ultimately
-  had the same problem. The third (and current) version of the engine is reworked instead to be drastically
-  simpler, potentially at the expense of performance for some requests. Instead of starting a process per
-  request, it opts to only parallelize the `data` field resolution of fields that are marked as `async?: true`,
-  (unlike the previous versions which started a process for the whole request.) Although it does its best
-  to prioritize starting any async tasks, it is possible that if some mix of async/sync requests are passed in
-  a potentially long running sync task could prevent it from starting an async task, giving this potentially worse
-  performance characteristics. In practice, this doesn't really matter because the robust data layers support running
-  asynchronously, unless they are in a transaction in which case everything runs serially anyway.
-
-  The current version of the engine can be seen as an event loop that will async some events and yield them. It also
-  has support for a concurrency limit (per engine invocation, not globally, although that could now be added much more
-  easily). This limit defaults to `2 * schedulers_online`.
-
-  Check out the docs for `Ash.Engine.Request` for some more information. This is a private
-  interface at the moment, though, so this documentation is just here to explain how it works
-  it is not intended to give you enough information to use the engine directly.
-  """
+  @moduledoc false
 
   defstruct [
     :ref,

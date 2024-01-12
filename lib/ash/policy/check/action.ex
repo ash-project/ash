@@ -1,5 +1,5 @@
 defmodule Ash.Policy.Check.Action do
-  @moduledoc false
+  @moduledoc "This check is true when the action name matches the provided action name."
   use Ash.Policy.SimpleCheck
 
   @impl true

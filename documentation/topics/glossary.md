@@ -33,7 +33,7 @@ See the [Aggregates guide](/documentation/topics/aggregates.md) for more informa
 
 A method of broadly separating resources into different [bounded contexts](https://martinfowler.com/bliki/BoundedContext.html). Small apps might only have one API, in which case you can set-and-forget it, but apps with larger domains can benefit from different contexts having different views of the same resource.
 
-See `Ash.Api.Dsl` for more information.
+See `d:Ash.Api` for more information.
 
 ## Attribute
 

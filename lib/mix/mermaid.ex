@@ -1,7 +1,5 @@
 defmodule Mix.Mermaid do
-  @moduledoc """
-  Mermaid Diagram helper functions.
-  """
+  @moduledoc false
 
   @doc """
   Generate the option string for a mermaid config file if it exists.

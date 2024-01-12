@@ -1,5 +1,5 @@
 defmodule Ash.Policy.Check.FilteringOn do
-  @moduledoc false
+  @moduledoc "This check is true when the field provided is being referenced anywhere in a filter statement."
   use Ash.Policy.SimpleCheck
 
   @impl true

@@ -1,13 +1,7 @@
 defmodule Ash.Flags do
-  @moduledoc """
-  Feature flagging support for Ash internals.
-
-  These are macros so that they can be used at compile time to switch code
-  paths.
-  """
+  @moduledoc false
 
   @flags [
-    read_uses_flow?: false,
     ash_three?: false
   ]
 
@@ -18,14 +12,6 @@ defmodule Ash.Flags do
                end)
 
   @noop {:__block__, [], []}
-
-  @doc "Should read actions use the new flow-based executor?"
-  @spec read_uses_flow? :: Macro.t()
-  defmacro read_uses_flow? do
-    quote do
-      unquote(Map.get(@flag_values, :read_uses_flow?))
-    end
-  end
 
   @doc "Should we activate Ash 3.0 features?"
   @spec ash_three? :: Macro.t()
