@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.17.24](https://github.com/ash-project/ash/compare/v2.17.23...v2.17.24) (2024-01-12)
+
+
+
+
+### Bug Fixes:
+
+* fix runtime filter parsing & make last arg optional
+
+* undo incorrect behaviour in runtime evaluation
+
+* fix typespecs and cleanup Ash.Resource.Builder (#827)
+
+### Improvements:
+
+* support `join_filters` in aggregates
+
 ## [v2.17.23](https://github.com/ash-project/ash/compare/v2.17.22...v2.17.23) (2024-01-10)
 
 
