@@ -48,6 +48,10 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
 
   aggregates do
     count :count_of_comments, :comments
+
+    count :count_of_commenters, [:comments, :author] do
+      uniq? true
+    end
   end
 
   calculations do

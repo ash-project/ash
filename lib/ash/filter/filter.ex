@@ -1205,17 +1205,41 @@ defmodule Ash.Filter do
     end)
     |> Enum.concat(Enum.map(aggregates, &{[], &1}))
     |> Enum.reduce_while({:ok, path_filters}, fn {path, aggregate}, {:ok, filters} ->
-      add_authorization_path_filter(
-        filters,
-        path ++ aggregate.relationship_path,
-        api,
-        query,
-        actor,
-        tenant,
-        refs,
-        aggregate.query,
-        true
-      )
+      aggregate.relationship_path
+      |> :lists.droplast()
+      |> Ash.Query.Aggregate.subpaths()
+      |> Enum.reduce_while({:ok, filters}, fn subpath, {:ok, filters} ->
+        related = Ash.Resource.Info.related(query.resource, subpath)
+
+        add_authorization_path_filter(
+          filters,
+          path ++ subpath,
+          api,
+          query,
+          actor,
+          tenant,
+          refs,
+          Ash.Query.for_read(related, Ash.Resource.Info.primary_action(related, :read).name),
+          true
+        )
+      end)
+      |> case do
+        {:ok, filters} ->
+          add_authorization_path_filter(
+            filters,
+            path ++ aggregate.relationship_path,
+            api,
+            query,
+            actor,
+            tenant,
+            refs,
+            aggregate.query,
+            true
+          )
+
+        {:error, error} ->
+          {:error, error}
+      end
     end)
   end
 

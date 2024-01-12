@@ -43,6 +43,13 @@ defmodule Ash.Query.Aggregate do
     end
   end
 
+  @doc false
+  def subpaths([]), do: []
+
+  def subpaths([first | rest]) do
+    [[first] | Enum.map(subpaths(rest), &[first | &1])]
+  end
+
   @schema [
     path: [
       type: {:list, :atom},

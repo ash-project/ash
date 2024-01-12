@@ -121,6 +121,25 @@ defmodule Ash.Test.Policy.ComplexTest do
     |> Api.read!(actor: me)
   end
 
+  test "aggregates join paths are authorized", %{me: me, post_by_me: post_by_me} do
+    count_of_commenters_without_authorization =
+      Post
+      |> Ash.Query.load(:count_of_commenters)
+      |> Ash.Query.filter(id == ^post_by_me.id)
+      |> Api.read_one!()
+      |> Map.get(:count_of_commenters)
+
+    count_of_commenters_with_authorization =
+      Post
+      |> Ash.Query.load(:count_of_commenters)
+      |> Ash.Query.filter(id == ^post_by_me.id)
+      |> Api.read_one!(actor: me)
+      |> Map.get(:count_of_commenters)
+
+    assert count_of_commenters_with_authorization == 2
+    assert count_of_commenters_without_authorization == 3
+  end
+
   test "aggregates in calculations are authorized", %{me: me} do
     Post
     |> Ash.Query.load([:count_of_comments_calc, :count_of_comments])

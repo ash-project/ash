@@ -2446,7 +2446,11 @@ defmodule Ash.Actions.Read do
             },
             agg.context
           ),
-        query: add_calc_context(agg.query, actor, authorize?, tenant, tracer)
+        query: add_calc_context(agg.query, actor, authorize?, tenant, tracer),
+        join_filters:
+          Map.new(agg.join_filters, fn {key, filter} ->
+            {key, add_calc_context_to_filter(filter, actor, authorize?, tenant, tracer)}
+          end)
     }
   end
 
@@ -2579,7 +2583,18 @@ defmodule Ash.Actions.Read do
                   aggregate.query.action.name}
                ) do
             {:ok, authorization_filter} ->
-              %{aggregate | query: Ash.Query.do_filter(aggregate.query, authorization_filter)}
+              %{
+                aggregate
+                | query: Ash.Query.do_filter(aggregate.query, authorization_filter),
+                  join_filters:
+                    add_join_filters(
+                      aggregate.join_filters,
+                      aggregate.relationship_path,
+                      ref.resource,
+                      relationship_path_filters,
+                      ref.relationship_path
+                    )
+              }
 
             _ ->
               aggregate
@@ -2591,6 +2606,35 @@ defmodule Ash.Actions.Read do
     else
       filter
     end
+  end
+
+  defp add_join_filters(
+         current_join_filters,
+         aggregate_relationship_path,
+         resource,
+         path_filters,
+         prefix \\ []
+       ) do
+    aggregate_relationship_path
+    |> :lists.droplast()
+    |> Ash.Query.Aggregate.subpaths()
+    |> Enum.reduce(current_join_filters, fn path, current_join_filters ->
+      action =
+        resource
+        |> Ash.Resource.Info.related(path)
+        |> Ash.Resource.Info.primary_action!(:read)
+        |> Map.get(:name)
+
+      case Map.fetch(path_filters, {prefix ++ path, action}) do
+        {:ok, filter} ->
+          Map.update(current_join_filters, path, filter, fn current_filter ->
+            Ash.Query.BooleanExpression.new(:and, current_filter, filter)
+          end)
+
+        :error ->
+          current_join_filters
+      end
+    end)
   end
 
   defp maybe_await(%Task{} = task) do
@@ -3574,7 +3618,14 @@ defmodule Ash.Actions.Read do
             {:ok, filter} ->
               %{
                 aggregate
-                | query: Ash.Query.do_filter(aggregate.query, filter)
+                | query: Ash.Query.do_filter(aggregate.query, filter),
+                  join_filters:
+                    add_join_filters(
+                      aggregate.join_filters,
+                      aggregate.relationship_path,
+                      query.resource,
+                      path_filters
+                    )
               }
 
             :error ->

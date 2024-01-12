@@ -618,16 +618,17 @@ defmodule Ash.DataLayer.Ets do
             uniq?: uniq?,
             context: context,
             default_value: default_value,
-            authorize?: authorize?,
             join_filters: join_filters
           },
           {:ok, record} ->
             with {:ok, loaded_record} <-
                    api.load(
                      record,
-                     relationship_path_to_load(relationship_path, field),
-                     actor: Map.get(context, :actor),
-                     authorize?: Map.get(context, :authorize?, true) && authorize?
+                     record.__struct__
+                     |> Ash.Query.load(relationship_path_to_load(relationship_path, field))
+                     |> Ash.Query.set_context(%{private: %{internal?: true}}),
+                     actor: context[:actor],
+                     authorize?: false
                    ),
                  related <-
                    Ash.Filter.Runtime.get_related(
