@@ -5,6 +5,29 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.18.0](https://github.com/ash-project/ash/compare/v2.17.24...v2.18.0) (2024-01-12)
+
+
+
+
+### Features:
+
+* Allow `:self` as an option when requesting a relative page from a given page (#833)
+
+### Bug Fixes:
+
+* set tenant attribute in bulk create
+
+### Improvements:
+
+* add `all_tenants?` option to identities
+
+* support Ash.CiString in string_join (#832)
+
+* Add code interface support in Info and Builder. (#828)
+
+* authorize each related join using `join_filters`
+
 ## [v2.17.24](https://github.com/ash-project/ash/compare/v2.17.23...v2.17.24) (2024-01-12)
 
 
