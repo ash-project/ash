@@ -16,7 +16,7 @@ defmodule Ash.Actions.Read.Stream do
 
     query
     |> stream_strategy(opts[:stream_with], opts[:allow_stream_with])
-    |> do_stream(query, api, Keyword.drop(opts, [:batch_size, :stream_with, :allow_stream_with]))
+    |> do_stream(query, api, Keyword.drop(opts, [:stream_with, :allow_stream_with]))
   end
 
   defp do_stream(:keyset, query, api, opts) do
@@ -26,6 +26,8 @@ defmodule Ash.Actions.Read.Stream do
         :batch_size,
         query.action.pagination.default_limit || query.action.pagination.max_page_size || 250
       )
+
+    query = Ash.Query.set_context(query, %{private: %{bypass_max_page_size?: true}})
 
     Stream.resource(
       fn -> nil end,
@@ -62,6 +64,8 @@ defmodule Ash.Actions.Read.Stream do
   end
 
   defp do_stream(:full_read, query, api, opts) do
+    opts = Keyword.drop(opts, [:batch_size])
+
     Stream.resource(
       fn -> true end,
       fn
@@ -82,6 +86,8 @@ defmodule Ash.Actions.Read.Stream do
         :batch_size,
         query.action.pagination.default_limit || query.action.pagination.max_page_size || 250
       )
+
+    query = Ash.Query.set_context(query, %{private: %{bypass_max_page_size?: true}})
 
     Stream.resource(
       fn -> 0 end,
@@ -115,6 +121,8 @@ defmodule Ash.Actions.Read.Stream do
         :batch_size,
         query.action.pagination.default_limit || query.action.pagination.max_page_size || 250
       )
+
+    query = Ash.Query.set_context(query, %{private: %{bypass_max_page_size?: true}})
 
     Stream.resource(
       fn -> 0 end,

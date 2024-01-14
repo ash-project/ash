@@ -2906,7 +2906,7 @@ defmodule Ash.Actions.Read do
           Ash.Query.ensure_selected(query, field)
       end)
 
-    limited = Ash.Query.limit(query, limit(opts[:limit], query.limit, pagination) + 1)
+    limited = Ash.Query.limit(query, limit(query, opts[:limit], query.limit, pagination) + 1)
 
     if opts[:before] || opts[:after] do
       reversed =
@@ -2948,16 +2948,22 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp limit(page_size, query_limit, pagination) do
+  defp limit(query, page_size, query_limit, pagination) do
     max_page_size = pagination && pagination.max_page_size
 
-    [page_size, query_limit, max_page_size]
-    |> Enum.filter(&is_integer/1)
-    |> Enum.min()
+    if query.context[:private][:bypass_max_page_size?] do
+      [page_size, query_limit]
+      |> Enum.filter(&is_integer/1)
+      |> Enum.min(fn -> max_page_size end)
+    else
+      [page_size, query_limit, max_page_size]
+      |> Enum.filter(&is_integer/1)
+      |> Enum.min()
+    end
   end
 
   defp limit_offset_pagination(query, pagination, opts) do
-    limited = Ash.Query.limit(query, limit(opts[:limit], query.limit, pagination) + 1)
+    limited = Ash.Query.limit(query, limit(query, opts[:limit], query.limit, pagination) + 1)
 
     with_offset =
       if opts[:offset] do

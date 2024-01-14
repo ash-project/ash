@@ -54,7 +54,7 @@ defmodule Ash.Test.Actions.StreamTest do
 
     count =
       Post
-      |> Api.stream!(batch_size: 5)
+      |> Api.stream!(batch_size: 100_000)
       |> Enum.count()
 
     assert count == 10
