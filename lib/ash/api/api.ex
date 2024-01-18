@@ -383,29 +383,7 @@ defmodule Ash.Api do
     ]
   ]
 
-  @create_update_opts_schema [
-    after_action: [
-      type: :any,
-      doc: """
-      A hook to be run just before the action returns, but before fields are selected (still inside the same transaction, if your data layer
-      supports transactions). This is mostly important if you want to load calculations after the action, which depend on having fields
-      selected, but you want to authorize with the minimal set of fields that are actually being selected. Runs only if the action is
-      successful, and is passed the changeset and result of the action. Should return `{:ok, result}` or `{:error, error}`.
-
-      For example, if you had a `full_name` calculation, but were only selecting, `first_name` and `full_name`, you might do
-      something like this:
-      ```elixir
-      MyApp.User
-      |> Ash.Changeset.for_create(:create, %{first_name: "first_name", last_name: "last_name"}
-      |> Ash.Changeset.select(:first_name))
-      |> Api.create(after_action: fn _changeset, user -> Api.load(user, :full_name) end)
-      ```
-
-      If you tried to load that `:full_name` calculation after receiving the data, the `last_name` would not be selected and as such would not be
-      usable in the calculation, regardless of whether or not the calculation includes that field in its select list.
-      """
-    ]
-  ]
+  @create_update_opts_schema []
 
   @create_opts_schema [
                         upsert?: [
