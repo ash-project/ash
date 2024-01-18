@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.18.2](https://github.com/ash-project/ash/compare/v2.18.1...v2.18.2) (2024-01-18)
+
+
+
+
+### Bug Fixes:
+
+* don't ignore stream batch size
+
 ## [v2.18.1](https://github.com/ash-project/ash/compare/v2.18.0...v2.18.1) (2024-01-12)
 
 
