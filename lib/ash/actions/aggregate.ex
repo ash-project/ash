@@ -55,7 +55,8 @@ defmodule Ash.Actions.Aggregate do
             query = Map.put(query, :aggregates, Map.new(aggregates, &{&1.name, &1}))
 
             with {:ok, query} <- authorize_query(query, opts, agg_authorize?),
-                 {:ok, data_layer_query} <- Ash.Query.data_layer_query(query),
+                 {:ok, data_layer_query} <-
+                   Ash.Query.data_layer_query(Ash.Query.unset(query, :aggregates)),
                  {:ok, result} <-
                    Ash.DataLayer.run_aggregate_query(data_layer_query, aggregates, query.resource) do
               {:cont, {:ok, Map.merge(acc, result)}}

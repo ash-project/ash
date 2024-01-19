@@ -9,6 +9,10 @@ defmodule Ash.Error.Page.InvalidKeyset do
 
     def code(_), do: "invalid_keyset"
 
+    def message(%{value: value, key: nil}) do
+      "Invalid value provided as a keyset: #{inspect(value)}"
+    end
+
     def message(%{value: value, key: key}) do
       "Invalid value provided as a keyset for #{to_string(key)}: #{inspect(value)}"
     end

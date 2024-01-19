@@ -18,6 +18,8 @@ defmodule Ash.Test.Flow.Flows.UnapproveAllUsers do
 
   steps do
     read :get_org, Ash.Test.Flow.Org, :by_name do
+      get? true
+
       input(%{
         name: arg(:org_name)
       })

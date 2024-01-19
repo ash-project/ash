@@ -283,6 +283,14 @@ defmodule Ash.Test.CalculationTest do
         load([:user_is_active])
       end
 
+      calculate :active_elixir, :boolean do
+        calculation fn record, _ ->
+          record.is_active && record.user_is_active
+        end
+
+        load [:is_active, :user_is_active]
+      end
+
       calculate :has_user, :boolean, RoleHasUser
 
       calculate :user_is_active_with_calc, :boolean, expr(user.is_active || false)
@@ -300,6 +308,20 @@ defmodule Ash.Test.CalculationTest do
 
     relationships do
       belongs_to(:user, Ash.Test.CalculationTest.User)
+    end
+  end
+
+  defmodule Bio do
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      attribute :greeting, :string
+    end
+
+    calculations do
+      calculate :say_hello, :string, expr(greeting <> " " <> ^arg(:to)) do
+        argument :to, :string, allow_nil?: false
+      end
     end
   end
 
@@ -329,9 +351,26 @@ defmodule Ash.Test.CalculationTest do
       attribute(:prefix, :string)
       attribute(:special, :boolean)
       attribute(:is_active, :boolean)
+      attribute(:bio, Bio)
     end
 
     calculations do
+      calculate :say_hello_to_fred, :string do
+        calculation fn record, _ ->
+          record.bio.say_hello
+        end
+
+        load bio: [say_hello: %{to: "Fred"}]
+      end
+
+      calculate :say_hello_to_george, :string do
+        calculation fn record, _ ->
+          record.bio.say_hello
+        end
+
+        load bio: [say_hello: %{to: "George"}]
+      end
+
       calculate(:active, :boolean, expr(is_active))
 
       calculate :full_name, :string, {Concat, keys: [:first_name, :last_name]} do
@@ -539,7 +578,7 @@ defmodule Ash.Test.CalculationTest do
   setup do
     user1 =
       User
-      |> Ash.Changeset.new(%{first_name: "zach", last_name: "daniel"})
+      |> Ash.Changeset.new(%{first_name: "zach", last_name: "daniel", bio: %{greeting: "Yo! "}})
       |> Api.create!()
 
     admin_role =
@@ -1033,5 +1072,11 @@ defmodule Ash.Test.CalculationTest do
     assert %{valid?: false} =
              User
              |> Ash.Query.load(full_name: %{separator: %{foo: :bar}})
+  end
+
+  test "calculation dependencies with conflicting load throughs still receive the appropriate values",
+       %{user1: user1} do
+    user1
+    |> Api.load!([:say_hello_to_fred, :say_hello_to_george])
   end
 end

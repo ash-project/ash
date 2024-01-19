@@ -44,6 +44,7 @@ defmodule Ash.Query do
     load_through: %{},
     action_failed?: false,
     after_action: [],
+    authorize_results: [],
     aggregates: %{},
     arguments: %{},
     before_action: [],
@@ -75,6 +76,11 @@ defmodule Ash.Query do
             (t, [Ash.Resource.record()] ->
                {:ok, [Ash.Resource.record()]}
                | {:ok, [Ash.Resource.record()], [Ash.Notifier.Notification.t()]}
+               | {:error, any})
+          ],
+          authorize_results: [
+            (t, [Ash.Resource.record()] ->
+               {:ok, [Ash.Resource.record()]}
                | {:error, any})
           ],
           aggregates: %{optional(atom) => Ash.Filter.t()},
@@ -606,6 +612,9 @@ defmodule Ash.Query do
     Enum.any?(action.arguments, &(&1.private? == false && to_string(&1.name) == name))
   end
 
+  defp has_key?(map, key) when is_map(map), do: Map.has_key?(map, key)
+  defp has_key?(keyword, key), do: Keyword.has_key?(keyword, key)
+
   defp run_preparations(query, action, actor, authorize?, tracer, metadata) do
     query.resource
     |> Ash.Resource.Info.preparations()
@@ -683,6 +692,18 @@ defmodule Ash.Query do
   def before_action(query, func) do
     query = to_query(query)
     %{query | before_action: [func | query.before_action]}
+  end
+
+  @spec authorize_results(
+          t(),
+          (t(), [Ash.Resource.record()] ->
+             {:ok, [Ash.Resource.record()]}
+             | {:ok, [Ash.Resource.record()], list(Ash.Notifier.Notification.t())}
+             | {:error, term})
+        ) :: t()
+  def authorize_results(query, func) do
+    query = to_query(query)
+    %{query | authorize_results: [func | query.authorize_results]}
   end
 
   @spec after_action(
@@ -1022,7 +1043,7 @@ defmodule Ash.Query do
         is_nil(query.select) || item in query.select
       end
 
-    selecting? || Keyword.has_key?(query.load || [], item) ||
+    selecting? || has_key?(query.load || [], item) ||
       Enum.any?(query.calculations, fn
         {_, %{module: Ash.Resource.Calculation.LoadRelationship, opts: opts}} ->
           opts[:relationship] == item
@@ -1073,13 +1094,58 @@ defmodule Ash.Query do
   Uses `Ash.Type.load/5` to request that the type load nested data.
   """
   def load_through(query, type, name, load) when type in [:attribute, :calculation] do
-    Map.update!(query, :load_through, fn load_through ->
-      load_through
-      |> Map.put_new(type, %{})
-      |> Map.update!(type, fn loads ->
-        Map.update(loads, name, load, &(List.wrap(&1) ++ load))
-      end)
-    end)
+    {attr_type, constraints} =
+      if type == :calculation do
+        calc = Map.get(query.calculations, name)
+        {calc.type, calc.constraints}
+      else
+        attr =
+          Ash.Resource.Info.attribute(query.resource, name)
+
+        {attr.type, attr.constraints}
+      end
+
+    case Ash.Type.merge_load(
+           attr_type,
+           query.load_through[type][name] || [],
+           load,
+           constraints,
+           nil
+         ) do
+      {:ok, new_value} ->
+        Map.update!(query, :load_through, fn types ->
+          types
+          |> Map.put_new(type, %{})
+          |> Map.update!(type, fn load_through ->
+            Map.put(load_through, name, new_value)
+          end)
+        end)
+
+      {:error, error} ->
+        Ash.Query.add_error(query, error)
+    end
+  end
+
+  @doc """
+  Merges two query's load statements, for the purpose of handling calculation requirements.
+
+  This should only be used if you are writing a custom type that is loadable.
+  See the callback documentation for `c:Ash.Type.merge_load/4` for more.
+  """
+  def merge_query_load(left, right, context) do
+    if context do
+      Ash.Actions.Read.Calculations.merge_query_load(
+        left,
+        right,
+        context.api,
+        context[:calc_path],
+        context[:calc_name],
+        context[:calc_load],
+        context[:relationship_path]
+      )
+    else
+      load(left, right)
+    end
   end
 
   @doc """
@@ -1111,10 +1177,17 @@ defmodule Ash.Query do
     load(query, List.wrap(fields))
   end
 
+  def load(query, %Ash.Query{} = new) do
+    merge_load(query, new)
+  end
+
   def load(query, fields) do
     query = to_query(query)
 
     Enum.reduce(fields, query, fn
+      %Ash.Query{} = new, query ->
+        merge_load(query, new)
+
       [], query ->
         query
 
@@ -2589,7 +2662,7 @@ defmodule Ash.Query do
   end
 
   defp do_unset(query, :load, new) do
-    query = unset(query, [:calculations, :aggregates])
+    query = unset(query, [:calculations, :aggregates, :load_through])
 
     struct(query, [{:load, Map.get(new, :load)}])
   end
@@ -2625,6 +2698,12 @@ defmodule Ash.Query do
            Ash.DataLayer.sort(query, ash_query.sort, resource),
          {:ok, query} <-
            Ash.DataLayer.distinct_sort(query, ash_query.distinct_sort, resource),
+         {:ok, query} <-
+           Ash.DataLayer.add_aggregates(
+             query,
+             Map.values(ash_query.aggregates),
+             ash_query.resource
+           ),
          {:ok, query} <- maybe_filter(query, ash_query, opts),
          {:ok, query} <- Ash.DataLayer.distinct(query, ash_query.distinct, resource),
          {:ok, query} <-

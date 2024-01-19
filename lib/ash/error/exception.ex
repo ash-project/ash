@@ -46,14 +46,19 @@ defmodule Ash.Error.Exception do
 
       def exception(opts) do
         opts =
-          Keyword.put_new_lazy(opts, :stacktrace, fn ->
+          if is_nil(opts[:stacktrace]) do
             {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
 
-            %{
-              __struct__: Ash.Error.Stacktrace,
-              stacktrace: Enum.drop(stacktrace, 4)
-            }
-          end)
+            stacktrace =
+              %{
+                __struct__: Ash.Error.Stacktrace,
+                stacktrace: stacktrace
+              }
+
+            Keyword.put(opts, :stacktrace, stacktrace)
+          else
+            opts
+          end
 
         super(opts) |> Map.update(:vars, [], &clean_vars/1)
       end

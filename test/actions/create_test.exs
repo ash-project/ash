@@ -831,7 +831,7 @@ defmodule Ash.Test.Actions.CreateTest do
         on_lookup: :relate,
         on_match: :ignore
       )
-      |> Ash.create!(stacktraces?: true)
+      |> Ash.create!()
     end
   end
 

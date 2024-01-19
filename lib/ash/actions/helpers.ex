@@ -108,7 +108,7 @@ defmodule Ash.Actions.Helpers do
 
   def add_context(query_or_changeset, opts) do
     context = Process.get(:ash_context, %{}) || %{}
-    private_context = Map.new(Keyword.take(opts, [:actor, :authorize?]))
+    private_context = Map.new(Keyword.take(opts, [:actor, :authorize?, :tracer]))
 
     context =
       context
@@ -437,6 +437,9 @@ defmodule Ash.Actions.Helpers do
   defp runtime_calculations(query) do
     query.calculations
     |> Kernel.||(%{})
+    |> Enum.filter(fn {_name, calc} ->
+      calc.type
+    end)
     |> Enum.reject(fn {_name, calc} ->
       constraints = Map.get(calc, :constraints, [])
 

@@ -47,6 +47,33 @@ defmodule Ash.Type.Struct do
   end
 
   @impl Ash.Type
+  def merge_load(left, right, constraints, context) do
+    instance_of = constraints[:instance_of]
+    right = Ash.Query.load(instance_of, right)
+
+    instance_of
+    |> Ash.Query.new()
+    |> Ash.Query.load(left)
+    |> case do
+      %{valid?: true} = query ->
+        {:ok, Ash.Query.merge_query_load(query, right, context)}
+
+      query ->
+        {:error, Ash.Error.to_ash_error(query.errors)}
+    end
+  end
+
+  @impl Ash.Type
+  def get_rewrites(merged_load, calculation, path, _) do
+    Ash.Actions.Read.Calculations.get_all_rewrites(merged_load, calculation, path)
+  end
+
+  @impl Ash.Type
+  def rewrite(value, rewrites, _constraints) do
+    Ash.Actions.Read.Calculations.rewrite(rewrites, value)
+  end
+
+  @impl Ash.Type
   def can_load?(constraints) do
     constraints[:instance_of] && Ash.Resource.Info.resource?(constraints[:instance_of])
   end

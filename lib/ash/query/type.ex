@@ -42,12 +42,16 @@ defmodule Ash.Query.Type do
   end
 
   def try_cast(value, type, constraints) do
-    case Ash.Type.cast_input(type, value, constraints) do
-      {:ok, value} ->
-        {:ok, value}
+    if Ash.Filter.TemplateHelpers.expr?(value) do
+      :error
+    else
+      case Ash.Type.cast_input(type, value, constraints) do
+        {:ok, value} ->
+          {:ok, value}
 
-      _ ->
-        :error
+        _ ->
+          :error
+      end
     end
   end
 end

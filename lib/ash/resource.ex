@@ -102,6 +102,7 @@ defmodule Ash.Resource do
 
         Ash.EmbeddableType.define_embeddable_type(embed_nil_values?: embed_nil_values?)
       else
+        # TODO: remove this in 3.0
         use Ash.Type
 
         @impl true

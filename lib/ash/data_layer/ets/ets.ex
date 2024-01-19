@@ -1,6 +1,7 @@
 defmodule Ash.DataLayer.Ets do
   @behaviour Ash.DataLayer
   require Ash.Query
+  require Ash.Expr
 
   @ets %Spark.Dsl.Section{
     name: :ets,
@@ -398,7 +399,7 @@ defmodule Ash.DataLayer.Ets do
     |> Ash.Query.set_context(%{private: %{internal?: true}})
     |> Ash.Query.unset(:load)
     |> Ash.Query.unset(:select)
-    |> query.api.read(authorize?: false)
+    |> Ash.Actions.Read.unpaginated_read(nil, authorize?: false)
     |> case do
       {:error, error} ->
         {:error, error}
@@ -410,9 +411,20 @@ defmodule Ash.DataLayer.Ets do
             if Map.get(relationship, :no_attributes?) do
               query.filter
             else
-              Ash.Filter.add_to_filter(query.filter, [
-                {destination_attribute, Map.get(parent, source_attribute)}
-              ])
+              filter =
+                if is_nil(query.filter) do
+                  %Ash.Filter{resource: query.resource, expression: true}
+                else
+                  query.filter
+                end
+
+              Ash.Filter.add_to_filter!(
+                filter,
+                Ash.Filter.parse!(
+                  query.resource,
+                  Ash.Expr.expr(ref(^destination_attribute) == ^Map.get(parent, source_attribute))
+                )
+              )
             end
 
           query = %{query | filter: new_filter}

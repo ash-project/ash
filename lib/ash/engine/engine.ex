@@ -307,7 +307,7 @@ defmodule Ash.Engine do
     end
   end
 
-  defp stacktrace(%{stacktraces?: true, stacktrace: %{stacktrace: stacktrace}})
+  defp stacktrace(%{stacktrace: %{stacktrace: stacktrace}})
        when not is_nil(stacktrace) do
     stacktrace
   end

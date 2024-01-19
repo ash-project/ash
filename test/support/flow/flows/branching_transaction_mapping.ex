@@ -25,6 +25,8 @@ defmodule Ash.Test.Flow.Flows.BranchingTransactionMapping do
   steps do
     transaction :create_or_update_users, User do
       read :get_org, Org, :by_name do
+        get? true
+
         input %{
           name: arg(:org_name)
         }
