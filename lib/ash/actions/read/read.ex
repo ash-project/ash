@@ -12,19 +12,7 @@ defmodule Ash.Actions.Read do
   require Ash.Tracer
 
   def unpaginated_read(query, action \\ nil, opts \\ []) do
-    action = get_action(query.resource, action || query.action)
-
-    cond do
-      !action ->
-        {:error, NoReadAction.exception(resource: query.resource, when: "reading")}
-
-      action.pagination ->
-        opts = Keyword.put(opts, :page, false)
-        run(%{query | action: %{action | pagination: false}}, %{action | pagination: false}, opts)
-
-      true ->
-        run(query, action, opts)
-    end
+    run(query, action, Keyword.put(opts, :skip_pagination?, true))
   end
 
   @spec run(Ash.Query.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
@@ -238,7 +226,7 @@ defmodule Ash.Actions.Read do
            query <- add_select_if_none_exists(query),
            query_before_pagination <- query,
            {:ok, query} <-
-             paginate(query, action, opts[:page]),
+             paginate(query, action, opts[:page], opts[:skip_pagination?]),
            {:ok, query} <- authorize_query(query, opts),
            {:ok, data_layer_calculations} <- hydrate_calculations(query, calculations_in_query),
            {:ok, relationship_path_filters} <-
@@ -963,6 +951,9 @@ defmodule Ash.Actions.Read do
   @doc false
   def add_page(data, action, count, sort, original_query, opts) do
     cond do
+      opts[:skip_pagination?] ->
+        data
+
       action.pagination == false ->
         data
 
@@ -1474,7 +1465,11 @@ defmodule Ash.Actions.Read do
   end
 
   @doc false
-  def paginate(starting_query, action, page_opts) do
+  def paginate(starting_query, action, page_opts, true) do
+    {:ok, starting_query}
+  end
+
+  def paginate(starting_query, action, page_opts, _skip?) do
     cond do
       action.pagination == false && page_opts ->
         {:error, "Pagination is not supported"}
@@ -1506,6 +1501,7 @@ defmodule Ash.Actions.Read do
         end
 
       action.pagination.required? ->
+        IO.inspect(action.pagination)
         {:error, LimitRequired.exception([])}
 
       true ->
