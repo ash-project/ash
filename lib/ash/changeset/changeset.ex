@@ -1236,7 +1236,8 @@ defmodule Ash.Changeset do
       end
 
     not is_nil(arg_or_attribute_value) ||
-      belongs_to_attr_of_rel_being_managed?(attribute, changeset, true)
+      belongs_to_attr_of_rel_being_managed?(attribute, changeset, true) ||
+      is_belongs_to_rel_being_managed?(attribute, changeset)
   end
 
   def prepare_changeset_for_action(changeset, action, opts) do
@@ -2043,6 +2044,13 @@ defmodule Ash.Changeset do
   end
 
   def require_values(changeset, _, _, _), do: changeset
+
+  defp is_belongs_to_rel_being_managed?(attribute, changeset) do
+    Enum.any?(changeset.relationships, fn {key, _} ->
+      relationship = Ash.Resource.Info.relationship(changeset.resource, key)
+      relationship.type == :belongs_to && relationship.name == attribute
+    end)
+  end
 
   defp belongs_to_attr_of_rel_being_managed?(attribute, changeset, only_if_relating? \\ false) do
     do_belongs_to_attr_of_rel_being_managed?(changeset, attribute) ||

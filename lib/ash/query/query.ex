@@ -1173,12 +1173,13 @@ defmodule Ash.Query do
           | list({atom | Ash.Query.Calculation.t(), term})
         ) ::
           t()
-  def load(query, fields) when not is_list(fields) do
-    load(query, List.wrap(fields))
-  end
 
   def load(query, %Ash.Query{} = new) do
     merge_load(query, new)
+  end
+
+  def load(query, fields) when not is_list(fields) do
+    load(query, List.wrap(fields))
   end
 
   def load(query, fields) do

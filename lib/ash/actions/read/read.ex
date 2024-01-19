@@ -650,13 +650,6 @@ defmodule Ash.Actions.Read do
       {:calculation, load_through}, {:ok, results} ->
         Enum.reduce_while(load_through, {:ok, results}, fn {name, load_statement},
                                                            {:ok, results} ->
-          load_statement =
-            if is_map(load_statement) do
-              Map.to_list(load_statement)
-            else
-              load_statement
-            end
-
           calculation = Map.get(query.calculations, name)
 
           values =
