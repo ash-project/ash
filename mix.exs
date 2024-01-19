@@ -292,7 +292,8 @@ defmodule Ash.MixProject do
           ~r/Ash.Registry/,
           Ash.Policy.Policy,
           Ash.Notifier.PubSub.Publication
-        ]
+        ],
+        Internals: ~r/.*/
       ]
     ]
   end
