@@ -158,14 +158,13 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
       }
     }
 
-    assert {:ok, _} =
-             Resource
-             |> Ash.Changeset.for_create(:create, params,
-               actor: %{},
-               authorize?: true,
-               tenant: "one"
-             )
-             |> Api.create()
+    Resource
+    |> Ash.Changeset.for_create(:create, params,
+      actor: %{},
+      authorize?: true,
+      tenant: "one"
+    )
+    |> Api.create!()
   end
 
   test "changeset during validation and changes includes actor, authorize and tenant for an embedded resource used as an argument" do

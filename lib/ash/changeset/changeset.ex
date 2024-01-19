@@ -1543,13 +1543,13 @@ defmodule Ash.Changeset do
     changeset.attributes
     |> Map.keys()
     |> Kernel.--(accepted_attributes)
-    |> Enum.reduce(changeset, fn {key, value}, changeset ->
+    |> Enum.reduce(changeset, fn key, changeset ->
       add_error(
         changeset,
         InvalidAttribute.exception(
           field: key,
           message: "cannot be changed",
-          value: value
+          value: changeset.attributes[key]
         )
       )
     end)

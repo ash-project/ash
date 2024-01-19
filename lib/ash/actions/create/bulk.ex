@@ -128,7 +128,7 @@ defmodule Ash.Actions.Create.Bulk do
         fn batch ->
           try do
             batch
-            |> Stream.map(
+            |> Enum.map(
               &setup_changeset(
                 &1,
                 action,
@@ -393,8 +393,6 @@ defmodule Ash.Actions.Create.Bulk do
   end
 
   defp do_handle_batch(batch, api, resource, action, opts, all_changes, data_layer_can_bulk?, ref) do
-    batch = Enum.to_list(batch)
-
     must_return_records? =
       opts[:notify?] ||
         Enum.any?(batch, fn item ->
@@ -692,7 +690,7 @@ defmodule Ash.Actions.Create.Bulk do
   end
 
   defp reject_and_maybe_store_errors(stream, ref, opts) do
-    Stream.reject(stream, fn changeset ->
+    Enum.reject(stream, fn changeset ->
       if changeset.valid? do
         false
       else

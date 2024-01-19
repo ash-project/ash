@@ -19,21 +19,6 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     end
   end
 
-  defmacrop defcomments(do: body) do
-    quote do
-      defmodule Comment do
-        @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
-
-        attributes do
-          uuid_primary_key :id
-        end
-
-        unquote(body)
-      end
-    end
-  end
-
   describe "representation" do
     test "it creates an attribute" do
       defposts do

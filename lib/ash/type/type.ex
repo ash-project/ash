@@ -685,24 +685,21 @@ defmodule Ash.Type do
   def apply_constraints({:array, type}, term, constraints) when is_list(term) do
     type = get_type(type)
 
-    if type.custom_apply_constraints_array?() do
-      case type.apply_constraints_array(term, constraints) do
-        :ok -> {:ok, term}
-        other -> other
-      end
-    else
-      list_constraint_errors = list_constraint_errors(term, constraints)
-      item_constraints = item_constraints(constraints)
+    list_constraint_errors = list_constraint_errors(term, constraints)
+    item_constraints = item_constraints(constraints)
 
-      case list_constraint_errors do
-        [] ->
-          nil_items? = Keyword.get(constraints, :nil_items?, false)
+    case list_constraint_errors do
+      [] ->
+        nil_items? = Keyword.get(constraints, :nil_items?, false)
 
-          term
-          |> Enum.with_index()
-          |> Enum.reduce({[], []}, fn {item, index}, {items, errors} ->
-            if is_nil(item) && not nil_items? do
-              {[item | items], [[message: "no nil values", index: index] | errors]}
+        term
+        |> Enum.with_index()
+        |> Enum.reduce({[], []}, fn {item, index}, {items, errors} ->
+          if is_nil(item) && not nil_items? do
+            {[item | items], [[message: "no nil values", index: index] | errors]}
+          else
+            if type.custom_apply_constraints_array?() do
+              {[item | items], errors}
             else
               case apply_constraints(type, item, item_constraints) do
                 {:ok, value} ->
@@ -724,18 +721,25 @@ defmodule Ash.Type do
                   {[item | items], List.wrap(new_errors) ++ errors}
               end
             end
-          end)
-          |> case do
-            {terms, []} ->
-              {:ok, Enum.reverse(terms)}
-
-            {_, errors} ->
-              {:error, errors}
           end
+        end)
+        |> case do
+          {terms, []} ->
+            if type.custom_apply_constraints_array?() do
+              case type.apply_constraints_array(Enum.reverse(term), constraints) do
+                :ok -> {:ok, term}
+                other -> other
+              end
+            else
+              {:ok, Enum.reverse(terms)}
+            end
 
-        errors ->
-          {:error, errors}
-      end
+          {_, errors} ->
+            {:error, errors}
+        end
+
+      errors ->
+        {:error, errors}
     end
   end
 

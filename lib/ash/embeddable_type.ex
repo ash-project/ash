@@ -177,18 +177,44 @@ defmodule Ash.EmbeddableType do
           constraints[:create_action] ||
             Ash.Resource.Info.primary_action!(__MODULE__, :create).name
 
-        value
-        |> ShadowApi.bulk_create(__MODULE__, action,
-          return_records?: true,
-          return_errors?: true,
-          batch_size: 1_000_000_000
+        {structs, values} = Enum.split_with(value, &is_struct(&1, __MODULE__))
+
+        {context, opts} =
+          case constraints[:__source__] do
+            %Ash.Changeset{context: context} = source ->
+              {Map.put(context, :__source__, source),
+               Ash.context_to_opts(context[:private] || %{})}
+
+            _ ->
+              {%{}, []}
+          end
+
+        values
+        |> ShadowApi.bulk_create(
+          __MODULE__,
+          action,
+          Keyword.merge(opts,
+            context: context,
+            return_records?: true,
+            return_errors?: true,
+            batch_size: 1_000_000_000
+          )
         )
         |> case do
           %{status: :success, records: records} ->
-            {:ok, Enum.map(value, &struct(__MODULE__, &1))}
+            {:ok, structs ++ records}
 
           %{errors: errors} ->
-            {:error, errors}
+            errors =
+              Enum.map(errors, fn
+                %Ash.Changeset{context: %{bulk_create: %{index: index}}, errors: errors} ->
+                  Ash.Error.set_path(Ash.Error.to_ash_error(errors), index)
+
+                other ->
+                  Ash.Error.to_ash_error(other)
+              end)
+
+            {:error, Ash.Error.to_ash_error(errors)}
         end
       end
 

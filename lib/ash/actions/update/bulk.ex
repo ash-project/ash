@@ -236,7 +236,7 @@ defmodule Ash.Actions.Update.Bulk do
         fn batch ->
           try do
             batch
-            |> Stream.map(
+            |> Enum.map(
               &setup_changeset(
                 &1,
                 action,
@@ -611,7 +611,6 @@ defmodule Ash.Actions.Update.Bulk do
     batch =
       batch
       |> authorize(api, opts)
-      |> Enum.to_list()
       |> run_bulk_before_batches(
         changes,
         all_changes,
@@ -844,7 +843,7 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp reject_and_maybe_store_errors(stream, ref, opts) do
-    Stream.reject(stream, fn changeset ->
+    Enum.reject(stream, fn changeset ->
       if changeset.valid? do
         false
       else
