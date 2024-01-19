@@ -173,6 +173,14 @@ defmodule Ash.Type do
           authorize?: boolean | nil
         }
 
+  @type merge_load_context :: %{
+          api: Ash.Api.t(),
+          calc_name: term(),
+          calc_load: term(),
+          calc_path: list(atom),
+          relationship_path: list(atom)
+        }
+
   @callback storage_type() :: Ecto.Type.t()
   @callback storage_type(constraints) :: Ecto.Type.t()
   @callback include_source(constraints, Ash.Changeset.t()) :: constraints
@@ -254,6 +262,27 @@ defmodule Ash.Type do
               context :: load_context()
             ) ::
               {:ok, list(term)} | {:error, Ash.Error.t()}
+
+  @callback merge_load(
+              left :: term,
+              right :: term,
+              constraints :: Keyword.t(),
+              context :: merge_load_context() | nil
+            ) ::
+              {:ok, term} | {:error, error}
+
+  @type rewrite_data ::
+          {type :: :calc | :agg, rewriting_name :: atom, rewriting_load :: atom}
+          | {:rel, rewriting_name :: atom}
+  @type rewrite :: {{list(atom), rewrite_data, atom, atom}, source :: term}
+
+  @callback get_rewrites(
+              merged_load :: term,
+              calculation :: Ash.Query.Calculation.t(),
+              path :: list(atom),
+              constraints :: Keyword.t()
+            ) :: [rewrite]
+  @callback rewrite(value :: term, [rewrite], constraints :: Keyword.t()) :: value :: term
   @callback prepare_change_array?() :: boolean()
   @callback handle_change_array?() :: boolean()
 
@@ -272,6 +301,9 @@ defmodule Ash.Type do
     dump_to_embedded_array: 2,
     include_source: 2,
     load: 4,
+    merge_load: 4,
+    get_rewrites: 4,
+    rewrite: 3,
     operator_overloads: 0,
     evaluate_operator: 1
   ]
@@ -873,6 +905,32 @@ defmodule Ash.Type do
     type.include_source(constraints, changeset_or_query)
   end
 
+  @spec merge_load(
+          type :: Ash.Type.t(),
+          left :: term(),
+          right :: term(),
+          constraints :: Keyword.t(),
+          context :: merge_load_context() | nil
+        ) ::
+          {:ok, list(term)} | :error | {:error, Ash.Error.t()}
+  def merge_load({:array, type}, left, right, constraints, context) do
+    merge_load(type, left, right, constraints[:items] || [], context)
+  end
+
+  def merge_load(
+        type,
+        left,
+        right,
+        constraints,
+        context
+      ) do
+    if function_exported?(type, :merge_load, 4) do
+      type.merge_load(left, right, constraints, context)
+    else
+      :error
+    end
+  end
+
   @spec load(
           type :: Ash.Type.t(),
           values :: list(term),
@@ -905,6 +963,30 @@ defmodule Ash.Type do
         {:error, Ash.Error.Query.InvalidLoad.exception(load: loads)}
       end
     end)
+  end
+
+  def get_rewrites({:array, type}, merged_load, calculation, path, constraints) do
+    get_rewrites(type, merged_load, calculation, path, constraints[:items] || [])
+  end
+
+  def get_rewrites(type, merged_load, calculation, path, constraints) do
+    type = get_type(type)
+    type.get_rewrites(merged_load, calculation, path, constraints)
+  end
+
+  def rewrite(_type, nil, _rewrites, _constraints), do: nil
+  def rewrite(_type, [], _rewrites, _constraints), do: []
+
+  def rewrite({:array, type}, value, rewrites, constraints) when is_list(value) do
+    item_constraints = constraints[:items] || []
+
+    Enum.map(value, fn value ->
+      rewrite(type, value, rewrites, item_constraints)
+    end)
+  end
+
+  def rewrite(type, item, rewrites, constraints) when not is_list(item) do
+    type.rewrite(item, rewrites, constraints)
   end
 
   @doc false

@@ -213,6 +213,90 @@ defmodule Ash.Type.Union do
     end
   end
 
+  @impl Ash.Type
+  def merge_load(left, right, constraints, context) do
+    constraints[:types]
+    |> Enum.reduce_while({:ok, []}, fn {name, config}, {:ok, acc} ->
+      merged =
+        [left[name], right[name], left[:*], right[:*]]
+        |> Enum.reject(&is_nil/1)
+        |> case do
+          [] ->
+            {:ok, acc}
+
+          load_statements ->
+            Enum.reduce_while(load_statements, {:ok, []}, fn load_statement, {:ok, merged} ->
+              if merged in [nil, [], %{}] do
+                {:cont, {:ok, load_statement}}
+              else
+                case Ash.Type.merge_load(
+                       config[:type],
+                       merged,
+                       load_statement,
+                       config[:constraints],
+                       context
+                     ) do
+                  {:ok, merged} -> {:cont, {:ok, merged}}
+                  {:error, error} -> {:halt, {:error, error}}
+                end
+              end
+            end)
+        end
+
+      case merged do
+        {:ok, merged} ->
+          {:cont, {:ok, Keyword.put(acc, name, merged)}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+  end
+
+  @impl Ash.Type
+  def get_rewrites(merged_load, calculation, path, constraints) do
+    merged_load
+    |> Enum.flat_map(fn {key, type_load} ->
+      constraints[:types][key][:type]
+      |> Ash.Type.get_rewrites(
+        type_load,
+        calculation,
+        path,
+        constraints[:types][key][:constraints]
+      )
+      |> Enum.map(fn {{rewrite_path, data, name, load}, source} ->
+        {{[key | rewrite_path], data, name, load}, source}
+      end)
+    end)
+  end
+
+  @impl Ash.Type
+  def rewrite(value, rewrites, constraints) do
+    type_rewrites =
+      Enum.flat_map(rewrites, fn
+        {{[first | path_rest], data, name, load}, source} ->
+          if first == value.type do
+            [{{path_rest, data, name, load}, source}]
+          else
+            []
+          end
+
+        _ ->
+          []
+      end)
+
+    Map.update!(
+      value,
+      :value,
+      &Ash.Type.rewrite(
+        constraints[:types][value.type][:type],
+        &1,
+        type_rewrites,
+        constraints[:types][value.type][:type]
+      )
+    )
+  end
+
   @impl true
   def cast_input(nil, _), do: {:ok, nil}
 

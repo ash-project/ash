@@ -570,6 +570,8 @@ defmodule Ash.Policy.Authorizer do
           field
       end
 
+    type = get_type(authorizer.resource, field)
+
     field =
       case {field_name, field} do
         {nil, %Ash.Query.Calculation{} = calculation} ->
@@ -624,13 +626,32 @@ defmodule Ash.Policy.Authorizer do
                 ^field
               else
                 nil
-              end
+              end,
+              type
             )
 
           {{expr, data}, acc}
       end
     else
       {{field, data}, acc}
+    end
+  end
+
+  defp get_type(_resource, %{type: type, constraints: constraints}), do: {type, constraints}
+
+  defp get_type(resource, field) do
+    case Ash.Resource.Info.field(resource, field) do
+      %Ash.Resource.Aggregate{kind: kind, field: field, relationship_path: relationship_path} ->
+        if field do
+          related = Ash.Resource.Info.related(resource, relationship_path)
+          {field_type, constraints} = get_type(related, field)
+          Ash.Query.Aggregate.kind_to_type(kind, field_type, constraints)
+        else
+          Ash.Query.Aggregate.kind_to_type(kind, nil, nil)
+        end
+
+      %{type: type, constraints: constraints} ->
+        {type, constraints}
     end
   end
 

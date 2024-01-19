@@ -11,8 +11,8 @@ defmodule Ash.Test.Authorizer do
     Agent.start_link(
       fn ->
         %{
-          strict_check_result: maybe_forbidden(opts[:strict_check]),
-          check_result: maybe_forbidden(opts[:check]),
+          strict_check_result: maybe_forbidden(opts[:strict_check] || :authorized),
+          check_result: maybe_forbidden(opts[:check] || :authorized),
           strict_check_context: opts[:strict_check_context]
         }
       end,

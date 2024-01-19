@@ -229,7 +229,9 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     relationships do
-      belongs_to(:author, Author)
+      belongs_to :author, Author do
+        attribute_writable? true
+      end
 
       has_many :posts_in_same_category, __MODULE__ do
         manual(PostsInSameCategory)
@@ -463,7 +465,7 @@ defmodule Ash.Test.Actions.LoadTest do
              } = Api.load!(author, :campaign)
     end
 
-    test "it allows loading related data" do
+    test "it allows loading data" do
       author =
         Author
         |> new(%{name: "zerg"})
@@ -471,14 +473,36 @@ defmodule Ash.Test.Actions.LoadTest do
 
       post1 =
         Post
-        |> new(%{title: "post1"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> new(%{title: "post1", author_id: author.id})
         |> Api.create!()
 
       post2 =
         Post
-        |> new(%{title: "post2"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> new(%{title: "post2", author_id: author.id})
+        |> Api.create!()
+
+      assert [fetched_post1, fetched_post2] =
+               author
+               |> Api.load!(:posts)
+               |> Map.get(:posts)
+
+      assert Enum.sort([post1.id, post2.id]) == Enum.sort([fetched_post1.id, fetched_post2.id])
+    end
+
+    test "it allows loading nested related data" do
+      author =
+        Author
+        |> new(%{name: "zerg"})
+        |> Api.create!()
+
+      post1 =
+        Post
+        |> new(%{title: "post1", author_id: author.id})
+        |> Api.create!()
+
+      post2 =
+        Post
+        |> new(%{title: "post2", author_id: author.id})
         |> Api.create!()
 
       [author] =
@@ -808,11 +832,10 @@ defmodule Ash.Test.Actions.LoadTest do
         |> new(%{name: "zerg"})
         |> Api.create!()
 
-      post1 =
-        Post
-        |> new(%{title: "post1"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
-        |> Api.create!()
+      Post
+      |> new(%{title: "post1"})
+      |> manage_relationship(:author, author, type: :append_and_remove)
+      |> Api.create!()
 
       post2 =
         Post
@@ -825,7 +848,6 @@ defmodule Ash.Test.Actions.LoadTest do
         |> Ash.Query.load(:latest_post)
         |> Api.read!()
 
-      refute author.latest_post.id == post1.id
       assert author.latest_post.id == post2.id
     end
   end
@@ -917,25 +939,6 @@ defmodule Ash.Test.Actions.LoadTest do
                Author
                |> Ash.Query.load(bio_union_calc: {%{}, [*: [:full_name, :forbidden_name]]})
                |> Api.read!(actor: %{name: "zerg"}, authorize?: true)
-
-      # assert [
-      #          %{
-      #            bio_union_calc: %Ash.Union{
-      #              value: %{full_name: "donald duck", forbidden_name: %Ash.ForbiddenField{}}
-      #            }
-      #          },
-      #          %{
-      #            bio_union_calc: %Ash.Union{
-      #              value: %{full_name: "donald duck", forbidden_name: %Ash.ForbiddenField{}}
-      #            }
-      #          }
-      #        ] =
-      #          Author
-      #          |> Ash.Query.load(
-      #            bio_union_calc:
-      #              {%{}, [bio: :full_name, other_kind_of_bio: [:full_name, :forbidden_name]]}
-      #          )
-      #          |> Api.read!(actor: %{name: "zerg"})
     end
   end
 end

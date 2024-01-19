@@ -931,43 +931,59 @@ defmodule Ash.Flow.Executor.AshEngine do
                   [wait_for, halt_if]
                 )
 
-              Ash.Actions.Read.as_requests([name], resource, api, action,
-                error_path: List.wrap(name),
-                authorize?: opts[:authorize?],
-                actor: opts[:actor],
-                tracer: opts[:tracer],
-                query_dependencies: request_deps,
-                get?: get? || action.get?,
-                not_found_error?: not_found_error?,
-                tenant: fn context ->
-                  context = Ash.Helpers.deep_merge_maps(context, additional_context)
-                  results = results(dep_paths, context)
+              Ash.Engine.Request.new(
+                resource: resource,
+                path: [name],
+                name: inspect([name]),
+                authorize?: false,
+                data:
+                  Ash.Engine.Request.resolve(request_deps, fn data ->
+                    data = Ash.Helpers.deep_merge_maps(data, additional_context)
+                    results = results(dep_paths, data)
 
-                  tenant
-                  |> Ash.Flow.Template.set_dependent_values(%{
-                    results: results,
-                    elements: Map.get(context, :_ash_engine_elements)
-                  })
-                  |> Ash.Flow.handle_modifiers()
-                end,
-                modify_query: fn query, context ->
-                  context = Ash.Helpers.deep_merge_maps(context, additional_context)
-                  results = results(dep_paths, context)
+                    case halt_if(halt_if, halt_reason, name, results, data, fn ->
+                           {:ok, Ash.Query.new(resource)}
+                         end) do
+                      {:error, error} ->
+                        {:error, error}
 
-                  halt_if(halt_if, halt_reason, name, results, context, fn -> query end)
-                end,
-                query_input: fn context ->
-                  context = Ash.Helpers.deep_merge_maps(context, additional_context)
+                      {:ok, query} ->
+                        tenant =
+                          tenant
+                          |> Ash.Flow.Template.set_dependent_values(%{
+                            results: results,
+                            elements: Map.get(data, :_ash_engine_elements)
+                          })
+                          |> Ash.Flow.handle_modifiers()
 
-                  results = results(dep_paths, context)
+                        action_input =
+                          action_input
+                          |> Ash.Flow.Template.set_dependent_values(%{
+                            results: results,
+                            elements: Map.get(data, :_ash_engine_elements)
+                          })
+                          |> Ash.Flow.handle_modifiers()
+                          |> Kernel.||(%{})
 
-                  action_input
-                  |> Ash.Flow.Template.set_dependent_values(%{
-                    results: results,
-                    elements: Map.get(context, :_ash_engine_elements)
-                  })
-                  |> Ash.Flow.handle_modifiers()
-                end
+                        query
+                        |> Ash.Query.for_read(action.name, action_input,
+                          actor: data[:actor],
+                          tenant: tenant,
+                          authorize?: data[:authorize?],
+                          tracer: data[:tracer]
+                        )
+                        |> Ash.Query.set_context(%{
+                          private: %{get?: get?, not_found_error?: not_found_error?}
+                        })
+                        |> then(fn query ->
+                          if get? do
+                            api.read_one(query, not_found_error?: not_found_error?)
+                          else
+                            api.read(query)
+                          end
+                        end)
+                    end
+                  end)
               )
             end
           )
@@ -1917,7 +1933,7 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   defp result_path(%Ash.Flow.Step.Read{name: name}) do
-    [name, :data, :data]
+    [name, :data]
   end
 
   defp result_path(%Ash.Flow.Step.Create{name: name}) do
@@ -1961,7 +1977,7 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   defp completion_path(%Ash.Flow.Step.Read{name: name}) do
-    [name, :data, :completion]
+    [name, :completion]
   end
 
   defp completion_path(%Ash.Flow.Step.Create{name: name}) do
@@ -2013,7 +2029,7 @@ defmodule Ash.Flow.Executor.AshEngine do
   end
 
   defp data_path(%Ash.Flow.Step.Read{name: name}) do
-    [name, :data]
+    [name]
   end
 
   defp data_path(%Ash.Flow.Step.Create{name: name}) do

@@ -12,7 +12,6 @@ defmodule Ash.Query.Calculation do
     context: %{},
     required_loads: [],
     select: [],
-    sequence: 0,
     filterable?: true
   ]
 

@@ -219,10 +219,6 @@ you would see that no SQL queries are run. The calculation is run directly in El
 Ash.Query.filter(exists(open_tickets, severity >= parent(severity_threshold)))
 ```
 
-### COMING SOON
-
-The following two examples do not work currently, but are being worked on
-
 ```elixir
 has_many :relevant_tickets, Ticket do
   filter expr(status == :open and severity >= parent(severity_threshold))

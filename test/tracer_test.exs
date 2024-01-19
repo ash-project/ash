@@ -215,59 +215,12 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
                      %{resource_short_name: :post}, []}}
 
     assert_receive {:telemetry,
-                    {[:ash, :request_step, :start], %{system_time: _},
-                     %{name: "fetch Ash.Test.TracerTest.AsyncLoadTest.Post.read"}, []}}
-
-    assert_receive {:telemetry,
-                    {[:ash, :request_step, :stop], %{duration: _},
-                     %{name: "fetch Ash.Test.TracerTest.AsyncLoadTest.Post.read"}, []}}
-
-    assert_receive {:telemetry,
-                    {[:ash, :request_step, :start], %{system_time: _},
-                     %{name: "process Ash.Test.TracerTest.AsyncLoadTest.Post.read"}, []}}
-
-    assert_receive {:telemetry,
-                    {[:ash, :request_step, :stop], %{duration: _, system_time: _},
-                     %{name: "process Ash.Test.TracerTest.AsyncLoadTest.Post.read"}, []}}
-
-    assert_receive {:telemetry,
-                    {[:ash, :request_step, :start], %{system_time: _}, %{name: "load author"}, []}}
-
-    assert_receive {:telemetry,
                     {[:ash, :api, :read, :start], %{system_time: _},
                      %{resource_short_name: :author}, []}}
 
     assert_receive {:telemetry,
-                    {[:ash, :request_step, :start], %{system_time: _},
-                     %{name: "fetch Ash.Test.TracerTest.AsyncLoadTest.Author.read"}, []}}
-
-    assert_receive {:telemetry,
-                    {[:ash, :request_step, :stop], %{duration: _, system_time: _},
-                     %{name: "fetch Ash.Test.TracerTest.AsyncLoadTest.Author.read"}, []}}
-
-    assert_receive {:telemetry,
-                    {[:ash, :request_step, :start], %{system_time: _},
-                     %{name: "process Ash.Test.TracerTest.AsyncLoadTest.Author.read"}, []}}
-
-    assert_receive {:telemetry,
-                    {[:ash, :request_step, :stop], %{duration: _, system_time: _},
-                     %{name: "process Ash.Test.TracerTest.AsyncLoadTest.Author.read"}, []}}
-
-    assert_receive {:telemetry,
                     {[:ash, :api, :read, :stop], %{duration: _, system_time: _},
                      %{resource_short_name: :author}, []}}
-
-    assert_receive {:telemetry,
-                    {[:ash, :request_step, :stop], %{duration: _, system_time: _},
-                     %{name: "load author"}, []}}
-
-    assert_receive {:telemetry,
-                    {[:ash, :request_step, :start], %{system_time: _},
-                     %{name: "process Ash.Test.TracerTest.AsyncLoadTest.Post.read"}, []}}
-
-    assert_receive {:telemetry,
-                    {[:ash, :request_step, :stop], %{duration: _, system_time: _},
-                     %{name: "process Ash.Test.TracerTest.AsyncLoadTest.Post.read"}, []}}
 
     assert_receive {:telemetry,
                     {[:ash, :api, :read, :stop], %{duration: _, system_time: _},
@@ -287,13 +240,6 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
              }
            ] = Ash.Tracer.Simple.gather_spans()
 
-    assert load =
-             Enum.find(spans, fn span ->
-               span.name == "load author"
-             end)
-
-    assert Enum.find(load.spans, fn span ->
-             span.name == "api:author.read"
-           end)
+    assert Enum.any?(spans, &(&1.name == "api:author.read"))
   end
 end

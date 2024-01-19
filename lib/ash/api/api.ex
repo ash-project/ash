@@ -60,7 +60,7 @@ defmodule Ash.Api do
 
   require Ash.Query
 
-  @dialyzer {:nowarn_function, unwrap_or_raise!: 3}
+  @dialyzer {:nowarn_function, unwrap_or_raise!: 2}
 
   @type t() :: module
 
@@ -125,6 +125,11 @@ defmodule Ash.Api do
                           type: :any,
                           doc: "A load statement to add onto the query"
                         ],
+                        max_concurrency: [
+                          type: :non_neg_integer,
+                          doc:
+                            "The maximum number of processes allowed to be started for parallel loading of relationships and calculations. Defaults to `System.schedulers_online() * 2`"
+                        ],
                         lock: [
                           type: :any,
                           doc: "A lock statement to add onto the query"
@@ -156,6 +161,19 @@ defmodule Ash.Api do
 
   @doc false
   def read_opts_schema, do: @read_opts_schema
+
+  @read_one_opts_schema merge_schemas(
+                          [
+                            not_found_error?: [
+                              type: :boolean,
+                              default: false,
+                              doc:
+                                "Whether or not to return an `Ash.Error.Query.NotFound` if no record is found."
+                            ]
+                          ],
+                          @read_opts_schema,
+                          "Read Options"
+                        )
 
   @stream_opts [
                  batch_size: [
@@ -820,6 +838,10 @@ defmodule Ash.Api do
     end
   end
 
+  defp alter_source({:ok, true, query}, api, actor, _subject, opts) do
+    alter_source({:ok, true}, api, actor, query, opts)
+  end
+
   defp alter_source({:ok, true}, api, actor, subject, opts) do
     if opts[:alter_source?] do
       subject.resource
@@ -926,6 +948,15 @@ defmodule Ash.Api do
         {authorizer, authorizer_state, context}
       end)
 
+    base_query =
+      case subject do
+        %Ash.Query{} = query ->
+          opts[:base_query] || query
+
+        _ ->
+          opts[:base_query]
+      end
+
     case authorizers do
       [] ->
         {:ok, true}
@@ -933,7 +964,7 @@ defmodule Ash.Api do
       authorizers ->
         authorizers
         |> Enum.reduce_while(
-          {false, opts[:base_query]},
+          {false, base_query},
           fn {authorizer, authorizer_state, context}, {_authorized?, query} ->
             case authorizer.strict_check(authorizer_state, context) do
               {:error, %{class: :forbidden} = e} when is_exception(e) ->
@@ -957,29 +988,59 @@ defmodule Ash.Api do
                 """
 
               {:filter, _authorizer, filter} ->
-                query = query || Ash.Query.new(subject.resource, api) |> Ash.Query.select([])
-
-                {:cont, {true, query |> Ash.Query.filter(^filter)}}
+                {:cont, {true, Ash.Query.filter(or_query(query, subject.resource, api), ^filter)}}
 
               {:filter, filter} ->
-                query = query || Ash.Query.new(subject.resource, api) |> Ash.Query.select([])
-
-                {:cont, {true, Ash.Query.filter(query, ^filter)}}
+                {:cont, {true, Ash.Query.filter(or_query(query, subject.resource, api), ^filter)}}
 
               {:continue, authorizer_state} ->
-                if opts[:maybe_is] == false do
-                  {:halt,
-                   {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                if opts[:alter_source?] do
+                  query_with_hook =
+                    Ash.Query.authorize_results(or_query(query, subject.resource, api), fn query,
+                                                                                           results ->
+                      context = Map.merge(context, %{data: results, query: query})
+
+                      case authorizer.check(authorizer_state, context) do
+                        :authorized -> {:ok, results}
+                        {:error, error} -> {:error, error}
+                        {:data, data} -> {:ok, data}
+                      end
+                    end)
+
+                  {:cont, {true, query_with_hook}}
                 else
-                  {:halt, {:maybe, nil}}
+                  if opts[:maybe_is] == false do
+                    {:halt,
+                     {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                  else
+                    {:halt, {:maybe, nil}}
+                  end
                 end
 
-              {:filter_and_continue, _, authorizer_state} ->
-                if opts[:maybe_is] == false do
-                  {:halt,
-                   {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+              {:filter_and_continue, filter, authorizer_state} ->
+                if opts[:alter_source?] do
+                  query_with_hook =
+                    query
+                    |> or_query(subject.resource, api)
+                    |> Ash.Query.filter(^filter)
+                    |> Ash.Query.authorize_results(fn query, results ->
+                      context = Map.merge(context, %{data: results, query: query})
+
+                      case authorizer.check(authorizer_state, context) do
+                        :authorized -> {:ok, results}
+                        {:error, error} -> {:error, error}
+                        {:data, data} -> {:ok, data}
+                      end
+                    end)
+
+                  {:cont, {true, query_with_hook}}
                 else
-                  {:halt, {:maybe, nil}}
+                  if opts[:maybe_is] == false do
+                    {:halt,
+                     {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                  else
+                    {:halt, {:maybe, nil}}
+                  end
                 end
             end
           end
@@ -990,89 +1051,7 @@ defmodule Ash.Api do
 
           {true, query} when not is_nil(query) ->
             if opts[:run_queries?] do
-              case subject do
-                %Ash.Query{} ->
-                  if opts[:data] do
-                    data = List.wrap(opts[:data])
-
-                    pkey = Ash.Resource.Info.primary_key(query.resource)
-                    pkey_values = Enum.map(data, &Map.take(&1, pkey))
-
-                    if Enum.any?(pkey_values, fn pkey_value ->
-                         pkey_value |> Map.values() |> Enum.any?(&is_nil/1)
-                       end) do
-                      {:ok, :maybe}
-                    else
-                      query
-                      |> Ash.Query.do_filter(or: pkey_values)
-                      |> Ash.Query.data_layer_query()
-                      |> case do
-                        {:ok, data_layer_query} ->
-                          data_layer_query
-                          |> Ash.DataLayer.run_query(query.resource)
-                          |> Ash.Actions.Helpers.rollback_if_in_transaction(query.resource, query)
-                          |> case do
-                            {:ok, results} ->
-                              if Enum.count(results) == Enum.count(data) do
-                                {:ok, true}
-                              else
-                                if opts[:return_forbidden_error?] do
-                                  {:ok, false, authorizer_exception(authorizers)}
-                                else
-                                  {:ok, false}
-                                end
-                              end
-
-                            {:error, error} ->
-                              {:error, error}
-                          end
-                      end
-                    end
-                  else
-                    {:ok, true}
-                  end
-
-                %Ash.Changeset{data: data, action_type: type, resource: resource, tenant: tenant}
-                when type in [:update, :destroy] ->
-                  pkey = Ash.Resource.Info.primary_key(resource)
-                  pkey_value = Map.take(data, pkey)
-
-                  if pkey_value |> Map.values() |> Enum.any?(&is_nil/1) do
-                    {:ok, :maybe}
-                  else
-                    query
-                    |> Ash.Query.do_filter(pkey_value)
-                    |> Ash.Query.set_tenant(tenant)
-                    |> Ash.Query.data_layer_query()
-                    |> case do
-                      {:ok, data_layer_query} ->
-                        data_layer_query
-                        |> Ash.DataLayer.run_query(resource)
-                        |> Ash.Actions.Helpers.rollback_if_in_transaction(query.resource, query)
-                        |> case do
-                          {:ok, [_]} ->
-                            {:ok, true}
-
-                          {:error, error} ->
-                            {:error, error}
-
-                          _ ->
-                            if opts[:return_forbidden_error?] do
-                              {:ok, false, authorizer_exception(authorizers)}
-                            else
-                              {:ok, false}
-                            end
-                        end
-                    end
-                  end
-
-                %Ash.Changeset{} ->
-                  if opts[:return_forbidden_error?] do
-                    {:ok, false, authorizer_exception(authorizers)}
-                  else
-                    {:ok, false}
-                  end
-              end
+              run_queries(subject, opts, authorizers, query)
             else
               if opts[:alter_source?] do
                 {:ok, true, query}
@@ -1103,6 +1082,119 @@ defmodule Ash.Api do
             other
         end
     end
+  end
+
+  defp run_queries(subject, opts, authorizers, query) do
+    case subject do
+      %Ash.Query{} ->
+        if opts[:data] do
+          data = List.wrap(opts[:data])
+
+          pkey = Ash.Resource.Info.primary_key(query.resource)
+          pkey_values = Enum.map(data, &Map.take(&1, pkey))
+
+          if Enum.any?(pkey_values, fn pkey_value ->
+               pkey_value |> Map.values() |> Enum.any?(&is_nil/1)
+             end) do
+            {:ok, :maybe}
+          else
+            query
+            |> Ash.Query.do_filter(or: pkey_values)
+            |> Ash.Query.data_layer_query()
+            |> case do
+              {:ok, data_layer_query} ->
+                data_layer_query
+                |> Ash.DataLayer.run_query(query.resource)
+                |> Ash.Actions.Helpers.rollback_if_in_transaction(query.resource, query)
+                |> case do
+                  {:ok, results} ->
+                    case Ash.Actions.Read.run_authorize_results(query, results) do
+                      {:ok, results} ->
+                        if Enum.count(results) == Enum.count(data) do
+                          {:ok, true}
+                        else
+                          if opts[:return_forbidden_error?] do
+                            {:ok, false, authorizer_exception(authorizers)}
+                          else
+                            {:ok, false}
+                          end
+                        end
+
+                      {:error, error} ->
+                        {:error, error}
+                    end
+
+                  {:error, error} ->
+                    {:error, error}
+                end
+            end
+          end
+        else
+          {:ok, true}
+        end
+
+      %Ash.Changeset{data: data, action_type: type, resource: resource, tenant: tenant}
+      when type in [:update, :destroy] ->
+        pkey = Ash.Resource.Info.primary_key(resource)
+        pkey_value = Map.take(data, pkey)
+
+        if pkey_value |> Map.values() |> Enum.any?(&is_nil/1) do
+          {:ok, :maybe}
+        else
+          query
+          |> Ash.Query.do_filter(pkey_value)
+          |> Ash.Query.set_tenant(tenant)
+          |> Ash.Query.data_layer_query()
+          |> case do
+            {:ok, data_layer_query} ->
+              data_layer_query
+              |> Ash.DataLayer.run_query(resource)
+              |> Ash.Actions.Helpers.rollback_if_in_transaction(query.resource, query)
+              |> case do
+                {:ok, results} ->
+                  case Ash.Actions.Read.run_authorize_results(query, results) do
+                    {:ok, []} ->
+                      if opts[:return_forbidden_error?] do
+                        {:ok, false, authorizer_exception(authorizers)}
+                      else
+                        {:ok, false}
+                      end
+
+                    {:ok, [_]} ->
+                      {:ok, true}
+
+                    {:error, error} ->
+                      if opts[:return_forbidden_error?] do
+                        {:ok, false, error}
+                      else
+                        {:ok, false}
+                      end
+                  end
+
+                {:error, error} ->
+                  {:error, error}
+
+                _ ->
+                  if opts[:return_forbidden_error?] do
+                    {:ok, false, authorizer_exception(authorizers)}
+                  else
+                    {:ok, false}
+                  end
+              end
+          end
+        end
+
+      %Ash.Changeset{} ->
+        if opts[:return_forbidden_error?] do
+          {:ok, false, authorizer_exception(authorizers)}
+        else
+          {:ok, false}
+        end
+    end
+  end
+
+  defp or_query(query, resource, api) do
+    query || Ash.Query.new(resource, api)
   end
 
   defp authorizer_exception([{authorizer, authorizer_state, _context}]) do
@@ -1195,7 +1287,7 @@ defmodule Ash.Api do
   def run_action!(api, input, opts \\ []) do
     api
     |> run_action(input, opts)
-    |> unwrap_or_raise!(opts[:stacktraces?])
+    |> unwrap_or_raise!()
   end
 
   @doc """
@@ -1494,6 +1586,10 @@ defmodule Ash.Api do
 
   This is useful if you have a query that doesn't include a primary key
   but you know that it will only ever return a single result.
+
+  ## Options
+
+  #{Spark.OptionsHelpers.docs(@read_one_opts_schema)}
   """
   @callback read_one(Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
               {:ok, Ash.Resource.record()}
@@ -1871,7 +1967,7 @@ defmodule Ash.Api do
 
     api
     |> get(resource, id, opts)
-    |> unwrap_or_raise!(opts[:stacktraces?])
+    |> unwrap_or_raise!()
   end
 
   @doc false
@@ -1956,11 +2052,9 @@ defmodule Ash.Api do
 
   @doc false
   def page!(api, keyset, request) do
-    {_, opts} = keyset.rerun
-
     api
     |> page(keyset, request)
-    |> unwrap_or_raise!(opts[:stacktraces?])
+    |> unwrap_or_raise!()
   end
 
   @doc false
@@ -2097,7 +2191,7 @@ defmodule Ash.Api do
 
     api
     |> load(data, query, opts)
-    |> unwrap_or_raise!(opts[:stacktraces?])
+    |> unwrap_or_raise!()
   end
 
   @doc false
@@ -2235,7 +2329,7 @@ defmodule Ash.Api do
 
     api
     |> read(query, opts)
-    |> unwrap_or_raise!(opts[:stacktraces?])
+    |> unwrap_or_raise!()
   end
 
   @doc false
@@ -2271,7 +2365,7 @@ defmodule Ash.Api do
   def read_one!(api, query, opts) do
     api
     |> read_one(query, opts)
-    |> unwrap_or_raise!(opts[:stacktraces?])
+    |> unwrap_or_raise!()
   end
 
   @doc false
@@ -2279,7 +2373,7 @@ defmodule Ash.Api do
     query = Ash.Query.to_query(query)
     query = Ash.Query.set_api(query, api)
 
-    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @read_opts_schema),
+    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @read_one_opts_schema),
          {:ok, action} <- get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- pagination_check(action, query.resource, opts) do
       query
@@ -2343,7 +2437,7 @@ defmodule Ash.Api do
   def create!(api, changeset, opts) do
     api
     |> create(changeset, opts)
-    |> unwrap_or_raise!(opts[:stacktraces?])
+    |> unwrap_or_raise!()
   end
 
   @doc false
@@ -2578,7 +2672,7 @@ defmodule Ash.Api do
 
     api
     |> update(changeset, opts)
-    |> unwrap_or_raise!(opts[:stacktraces?])
+    |> unwrap_or_raise!()
   end
 
   @doc false
@@ -2606,10 +2700,7 @@ defmodule Ash.Api do
 
     api
     |> destroy(changeset, opts)
-    |> unwrap_or_raise!(
-      opts[:stacktraces?],
-      !(opts[:return_notifications?] || opts[:return_destroyed?])
-    )
+    |> unwrap_or_raise!(!(opts[:return_notifications?] || opts[:return_destroyed?]))
   end
 
   @doc false
@@ -2682,34 +2773,22 @@ defmodule Ash.Api do
     end
   end
 
-  defp unwrap_or_raise!(first, second, destroy? \\ false)
-  defp unwrap_or_raise!(:ok, _, _), do: :ok
-  defp unwrap_or_raise!({:ok, result}, _, false), do: result
-  defp unwrap_or_raise!({:ok, _result}, _, true), do: :ok
-  defp unwrap_or_raise!({:ok, result, other}, _, _), do: {result, other}
+  defp unwrap_or_raise!(first, destroy? \\ false)
+  defp unwrap_or_raise!(:ok, _), do: :ok
+  defp unwrap_or_raise!({:ok, result}, false), do: result
+  defp unwrap_or_raise!({:ok, _result}, true), do: :ok
+  defp unwrap_or_raise!({:ok, result, other}, _), do: {result, other}
 
-  defp unwrap_or_raise!({:error, error}, stacktraces?, destroy?) when is_list(error) do
-    unwrap_or_raise!({:error, Ash.Error.to_error_class(error)}, stacktraces?, destroy?)
+  defp unwrap_or_raise!({:error, error}, destroy?) when is_list(error) do
+    unwrap_or_raise!({:error, Ash.Error.to_error_class(error)}, destroy?)
   end
 
-  defp unwrap_or_raise!({:error, error}, stacktraces?, _) do
+  defp unwrap_or_raise!({:error, error}, _) do
     exception = Ash.Error.to_error_class(error)
 
-    exception =
-      if stacktraces? do
-        exception
-      else
-        Ash.Error.clear_stacktraces(exception)
-      end
-
     case exception do
-      %{stacktraces?: _} ->
-        if stacktraces? do
-          reraise %{exception | stacktraces?: stacktraces?},
-                  Map.get(exception.stacktrace || %{}, :stacktrace)
-        else
-          raise %{exception | stacktraces?: stacktraces?}
-        end
+      %{stacktrace: %{stacktrace: stacktrace}} = exception ->
+        reraise exception, stacktrace
 
       _ ->
         raise exception

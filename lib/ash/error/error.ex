@@ -141,7 +141,6 @@ defmodule Ash.Error do
         }
       ],
       stacktrace: #Stacktrace<>,
-      stacktraces?: true,
       vars: []
     }
 
@@ -183,7 +182,6 @@ defmodule Ash.Error do
       path: [],
       query: nil,
       stacktrace: #Stacktrace<>,
-      stacktraces?: true,
       vars: []
     }
 
@@ -636,7 +634,7 @@ defmodule Ash.Error do
     end
   end
 
-  def error_messages(errors, custom_message, stacktraces?) do
+  def error_messages(errors, custom_message, stacktraces? \\ true) do
     errors = Enum.map(errors, &to_ash_error/1)
 
     generic_message =

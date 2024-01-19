@@ -30,14 +30,14 @@ defmodule Ash.Sort do
   For example:
 
   ```elixir
-  Ash.Query.sort(Ash.Sort.expr_sort(author.full_name))
+  Ash.Query.sort(Ash.Sort.expr_sort(author.full_name, :string))
 
-  Ash.Query.sort([{Ash.Sort.expr_sort(author.full_name), :desc_nils_first}])
+  Ash.Query.sort([{Ash.Sort.expr_sort(author.full_name, :string), :desc_nils_first}])
   ```
   """
   @spec expr_sort(Ash.Expr.t(), Ash.Type.t() | nil) :: Ash.Expr.t()
   defmacro expr_sort(expression, type \\ nil) do
-    quote do
+    quote generated: true do
       require Ash.Expr
       type = unquote(type)
 

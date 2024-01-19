@@ -7,7 +7,7 @@ defmodule Ash.MixProject do
   designed to be used by multiple front ends.
   """
 
-  @version "2.18.2"
+  @version "2.18.1"
 
   def project do
     [
@@ -304,7 +304,10 @@ defmodule Ash.MixProject do
       files: ~w(lib .formatter.exs mix.exs README* LICENSE*
       CHANGELOG* documentation),
       links: %{
-        GitHub: "https://github.com/ash-project/ash"
+        GitHub: "https://github.com/ash-project/ash",
+        Discord: "https://discord.gg/HTHRaaVPUc",
+        Website: "https://ash-hq.org",
+        Forum: "https://elixirforum.com/c/elixir-framework-forums/ash-framework-forum"
       }
     ]
   end

@@ -913,7 +913,7 @@ defmodule Ash.Actions.ManagedRelationships do
   defp sort_and_filter(query, relationship) do
     # We cannot use relationship filters that reference the `parent`
     # because the parent is not yet related.
-    if Ash.Actions.Load.do_has_parent_expr?(relationship.filter) do
+    if Ash.Actions.Read.Relationships.do_has_parent_expr?(relationship.filter) do
       query
     else
       Ash.Query.do_filter(query, relationship.filter, parent_stack: relationship.source)

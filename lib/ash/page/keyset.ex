@@ -11,7 +11,7 @@ defmodule Ash.Page.Keyset do
 
   def new(results, count, _sort, original_query, more?, opts) do
     %__MODULE__{
-      results: Enum.take(results, (original_query.limit || 1) - 1),
+      results: results,
       count: count,
       before: opts[:page][:before],
       after: opts[:page][:after],
@@ -33,7 +33,7 @@ defmodule Ash.Page.Keyset do
 
   def filter(resource, values, sort, after_or_before) when after_or_before in [:after, :before] do
     with {:ok, decoded} <- decode_values(values, after_or_before),
-         {:ok, zipped} <- zip_fields(sort, decoded) do
+         {:ok, zipped} <- zip_fields(sort, decoded, values) do
       {:ok, filters(zipped, resource, after_or_before)}
     end
   end
@@ -144,14 +144,15 @@ defmodule Ash.Page.Keyset do
   defp operator(:before, :desc_nils_first), do: {:gt, false}
   defp operator(:before, :desc_nils_last), do: {:gt, true}
 
-  defp zip_fields(pkey, values, acc \\ [])
-  defp zip_fields([], [], acc), do: {:ok, Enum.reverse(acc)}
+  defp zip_fields(pkey, values, full_value, acc \\ [])
+  defp zip_fields([], [], _full_value, acc), do: {:ok, Enum.reverse(acc)}
 
-  defp zip_fields([{pkey, direction} | rest_pkey], [value | rest_values], acc) do
-    zip_fields(rest_pkey, rest_values, [{pkey, direction, value} | acc])
+  defp zip_fields([{pkey, direction} | rest_pkey], [value | rest_values], full_value, acc) do
+    zip_fields(rest_pkey, rest_values, full_value, [{pkey, direction, value} | acc])
   end
 
-  defp zip_fields(_, _, _), do: {:error, "Invalid keyset"}
+  defp zip_fields(_, _, full_value, _),
+    do: {:error, Ash.Error.Page.InvalidKeyset.exception(value: full_value)}
 
   defp keyset(record, fields) do
     record

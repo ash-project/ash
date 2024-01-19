@@ -413,7 +413,36 @@ defmodule Ash.EmbeddableType do
 
         attribute_loads = __MODULE__ |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
 
-        api.load(record, attribute_loads ++ List.wrap(load), opts)
+        load =
+          case load do
+            %Ash.Query{} -> Ash.Query.ensure_selected(load, attribute_loads)
+            load_statement -> attribute_loads ++ List.wrap(load_statement)
+          end
+
+        api.load(record, load, opts)
+      end
+
+      def merge_load(left, right, constraints, context) do
+        right = Ash.Query.load(__MODULE__, right)
+
+        __MODULE__
+        |> Ash.Query.new()
+        |> Ash.Query.load(left)
+        |> case do
+          %{valid?: true} = left ->
+            {:ok, Ash.Query.merge_query_load(left, right, context)}
+
+          query ->
+            {:error, Ash.Error.to_ash_error(query.errors)}
+        end
+      end
+
+      def get_rewrites(merged_load, calculation, path, _) do
+        Ash.Actions.Read.Calculations.get_all_rewrites(merged_load, calculation, path)
+      end
+
+      def rewrite(value, rewrites, _constraints) do
+        Ash.Actions.Read.Calculations.rewrite(rewrites, value)
       end
 
       def array_constraints, do: Ash.EmbeddableType.embedded_resource_array_constraints()

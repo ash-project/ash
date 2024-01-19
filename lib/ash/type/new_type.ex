@@ -108,6 +108,27 @@ defmodule Ash.Type.NewType do
         end
       end
 
+      if function_exported?(subtype_of, :merge_load, 4) do
+        @impl Ash.Type
+        def merge_load(left, right, constraints, context) do
+          unquote(subtype_of).merge_load(left, right, constraints, context)
+        end
+      end
+
+      if function_exported?(subtype_of, :get_rewrites, 4) do
+        @impl Ash.Type
+        def get_rewrites(merged_load, calculation, path, constraints) do
+          unquote(subtype_of).get_rewrites(merged_load, calculation, path, constraints)
+        end
+      end
+
+      if function_exported?(subtype_of, :rewrite, 3) do
+        @impl Ash.Type
+        def rewrite(value, rewrites, constraints) do
+          unquote(subtype_of).rewrite(value, rewrites, constraints)
+        end
+      end
+
       @impl Ash.Type
       def cast_input(value, constraints) do
         with {:ok, value} <- unquote(subtype_of).cast_input(value, constraints) do

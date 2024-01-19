@@ -1431,25 +1431,24 @@ defmodule Ash.Filter do
     end
   end
 
-  def run_other_data_layer_filters(api, resource, %{expression: expression} = filter, data) do
-    case do_run_other_data_layer_filters(expression, api, resource, data) do
-      {:filter_requests, requests} -> {:filter_requests, requests}
+  def run_other_data_layer_filters(api, resource, %{expression: expression} = filter, tenant) do
+    case do_run_other_data_layer_filters(expression, api, resource, tenant) do
       {:ok, new_expression} -> {:ok, %{filter | expression: new_expression}}
       {:error, error} -> {:error, error}
     end
   end
 
-  def run_other_data_layer_filters(_, _, filter, _data) when filter in [nil, true, false],
+  def run_other_data_layer_filters(_, _, filter, _tenant) when filter in [nil, true, false],
     do: {:ok, filter}
 
   defp do_run_other_data_layer_filters(
          %BooleanExpression{op: op, left: left, right: right},
          api,
          resource,
-         data
+         tenant
        ) do
-    left_result = do_run_other_data_layer_filters(left, api, resource, data)
-    right_result = do_run_other_data_layer_filters(right, api, resource, data)
+    left_result = do_run_other_data_layer_filters(left, api, resource, tenant)
+    right_result = do_run_other_data_layer_filters(right, api, resource, tenant)
 
     case {left_result, right_result} do
       {{:ok, left}, {:ok, right}} ->
@@ -1460,22 +1459,12 @@ defmodule Ash.Filter do
 
       {_, {:error, error}} ->
         {:error, error}
-
-      {{:filter_requests, left_filter_requests}, {:filter_requests, right_filter_requests}} ->
-        {:filter_requests, left_filter_requests ++ right_filter_requests}
-
-      {{:filter_requests, left_filter_requests}, _} ->
-        {:filter_requests, left_filter_requests}
-
-      {_, {:filter_requests, right_filter_requests}} ->
-        {:filter_requests, right_filter_requests}
     end
   end
 
-  defp do_run_other_data_layer_filters(%Not{expression: expression}, api, resource, data) do
-    case do_run_other_data_layer_filters(expression, api, resource, data) do
+  defp do_run_other_data_layer_filters(%Not{expression: expression}, api, resource, tenant) do
+    case do_run_other_data_layer_filters(expression, api, resource, tenant) do
       {:ok, expr} -> {:ok, Not.new(expr)}
-      {:filter_requests, requests} -> {:filter_requests, requests}
       {:error, error} -> {:error, error}
     end
   end
@@ -1484,15 +1473,28 @@ defmodule Ash.Filter do
          %Ash.Query.Exists{path: path, expr: expr, at_path: at_path} = exists,
          api,
          resource,
-         {request_path, tenant, data}
+         tenant
        ) do
     case shortest_path_to_changed_data_layer(resource, at_path ++ path) do
       {:ok, shortest_path} ->
-        request_path = request_path ++ [:other_data_layer_filter_exists, at_path] ++ path
         related = Ash.Resource.Info.related(resource, shortest_path)
 
-        case get_in(data, request_path ++ [:data]) do
-          %{data: data} ->
+        # We should do these asynchronously in parallel
+        # We used to, but this was changed to happen in place as part
+        # of an architecture simplification (removal of Ash.Engine)
+        {relationship, context, _action} =
+          last_relationship_context_and_action(resource, at_path ++ path)
+
+        query =
+          related
+          |> Ash.Query.do_filter(expr)
+          |> Ash.Query.set_context(context)
+          |> Ash.Query.set_tenant(tenant)
+          |> Map.put(:api, api)
+          |> Ash.Query.set_context(%{private: %{internal?: true}})
+
+        case Ash.Actions.Read.unpaginated_read(query, relationship.read_action) do
+          {:ok, data} ->
             pkey = Ash.Resource.Info.primary_key(related)
 
             expr =
@@ -1525,50 +1527,16 @@ defmodule Ash.Filter do
 
             {:ok, expr}
 
-          nil ->
-            {context, action} = last_relationship_context_and_action(resource, at_path ++ path)
-
-            query =
-              related
-              |> Ash.Query.do_filter(expr)
-              |> Ash.Query.set_context(context)
-
-            {:filter_requests,
-             Ash.Actions.Read.as_requests(
-               request_path,
-               query.resource,
-               api,
-               action,
-               query: query,
-               page: false,
-               tenant: tenant
-             )
-             |> Enum.map(fn request ->
-               # By returning the request and a key, we register a dependency on that key
-               {request, :data}
-             end)}
+          {:error, error} ->
+            {:error, error}
         end
 
       :error ->
-        case do_run_other_data_layer_filters(
-               expr,
-               api,
-               Ash.Resource.Info.related(resource, at_path ++ path),
-               data
-             ) do
-          {:ok, new_nested} ->
-            {:ok, %{exists | expr: new_nested}}
-
-          {:error, error} ->
-            {:error, error}
-
-          {:filter_requests, requests} ->
-            {:filter_requests, requests}
-        end
+        {:ok, exists}
     end
   end
 
-  defp do_run_other_data_layer_filters(%{__predicate__?: _} = predicate, api, resource, data) do
+  defp do_run_other_data_layer_filters(%{__predicate__?: _} = predicate, api, resource, tenant) do
     predicate
     |> relationship_paths()
     |> filter_paths_that_change_data_layers(resource)
@@ -1588,7 +1556,7 @@ defmodule Ash.Filter do
       {path, new_predicate} ->
         relationship = Ash.Resource.Info.relationship(resource, path)
 
-        fetch_related_data(resource, path, new_predicate, api, relationship, data)
+        fetch_related_data(resource, path, new_predicate, api, relationship, tenant)
     end
   end
 
@@ -1597,7 +1565,7 @@ defmodule Ash.Filter do
   defp last_relationship_context_and_action(resource, [name]) do
     relationship = Ash.Resource.Info.relationship(resource, name)
 
-    {relationship.context,
+    {relationship, relationship.context,
      relationship.read_action ||
        Ash.Resource.Info.primary_action!(relationship.destination, :read)}
   end
@@ -1607,7 +1575,7 @@ defmodule Ash.Filter do
 
     relationship = Ash.Resource.Info.relationship(second_to_last, List.last(path))
 
-    {relationship.context, relationship.read_action}
+    {relationship, relationship.context, relationship.read_action}
   end
 
   defp split_expression_by_relationship_path(%{expression: expression}, path) do
@@ -1733,7 +1701,7 @@ defmodule Ash.Filter do
          api,
          %{type: :many_to_many, join_relationship: join_relationship, through: through} =
            relationship,
-         {_, _, context} = data
+         tenant
        ) do
     if Ash.DataLayer.data_layer(through) == Ash.DataLayer.data_layer(resource) &&
          Ash.DataLayer.data_layer_can?(resource, {:join, through}) do
@@ -1749,7 +1717,7 @@ defmodule Ash.Filter do
         relationship,
         :lists.droplast(path) ++ [join_relationship],
         api,
-        data
+        tenant
       )
     else
       filter = %__MODULE__{
@@ -1760,10 +1728,10 @@ defmodule Ash.Filter do
       relationship.destination
       |> Ash.Query.new(ShadowApi)
       |> Ash.Query.do_filter(filter)
-      |> Ash.Actions.Read.unpaginated_read(
-        authorize?: context[:authorize?],
-        actor: context[:actor]
-      )
+      |> Ash.Query.do_filter(relationship.filter, parent_stack: [relationship.source])
+      |> Ash.Query.sort(relationship.sort, prepend?: true)
+      |> Ash.Query.set_context(relationship.context)
+      |> Ash.Actions.Read.unpaginated_read()
       |> case do
         {:ok, results} ->
           relationship.through
@@ -1776,7 +1744,7 @@ defmodule Ash.Filter do
             Ash.Resource.Info.relationship(resource, join_relationship),
             :lists.droplast(path),
             api,
-            data
+            tenant
           )
 
         {:error, error} ->
@@ -1791,7 +1759,7 @@ defmodule Ash.Filter do
          new_predicate,
          api,
          relationship,
-         data
+         tenant
        ) do
     filter = %__MODULE__{
       resource: relationship.destination,
@@ -1804,44 +1772,30 @@ defmodule Ash.Filter do
     |> Ash.Query.do_filter(relationship.filter, parent_stack: [relationship.source])
     |> Ash.Query.sort(relationship.sort, prepend?: true)
     |> Ash.Query.set_context(relationship.context)
-    |> filter_related_in(relationship, :lists.droplast(path), api, data)
+    |> Ash.Query.set_context(%{private: %{internal?: true}})
+    |> filter_related_in(relationship, :lists.droplast(path), api, tenant)
   end
 
   defp filter_related_in(
          query,
          relationship,
          path,
-         api,
-         {request_path, tenant, data}
+         _api,
+         tenant
        ) do
     query = Ash.Query.set_tenant(query, tenant)
-    request_path = request_path ++ [:other_data_layer_filter, path ++ [relationship.name], query]
 
-    case get_in(data, request_path ++ [:data]) do
-      %{data: records} ->
-        records_to_expression(
-          records,
-          relationship,
-          path
-        )
+    case Ash.Actions.Read.unpaginated_read(query) do
+      {:ok, data} ->
+        {:ok,
+         records_to_expression(
+           data,
+           relationship,
+           path
+         )}
 
-      _ ->
-        action =
-          Ash.Resource.Info.action(relationship.destination, relationship.read_action) ||
-            Ash.Resource.Info.primary_action!(relationship.destination, :read)
-
-        action = %{action | pagination: false}
-
-        {:filter_requests,
-         Ash.Actions.Read.as_requests(request_path, query.resource, api, action,
-           query: query,
-           page: false,
-           tenant: tenant
-         )
-         |> Enum.map(fn request ->
-           # By returning the request and a key, we register a dependency on that key
-           {request, :data}
-         end)}
+      {:error, error} ->
+        {:error, error}
     end
   end
 

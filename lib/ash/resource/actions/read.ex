@@ -14,6 +14,7 @@ defmodule Ash.Resource.Actions.Read do
             preparations: [],
             primary?: nil,
             touches_resources: [],
+            timeout: nil,
             transaction?: false,
             type: :read
 
@@ -30,6 +31,7 @@ defmodule Ash.Resource.Actions.Read do
           pagination: any,
           primary?: boolean,
           touches_resources: [atom],
+          timeout: pos_integer() | nil,
           transaction?: boolean,
           type: :read
         }
@@ -71,6 +73,12 @@ defmodule Ash.Resource.Actions.Read do
                     default: nil,
                     doc: """
                     A helper to automatically generate a "get by X" action. Sets `get?` to true, add args for each of the specified fields, and adds a filter for each of the arguments.
+                    """
+                  ],
+                  timeout: [
+                    type: :pos_integer,
+                    doc: """
+                    The maximum amount of time, in milliseconds, that the action is allowed to run for. Ignored if the data layer doesn't support transactions *and* async is disabled.
                     """
                   ]
                 ],
