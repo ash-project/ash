@@ -1474,7 +1474,7 @@ defmodule Ash.Actions.Read do
         {:error, "Pagination is not supported"}
 
       action.pagination == false ->
-        {:ok, starting_query}
+        {:ok, starting_queryp
 
       page_opts == false ->
         if action.pagination.required? do
@@ -1500,7 +1500,6 @@ defmodule Ash.Actions.Read do
         end
 
       action.pagination.required? ->
-        IO.inspect(action.pagination)
         {:error, LimitRequired.exception([])}
 
       true ->
