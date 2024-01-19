@@ -3,7 +3,6 @@ defmodule Ash.Actions.Read do
 
   alias Ash.Actions.Helpers
   alias Ash.Error.Invalid.{LimitRequired, PaginationRequired}
-  alias Ash.Error.Query.NoReadAction
   alias Ash.Filter
 
   require Logger
@@ -1465,7 +1464,7 @@ defmodule Ash.Actions.Read do
   end
 
   @doc false
-  def paginate(starting_query, action, page_opts, true) do
+  def paginate(starting_query, _action, _page_opts, true) do
     {:ok, starting_query}
   end
 
