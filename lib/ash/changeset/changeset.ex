@@ -1541,9 +1541,8 @@ defmodule Ash.Changeset do
 
   defp validate_attributes_accepted(changeset, %{accept: accepted_attributes}) do
     changeset.attributes
-    |> Enum.reject(fn {key, _value} ->
-      key in accepted_attributes
-    end)
+    |> Map.keys()
+    |> Kernel.--(accepted_attributes)
     |> Enum.reduce(changeset, fn {key, value}, changeset ->
       add_error(
         changeset,

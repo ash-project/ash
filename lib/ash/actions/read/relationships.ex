@@ -321,7 +321,6 @@ defmodule Ash.Actions.Read.Relationships do
       related_query,
       Ash.context_to_opts(related_query.context),
       fn ->
-
         result =
           related_query
           |> select_destination_attribute(relationship)

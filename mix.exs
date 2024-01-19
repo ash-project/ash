@@ -333,6 +333,7 @@ defmodule Ash.MixProject do
       {:plug, ">= 0.0.0", optional: true},
       {:earmark, "~> 1.4"},
       # Dev/Test dependencies
+      {:eflame, "~> 1.0", only: [:dev, :test]},
       {:ex_doc, github: "elixir-lang/ex_doc", only: [:dev, :test], runtime: false},
       {:ex_check, "~> 0.12", only: [:dev, :test]},
       {:credo, ">= 0.0.0", only: [:dev, :test], runtime: false},

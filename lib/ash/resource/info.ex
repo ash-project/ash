@@ -289,6 +289,12 @@ defmodule Ash.Resource.Info do
     Spark.Dsl.Extension.get_persisted(resource, :primary_key, [])
   end
 
+  @doc "A list of unique keys and information for a resource"
+  @spec unique_keys(Spark.Dsl.t() | Ash.Resource.t()) :: list(%{type: atom, keys: list(atom)})
+  def unique_keys(resource) do
+    Spark.Dsl.Extension.get_persisted(resource, :unique_keys, [])
+  end
+
   @doc "Whether or not all primary key attributes can be compared with simple_equality"
   @spec primary_key_simple_equality?(Spark.Dsl.t() | Ash.Resource.t()) :: boolean()
   def primary_key_simple_equality?(resource) do

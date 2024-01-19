@@ -844,7 +844,7 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp reject_and_maybe_store_errors(stream, ref, opts) do
-    Enum.reject(stream, fn changeset ->
+    Stream.reject(stream, fn changeset ->
       if changeset.valid? do
         false
       else

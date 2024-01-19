@@ -172,6 +172,30 @@ defmodule Ash.EmbeddableType do
 
       def cast_input(_, _), do: :error
 
+      def cast_input_array(value, constraints) when is_list(value) do
+        action =
+          constraints[:create_action] ||
+            Ash.Resource.Info.primary_action!(__MODULE__, :create).name
+
+        value
+        |> ShadowApi.bulk_create(__MODULE__, action,
+          return_records?: true,
+          return_errors?: true,
+          batch_size: 1_000_000_000
+        )
+        |> case do
+          %{status: :success, records: records} ->
+            {:ok, Enum.map(value, &struct(__MODULE__, &1))}
+
+          %{errors: errors} ->
+            {:error, errors}
+        end
+      end
+
+      def cast_input_array(nil, _), do: {:ok, nil}
+
+      def cast_input_array(_, _), do: :error
+
       def cast_stored(value, constraints) when is_map(value) do
         __MODULE__
         |> Ash.Resource.Info.attributes()
@@ -448,33 +472,42 @@ defmodule Ash.EmbeddableType do
       def array_constraints, do: Ash.EmbeddableType.embedded_resource_array_constraints()
 
       def apply_constraints_array(term, constraints) do
-        pkey = Ash.Resource.Info.primary_key(__MODULE__)
-        unique_keys = Enum.map(Ash.Resource.Info.identities(__MODULE__), & &1.keys) ++ [pkey]
-
-        case find_duplicates(term, unique_keys) do
+        case find_duplicates(
+               term,
+               __MODULE__ |> Ash.Resource.Info.unique_keys() |> Enum.map(& &1.keys)
+             ) do
           nil ->
-            query =
-              __MODULE__
-              |> Ash.DataLayer.Simple.set_data(term)
-              |> Ash.EmbeddableType.copy_source(constraints[:__source__])
-              |> Ash.Query.load(constraints[:load] || [])
+            if constraints[:sort] do
+              query =
+                __MODULE__
+                |> Ash.DataLayer.Simple.set_data(term)
+                |> Ash.EmbeddableType.copy_source(constraints[:__source__])
+                |> Ash.Query.load(constraints[:load] || [])
 
-            query =
-              if constraints[:sort] do
-                Ash.Query.sort(query, constraints[:sort])
-              else
-                query
+              query = Ash.Query.sort(query, constraints[:sort])
+
+              case ShadowApi.read(query) do
+                {:ok, result} ->
+                  case Ash.Type.list_constraint_errors(result, constraints) do
+                    [] ->
+                      {:ok, result}
+
+                    errors ->
+                      {:error, errors}
+                  end
               end
+            else
+              if constraints[:load] do
+                query =
+                  __MODULE__
+                  |> Ash.DataLayer.Simple.set_data(term)
+                  |> Ash.EmbeddableType.copy_source(constraints[:__source__])
+                  |> Ash.Query.load(constraints[:load] || [])
 
-            case ShadowApi.read(query) do
-              {:ok, result} ->
-                case Ash.Type.list_constraint_errors(result, constraints) do
-                  [] ->
-                    {:ok, result}
-
-                  errors ->
-                    {:error, errors}
-                end
+                ShadowApi.load(term, query)
+              else
+                {:ok, term}
+              end
             end
 
           keys ->
@@ -489,28 +522,52 @@ defmodule Ash.EmbeddableType do
         Enum.find(unique_keys, fn unique_key ->
           attributes = Enum.map(unique_key, &Ash.Resource.Info.attribute(__MODULE__, &1))
 
-          Enum.reduce_while(list, list, fn
-            _term, [_] ->
-              {:halt, false}
+          if Enum.all?(attributes, &Ash.Type.simple_equality?(&1.type)) do
+            list
+            |> Enum.flat_map(fn item ->
+              value =
+                item
+                |> Map.take(unique_key)
+                |> Map.values()
 
-            this, [_ | rest] ->
-              has_duplicate? =
-                Enum.any?(rest, fn other ->
-                  Enum.all?(attributes, fn attribute ->
-                    this_value = Map.get(this, attribute.name)
-                    other_value = Map.get(other, attribute.name)
-
-                    not is_nil(this_value) and not is_nil(other_value) and
-                      Ash.Type.equal?(attribute.type, this_value, other_value)
-                  end)
-                end)
-
-              if has_duplicate? do
-                {:halt, true}
+              if Enum.any?(value, &is_nil/1) do
+                []
               else
-                {:cont, rest}
+                [value]
               end
-          end)
+            end)
+            |> Enum.reduce_while({false, MapSet.new()}, fn item, {false, acc} ->
+              if MapSet.member?(acc, item) do
+                {:halt, {true, acc}}
+              else
+                {:cont, {false, MapSet.put(acc, item)}}
+              end
+            end)
+            |> elem(0)
+          else
+            Enum.reduce_while(list, list, fn
+              _term, [_] ->
+                {:halt, false}
+
+              this, [_ | rest] ->
+                has_duplicate? =
+                  Enum.any?(rest, fn other ->
+                    Enum.all?(attributes, fn attribute ->
+                      this_value = Map.get(this, attribute.name)
+                      other_value = Map.get(other, attribute.name)
+
+                      not is_nil(this_value) and not is_nil(other_value) and
+                        Ash.Type.equal?(attribute.type, this_value, other_value)
+                    end)
+                  end)
+
+                if has_duplicate? do
+                  {:halt, true}
+                else
+                  {:cont, rest}
+                end
+            end)
+          end
         end)
       end
 

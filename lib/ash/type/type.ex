@@ -1191,8 +1191,7 @@ defmodule Ash.Type do
       @impl true
       def cast_input_array(term, single_constraints) do
         term
-        |> Enum.with_index()
-        |> Enum.reverse()
+        |> Stream.with_index()
         |> Enum.reduce_while({:ok, []}, fn {item, index}, {:ok, casted} ->
           case Ash.Type.cast_input(__MODULE__, item, single_constraints) do
             :error ->
@@ -1224,6 +1223,13 @@ defmodule Ash.Type do
               {:cont, {:ok, [value | casted]}}
           end
         end)
+        |> case do
+          {:ok, result} ->
+            {:ok, Enum.reverse(result)}
+
+          {:error, error} ->
+            {:error, error}
+        end
       end
 
       @impl true

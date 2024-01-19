@@ -10,6 +10,7 @@ defmodule Ash.DataLayer.Simple do
 
   @doc false
   def can?(_, :create), do: true
+  def can?(_, :bulk_create), do: true
   def can?(_, :update), do: true
   def can?(_, :destroy), do: true
   def can?(_, :sort), do: true
@@ -113,6 +114,31 @@ defmodule Ash.DataLayer.Simple do
   @doc false
   def create(_resource, changeset) do
     Ash.Changeset.apply_attributes(changeset)
+  end
+
+  def bulk_create(_resource, stream, options) do
+    if options[:return_records?] do
+      Enum.reduce_while(stream, {:ok, []}, fn changeset, {:ok, acc} ->
+        case Ash.Changeset.apply_attributes(changeset) do
+          {:ok, applied} ->
+            {:cont,
+             {:ok,
+              [
+                Ash.Resource.put_metadata(
+                  applied,
+                  :bulk_create_index,
+                  changeset.context.bulk_create.index
+                )
+                | acc
+              ]}}
+
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      end)
+    else
+      :ok
+    end
   end
 
   @doc false

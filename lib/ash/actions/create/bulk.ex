@@ -393,6 +393,8 @@ defmodule Ash.Actions.Create.Bulk do
   end
 
   defp do_handle_batch(batch, api, resource, action, opts, all_changes, data_layer_can_bulk?, ref) do
+    batch = Enum.to_list(batch)
+
     must_return_records? =
       opts[:notify?] ||
         Enum.any?(batch, fn item ->
@@ -417,7 +419,6 @@ defmodule Ash.Actions.Create.Bulk do
     batch =
       batch
       |> authorize(api, opts)
-      |> Enum.to_list()
       |> run_bulk_before_batches(
         changes,
         all_changes,
@@ -691,7 +692,7 @@ defmodule Ash.Actions.Create.Bulk do
   end
 
   defp reject_and_maybe_store_errors(stream, ref, opts) do
-    Enum.reject(stream, fn changeset ->
+    Stream.reject(stream, fn changeset ->
       if changeset.valid? do
         false
       else
@@ -749,8 +750,7 @@ defmodule Ash.Actions.Create.Bulk do
 
   defp authorize(batch, api, opts) do
     if opts[:authorize?] do
-      batch
-      |> Enum.map(fn changeset ->
+      Enum.map(batch, fn changeset ->
         if changeset.valid? do
           case api.can(changeset, opts[:actor], return_forbidden_error?: true, maybe_is: false) do
             {:ok, true} ->
