@@ -33,8 +33,6 @@ defmodule Api do
   end
 end
 
-changeset = Ash.Changeset.for_create(Resource, :create, %{})
-
 embeds_input = 1..100 |> Enum.map(&%{name: "Embed #{&1}"})
 
 Resource
