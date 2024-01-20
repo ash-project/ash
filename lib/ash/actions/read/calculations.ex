@@ -3,7 +3,12 @@ defmodule Ash.Actions.Read.Calculations do
   def run([], _, _calculations_in_query), do: {:ok, []}
 
   def run(records, ash_query, calculations_in_query) do
-    do_run_calculations(Map.to_list(ash_query.calculations), records, ash_query, MapSet.new(calculations_in_query, &(&1.name)))
+    do_run_calculations(
+      Map.to_list(ash_query.calculations),
+      records,
+      ash_query,
+      MapSet.new(calculations_in_query, & &1.name)
+    )
   end
 
   defp do_run_calculations(calculations, records, ash_query, done, tasks \\ [])
@@ -883,7 +888,6 @@ defmodule Ash.Actions.Read.Calculations do
           else
             calculation
           end
-
 
         api
         |> load_calculation_requirements(
