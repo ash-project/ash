@@ -16,12 +16,12 @@ defmodule Ash.Actions.Read.AsyncLimiter do
   end
 
   def async_or_inline(
-        %{resource: resource, context: %{private: %{async_limiter: async_limiter}}},
+        %{resource: resource, context: %{private: %{async_limiter: async_limiter}}} = query,
         opts,
         func
       )
       when not is_nil(async_limiter) do
-    if Ash.DataLayer.data_layer_can?(resource, :async_engine) do
+    if Ash.DataLayer.data_layer_can?(resource, :async_engine) && !in_transaction?(query) do
       claimed? =
         Agent.get_and_update(async_limiter, fn
           {limit, limit} ->
@@ -93,6 +93,13 @@ defmodule Ash.Actions.Read.AsyncLimiter do
       {complete, remaining} ->
         {complete, remaining}
     end
+  end
+
+  defp in_transaction?(query) do
+    Enum.any?(
+      List.wrap(query.resource) ++ List.wrap(query.action.touches_resources),
+      &Ash.DataLayer.in_transaction?(&1)
+    )
   end
 
   defp release(async_limiter) do

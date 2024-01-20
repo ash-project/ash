@@ -204,29 +204,23 @@ defmodule Ash.Actions.Read do
                opts[:tracer],
                opts[:authorize?]
              ),
-           data <-
-             attach_fields(
-               data,
-               opts[:initial_data],
-               query
-             ),
            {:ok, data} <-
              Ash.Actions.Read.Relationships.load(data, query, opts[:lazy?]),
-           query_with_only_runtime_calcs <- %{
-             query
-             | calculations: Map.new(calculations_at_runtime, &{&1.name, &1}),
-               select: []
-           },
            {:ok, data} <-
              Ash.Actions.Read.Calculations.run(
                data,
-               query_with_only_runtime_calcs,
+               query,
+               calculations_at_runtime,
                calculations_in_query
              ),
            {:ok, data} <-
              load_through_attributes(
                data,
-               query_with_only_runtime_calcs,
+               %{
+                 query
+                 | calculations: Map.new(calculations_at_runtime, &{&1.name, &1}),
+                   select: []
+               },
                query.api,
                opts[:actor],
                opts[:tracer],
@@ -609,8 +603,45 @@ defmodule Ash.Actions.Read do
              },
              true
            ) do
-      {:ok, results, 0}
+      results
+      |> attach_fields(initial_data, query)
+      |> compute_expression_at_runtime_for_missing_records(query, data_layer_calculations)
+      |> case do
+        {:ok, result} ->
+          {:ok, result, 0}
+
+        {:error, error} ->
+          {:error, error}
+      end
     end
+  end
+
+  defp compute_expression_at_runtime_for_missing_records(data, query, data_layer_calculations) do
+    if Enum.any?(data, & &1.__metadata__[:private][:missing_from_data_layer]) do
+      {require_calculating, rest} =
+        data
+        |> Stream.with_index()
+        |> Stream.map(fn {record, index} ->
+          Ash.Resource.put_metadata(record, :private, %{result_index: index})
+        end)
+        |> Enum.split_with(& &1.__metadata__[:private][:missing_from_data_layer])
+
+      require_calculating
+      |> recalculate(query, Enum.map(data_layer_calculations, &elem(&1, 0)))
+      |> case do
+        {:ok, result} ->
+          {:ok,
+           result
+           |> Enum.concat(rest)
+           |> Enum.sort_by(& &1.__metadata__[:private][:result_index])}
+      end
+    else
+      {:ok, data}
+    end
+  end
+
+  defp recalculate(require_calculating, query, data_layer_calculations) do
+    Ash.Actions.Read.Calculations.run(require_calculating, query, data_layer_calculations, [])
   end
 
   defp authorize_query(query, opts) do
@@ -678,7 +709,6 @@ defmodule Ash.Actions.Read do
          tracer,
          authorize?
        ) do
-
     load_through =
       query.resource
       |> Ash.Resource.Info.attributes()

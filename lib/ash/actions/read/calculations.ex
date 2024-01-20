@@ -1,10 +1,10 @@
 defmodule Ash.Actions.Read.Calculations do
   @moduledoc false
-  def run([], _, _calculations_in_query), do: {:ok, []}
+  def run([], _, _, _calculations_in_query), do: {:ok, []}
 
-  def run(records, ash_query, calculations_in_query) do
+  def run(records, ash_query, calculations_at_runtime, calculations_in_query) do
     do_run_calculations(
-      Map.to_list(ash_query.calculations),
+      calculations_at_runtime,
       records,
       ash_query,
       MapSet.new(calculations_in_query, & &1.name)
@@ -16,8 +16,8 @@ defmodule Ash.Actions.Read.Calculations do
 
   defp do_run_calculations(calculations, records, ash_query, done, tasks) do
     {do_now, do_later} =
-      Enum.split_with(calculations, fn {key, _calc} ->
-        ash_query.context[:calculation_dependencies][key]
+      Enum.split_with(calculations, fn calc ->
+        ash_query.context[:calculation_dependencies][calc.name]
         |> Kernel.||([])
         |> Enum.all?(&(&1 in done))
       end)
@@ -32,12 +32,12 @@ defmodule Ash.Actions.Read.Calculations do
 
     {newly_done, remaining} =
       do_now
-      |> Enum.map(fn {name, calculation} ->
+      |> Enum.map(fn calculation ->
         Ash.Actions.Read.AsyncLimiter.async_or_inline(
           ash_query,
           Ash.context_to_opts(calculation.context),
           fn ->
-            {name, calculation, run_calculation(calculation, ash_query, records)}
+            {calculation.name, calculation, run_calculation(calculation, ash_query, records)}
           end
         )
       end)
@@ -142,6 +142,15 @@ defmodule Ash.Actions.Read.Calculations do
     records
     |> apply_transient_calculation_values(calculation, ash_query, [])
     |> calculation.module.calculate(calculation.opts, calculation.context)
+    |> case do
+      :unknown ->
+        Enum.map(records, fn _ ->
+          nil
+        end)
+
+      result ->
+        result
+    end
   end
 
   defp apply_transient_calculation_values(records, calculation, ash_query, path) do
@@ -743,6 +752,9 @@ defmodule Ash.Actions.Read.Calculations do
                   end
                 end
             end
+
+          true ->
+            raise "unknown load for #{inspect(query)}: #{inspect(load)}"
         end
     end)
   end

@@ -1343,6 +1343,24 @@ defmodule Ash.Query do
     loads
     |> List.wrap()
     |> Enum.map(fn
+      {load, {args, further}} ->
+        if resource_calculation = Ash.Resource.Info.calculation(query.resource, load) do
+          case resource_calc_to_calc(query, load, resource_calculation, args) do
+            {:error, _} ->
+              {load, {args, further}}
+
+            {:ok, calc} ->
+              {calc, further}
+          end
+        else
+          if relationship = Ash.Resource.Info.relationship(query.resource, load) do
+            related_query = new(relationship.destination)
+            {{load, reify_calculations(args, related_query)}, further}
+          else
+            {load, {args, further}}
+          end
+        end
+
       {load, args} ->
         if resource_calculation = Ash.Resource.Info.calculation(query.resource, load) do
           case resource_calc_to_calc(query, load, resource_calculation, args) do
