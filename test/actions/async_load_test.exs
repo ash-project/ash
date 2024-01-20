@@ -42,6 +42,8 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
   defmodule PostsInSameCategory do
     use Ash.Resource.ManualRelationship
 
+    def select(_), do: [:category]
+
     def load(posts, _, %{query: destination_query, api: api}) do
       categories = Enum.map(posts, & &1.category)
 

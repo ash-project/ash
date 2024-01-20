@@ -106,6 +106,8 @@ defmodule Ash.Actions.Read do
         query
       end
 
+    initial_query = query
+
     query =
       for_read(
         query,
@@ -147,7 +149,27 @@ defmodule Ash.Actions.Read do
     {calculations_in_query, calculations_at_runtime, query} =
       Ash.Actions.Read.Calculations.split_and_load_calculations(query.api, query)
 
-    query = Ash.Query.ensure_selected(query, source_fields(query))
+    query =
+      if opts[:initial_data] do
+        select = source_fields(query) ++ (query.select || [])
+
+        select =
+          if opts[:reselect_all?] do
+            select
+          else
+            remove_already_selected(select, opts[:initial_data])
+          end
+
+        query = %{query | select: select}
+
+        if opts[:lazy?] do
+          unload_loaded_calculations_and_aggregates(query, opts[:initial_data])
+        else
+          query
+        end
+      else
+        Ash.Query.ensure_selected(query, source_fields(query))
+      end
 
     query =
       Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
@@ -174,29 +196,46 @@ defmodule Ash.Actions.Read do
 
       with {:ok, data, count} <- data_result,
            {:ok, data} <-
+             load_through_attributes(
+               data,
+               %{query | calculations: Map.new(calculations_in_query, &{&1.name, &1})},
+               query.api,
+               opts[:actor],
+               opts[:tracer],
+               opts[:authorize?]
+             ),
+           data <-
+             attach_fields(
+               data,
+               opts[:initial_data],
+               query
+             ),
+           {:ok, data} <-
              Ash.Actions.Read.Relationships.load(data, query, opts[:lazy?]),
+           query_with_only_runtime_calcs <- %{
+             query
+             | calculations: Map.new(calculations_at_runtime, &{&1.name, &1}),
+               select: []
+           },
            {:ok, data} <-
              Ash.Actions.Read.Calculations.run(
                data,
-               %{
-                 query
-                 | calculations: Map.new(calculations_at_runtime, &{&1.name, &1})
-               },
+               query_with_only_runtime_calcs,
                calculations_in_query
              ),
            {:ok, data} <-
              load_through_attributes(
                data,
-               query,
+               query_with_only_runtime_calcs,
                query.api,
                opts[:actor],
                opts[:tracer],
-               opts[:authorize?],
-               !Keyword.has_key?(opts, :initial_data)
+               opts[:authorize?]
              ) do
         data
         |> Helpers.restrict_field_access(query)
         |> add_tenant(query)
+        |> attach_fields(opts[:initial_data], initial_query)
         |> add_page(
           query.action,
           count,
@@ -211,6 +250,16 @@ defmodule Ash.Actions.Read do
         Agent.stop(query.context[:private][:async_limiter])
       end
     end
+  end
+
+  defp attach_fields(data, nil, _query), do: data
+
+  defp attach_fields(data, initial_data, query) do
+    attach_newly_selected_fields(
+      initial_data,
+      data,
+      query
+    )
   end
 
   defp do_read(%{action: action} = query, calculations_in_query, opts) do
@@ -337,11 +386,14 @@ defmodule Ash.Actions.Read do
         %{no_attributes?: true} ->
           []
 
-        %{manual: impl, source_attribute: source_attribute} when not is_nil(impl) ->
+        %{manual: {module, opts}, source_attribute: source_attribute} ->
+          fields =
+            module.select(opts)
+
           if Ash.Resource.Info.attribute(query.resource, source_attribute) do
-            [source_attribute]
+            [source_attribute | fields]
           else
-            []
+            fields
           end
 
         %{source_attribute: source_attribute} ->
@@ -467,19 +519,7 @@ defmodule Ash.Actions.Read do
   end
 
   defp load(initial_data, query, calculations_in_query, opts) do
-    query =
-      if opts[:lazy?] do
-        unload_loaded_calculations_and_aggregates(query, initial_data)
-      else
-        query
-      end
-
-    must_be_reselected =
-      if opts[:reselect_all?] do
-        List.wrap(query.select)
-      else
-        remove_already_selected(List.wrap(query.select), initial_data)
-      end
+    must_be_reselected = List.wrap(query.select) -- Ash.Resource.Info.primary_key(query.resource)
 
     if Enum.empty?(must_be_reselected) && Enum.empty?(query.aggregates) &&
          Enum.empty?(calculations_in_query) do
@@ -569,15 +609,7 @@ defmodule Ash.Actions.Read do
              },
              true
            ) do
-      {:ok,
-       attach_newly_selected_fields(
-         initial_data,
-         results,
-         primary_key,
-         must_be_reselected,
-         calculations_in_query,
-         query.aggregates
-       ), 0}
+      {:ok, results, 0}
     end
   end
 
@@ -607,26 +639,34 @@ defmodule Ash.Actions.Read do
   end
 
   defp unload_loaded_calculations_and_aggregates(query, initial_data) do
+    query =
+      query
+      |> Map.update!(:calculations, fn calculations ->
+        keys =
+          calculations
+          |> Enum.reject(fn {_key, calc} ->
+            Ash.Resource.loaded?(initial_data, calc)
+          end)
+          |> Enum.map(&elem(&1, 0))
+
+        Map.drop(calculations, keys)
+      end)
+      |> Map.update!(:aggregates, fn aggregates ->
+        keys =
+          aggregates
+          |> Enum.reject(fn {_key, calc} ->
+            Ash.Resource.loaded?(initial_data, calc)
+          end)
+          |> Enum.map(&elem(&1, 0))
+
+        Map.drop(aggregates, keys)
+      end)
+
     query
-    |> Map.update!(:calculations, fn calculations ->
-      keys =
-        calculations
-        |> Enum.reject(fn {_key, calc} ->
-          Ash.Resource.loaded?(initial_data, calc)
-        end)
-        |> Enum.map(&elem(&1, 0))
-
-      Map.drop(calculations, keys)
-    end)
-    |> Map.update!(:aggregates, fn aggregates ->
-      keys =
-        aggregates
-        |> Enum.reject(fn {_key, calc} ->
-          Ash.Resource.loaded?(initial_data, calc)
-        end)
-        |> Enum.map(&elem(&1, 0))
-
-      Map.drop(aggregates, keys)
+    |> Map.update!(:load_through, fn load_through ->
+      Map.update(load_through, :calculation, %{}, fn calculations ->
+        Map.take(calculations, Map.keys(query.calculations))
+      end)
     end)
   end
 
@@ -636,9 +676,9 @@ defmodule Ash.Actions.Read do
          api,
          actor,
          tracer,
-         authorize?,
-         _initial_data?
+         authorize?
        ) do
+
     load_through =
       query.resource
       |> Ash.Resource.Info.attributes()
@@ -652,8 +692,9 @@ defmodule Ash.Actions.Read do
 
     Enum.reduce_while(load_through, {:ok, results}, fn
       {:calculation, load_through}, {:ok, results} ->
-        Enum.reduce_while(load_through, {:ok, results}, fn {name, load_statement},
-                                                           {:ok, results} ->
+        load_through
+        |> Map.take(Map.keys(query.calculations))
+        |> Enum.reduce_while({:ok, results}, fn {name, load_statement}, {:ok, results} ->
           calculation = Map.get(query.calculations, name)
 
           values =
@@ -759,8 +800,9 @@ defmodule Ash.Actions.Read do
         end
 
       {:attribute, load_through}, {:ok, results} ->
-        Enum.reduce_while(load_through, {:ok, results}, fn {name, load_statement},
-                                                           {:ok, results} ->
+        load_through
+        |> Map.take(query.select)
+        |> Enum.reduce_while({:ok, results}, fn {name, load_statement}, {:ok, results} ->
           load_statement =
             if is_map(load_statement) and not is_struct(load_statement) do
               Map.to_list(load_statement)
@@ -1023,28 +1065,28 @@ defmodule Ash.Actions.Read do
 
   defp remove_already_selected(fields, initial_data) do
     Enum.reject(fields, fn field ->
-      Enum.all?(initial_data, &Ash.Resource.selected?(&1, field))
+      Enum.any?(initial_data, &Ash.Resource.selected?(&1, field))
     end)
   end
 
   defp attach_newly_selected_fields(
          data,
          data_with_selected,
-         primary_key,
-         reselected_fields,
-         calculations_in_query,
-         aggregates
+         original_query
        ) do
     {aggregates_in_data, aggregates_in_aggregates} =
-      aggregates
+      original_query.aggregates
       |> Map.values()
       |> Enum.split_with(& &1.load)
 
     {calculations_in_data, calculations_in_calculations} =
-      Enum.split_with(calculations_in_query, & &1.load)
+      original_query.calculations
+      |> Map.values()
+      |> Enum.split_with(& &1.load)
 
     fields_from_data =
-      reselected_fields ++
+      (original_query.select || []) ++
+        Keyword.keys(original_query.load || []) ++
         Enum.map(aggregates_in_data, & &1.load) ++ Enum.map(calculations_in_data, & &1.load)
 
     fields_from_aggregates =
@@ -1055,7 +1097,7 @@ defmodule Ash.Actions.Read do
 
     Enum.map(data, fn record ->
       case Enum.find(data_with_selected, fn selected_record ->
-             Map.take(selected_record, primary_key) == Map.take(record, primary_key)
+             record.__struct__.primary_key_matches?(record, selected_record)
            end) do
         nil ->
           Ash.Resource.put_metadata(record, :private, %{missing_from_data_layer: true})
@@ -1065,11 +1107,17 @@ defmodule Ash.Actions.Read do
           |> Map.merge(Map.take(match, fields_from_data))
           |> Map.update!(
             :aggregates,
-            &Map.merge(&1, Map.take(match.aggregates, fields_from_aggregates))
+            &Map.merge(
+              &1,
+              Map.take(match.aggregates, fields_from_aggregates)
+            )
           )
           |> Map.update!(
             :calculations,
-            &Map.merge(&1, Map.take(match.calculations, fields_from_calculations))
+            &Map.merge(
+              &1,
+              Map.take(match.calculations, fields_from_calculations)
+            )
           )
       end
     end)

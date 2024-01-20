@@ -13,6 +13,8 @@ defmodule Ash.Resource.ManualRelationship do
           optional(any) => any
         }
 
+  @callback select(opts :: Keyword.t()) :: list(atom)
+
   @callback load(
               list(Ash.Resource.record()),
               opts :: Keyword.t(),
@@ -23,6 +25,10 @@ defmodule Ash.Resource.ManualRelationship do
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.ManualRelationship
+
+      def select(_opts), do: []
+
+      defoverridable select: 1
     end
   end
 end
