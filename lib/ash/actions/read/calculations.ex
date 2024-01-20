@@ -1,12 +1,12 @@
 defmodule Ash.Actions.Read.Calculations do
   @moduledoc false
-  def run([], _), do: {:ok, []}
+  def run([], _, _calculations_in_query), do: {:ok, []}
 
-  def run(records, ash_query) do
-    do_run_calculations(ash_query.calculations, records, ash_query)
+  def run(records, ash_query, calculations_in_query) do
+    do_run_calculations(Map.to_list(ash_query.calculations), records, ash_query, MapSet.new(calculations_in_query, &(&1.name)))
   end
 
-  defp do_run_calculations(calculations, records, ash_query, done \\ MapSet.new(), tasks \\ [])
+  defp do_run_calculations(calculations, records, ash_query, done, tasks \\ [])
   defp do_run_calculations([], records, _ash_query, _done, []), do: {:ok, records}
 
   defp do_run_calculations(calculations, records, ash_query, done, tasks) do
@@ -16,6 +16,14 @@ defmodule Ash.Actions.Read.Calculations do
         |> Kernel.||([])
         |> Enum.all?(&(&1 in done))
       end)
+
+    if tasks == [] and do_now == [] do
+      raise """
+      Circular calculation dependency detected. Remaining calculations
+
+      #{Enum.map_join(do_later, "\n\n", fn {key, calc} -> "* " <> inspect(calc) <> "\n" <> inspect(ash_query.context[:calculation_dependencies][key]) end)}
+      """
+    end
 
     {newly_done, remaining} =
       do_now
@@ -875,6 +883,7 @@ defmodule Ash.Actions.Read.Calculations do
           else
             calculation
           end
+
 
         api
         |> load_calculation_requirements(

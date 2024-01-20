@@ -179,7 +179,7 @@ defmodule Ash.Actions.Read do
              Ash.Actions.Read.Calculations.run(data, %{
                query
                | calculations: Map.new(calculations_at_runtime, &{&1.name, &1})
-             }),
+             }, calculations_in_query),
            {:ok, data} <-
              load_through_attributes(
                data,
