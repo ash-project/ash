@@ -1296,7 +1296,8 @@ defmodule Ash.Query do
           add_error(query, :load, error)
       end
     else
-      Ash.Error.Query.InvalidLoad.exception(load: {resource_calculation.name, args})
+     add_error(query,
+      Ash.Error.Query.InvalidLoad.exception(load: {resource_calculation.name, args}))
     end
   end
 

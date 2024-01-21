@@ -634,6 +634,8 @@ defmodule Ash.Actions.Read do
            result
            |> Enum.concat(rest)
            |> Enum.sort_by(& &1.__metadata__[:private][:result_index])}
+        {:error, error} ->
+          {:error, error}
       end
     else
       {:ok, data}
