@@ -917,7 +917,7 @@ defmodule Ash.Actions.Read do
             {:halt, {:error, error}}
         end
 
-        _, {:ok, results} ->
+      _, {:ok, results} ->
         {:cont, {:ok, results}}
     end)
   end
