@@ -4307,6 +4307,8 @@ defmodule Ash.Changeset do
   def apply_attributes(changeset, opts \\ [])
 
   def apply_attributes(%{valid?: true} = changeset, _opts) do
+    changeset = set_defaults(changeset, changeset.action_type, true)
+
     {:ok,
      Enum.reduce(changeset.attributes, changeset.data, fn {attribute, value}, data ->
        Map.put(data, attribute, value)

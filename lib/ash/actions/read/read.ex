@@ -634,6 +634,7 @@ defmodule Ash.Actions.Read do
            result
            |> Enum.concat(rest)
            |> Enum.sort_by(& &1.__metadata__[:private][:result_index])}
+
         {:error, error} ->
           {:error, error}
       end
@@ -1127,14 +1128,14 @@ defmodule Ash.Actions.Read do
     fields_from_calculations =
       Enum.map(calculations_in_calculations, & &1.name)
 
-    Enum.map(data, fn record ->
-      case Enum.find(data_with_selected, fn selected_record ->
-             record.__struct__.primary_key_matches?(record, selected_record)
-           end) do
-        nil ->
-          Ash.Resource.put_metadata(record, :private, %{missing_from_data_layer: true})
-
-        match ->
+    if Enum.empty?(fields_from_calculations) and Enum.empty?(fields_from_aggregates) and
+         Enum.empty?(fields_from_data) do
+      data
+    else
+      # we have to assume they are all there and in the same order. Not my
+      # favorite thing, but no way around it in the short term.
+      if Enum.empty?(Ash.Resource.Info.primary_key(original_query.resource)) do
+        Enum.zip_with([data, data_with_selected], fn [record, match] ->
           record
           |> Map.merge(Map.take(match, fields_from_data))
           |> Map.update!(
@@ -1151,8 +1152,36 @@ defmodule Ash.Actions.Read do
               Map.take(match.calculations, fields_from_calculations)
             )
           )
+        end)
+      else
+        Enum.map(data, fn record ->
+          case Enum.find(data_with_selected, fn selected_record ->
+                 record.__struct__.primary_key_matches?(record, selected_record)
+               end) do
+            nil ->
+              Ash.Resource.put_metadata(record, :private, %{missing_from_data_layer: true})
+
+            match ->
+              record
+              |> Map.merge(Map.take(match, fields_from_data))
+              |> Map.update!(
+                :aggregates,
+                &Map.merge(
+                  &1,
+                  Map.take(match.aggregates, fields_from_aggregates)
+                )
+              )
+              |> Map.update!(
+                :calculations,
+                &Map.merge(
+                  &1,
+                  Map.take(match.calculations, fields_from_calculations)
+                )
+              )
+          end
+        end)
       end
-    end)
+    end
   end
 
   defp validate_get([_, _ | _] = results, %{get?: true}, query) do
