@@ -239,6 +239,12 @@ defmodule Ash.Actions.Read do
           opts
         )
         |> add_query(query, opts)
+      else
+        {:error, %Ash.Query{errors: errors} = query} ->
+          {:error, Ash.Error.to_error_class(errors, query: query)}
+
+        {:error, error} ->
+          {:error, Ash.Error.to_error_class(error, query: query)}
       end
     after
       if stop? do
