@@ -334,7 +334,7 @@ defmodule Ash.DataLayer.Mnesia do
 
     result =
       Mnesia.transaction(fn ->
-        with {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
+        with {:ok, record} <- Ash.Changeset.apply_attributes(%{changeset | action_type: :update}),
              {:ok, record} <- do_update(table(resource), {pkey, record}, resource),
              {:ok, record} <- Ash.DataLayer.Ets.cast_record(record, resource) do
           new_pkey = pkey_list(resource, record)

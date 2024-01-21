@@ -908,7 +908,7 @@ defmodule Ash.DataLayer.Ets do
             |> Map.put(:data, result)
             |> Ash.Changeset.force_change_attributes(to_set)
 
-          update(resource, changeset, Map.take(result, pkey))
+          update(resource, %{changeset | action_type: :update}, Map.take(result, pkey))
 
         {:ok, _} ->
           {:error, "Multiple records matching keys"}
