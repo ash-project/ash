@@ -190,8 +190,17 @@ defmodule Ash.Resource.Builder do
         module -> {module, []}
       end
 
+    type =
+      if opts[:prepend?] do
+        :prepend
+      else
+        :append
+      end
+
+    opts = Keyword.delete(opts, :prepend?)
+
     with {:ok, change} <- build_change(ref, opts) do
-      Transformer.add_entity(dsl_state, [:changes], change, type: :append)
+      Transformer.add_entity(dsl_state, [:changes], change, type: type)
     end
   end
 
