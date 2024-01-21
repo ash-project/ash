@@ -219,12 +219,13 @@ defmodule Ash.Actions.Read do
                %{
                  query
                  | calculations: Map.new(calculations_at_runtime, &{&1.name, &1}),
-                   select: []
+                   load_through: Map.delete(query.load_through || %{}, :attribute)
                },
                query.api,
                opts[:actor],
                opts[:tracer],
-               opts[:authorize?]
+               opts[:authorize?],
+               false
              ) do
         data
         |> Helpers.restrict_field_access(query)
@@ -710,7 +711,8 @@ defmodule Ash.Actions.Read do
          api,
          actor,
          tracer,
-         authorize?
+         authorize?,
+         attrs? \\ true
        ) do
     load_through =
       query.resource
@@ -832,9 +834,8 @@ defmodule Ash.Actions.Read do
             {:halt, {:error, error}}
         end
 
-      {:attribute, load_through}, {:ok, results} ->
+      {:attribute, load_through}, {:ok, results} when attrs? ->
         load_through
-        |> Map.take(query.select)
         |> Enum.reduce_while({:ok, results}, fn {name, load_statement}, {:ok, results} ->
           load_statement =
             if is_map(load_statement) and not is_struct(load_statement) do
@@ -915,6 +916,9 @@ defmodule Ash.Actions.Read do
           {:error, error} ->
             {:halt, {:error, error}}
         end
+
+        _, {:ok, results} ->
+        {:cont, {:ok, results}}
     end)
   end
 
