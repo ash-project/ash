@@ -430,8 +430,6 @@ defmodule Ash.Actions.Read.Relationships do
       related_query,
       Ash.context_to_opts(related_query.context),
       fn ->
-        IO.inspect(Ash.DataLayer.in_transaction?(related_query.resource))
-        IO.inspect(self(), label: "fetch pid")
         result =
           related_query
           |> select_destination_attribute(relationship)
@@ -440,17 +438,7 @@ defmodule Ash.Actions.Read.Relationships do
           |> Ash.Query.set_context(%{
             accessing_from: %{source: relationship.source, name: relationship.name}
           })
-          |> tap(fn thing ->
-            if Application.get_env(:foo, :bar) do
-              IO.inspect(thing)
-            end
-          end)
           |> Ash.Actions.Read.unpaginated_read()
-          |> tap(fn thing ->
-            if Application.get_env(:foo, :bar) do
-              IO.inspect(thing)
-            end
-          end)
 
         {relationship, related_query, result}
       end
