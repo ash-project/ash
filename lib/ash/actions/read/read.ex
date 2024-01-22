@@ -139,6 +139,23 @@ defmodule Ash.Actions.Read do
     opts = Keyword.put(opts, :page, page_opts)
 
     query =
+      if opts[:page] do
+        query
+        |> Ash.Query.set_context(%{
+          initial_limit: query.limit,
+          initial_offset: query.offset,
+          page_opts:
+            unless opts[:inital_data] do
+              page_opts
+            end,
+          initial_query: query,
+          query_opts: opts
+        })
+      else
+        query
+      end
+
+    query =
       if opts[:page] && opts[:page][:limit] &&
            (opts[:page][:before] || opts[:page][:after] ||
               (action.pagination.keyset? && !opts[:page][:offset])) do
@@ -152,16 +169,6 @@ defmodule Ash.Actions.Read do
 
     query =
       if opts[:initial_data] do
-        query =
-          query
-          |> Ash.Query.set_context(%{
-            initial_limit: query.limit,
-            initial_offset: query.offset,
-            page_opts: nil,
-            initial_query: query,
-            query_opts: opts
-          })
-
         select = source_fields(query) ++ (query.select || [])
 
         select =
@@ -179,15 +186,7 @@ defmodule Ash.Actions.Read do
           query
         end
       else
-        query
-        |> Ash.Query.set_context(%{
-          initial_limit: query.limit,
-          initial_offset: query.offset,
-          page_opts: page_opts,
-          initial_query: query,
-          query_opts: opts
-        })
-        |> Ash.Query.ensure_selected(source_fields(query))
+        Ash.Query.ensure_selected(query, source_fields(query))
       end
 
     query =
