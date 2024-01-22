@@ -770,11 +770,12 @@ defmodule Ash.DataLayer.Ets do
             nil ->
               {sum, count}
 
-            %Decimal{} = value ->
-              {Decimal.add(sum, value || Decimal.new(0)), count + 1}
-
             value ->
-              {sum + (value || 0), count + 1}
+              if is_struct(sum, Decimal) do
+                {Decimal.add(sum, value || Decimal.new(0)), count + 1}
+              else
+                {sum + (value || 0), count + 1}
+              end
           end
         end)
         |> case do
