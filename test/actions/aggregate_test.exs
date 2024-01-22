@@ -24,7 +24,7 @@ defmodule Ash.Test.Actions.AggregateTest do
 
       attribute :thing2, :decimal
 
-      attribute :thing3, :decimal
+      attribute :thing3, :integer
     end
 
     relationships do
@@ -316,9 +316,9 @@ defmodule Ash.Test.Actions.AggregateTest do
       assert Decimal.eq?(Api.load!(post, :max_of_thing2).max_of_thing2, Decimal.new(20))
       assert Decimal.eq?(Api.load!(post, :average_of_thing2).average_of_thing2, Decimal.new(15))
 
-      assert Decimal.eq?(Api.load!(post, :min_of_thing3).min_of_thing3, Decimal.new(100))
-      assert Decimal.eq?(Api.load!(post, :max_of_thing3).max_of_thing3, Decimal.new(200))
-      assert Decimal.eq?(Api.load!(post, :average_of_thing3).average_of_thing3, Decimal.new(150))
+      assert Api.load!(post, :min_of_thing3).min_of_thing3 == 100
+      assert Api.load!(post, :max_of_thing3).max_of_thing3 == 200
+      assert Api.load!(post, :average_of_thing3).average_of_thing3 == 150
     end
   end
 end
