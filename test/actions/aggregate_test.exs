@@ -21,6 +21,10 @@ defmodule Ash.Test.Actions.AggregateTest do
       end
 
       attribute :thing, :string
+
+      attribute :thing2, :decimal do
+        default 0
+      end
     end
 
     relationships do
@@ -79,6 +83,18 @@ defmodule Ash.Test.Actions.AggregateTest do
       end
 
       count :count_of_comments_unauthorized, :comments do
+        authorize? false
+      end
+
+      min :min_of_thing2, :comments, :thing2 do
+        authorize? false
+      end
+
+      max :max_of_thing2, :comments, :thing2 do
+        authorize? false
+      end
+
+      avg :average_of_thing2, :comments, :thing2 do
         authorize? false
       end
     end
@@ -242,6 +258,39 @@ defmodule Ash.Test.Actions.AggregateTest do
 
       assert Api.load!(post, :count_of_comment_posts_with_matching_things).count_of_comment_posts_with_matching_things ==
                1
+    end
+
+    test "aggregations on decimal fields succeed" do
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{
+          title: "title",
+          public: true,
+          thing: "not the same"
+        })
+        |> Api.create!()
+
+      Comment
+      |> Ash.Changeset.for_create(:create, %{
+        post_id: post.id,
+        public: true,
+        thing: "doesnt match",
+        thing2: 10
+      })
+      |> Api.create!()
+
+      Comment
+      |> Ash.Changeset.for_create(:create, %{
+        post_id: post.id,
+        public: true,
+        thing: "doesnt match",
+        thing2: 20
+      })
+      |> Api.create!()
+
+      assert Decimal.eq?(Api.load!(post, :min_of_thing2).min_of_thing2, Decimal.new(10))
+      assert Decimal.eq?(Api.load!(post, :max_of_thing2).max_of_thing2, Decimal.new(20))
+      assert Decimal.eq?(Api.load!(post, :average_of_thing2).average_of_thing2, Decimal.new(15))
     end
   end
 end
