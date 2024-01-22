@@ -254,7 +254,7 @@ defmodule Ash.Actions.Read do
           count,
           query.sort,
           query,
-          Keyword.put(opts, :page, query.context[:page_opts] || opts[:page])
+          opts
         )
         |> add_query(query, opts)
       else
