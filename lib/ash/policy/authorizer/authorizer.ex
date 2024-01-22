@@ -827,12 +827,18 @@ defmodule Ash.Policy.Authorizer do
   @impl true
   def add_calculations(query_or_changeset, authorizer, _context) do
     accessing_fields =
-      case query_or_changeset do
-        %Ash.Query{} = query ->
-          Ash.Query.accessing(query, [:attributes, :calculations, :aggregates])
+      if Ash.Policy.Info.field_policies(query_or_changeset.resource) == [] do
+        # If there are no field policies, access is allowed by default
+        # and we don't need to add any calculations
+        []
+      else
+        case query_or_changeset do
+          %Ash.Query{} = query ->
+            Ash.Query.accessing(query, [:attributes, :calculations, :aggregates])
 
-        %Ash.Changeset{} = changeset ->
-          Ash.Changeset.accessing(changeset, [:attributes, :calculations, :aggregates])
+          %Ash.Changeset{} = changeset ->
+            Ash.Changeset.accessing(changeset, [:attributes, :calculations, :aggregates])
+        end
       end
 
     pkey = Ash.Resource.Info.primary_key(query_or_changeset.resource)
