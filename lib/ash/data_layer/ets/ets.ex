@@ -759,18 +759,18 @@ defmodule Ash.DataLayer.Ets do
               {sum, count}
 
             value ->
-              if is_struct(value, Decimal) do
-                if sum == nil do
+              case {sum, value} do
+                {nil, %Decimal{}} ->
                   {Decimal.new(value), count + 1}
-                else
-                  {Decimal.add(sum, value || Decimal.new(0)), count + 1}
-                end
-              else
-                if sum == nil do
+
+                {_not_nil, %Decimal{}} ->
+                  {Decimal.add(sum, value), count + 1}
+
+                {nil, _not_decimal} ->
                   {value, count + 1}
-                else
+
+                {_not_nil, _not_decimal} ->
                   {sum + value, count + 1}
-                end
               end
           end
         end)
