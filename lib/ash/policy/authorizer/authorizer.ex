@@ -540,7 +540,6 @@ defmodule Ash.Policy.Authorizer do
       _ ->
         altered =
           sort
-          # primary key doesn't have policies on it, and so is nil here
           |> Enum.with_index()
           |> Enum.reduce(
             {[], authorizer_acc(authorizer, authorizer.resource, context)},
@@ -773,13 +772,13 @@ defmodule Ash.Policy.Authorizer do
            %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
       end
 
-    policies = Ash.Policy.Info.field_policies_for_field(resource, field)
-
     {expr, authorizer} =
-      if is_nil(policies) do
+      if field in Ash.Resource.Info.primary_key(resource) do
         # primary key doesn't have policies on it, and so is nil here
         {true, authorizer}
       else
+        policies = Ash.Policy.Info.field_policies_for_field(resource, field)
+
         case strict_check_result(
                %{
                  authorizer
@@ -836,12 +835,15 @@ defmodule Ash.Policy.Authorizer do
           Ash.Changeset.accessing(changeset, [:attributes, :calculations, :aggregates])
       end
 
+    pkey = Ash.Resource.Info.primary_key(query_or_changeset.resource)
+
     accessing_fields
+    # primary key doesn't are always accessible
+    |> Enum.reject(&(&1 in pkey))
+    |> dbg()
     |> Enum.group_by(fn field ->
       Ash.Policy.Info.field_policies_for_field(query_or_changeset.resource, field)
     end)
-    # primary key doesn't have policies on it, and so is nil here
-    |> Map.drop([nil, []])
     |> Enum.reduce(
       {query_or_changeset, authorizer},
       fn {policies, fields}, {query_or_changeset, authorizer} ->
