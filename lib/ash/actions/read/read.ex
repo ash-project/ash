@@ -136,7 +136,6 @@ defmodule Ash.Actions.Read do
       )
 
     page_opts = page_opts(action, opts)
-    opts = Keyword.put(opts, :page, page_opts)
 
     query =
       if opts[:page] do
@@ -154,6 +153,8 @@ defmodule Ash.Actions.Read do
       else
         query
       end
+
+    opts = Keyword.put(opts, :page, page_opts)
 
     query =
       if opts[:page] && opts[:page][:limit] &&
