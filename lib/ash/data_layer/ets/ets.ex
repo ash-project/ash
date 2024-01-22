@@ -751,21 +751,35 @@ defmodule Ash.DataLayer.Ets do
           else
             records
             |> Stream.map(&Map.get(&1, field))
-            |> Stream.uniq()
           end
         end)
-        |> Enum.reduce({0, 0}, fn value, {sum, count} ->
+        |> Enum.reduce({nil, 0}, fn value, {sum, count} ->
           case value do
             nil ->
               {sum, count}
 
             value ->
-              {sum + (value || 0), count + 1}
+              case {sum, value} do
+                {nil, %Decimal{}} ->
+                  {Decimal.new(value), count + 1}
+
+                {_not_nil, %Decimal{}} ->
+                  {Decimal.add(sum, value), count + 1}
+
+                {nil, _not_decimal} ->
+                  {value, count + 1}
+
+                {_not_nil, _not_decimal} ->
+                  {sum + value, count + 1}
+              end
           end
         end)
         |> case do
           {_, 0} ->
             nil
+
+          {%Decimal{} = sum, count} ->
+            Decimal.div(sum, count)
 
           {sum, count} ->
             sum / count
@@ -786,15 +800,29 @@ defmodule Ash.DataLayer.Ets do
                 items |> Stream.reject(&is_nil/1)
               end
 
+            first_item = List.first(Enum.to_list(Stream.take(items, 1)))
+
             case kind do
               :sum ->
-                Enum.sum(items)
+                if is_struct(first_item, Decimal) do
+                  Enum.reduce(items, Decimal.new(0), &Decimal.add(&1, &2))
+                else
+                  Enum.sum(items)
+                end
 
               :max ->
-                Enum.max(items)
+                if is_struct(first_item, Decimal) do
+                  Enum.reduce(items, &Decimal.max(&1, &2))
+                else
+                  Enum.max(items)
+                end
 
               :min ->
-                Enum.min(items)
+                if is_struct(first_item, Decimal) do
+                  Enum.reduce(items, &Decimal.min(&1, &2))
+                else
+                  Enum.min(items)
+                end
             end
         end
     end
