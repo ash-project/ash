@@ -135,7 +135,26 @@ defmodule Ash.Actions.Read do
         opts[:tracer]
       )
 
-    opts = Keyword.put(opts, :page, page_opts(action, opts))
+    page_opts = page_opts(action, opts)
+
+    query =
+      if opts[:page] do
+        query
+        |> Ash.Query.set_context(%{
+          initial_limit: query.limit,
+          initial_offset: query.offset,
+          page_opts:
+            unless opts[:inital_data] do
+              page_opts
+            end,
+          initial_query: query,
+          query_opts: opts
+        })
+      else
+        query
+      end
+
+    opts = Keyword.put(opts, :page, page_opts)
 
     query =
       if opts[:page] && opts[:page][:limit] &&
