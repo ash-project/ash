@@ -742,39 +742,35 @@ defmodule Ash.DataLayer.Ets do
         end)
 
       :avg ->
-        items =
-          records
-          |> then(fn records ->
-            if uniq? do
-              records
-              |> Stream.map(&Map.get(&1, field))
-              |> Stream.uniq()
-            else
-              records
-              |> Stream.map(&Map.get(&1, field))
-            end
-          end)
-
-        first_item = List.first(Enum.to_list(Stream.take(items, 1)))
-
-        initial_value =
-          if is_struct(first_item, Decimal) do
-            Decimal.new(0)
+        records
+        |> then(fn records ->
+          if uniq? do
+            records
+            |> Stream.map(&Map.get(&1, field))
+            |> Stream.uniq()
           else
-            0
+            records
+            |> Stream.map(&Map.get(&1, field))
           end
-
-        items
-        |> Enum.reduce({initial_value, 0}, fn value, {sum, count} ->
+        end)
+        |> Enum.reduce({nil, 0}, fn value, {sum, count} ->
           case value do
             nil ->
               {sum, count}
 
             value ->
-              if is_struct(sum, Decimal) do
-                {Decimal.add(sum, value || Decimal.new(0)), count + 1}
+              if is_struct(value, Decimal) do
+                if sum == nil do
+                  {Decimal.new(value), count + 1}
+                else
+                  {Decimal.add(sum, value || Decimal.new(0)), count + 1}
+                end
               else
-                {sum + (value || 0), count + 1}
+                if sum == nil do
+                  {value, count + 1}
+                else
+                  {sum + value, count + 1}
+                end
               end
           end
         end)

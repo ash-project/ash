@@ -22,9 +22,9 @@ defmodule Ash.Test.Actions.AggregateTest do
 
       attribute :thing, :string
 
-      attribute :thing2, :decimal do
-        default 0
-      end
+      attribute :thing2, :decimal
+
+      attribute :thing3, :decimal
     end
 
     relationships do
@@ -95,6 +95,18 @@ defmodule Ash.Test.Actions.AggregateTest do
       end
 
       avg :average_of_thing2, :comments, :thing2 do
+        authorize? false
+      end
+
+      min :min_of_thing3, :comments, :thing3 do
+        authorize? false
+      end
+
+      max :max_of_thing3, :comments, :thing3 do
+        authorize? false
+      end
+
+      avg :average_of_thing3, :comments, :thing3 do
         authorize? false
       end
     end
@@ -275,7 +287,8 @@ defmodule Ash.Test.Actions.AggregateTest do
         post_id: post.id,
         public: true,
         thing: "doesnt match",
-        thing2: 10
+        thing2: 10,
+        thing3: 100
       })
       |> Api.create!()
 
@@ -284,13 +297,28 @@ defmodule Ash.Test.Actions.AggregateTest do
         post_id: post.id,
         public: true,
         thing: "doesnt match",
-        thing2: 20
+        thing2: 20,
+        thing3: 200
+      })
+      |> Api.create!()
+
+      Comment
+      |> Ash.Changeset.for_create(:create, %{
+        post_id: post.id,
+        public: true,
+        thing: "doesnt match",
+        thing2: nil,
+        thing3: nil
       })
       |> Api.create!()
 
       assert Decimal.eq?(Api.load!(post, :min_of_thing2).min_of_thing2, Decimal.new(10))
       assert Decimal.eq?(Api.load!(post, :max_of_thing2).max_of_thing2, Decimal.new(20))
       assert Decimal.eq?(Api.load!(post, :average_of_thing2).average_of_thing2, Decimal.new(15))
+
+      assert Decimal.eq?(Api.load!(post, :min_of_thing3).min_of_thing3, Decimal.new(100))
+      assert Decimal.eq?(Api.load!(post, :max_of_thing3).max_of_thing3, Decimal.new(200))
+      assert Decimal.eq?(Api.load!(post, :average_of_thing3).average_of_thing3, Decimal.new(150))
     end
   end
 end
