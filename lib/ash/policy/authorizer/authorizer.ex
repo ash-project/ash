@@ -774,7 +774,7 @@ defmodule Ash.Policy.Authorizer do
 
     {expr, authorizer} =
       if field in Ash.Resource.Info.primary_key(resource) do
-        # primary key doesn't have policies on it, and so is nil here
+        # primary keys are always accessible
         {true, authorizer}
       else
         policies = Ash.Policy.Info.field_policies_for_field(resource, field)
@@ -838,7 +838,7 @@ defmodule Ash.Policy.Authorizer do
     pkey = Ash.Resource.Info.primary_key(query_or_changeset.resource)
 
     accessing_fields
-    # primary key doesn't are always accessible
+    # primary keys are always accessible
     |> Enum.reject(&(&1 in pkey))
     |> dbg()
     |> Enum.group_by(fn field ->
