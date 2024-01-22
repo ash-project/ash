@@ -135,7 +135,8 @@ defmodule Ash.Actions.Read do
         opts[:tracer]
       )
 
-    opts = Keyword.put(opts, :page, page_opts(action, opts))
+    page_opts = page_opts(action, opts)
+    opts = Keyword.put(opts, :page, page_opts)
 
     query =
       if opts[:page] && opts[:page][:limit] &&
@@ -151,6 +152,16 @@ defmodule Ash.Actions.Read do
 
     query =
       if opts[:initial_data] do
+        query =
+          query
+          |> Ash.Query.set_context(%{
+            initial_limit: query.limit,
+            initial_offset: query.offset,
+            page_opts: nil,
+            initial_query: query,
+            query_opts: opts
+          })
+
         select = source_fields(query) ++ (query.select || [])
 
         select =
@@ -168,7 +179,15 @@ defmodule Ash.Actions.Read do
           query
         end
       else
-        Ash.Query.ensure_selected(query, source_fields(query))
+        query
+        |> Ash.Query.set_context(%{
+          initial_limit: query.limit,
+          initial_offset: query.offset,
+          page_opts: page_opts,
+          initial_query: query,
+          query_opts: opts
+        })
+        |> Ash.Query.ensure_selected(source_fields(query))
       end
 
     query =
