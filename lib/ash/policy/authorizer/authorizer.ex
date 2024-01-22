@@ -826,12 +826,12 @@ defmodule Ash.Policy.Authorizer do
 
   @impl true
   def add_calculations(query_or_changeset, authorizer, _context) do
-    accessing_fields =
-      if Ash.Policy.Info.field_policies(query_or_changeset.resource) == [] do
-        # If there are no field policies, access is allowed by default
-        # and we don't need to add any calculations
-        []
-      else
+    if Ash.Policy.Info.field_policies(query_or_changeset.resource) == [] do
+      # If there are no field policies, access is allowed by default
+      # and we don't need to add any calculations
+      {:ok, query_or_changeset, authorizer}
+    else
+      accessing_fields =
         case query_or_changeset do
           %Ash.Query{} = query ->
             Ash.Query.accessing(query, [:attributes, :calculations, :aggregates])
@@ -839,87 +839,87 @@ defmodule Ash.Policy.Authorizer do
           %Ash.Changeset{} = changeset ->
             Ash.Changeset.accessing(changeset, [:attributes, :calculations, :aggregates])
         end
-      end
 
-    pkey = Ash.Resource.Info.primary_key(query_or_changeset.resource)
+      pkey = Ash.Resource.Info.primary_key(query_or_changeset.resource)
 
-    accessing_fields
-    # primary keys are always accessible
-    |> Enum.reject(&(&1 in pkey))
-    |> Enum.group_by(fn field ->
-      Ash.Policy.Info.field_policies_for_field(query_or_changeset.resource, field)
-    end)
-    |> Enum.reduce(
-      {query_or_changeset, authorizer},
-      fn {policies, fields}, {query_or_changeset, authorizer} ->
-        {expr, authorizer} =
-          case strict_check_result(
-                 %{
-                   authorizer
-                   | policies: policies
-                 }
-                 |> add_query_or_changeset(query_or_changeset),
-                 for_fields: fields,
-                 context_description: "selecting or loading fields"
-               ) do
-            {:authorized, authorizer} ->
-              {true, authorizer}
+      accessing_fields
+      # primary keys are always accessible
+      |> Enum.reject(&(&1 in pkey))
+      |> Enum.group_by(fn field ->
+        Ash.Policy.Info.field_policies_for_field(query_or_changeset.resource, field)
+      end)
+      |> Enum.reduce(
+        {query_or_changeset, authorizer},
+        fn {policies, fields}, {query_or_changeset, authorizer} ->
+          {expr, authorizer} =
+            case strict_check_result(
+                   %{
+                     authorizer
+                     | policies: policies
+                   }
+                   |> add_query_or_changeset(query_or_changeset),
+                   for_fields: fields,
+                   context_description: "selecting or loading fields"
+                 ) do
+              {:authorized, authorizer} ->
+                {true, authorizer}
 
-            {:error, _} ->
-              {false, authorizer}
+              {:error, _} ->
+                {false, authorizer}
 
-            {:filter, authorizer, filter} ->
-              {filter, authorizer}
+              {:filter, authorizer, filter} ->
+                {filter, authorizer}
 
-            {:filter_and_continue, filter, _authorizer} ->
-              raise """
-              Was given a partial filter for a field policy for fields #{inspect(fields)}.
+              {:filter_and_continue, filter, _authorizer} ->
+                raise """
+                Was given a partial filter for a field policy for fields #{inspect(fields)}.
 
-              Filter: #{inspect(filter)}
+                Filter: #{inspect(filter)}
 
-              Field policies must currently use only filter checks or simple checks.
-              """
+                Field policies must currently use only filter checks or simple checks.
+                """
 
-            {:continue, _} ->
-              raise """
-              Detected necessity for a runtime check for a field policy for fields #{inspect(fields)}.
+              {:continue, _} ->
+                raise """
+                Detected necessity for a runtime check for a field policy for fields #{inspect(fields)}.
 
-              Field policies must currently use only filter checks or simple checks.
-              """
+                Field policies must currently use only filter checks or simple checks.
+                """
+            end
+
+          # This is a hack that we need to clean up.
+          # Creating this kind of expression should be its own thing that we do
+          # with something in the `Expr` module
+
+          %{expression: expr} = Ash.Filter.parse!(query_or_changeset.resource, expr)
+
+          {:ok, calculation} =
+            Ash.Query.Calculation.new(
+              {:__ash_fields_are_visible__, fields},
+              Ash.Resource.Calculation.Expression,
+              [expr: expr],
+              :boolean
+            )
+
+          case query_or_changeset do
+            %Ash.Query{} = query ->
+              {Ash.Query.load(
+                 query,
+                 calculation
+               ), authorizer}
+
+            %Ash.Changeset{} = query ->
+              {Ash.Changeset.load(
+                 query,
+                 calculation
+               ), authorizer}
           end
-
-        # This is a hack that we need to clean up.
-        # Creating this kind of expression should be its own thing that we do
-        # with something in the `Expr` module
-
-        %{expression: expr} = Ash.Filter.parse!(query_or_changeset.resource, expr)
-
-        {:ok, calculation} =
-          Ash.Query.Calculation.new(
-            {:__ash_fields_are_visible__, fields},
-            Ash.Resource.Calculation.Expression,
-            [expr: expr],
-            :boolean
-          )
-
-        case query_or_changeset do
-          %Ash.Query{} = query ->
-            {Ash.Query.load(
-               query,
-               calculation
-             ), authorizer}
-
-          %Ash.Changeset{} = query ->
-            {Ash.Changeset.load(
-               query,
-               calculation
-             ), authorizer}
         end
-      end
-    )
-    |> then(fn {result, authorizer} ->
-      {:ok, result, authorizer}
-    end)
+      )
+      |> then(fn {result, authorizer} ->
+        {:ok, result, authorizer}
+      end)
+    end
   end
 
   defp add_query_or_changeset(
