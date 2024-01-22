@@ -840,7 +840,6 @@ defmodule Ash.Policy.Authorizer do
     accessing_fields
     # primary keys are always accessible
     |> Enum.reject(&(&1 in pkey))
-    |> dbg()
     |> Enum.group_by(fn field ->
       Ash.Policy.Info.field_policies_for_field(query_or_changeset.resource, field)
     end)
