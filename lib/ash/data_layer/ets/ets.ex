@@ -742,22 +742,36 @@ defmodule Ash.DataLayer.Ets do
         end)
 
       :avg ->
-        records
-        |> then(fn records ->
-          if uniq? do
-            records
-            |> Stream.map(&Map.get(&1, field))
-            |> Stream.uniq()
+        items =
+          records
+          |> then(fn records ->
+            if uniq? do
+              records
+              |> Stream.map(&Map.get(&1, field))
+              |> Stream.uniq()
+            else
+              records
+              |> Stream.map(&Map.get(&1, field))
+            end
+          end)
+
+        first_item = List.first(Enum.to_list(Stream.take(items, 1)))
+
+        initial_value =
+          if is_struct(first_item, Decimal) do
+            Decimal.new(0)
           else
-            records
-            |> Stream.map(&Map.get(&1, field))
-            |> Stream.uniq()
+            0
           end
-        end)
-        |> Enum.reduce({0, 0}, fn value, {sum, count} ->
+
+        items
+        |> Enum.reduce({initial_value, 0}, fn value, {sum, count} ->
           case value do
             nil ->
               {sum, count}
+
+            %Decimal{} = value ->
+              {Decimal.add(sum, value || Decimal.new(0)), count + 1}
 
             value ->
               {sum + (value || 0), count + 1}
@@ -766,6 +780,9 @@ defmodule Ash.DataLayer.Ets do
         |> case do
           {_, 0} ->
             nil
+
+          {%Decimal{} = sum, count} ->
+            Decimal.div(sum, count)
 
           {sum, count} ->
             sum / count
@@ -786,15 +803,29 @@ defmodule Ash.DataLayer.Ets do
                 items |> Stream.reject(&is_nil/1)
               end
 
+            first_item = List.first(Enum.to_list(Stream.take(items, 1)))
+
             case kind do
               :sum ->
-                Enum.sum(items)
+                if is_struct(first_item, Decimal) do
+                  Enum.reduce(items, Decimal.new(0), &Decimal.add(&1, &2))
+                else
+                  Enum.sum(items)
+                end
 
               :max ->
-                Enum.max(items)
+                if is_struct(first_item, Decimal) do
+                  Enum.reduce(items, &Decimal.max(&1, &2))
+                else
+                  Enum.max(items)
+                end
 
               :min ->
-                Enum.min(items)
+                if is_struct(first_item, Decimal) do
+                  Enum.reduce(items, &Decimal.min(&1, &2))
+                else
+                  Enum.min(items)
+                end
             end
         end
     end
