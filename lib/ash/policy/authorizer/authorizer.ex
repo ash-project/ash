@@ -540,6 +540,7 @@ defmodule Ash.Policy.Authorizer do
       _ ->
         altered =
           sort
+          # primary key doesn't have policies on it, and so is nil here
           |> Enum.with_index()
           |> Enum.reduce(
             {[], authorizer_acc(authorizer, authorizer.resource, context)},
@@ -775,38 +776,43 @@ defmodule Ash.Policy.Authorizer do
     policies = Ash.Policy.Info.field_policies_for_field(resource, field)
 
     {expr, authorizer} =
-      case strict_check_result(
-             %{
-               authorizer
-               | policies: policies
-             },
-             for_fields: [field],
-             context_description: "accessing field in filter"
-           ) do
-        {:authorized, authorizer} ->
-          {true, authorizer}
+      if is_nil(policies) do
+        # primary key doesn't have policies on it, and so is nil here
+        {true, authorizer}
+      else
+        case strict_check_result(
+               %{
+                 authorizer
+                 | policies: policies
+               },
+               for_fields: [field],
+               context_description: "accessing field in filter"
+             ) do
+          {:authorized, authorizer} ->
+            {true, authorizer}
 
-        {:error, _} ->
-          {false, authorizer}
+          {:error, _} ->
+            {false, authorizer}
 
-        {:filter, authorizer, filter} ->
-          {filter, authorizer}
+          {:filter, authorizer, filter} ->
+            {filter, authorizer}
 
-        {:filter_and_continue, filter, _authorizer} ->
-          raise """
-          Was given a partial filter for a field policy for field #{inspect(field)}.
+          {:filter_and_continue, filter, _authorizer} ->
+            raise """
+            Was given a partial filter for a field policy for field #{inspect(field)}.
 
-          Filter: #{inspect(filter)}
+            Filter: #{inspect(filter)}
 
-          Field policies must currently use only filter checks or simple checks.
-          """
+            Field policies must currently use only filter checks or simple checks.
+            """
 
-        {:continue, _} ->
-          raise """
-          Detected necessity for a runtime check for a field policy for field #{inspect(field)}.
+          {:continue, _} ->
+            raise """
+            Detected necessity for a runtime check for a field policy for field #{inspect(field)}.
 
-          Field policies must currently use only filter checks or simple checks.
-          """
+            Field policies must currently use only filter checks or simple checks.
+            """
+        end
       end
 
     new_acc = %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}
