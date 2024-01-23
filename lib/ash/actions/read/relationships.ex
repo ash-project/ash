@@ -165,33 +165,50 @@ defmodule Ash.Actions.Read.Relationships do
             |> Map.put(:api, join_relationship.api || related_query.api)
             |> hydrate_refs(relationship.source)
 
-          case through_query.api.can(through_query,
-                 alter_source?: true,
-                 run_queries?: false,
-                 base_query: through_query
-               ) do
-            {:ok, true} ->
-              {:ok,
-               [
-                 {clear_lateral_join_source(source_query), relationship.source_attribute,
-                  relationship.source_attribute_on_join_resource, relationship},
-                 {clear_lateral_join_source(through_query),
-                  relationship.destination_attribute_on_join_resource,
-                  relationship.destination_attribute, join_relationship}
-               ]}
+          if source_query.context[:private][:authorize?] do
+            case through_query.api.can(
+                   through_query,
+                   source_query.context[:private][:actor],
+                   return_forbidden_error?: true,
+                   alter_source?: true,
+                   run_queries?: false,
+                   base_query: through_query
+                 ) do
+              {:ok, true} ->
+                {:ok,
+                 [
+                   {clear_lateral_join_source(source_query), relationship.source_attribute,
+                    relationship.source_attribute_on_join_resource, relationship},
+                   {clear_lateral_join_source(through_query),
+                    relationship.destination_attribute_on_join_resource,
+                    relationship.destination_attribute, join_relationship}
+                 ]}
 
-            {:ok, true, authorized_through_query} ->
-              {:ok,
-               [
-                 {clear_lateral_join_source(source_query), relationship.source_attribute,
-                  relationship.source_attribute_on_join_resource, relationship},
-                 {clear_lateral_join_source(authorized_through_query),
-                  relationship.destination_attribute_on_join_resource,
-                  relationship.destination_attribute, join_relationship}
-               ]}
+              {:ok, true, authorized_through_query} ->
+                {:ok,
+                 [
+                   {clear_lateral_join_source(source_query), relationship.source_attribute,
+                    relationship.source_attribute_on_join_resource, relationship},
+                   {clear_lateral_join_source(authorized_through_query),
+                    relationship.destination_attribute_on_join_resource,
+                    relationship.destination_attribute, join_relationship}
+                 ]}
 
-            {:error, error} ->
-              {:error, Ash.Error.set_path(error, join_relationship.name)}
+              {:ok, false, error} ->
+                {:error, Ash.Error.set_path(error, join_relationship.name)}
+
+              {:error, error} ->
+                {:error, Ash.Error.set_path(error, join_relationship.name)}
+            end
+          else
+            {:ok,
+             [
+               {clear_lateral_join_source(source_query), relationship.source_attribute,
+                relationship.source_attribute_on_join_resource, relationship},
+               {clear_lateral_join_source(through_query),
+                relationship.destination_attribute_on_join_resource,
+                relationship.destination_attribute, join_relationship}
+             ]}
           end
         else
           {:ok,
