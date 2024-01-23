@@ -1136,8 +1136,6 @@ defmodule Ash.Query do
   See the callback documentation for `c:Ash.Type.merge_load/4` for more.
   """
   def merge_query_load(left, right, context) do
-    IO.inspect([left: left, right: right], label: :merge_query_load)
-
     if context do
       Ash.Actions.Read.Calculations.merge_query_load(
         left,
@@ -1190,75 +1188,57 @@ defmodule Ash.Query do
   def load(query, fields) do
     query = to_query(query)
 
-    IO.inspect(query, label: :load_input_query)
+    Enum.reduce(fields, query, fn
+      %Ash.Query{} = new, query ->
+        merge_load(query, new)
 
-    result =
-      Enum.reduce(fields, query, fn
-        %Ash.Query{} = new, query ->
-          merge_load(query, new)
+      [], query ->
+        query
 
-        [], query ->
-          query
+      {field, %__MODULE__{} = nested}, query ->
+        load_relationship(query, [{field, nested}])
 
-        {field, %__MODULE__{} = nested}, query ->
-          load_relationship(query, [{field, nested}])
+      {field, {args, load_through}}, query ->
+        if resource_calculation = Ash.Resource.Info.calculation(query.resource, field) do
+          load_resource_calculation(query, resource_calculation, args, load_through)
+        else
+          add_error(
+            query,
+            :load,
+            Ash.Error.Query.InvalidLoad.exception(load: [{field, {args, load_through}}])
+          )
+        end
 
-        {field, {args, load_through}}, query ->
-          if resource_calculation = Ash.Resource.Info.calculation(query.resource, field) do
-            load_resource_calculation(query, resource_calculation, args, load_through)
-          else
-            add_error(
-              query,
-              :load,
-              Ash.Error.Query.InvalidLoad.exception(load: [{field, {args, load_through}}])
-            )
-          end
+      {field, rest}, query ->
+        cond do
+          rel = Ash.Resource.Info.relationship(query.resource, field) ->
+            nested_query = load(rel.destination, rest)
 
-        {field, rest}, query ->
-          cond do
-            rel = Ash.Resource.Info.relationship(query.resource, field) ->
-              nested_query = load(rel.destination, rest)
+            load_relationship(query, [{field, nested_query}])
 
-              load_relationship(query, [{field, nested_query}])
+          resource_calculation = Ash.Resource.Info.calculation(query.resource, field) ->
+            load_resource_calculation(query, resource_calculation, rest)
 
-            resource_calculation = Ash.Resource.Info.calculation(query.resource, field) ->
-              load_resource_calculation(query, resource_calculation, rest)
+          attribute = Ash.Resource.Info.attribute(query.resource, field) ->
+            if Ash.Type.can_load?(attribute.type, attribute.constraints) do
+              query
+              |> Ash.Query.ensure_selected(attribute.name)
+              |> Ash.Query.load_through(:attribute, attribute.name, rest)
+            else
+              add_error(
+                query,
+                :load,
+                Ash.Error.Query.InvalidLoad.exception(load: [{field, rest}])
+              )
+            end
 
-            attribute = Ash.Resource.Info.attribute(query.resource, field) ->
-              if Ash.Type.can_load?(attribute.type, attribute.constraints) do
-                query
-                |> Ash.Query.ensure_selected(attribute.name)
-                |> Ash.Query.load_through(:attribute, attribute.name, rest)
-              else
-                add_error(
-                  query,
-                  :load,
-                  Ash.Error.Query.InvalidLoad.exception(load: [{field, rest}])
-                )
-              end
+          true ->
+            add_error(query, :load, Ash.Error.Query.InvalidLoad.exception(load: field))
+        end
 
-            true ->
-              add_error(query, :load, Ash.Error.Query.InvalidLoad.exception(load: field))
-          end
-
-        field, query ->
-          do_load(query, field)
-      end)
-      |> IO.inspect(label: :load_result_query)
-
-    log_if_hotel(query, query: query, result: result, fields: fields)
-
-    result
-  end
-
-  def log_if_hotel(query, values) do
-    if query.resource == JdlEngine.Inventory.Resources.Hotel do
-      fun = fn values ->
-        dbg()
-      end
-
-      fun.(values)
-    end
+      field, query ->
+        do_load(query, field)
+    end)
   end
 
   defp load_resource_calculation(query, resource_calculation, args, load_through \\ nil) do
@@ -1470,8 +1450,6 @@ defmodule Ash.Query do
   end
 
   defp do_load(query, field) do
-    log_if_hotel(query, query: query, field: field)
-
     cond do
       match?(%Ash.Query.Calculation{}, field) ->
         Map.update!(
@@ -1499,7 +1477,6 @@ defmodule Ash.Query do
         ensure_selected(query, field)
 
       Ash.Resource.Info.relationship(query.resource, field) ->
-        log_if_hotel(query, "load relationship")
         load_relationship(query, field)
 
       aggregate = Ash.Resource.Info.aggregate(query.resource, field) ->
@@ -2331,7 +2308,6 @@ defmodule Ash.Query do
          :ok <-
            validate_load(query, sanitized_statement),
          new_loads <- merge_load(query.load, sanitized_statement) do
-      log_if_hotel(query, old_query: query, new_query: %{query | load: new_loads})
       %{query | load: new_loads}
     else
       {:error, errors} ->

@@ -317,19 +317,18 @@ defmodule Ash.Actions.Read.Calculations do
       load_through_attribute_rewrites(ash_query, calculation, path)
   end
 
-  defp get_rewrites([], calculation, path, :relationships) do
-    dbg()
-
-    []
-    |> Enum.flat_map(fn {name, query} ->
-      get_all_rewrites(query, calculation, path ++ [name])
-    end)
-  end
-
   defp get_rewrites(ash_query, calculation, path, :relationships) do
     ash_query.load
-    |> Enum.flat_map(fn {name, query} ->
-      get_all_rewrites(query, calculation, path ++ [name])
+    |> Enum.flat_map(fn
+      {name, []} ->
+        relationship = Ash.Resource.Info.relationship(ash_query.resource, name)
+
+        relationship.destination
+        |> Ash.Query.new()
+        |> get_all_rewrites(calculation, path ++ [name])
+
+      {name, query} ->
+        get_all_rewrites(query, calculation, path ++ [name])
     end)
   end
 
@@ -479,15 +478,13 @@ defmodule Ash.Actions.Read.Calculations do
          can_expression_calculation?,
          checked_calculations
        ) do
-    IO.inspect(query, label: :query)
-
     requirements
     |> Enum.map(fn
       {key, value} ->
         {key, value}
 
       key ->
-        {key, []} |> IO.inspect(label: :requirements)
+        {key, []}
     end)
     |> Enum.reduce(query, fn
       {load, further}, query ->
@@ -768,7 +765,6 @@ defmodule Ash.Actions.Read.Calculations do
             raise "unknown load for #{inspect(query)}: #{inspect(load)}"
         end
     end)
-    |> IO.inspect(label: :result)
   end
 
   defp rename_and_replace_calculation(query, current_key, new_calc) do
@@ -824,8 +820,6 @@ defmodule Ash.Actions.Read.Calculations do
          can_expression_calculation?,
          checked_calculations
        ) do
-    IO.inspect(query, label: :load_dependend_on_calc)
-
     case find_equivalent_calculation(query, calculation) do
       {:ok, equivalent_calculation} ->
         if equivalent_calculation.load == calculation.load and
@@ -1004,8 +998,6 @@ defmodule Ash.Actions.Read.Calculations do
   def merge_query_load(left, right, api, calc_path, calc_name, calc_load, relationship_path) do
     can_expression_calculation? =
       Ash.DataLayer.data_layer_can?(left.resource, :expression_calculation)
-
-    IO.inspect(left, label: :merge_query_load_left)
 
     do_load_calculation_requirements(
       right.load ++ Map.values(right.calculations) ++ Map.values(right.aggregates),
