@@ -126,7 +126,7 @@ if Code.ensure_loaded?(Plug.Conn) do
         iex> conn = build_conn() |> set_tenant("my-tenant")
         %Plug.Conn{private: %{ash: %{tenant: "my-tenant}}} = conn
     """
-    @spec set_tenant(Conn.t(), String.t()) :: Conn.t()
+    @spec set_tenant(Conn.t(), term()) :: Conn.t()
     def set_tenant(conn, tenant) do
       ash_private =
         conn.private
@@ -164,7 +164,7 @@ if Code.ensure_loaded?(Plug.Conn) do
         ...> tenant = get_tenant(conn)
         "my_tenant" = tenant
     """
-    @spec get_tenant(Conn.t()) :: nil | Ash.Resource.record()
+    @spec get_tenant(Conn.t()) :: term()
     def get_tenant(%{assigns: %{tenant: tenant}}) when not is_nil(tenant) do
       emit_assign_warning(:tenant)
 

@@ -215,7 +215,7 @@ defmodule Ash.Changeset do
           resource: module,
           select: [atom] | nil,
           load: keyword(keyword),
-          tenant: any,
+          tenant: term(),
           timeout: pos_integer() | nil,
           valid?: boolean
         }
@@ -2820,7 +2820,7 @@ defmodule Ash.Changeset do
     set_context(changeset, %{key => value})
   end
 
-  @spec set_tenant(t(), String.t()) :: t()
+  @spec set_tenant(t(), term()) :: t()
   def set_tenant(changeset, tenant) do
     %{changeset | tenant: tenant}
   end

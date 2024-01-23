@@ -25,7 +25,7 @@ defmodule Ash.Calculation do
 
   @type context :: %{
           :actor => term | nil,
-          :tenant => String.t() | nil,
+          :tenant => term(),
           :authorize? => boolean | nil,
           :tracer => module | nil,
           optional(atom) => any
