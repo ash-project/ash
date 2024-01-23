@@ -581,9 +581,9 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`through`](#relationships-many_to_many-through){: #relationships-many_to_many-through .spark-required} | `module` |  | The resource to use as the join resource. |
 | [`source_attribute_on_join_resource`](#relationships-many_to_many-source_attribute_on_join_resource){: #relationships-many_to_many-source_attribute_on_join_resource } | `atom` |  | The attribute on the join resource that should line up with `source_attribute` on this resource. Defaults to `<snake_cased_last_part_of_source_module_name>_id`. |
 | [`destination_attribute_on_join_resource`](#relationships-many_to_many-destination_attribute_on_join_resource){: #relationships-many_to_many-destination_attribute_on_join_resource } | `atom` |  | The attribute on the join resource that should line up with `destination_attribute` on the related resource. Defaults to `<snake_cased_last_part_of_destination_module_name>_id`. |
+| [`through`](#relationships-many_to_many-through){: #relationships-many_to_many-through } | `module` |  | The resource to use as the join resource. |
 | [`join_relationship`](#relationships-many_to_many-join_relationship){: #relationships-many_to_many-join_relationship } | `atom` |  | The has_many relationship to the join resource. Defaults to `<relationship_name>_join_assoc`. |
 | [`description`](#relationships-many_to_many-description){: #relationships-many_to_many-description } | `String.t` |  | An optional description for the relationship |
 | [`destination_attribute`](#relationships-many_to_many-destination_attribute){: #relationships-many_to_many-destination_attribute } | `atom` | `:id` | The attribute on the related resource that should match the `source_attribute` configured on this resource. |
