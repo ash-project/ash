@@ -23,7 +23,7 @@ defmodule Ash.ActionInput do
   @type t :: %__MODULE__{
           arguments: map(),
           params: map(),
-          tenant: String.t() | nil,
+          tenant: term(),
           action: Ash.Resource.Actions.Action.t() | nil,
           resource: Ash.Resource.t(),
           invalid_keys: MapSet.t(),
@@ -63,7 +63,7 @@ defmodule Ash.ActionInput do
     |> require_arguments()
   end
 
-  @spec set_tenant(t(), String.t() | nil) :: t()
+  @spec set_tenant(t(), term()) :: t()
   def set_tenant(input, tenant) do
     %{input | tenant: tenant}
   end

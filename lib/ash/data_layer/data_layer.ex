@@ -180,12 +180,12 @@ defmodule Ash.DataLayer do
             | :replace_all
             | {:replace, list(atom)}
             | {:replace_all_except, list(atom)},
-          tenant: String.t() | nil
+          tenant: term()
         }
 
   @type bulk_update_options :: %{
           return_records?: boolean,
-          tenant: String.t() | nil
+          tenant: term()
         }
 
   @callback bulk_create(

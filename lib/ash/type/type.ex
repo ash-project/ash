@@ -168,7 +168,7 @@ defmodule Ash.Type do
   @type load_context :: %{
           api: Ash.Api.t(),
           actor: term() | nil,
-          tenant: String.t() | nil,
+          tenant: term(),
           tracer: list(Ash.Tracer.t()) | Ash.Tracer.t() | nil,
           authorize?: boolean | nil
         }

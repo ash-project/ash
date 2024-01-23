@@ -69,7 +69,7 @@ defmodule Ash.Query do
           distinct: [atom],
           filter: Ash.Filter.t() | nil,
           resource: module,
-          tenant: any,
+          tenant: term(),
           timeout: pos_integer() | nil,
           action_failed?: boolean,
           after_action: [
@@ -1817,7 +1817,7 @@ defmodule Ash.Query do
   def struct?(%_{}), do: true
   def struct?(_), do: false
 
-  @spec set_tenant(t() | Ash.Resource.t(), String.t()) :: t()
+  @spec set_tenant(t() | Ash.Resource.t(), term()) :: t()
   def set_tenant(query, tenant) do
     query = to_query(query)
     %{query | tenant: tenant}

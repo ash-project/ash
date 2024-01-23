@@ -24,7 +24,7 @@ defmodule Ash.Tracer do
           api: nil | module(),
           resource: nil | module(),
           actor: term(),
-          tenant: nil | String.t(),
+          tenant: term(),
           action: atom(),
           authorize?: boolean()
         }
