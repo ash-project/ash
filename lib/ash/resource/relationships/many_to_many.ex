@@ -58,19 +58,16 @@ defmodule Ash.Resource.Relationships.ManyToMany do
                 [
                   source_attribute_on_join_resource: [
                     type: :atom,
-                    required: false,
                     doc:
                       "The attribute on the join resource that should line up with `source_attribute` on this resource. Defaults to `<snake_cased_last_part_of_source_module_name>_id`."
                   ],
                   destination_attribute_on_join_resource: [
                     type: :atom,
-                    required: false,
                     doc:
                       "The attribute on the join resource that should line up with `destination_attribute` on the related resource. Defaults to `<snake_cased_last_part_of_destination_module_name>_id`."
                   ],
                   through: [
                     type: Ash.OptionsHelpers.ash_resource(),
-                    required: true,
                     doc: "The resource to use as the join resource."
                   ],
                   join_relationship: [
