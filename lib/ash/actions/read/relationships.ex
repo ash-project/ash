@@ -156,7 +156,7 @@ defmodule Ash.Actions.Read.Relationships do
           through_query =
             relationship.through
             |> Ash.Query.for_read(
-              relationship.read_action ||
+              relationship.through.read_action ||
                 Ash.Resource.Info.primary_action!(relationship.through, :read).name,
               %{},
               authorize?: source_query.context[:private][:authorize?],
