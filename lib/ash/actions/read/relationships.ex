@@ -165,7 +165,9 @@ defmodule Ash.Actions.Read.Relationships do
             |> Map.put(:api, join_relationship.api || related_query.api)
             |> hydrate_refs(relationship.source)
 
-          case through_query.api.can(through_query,
+          case through_query.api.can(
+                 through_query,
+                 source_query.context[:private][:actor],
                  alter_source?: true,
                  run_queries?: false,
                  base_query: through_query
