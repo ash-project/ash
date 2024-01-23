@@ -155,6 +155,14 @@ defmodule Ash.Actions.Read.Relationships do
 
           through_query =
             relationship.through
+            |> Ash.Query.for_read(
+              relationship.read_action ||
+                Ash.Resource.Info.primary_action!(relationship.through, :read).name,
+              %{},
+              authorize?: source_query.context[:private][:authorize?],
+              actor: source_query.context[:private][:actor],
+              tracer: source_query.context[:private][:tracer]
+            )
             |> Ash.Query.set_context(%{
               accessing_from: %{source: relationship.source, name: relationship.join_relationship}
             })
