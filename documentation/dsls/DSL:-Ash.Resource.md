@@ -1574,7 +1574,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`soft?`](#actions-destroy-soft?){: #actions-destroy-soft? } | `atom` | `false` | If specified, the destroy action behaves as an update internally |
+| [`soft?`](#actions-destroy-soft?){: #actions-destroy-soft? } | `boolean` | `false` | If specified, the destroy action behaves as an update internally |
 | [`manual`](#actions-destroy-manual){: #actions-destroy-manual } | `(any, any -> any) \| module` |  | Override the update behavior. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
 | [`primary?`](#actions-destroy-primary?){: #actions-destroy-primary? } | `boolean` | `false` | Whether or not this action should be used when no action is specified by the caller. |
 | [`description`](#actions-destroy-description){: #actions-destroy-description } | `String.t` |  | An optional description for the action |
