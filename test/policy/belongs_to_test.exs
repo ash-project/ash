@@ -87,7 +87,7 @@ defmodule Ash.Test.Policy.Actions.BelongsToTest do
       |> Ash.Changeset.for_create(:create, %{
         title: "A Post"
       })
-      |> Api.create!(authorize?: false)
+      |> Api.create!()
 
     assert_raise Ash.Error.Forbidden, fn ->
       post
@@ -109,7 +109,7 @@ defmodule Ash.Test.Policy.Actions.BelongsToTest do
       |> Ash.Changeset.for_create(:create, %{
         title: "A Post"
       })
-      |> Api.create!(authorize?: false)
+      |> Api.create!()
 
     post
     |> Ash.Changeset.for_update(
