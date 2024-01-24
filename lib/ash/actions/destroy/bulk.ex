@@ -87,7 +87,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           end
 
         context_key =
-          case action.type do
+          case atomic_changeset.action.type do
             :update ->
               :bulk_update
 
