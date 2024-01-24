@@ -251,9 +251,9 @@ defmodule Ash.Type do
   @callback generator(constraints) :: Enumerable.t()
   @callback simple_equality?() :: boolean
   @callback cast_atomic_update(new_value :: Ash.Expr.t(), constraints) ::
-              {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | :not_atomic
+              {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
   @callback cast_atomic_update_array(new_value :: Ash.Expr.t(), constraints) ::
-              {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | :not_atomic
+              {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
   @callback custom_apply_constraints_array?() :: boolean
   @callback load(
               values :: list(term),
@@ -835,9 +835,10 @@ defmodule Ash.Type do
   end
 
   @spec cast_atomic_update(t(), term, constraints()) ::
-          {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | :not_atomic
+          {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
   # not currently supported
-  def cast_atomic_update({:array, {:array, _}}, _term, _constraints), do: :not_atomic
+  def cast_atomic_update({:array, {:array, _}}, _term, _constraints),
+    do: {:not_atomic, "cannot currently atomically update doubly nested arrays"}
 
   def cast_atomic_update({:array, type}, term, constraints) do
     type = get_type(type)
@@ -1322,13 +1323,13 @@ defmodule Ash.Type do
             {:atomic, atomic} ->
               {:atomic, [atomic | vals]}
 
-            _ ->
-              {:halt, :not_atomic}
+            {:not_atomic, reason} ->
+              {:halt, {:not_atomic, reason}}
           end
         end)
         |> case do
           {:atomic, vals} -> {:atomic, Enum.reverse(vals)}
-          :not_atomic -> :not_atomic
+          {:not_atomic, reason} -> {:not_atomic, reason}
         end
       end
 

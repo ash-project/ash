@@ -32,11 +32,11 @@ defmodule Ash.Actions.Destroy.Bulk do
       if Ash.DataLayer.data_layer_can?(query.resource, :destroy_query) do
         Ash.Changeset.fully_atomic_changeset(query.resource, action, input, opts)
       else
-        :not_atomic
+        {:not_atomic, "data layer does not support destroying from a query"}
       end
 
     case fully_atomic_changeset do
-      :not_atomic ->
+      {:not_atomic, _reason} ->
         read_opts =
           opts
           |> Keyword.drop([

@@ -132,7 +132,7 @@ defmodule Ash.Resource.Change do
 
   @callback atomic(Ash.Changeset.t(), Keyword.t(), context()) ::
               {:atomic, %{atom() => Ash.Expr.t()}}
-              | :not_atomic
+              | {:not_atomic, String.t()}
               | :ok
               | {:error, term()}
 
@@ -152,7 +152,9 @@ defmodule Ash.Resource.Change do
       require Ash.Expr
 
       def init(opts), do: {:ok, opts}
-      def atomic(_opts, _context), do: :not_atomic
+
+      def atomic(_opts, _context),
+        do: {:not_atomic, "#{inspect(__MODULE__)} does not implement `atomic/2`"}
 
       defoverridable init: 1, atomic: 2
     end

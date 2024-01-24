@@ -31,11 +31,11 @@ defmodule Ash.Actions.Update.Bulk do
       if Ash.DataLayer.data_layer_can?(query.resource, :update_query) do
         Ash.Changeset.fully_atomic_changeset(query.resource, action, input, opts)
       else
-        :not_atomic
+        {:not_atomic, "data layer does not support updating a query"}
       end
 
     case fully_atomic_changeset do
-      :not_atomic ->
+      {:not_atomic, _} ->
         read_opts =
           opts
           |> Keyword.drop([

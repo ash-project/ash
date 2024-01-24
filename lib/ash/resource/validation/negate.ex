@@ -83,8 +83,8 @@ defmodule Ash.Resource.Validation.Negate do
          |> describe()
          |> InvalidAttribute.exception()}
 
-      :not_atomic ->
-        :not_atomic
+      {:not_atomic, reason} ->
+        {:not_atomic, reason}
     end
   end
 

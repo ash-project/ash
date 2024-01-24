@@ -53,7 +53,7 @@ defmodule Ash.Resource.Validation do
                   {:atomic, involved_fields :: list(atom) | :*, condition_expr :: Ash.Expr.t(),
                    error_expr :: Ash.Expr.t()}
                 ]
-              | :not_atomic
+              | {:not_atomic, String.t()}
               | {:error, term()}
 
   @optional_callbacks describe: 1, validate: 2, atomic: 2
@@ -128,7 +128,8 @@ defmodule Ash.Resource.Validation do
       end
 
       @impl Ash.Resource.Validation
-      def atomic(_changeset, _opts), do: :not_atomic
+      def atomic(_changeset, _opts),
+        do: {:not_atomic, "#{inspect(__MODULE__)} does not implement `atomic/2`"}
 
       defoverridable init: 1, atomic: 2
     end

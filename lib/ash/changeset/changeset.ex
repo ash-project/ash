@@ -486,7 +486,7 @@ defmodule Ash.Changeset do
           action :: atom() | Ash.Resource.Actions.action(),
           params :: map(),
           opts :: Keyword.t()
-        ) :: Ash.Changeset.t() | :not_atomic
+        ) :: Ash.Changeset.t() | {:not_atomic, String.t()}
   def fully_atomic_changeset(resource, action, params, opts \\ []) do
     action =
       case action do
@@ -513,8 +513,8 @@ defmodule Ash.Changeset do
          %Ash.Changeset{} = changeset <- atomic_changes(changeset, action) do
       hydrate_atomic_refs(changeset, opts[:actor], Keyword.take(opts, [:eager?]))
     else
-      _ ->
-        :not_atomic
+      {:not_atomic, reason} ->
+        {:not_atomic, reason}
     end
   end
 
@@ -534,8 +534,8 @@ defmodule Ash.Changeset do
     Enum.reduce_while(changes, changeset, fn
       %{change: _} = change, changeset ->
         case run_atomic_change(changeset, change, context) do
-          :not_atomic ->
-            {:halt, :not_atomic}
+          {:not_atomic, reason} ->
+            {:halt, {:not_atomic, reason}}
 
           changeset ->
             {:cont, changeset}
@@ -577,12 +577,12 @@ defmodule Ash.Changeset do
                   {:changing?, false} ->
                     {:cont, changeset}
 
-                  :not_atomic ->
-                    {:halt, :not_atomic}
+                  {:not_atomic, reason} ->
+                    {:halt, {:not_atomic, reason}}
                 end
             end)
             |> case do
-              :not_atomic -> {:halt, :not_atomic}
+              {:not_atomic, reason} -> {:halt, {:not_atomic, reason}}
               changeset -> {:cont, changeset}
             end
 
@@ -636,8 +636,8 @@ defmodule Ash.Changeset do
           atomic_update(changeset, atomic_changes)
       end
     else
-      :not_atomic ->
-        :not_atomic
+      {:not_atomic, reason} ->
+        {:not_atomic, reason}
 
       :ok ->
         changeset
@@ -710,8 +710,8 @@ defmodule Ash.Changeset do
 
           {:cont, {:atomic, new_expr}}
 
-        :not_atomic ->
-          {:halt, :not_atomic}
+        {:not_atomic, reason} ->
+          {:halt, {:not_atomic, reason}}
       end
     end)
   end
@@ -730,8 +730,8 @@ defmodule Ash.Changeset do
             {:error, error} ->
               {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
 
-            :not_atomic ->
-              {:halt, :not_atomic}
+            {:not_atomic, reason} ->
+              {:halt, {:not_atomic, reason}}
           end
 
         true ->
@@ -1082,10 +1082,10 @@ defmodule Ash.Changeset do
       {:atomic, value} ->
         %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
 
-      :not_atomic ->
+      {:not_atomic, message} ->
         add_error(
           changeset,
-          "Cannot atomically update #{inspect(changeset.resource)}.#{attribute.name}"
+          "Cannot atomically update #{inspect(changeset.resource)}.#{attribute.name}: #{message}"
         )
     end
   end

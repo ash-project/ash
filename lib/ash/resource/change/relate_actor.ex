@@ -42,6 +42,20 @@ defmodule Ash.Resource.Change.RelateActor do
     )
   end
 
+  def atomic(changeset, opts, %{actor: actor}) do
+    validate_type!(changeset, opts)
+    relationship = Ash.Resource.Info.relationship(changeset.resource, opts[:field])
+
+    if relationship.type == :belongs_to do
+      {:atomic,
+       %{
+         relationship.source_attribute => Map.get(actor, relationship.destination_attribute)
+       }}
+    else
+      {:not_atomic, "Can only use `relate_actor` atomically with a belongs_to relationship."}
+    end
+  end
+
   defp validate_type!(changeset, opts) do
     case Ash.Resource.Info.relationship(changeset.resource, opts[:relationship]) do
       %{type: type} when type in [:belongs_to, :has_one] ->

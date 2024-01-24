@@ -144,7 +144,7 @@ defmodule Ash.EmbeddableType do
       def storage_type(_), do: :map
 
       def atomic_update(_, _) do
-        :not_atomic
+        {:not_atomic, "Embedded attributes do not support atomic updates"}
       end
 
       def cast_input(%{__struct__: __MODULE__} = input, _constraints), do: {:ok, input}
@@ -455,7 +455,7 @@ defmodule Ash.EmbeddableType do
       alias Ash.EmbeddableType.ShadowApi
 
       def atomic_update_array(_, _) do
-        :not_atomic
+        {:not_atomic, "Embedded attributes do not support atomic updates"}
       end
 
       def load(record, load, _constraints, %{api: api} = context) do

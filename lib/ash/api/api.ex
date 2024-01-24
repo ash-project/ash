@@ -539,7 +539,7 @@ defmodule Ash.Api do
                                doc:
                                  "Batch size to use if provided a query and the query must be streamed"
                              ]
-  ]
+                           ]
                            |> merge_schemas(
                              Keyword.delete(@global_opts, :action),
                              "Global options"
