@@ -55,8 +55,7 @@ defmodule Ash.Resource.Transformers.CreateJoinRelationship do
           relationship =
             %{
               relationship
-              | through: join_relationship.destination,
-                destination_attribute_on_join_resource: join_relationship.destination_attribute
+              | through: join_relationship.destination
             }
 
           dsl_state =
