@@ -39,7 +39,7 @@ defmodule Ash.Resource.Actions.Destroy do
 
   @opt_schema [
                 soft?: [
-                  type: :atom,
+                  type: :boolean,
                   doc: "If specified, the destroy action behaves as an update internally",
                   default: false
                 ],
