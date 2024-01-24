@@ -1123,6 +1123,9 @@ defmodule Ash.Query do
 
       {:error, error} ->
         Ash.Query.add_error(query, error)
+
+      :error ->
+        Ash.Query.add_error(query, "Type #{type} has no exported function merge_load/4")
     end
   end
 

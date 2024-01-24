@@ -319,8 +319,16 @@ defmodule Ash.Actions.Read.Calculations do
 
   defp get_rewrites(ash_query, calculation, path, :relationships) do
     ash_query.load
-    |> Enum.flat_map(fn {name, query} ->
-      get_all_rewrites(query, calculation, path ++ [name])
+    |> Enum.flat_map(fn
+      {name, []} ->
+        relationship = Ash.Resource.Info.relationship(ash_query.resource, name)
+
+        relationship.destination
+        |> Ash.Query.new()
+        |> get_all_rewrites(calculation, path ++ [name])
+
+      {name, query} ->
+        get_all_rewrites(query, calculation, path ++ [name])
     end)
   end
 
