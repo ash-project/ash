@@ -1,6 +1,7 @@
 defmodule Ash.Actions.Read.Relationships do
   @moduledoc false
   require Ash.Query
+  require Ash.Expr
 
   def load([], _query, _lazy?) do
     {:ok, []}
@@ -137,6 +138,7 @@ defmodule Ash.Actions.Read.Relationships do
       |> Ash.Query.set_context(relationship.context)
       |> hydrate_refs(relationship.source)
       |> with_lateral_join_query(query, relationship, records)
+      |> with_authorization_filter(relationship, records)
 
     if !related_query.context[:data_layer][:lateral_join_source] &&
          related_query.distinct not in [[], nil] do
@@ -145,6 +147,17 @@ defmodule Ash.Actions.Read.Relationships do
 
     {relationship, related_query}
   end
+
+  defp with_authorization_filter(query, %{no_attributes?: true}, _), do: query
+  defp with_authorization_filter(query, %{type: :many_to_many}, _), do: query
+  defp with_authorization_filter(query, %{source_attribute: source_attribute, destination_attribute: destination_attribute}, records) do
+    source_values = Enum.map(records, &Map.get(&1, source_attribute))
+    authorization_filter = Ash.Expr.expr(ref(^destination_attribute) in ^source_values)
+
+    Ash.Query.set_context(query, %{private: %{authorization_filter: authorization_filter}})
+  end
+
+  defp with_authorization_filter(query, _, _), do: query
 
   defp with_lateral_join_query(related_query, source_query, relationship, records) do
     if lateral_join?(related_query, relationship, records) do

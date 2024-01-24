@@ -674,6 +674,8 @@ defmodule Ash.Actions.Read do
   end
 
   defp authorize_query(query, opts) do
+    initial_filter = query.filter
+
     if opts[:authorize?] do
       case query.api.can(query, opts[:actor],
              return_forbidden_error?: true,
@@ -693,8 +695,29 @@ defmodule Ash.Actions.Read do
         {:error, error} ->
           {:error, error}
       end
+      |> include_authorization_filter(initial_filter)
     else
       {:ok, query}
+    end
+  end
+
+  defp include_authorization_filter(%{filter: false} = query, false) do
+    {:ok, query}
+  end
+
+  defp include_authorization_filter(query, _) do
+    case query do
+      %{context: %{private: %{authorization_filter: authorization_filter}}} ->
+        case Ash.Query.filter(query, ^authorization_filter) do
+          %{filter: false} ->
+            Ash.Query.add_error(query, Ash.Error.Forbidden.exception([]))
+
+          _ ->
+            query
+        end
+
+      _ ->
+        query
     end
   end
 
@@ -1808,7 +1831,7 @@ defmodule Ash.Actions.Read do
          _context,
          load_attributes?
        ) do
-    if query.limit == 0 do
+    if query.limit == 0 || query.filter == false do
       {:ok, []}
     else
       data_layer_query
@@ -1828,11 +1851,15 @@ defmodule Ash.Actions.Read do
          context,
          load_attributes?
        ) do
-    query
-    |> mod.read(data_layer_query, opts, context)
-    |> validate_manual_action_return_result!(query.resource, query.action)
-    |> Helpers.select(query)
-    |> Helpers.load_runtime_types(query, load_attributes?)
+    if query.limit == 0 || query.filter == false do
+      {:ok, []}
+    else
+      query
+      |> mod.read(data_layer_query, opts, context)
+      |> validate_manual_action_return_result!(query.resource, query.action)
+      |> Helpers.select(query)
+      |> Helpers.load_runtime_types(query, load_attributes?)
+    end
   end
 
   defp run_query(
@@ -1841,7 +1868,7 @@ defmodule Ash.Actions.Read do
          _context,
          load_attributes?
        ) do
-    if query.limit == 0 do
+    if query.limit == 0 || query.filter == false do
       {:ok, []}
     else
       data_layer_query

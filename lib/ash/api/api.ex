@@ -1049,6 +1049,9 @@ defmodule Ash.Api do
           {:error, error} ->
             {:error, error}
 
+          {true, %{filter: false}} ->
+            {:error, authorizer_exception(authorizers)}
+
           {true, query} when not is_nil(query) ->
             if opts[:run_queries?] do
               run_queries(subject, opts, authorizers, query)
