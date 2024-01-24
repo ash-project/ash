@@ -63,7 +63,7 @@ defmodule Ash.Actions.Update.Bulk do
         }
 
       atomic_changeset ->
-        has_after_action_hooks? = not Enum.empty?(atomic_changeset.after_action || [])
+        has_after_action_hooks? = not Enum.empty?(atomic_changeset.after_action)
         # There are performance implications here. We probably need to explicitly enable
         # having after action hooks. Or perhaps we need to stream the ids and then bulk update
         # them.
@@ -96,7 +96,7 @@ defmodule Ash.Actions.Update.Bulk do
           end
 
         bulk_result =
-          if has_after_action_hooks? do
+          if has_after_action_hooks? && opts[:transaction] do
             Ash.DataLayer.transaction(
               List.wrap(atomic_changeset.resource) ++ action.touches_resources,
               fn ->
@@ -237,7 +237,7 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp do_atomic_update(query, atomic_changeset, has_atomics?, opts) do
+  defp do_atomic_update(query, atomic_changeset, has_after_action_hooks?, opts) do
     with {:ok, query} <- authorize_bulk_query(query, opts),
          {:ok, atomic_changeset, query} <-
            authorize_changeset(query, atomic_changeset, opts),
@@ -254,21 +254,24 @@ defmodule Ash.Actions.Update.Bulk do
 
         {:ok, results} ->
           {errors, results, notifications, error_count} =
-            if has_atomics? do
+            if has_after_action_hooks? do
               results
-              |> Enum.reduce({[], [], [], 0}, fn result,
-                                                 {errors, successes, notifications, error_count} ->
-                case Ash.Changeset.run_after_actions(result, atomic_changeset, []) do
-                  {:error, error} ->
-                    {[error | errors], successes, error_count + 1}
+              |> Enum.reduce({[], [], [], 0}, fn
+                result, {errors, successes, notifications, error_count} ->
+                  case Ash.Changeset.run_after_actions(result, atomic_changeset, []) do
+                    {:error, error} ->
+                      {[error | errors], successes, error_count + 1}
 
-                  {:ok, result, _changeset, %{notifications: new_notifications}} ->
-                    {errors, [result | successes], notifications ++ new_notifications,
-                     error_count}
-                end
+                    {:ok, result, _changeset, %{notifications: new_notifications}} ->
+                      {errors, [result | successes],
+                       [
+                         notification(atomic_changeset, result, opts)
+                         | notifications ++ new_notifications
+                       ], error_count}
+                  end
               end)
-              |> then(fn {errors, successes, error_count} ->
-                {Enum.reverse(errors), Enum.reverse(successes), error_count}
+              |> then(fn {errors, successes, notifications, error_count} ->
+                {Enum.reverse(errors), Enum.reverse(successes), notifications, error_count}
               end)
             else
               {[], results, 0}
