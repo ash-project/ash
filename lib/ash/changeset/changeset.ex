@@ -511,7 +511,7 @@ defmodule Ash.Changeset do
            atomic_update(changeset, opts[:atomic_update] || []),
          %Ash.Changeset{} = changeset <- atomic_params(changeset, action, params),
          %Ash.Changeset{} = changeset <- atomic_changes(changeset, action) do
-      hydrate_atomic_refs(changeset, opts[:actor])
+      hydrate_atomic_refs(changeset, opts[:actor], Keyword.take(opts, [:eager?]))
     else
       _ ->
         :not_atomic
@@ -546,6 +546,16 @@ defmodule Ash.Changeset do
           [{:atomic, _, _, _} | _] = atomics ->
             Enum.reduce_while(atomics, changeset, fn
               {:atomic, fields, condition_expr, error_expr}, changeset ->
+                condition_expr = rewrite_atomics(changeset, condition_expr)
+
+                Ash.Filter.walk_filter_template(condition_expr, fn
+                  {:_atomic_ref, field} ->
+                    atomic_ref(changeset, field)
+
+                  other ->
+                    other
+                end)
+
                 with {:changing?, true} <-
                        {:changing?,
                         fields == :* || Enum.any?(fields, &changing_attribute?(changeset, &1))},
@@ -579,6 +589,16 @@ defmodule Ash.Changeset do
           [value] ->
             {:halt, value}
         end
+    end)
+  end
+
+  defp rewrite_atomics(changeset, expr) do
+    Ash.Filter.walk_filter_template(expr, fn
+      {:_atomic_ref, ref} ->
+        atomic_ref(changeset, ref)
+
+      other ->
+        other
     end)
   end
 
@@ -663,18 +683,12 @@ defmodule Ash.Changeset do
   def atomic_ref(changeset, field) do
     case Keyword.fetch(changeset.atomics, field) do
       {:ok, atomic} ->
-        %{type: type, constraints: constraints} =
-          Ash.Resource.Info.attribute(changeset.resource, field)
-
-        Ash.Expr.expr(type(^atomic, ^type, ^constraints))
+        atomic
 
       :error ->
         case Map.fetch(changeset.attributes, field) do
           {:ok, new_value} ->
-            %{type: type, constraints: constraints} =
-              Ash.Resource.Info.attribute(changeset.resource, field)
-
-            Ash.Expr.expr(type(^new_value, ^type, ^constraints))
+            new_value
 
           :error ->
             Ash.Expr.expr(ref(^field))
@@ -1054,6 +1068,15 @@ defmodule Ash.Changeset do
 
   def atomic_update(changeset, key, value) do
     attribute = Ash.Resource.Info.attribute(changeset.resource, key)
+
+    value =
+      Ash.Filter.walk_filter_template(value, fn
+        {:_atomic_ref, field} ->
+          atomic_ref(changeset, field)
+
+        other ->
+          other
+      end)
 
     case Ash.Type.cast_atomic_update(attribute.type, value, attribute.constraints) do
       {:atomic, value} ->
@@ -1624,7 +1647,8 @@ defmodule Ash.Changeset do
   end
 
   @doc false
-  def hydrate_atomic_refs(changeset, actor) do
+  def hydrate_atomic_refs(changeset, actor, opts \\ []) do
+    hydrated_changeset =
     %{
       changeset
       | atomics:
@@ -1634,7 +1658,8 @@ defmodule Ash.Changeset do
                 expr,
                 actor,
                 changeset.arguments,
-                changeset.context
+                changeset.context,
+                changeset
               )
 
             {:ok, expr} =
@@ -1643,7 +1668,12 @@ defmodule Ash.Changeset do
             {key, expr}
           end)
     }
-    |> add_known_atomic_errors()
+
+    if Keyword.get(opts, :eager?, true) do
+      add_known_atomic_errors(hydrated_changeset)
+    else
+      hydrated_changeset
+    end
   end
 
   defp add_known_atomic_errors(changeset) do

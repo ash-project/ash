@@ -19,6 +19,7 @@ defmodule Ash.Filter do
     At,
     CompositeType,
     Contains,
+    CountNils,
     DateAdd,
     DateTimeAdd,
     Error,
@@ -57,6 +58,7 @@ defmodule Ash.Filter do
     At,
     CompositeType,
     Contains,
+    CountNils,
     DateAdd,
     DateTimeAdd,
     FromNow,
@@ -568,7 +570,13 @@ defmodule Ash.Filter do
   end
 
   @doc "Replace any actor value references in a template with the values from a given actor"
-  def build_filter_from_template(template, actor \\ nil, args \\ %{}, context \\ %{}) do
+  def build_filter_from_template(
+        template,
+        actor \\ nil,
+        args \\ %{},
+        context \\ %{},
+        changeset \\ nil
+      ) do
     walk_filter_template(template, fn
       {:_actor, :_primary_key} ->
         if actor do
@@ -588,6 +596,11 @@ defmodule Ash.Filter do
 
           {:ok, value} ->
             value
+        end
+
+      {:_atomic_ref, field} when is_atom(field) ->
+        if changeset do
+          Ash.Changeset.atomic_ref(changeset, field)
         end
 
       {:_context, fields} when is_list(fields) ->

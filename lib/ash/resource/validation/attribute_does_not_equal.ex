@@ -6,6 +6,8 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
   alias Ash.Error.Changes.InvalidAttribute
   require Ash.Expr
 
+  import Ash.Filter.TemplateHelpers
+
   @opt_schema [
     attribute: [
       type: :atom,
@@ -45,14 +47,12 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
   end
 
   @impl true
-  def atomic(changeset, opts) do
-    field_value = Ash.Changeset.atomic_ref(changeset, opts[:attribute])
-
-    {:atomic, [opts[:attribute]], Ash.Expr.expr(^field_value == ^opts[:value]),
+  def atomic(_changeset, opts) do
+    {:atomic, [opts[:attribute]], Ash.Expr.expr(^atomic_ref(opts[:attribute]) == ^opts[:value]),
      Ash.Expr.expr(
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
-         value: ^field_value,
+         value: ^atomic_ref(opts[:attribute]),
          message: "must not equal %{value}",
          vars: %{field: ^opts[:attribute], value: ^opts[:value]}
        })

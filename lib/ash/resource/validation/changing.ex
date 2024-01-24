@@ -5,6 +5,7 @@ defmodule Ash.Resource.Validation.Changing do
 
   alias Ash.Error.Changes.InvalidAttribute
   require Ash.Expr
+  import Ash.Filter.TemplateHelpers
 
   @opt_schema [
     field: [
@@ -53,15 +54,13 @@ defmodule Ash.Resource.Validation.Changing do
   end
 
   @impl true
-  def atomic(changeset, opts) do
-    new_value = Ash.Changeset.atomic_ref(changeset, opts[:field])
-    old_value = Ash.Expr.expr(ref(^opts[:field]))
-
-    {:atomic, [opts[:field]], Ash.Expr.expr(^new_value != ^old_value),
+  def atomic(_changeset, opts) do
+    {:atomic, [opts[:field]],
+     Ash.Expr.expr(^atomic_ref(opts[:attribute]) != ^ref(opts[:attribute])),
      Ash.Expr.expr(
        error(^InvalidAttribute, %{
          field: ^opts[:field],
-         value: ^new_value,
+         value: ^atomic_ref(opts[:attribute]),
          message: "must be changing",
          vars: %{field: ^opts[:field]}
        })

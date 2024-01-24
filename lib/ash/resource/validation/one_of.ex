@@ -5,6 +5,7 @@ defmodule Ash.Resource.Validation.OneOf do
 
   alias Ash.Error.Changes.InvalidAttribute
   require Ash.Expr
+  import Ash.Filter.TemplateHelpers
 
   @opt_schema [
     values: [
@@ -61,7 +62,7 @@ defmodule Ash.Resource.Validation.OneOf do
           value
 
         :error ->
-          Ash.Changeset.atomic_ref(changeset, opts[:attribute])
+          expr(^atomic_ref(opts[:attribute]))
       end
 
     {:atomic, [opts[:attribute]], Ash.Expr.expr(^value not in ^opts[:values]),

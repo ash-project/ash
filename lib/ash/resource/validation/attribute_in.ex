@@ -17,6 +17,7 @@ defmodule Ash.Resource.Validation.AttributeIn do
   use Ash.Resource.Validation
   alias Ash.Error.Changes.InvalidAttribute
   require Ash.Expr
+  import Ash.Filter.TemplateHelpers
 
   @impl true
   def init(opts) do
@@ -44,14 +45,12 @@ defmodule Ash.Resource.Validation.AttributeIn do
   end
 
   @impl true
-  def atomic(changeset, opts) do
-    field_value = Ash.Changeset.atomic_ref(changeset, opts[:attribute])
-
-    {:atomic, [opts[:attribute]], Ash.Expr.expr(^field_value in ^opts[:list]),
+  def atomic(_changeset, opts) do
+    {:atomic, [opts[:attribute]], Ash.Expr.expr(^atomic_ref(opts[:attribute]) in ^opts[:list]),
      Ash.Expr.expr(
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
-         value: ^field_value,
+         value: ^atomic_ref(opts[:attribute]),
          message: "must be in %{list}",
          vars: %{field: ^opts[:attribute], list: ^opts[:list]}
        })

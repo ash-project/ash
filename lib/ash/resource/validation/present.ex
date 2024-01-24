@@ -3,6 +3,7 @@ defmodule Ash.Resource.Validation.Present do
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.{InvalidAttribute, InvalidChanges}
+  import Ash.Filter.TemplateHelpers
 
   @impl true
   def init(opts) do
@@ -69,6 +70,65 @@ defmodule Ash.Resource.Validation.Present do
 
       true ->
         :ok
+    end
+  end
+
+  def atomic(changeset, opts) do
+    case Ash.Changeset.fetch_argument(changeset, opts[:attribute]) do
+      {:ok, _value} ->
+        validate(changeset, opts)
+
+      :error ->
+        values =
+          Enum.map(opts[:attributes], &expr(^atomic_ref(&1)))
+
+        nil_count = expr(count_nils(^values))
+
+        opts
+        |> Keyword.delete(:attribute)
+        |> Enum.map(fn
+          {:exactly, exactly} ->
+            message =
+              cond do
+                exactly == 0 -> "must be absent"
+                length(opts[:attributes]) == 1 -> "must be present"
+                true -> "exactly %{exactly} of %{keys} must be present"
+              end
+
+            {:atomic, [opts[:attribute]], expr(^nil_count == ^exactly),
+             expr(
+               error(^InvalidAttribute, %{
+                 field: ^opts[:attribute],
+                 value: ^atomic_ref(opts[:attribute]),
+                 message: ^message,
+                 vars: %{exactly: ^exactly, keys: ^values}
+               })
+             )}
+
+          {:at_least, at_least} ->
+            {:atomic, [opts[:attribute]],
+             expr(count_nils(^atomic_ref(opts[:attribute])) < ^at_least),
+             expr(
+               error(^InvalidAttribute, %{
+                 field: ^opts[:attribute],
+                 value: ^atomic_ref(opts[:attribute]),
+                 message: "at least %{at_least} of %{keys} must be present",
+                 vars: %{at_least: ^at_least, keys: ^values}
+               })
+             )}
+
+          {:at_most, at_most} ->
+            {:atomic, [opts[:attribute]],
+             expr(count_nils(^atomic_ref(opts[:attribute])) > ^at_most),
+             expr(
+               error(^InvalidAttribute, %{
+                 field: ^opts[:attribute],
+                 value: ^atomic_ref(opts[:attribute]),
+                 message: "at most %{at_most} of %{keys} must be present",
+                 vars: %{at_most: ^at_most, keys: ^values}
+               })
+             )}
+        end)
     end
   end
 

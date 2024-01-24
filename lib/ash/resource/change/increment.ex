@@ -4,6 +4,7 @@ defmodule Ash.Resource.Change.Increment do
   """
   use Ash.Resource.Change
   require Ash.Expr
+  import Ash.Filter.TemplateHelpers
 
   def change(changeset, opts, _context) do
     Ash.Changeset.before_action(changeset, fn changeset ->
@@ -17,23 +18,22 @@ defmodule Ash.Resource.Change.Increment do
     end)
   end
 
-  def atomic(changeset, opts, _context) do
-    value = Ash.Changeset.atomic_ref(changeset, opts[:attribute])
-
+  def atomic(_changeset, opts, _context) do
     if opts[:overflow_limit] do
       {:atomic,
        %{
          opts[:attribute] =>
            Ash.Expr.expr(
-             if ^value + ^opts[:amount] > ^opts[:overflow_limit] do
+             if ^atomic_ref(opts[:attribute]) + ^opts[:amount] > ^opts[:overflow_limit] do
                ^opts[:amount]
              else
-               ^value + ^opts[:amount]
+               ^atomic_ref(opts[:attribute]) + ^opts[:amount]
              end
            )
        }}
     else
-      {:atomic, %{opts[:attribute] => Ash.Expr.expr(^value + ^opts[:amount])}}
+      {:atomic,
+       %{opts[:attribute] => Ash.Expr.expr(^atomic_ref(opts[:attribute]) + ^opts[:amount])}}
     end
   end
 

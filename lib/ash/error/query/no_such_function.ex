@@ -12,9 +12,14 @@ defmodule Ash.Error.Query.NoSuchFunction do
     def message(error) do
       if error.arity do
         "No such function #{error.name}/#{error.arity}"
+        |> for_resource(error.resource)
       else
         "No such function #{error.name}"
+        |> for_resource(error.resource)
       end
     end
+
+    defp for_resource(message, nil), do: message
+    defp for_resource(message, resource), do: message <> " for resource #{inspect(resource)}"
   end
 end

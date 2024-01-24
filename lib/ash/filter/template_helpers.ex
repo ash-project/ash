@@ -50,6 +50,9 @@ defmodule Ash.Filter.TemplateHelpers do
   @doc "A helper for creating a parent reference"
   def parent(expr), do: {:_parent, [], expr}
 
+  @doc "A helper for referring to the most recent atomic expression applied to an update field"
+  def atomic_ref(expr), do: {:_atomic_ref, expr}
+
   @doc "A helper for creating a reference to a related path"
   def ref(path, name), do: {:_ref, path, name}
 

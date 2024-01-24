@@ -3,6 +3,7 @@ defmodule Ash.Resource.Validation.StringLength do
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.InvalidAttribute
+  import Ash.Filter.TemplateHelpers
 
   @impl true
   def init(opts) do
@@ -49,6 +50,55 @@ defmodule Ash.Resource.Validation.StringLength do
             {:error, error}
         end
     end
+  end
+
+  def atomic(_changeset, opts) do
+    opts
+    |> Keyword.delete(:attribute)
+    |> Enum.map(fn
+      {:min, min} ->
+        {:atomic, [opts[:attribute]], expr(string_length(^atomic_ref(opts[:attribute])) < ^min),
+         expr(
+           error(
+             Ash.Error.Changes.InvalidAttribute,
+             %{
+               field: ^opts[:attribute],
+               value: ^atomic_ref(opts[:attribute]),
+               message: "must have length of at least %{min}",
+               vars: %{min: ^min}
+             }
+           )
+         )}
+
+      {:max, max} ->
+        {:atomic, [opts[:attribute]], expr(string_length(^atomic_ref(opts[:attribute])) > ^max),
+         expr(
+           error(
+             Ash.Error.Changes.InvalidAttribute,
+             %{
+               field: ^opts[:attribute],
+               value: ^atomic_ref(opts[:attribute]),
+               message: "must have length of at most %{max}",
+               vars: %{max: ^max}
+             }
+           )
+         )}
+
+      {:exact, exact} ->
+        {:atomic, [opts[:attribute]],
+         expr(string_length(^atomic_ref(opts[:attribute])) != ^exact),
+         expr(
+           error(
+             Ash.Error.Changes.InvalidAttribute,
+             %{
+               field: ^opts[:attribute],
+               value: ^atomic_ref(opts[:attribute]),
+               message: "must have length of at most %{exact}",
+               vars: %{exact: ^exact}
+             }
+           )
+         )}
+    end)
   end
 
   defp do_validate(value, %{exact: exact} = opts) do
