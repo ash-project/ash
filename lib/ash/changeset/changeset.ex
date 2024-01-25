@@ -1649,25 +1649,25 @@ defmodule Ash.Changeset do
   @doc false
   def hydrate_atomic_refs(changeset, actor, opts \\ []) do
     hydrated_changeset =
-    %{
-      changeset
-      | atomics:
-          Enum.map(changeset.atomics, fn {key, expr} ->
-            expr =
-              Ash.Filter.build_filter_from_template(
-                expr,
-                actor,
-                changeset.arguments,
-                changeset.context,
-                changeset
-              )
+      %{
+        changeset
+        | atomics:
+            Enum.map(changeset.atomics, fn {key, expr} ->
+              expr =
+                Ash.Filter.build_filter_from_template(
+                  expr,
+                  actor,
+                  changeset.arguments,
+                  changeset.context,
+                  changeset
+                )
 
-            {:ok, expr} =
-              Ash.Filter.hydrate_refs(expr, %{resource: changeset.resource, public?: false})
+              {:ok, expr} =
+                Ash.Filter.hydrate_refs(expr, %{resource: changeset.resource, public?: false})
 
-            {key, expr}
-          end)
-    }
+              {key, expr}
+            end)
+      }
 
     if Keyword.get(opts, :eager?, true) do
       add_known_atomic_errors(hydrated_changeset)
