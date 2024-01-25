@@ -26,8 +26,8 @@ jobs:
             { org: "team-alembic", name: "ash_authentication" },
             { org: "team-alembic", name: "ash_authentication_phoenix" },
           ]
-        otp: ["24"]
-        elixir: ["1.15.0"]
+        otp: ["26.0.2"]
+        elixir: ["1.16.0"]
         ash_three: ["true", "false"]
     services:
       pg:
