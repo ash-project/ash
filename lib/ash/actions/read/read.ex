@@ -190,20 +190,14 @@ defmodule Ash.Actions.Read do
         Ash.Query.ensure_selected(query, source_fields(query))
       end
 
-    query =
-      Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
-        query,
-        calculations_at_runtime ++ calculations_in_query
-      )
-
     {query, stop?} = add_async_limiter(query, calculations_at_runtime, opts)
 
     try do
       data_result =
         if opts[:initial_data] do
-          load(opts[:initial_data], query, calculations_in_query, opts)
+          load(opts[:initial_data], query, calculations_at_runtime, calculations_in_query, opts)
         else
-          do_read(query, calculations_in_query, opts)
+          do_read(query, calculations_at_runtime, calculations_in_query, opts)
         end
 
       data_result =
@@ -282,7 +276,7 @@ defmodule Ash.Actions.Read do
     )
   end
 
-  defp do_read(%{action: action} = query, calculations_in_query, opts) do
+  defp do_read(%{action: action} = query, calculations_at_runtime, calculations_in_query, opts) do
     maybe_in_transaction(query, opts, fn ->
       with %{valid?: true} = query <-
              handle_attribute_multitenancy(query),
@@ -300,6 +294,11 @@ defmodule Ash.Actions.Read do
            {:ok, query} <-
              paginate(query, action, opts[:page], opts[:skip_pagination?]),
            {:ok, query} <- authorize_query(query, opts),
+           query <-
+             Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
+               query,
+               calculations_at_runtime ++ calculations_in_query
+             ),
            {:ok, data_layer_calculations} <- hydrate_calculations(query, calculations_in_query),
            {:ok, relationship_path_filters} <-
              Ash.Filter.relationship_filters(
@@ -538,8 +537,14 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp load(initial_data, query, calculations_in_query, opts) do
+  defp load(initial_data, query, calculations_at_runtime,calculations_in_query, opts) do
     must_be_reselected = List.wrap(query.select) -- Ash.Resource.Info.primary_key(query.resource)
+
+    query =
+      Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
+        query,
+        calculations_at_runtime ++ calculations_in_query
+      )
 
     if Enum.empty?(must_be_reselected) && Enum.empty?(query.aggregates) &&
          Enum.empty?(calculations_in_query) do
