@@ -537,7 +537,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp load(initial_data, query, calculations_at_runtime,calculations_in_query, opts) do
+  defp load(initial_data, query, calculations_at_runtime, calculations_in_query, opts) do
     must_be_reselected = List.wrap(query.select) -- Ash.Resource.Info.primary_key(query.resource)
 
     query =
