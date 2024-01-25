@@ -1,4 +1,4 @@
-defmodule Policy.RelAuthFilterTest do
+defmodule Ash.Test.Policy.SelectingTest do
   use ExUnit.Case
 
   defmodule Parent do
@@ -22,7 +22,7 @@ defmodule Policy.RelAuthFilterTest do
     end
 
     relationships do
-      has_one :owner_only_resource, Policy.RelAuthFilterTest.OwnerOnlyResource do
+      has_one :owner_only_resource, Ash.Test.Policy.SelectingTest.OwnerOnlyResource do
         source_attribute :id
         destination_attribute :parent_id
       end
@@ -60,7 +60,7 @@ defmodule Policy.RelAuthFilterTest do
     end
 
     relationships do
-      belongs_to :owner_resource, Policy.RelAuthFilterTest.Parent do
+      belongs_to :owner_resource, Ash.Test.Policy.SelectingTest.Parent do
         source_attribute :parent_id
         destination_attribute :id
       end
@@ -80,15 +80,15 @@ defmodule Policy.RelAuthFilterTest do
       end
     end
 
-    # field_policies do
-    #   field_policy [:forbidden_field] do
-    #     authorize_if actor_attribute_equals(:id, "owner")
-    #   end
+    field_policies do
+      field_policy [:forbidden_field] do
+        authorize_if actor_attribute_equals(:id, "owner")
+      end
 
-    #   field_policy :* do
-    #     authorize_if always()
-    #   end
-    # end
+      field_policy :* do
+        authorize_if always()
+      end
+    end
   end
 
   defmodule Api do
@@ -100,7 +100,7 @@ defmodule Policy.RelAuthFilterTest do
     end
   end
 
-  test "owner can see owner_only_resource" do
+  test "owner can can select forbidden field on related resource" do
     parent =
       Parent
       |> Ash.Changeset.new(%{owner_id: "owner", guest_id: "guest"})
@@ -122,7 +122,7 @@ defmodule Policy.RelAuthFilterTest do
     refute is_nil(parent.owner_only_resource)
   end
 
-  test "guest is forbidden from querying if loading forbidden rel" do
+  test "guest is forbidden from querying if selecting a forbidden field on the rel" do
     parent =
       Parent
       |> Ash.Changeset.new(%{owner_id: "owner", guest_id: "guest"})
