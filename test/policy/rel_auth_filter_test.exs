@@ -53,6 +53,10 @@ defmodule Policy.RelAuthFilterTest do
       attribute :parent_id, :uuid
 
       attribute :state, :string
+
+      attribute :forbidden_field, :string do
+        default "forbidden"
+      end
     end
 
     relationships do
@@ -63,7 +67,13 @@ defmodule Policy.RelAuthFilterTest do
     end
 
     policies do
+      bypass actor_attribute_equals(:id, "owner") do
+        authorize_if always()
+      end
+
       policy always() do
+        forbid_if selecting(:forbidden_field)
+
         authorize_if expr(
                        owner_resource.owner_id == ^actor(:id) and state in ["active", "inactive"]
                      )
