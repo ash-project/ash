@@ -269,7 +269,7 @@ defmodule Ash.Type do
               constraints :: Keyword.t(),
               context :: merge_load_context() | nil
             ) ::
-              {:ok, term} | {:error, error}
+              {:ok, term} | {:error, error} | :error
 
   @type rewrite_data ::
           {type :: :calc | :agg, rewriting_name :: atom, rewriting_load :: atom}
