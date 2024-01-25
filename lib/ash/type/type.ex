@@ -929,11 +929,8 @@ defmodule Ash.Type do
         constraints,
         context
       ) do
-    if function_exported?(type, :merge_load, 4) do
-      type.merge_load(left, right, constraints, context)
-    else
-      :error
-    end
+    type = Ash.Type.get_type(type)
+    type.merge_load(left, right, constraints, context)
   end
 
   @spec load(
@@ -1181,6 +1178,9 @@ defmodule Ash.Type do
       end
 
       @impl true
+      def merge_load(_, _, _, _), do: :error
+
+      @impl true
       def embedded? do
         unquote(opts[:embedded?] || false)
       end
@@ -1351,6 +1351,7 @@ defmodule Ash.Type do
                      dump_to_embedded_array: 2,
                      embedded?: 0,
                      ecto_type: 0,
+                     merge_load: 4,
                      array_constraints: 0,
                      apply_constraints: 2,
                      cast_stored_array: 2,
