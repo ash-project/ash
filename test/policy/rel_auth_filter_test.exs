@@ -79,6 +79,16 @@ defmodule Policy.RelAuthFilterTest do
                      )
       end
     end
+
+    # field_policies do
+    #   field_policy [:forbidden_field] do
+    #     authorize_if actor_attribute_equals(:id, "owner")
+    #   end
+
+    #   field_policy :* do
+    #     authorize_if always()
+    #   end
+    # end
   end
 
   defmodule Api do
