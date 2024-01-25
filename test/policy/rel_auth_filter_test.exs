@@ -98,7 +98,6 @@ defmodule Policy.RelAuthFilterTest do
              |> Ash.Query.load(:owner_only_resource)
              |> Ash.Query.limit(1)
              |> Api.read_one(actor: %{id: "owner"})
-             |> IO.inspect()
 
     refute is_nil(parent.owner_only_resource)
   end
@@ -121,6 +120,5 @@ defmodule Policy.RelAuthFilterTest do
              |> Ash.Query.load(:owner_only_resource)
              |> Ash.Query.limit(1)
              |> Api.read_one(actor: %{id: "guest"})
-             |> IO.inspect()
   end
 end
