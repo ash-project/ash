@@ -290,10 +290,10 @@ defmodule Ash.Actions.Read do
              ),
            query <- Map.put(query, :sort, sort),
            query <- add_select_if_none_exists(query),
+           {:ok, query} <- authorize_query(query, opts),
            query_before_pagination <- query,
            {:ok, query} <-
              paginate(query, action, opts[:page], opts[:skip_pagination?]),
-           {:ok, query} <- authorize_query(query, opts),
            query <-
              Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
                query,
