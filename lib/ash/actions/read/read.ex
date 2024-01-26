@@ -1582,7 +1582,6 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  @spec page_opts(atom() | %{:pagination => any(), optional(any()) => any()}, any()) :: any()
   def page_opts(action, opts) do
     cond do
       action.pagination == false ->
