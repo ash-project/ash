@@ -2730,11 +2730,12 @@ defmodule Ash.Query do
              ash_query.resource
            ),
          {:ok, query} <- maybe_filter(query, ash_query, opts),
-         {:ok, query} <- Ash.DataLayer.add_calculations(
-           query,
-           opts[:data_layer_calculations] || [],
-           ash_query.resource
-         ),
+         {:ok, query} <-
+           Ash.DataLayer.add_calculations(
+             query,
+             opts[:data_layer_calculations] || [],
+             ash_query.resource
+           ),
          {:ok, query} <- Ash.DataLayer.distinct(query, ash_query.distinct, resource),
          {:ok, query} <-
            Ash.DataLayer.limit(query, ash_query.limit, resource),
