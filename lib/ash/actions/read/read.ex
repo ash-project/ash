@@ -349,13 +349,7 @@ defmodule Ash.Actions.Read do
                opts
              ),
            {%{valid?: true} = query, before_notifications} = run_before_action(query),
-           {:ok, data_layer_query} <- Ash.Query.data_layer_query(query),
-           {:ok, data_layer_query} <-
-             Ash.DataLayer.add_calculations(
-               data_layer_query,
-               data_layer_calculations,
-               query.resource
-             ),
+           {:ok, data_layer_query} <- Ash.Query.data_layer_query(query, data_layer_calculations: data_layer_calculations),
            {:ok, results} <-
              run_query(
                set_phase(query, :executing),
