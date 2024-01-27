@@ -52,8 +52,7 @@ defmodule Ash.Resource.Change.RelateActor do
         {:atomic, %{}}
 
       nil ->
-        {:error,
-         "Could not relate to actor, as no actor was found (and :allow_nil? is false)."}
+        {:error, "Could not relate to actor, as no actor was found (and :allow_nil? is false)."}
 
       actor when relationship.type == :belongs_to ->
         {:atomic,
