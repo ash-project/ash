@@ -14,69 +14,81 @@ defmodule Ash.Resource.Change.RelateActor do
     end
   end
 
-  def change(changeset, opts, %{actor: nil}) do
-    validate_type!(changeset, opts)
-
-    if opts[:allow_nil?] do
-      changeset
-    else
-      Changeset.add_error(
-        changeset,
-        InvalidRelationship.exception(
-          relationship: opts[:relationship],
-          message: "could not relate to actor, as no actor was found (and :allow_nil? is false)"
-        )
-      )
-    end
-  end
-
   def change(changeset, opts, %{actor: actor}) do
-    validate_type!(changeset, opts)
-    field = opts[:field]
+    relationship = resolve_relationship!(changeset, opts)
+    actor = resolve_actor(actor, opts)
+    allow_nil = opts[:allow_nil?]
 
-    Changeset.manage_relationship(
-      changeset,
-      opts[:relationship],
-      actor_or_field(actor, field),
-      type: :append_and_remove
-    )
+    case actor do
+      nil when allow_nil ->
+        changeset
+
+      nil ->
+        Changeset.add_error(
+          changeset,
+          InvalidRelationship.exception(
+            relationship: relationship.name,
+            message: "could not relate to actor, as no actor was found (and :allow_nil? is false)"
+          )
+        )
+
+      actor ->
+        Changeset.manage_relationship(
+          changeset,
+          relationship.name,
+          actor,
+          type: :append_and_remove
+        )
+    end
   end
 
   def atomic(changeset, opts, %{actor: actor}) do
-    validate_type!(changeset, opts)
-    relationship = Ash.Resource.Info.relationship(changeset.resource, opts[:field])
+    relationship = resolve_relationship!(changeset, opts)
+    actor = resolve_actor(actor, opts)
+    allow_nil = opts[:allow_nil?]
 
-    if relationship.type == :belongs_to do
-      {:atomic,
-       %{
-         relationship.source_attribute => Map.get(actor, relationship.destination_attribute)
-       }}
+    case actor do
+      nil when allow_nil ->
+        {:atomic, %{}}
+
+      nil ->
+        {:error,
+         "Could not relate to actor, as no actor was found (and :allow_nil? is false)."}
+
+      actor when relationship.type == :belongs_to ->
+        {:atomic,
+         %{
+           relationship.source_attribute => Map.get(actor, relationship.destination_attribute)
+         }}
+
+      _ ->
+        {:not_atomic, "Can only use `relate_actor` atomically with a belongs_to relationship."}
+    end
+  end
+
+  defp resolve_relationship!(changeset, opts) do
+    relationship = Ash.Resource.Info.relationship(changeset.resource, opts[:relationship])
+
+    if relationship.type in [:belongs_to, :has_one] do
+      relationship
     else
-      {:not_atomic, "Can only use `relate_actor` atomically with a belongs_to relationship."}
+      raise ArgumentError, """
+      Cannot use `relate_actor` change with relationship of type #{inspect(relationship.type)}.
+
+      It can only be used with a `:belongs_to` or `:has_one` relationship. If you would like to
+      add the actor to a list, or something else along those lines, use a custom change
+      along with `Ash.Changeset.manage_relationship`.
+      """
     end
   end
 
-  defp validate_type!(changeset, opts) do
-    case Ash.Resource.Info.relationship(changeset.resource, opts[:relationship]) do
-      %{type: type} when type in [:belongs_to, :has_one] ->
-        :ok
+  defp resolve_actor(actor, opts) do
+    field = opts[:field]
 
-      %{type: type} ->
-        raise ArgumentError, """
-        Cannot use `relate_actor` change with relationship of type #{inspect(type)}.
-
-        It can only be used with a `:belongs_to` or `:has_one` relationship. If you would like to
-        add the actor to a list, or something else along those lines, use a custom change
-        along with `Ash.Changeset.manage_relationship`.
-        """
+    if actor == nil or field == nil do
+      actor
+    else
+      Map.get(actor, field)
     end
-  end
-
-  defp actor_or_field(actor, field) when is_nil(field) do
-    actor
-  end
-
-  defp actor_or_field(actor, field) do
-    Map.get(actor, field)
   end
 end

@@ -139,12 +139,12 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
       |> Api.create!()
       |> Api.load!(:account)
 
-    post =
+    {:error, changeset} =
       Post
       |> Ash.Changeset.for_create(:create_with_actor_field, %{text: "foo"}, actor: actor)
-      |> Api.create!()
+      |> Api.create()
 
-    assert post.account_id == nil
+    assert changeset.errors |> Enum.count() == 1
   end
 
   test "relate_actor change with `allow_nil?: true` allows both nil and an actor" do
