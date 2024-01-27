@@ -725,10 +725,19 @@ defmodule Ash.EmbeddableType do
                         errors =
                           error
                           |> Ash.EmbeddableType.handle_errors()
-                          |> Enum.map(fn keyword ->
-                            keyword
-                            |> Keyword.put(:index, index)
-                            |> Keyword.update(:path, [index], &[index | &1])
+                          |> Enum.map(fn error ->
+                            cond do
+                              is_exception(error) ->
+                                Ash.Error.set_path(error, [index])
+
+                              Keyword.keyword?(error) ->
+                                error
+                                |> Keyword.put(:index, index)
+                                |> Keyword.update(:path, [index], &[index | &1])
+
+                              true ->
+                                error
+                            end
                           end)
 
                         {:halt, {:error, errors}}
