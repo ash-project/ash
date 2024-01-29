@@ -21,30 +21,34 @@ defmodule Ash.Actions.Update do
        )}
     else
       {fully_atomic_changeset, params} =
-        if Enum.empty?(changeset.relationships) &&
-             Ash.DataLayer.data_layer_can?(changeset.resource, :update_query) do
-          params =
-            changeset.attributes
-            |> Map.merge(changeset.casted_attributes)
-            |> Map.merge(changeset.arguments)
-            |> Map.merge(changeset.casted_arguments)
+        cond do
+          Ash.DataLayer.data_layer_can?(changeset.resource, :update_query) ->
+            {{:not_atomic, "data layer does not support updating a query"}, nil}
 
-          res =
-            Ash.Changeset.fully_atomic_changeset(
-              changeset.resource,
-              action,
-              params,
-              opts
-              |> Keyword.merge(
-                assume_casted?: true,
-                notify?: true,
-                atomics: changeset.atomics || []
+          !Enum.empty?(changeset.relationships) ->
+            {{:not_atomic, "cannot atomically manage relationships"}, nil}
+
+          true ->
+            params =
+              changeset.attributes
+              |> Map.merge(changeset.casted_attributes)
+              |> Map.merge(changeset.arguments)
+              |> Map.merge(changeset.casted_arguments)
+
+            res =
+              Ash.Changeset.fully_atomic_changeset(
+                changeset.resource,
+                action,
+                params,
+                opts
+                |> Keyword.merge(
+                  assume_casted?: true,
+                  notify?: true,
+                  atomics: changeset.atomics || []
+                )
               )
-            )
 
-          {res, params}
-        else
-          {{:not_atomic, "data layer does not support updating a query"}, nil}
+            {res, params}
         end
 
       case fully_atomic_changeset do
