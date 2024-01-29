@@ -1338,6 +1338,7 @@ update :flag_for_review, primary?: true
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`manual`](#actions-update-manual){: #actions-update-manual } | `(any, any -> any) \| module` |  | Override the update behavior. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
+| [`require_atomic?`](#actions-update-require_atomic?){: #actions-update-require_atomic? } | `boolean` | `false` | Require that the update be atomic. This means that all changes and validations implement the `atomic` callback. See the guide on atomic updates for more. |
 | [`primary?`](#actions-update-primary?){: #actions-update-primary? } | `boolean` | `false` | Whether or not this action should be used when no action is specified by the caller. |
 | [`description`](#actions-update-description){: #actions-update-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-update-transaction?){: #actions-update-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |

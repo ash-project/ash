@@ -183,6 +183,7 @@ spark_locals_without_parens = [
   reject: 1,
   relationship_context: 1,
   require_actor?: 1,
+  require_atomic?: 1,
   require_attributes: 1,
   require_primary_key?: 1,
   required?: 1,
