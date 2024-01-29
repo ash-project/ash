@@ -25,4 +25,8 @@ defmodule Ash.Resource.Change.GetAndLock do
       end
     end)
   end
+
+  def atomic(_changeset, _, _) do
+    :ok
+  end
 end

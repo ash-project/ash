@@ -90,6 +90,26 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       end
     end
 
+    calculations do
+      calculate :hidden_calc, :string, expr("something")
+    end
+
+    field_policies do
+      field_policy [:hidden_calc, :hidden_attribute] do
+        forbid_if always()
+      end
+
+      field_policy :* do
+        authorize_if always()
+      end
+    end
+
+    policies do
+      policy action(:create_with_policy) do
+        authorize_if context_equals(:authorize?, true)
+      end
+    end
+
     policies do
       policy action(:update_with_policy) do
         authorize_if context_equals(:authorize?, true)
@@ -101,6 +121,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       attribute :title, :string, allow_nil?: false
       attribute :title2, :string
       attribute :title3, :string
+      attribute :hidden_attribute, :string
 
       timestamps()
     end
@@ -303,6 +324,38 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                  resource: Post,
                  return_records?: true,
                  return_errors?: true
+               )
+    end
+
+    test "field authorization is run" do
+      assert %Ash.BulkResult{
+               records: [
+                 %{
+                   hidden_attribute: %Ash.ForbiddenField{},
+                   hidden_calc: %Ash.ForbiddenField{}
+                 },
+                 %{
+                   hidden_attribute: %Ash.ForbiddenField{},
+                   hidden_calc: %Ash.ForbiddenField{}
+                 }
+               ],
+               errors: []
+             } =
+               Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+                 return_stream?: true,
+                 return_records?: true
+               )
+               |> Stream.map(fn {:ok, result} ->
+                 result
+               end)
+               |> Api.bulk_update(
+                 :update_with_policy,
+                 %{title2: "updated value", authorize?: true},
+                 authorize?: true,
+                 resource: Post,
+                 return_records?: true,
+                 return_errors?: true,
+                 load: [:hidden_calc]
                )
     end
 

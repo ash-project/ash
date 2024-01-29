@@ -132,8 +132,8 @@ defmodule Ash.Resource.Change do
 
   @callback atomic(Ash.Changeset.t(), Keyword.t(), context()) ::
               {:ok, Ash.Changeset.t()}
-              | {:atomic, %{atom() => Ash.Expr.t()}}
-              | {:atomic, Ash.Changeset.t(), %{atom() => Ash.Expr.t()}}
+              | {:atomic, %{optional(atom()) => Ash.Expr.t()}}
+              | {:atomic, Ash.Changeset.t(), %{optional(atom()) => Ash.Expr.t()}}
               | {:not_atomic, String.t()}
               | :ok
               | {:error, term()}

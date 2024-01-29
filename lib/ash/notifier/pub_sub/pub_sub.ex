@@ -104,6 +104,8 @@ defmodule Ash.Notifier.PubSub do
   @deprecated "use Ash.Notifier.PubSub.Info.name/1 instead"
   defdelegate name(resource), to: Ash.Notifier.PubSub.Info
 
+  use Ash.Notifier
+
   @doc false
   def notify(%Ash.Notifier.Notification{resource: resource} = notification) do
     resource

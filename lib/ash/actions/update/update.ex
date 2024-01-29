@@ -22,7 +22,7 @@ defmodule Ash.Actions.Update do
     else
       {fully_atomic_changeset, params} =
         cond do
-          Ash.DataLayer.data_layer_can?(changeset.resource, :update_query) ->
+          !Ash.DataLayer.data_layer_can?(changeset.resource, :update_query) ->
             {{:not_atomic, "data layer does not support updating a query"}, nil}
 
           !Enum.empty?(changeset.relationships) ->

@@ -6,4 +6,8 @@ defmodule Ash.Resource.Change.Load do
   def change(changeset, opts, _context) do
     Changeset.load(changeset, opts[:target])
   end
+
+  def atomic(changeset, opts, _context) do
+    {:atomic, Changeset.load(changeset, opts[:target]), %{}}
+  end
 end

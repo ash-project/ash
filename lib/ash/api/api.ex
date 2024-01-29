@@ -538,6 +538,16 @@ defmodule Ash.Api do
                                type: :integer,
                                doc:
                                  "Batch size to use if provided a query and the query must be streamed"
+                             ],
+                             load: [
+                               type: :any,
+                               doc:
+                                 "A load statement to apply to records. Ignored if `return_records?` is not true."
+                             ],
+                             select: [
+                               type: {:list, :atom},
+                               doc:
+                                 "A select statement to apply to records. Ignored if `return_records?` is not true."
                              ]
                            ]
                            |> merge_schemas(
@@ -598,6 +608,16 @@ defmodule Ash.Api do
                                doc:
                                  "The identity to use when detecting conflicts for `upsert?`, e.g. `upsert_identity: :full_name`. By default, the primary key is used. Has no effect if `upsert?: true` is not provided"
                              ],
+                             load: [
+                               type: :any,
+                               doc:
+                                 "A load statement to apply to records. Ignored if `return_records?` is not true."
+                             ],
+                             select: [
+                               type: {:list, :atom},
+                               doc:
+                                 "A select statement to apply to records. Ignored if `return_records?` is not true."
+                             ],
                              upsert_fields: [
                                type:
                                  {:or,
@@ -628,7 +648,13 @@ defmodule Ash.Api do
   @doc false
   def create_opts_schema, do: @create_opts_schema
 
-  @update_opts_schema []
+  @update_opts_schema [
+                        params: [
+                          type: :map,
+                          doc:
+                            "Parameters to supply, ignored if the input is a changeset, only used when an identifier is given."
+                        ]
+                      ]
                       |> merge_schemas(@global_opts, "Global Options")
                       |> merge_schemas(
                         @create_update_opts_schema,

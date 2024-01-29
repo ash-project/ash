@@ -34,6 +34,12 @@ defmodule Ash.Resource.Change.DebugLog do
     end)
   end
 
+  def atomic(changeset, opts, _context) do
+    label = opts[:label]
+    debug(changeset, "building atomic", label, changeset)
+    :ok
+  end
+
   defp debug(stuff, our_label, nil, changeset) do
     Logger.debug(
       "#{our_label} - #{inspect(changeset.resource)}.#{changeset.action.name}: #{inspect(stuff)}"

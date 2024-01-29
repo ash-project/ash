@@ -29,7 +29,7 @@ defmodule Ash.Actions.Update.Bulk do
         changeset = opts[:atomic_changeset] ->
           changeset
 
-        Ash.DataLayer.data_layer_can?(query.resource, :update_query) ->
+        !Ash.DataLayer.data_layer_can?(query.resource, :update_query) ->
           Ash.Changeset.fully_atomic_changeset(query.resource, action, input, opts)
 
         true ->
@@ -775,7 +775,16 @@ defmodule Ash.Actions.Update.Bulk do
       context_key
     )
     |> run_after_action_hooks(opts, api, ref, changesets_by_index, metadata_key)
-    |> process_results(changes, all_changes, opts, ref, changesets_by_index, metadata_key)
+    |> process_results(
+      changes,
+      all_changes,
+      opts,
+      ref,
+      changesets_by_index,
+      metadata_key,
+      resource,
+      api
+    )
     |> then(fn stream ->
       if opts[:return_stream?] do
         stream
@@ -1313,7 +1322,9 @@ defmodule Ash.Actions.Update.Bulk do
          opts,
          ref,
          changesets_by_index,
-         metadata_key
+         metadata_key,
+         resource,
+         api
        ) do
     results =
       Enum.flat_map(batch, fn result ->
@@ -1355,6 +1366,41 @@ defmodule Ash.Actions.Update.Bulk do
       ref,
       metadata_key
     )
+    |> then(fn records ->
+      if opts[:select] || opts[:load] do
+        select =
+          if opts[:select] do
+            List.wrap(opts[:select])
+          else
+            resource |> Ash.Resource.Info.public_attributes() |> Enum.map(& &1.name)
+          end
+
+        api.load(
+          records,
+          List.wrap(opts[:load]) ++ select,
+          actor: opts[:actor],
+          authorize?: opts[:authorize?],
+          tracer: opts[:tracer]
+        )
+        |> case do
+          {:ok, records} ->
+            {:ok, Enum.reject(records, & &1.__metadata__[:private][:missing_from_data_layer])}
+
+          {:error, error} ->
+            {:error, error}
+        end
+      else
+        {:ok, records}
+      end
+    end)
+    |> case do
+      {:ok, records} ->
+        records
+
+      {:error, error} ->
+        store_error(ref, error, opts)
+        []
+    end
   end
 
   defp run_bulk_after_changes(

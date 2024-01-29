@@ -379,6 +379,7 @@ defmodule Ash.Changeset do
   @doc """
   Calls the provided load statement on the result of the action at the very end of the action.
   """
+  @spec load(t(), term()) :: t()
   def load(changeset, load) do
     query =
       changeset.resource
