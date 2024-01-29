@@ -138,6 +138,8 @@ defmodule Ash.Resource.Change do
               | :ok
               | {:error, term()}
 
+  @callback atomic?() :: boolean
+
   @callback after_atomic(Ash.Changeset.t(), Keyword.t(), Ash.Resource.record(), context()) ::
               {:ok, Ash.Resource.record()} | {:error, term()}
 
@@ -155,11 +157,17 @@ defmodule Ash.Resource.Change do
 
       def init(opts), do: {:ok, opts}
 
+      if Module.defines?(__MODULE__, {:atomic, 3}, :def) do
+        def atomic?, do: true
+      else
+        def atomic?, do: false
+      end
+
       def atomic(_changeset, _opts, _context) do
         {:not_atomic, "#{inspect(__MODULE__)} does not implement `atomic/2`"}
       end
 
-      defoverridable init: 1, atomic: 3
+      defoverridable init: 1, atomic: 3, atomic?: 0
     end
   end
 end

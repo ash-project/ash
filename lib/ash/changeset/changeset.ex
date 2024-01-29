@@ -563,55 +563,65 @@ defmodule Ash.Changeset do
             {:cont, changeset}
         end
 
-      %{validation: {module, validation_opts}, where: where}, changeset ->
-        case List.wrap(module.atomic(changeset, validation_opts)) do
-          [{:atomic, _, _, _} | _] = atomics ->
-            Enum.reduce_while(atomics, changeset, fn
-              {:atomic, fields, condition_expr, error_expr}, changeset ->
-                condition_expr = rewrite_atomics(changeset, condition_expr)
+      %{validation: _} = validation, changeset ->
+        case run_atomic_validation(changeset, validation) do
+          {:not_atomic, reason} ->
+            {:halt, {:not_atomic, reason}}
 
-                Ash.Filter.walk_filter_template(condition_expr, fn
-                  {:_atomic_ref, field} ->
-                    atomic_ref(changeset, field)
-
-                  other ->
-                    other
-                end)
-
-                with {:changing?, true} <-
-                       {:changing?,
-                        fields == :* || Enum.any?(fields, &changing_attribute?(changeset, &1))},
-                     {:atomic, condition} <- atomic_condition(where, changeset) do
-                  case condition do
-                    true ->
-                      {:cont, validate_atomically(changeset, condition_expr, error_expr)}
-
-                    false ->
-                      {:cont, changeset}
-
-                    condition ->
-                      condition_expr =
-                        Ash.Expr.expr(^condition and condition_expr)
-
-                      {:cont, validate_atomically(changeset, condition_expr, error_expr)}
-                  end
-                else
-                  {:changing?, false} ->
-                    {:cont, changeset}
-
-                  {:not_atomic, reason} ->
-                    {:halt, {:not_atomic, reason}}
-                end
-            end)
-            |> case do
-              {:not_atomic, reason} -> {:halt, {:not_atomic, reason}}
-              changeset -> {:cont, changeset}
-            end
-
-          [value] ->
-            {:halt, value}
+          changeset ->
+            {:cont, changeset}
         end
     end)
+  end
+
+  defp run_atomic_validation(changeset, %{validation: {module, validation_opts}, where: where}) do
+    case List.wrap(module.atomic(changeset, validation_opts)) do
+      [{:atomic, _, _, _} | _] = atomics ->
+        Enum.reduce_while(atomics, changeset, fn
+          {:atomic, fields, condition_expr, error_expr}, changeset ->
+            condition_expr = rewrite_atomics(changeset, condition_expr)
+
+            Ash.Filter.walk_filter_template(condition_expr, fn
+              {:_atomic_ref, field} ->
+                atomic_ref(changeset, field)
+
+              other ->
+                other
+            end)
+
+            with {:changing?, true} <-
+                   {:changing?,
+                    fields == :* || Enum.any?(fields, &changing_attribute?(changeset, &1))},
+                 {:atomic, condition} <- atomic_condition(where, changeset) do
+              case condition do
+                true ->
+                  {:cont, validate_atomically(changeset, condition_expr, error_expr)}
+
+                false ->
+                  {:cont, changeset}
+
+                condition ->
+                  condition_expr =
+                    Ash.Expr.expr(^condition and condition_expr)
+
+                  {:cont, validate_atomically(changeset, condition_expr, error_expr)}
+              end
+            else
+              {:changing?, false} ->
+                {:cont, changeset}
+
+              {:not_atomic, reason} ->
+                {:halt, {:not_atomic, reason}}
+            end
+        end)
+        |> case do
+          {:not_atomic, reason} -> {:not_atomic, reason}
+          changeset -> changeset
+        end
+
+      [value] ->
+        value
+    end
   end
 
   defp rewrite_atomics(changeset, expr) do
@@ -1685,8 +1695,11 @@ defmodule Ash.Changeset do
       %{only_when_valid?: true}, %{valid?: false} = changeset ->
         changeset
 
-      %{always_atomic?: true} = change, changeset ->
+      %{always_atomic?: true, change: _} = change, changeset ->
         run_atomic_change(changeset, change, context)
+
+      %{always_atomic?: true, validation: _} = change, changeset ->
+        run_atomic_validation(changeset, change)
 
       %{change: {module, opts}, where: where}, changeset ->
         if Enum.all?(where || [], fn {module, opts} ->
