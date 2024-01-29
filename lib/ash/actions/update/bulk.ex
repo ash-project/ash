@@ -39,8 +39,7 @@ defmodule Ash.Actions.Update.Bulk do
     case fully_atomic_changeset do
       {:not_atomic, _} ->
         read_opts =
-          opts
-          |> Keyword.take(Ash.Api.stream_opts())
+          Keyword.take(opts, Ash.Api.stream_opt_keys())
 
         read_opts =
           if stream_batch_size = opts[:stream_batch_size] do

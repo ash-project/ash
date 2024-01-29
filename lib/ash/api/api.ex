@@ -199,7 +199,7 @@ defmodule Ash.Api do
                )
 
   @doc false
-  def stream_opts, do: @stream_opts
+  def stream_opt_keys, do: Keyword.keys(@stream_opts)
 
   @doc """
   Streams the results of a query.
