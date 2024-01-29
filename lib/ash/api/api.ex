@@ -198,6 +198,9 @@ defmodule Ash.Api do
                  "Read Options"
                )
 
+  @doc false
+  def stream_opts, do: @stream_opts
+
   @doc """
   Streams the results of a query.
 

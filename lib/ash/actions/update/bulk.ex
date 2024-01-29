@@ -29,7 +29,7 @@ defmodule Ash.Actions.Update.Bulk do
         changeset = opts[:atomic_changeset] ->
           changeset
 
-        !Ash.DataLayer.data_layer_can?(query.resource, :update_query) ->
+        Ash.DataLayer.data_layer_can?(query.resource, :update_query) ->
           Ash.Changeset.fully_atomic_changeset(query.resource, action, input, opts)
 
         true ->
@@ -40,15 +40,14 @@ defmodule Ash.Actions.Update.Bulk do
       {:not_atomic, _} ->
         read_opts =
           opts
-          |> Keyword.drop([
-            :resource,
-            :atomic_update,
-            :stream_batch_size,
-            :batch_size,
-            :stream_with,
-            :allow_stream_with
-          ])
-          |> Keyword.put(:batch_size, opts[:stream_batch_size])
+          |> Keyword.take(Ash.Api.stream_opts())
+
+        read_opts =
+          if stream_batch_size = opts[:stream_batch_size] do
+            Keyword.put(read_opts, :batch_size, stream_batch_size)
+          else
+            read_opts
+          end
 
         run(
           api,
@@ -696,24 +695,32 @@ defmodule Ash.Actions.Update.Bulk do
         Ash.DataLayer.transaction(
           List.wrap(resource) ++ action.touches_resources,
           fn ->
-            do_handle_batch(
-              batch,
-              api,
-              resource,
-              action,
-              opts,
-              all_changes,
-              ref,
-              metadata_key,
-              context_key,
-              base_changeset
-            )
-            |> case do
-              {:error, error} ->
-                Ash.DataLayer.rollback(resource, error)
+            {_starting_errors, starting_error_count} =
+              Process.get({:bulk_update_errors, ref}) || {[], 0}
 
-              other ->
-                other
+            result =
+              do_handle_batch(
+                batch,
+                api,
+                resource,
+                action,
+                opts,
+                all_changes,
+                ref,
+                metadata_key,
+                context_key,
+                base_changeset
+              )
+
+            {new_errors, new_error_count} = Process.get({:bulk_update_errors, ref}) || {[], 0}
+
+            if new_error_count == starting_error_count do
+              Ash.DataLayer.rollback(
+                resource,
+                Enum.take(new_errors, new_error_count - starting_error_count)
+              )
+            else
+              result
             end
           end,
           opts[:timeout],
@@ -1376,46 +1383,44 @@ defmodule Ash.Actions.Update.Bulk do
          api,
          base_changeset
        ) do
-    results =
-      Enum.flat_map(batch, fn result ->
-        changeset = changesets_by_index[result.__metadata__[metadata_key]]
-
-        if opts[:notify?] || opts[:return_notifications?] do
-          store_notification(ref, notification(changeset, result, opts), opts)
-        end
-
-        try do
-          case Ash.Changeset.run_after_transactions(
-                 {:ok, result},
-                 changeset
-               ) do
-            {:ok, result} ->
-              if opts[:return_records?] do
-                [result]
-              else
-                []
-              end
-
-            {:error, error} ->
-              store_error(ref, error, opts)
-              []
-          end
-        rescue
-          e ->
-            store_error(ref, e, opts)
-            []
-        end
-      end)
-
     run_bulk_after_changes(
       changes,
       all_changes,
-      results,
+      batch,
       changesets_by_index,
       opts,
       ref,
       metadata_key
     )
+    |> Enum.flat_map(fn result ->
+      changeset = changesets_by_index[result.__metadata__[metadata_key]]
+
+      if opts[:notify?] || opts[:return_notifications?] do
+        store_notification(ref, notification(changeset, result, opts), opts)
+      end
+
+      try do
+        case Ash.Changeset.run_after_transactions(
+               {:ok, result},
+               changeset
+             ) do
+          {:ok, result} ->
+            if opts[:return_records?] do
+              [result]
+            else
+              []
+            end
+
+          {:error, error} ->
+            store_error(ref, error, opts)
+            []
+        end
+      rescue
+        e ->
+          store_error(ref, e, opts)
+          []
+      end
+    end)
     |> load_data(api, resource, base_changeset, opts)
     |> case do
       {:ok, records} ->
