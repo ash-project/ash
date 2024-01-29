@@ -247,6 +247,20 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp do_atomic_update(query, atomic_changeset, has_after_action_hooks?, opts) do
+    atomic_changeset =
+      if opts[:select] do
+        Ash.Changeset.select(atomic_changeset, opts[:select])
+      else
+        atomic_changeset
+      end
+
+    atomic_changeset =
+      if opts[:load] do
+        Ash.Changeset.load(atomic_changeset, opts[:load])
+      else
+        atomic_changeset
+      end
+
     with {:ok, query} <- authorize_bulk_query(query, opts),
          {:ok, atomic_changeset, query} <-
            authorize_changeset(query, atomic_changeset, opts),
@@ -283,6 +297,21 @@ defmodule Ash.Actions.Update.Bulk do
               end)
             else
               {[], results, [], 0}
+            end
+
+          {results, errors} =
+            case load_data(
+                   results,
+                   atomic_changeset.api,
+                   atomic_changeset.resource,
+                   atomic_changeset,
+                   opts
+                 ) do
+              {:ok, results} ->
+                {results, errors}
+
+              {:error, error} ->
+                {[], List.wrap(error) ++ errors}
             end
 
           notifications =
@@ -395,7 +424,8 @@ defmodule Ash.Actions.Update.Bulk do
               opts,
               ref,
               context_key,
-              metadata_key
+              metadata_key,
+              base_changeset
             )
           after
             if opts[:notify?] && !opts[:return_notifications?] do
@@ -548,6 +578,20 @@ defmodule Ash.Actions.Update.Bulk do
     |> Ash.Changeset.set_context(opts[:context] || %{})
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
     |> Ash.Changeset.set_arguments(arguments)
+    |> then(fn changeset ->
+      changeset =
+        if select = opts[:select] do
+          Ash.Changeset.select(changeset, select)
+        else
+          changeset
+        end
+
+      if load = opts[:load] do
+        Ash.Changeset.load(changeset, load)
+      else
+        changeset
+      end
+    end)
   end
 
   defp pre_template_all_changes(action, resource, _type, base, actor) do
@@ -629,7 +673,8 @@ defmodule Ash.Actions.Update.Bulk do
          opts,
          ref,
          context_key,
-         metadata_key
+         metadata_key,
+         base_changeset
        ) do
     if opts[:transaction] == :batch &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
@@ -660,7 +705,8 @@ defmodule Ash.Actions.Update.Bulk do
               all_changes,
               ref,
               metadata_key,
-              context_key
+              context_key,
+              base_changeset
             )
             |> case do
               {:error, error} ->
@@ -709,7 +755,8 @@ defmodule Ash.Actions.Update.Bulk do
         all_changes,
         ref,
         metadata_key,
-        context_key
+        context_key,
+        base_changeset
       )
     end
   end
@@ -723,7 +770,8 @@ defmodule Ash.Actions.Update.Bulk do
          all_changes,
          ref,
          metadata_key,
-         context_key
+         context_key,
+         base_changeset
        ) do
     must_return_records? =
       opts[:notify?] ||
@@ -783,7 +831,8 @@ defmodule Ash.Actions.Update.Bulk do
       changesets_by_index,
       metadata_key,
       resource,
-      api
+      api,
+      base_changeset
     )
     |> then(fn stream ->
       if opts[:return_stream?] do
@@ -1324,7 +1373,8 @@ defmodule Ash.Actions.Update.Bulk do
          changesets_by_index,
          metadata_key,
          resource,
-         api
+         api,
+         base_changeset
        ) do
     results =
       Enum.flat_map(batch, fn result ->
@@ -1366,40 +1416,37 @@ defmodule Ash.Actions.Update.Bulk do
       ref,
       metadata_key
     )
-    |> then(fn records ->
-      if opts[:select] || opts[:load] do
-        select =
-          if opts[:select] do
-            List.wrap(opts[:select])
-          else
-            resource |> Ash.Resource.Info.public_attributes() |> Enum.map(& &1.name)
-          end
-
-        api.load(
-          records,
-          List.wrap(opts[:load]) ++ select,
-          actor: opts[:actor],
-          authorize?: opts[:authorize?],
-          tracer: opts[:tracer]
-        )
-        |> case do
-          {:ok, records} ->
-            {:ok, Enum.reject(records, & &1.__metadata__[:private][:missing_from_data_layer])}
-
-          {:error, error} ->
-            {:error, error}
-        end
-      else
-        {:ok, records}
-      end
-    end)
+    |> load_data(api, resource, base_changeset, opts)
     |> case do
       {:ok, records} ->
-        records
+        Enum.reject(records, & &1.__metadata__[:private][:missing_from_data_layer])
 
       {:error, error} ->
         store_error(ref, error, opts)
         []
+    end
+  end
+
+  defp load_data(records, api, resource, changeset, opts) do
+    select =
+      if changeset.select do
+        List.wrap(changeset.select)
+      else
+        resource |> Ash.Resource.Info.public_attributes() |> Enum.map(& &1.name)
+      end
+
+    case List.wrap(changeset.load) ++ select do
+      [] ->
+        {:ok, records}
+
+      load ->
+        api.load(
+          records,
+          load,
+          actor: opts[:actor],
+          authorize?: opts[:authorize?],
+          tracer: opts[:tracer]
+        )
     end
   end
 

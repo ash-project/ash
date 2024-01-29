@@ -11,4 +11,8 @@ defmodule Ash.Resource.Change.OptimisticLock do
       opts[:attribute] => Map.get(changeset.data, opts[:attribute])
     })
   end
+
+  def atomic(_changeset, _opts, _context) do
+    :ok
+  end
 end

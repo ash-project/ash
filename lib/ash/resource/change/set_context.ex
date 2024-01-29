@@ -21,4 +21,8 @@ defmodule Ash.Resource.Change.SetContext do
         Ash.Changeset.add_error(changeset, error)
     end
   end
+
+  def atomic(changeset, opts, context) do
+    {:atomic, change(changeset, opts, context), %{}}
+  end
 end

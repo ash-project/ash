@@ -9,4 +9,12 @@ defmodule Ash.Resource.Change.Select do
       Ash.Changeset.select(changeset, opts[:target] || [])
     end
   end
+
+  def atomic(changeset, opts, _context) do
+    if opts[:ensure?] do
+      {:atomic, Ash.Changeset.ensure_selected(changeset, opts[:target] || [])}
+    else
+      {:atomic, Ash.Changeset.select(changeset, opts[:target] || [])}
+    end
+  end
 end

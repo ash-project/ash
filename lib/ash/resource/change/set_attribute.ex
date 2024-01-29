@@ -42,4 +42,14 @@ defmodule Ash.Resource.Change.SetAttribute do
       end
     end
   end
+
+  def atomic(_changeset, opts, _context) do
+    value =
+      case opts[:value] do
+        value when is_function(value) -> value.()
+        value -> value
+      end
+
+    {:atomic, %{opts[:attribute] => value}}
+  end
 end
