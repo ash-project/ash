@@ -76,15 +76,20 @@ defmodule Ash.Query.Function do
                     case function do
                       %^mod{__predicate__?: _} ->
                         if mod.eager_evaluate?() do
-                          case mod.evaluate(function) do
-                            {:known, result} ->
-                              {:ok, result}
+                          if mod.evaluate_nil_inputs?() ||
+                               Enum.all?(function.arguments, &(not is_nil(&1))) do
+                            case mod.evaluate(function) do
+                              {:known, result} ->
+                                {:ok, result}
 
-                            :unknown ->
-                              {:ok, function}
+                              :unknown ->
+                                {:ok, function}
 
-                            {:error, error} ->
-                              {:error, error}
+                              {:error, error} ->
+                                {:error, error}
+                            end
+                          else
+                            {:ok, nil}
                           end
                         else
                           {:ok, function}

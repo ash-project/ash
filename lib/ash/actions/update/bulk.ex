@@ -1,10 +1,7 @@
 defmodule Ash.Actions.Update.Bulk do
   @moduledoc false
   @spec run(Ash.Api.t(), Enumerable.t() | Ash.Query.t(), atom(), input :: map, Keyword.t()) ::
-          :ok
-          | {:ok, [Ash.Resource.record()]}
-          | {:ok, [Ash.Resource.record()], [Ash.Notifier.Notification.t()]}
-          | {:error, term}
+          Ash.BulkResult.t()
   def run(api, resource, action, input, opts) when is_atom(resource) do
     run(api, Ash.Query.new(resource), action, input, opts)
   end
@@ -28,10 +25,15 @@ defmodule Ash.Actions.Update.Bulk do
     query = %{query | api: api}
 
     fully_atomic_changeset =
-      if Ash.DataLayer.data_layer_can?(query.resource, :update_query) do
-        Ash.Changeset.fully_atomic_changeset(query.resource, action, input, opts)
-      else
-        {:not_atomic, "data layer does not support updating a query"}
+      cond do
+        changeset = opts[:atomic_changeset] ->
+          changeset
+
+        Ash.DataLayer.data_layer_can?(query.resource, :update_query) ->
+          Ash.Changeset.fully_atomic_changeset(query.resource, action, input, opts)
+
+        true ->
+          {:not_atomic, "data layer does not support updating a query"}
       end
 
     case fully_atomic_changeset do
@@ -63,16 +65,7 @@ defmodule Ash.Actions.Update.Bulk do
         }
 
       atomic_changeset ->
-        has_after_action_hooks? = not Enum.empty?(atomic_changeset.after_action)
-        # There are performance implications here. We probably need to explicitly enable
-        # having after action hooks. Or perhaps we need to stream the ids and then bulk update
-        # them.
-        opts =
-          if has_after_action_hooks? || opts[:notify?] do
-            Keyword.put(opts, :return_records?, true)
-          else
-            opts
-          end
+        atomic_changeset = %{atomic_changeset | api: api}
 
         notify? =
           if opts[:notify?] do
@@ -86,61 +79,77 @@ defmodule Ash.Actions.Update.Bulk do
             false
           end
 
-        context_key =
-          case atomic_changeset.action.type do
-            :update ->
-              :bulk_update
-
-            :destroy ->
-              :bulk_destroy
-          end
-
-        bulk_result =
-          if has_after_action_hooks? && opts[:transaction] do
-            Ash.DataLayer.transaction(
-              List.wrap(atomic_changeset.resource) ++ action.touches_resources,
-              fn ->
-                do_atomic_update(query, atomic_changeset, has_after_action_hooks?, opts)
-              end,
-              opts[:timeout],
-              %{
-                type: context_key,
-                metadata: %{
-                  resource: query.resource,
-                  action: atomic_changeset.action.name,
-                  actor: opts[:actor]
-                },
-                data_layer_context: opts[:data_layer_context] || %{}
-              }
-            )
-          else
-            do_atomic_update(query, atomic_changeset, has_after_action_hooks?, opts)
-          end
-
-        notifications =
-          if notify? do
-            List.wrap(bulk_result.notifications) ++ Process.delete(:ash_notifications)
-          else
-            List.wrap(bulk_result.notifications)
-          end
-
-        if opts[:return_notifications?] do
-          %{bulk_result | notifications: notifications}
-        else
-          if opts[:return_notifications?] do
-            bulk_result
-          else
-            if notify? do
-              notifications = bulk_result.notifications ++ Process.get(:ash_notifications, [])
-              remaining_notifications = Ash.Notifier.notify(notifications)
-              Process.delete(:ash_notifications) || []
-
-              Ash.Actions.Helpers.warn_missed!(atomic_changeset.resource, action, %{
-                resource_notifications: remaining_notifications
-              })
-
-              %{bulk_result | notifications: notifications}
+        try do
+          has_after_action_hooks? = not Enum.empty?(atomic_changeset.after_action)
+          # There are performance implications here. We probably need to explicitly enable
+          # having after action hooks. Or perhaps we need to stream the ids and then bulk update
+          # them.
+          opts =
+            if has_after_action_hooks? || opts[:notify?] do
+              Keyword.put(opts, :return_records?, true)
+            else
+              opts
             end
+
+          context_key =
+            case atomic_changeset.action.type do
+              :update ->
+                :bulk_update
+
+              :destroy ->
+                :bulk_destroy
+            end
+
+          bulk_result =
+            if has_after_action_hooks? && opts[:transaction] do
+              Ash.DataLayer.transaction(
+                List.wrap(atomic_changeset.resource) ++ action.touches_resources,
+                fn ->
+                  do_atomic_update(query, atomic_changeset, has_after_action_hooks?, opts)
+                end,
+                opts[:timeout],
+                %{
+                  type: context_key,
+                  metadata: %{
+                    resource: query.resource,
+                    action: atomic_changeset.action.name,
+                    actor: opts[:actor]
+                  },
+                  data_layer_context: opts[:data_layer_context] || %{}
+                }
+              )
+            else
+              do_atomic_update(query, atomic_changeset, has_after_action_hooks?, opts)
+            end
+
+          notifications =
+            if notify? do
+              List.wrap(bulk_result.notifications) ++
+                List.wrap(Process.delete(:ash_notifications))
+            else
+              List.wrap(bulk_result.notifications)
+            end
+
+          if opts[:return_notifications?] do
+            %{bulk_result | notifications: notifications}
+          else
+            if opts[:return_notifications?] do
+              bulk_result
+            else
+              if notify? do
+                remaining_notifications = Ash.Notifier.notify(notifications)
+
+                Ash.Actions.Helpers.warn_missed!(atomic_changeset.resource, action, %{
+                  resource_notifications: remaining_notifications
+                })
+
+                %{bulk_result | notifications: notifications}
+              end
+            end
+          end
+        after
+          if notify? do
+            Process.put(:ash_started_transaction?, false)
           end
         end
     end
@@ -253,6 +262,8 @@ defmodule Ash.Actions.Update.Bulk do
           }
 
         {:ok, results} ->
+          results = List.wrap(results)
+
           {errors, results, notifications, error_count} =
             if has_after_action_hooks? do
               results
@@ -263,19 +274,22 @@ defmodule Ash.Actions.Update.Bulk do
                       {[error | errors], successes, error_count + 1}
 
                     {:ok, result, _changeset, %{notifications: new_notifications}} ->
-                      {errors, [result | successes],
-                       [
-                         notification(atomic_changeset, result, opts)
-                         | notifications ++ new_notifications
-                       ], error_count}
+                      {errors, [result | successes], notifications ++ new_notifications,
+                       error_count}
                   end
               end)
               |> then(fn {errors, successes, notifications, error_count} ->
                 {Enum.reverse(errors), Enum.reverse(successes), notifications, error_count}
               end)
             else
-              {[], results, 0}
+              {[], results, [], 0}
             end
+
+          notifications =
+            notifications ++
+              Enum.map(results, fn result ->
+                notification(atomic_changeset, result, opts)
+              end)
 
           status =
             case {error_count, results} do

@@ -131,7 +131,9 @@ defmodule Ash.Resource.Change do
               )
 
   @callback atomic(Ash.Changeset.t(), Keyword.t(), context()) ::
-              {:atomic, %{atom() => Ash.Expr.t()}}
+              {:ok, Ash.Changeset.t()}
+              | {:atomic, %{atom() => Ash.Expr.t()}}
+              | {:atomic, Ash.Changeset.t(), %{atom() => Ash.Expr.t()}}
               | {:not_atomic, String.t()}
               | :ok
               | {:error, term()}
@@ -153,23 +155,11 @@ defmodule Ash.Resource.Change do
 
       def init(opts), do: {:ok, opts}
 
-      def atomic(_opts, _context),
-        do: {:not_atomic, "#{inspect(__MODULE__)} does not implement `atomic/2`"}
-
-      defoverridable init: 1, atomic: 2
-    end
-  end
-
-  defmacro __before_compile__(_env) do
-    quote generated: true do
-      unless Module.defines?(__MODULE__, {:atomic?, 0}, :def) do
-        @impl Ash.Resource.Validation
-        if Module.defines?(__MODULE__, {:atomic, 3}, :def) do
-          def atomic?, do: true
-        else
-          def atomic?, do: false
-        end
+      def atomic(_changeset, _opts, _context) do
+        {:not_atomic, "#{inspect(__MODULE__)} does not implement `atomic/2`"}
       end
+
+      defoverridable init: 1, atomic: 3
     end
   end
 end

@@ -2623,7 +2623,7 @@ defmodule Ash.Api do
       %Ash.BulkResult{status: :error, errors: errors} ->
         raise Ash.Error.to_error_class(errors)
 
-      bulk_result ->
+      %Ash.BulkResult{} = bulk_result ->
         bulk_result
     end
   end
@@ -2658,7 +2658,10 @@ defmodule Ash.Api do
       query_or_stream ->
         case Spark.OptionsHelpers.validate(opts, @bulk_destroy_opts_schema) do
           {:ok, opts} ->
-            Destroy.Bulk.run(api, query_or_stream, action, input, opts)
+            %Ash.BulkResult{} =
+              result = Destroy.Bulk.run(api, query_or_stream, action, input, opts)
+
+            result
 
           {:error, error} ->
             %Ash.BulkResult{status: :error, errors: [Ash.Error.to_ash_error(error)]}
@@ -2676,7 +2679,7 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec update(Ash.Api.t(), Ash.Resource.record(), Keyword.t()) ::
+  @spec update(Ash.Api.t(), Ash.Changeset.t(), Keyword.t()) ::
           {:ok, Ash.Resource.record()}
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
@@ -2774,6 +2777,7 @@ defmodule Ash.Api do
   end
 
   defp unwrap_or_raise!(first, destroy? \\ false)
+  defp unwrap_or_raise!(%Ash.BulkResult{} = bulk_result, _), do: bulk_result
   defp unwrap_or_raise!(:ok, _), do: :ok
   defp unwrap_or_raise!({:ok, result}, false), do: result
   defp unwrap_or_raise!({:ok, _result}, true), do: :ok

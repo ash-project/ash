@@ -10,6 +10,8 @@ defmodule Ash.Query.Function.StringTrim do
       [:string]
     ]
 
+  def evaluate(%{arguments: [nil]}), do: {:known, nil}
+
   def evaluate(%{arguments: [value]}) do
     {:known, String.trim(value)}
   end

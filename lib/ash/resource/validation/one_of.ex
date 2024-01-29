@@ -73,7 +73,7 @@ defmodule Ash.Resource.Validation.OneOf do
            field: ^opts[:attribute],
            value: ^value,
            message: "expected one of %{values}",
-           vars: [values: Enum.map_join(opts[:values], ", ", &to_string/1)]
+           vars: %{values: Enum.map_join(opts[:values], ", ", &to_string/1)}
          }
        )
      )}

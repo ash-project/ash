@@ -5,4 +5,8 @@ defmodule Ash.Resource.Change.Atomic do
   def change(changeset, opts, _) do
     Ash.Changeset.atomic_update(changeset, opts[:attribute], opts[:expr])
   end
+
+  def atomic(_changeset, opts, _context) do
+    {:atomic, %{opts[:attribute] => opts[:expr]}}
+  end
 end

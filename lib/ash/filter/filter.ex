@@ -3074,8 +3074,8 @@ defmodule Ash.Filter do
                  function_module,
                  args
                ) do
-          if is_boolean(function) do
-            {:ok, function}
+          if Ash.Filter.TemplateHelpers.expr?(function) && !match?(%{__predicate__?: _}, function) do
+            hydrate_refs(function, context)
           else
             if is_nil(context.resource) ||
                  Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do

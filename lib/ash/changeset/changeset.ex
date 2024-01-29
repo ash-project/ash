@@ -36,6 +36,8 @@ defmodule Ash.Changeset do
     defaults: [],
     errors: [],
     params: %{},
+    casted_attributes: %{},
+    casted_arguments: %{},
     phase: :validate,
     relationships: %{},
     select: nil,
@@ -185,6 +187,7 @@ defmodule Ash.Changeset do
           action_type: Ash.Resource.Actions.action_type() | nil,
           after_action: [after_action_fun | {after_action_fun, map}],
           after_transaction: [after_transaction_fun | {after_transaction_fun, map}],
+          atomics: Keyword.t(),
           api: module | nil,
           arguments: %{optional(atom) => any},
           around_action: [around_action_fun | {around_action_fun, map}],
@@ -499,6 +502,7 @@ defmodule Ash.Changeset do
       |> Ash.Changeset.new()
       |> Map.put(:params, params)
       |> Map.put(:action, action)
+      |> Map.put(:atomics, opts[:atomics] || [])
 
     {changeset, _opts} =
       Ash.Actions.Helpers.add_process_context(
@@ -507,14 +511,31 @@ defmodule Ash.Changeset do
         opts
       )
 
-    with %Ash.Changeset{} = changeset <-
+    with :ok <- verify_notifiers_support_atomic(resource, action),
+         %Ash.Changeset{} = changeset <-
            atomic_update(changeset, opts[:atomic_update] || []),
-         %Ash.Changeset{} = changeset <- atomic_params(changeset, action, params),
+         %Ash.Changeset{} = changeset <- atomic_params(changeset, action, params, opts),
          %Ash.Changeset{} = changeset <- atomic_changes(changeset, action) do
       hydrate_atomic_refs(changeset, opts[:actor], Keyword.take(opts, [:eager?]))
     else
       {:not_atomic, reason} ->
         {:not_atomic, reason}
+    end
+  end
+
+  defp verify_notifiers_support_atomic(resource, action) do
+    resource
+    |> Ash.Resource.Info.notifiers()
+    |> Enum.filter(fn notifier ->
+      notifier.requires_original_data?(resource, action)
+    end)
+    |> case do
+      [] ->
+        :ok
+
+      notifiers ->
+        {:not_atomic,
+         "notifiers #{inspect(notifiers)} require original data for #{inspect(resource)}.#{action.name}"}
     end
   end
 
@@ -607,7 +628,8 @@ defmodule Ash.Changeset do
          %{change: {module, change_opts}, where: where},
          context
        ) do
-    with {:atomic, atomic_changes} <- module.atomic(changeset, change_opts, context),
+    with {:atomic, changeset, atomic_changes} <-
+           atomic_with_changeset(module.atomic(changeset, change_opts, context), changeset),
          {:atomic, condition} <- atomic_condition(where, changeset) do
       changeset = add_after_atomic(changeset, module, change_opts)
 
@@ -636,6 +658,9 @@ defmodule Ash.Changeset do
           atomic_update(changeset, atomic_changes)
       end
     else
+      {:ok, changeset} ->
+        changeset
+
       {:not_atomic, reason} ->
         {:not_atomic, reason}
 
@@ -660,6 +685,9 @@ defmodule Ash.Changeset do
       changeset
     end
   end
+
+  defp atomic_with_changeset({:atomic, atomics}, changeset), do: {:atomic, changeset, atomics}
+  defp atomic_with_changeset(other, _), do: other
 
   defp validate_atomically(changeset, condition_expr, error_expr) do
     [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
@@ -716,28 +744,58 @@ defmodule Ash.Changeset do
     end)
   end
 
-  defp atomic_params(changeset, action, params) do
-    Enum.reduce_while(params, changeset, fn {key, value}, changeset ->
-      cond do
-        has_argument?(action, key) ->
-          {:cont, set_argument(changeset, key, value)}
+  defp atomic_params(changeset, action, params, opts) do
+    if opts[:assume_casted?] do
+      Enum.reduce_while(params, changeset, fn {key, value}, changeset ->
+        cond do
+          has_argument?(action, key) ->
+            {:cont, %{changeset | arguments: Map.put(changeset.arguments, key, value)}}
 
-        attribute = Ash.Resource.Info.attribute(changeset.resource, key) ->
-          case Ash.Type.cast_atomic_update(attribute.type, value, attribute.constraints) do
-            {:atomic, atomic} ->
-              {:cont, atomic_update(changeset, key, {:atomic, atomic})}
+          attribute = Ash.Resource.Info.attribute(changeset.resource, key) ->
+            case Ash.Type.cast_atomic_update(attribute.type, value, attribute.constraints) do
+              {:atomic, atomic} ->
+                {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
 
-            {:error, error} ->
-              {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
+              {:error, error} ->
+                {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
 
-            {:not_atomic, reason} ->
-              {:halt, {:not_atomic, reason}}
-          end
+              {:not_atomic, reason} ->
+                {:halt, {:not_atomic, reason}}
+            end
 
-        true ->
-          {:cont, changeset}
-      end
-    end)
+          true ->
+            {:cont, changeset}
+        end
+      end)
+    else
+      Enum.reduce_while(params, changeset, fn {key, value}, changeset ->
+        cond do
+          has_argument?(action, key) ->
+            {:cont, set_argument(changeset, key, value)}
+
+          attribute = Ash.Resource.Info.attribute(changeset.resource, key) ->
+            case change_attribute(changeset, key, value) do
+              %{valid?: true, attributes: %{^key => value}} ->
+                case Ash.Type.cast_atomic_update(attribute.type, value, attribute.constraints) do
+                  {:atomic, atomic} ->
+                    {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
+
+                  {:error, error} ->
+                    {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
+
+                  {:not_atomic, reason} ->
+                    {:halt, {:not_atomic, reason}}
+                end
+
+              %{valid?: false} ->
+                {:cont, changeset}
+            end
+
+          true ->
+            {:cont, changeset}
+        end
+      end)
+    end
   end
 
   @manage_types [:append_and_remove, :append, :remove, :direct_control, :create]
@@ -1532,17 +1590,42 @@ defmodule Ash.Changeset do
   defp cast_params(changeset, action, params) do
     changeset = %{
       changeset
-      | params: Map.merge(changeset.params, Enum.into(params, %{}))
+      | params: Map.merge(changeset.params, Enum.into(params, %{})),
+        casted_arguments: %{},
+        casted_attributes: %{}
     }
 
     Enum.reduce(params, changeset, fn {name, value}, changeset ->
       cond do
-        has_argument?(action, name) ->
-          set_argument(changeset, name, value)
+        argument = get_action_argument(action, name) ->
+          changeset
+          |> set_argument(name, value)
+          |> then(fn changeset ->
+            if Map.has_key?(changeset.arguments, argument.name) do
+              Map.update!(
+                changeset,
+                :casted_arguments,
+                &Map.put(&1, name, changeset.arguments[argument.name])
+              )
+            else
+              changeset
+            end
+          end)
 
         attr = Ash.Resource.Info.public_attribute(changeset.resource, name) ->
           if attr.writable? do
             change_attribute(changeset, attr.name, value)
+            |> then(fn changeset ->
+              if Map.has_key?(changeset.attributes, attr.name) do
+                Map.update!(
+                  changeset,
+                  :casted_attributes,
+                  &Map.put(&1, name, changeset.attributes[attr.name])
+                )
+              else
+                changeset
+              end
+            end)
           else
             changeset
           end
@@ -1551,6 +1634,14 @@ defmodule Ash.Changeset do
           changeset
       end
     end)
+  end
+
+  defp get_action_argument(action, name) when is_atom(name) do
+    Enum.find(action.arguments, &(&1.private? == false && &1.name == name))
+  end
+
+  defp get_action_argument(action, name) when is_binary(name) do
+    Enum.find(action.arguments, &(&1.private? == false && to_string(&1.name) == name))
   end
 
   defp has_argument?(action, name) when is_atom(name) do
@@ -1648,31 +1739,35 @@ defmodule Ash.Changeset do
 
   @doc false
   def hydrate_atomic_refs(changeset, actor, opts \\ []) do
-    hydrated_changeset =
-      %{
-        changeset
-        | atomics:
-            Enum.map(changeset.atomics, fn {key, expr} ->
-              expr =
-                Ash.Filter.build_filter_from_template(
-                  expr,
-                  actor,
-                  changeset.arguments,
-                  changeset.context,
-                  changeset
-                )
+    Enum.reduce_while(changeset.atomics, {:ok, changeset}, fn {key, expr}, {:ok, changeset} ->
+      expr =
+        Ash.Filter.build_filter_from_template(
+          expr,
+          actor,
+          changeset.arguments,
+          changeset.context,
+          changeset
+        )
 
-              {:ok, expr} =
-                Ash.Filter.hydrate_refs(expr, %{resource: changeset.resource, public?: false})
+      case Ash.Filter.hydrate_refs(expr, %{resource: changeset.resource, public?: false}) do
+        {:ok, expr} ->
+          {:cont, {:ok, %{changeset | atomics: Keyword.put(changeset.atomics, key, expr)}}}
 
-              {key, expr}
-            end)
-      }
+        {:error, error} ->
+          {:halt,
+           {:not_atomic, "Failed to validate expression #{inspect(expr)}: #{inspect(error)}"}}
+      end
+    end)
+    |> case do
+      {:ok, hydrated_changeset} ->
+        if Keyword.get(opts, :eager?, true) do
+          add_known_atomic_errors(hydrated_changeset)
+        else
+          hydrated_changeset
+        end
 
-    if Keyword.get(opts, :eager?, true) do
-      add_known_atomic_errors(hydrated_changeset)
-    else
-      hydrated_changeset
+      other ->
+        other
     end
   end
 
