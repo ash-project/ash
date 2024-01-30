@@ -955,28 +955,32 @@ defmodule Ash.Filter do
         false
     end)
     |> Enum.flat_map(fn %{attribute: calculation} = calculation_ref ->
-      expression = calculation.module.expression(calculation.opts, calculation.context)
+      if calculation.module.has_expression? do
+        expression = calculation.module.expression(calculation.opts, calculation.context)
 
-      case hydrate_refs(expression, %{
-             resource: Ash.Resource.Info.related(resource, calculation_ref.relationship_path),
-             relationship_path: [],
-             public?: false
-           }) do
-        {:ok, expression} ->
-          [
-            calculation_ref
-            | used_calculations(
-                expression,
-                Ash.Resource.Info.related(resource, calculation_ref.relationship_path),
-                :*,
-                %{},
-                %{},
-                true
-              )
-          ]
+        case hydrate_refs(expression, %{
+               resource: Ash.Resource.Info.related(resource, calculation_ref.relationship_path),
+               relationship_path: [],
+               public?: false
+             }) do
+          {:ok, expression} ->
+            [
+              calculation_ref
+              | used_calculations(
+                  expression,
+                  Ash.Resource.Info.related(resource, calculation_ref.relationship_path),
+                  :*,
+                  %{},
+                  %{},
+                  true
+                )
+            ]
 
-        _ ->
-          [calculation_ref]
+          _ ->
+            [calculation_ref]
+        end
+      else
+        [calculation_ref]
       end
     end)
     |> Enum.filter(fn

@@ -1895,8 +1895,6 @@ defmodule Ash.Actions.Read do
 
         case Ash.Filter.hydrate_refs(expression, %{
                resource: query.resource,
-               aggregates: query.aggregates,
-               calculations: query.calculations,
                public?: false
              }) do
           {:ok, expression} ->

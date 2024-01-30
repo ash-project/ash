@@ -413,7 +413,26 @@ defmodule Ash.Actions.Read.Calculations do
 
           _ ->
             if can_expression_calculation? do
-              {[calculation | in_query], at_runtime, ash_query}
+              expression
+              |> Ash.Filter.hydrate_refs(%{resource: ash_query.resource, public?: false})
+              |> case do
+                {:ok, expression} ->
+                  expression
+                  |> Ash.Filter.used_calculations(ash_query.resource, :*)
+                  |> Enum.all?(fn %{module: module} ->
+                    module.has_expression?()
+                  end)
+                  |> case do
+                    true ->
+                      {[calculation | in_query], at_runtime, ash_query}
+
+                    false ->
+                      {in_query, [calculation | at_runtime], ash_query}
+                  end
+
+                _ ->
+                  {[calculation | in_query], at_runtime, ash_query}
+              end
             else
               {in_query,
                [

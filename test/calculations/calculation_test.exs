@@ -392,6 +392,10 @@ defmodule Ash.Test.CalculationTest do
         )
       end
 
+      calculate :full_name_with_select_plus_something,
+                :string,
+                expr(full_name_with_select <> "_something")
+
       calculate(:best_friends_best_friends_first_name, :string, BestFriendsBestFriendsFirstName)
 
       calculate(
@@ -1078,5 +1082,13 @@ defmodule Ash.Test.CalculationTest do
        %{user1: user1} do
     user1
     |> Api.load!([:say_hello_to_fred, :say_hello_to_george])
+  end
+
+  test "expression calculations that depend on runtime calculations work", %{user1: user1} do
+    assert [%{full_name_with_select_plus_something: "zach daniel_something"}] =
+             User
+             |> Ash.Query.filter(id == ^user1.id)
+             |> Ash.Query.load(:full_name_with_select_plus_something)
+             |> Api.read!()
   end
 end

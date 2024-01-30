@@ -11,6 +11,8 @@ defmodule Ash.Calculation do
     quote do
       @behaviour Ash.Calculation
 
+      @before_compile Ash.Calculation
+
       def init(opts), do: {:ok, opts}
 
       def describe(opts), do: "##{inspect(__MODULE__)}<#{inspect(opts)}>"
@@ -20,6 +22,16 @@ defmodule Ash.Calculation do
       def select(_query, _opts, _context), do: []
 
       defoverridable init: 1, describe: 1, select: 3, load: 3
+    end
+  end
+
+  defmacro __before_compile__(_) do
+    quote do
+      if Module.defines?(__MODULE__, {:expression, 2}) do
+        def has_expression?, do: true
+      else
+        def has_expression?, do: false
+      end
     end
   end
 
@@ -41,6 +53,7 @@ defmodule Ash.Calculation do
   @callback load(query :: Ash.Query.t(), opts :: opts, context :: context) ::
               atom | [atom] | Keyword.t()
   @callback select(query :: Ash.Query.t(), opts :: opts, context :: context) :: list(atom)
+  @callback has_expression?() :: boolean()
 
   @optional_callbacks expression: 2, calculate: 3
 end
