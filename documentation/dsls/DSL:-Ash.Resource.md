@@ -1577,6 +1577,7 @@ end
 |------|------|---------|------|
 | [`soft?`](#actions-destroy-soft?){: #actions-destroy-soft? } | `boolean` | `false` | If specified, the destroy action behaves as an update internally |
 | [`manual`](#actions-destroy-manual){: #actions-destroy-manual } | `(any, any -> any) \| module` |  | Override the update behavior. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
+| [`require_atomic?`](#actions-destroy-require_atomic?){: #actions-destroy-require_atomic? } | `boolean` | `false` | Require that the update be atomic. Only relevant if `soft?` is set to `true`. This means that all changes and validations implement the `atomic` callback. See the guide on atomic updates for more. |
 | [`primary?`](#actions-destroy-primary?){: #actions-destroy-primary? } | `boolean` | `false` | Whether or not this action should be used when no action is specified by the caller. |
 | [`description`](#actions-destroy-description){: #actions-destroy-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-destroy-transaction?){: #actions-destroy-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |

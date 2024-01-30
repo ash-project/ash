@@ -1290,6 +1290,13 @@ defmodule Ash.Actions.Create.Bulk do
   end
 
   defp run_action_changes(batch, all_changes, _action, actor, authorize?, tracer, tenant) do
+    context = %{
+      actor: actor,
+      authorize?: authorize? || false,
+      tracer: tracer,
+      tenant: tenant
+    }
+
     Enum.reduce(
       all_changes,
       %{must_return_records?: false, batch: batch, changes: %{}},
@@ -1300,11 +1307,11 @@ defmodule Ash.Actions.Create.Bulk do
               if Enum.all?(validation.where || [], fn {module, opts} ->
                    opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
 
-                   module.validate(changeset, opts) == :ok
+                   module.validate(changeset, opts, context) == :ok
                  end) do
                 opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
 
-                case module.validate(changeset, opts) do
+                case module.validate(changeset, opts, context) do
                   :ok ->
                     changeset
 
@@ -1326,13 +1333,6 @@ defmodule Ash.Actions.Create.Bulk do
         {%{change: {module, change_opts}} = change, change_index}, %{batch: batch} = state ->
           # could track if any element in the batch is invalid, and if not use the fast version
           if Enum.empty?(change.where) && !change.only_when_valid? do
-            context = %{
-              actor: actor,
-              authorize?: authorize? || false,
-              tracer: tracer,
-              tenant: tenant
-            }
-
             batch = batch_change(module, batch, change_opts, context, actor)
 
             must_return_records? =
@@ -1355,7 +1355,7 @@ defmodule Ash.Actions.Create.Bulk do
                   Enum.all?(change.where || [], fn {module, opts} ->
                     opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
 
-                    module.validate(changeset, opts) == :ok
+                    module.validate(changeset, opts, context) == :ok
                   end)
 
                 applies_from_only_when_valid? =

@@ -248,6 +248,12 @@ defmodule Ash.Changeset do
   require Ash.Expr
   require Logger
 
+  defmodule OriginalDataNotAvailable do
+    @moduledoc "A value placed in changeset.data to indicate that the original data is not available"
+    defstruct reason: :atomic_query_update
+    @type t :: %__MODULE__{reason: :atomic_query_update}
+  end
+
   defmacrop maybe_already_validated_error!(changeset, alternative \\ nil) do
     {function, arity} = __CALLER__.function
 
@@ -498,29 +504,34 @@ defmodule Ash.Changeset do
         action -> action
       end
 
-    changeset =
-      resource
-      |> Ash.Changeset.new()
-      |> Map.put(:params, params)
-      |> Map.put(:action, action)
-      |> Map.put(:atomics, opts[:atomics] || [])
-
-    {changeset, _opts} =
-      Ash.Actions.Helpers.add_process_context(
-        opts[:api] || Ash.Resource.Info.api(resource),
-        changeset,
-        opts
-      )
-
-    with :ok <- verify_notifiers_support_atomic(resource, action),
-         %Ash.Changeset{} = changeset <-
-           atomic_update(changeset, opts[:atomic_update] || []),
-         %Ash.Changeset{} = changeset <- atomic_params(changeset, action, params, opts),
-         %Ash.Changeset{} = changeset <- atomic_changes(changeset, action) do
-      hydrate_atomic_refs(changeset, opts[:actor], Keyword.take(opts, [:eager?]))
+    if action.manual do
+      {:not_atomic,
+       "manual action `#{inspect(resource)}.#{action.name}` cannot be performed atomically"}
     else
-      {:not_atomic, reason} ->
-        {:not_atomic, reason}
+      changeset =
+        resource
+        |> Ash.Changeset.new()
+        |> Map.put(:params, params)
+        |> Map.put(:action, action)
+        |> Map.put(:atomics, opts[:atomics] || [])
+
+      {changeset, _opts} =
+        Ash.Actions.Helpers.add_process_context(
+          opts[:api] || Ash.Resource.Info.api(resource),
+          changeset,
+          opts
+        )
+
+      with :ok <- verify_notifiers_support_atomic(resource, action),
+           %Ash.Changeset{} = changeset <-
+             atomic_update(changeset, opts[:atomic_update] || []),
+           %Ash.Changeset{} = changeset <- atomic_params(changeset, action, params, opts),
+           %Ash.Changeset{} = changeset <- atomic_changes(changeset, action) do
+        hydrate_atomic_refs(changeset, opts[:actor], Keyword.take(opts, [:eager?]))
+      else
+        {:not_atomic, reason} ->
+          {:not_atomic, reason}
+      end
     end
   end
 
@@ -619,8 +630,14 @@ defmodule Ash.Changeset do
           changeset -> changeset
         end
 
-      [value] ->
-        value
+      [:ok] ->
+        changeset
+
+      [{:error, error}] ->
+        Ash.Changeset.add_error(changeset, error)
+
+      [{:not_atomic, error}] ->
+        {:not_atomic, error}
     end
   end
 
@@ -785,21 +802,33 @@ defmodule Ash.Changeset do
             {:cont, set_argument(changeset, key, value)}
 
           attribute = Ash.Resource.Info.attribute(changeset.resource, key) ->
-            case change_attribute(changeset, key, value) do
-              %{valid?: true, attributes: %{^key => value}} ->
-                case Ash.Type.cast_atomic_update(attribute.type, value, attribute.constraints) do
-                  {:atomic, atomic} ->
-                    {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
+            if attribute.name in action.accept do
+              case change_attribute(changeset, key, value) do
+                %{valid?: true, attributes: %{^key => value}} ->
+                  case Ash.Type.cast_atomic_update(attribute.type, value, attribute.constraints) do
+                    {:atomic, atomic} ->
+                      {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
 
-                  {:error, error} ->
-                    {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
+                    {:error, error} ->
+                      {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
 
-                  {:not_atomic, reason} ->
-                    {:halt, {:not_atomic, reason}}
-                end
+                    {:not_atomic, reason} ->
+                      {:halt, {:not_atomic, reason}}
+                  end
 
-              %{valid?: false} ->
-                {:cont, changeset}
+                %{valid?: false} ->
+                  {:cont, changeset}
+              end
+            else
+              {:cont,
+               add_error(
+                 changeset,
+                 InvalidAttribute.exception(
+                   field: key,
+                   message: "cannot be changed",
+                   value: changeset.attributes[key]
+                 )
+               )}
             end
 
           true ->
@@ -1695,55 +1724,77 @@ defmodule Ash.Changeset do
       %{only_when_valid?: true}, %{valid?: false} = changeset ->
         changeset
 
-      %{always_atomic?: true, change: _} = change, changeset ->
-        run_atomic_change(changeset, change, context)
+      %{always_atomic?: true, change: {module, _}} = change, changeset ->
+        case run_atomic_change(changeset, change, context) do
+          {:not_atomic, reason} ->
+            Ash.Changeset.add_error(
+              changeset,
+              "Change #{inspect(module)} was configured with `always_atomic?` to `true`, but could not be done atomically: #{reason}"
+            )
+
+          changeset ->
+            changeset
+        end
 
       %{always_atomic?: true, validation: _} = change, changeset ->
         run_atomic_validation(changeset, change)
 
-      %{change: {module, opts}, where: where}, changeset ->
-        if Enum.all?(where || [], fn {module, opts} ->
-             Ash.Tracer.span :validation, "change condition: #{inspect(module)}", tracer do
-               Ash.Tracer.telemetry_span [:ash, :validation], %{
-                 resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-                 validation: inspect(module)
-               } do
-                 Ash.Tracer.set_metadata(tracer, :validation, metadata)
+      %{change: {module, opts}, where: where} = change, changeset ->
+        if module.has_change?() do
+          if Enum.all?(where || [], fn {module, opts} ->
+               Ash.Tracer.span :validation, "change condition: #{inspect(module)}", tracer do
+                 Ash.Tracer.telemetry_span [:ash, :validation], %{
+                   resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+                   validation: inspect(module)
+                 } do
+                   Ash.Tracer.set_metadata(tracer, :validation, metadata)
 
-                 opts =
-                   Ash.Filter.build_filter_from_template(
-                     opts,
-                     actor,
-                     changeset.arguments,
-                     changeset.context
-                   )
+                   opts =
+                     Ash.Filter.build_filter_from_template(
+                       opts,
+                       actor,
+                       changeset.arguments,
+                       changeset.context
+                     )
 
-                 module.validate(changeset, opts) == :ok
+                   module.validate(changeset, opts, context) == :ok
+                 end
                end
-             end
-           end) do
-          Ash.Tracer.span :change, "change: #{inspect(module)}", tracer do
-            Ash.Tracer.telemetry_span [:ash, :change], %{
-              resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-              change: inspect(module)
-            } do
-              {:ok, opts} = module.init(opts)
+             end) do
+            Ash.Tracer.span :change, "change: #{inspect(module)}", tracer do
+              Ash.Tracer.telemetry_span [:ash, :change], %{
+                resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+                change: inspect(module)
+              } do
+                {:ok, opts} = module.init(opts)
 
-              Ash.Tracer.set_metadata(tracer, :change, metadata)
+                Ash.Tracer.set_metadata(tracer, :change, metadata)
 
-              opts =
-                Ash.Filter.build_filter_from_template(
-                  opts,
-                  actor,
-                  changeset.arguments,
-                  changeset.context
-                )
+                opts =
+                  Ash.Filter.build_filter_from_template(
+                    opts,
+                    actor,
+                    changeset.arguments,
+                    changeset.context
+                  )
 
-              module.change(changeset, opts, context)
+                module.change(changeset, opts, context)
+              end
             end
+          else
+            changeset
           end
         else
-          changeset
+          case run_atomic_change(changeset, change, context) do
+            {:not_atomic, reason} ->
+              Ash.Changeset.add_error(
+                changeset,
+                "Change #{inspect(module)} must be atomic, but could not be done atomically: #{reason}"
+              )
+
+            changeset ->
+              changeset
+          end
         end
 
       %{validation: _} = validation, changeset ->
@@ -1951,28 +2002,48 @@ defmodule Ash.Changeset do
   end
 
   defp validate(changeset, validation, tracer, metadata, actor) do
-    if validation.before_action? do
-      before_action(
-        changeset,
-        fn changeset ->
-          if validation.only_when_valid? and not changeset.valid? do
-            changeset
-          else
-            do_validation(changeset, validation, tracer, metadata, actor)
-          end
-        end,
-        append?: true
-      )
-    else
-      if validation.only_when_valid? and not changeset.valid? do
-        changeset
+    if validation.module.has_validate? do
+      if validation.before_action? do
+        before_action(
+          changeset,
+          fn changeset ->
+            if validation.only_when_valid? and not changeset.valid? do
+              changeset
+            else
+              do_validation(changeset, validation, tracer, metadata, actor)
+            end
+          end,
+          append?: true
+        )
       else
-        do_validation(changeset, validation, tracer, metadata, actor)
+        if validation.only_when_valid? and not changeset.valid? do
+          changeset
+        else
+          do_validation(changeset, validation, tracer, metadata, actor)
+        end
+      end
+    else
+      case run_atomic_validation(changeset, validation) |> IO.inspect() do
+        {:not_atomic, reason} ->
+          Ash.Changeset.add_error(
+            changeset,
+            "Validation #{validation.module} must be run atomically, but it could not be: #{reason}"
+          )
+
+        changeset ->
+          changeset
       end
     end
   end
 
   defp do_validation(changeset, validation, tracer, metadata, actor) do
+    context = %{
+      actor: changeset.context[:private][:actor],
+      tenant: changeset.tenant,
+      authorize?: changeset.context[:private][:authorize?] || false,
+      tracer: changeset.context[:private][:tracer]
+    }
+
     if Enum.all?(validation.where || [], fn {module, opts} ->
          opts =
            Ash.Filter.build_filter_from_template(
@@ -1984,7 +2055,7 @@ defmodule Ash.Changeset do
 
          case module.init(opts) do
            {:ok, opts} ->
-             module.validate(changeset, opts) == :ok
+             module.validate(changeset, opts, context) == :ok
 
            _ ->
              false
@@ -2006,7 +2077,7 @@ defmodule Ash.Changeset do
             )
 
           with {:ok, opts} <- validation.module.init(opts),
-               :ok <- validation.module.validate(changeset, opts) do
+               :ok <- validation.module.validate(changeset, opts, context) do
             changeset
           else
             :ok ->

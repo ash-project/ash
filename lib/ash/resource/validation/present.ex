@@ -73,6 +73,7 @@ defmodule Ash.Resource.Validation.Present do
     end
   end
 
+  @impl true
   def atomic(changeset, opts) do
     values =
       Enum.map(opts[:attributes], fn attr ->

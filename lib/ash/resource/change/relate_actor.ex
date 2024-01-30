@@ -4,6 +4,7 @@ defmodule Ash.Resource.Change.RelateActor do
   alias Ash.Changeset
   alias Ash.Error.Changes.InvalidRelationship
 
+  @impl true
   def init(opts) do
     case Spark.OptionsHelpers.validate(opts, Ash.Resource.Change.Builtins.relate_actor_opts()) do
       {:ok, opts} ->
@@ -14,6 +15,7 @@ defmodule Ash.Resource.Change.RelateActor do
     end
   end
 
+  @impl true
   def change(changeset, opts, %{actor: actor}) do
     relationship = resolve_relationship!(changeset, opts)
     actor = resolve_actor(actor, opts)
@@ -42,6 +44,7 @@ defmodule Ash.Resource.Change.RelateActor do
     end
   end
 
+  @impl true
   def atomic(changeset, opts, %{actor: actor}) do
     relationship = resolve_relationship!(changeset, opts)
     actor = resolve_actor(actor, opts)

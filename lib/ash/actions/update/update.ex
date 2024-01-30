@@ -11,6 +11,10 @@ defmodule Ash.Actions.Update do
           | {:ok, Ash.Resource.record()}
           | {:error, Ash.Changeset.t()}
           | {:error, term}
+  def run(api, %{valid?: false} = changeset, _action, _opts) do
+    {:error, Ash.Error.to_error_class(changeset.errors, changeset: %{changeset | api: api})}
+  end
+
   def run(api, changeset, action, opts) do
     if changeset.atomics != [] &&
          !Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :update}) do
@@ -52,7 +56,8 @@ defmodule Ash.Actions.Update do
         end
 
       case fully_atomic_changeset do
-        %Ash.Changeset{} = atomic_changeset ->
+        # no need to use bulk update logic if no atomics were added
+        %Ash.Changeset{atomics: atomics} = atomic_changeset when atomics != [] ->
           atomic_changeset =
             %{atomic_changeset | data: changeset.data}
             |> Ash.Changeset.set_context(%{data_layer: %{use_atomic_update_data?: true}})
@@ -88,53 +93,64 @@ defmodule Ash.Actions.Update do
               {:error, Ash.Error.to_error_class(errors)}
           end
 
-        {:not_atomic, _} ->
-          {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
+        other ->
+          if action.require_atomic? && match?({:not_atomic, _reason}, other) do
+            {:not_atomic, reason} = other
 
-          Ash.Tracer.span :action,
-                          Ash.Api.Info.span_name(
-                            api,
-                            changeset.resource,
-                            action.name
-                          ),
-                          opts[:tracer] do
-            metadata = %{
-              api: api,
-              resource: changeset.resource,
-              resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-              actor: opts[:actor],
-              tenant: opts[:tenant],
-              action: action.name,
-              authorize?: opts[:authorize?]
-            }
+            {:error,
+             Ash.Error.Framework.MustBeAtomic.exception(
+               resource: changeset.resource,
+               action: action.name,
+               reason: reason
+             )}
+          else
+            {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
 
-            Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
+            Ash.Tracer.span :action,
+                            Ash.Api.Info.span_name(
+                              api,
+                              changeset.resource,
+                              action.name
+                            ),
+                            opts[:tracer] do
+              metadata = %{
+                api: api,
+                resource: changeset.resource,
+                resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+                actor: opts[:actor],
+                tenant: opts[:tenant],
+                action: action.name,
+                authorize?: opts[:authorize?]
+              }
 
-            Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(api), :update], metadata do
-              case do_run(api, changeset, action, opts) do
-                {:error, error} ->
-                  if opts[:tracer] do
-                    stacktrace =
-                      case error do
-                        %{stacktrace: %{stacktrace: stacktrace}} ->
-                          stacktrace || []
+              Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
-                        _ ->
-                          {:current_stacktrace, stacktrace} =
-                            Process.info(self(), :current_stacktrace)
+              Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(api), :update], metadata do
+                case do_run(api, changeset, action, opts) do
+                  {:error, error} ->
+                    if opts[:tracer] do
+                      stacktrace =
+                        case error do
+                          %{stacktrace: %{stacktrace: stacktrace}} ->
+                            stacktrace || []
 
-                          stacktrace
-                      end
+                          _ ->
+                            {:current_stacktrace, stacktrace} =
+                              Process.info(self(), :current_stacktrace)
 
-                    Ash.Tracer.set_handled_error(opts[:tracer], Ash.Error.to_error_class(error),
-                      stacktrace: stacktrace
-                    )
-                  end
+                            stacktrace
+                        end
 
-                  {:error, error}
+                      Ash.Tracer.set_handled_error(opts[:tracer], Ash.Error.to_error_class(error),
+                        stacktrace: stacktrace
+                      )
+                    end
 
-                other ->
-                  other
+                    {:error, error}
+
+                  other ->
+                    other
+                end
               end
             end
           end

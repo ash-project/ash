@@ -1376,6 +1376,13 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   defp run_action_changes(batch, all_changes, _action, actor, authorize?, tracer, tenant) do
+    context = %{
+      actor: actor,
+      authorize?: authorize? || false,
+      tracer: tracer,
+      tenant: tenant
+    }
+
     Enum.reduce(
       all_changes,
       %{must_return_records?: false, batch: batch, changes: %{}},
@@ -1384,9 +1391,9 @@ defmodule Ash.Actions.Destroy.Bulk do
           batch =
             Enum.map(batch, fn changeset ->
               if Enum.all?(validation.where || [], fn {module, opts} ->
-                   module.validate(changeset, opts) == :ok
+                   module.validate(changeset, opts, context) == :ok
                  end) do
-                case module.validate(changeset, opts) do
+                case module.validate(changeset, opts, context) do
                   :ok ->
                     changeset
 
@@ -1408,13 +1415,6 @@ defmodule Ash.Actions.Destroy.Bulk do
         {%{change: {module, change_opts}} = change, change_index}, %{batch: batch} = state ->
           # could track if any element in the batch is invalid, and if not use the fast version
           if Enum.empty?(change.where) && !change.only_when_valid? do
-            context = %{
-              actor: actor,
-              authorize?: authorize? || false,
-              tracer: tracer,
-              tenant: tenant
-            }
-
             batch = batch_change(module, batch, change_opts, context, actor)
 
             must_return_records? =
@@ -1435,7 +1435,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               |> Enum.split_with(fn changeset ->
                 applies_from_where? =
                   Enum.all?(change.where || [], fn {module, opts} ->
-                    module.validate(changeset, opts) == :ok
+                    module.validate(changeset, opts, context) == :ok
                   end)
 
                 applies_from_only_when_valid? =

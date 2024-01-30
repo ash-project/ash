@@ -2,6 +2,7 @@ defmodule Ash.Resource.Change.Select do
   @moduledoc false
   use Ash.Resource.Change
 
+  @impl true
   def change(changeset, opts, _) do
     if opts[:ensure?] do
       Ash.Changeset.ensure_selected(changeset, opts[:target] || [])
@@ -10,6 +11,7 @@ defmodule Ash.Resource.Change.Select do
     end
   end
 
+  @impl true
   def atomic(changeset, opts, _context) do
     if opts[:ensure?] do
       {:atomic, Ash.Changeset.ensure_selected(changeset, opts[:target] || [])}

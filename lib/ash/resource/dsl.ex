@@ -1403,7 +1403,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.ValidateManagedRelationshipOpts,
     Ash.Resource.Verifiers.ValidateMultitenancy,
     Ash.Resource.Verifiers.ValidatePrimaryKey,
-    Ash.Resource.Verifiers.VerifyAcceptedByApi
+    Ash.Resource.Verifiers.VerifyAcceptedByApi,
+    Ash.Resource.Verifiers.VerifyActionsAtomic
   ]
 
   @moduledoc false

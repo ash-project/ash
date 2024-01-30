@@ -7,6 +7,8 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
   require Ash.Query
 
   defmodule Increasing do
+    use Ash.Resource.Validation
+
     def init(opts), do: {:ok, opts}
 
     def validate(changeset, opts) do
@@ -26,6 +28,8 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
   end
 
   defmodule DestroyMe do
+    use Ash.Resource.Validation
+
     def init(opts), do: {:ok, opts}
 
     def validate(changeset, _opts) do

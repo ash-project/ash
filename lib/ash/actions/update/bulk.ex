@@ -142,6 +142,8 @@ defmodule Ash.Actions.Update.Bulk do
                 })
 
                 %{bulk_result | notifications: notifications}
+              else
+                bulk_result
               end
             end
           end
@@ -250,6 +252,16 @@ defmodule Ash.Actions.Update.Bulk do
         Ash.Changeset.select(atomic_changeset, opts[:select])
       else
         atomic_changeset
+      end
+
+    atomic_changeset =
+      if atomic_changeset.context[:data_layer][:use_atomic_update_data] do
+        atomic_changeset
+      else
+        %{
+          atomic_changeset
+          | data: %Ash.Changeset.OriginalDataNotAvailable{reason: :atomic_query_update}
+        }
       end
 
     atomic_changeset =
@@ -713,10 +725,10 @@ defmodule Ash.Actions.Update.Bulk do
 
             {new_errors, new_error_count} = Process.get({:bulk_update_errors, ref}) || {[], 0}
 
-            if new_error_count == starting_error_count do
+            if new_error_count != starting_error_count do
               Ash.DataLayer.rollback(
                 resource,
-                Enum.take(new_errors, new_error_count - starting_error_count)
+                {:error, Enum.take(new_errors, new_error_count - starting_error_count)}
               )
             else
               result
@@ -902,33 +914,28 @@ defmodule Ash.Actions.Update.Bulk do
       Task.async_stream(
         stream,
         fn batch ->
-          try do
-            Process.put(:ash_started_transaction?, true)
-            batch_result = callback.(batch)
-            {errors, _} = Process.get({:bulk_update_errors, ref}) || {[], 0}
+          Process.put(:ash_started_transaction?, true)
+          batch_result = callback.(batch)
+          {errors, _} = Process.get({:bulk_update_errors, ref}) || {[], 0}
 
-            notifications =
-              if opts[:notify?] do
-                process_notifications = Process.get(:ash_notifications, [])
-                bulk_notifications = Process.get({:bulk_update_notifications, ref}) || []
+          notifications =
+            if opts[:notify?] do
+              process_notifications = Process.get(:ash_notifications, [])
+              bulk_notifications = Process.get({:bulk_update_notifications, ref}) || []
 
-                if opts[:return_notifications?] do
-                  process_notifications ++ bulk_notifications
-                else
-                  if opts[:transaction] && opts[:transaction] != :all do
-                    Ash.Notifier.notify(bulk_notifications)
-                    Ash.Notifier.notify(process_notifications)
-                  end
-
-                  []
+              if opts[:return_notifications?] do
+                process_notifications ++ bulk_notifications
+              else
+                if opts[:transaction] && opts[:transaction] != :all do
+                  Ash.Notifier.notify(bulk_notifications)
+                  Ash.Notifier.notify(process_notifications)
                 end
-              end
 
-            {batch_result, notifications, errors}
-          catch
-            value ->
-              {:throw, value}
-          end
+                []
+              end
+            end
+
+          {batch_result, notifications, errors}
         end,
         timeout: :infinity,
         max_concurrency: max_concurrency
@@ -1553,6 +1560,13 @@ defmodule Ash.Actions.Update.Bulk do
          tenant,
          context_key
        ) do
+    context = %{
+      actor: actor,
+      authorize?: authorize? || false,
+      tracer: tracer,
+      tenant: tenant
+    }
+
     Enum.reduce(
       all_changes,
       %{must_return_records?: false, batch: batch, changes: %{}},
@@ -1561,9 +1575,9 @@ defmodule Ash.Actions.Update.Bulk do
           batch =
             Enum.map(batch, fn changeset ->
               if Enum.all?(validation.where || [], fn {module, opts} ->
-                   module.validate(changeset, opts) == :ok
+                   module.validate(changeset, opts, context) == :ok
                  end) do
-                case module.validate(changeset, opts) do
+                case module.validate(changeset, opts, context) do
                   :ok ->
                     changeset
 
@@ -1585,13 +1599,6 @@ defmodule Ash.Actions.Update.Bulk do
         {%{change: {module, change_opts}} = change, change_index}, %{batch: batch} = state ->
           # could track if any element in the batch is invalid, and if not use the fast version
           if Enum.empty?(change.where) && !change.only_when_valid? do
-            context = %{
-              actor: actor,
-              authorize?: authorize? || false,
-              tracer: tracer,
-              tenant: tenant
-            }
-
             batch = batch_change(module, batch, change_opts, context, actor)
 
             must_return_records? =
@@ -1612,7 +1619,7 @@ defmodule Ash.Actions.Update.Bulk do
               |> Enum.split_with(fn changeset ->
                 applies_from_where? =
                   Enum.all?(change.where || [], fn {module, opts} ->
-                    module.validate(changeset, opts) == :ok
+                    module.validate(changeset, opts, context) == :ok
                   end)
 
                 applies_from_only_when_valid? =

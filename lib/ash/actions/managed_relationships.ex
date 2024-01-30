@@ -464,8 +464,7 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.Changeset.for_create(action_name, input,
       require?: false,
       actor: actor,
-      authorize?: opts[:authorize?],
-      relationships: opts[:relationships] || []
+      authorize?: opts[:authorize?]
     )
     |> Ash.Changeset.set_context(relationship.context)
     |> Ash.Changeset.set_tenant(changeset.tenant)
@@ -1022,7 +1021,6 @@ defmodule Ash.Actions.ManagedRelationships do
           accessing_from: %{source: relationship.source, name: relationship.name}
         })
         |> Ash.Changeset.for_update(create_or_update, input,
-          relationships: opts[:relationships] || [],
           actor: actor,
           authorize?: opts[:authorize?]
         )
@@ -1086,8 +1084,7 @@ defmodule Ash.Actions.ManagedRelationships do
                 |> Ash.Changeset.for_create(action_name, input,
                   require?: false,
                   actor: actor,
-                  authorize?: opts[:authorize?],
-                  relationships: opts[:relationships]
+                  authorize?: opts[:authorize?]
                 )
                 |> maybe_force_change_attribute(
                   relationship,
@@ -1140,7 +1137,6 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.Changeset.for_create(action_name, regular_params,
               require?: false,
               authorize?: opts[:authorize?],
-              relationships: opts[:relationships],
               actor: actor
             )
             |> Ash.Changeset.set_context(relationship.context)
@@ -1279,8 +1275,7 @@ defmodule Ash.Actions.ManagedRelationships do
         })
         |> Ash.Changeset.for_update(action_name, input,
           actor: actor,
-          authorize?: opts[:authorize?],
-          relationships: opts[:relationships] || []
+          authorize?: opts[:authorize?]
         )
         |> Ash.Changeset.set_context(relationship.context)
         |> Ash.Changeset.set_tenant(changeset.tenant)
@@ -1318,8 +1313,7 @@ defmodule Ash.Actions.ManagedRelationships do
         })
         |> Ash.Changeset.for_update(action_name, regular_params,
           actor: actor,
-          authorize?: opts[:authorize?],
-          relationships: opts[:relationships]
+          authorize?: opts[:authorize?]
         )
         |> Ash.Changeset.set_context(relationship.context)
         |> Ash.Changeset.set_tenant(changeset.tenant)
@@ -1702,7 +1696,6 @@ defmodule Ash.Actions.ManagedRelationships do
       accessing_from: %{source: relationship.source, name: relationship.name, unrelating?: true}
     })
     |> Ash.Changeset.for_update(action_name, %{},
-      relationships: opts[:relationships] || [],
       authorize?: opts[:authorize?],
       actor: actor
     )
@@ -1812,7 +1805,6 @@ defmodule Ash.Actions.ManagedRelationships do
       accessing_from: %{source: relationship.source, name: relationship.name}
     })
     |> Ash.Changeset.for_destroy(action_name, %{},
-      relationships: opts[:relationships] || [],
       actor: actor,
       authorize?: opts[:authorize?]
     )

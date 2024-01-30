@@ -1,6 +1,9 @@
 defmodule Ash.Resource.Actions.Destroy do
   @moduledoc "Represents a destroy action on a resource."
 
+  require Ash.Flags
+  @require_atomic_default Ash.Flags.ash_three?()
+
   defstruct [
     :name,
     :primary?,
@@ -8,6 +11,7 @@ defmodule Ash.Resource.Actions.Destroy do
     :description,
     :error_handler,
     manual: nil,
+    require_atomic?: @require_atomic_default,
     arguments: [],
     touches_resources: [],
     delay_global_validations?: false,
@@ -26,6 +30,7 @@ defmodule Ash.Resource.Actions.Destroy do
           name: atom,
           manual: module | nil,
           arguments: list(Ash.Resource.Actions.Argument.t()),
+          require_atomic?: boolean,
           delay_global_validations?: boolean,
           skip_global_validations?: boolean,
           touches_resources: list(atom),
@@ -50,6 +55,13 @@ defmodule Ash.Resource.Actions.Destroy do
                   doc: """
                   Override the update behavior. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
                   """
+                ],
+                require_atomic?: [
+                  type: :boolean,
+                  doc: """
+                  Require that the update be atomic. Only relevant if `soft?` is set to `true`. This means that all changes and validations implement the `atomic` callback. See the guide on atomic updates for more.
+                  """,
+                  default: @require_atomic_default
                 ]
               ]
               |> Spark.OptionsHelpers.merge_schemas(

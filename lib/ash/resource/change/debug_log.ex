@@ -4,6 +4,7 @@ defmodule Ash.Resource.Change.DebugLog do
   require Logger
 
   @doc false
+  @impl true
   @spec change(Ash.Changeset.t(), keyword, Ash.Resource.Change.context()) :: Ash.Changeset.t()
   def change(changeset, opts, _) do
     label = opts[:label]
@@ -34,6 +35,7 @@ defmodule Ash.Resource.Change.DebugLog do
     end)
   end
 
+  @impl true
   def atomic(changeset, opts, _context) do
     label = opts[:label]
     debug(changeset, "building atomic", label, changeset)

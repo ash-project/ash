@@ -3,6 +3,7 @@ defmodule Ash.Resource.Change.SetAttribute do
   use Ash.Resource.Change
   alias Ash.Changeset
 
+  @impl true
   def init(opts) do
     case Spark.OptionsHelpers.validate(opts, Ash.Resource.Change.Builtins.set_attribute_opts()) do
       {:ok, opts} ->
@@ -20,6 +21,7 @@ defmodule Ash.Resource.Change.SetAttribute do
 
   def validate_value(value), do: {:ok, value}
 
+  @impl true
   def change(changeset, opts, _) do
     value =
       case opts[:value] do
@@ -43,6 +45,7 @@ defmodule Ash.Resource.Change.SetAttribute do
     end
   end
 
+  @impl true
   def atomic(_changeset, opts, _context) do
     value =
       case opts[:value] do

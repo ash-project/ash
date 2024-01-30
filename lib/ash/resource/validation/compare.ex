@@ -69,6 +69,7 @@ defmodule Ash.Resource.Validation.Compare do
     end
   end
 
+  @impl true
   def atomic(changeset, opts) do
     case Ash.Changeset.fetch_argument(changeset, opts[:attribute]) do
       :error ->
