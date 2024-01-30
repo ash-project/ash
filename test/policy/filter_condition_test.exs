@@ -1,4 +1,4 @@
-defmodule Ash.Test.Policy.StrictConditionTest do
+defmodule Ash.Test.Policy.FilterConditionTest do
   use ExUnit.Case, async: true
 
   defmodule Resource do
@@ -19,9 +19,9 @@ defmodule Ash.Test.Policy.StrictConditionTest do
     end
 
     policies do
-      default_access_type :strict
+      default_access_type :filter
 
-      policy [action(:read), expr(visible = true)] do
+      policy [action(:read), expr(visible == true)] do
         authorize_if always()
       end
     end
@@ -40,7 +40,7 @@ defmodule Ash.Test.Policy.StrictConditionTest do
     end
   end
 
-  test "condition in strict policy is evaluated" do
+  test "condition in filter policy is evaluated" do
     Resource
     |> Ash.Changeset.for_create(:create, %{visible: true}, authorize?: false)
     |> Api.create!()
@@ -53,7 +53,6 @@ defmodule Ash.Test.Policy.StrictConditionTest do
       Resource
       |> Ash.Query.for_read(:read, actor: %{id: "foo"})
       |> Api.read!()
-      |> IO.inspect()
 
     assert visible_resource.visible == true
   end

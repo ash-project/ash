@@ -1320,7 +1320,7 @@ defmodule Ash.Policy.Authorizer do
       {:ok, true, authorizer} ->
         {:authorized, authorizer}
 
-      {:ok, false, authorizer} ->
+      {:ok, none, authorizer} when none in [false, []] ->
         {:error,
          Ash.Error.Forbidden.Policy.exception(
            facts: authorizer.facts,

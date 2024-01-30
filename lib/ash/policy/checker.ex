@@ -85,10 +85,13 @@ defmodule Ash.Policy.Checker do
         {:ok, value, authorizer}
 
       {:ok, scenarios, authorizer} ->
-        {:ok,
-         scenarios
-         |> Ash.Policy.SatSolver.simplify_clauses()
-         |> remove_scenarios_with_impossible_facts(authorizer), authorizer}
+        scenarios
+        |> Ash.Policy.SatSolver.simplify_clauses()
+        |> remove_scenarios_with_impossible_facts(authorizer)
+        |> case do
+          [] -> {:ok, false, authorizer}
+          scenarios -> {:ok, scenarios, authorizer}
+        end
 
       {:error, authorizer, :unsatisfiable} ->
         {:error, authorizer, :unsatisfiable}
