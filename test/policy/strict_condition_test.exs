@@ -21,7 +21,7 @@ defmodule Ash.Test.Policy.StrictConditionTest do
     policies do
       default_access_type :strict
 
-      policy [action(:read), never()] do
+      policy [action(:read), expr(visible == true)] do
         authorize_if always()
       end
     end
