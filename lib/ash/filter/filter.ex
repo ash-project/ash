@@ -3623,7 +3623,8 @@ defmodule Ash.Filter do
                   %Ref{
                     attribute: attr,
                     relationship_path: context[:relationship_path] || [],
-                    resource: context.resource
+                    resource: context.resource,
+                    input?: true
                   },
                   [key]
                 ]
@@ -3648,7 +3649,8 @@ defmodule Ash.Filter do
                       %Ref{
                         attribute: attr,
                         relationship_path: context[:relationship_path] || [],
-                        resource: context.resource
+                        resource: context.resource,
+                        input?: true
                       }
 
                   with {:ok, [left, right]} <-
