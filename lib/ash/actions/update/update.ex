@@ -61,6 +61,9 @@ defmodule Ash.Actions.Update do
           atomic_changeset =
             %{atomic_changeset | data: changeset.data}
             |> Ash.Changeset.set_context(%{data_layer: %{use_atomic_update_data?: true}})
+            |> Map.put(:load, changeset.load)
+            |> Map.put(:select, changeset.select)
+            |> Ash.Changeset.set_context(changeset.context)
 
           opts =
             Keyword.merge(opts,
