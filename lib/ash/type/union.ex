@@ -244,6 +244,9 @@ defmodule Ash.Type.Union do
         end
 
       case merged do
+        {:ok, ^acc} ->
+          {:cont, {:ok, acc}}
+
         {:ok, merged} ->
           {:cont, {:ok, Keyword.put(acc, name, merged)}}
 
