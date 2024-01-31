@@ -183,6 +183,20 @@ defmodule Ash.CodeInterface do
     end
   end
 
+  @doc false
+  # sobelow_skip ["DOS.BinToAtom"]
+  def resolve_calc_method_names(name) do
+    if name |> to_string() |> String.ends_with?("?") do
+      safe_name = name |> to_string() |> String.trim_trailing("?") |> String.to_atom()
+      bang_name = name
+      {safe_name, bang_name}
+    else
+      safe_name = name
+      bang_name = "#{name}!" |> String.to_atom()
+      {safe_name, bang_name}
+    end
+  end
+
   @doc """
   Defines the code interface for a given resource + api combination in the current module. For example:
 
@@ -287,9 +301,10 @@ defmodule Ash.CodeInterface do
               end
           end
 
-        # sobelow_skip ["DOS.BinToAtom"]
-        def unquote(:"#{name}!")(unquote_splicing(args), opts \\ [])
-        def unquote(name)(unquote_splicing(args), opts \\ [])
+        {safe_name, bang_name} = Ash.CodeInterface.resolve_calc_method_names(name)
+
+        def unquote(bang_name)(unquote_splicing(args), opts \\ [])
+        def unquote(safe_name)(unquote_splicing(args), opts \\ [])
       end
 
       for interface <- Ash.Resource.Info.calculation_interfaces(resource) do
@@ -300,9 +315,10 @@ defmodule Ash.CodeInterface do
           |> Kernel.||([])
           |> Ash.CodeInterface.unwrap_calc_interface_args(resource, calculation.arguments)
 
+        {safe_name, bang_name} = Ash.CodeInterface.resolve_calc_method_names(interface.name)
+
         @doc "Calculate `#{calculation.name}`, raising any errors. See `#{interface.name}/#{Enum.count(interface.args) + 1}` for more."
-        # sobelow_skip ["DOS.BinToAtom"]
-        def unquote(:"#{interface.name}!")(unquote_splicing(arg_bindings), opts) do
+        def unquote(bang_name)(unquote_splicing(arg_bindings), opts) do
           {refs, arguments, record} =
             Enum.reduce(
               [unquote_splicing(arg_access)],
@@ -337,8 +353,7 @@ defmodule Ash.CodeInterface do
         Calculate `#{calculation.name}`, returning `{:ok, result}` or `{:error, error}`.
         #{if calculation.description, do: "\nDescription:" <> calculation.description}
         """
-        # sobelow_skip ["DOS.BinToAtom"]
-        def unquote(interface.name)(unquote_splicing(arg_bindings), opts) do
+        def unquote(safe_name)(unquote_splicing(arg_bindings), opts) do
           {refs, arguments, record} =
             Enum.reduce(
               [unquote_splicing(arg_access)],
