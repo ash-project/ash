@@ -3579,26 +3579,29 @@ defmodule Ash.Filter do
     end
   end
 
-  defp parse_predicates(value, field, context) when not is_list(value) and not is_map(value) do
-    parse_predicates([eq: value], field, context)
+  defp parse_predicates(value, field, context, inner_expr \\ nil)
+
+  defp parse_predicates(value, field, context, inner_expr)
+       when not is_list(value) and not is_map(value) do
+    parse_predicates([eq: value], field, context, inner_expr)
   end
 
-  defp parse_predicates(value, field, context) when value == %{} do
-    parse_predicates([eq: true], field, context)
+  defp parse_predicates(value, field, context, inner_expr) when value == %{} do
+    parse_predicates([eq: true], field, context, inner_expr)
   end
 
-  defp parse_predicates(%struct{} = value, field, context)
+  defp parse_predicates(%struct{} = value, field, context, inner_expr)
        when struct not in [Not, BooleanExpression, Ref, Call] do
-    parse_predicates([eq: value], field, context)
+    parse_predicates([eq: value], field, context, inner_expr)
   end
 
-  defp parse_predicates(values, attr, context) do
+  defp parse_predicates(values, attr, context, inner_expr) do
     if is_struct(values) && Map.has_key?(values, :__predicate__) do
-      parse_predicates([eq: values], attr, context)
+      parse_predicates([eq: values], attr, context, inner_expr)
     else
       if is_map(values) || Keyword.keyword?(values) do
         Enum.reduce_while(values, {:ok, true}, fn
-          {:not, value}, {:ok, expression} ->
+          {key, value}, {:ok, expression} when key in [:not, "not"] ->
             case parse_predicates(List.wrap(value), attr, context) do
               {:ok, not_expression} ->
                 {:cont,
@@ -3612,42 +3615,71 @@ defmodule Ash.Filter do
             end
 
           {key, value}, {:ok, expression} ->
-            case get_operator(key) do
-              nil ->
-                error = NoSuchFilterPredicate.exception(key: key, resource: context.resource)
-                {:halt, {:error, error}}
+            if !match?({:array, _}, attr.type) &&
+                 Ash.Type.embedded_type?(attr.type) && Ash.Resource.Info.attribute(attr.type, key) do
+              get_path = %Call{
+                name: :get_path,
+                args: [
+                  %Ref{
+                    attribute: attr,
+                    relationship_path: context[:relationship_path] || [],
+                    resource: context.resource
+                  },
+                  [key]
+                ]
+              }
 
-              operator_module ->
-                left = %Ref{
-                  attribute: attr,
-                  relationship_path: context[:relationship_path] || [],
-                  resource: context.resource
-                }
+              {:cont,
+               parse_predicates(
+                 value,
+                 attr,
+                 context,
+                 get_path
+               )}
+            else
+              case get_operator(key) do
+                nil ->
+                  error = NoSuchFilterPredicate.exception(key: key, resource: context.resource)
+                  {:halt, {:error, error}}
 
-                with {:ok, [left, right]} <-
-                       hydrate_refs([left, value], context),
-                     refs <- list_refs([left, right]),
-                     :ok <-
-                       validate_refs(
-                         refs,
-                         context.root_resource,
-                         {attr, value}
-                       ),
-                     {:ok, operator} <- Operator.new(operator_module, left, right) do
-                  if is_boolean(operator) do
-                    {:cont, {:ok, operator}}
-                  else
-                    if is_nil(context.resource) ||
-                         Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, operator}) do
-                      {:cont, {:ok, BooleanExpression.optimized_new(:and, expression, operator)}}
+                operator_module ->
+                  left =
+                    inner_expr ||
+                      %Ref{
+                        attribute: attr,
+                        relationship_path: context[:relationship_path] || [],
+                        resource: context.resource
+                      }
+
+                  with {:ok, [left, right]} <-
+                         hydrate_refs([left, value], context),
+                       refs <- list_refs([left, right]),
+                       :ok <-
+                         validate_refs(
+                           refs,
+                           context.root_resource,
+                           {attr, value}
+                         ),
+                       {:ok, operator} <- Operator.new(operator_module, left, right) do
+                    if is_boolean(operator) do
+                      {:cont, {:ok, operator}}
                     else
-                      {:halt,
-                       {:error, "data layer does not support the operator #{inspect(operator)}"}}
+                      if is_nil(context.resource) ||
+                           Ash.DataLayer.data_layer_can?(
+                             context.resource,
+                             {:filter_expr, operator}
+                           ) do
+                        {:cont,
+                         {:ok, BooleanExpression.optimized_new(:and, expression, operator)}}
+                      else
+                        {:halt,
+                         {:error, "data layer does not support the operator #{inspect(operator)}"}}
+                      end
                     end
+                  else
+                    {:error, error} -> {:halt, {:error, error}}
                   end
-                else
-                  {:error, error} -> {:halt, {:error, error}}
-                end
+              end
             end
         end)
       else
