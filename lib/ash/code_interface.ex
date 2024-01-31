@@ -184,7 +184,7 @@ defmodule Ash.CodeInterface do
   end
 
   @doc false
-  # sobelow_skip ["DOS.BinToAtom"]
+  # sobelow_skip ["DOS.BinToAtom", "DOS.StringToAtom"]
   def resolve_calc_method_names(name) do
     if name |> to_string() |> String.ends_with?("?") do
       safe_name = name |> to_string() |> String.trim_trailing("?") |> String.to_atom()
