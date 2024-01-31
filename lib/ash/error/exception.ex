@@ -63,6 +63,10 @@ defmodule Ash.Error.Exception do
         super(opts) |> Map.update(:vars, [], &clean_vars/1)
       end
 
+      defp clean_vars(vars) when is_map(vars) do
+        clean_vars(Map.to_list(vars))
+      end
+
       defp clean_vars(vars) do
         vars |> Kernel.||([]) |> Keyword.drop([:field, :message, :path])
       end
