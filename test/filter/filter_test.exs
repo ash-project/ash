@@ -920,7 +920,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
     assert [%{embedded_bio: %{title: "Dr."}}] =
              Profile
-             |> Ash.Query.filter_input(%{embedded_bio: %{title: "Dr."}})
+             |> Ash.Query.filter_input(%{embedded_bio: %{at_path: [:title], eq: "Dr."}})
              |> Api.read!()
   end
 end
