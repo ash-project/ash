@@ -222,7 +222,7 @@ defmodule Ash.Type.Union do
         |> Enum.reject(&is_nil/1)
         |> case do
           [] ->
-            {:ok, acc}
+            {:ok, []}
 
           load_statements ->
             Enum.reduce_while(load_statements, {:ok, []}, fn load_statement, {:ok, merged} ->
@@ -244,6 +244,9 @@ defmodule Ash.Type.Union do
         end
 
       case merged do
+        {:ok, empty} when empty in [nil, []] ->
+          {:cont, {:ok, acc}}
+
         {:ok, merged} ->
           {:cont, {:ok, Keyword.put(acc, name, merged)}}
 
