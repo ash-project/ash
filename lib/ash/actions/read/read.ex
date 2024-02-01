@@ -290,6 +290,7 @@ defmodule Ash.Actions.Read do
              ),
            query <- Map.put(query, :sort, sort),
            query <- add_select_if_none_exists(query),
+           pre_authorization_query <- query,
            {:ok, query} <- authorize_query(query, opts),
            query_before_pagination <- query,
            {:ok, query} <-
@@ -303,7 +304,7 @@ defmodule Ash.Actions.Read do
            {:ok, relationship_path_filters} <-
              Ash.Filter.relationship_filters(
                query.api,
-               query,
+               pre_authorization_query,
                opts[:actor],
                query.tenant,
                Map.values(query.aggregates),
