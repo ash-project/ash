@@ -138,7 +138,7 @@ defmodule Ash.Actions.Read.Calculations do
     end
   end
 
-  defp attach_calculation_results(calculation, records, values) when is_list(values) do
+  defp attach_calculation_results(calculation, records, values) do
     if calculation.load do
       Enum.zip_with([records, values], fn [record, value] ->
         Map.put(record, calculation.load, value)
