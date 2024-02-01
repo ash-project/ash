@@ -2,7 +2,7 @@ import Config
 
 config :ash,
   flags: [
-    ash_three?: System.get_env("FLAG_ASH_THREE", "false") == "true"
+    ash_three?: System.get_env("ASH_THREE", "false") == "true"
   ]
 
 if Mix.env() == :dev do

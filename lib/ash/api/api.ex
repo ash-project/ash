@@ -1040,52 +1040,62 @@ defmodule Ash.Api do
                 {:cont, {true, Ash.Query.filter(or_query(query, subject.resource, api), ^filter)}}
 
               {:continue, authorizer_state} ->
-                if opts[:alter_source?] do
-                  query_with_hook =
-                    Ash.Query.authorize_results(or_query(query, subject.resource, api), fn query,
-                                                                                           results ->
-                      context = Map.merge(context, %{data: results, query: query})
-
-                      case authorizer.check(authorizer_state, context) do
-                        :authorized -> {:ok, results}
-                        {:error, error} -> {:error, error}
-                        {:data, data} -> {:ok, data}
-                      end
-                    end)
-
-                  {:cont, {true, query_with_hook}}
+                if opts[:no_check?] do
+                  Ash.Authorizer.exception(authorizer, :must_pass_strict_check, authorizer_state)
                 else
-                  if opts[:maybe_is] == false do
-                    {:halt,
-                     {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                  if opts[:alter_source?] do
+                    query_with_hook =
+                      Ash.Query.authorize_results(
+                        or_query(query, subject.resource, api),
+                        fn query, results ->
+                          context = Map.merge(context, %{data: results, query: query})
+
+                          case authorizer.check(authorizer_state, context) do
+                            :authorized -> {:ok, results}
+                            {:error, error} -> {:error, error}
+                            {:data, data} -> {:ok, data}
+                          end
+                        end
+                      )
+
+                    {:cont, {true, query_with_hook}}
                   else
-                    {:halt, {:maybe, nil}}
+                    if opts[:maybe_is] == false do
+                      {:halt,
+                       {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                    else
+                      {:halt, {:maybe, nil}}
+                    end
                   end
                 end
 
               {:filter_and_continue, filter, authorizer_state} ->
-                if opts[:alter_source?] do
-                  query_with_hook =
-                    query
-                    |> or_query(subject.resource, api)
-                    |> Ash.Query.filter(^filter)
-                    |> Ash.Query.authorize_results(fn query, results ->
-                      context = Map.merge(context, %{data: results, query: query})
-
-                      case authorizer.check(authorizer_state, context) do
-                        :authorized -> {:ok, results}
-                        {:error, error} -> {:error, error}
-                        {:data, data} -> {:ok, data}
-                      end
-                    end)
-
-                  {:cont, {true, query_with_hook}}
+                if opts[:no_check?] do
+                  Ash.Authorizer.exception(authorizer, :must_pass_strict_check, authorizer_state)
                 else
-                  if opts[:maybe_is] == false do
-                    {:halt,
-                     {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                  if opts[:alter_source?] do
+                    query_with_hook =
+                      query
+                      |> or_query(subject.resource, api)
+                      |> Ash.Query.filter(^filter)
+                      |> Ash.Query.authorize_results(fn query, results ->
+                        context = Map.merge(context, %{data: results, query: query})
+
+                        case authorizer.check(authorizer_state, context) do
+                          :authorized -> {:ok, results}
+                          {:error, error} -> {:error, error}
+                          {:data, data} -> {:ok, data}
+                        end
+                      end)
+
+                    {:cont, {true, query_with_hook}}
                   else
-                    {:halt, {:maybe, nil}}
+                    if opts[:maybe_is] == false do
+                      {:halt,
+                       {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                    else
+                      {:halt, {:maybe, nil}}
+                    end
                   end
                 end
             end
@@ -1564,6 +1574,8 @@ defmodule Ash.Api do
     - `base_query` - If authorizing an update, some cases can return both a new changeset and a query filtered for only things
       that will be authorized to update. Providing the `base_query` will cause that query to be altered instead of a new one to be
       generated.
+    - `no_check?` - If set to `true`, the query will not run the checks for runtime policies, and will instead consider the policy to have
+      failed. This is used for things like atomic updates, where the policies must check with strict check or filter checks.
   """
 
   @callback can(

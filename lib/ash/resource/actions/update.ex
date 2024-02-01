@@ -2,7 +2,6 @@ defmodule Ash.Resource.Actions.Update do
   @moduledoc "Represents a update action on a resource."
 
   require Ash.Flags
-  @require_atomic_default Ash.Flags.ash_three?()
 
   defstruct [
     :name,
@@ -12,7 +11,7 @@ defmodule Ash.Resource.Actions.Update do
     accept: nil,
     manual: nil,
     manual?: false,
-    require_atomic?: @require_atomic_default,
+    require_atomic?: false,
     atomics: [],
     require_attributes: [],
     delay_global_validations?: false,
@@ -54,12 +53,14 @@ defmodule Ash.Resource.Actions.Update do
                   Override the update behavior. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
                   """
                 ],
+                # Flags.ash_three?
+                # here and in destroy actions
                 require_atomic?: [
                   type: :boolean,
                   doc: """
                   Require that the update be atomic. This means that all changes and validations implement the `atomic` callback. See the guide on atomic updates for more.
                   """,
-                  default: @require_atomic_default
+                  default: false
                 ]
               ]
               |> Spark.OptionsHelpers.merge_schemas(

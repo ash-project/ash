@@ -2,7 +2,6 @@ defmodule Ash.Resource.Actions.Destroy do
   @moduledoc "Represents a destroy action on a resource."
 
   require Ash.Flags
-  @require_atomic_default Ash.Flags.ash_three?()
 
   defstruct [
     :name,
@@ -11,7 +10,7 @@ defmodule Ash.Resource.Actions.Destroy do
     :description,
     :error_handler,
     manual: nil,
-    require_atomic?: @require_atomic_default,
+    require_atomic?: false,
     arguments: [],
     touches_resources: [],
     delay_global_validations?: false,
@@ -61,7 +60,7 @@ defmodule Ash.Resource.Actions.Destroy do
                   doc: """
                   Require that the update be atomic. Only relevant if `soft?` is set to `true`. This means that all changes and validations implement the `atomic` callback. See the guide on atomic updates for more.
                   """,
-                  default: @require_atomic_default
+                  default: false
                 ]
               ]
               |> Spark.OptionsHelpers.merge_schemas(

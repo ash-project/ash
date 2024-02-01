@@ -1175,6 +1175,7 @@ defmodule Ash.Filter do
           |> api.can(actor,
             run_queries?: false,
             alter_source?: true,
+            no_check?: true,
             return_forbidden_error?: true,
             maybe_is: false
           )

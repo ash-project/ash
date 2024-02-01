@@ -665,7 +665,8 @@ defmodule Ash.Actions.Update.Bulk do
              return_forbidden_error?: true,
              maybe_is: false,
              run_queries?: false,
-             alter_source?: true
+             alter_source?: true,
+             no_check?: true
            ) do
         {:ok, true} ->
           {:ok, query}
