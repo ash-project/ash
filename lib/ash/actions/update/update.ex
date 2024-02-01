@@ -361,6 +361,13 @@ defmodule Ash.Actions.Update do
 
                         changeset.resource
                         |> Ash.DataLayer.update(changeset)
+                        |> case do
+                          {:ok, data} ->
+                            {:ok, %{data | __metadata__: changeset.data.__metadata__}}
+
+                          {:error, error} ->
+                            {:error, error}
+                        end
                         |> Ash.Actions.Helpers.rollback_if_in_transaction(
                           changeset.resource,
                           changeset

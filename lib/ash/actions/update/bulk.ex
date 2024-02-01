@@ -291,6 +291,19 @@ defmodule Ash.Actions.Update.Bulk do
           }
 
         {:ok, results} ->
+          results =
+            case results do
+              [result] ->
+                if atomic_changeset.context[:data_layer][:use_atomic_update_data] do
+                  Map.put(result, :__metadata__, atomic_changeset.data.__metadata__)
+                else
+                  [result]
+                end
+
+              other ->
+                other
+            end
+
           results = List.wrap(results)
 
           {errors, results, notifications, error_count} =

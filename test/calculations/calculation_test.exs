@@ -43,6 +43,14 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule Metadata do
+    use Ash.Calculation
+
+    def calculate(records, _opts, _context) do
+      Enum.map(records, &Ash.Resource.get_metadata(&1, :example_metadata))
+    end
+  end
+
   defmodule Concat do
     # An example concatenation calculation, that accepts the delimiter as an argument
     use Ash.Calculation
@@ -354,6 +362,18 @@ defmodule Ash.Test.CalculationTest do
       attribute(:bio, Bio)
     end
 
+    changes do
+      change fn changeset, _ ->
+        if changeset.action_type == :create do
+          Ash.Changeset.after_action(changeset, fn changeset, result ->
+            {:ok, Ash.Resource.put_metadata(result, :example_metadata, "example metadata")}
+          end)
+        else
+          changeset
+        end
+      end
+    end
+
     calculations do
       calculate :say_hello_to_fred, :string do
         calculation fn record, _ ->
@@ -370,6 +390,10 @@ defmodule Ash.Test.CalculationTest do
 
         load bio: [say_hello: %{to: "George"}]
       end
+
+      calculate :example_metadata, :string, Metadata
+
+      calculate :metadata_plus_metadata, :string, concat([:example_metadata, :example_metadata])
 
       calculate(:active, :boolean, expr(is_active))
 
@@ -1090,5 +1114,24 @@ defmodule Ash.Test.CalculationTest do
              |> Ash.Query.filter(id == ^user1.id)
              |> Ash.Query.load(:full_name_with_select_plus_something)
              |> Api.read!()
+  end
+
+  test "calculations that extract metadata will be loaded as a dependency of the concat calculation",
+       %{user1: user1} do
+    assert "example metadataexample metadata" ==
+             user1
+             |> Api.load!(:metadata_plus_metadata)
+             |> Map.get(:metadata_plus_metadata)
+  end
+
+  test "metadata is persisted after an update", %{user1: user1} do
+    assert %{example_metadata: "example metadata"} =
+             user1.__metadata__
+
+    assert %{example_metadata: "example metadata"} =
+             user1
+             |> Ash.Changeset.for_update(:update, %{first_name: "something new"})
+             |> Api.update!()
+             |> Map.get(:__metadata__)
   end
 end
