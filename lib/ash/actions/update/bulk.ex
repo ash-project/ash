@@ -5,11 +5,14 @@ defmodule Ash.Actions.Update.Bulk do
 
   @spec run(Ash.Api.t(), Enumerable.t() | Ash.Query.t(), atom(), input :: map, Keyword.t()) ::
           Ash.BulkResult.t()
-  def run(api, resource, action, input, opts) when is_atom(resource) do
-    run(api, Ash.Query.new(resource), action, input, opts)
+
+  def run(api, resource, action, input, opts, not_atomic_reason \\ nil)
+
+  def run(api, resource, action, input, opts, not_atomic_reason) when is_atom(resource) do
+    run(api, Ash.Query.new(resource), action, input, opts, not_atomic_reason)
   end
 
-  def run(api, %Ash.Query{} = query, action, input, opts) do
+  def run(api, %Ash.Query{} = query, action, input, opts, _not_atomic_reason) do
     query =
       if query.action do
         query
@@ -29,6 +32,10 @@ defmodule Ash.Actions.Update.Bulk do
 
     fully_atomic_changeset =
       cond do
+        :atomic not in opts[:strategy] ->
+          {:not_atomic,
+           "strategy option does not allow atomic updates. Got: #{inspect(opts[:strategy])}"}
+
         changeset = opts[:atomic_changeset] ->
           changeset
 
@@ -40,7 +47,7 @@ defmodule Ash.Actions.Update.Bulk do
       end
 
     case fully_atomic_changeset do
-      {:not_atomic, _} ->
+      {:not_atomic, reason} ->
         read_opts =
           Keyword.take(opts, Ash.Api.stream_opt_keys())
 
@@ -56,7 +63,8 @@ defmodule Ash.Actions.Update.Bulk do
           api.stream!(query, read_opts),
           action,
           input,
-          Keyword.put(opts, :resource, query.resource)
+          Keyword.put(opts, :resource, query.resource),
+          reason
         )
 
       %Ash.Changeset{valid?: false, errors: errors} ->
@@ -158,7 +166,9 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  def run(api, stream, action, input, opts) do
+  def run(api, stream, action, input, opts, not_atomic_reason) do
+    not_atomic_reason = not_atomic_reason || "Cannot perform atomic updates on a stream of inputs"
+
     resource =
       opts[:resource] ||
         case stream do
@@ -213,7 +223,7 @@ defmodule Ash.Actions.Update.Bulk do
       Ash.DataLayer.transaction(
         List.wrap(resource) ++ action.touches_resources,
         fn ->
-          do_run(api, stream, action, input, opts, metadata_key, context_key)
+          do_run(api, stream, action, input, opts, metadata_key, context_key, not_atomic_reason)
         end,
         opts[:timeout],
         %{
@@ -246,7 +256,7 @@ defmodule Ash.Actions.Update.Bulk do
       end
     else
       api
-      |> do_run(stream, action, input, opts, metadata_key, context_key)
+      |> do_run(stream, action, input, opts, metadata_key, context_key, not_atomic_reason)
       |> handle_bulk_result(metadata_key, opts)
     end
   end
@@ -390,11 +400,18 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  def do_run(api, stream, action, input, opts, metadata_key, context_key) do
+  defp do_run(api, stream, action, input, opts, metadata_key, context_key, not_atomic_reason) do
     resource = opts[:resource]
+    opts = Ash.Actions.Helpers.set_opts(opts, api)
+
+    {_, opts} = Ash.Actions.Helpers.add_process_context(api, Ash.Changeset.new(resource), opts)
 
     fully_atomic_changeset =
       cond do
+        :atomic_batches not in opts[:strategy] ->
+          {:not_atomic,
+           "strategy option does not allow atomic batches. Got: #{inspect(opts[:strategy])}"}
+
         Enum.empty?(Ash.Resource.Info.primary_key(resource)) ->
           {:not_atomic, "cannot atomically update a stream without a primary key"}
 
@@ -419,8 +436,25 @@ defmodule Ash.Actions.Update.Bulk do
           opts
         )
 
-      {:not_atomic, _} ->
-        do_stream_batches(api, stream, action, input, opts, metadata_key, context_key)
+      {:not_atomic, not_atomic_batches_reason} ->
+        if :stream in opts[:strategy] do
+          do_stream_batches(api, stream, action, input, opts, metadata_key, context_key)
+        else
+          %Ash.BulkResult{
+            status: :error,
+            errors: [
+              Ash.Error.to_error_class(
+                Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
+                  resource: resource,
+                  action: action.name,
+                  requested_strategies: opts[:strategy],
+                  not_atomic_batches_reason: not_atomic_batches_reason,
+                  not_atomic_reason: not_atomic_reason
+                )
+              )
+            ]
+          }
+        end
     end
   end
 
@@ -466,7 +500,8 @@ defmodule Ash.Actions.Update.Bulk do
             return_errors?: opts[:return_errors?],
             return_notifications?: opts[:return_notifications?],
             notify?: opts[:notify?],
-            return_records?: opts[:return_records?]
+            return_records?: opts[:return_records?],
+            strategy: opts[:strategy]
           )
           |> case do
             %Ash.BulkResult{error_count: 0, records: records, notifications: notifications} ->
@@ -490,9 +525,6 @@ defmodule Ash.Actions.Update.Bulk do
 
   defp do_stream_batches(api, stream, action, input, opts, metadata_key, context_key) do
     resource = opts[:resource]
-    opts = Ash.Actions.Helpers.set_opts(opts, api)
-
-    {_, opts} = Ash.Actions.Helpers.add_process_context(api, Ash.Changeset.new(resource), opts)
 
     manual_action_can_bulk? =
       case action.manual do

@@ -36,6 +36,8 @@ defmodule Ash.Api do
   Additionally, you can define a `code_interface` on each resource. See the code interface guide for more.
   """
 
+  require Ash.Flags
+
   use Spark.Dsl,
     default_extensions: [extensions: [Ash.Api.Dsl]],
     opt_schema: [
@@ -526,6 +528,10 @@ defmodule Ash.Api do
     ]
   ]
 
+  @bulk_strategy_default if Ash.Flags.ash_three?(),
+                           do: :atomic,
+                           else: [:atomic, :atomic_batches, :stream]
+
   @bulk_update_opts_schema [
                              resource: [
                                type: {:spark, Ash.Resource},
@@ -551,6 +557,11 @@ defmodule Ash.Api do
                                type: {:list, :atom},
                                doc:
                                  "A select statement to apply to records. Ignored if `return_records?` is not true."
+                             ],
+                             strategy: [
+                               type: {:wrap_list, {:one_of, [:atomic, :atomic_batches, :stream]}},
+                               default: @bulk_strategy_default,
+                               doc: "The strategy or strategies to enable."
                              ]
                            ]
                            |> merge_schemas(
@@ -580,6 +591,12 @@ defmodule Ash.Api do
                                 type: :integer,
                                 doc:
                                   "Batch size to use if provided a query and the query must be streamed"
+                              ],
+                              strategy: [
+                                type:
+                                  {:wrap_list, {:one_of, [:atomic, :atomic_batches, :stream]}},
+                                default: @bulk_strategy_default,
+                                doc: "The strategy or strategies to enable."
                               ]
                             ]
                             |> merge_schemas(
