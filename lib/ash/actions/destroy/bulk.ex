@@ -74,6 +74,9 @@ defmodule Ash.Actions.Destroy.Bulk do
         }
 
       atomic_changeset ->
+        {atomic_changeset, opts} =
+          Ash.Actions.Helpers.add_process_context(api, atomic_changeset, opts)
+
         atomic_changeset = %{atomic_changeset | api: api}
 
         notify? =
