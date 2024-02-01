@@ -58,6 +58,9 @@ defmodule Ash.Actions.Update do
       case fully_atomic_changeset do
         # no need to use bulk update logic if no atomics were added
         %Ash.Changeset{atomics: atomics} = atomic_changeset when atomics != [] ->
+          {atomic_changeset, opts} =
+            Ash.Actions.Helpers.add_process_context(api, atomic_changeset, opts)
+
           atomic_changeset =
             %{atomic_changeset | data: changeset.data}
             |> Ash.Changeset.set_context(%{data_layer: %{use_atomic_update_data?: true}})
