@@ -513,6 +513,7 @@ defmodule Ash.Changeset do
         |> Ash.Changeset.new()
         |> Map.put(:params, params)
         |> Map.put(:action, action)
+        |> Map.put(:action_type, action.type)
         |> Map.put(:atomics, opts[:atomics] || [])
 
       {changeset, _opts} =
