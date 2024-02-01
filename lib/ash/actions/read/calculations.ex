@@ -77,20 +77,20 @@ defmodule Ash.Actions.Read.Calculations do
     end
   end
 
-  defp attach_calculation_results(calculation, records, values) when is_list(values) do
+  defp attach_calculation_results(calculation, records, nil) do
     if calculation.load do
-      Enum.zip_with([records, values], fn [record, value] ->
-        Map.put(record, calculation.load, value)
+      Enum.map(records, fn record ->
+        Map.put(record, calculation.load, nil)
       end)
     else
-      Enum.zip_with([records, values], fn [record, value] ->
-        Map.update!(record, :calculations, &Map.put(&1, calculation.name, value))
+      Enum.zip_with(records, fn record ->
+        Map.update!(record, :calculations, &Map.put(&1, calculation.name, nil))
       end)
     end
   end
 
   defp attach_calculation_results(calculation, [%resource{} | _] = records, values)
-       when is_map(values) do
+       when is_map(values) and not is_struct(values) do
     case Ash.Resource.Info.primary_key(resource) do
       [key] ->
         if calculation.load do
@@ -135,6 +135,18 @@ defmodule Ash.Actions.Read.Calculations do
             Map.update!(record, :calculations, &Map.put(&1, calculation.name, value))
           end)
         end
+    end
+  end
+
+  defp attach_calculation_results(calculation, records, values) when is_list(values) do
+    if calculation.load do
+      Enum.zip_with([records, values], fn [record, value] ->
+        Map.put(record, calculation.load, value)
+      end)
+    else
+      Enum.zip_with([records, values], fn [record, value] ->
+        Map.update!(record, :calculations, &Map.put(&1, calculation.name, value))
+      end)
     end
   end
 
