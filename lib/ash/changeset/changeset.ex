@@ -3277,7 +3277,7 @@ defmodule Ash.Changeset do
       * `:ignore` (default) - those inputs are ignored
       * `:destroy` - the record is destroyed using the destination's primary destroy action
       * `{:destroy, :action_name}` - the record is destroyed using the specified action on the destination resource
-      * `{:destroy, :action_name, :join_resource_action_name, [:join, :keys]}` - the record is destroyed using the specified action on the destination resource,
+      * `{:destroy, :action_name, :join_resource_action_name}` - the record is destroyed using the specified action on the destination resource,
         but first the join resource is destroyed with its specified action
       * `:error`  - an error is returned indicating that a record would have been updated
       * `:unrelate` - the related item is not destroyed, but the data is "unrelated", making this behave like `remove_from_relationship/3`. The action should be:
@@ -3299,6 +3299,14 @@ defmodule Ash.Changeset do
       If you want to modify this path, you can specify `error_path`, e.g if had a `change` on an action that takes an argument
       and uses that argument data to call `manage_relationship`, you may want any generated errors to appear under the name of that
       argument, so you could specify `error_path: :argument_name` when calling `manage_relationship`.
+      """
+    ],
+    join_keys: [
+      type: {:list, :atom},
+      doc: """
+      For many to many relationships specifies the parameters to pick from the input and pass into a join resource action.
+      Applicable in cases like `on_no_match: :create`, `on_match: :update` and `on_lookup: :relate`.
+      Can be overwritten by a full form instruction tuple which contains join parameters at the end.
       """
     ],
     meta: [
