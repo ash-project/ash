@@ -1043,7 +1043,7 @@ defmodule Ash.Api do
                 if opts[:no_check?] do
                   Ash.Authorizer.exception(authorizer, :must_pass_strict_check, authorizer_state)
                 else
-                  if opts[:alter_source?] do
+                  if opts[:alter_source?] || !match?(%Ash.Query{}, subject) do
                     query_with_hook =
                       Ash.Query.authorize_results(
                         or_query(query, subject.resource, api),
@@ -1070,7 +1070,7 @@ defmodule Ash.Api do
                 end
 
               {:filter_and_continue, filter, authorizer_state} ->
-                if opts[:no_check?] do
+                if opts[:no_check?] || !match?(%Ash.Query{}, subject) do
                   Ash.Authorizer.exception(authorizer, :must_pass_strict_check, authorizer_state)
                 else
                   if opts[:alter_source?] do

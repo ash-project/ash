@@ -24,6 +24,8 @@ defmodule Ash.Actions.Update do
          action_type: :update
        )}
     else
+      primary_read = Ash.Resource.Info.primary_action(changeset.resource, :read)
+
       {fully_atomic_changeset, params} =
         cond do
           !Ash.DataLayer.data_layer_can?(changeset.resource, :update_query) ->
@@ -31,6 +33,10 @@ defmodule Ash.Actions.Update do
 
           !Enum.empty?(changeset.relationships) ->
             {{:not_atomic, "cannot atomically manage relationships"}, nil}
+
+          !primary_read ->
+            {{:not_atomic, "cannot atomically update a record without a primary read action"},
+             nil}
 
           true ->
             params =
@@ -79,7 +85,17 @@ defmodule Ash.Actions.Update do
 
           primary_key = Ash.Resource.Info.primary_key(atomic_changeset.resource)
           primary_key_filter = changeset.data |> Map.take(primary_key) |> Map.to_list()
-          query = Ash.Query.do_filter(atomic_changeset.resource, primary_key_filter)
+
+          query =
+            atomic_changeset.resource
+            |> Ash.Query.set_context(%{private: %{internal?: true}})
+            |> Ash.Query.for_read(primary_read.name,
+              actor: opts[:actor],
+              authorize?: false,
+              tracer: opts[:tracer],
+              tenant: atomic_changeset.tenant
+            )
+            |> Ash.Query.do_filter(primary_key_filter)
 
           case Ash.Actions.Update.Bulk.run(
                  api,

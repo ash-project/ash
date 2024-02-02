@@ -700,6 +700,9 @@ defmodule Ash.Actions.Update.Bulk do
         {:ok, true, %Ash.Query{} = query} ->
           {:ok, changeset, query}
 
+        {:ok, true, %Ash.Changeset{} = changeset} ->
+          {:ok, changeset, query}
+
         {:ok, true, %Ash.Changeset{} = changeset, %Ash.Query{} = query} ->
           {:ok, changeset, query}
 
