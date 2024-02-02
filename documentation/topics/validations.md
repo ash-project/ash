@@ -24,6 +24,10 @@ end
 ```elixir
 defmodule MyApp.Validations.IsPrime do
   # transform and validate opts
+
+  use Ash.Resource.Validation
+
+  @impl true
   def init(opts) do
     if is_atom(opts[:attribute]) do
       {:ok, opts}
@@ -32,6 +36,7 @@ defmodule MyApp.Validations.IsPrime do
     end
   end
 
+  @impl true
   def validate(changeset, opts) do
     value = Ash.Changeset.get_attribute(changeset, opts[:attribute])
     # this is a function I made up for example
