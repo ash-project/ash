@@ -515,6 +515,7 @@ defmodule Ash.Changeset do
         |> Map.put(:action, action)
         |> Map.put(:action_type, action.type)
         |> Map.put(:atomics, opts[:atomics] || [])
+        |> Ash.Changeset.set_tenant(opts[:tenant])
 
       {changeset, _opts} =
         Ash.Actions.Helpers.add_process_context(
