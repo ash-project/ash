@@ -1441,6 +1441,10 @@ defmodule Ash.Actions.ManagedRelationships do
     {metadata[:join_keys] || %{}, input}
   end
 
+  defp split_join_keys(input, []) do
+    {%{}, input}
+  end
+
   defp split_join_keys(input, :all) do
     {input, %{}}
   end
