@@ -54,7 +54,8 @@ defmodule Ash.Actions.Update do
                 |> Keyword.merge(
                   assume_casted?: true,
                   notify?: true,
-                  atomics: changeset.atomics || []
+                  atomics: changeset.atomics || [],
+                  tenant: changeset.tenant
                 )
               )
 
