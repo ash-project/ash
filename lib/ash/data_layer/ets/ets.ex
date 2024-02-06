@@ -390,7 +390,9 @@ defmodule Ash.DataLayer.Ets do
         query,
         root_data,
         _destination_resource,
-        [{source_query, source_attribute, destination_attribute, relationship}]
+        [
+          {source_query, source_attribute, destination_attribute, relationship}
+        ]
       ) do
     source_attributes = Enum.map(root_data, &Map.get(&1, source_attribute))
 
@@ -405,6 +407,12 @@ defmodule Ash.DataLayer.Ets do
         {:error, error}
 
       {:ok, root_data} ->
+        parent_pkey =
+          case root_data do
+            [%resource{} | _] -> Ash.Resource.Info.primary_key(resource)
+            [] -> []
+          end
+
         root_data
         |> Enum.reduce_while({:ok, []}, fn parent, {:ok, results} ->
           new_filter =
@@ -434,7 +442,7 @@ defmodule Ash.DataLayer.Ets do
               new_results =
                 Enum.map(
                   new_results,
-                  &Map.put(&1, :__lateral_join_source__, Map.get(parent, source_attribute))
+                  &Map.put(&1, :__lateral_join_source__, Map.take(parent, parent_pkey))
                 )
 
               {:cont, {:ok, new_results ++ results}}
@@ -443,13 +451,6 @@ defmodule Ash.DataLayer.Ets do
               {:halt, {:error, error}}
           end
         end)
-        |> case do
-          {:ok, results} ->
-            {:ok, results}
-
-          {:error, error} ->
-            {:error, error}
-        end
     end
   end
 
@@ -470,6 +471,12 @@ defmodule Ash.DataLayer.Ets do
         {:error, error}
 
       {:ok, root_data} ->
+        parent_pkey =
+          case root_data do
+            [%resource{} | _] -> Ash.Resource.Info.primary_key(resource)
+            [] -> []
+          end
+
         root_data
         |> Enum.reduce_while({:ok, []}, fn parent, {:ok, results} ->
           through_query
@@ -509,7 +516,7 @@ defmodule Ash.DataLayer.Ets do
                             Map.put(
                               result,
                               :__lateral_join_source__,
-                              Map.get(join_row, source_attribute_on_join_resource)
+                              Map.take(parent, parent_pkey)
                             )
                           ]
                         else
@@ -528,13 +535,6 @@ defmodule Ash.DataLayer.Ets do
               {:halt, {:error, error}}
           end
         end)
-        |> case do
-          {:ok, results} ->
-            {:ok, results}
-
-          {:error, error} ->
-            {:error, error}
-        end
     end
   end
 
