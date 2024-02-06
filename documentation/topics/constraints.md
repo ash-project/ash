@@ -139,10 +139,10 @@ defmodule MyProject.MyApi.Account do
       end
 
       change fn changeset, _ ->
-        username = Ash.Changeset.get_argument(changeset, :username)
+        title = Ash.Changeset.get_argument(changeset, :title)
         age = Ash.Changeset.get_argument(changeset, :age)
 
-        Ash.Changeset.change_attribute(changeset, :username, "#{username}-#{age}")
+        Ash.Changeset.change_attribute(changeset, :username, "#{title}-#{age}")
       end
     end
   end
