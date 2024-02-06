@@ -1132,7 +1132,7 @@ defmodule Ash.Actions.ManagedRelationships do
             relationship.destination
             |> Ash.Changeset.new()
             |> Ash.Changeset.set_context(%{
-              accessing_from: %{source: relationship.source, name: relationship.join_relationship}
+              accessing_from: %{source: relationship.source, name: relationship.name}
             })
             |> Ash.Changeset.for_create(action_name, regular_params,
               require?: false,
