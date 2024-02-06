@@ -60,7 +60,7 @@ defmodule Ash.Api.Verifiers.ValidateRelatedResourceInclusion do
 
                 many_to_many :#{relationship.name}, #{inspect(relationship.destination)} do
                   ...
-                  join_relationship_name :your_new_name
+                  join_relationship :your_new_name
                 end
             """
           else
