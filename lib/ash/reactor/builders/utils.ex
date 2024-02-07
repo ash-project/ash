@@ -2,13 +2,13 @@ defmodule Ash.Reactor.BuilderUtils do
   @moduledoc false
 
   alias Ash.Reactor.MergeInputsStep
-  alias Reactor.{Argument, Builder, Step.ReturnAllArguments}
+  alias Reactor.{Argument, Builder, Step.ReturnAllArguments, Template}
 
   @doc false
   @spec build_input_arguments(Reactor.t(), Ash.Reactor.action()) ::
           {:ok, Reactor.t(), Enum.t()} | {:error, any}
   def build_input_arguments(reactor, action) when action.inputs == [],
-    do: {:ok, reactor, [input: {:value, %{}}]}
+    do: {:ok, reactor, [%Argument{name: :input, source: %Template.Value{value: %{}}}]}
 
   def build_input_arguments(reactor, action) do
     Enum.reduce_while(action.inputs, {:ok, reactor, []}, fn input, {:ok, reactor, result_names} ->

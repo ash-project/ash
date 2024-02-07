@@ -19,5 +19,16 @@ defmodule Ash.Reactor.CreateStep do
     options[:resource]
     |> Changeset.for_create(options[:action], arguments[:input], changeset_options)
     |> options[:api].create()
+    |> case do
+      {:ok, record} ->
+        {:ok, record}
+
+      {:ok, record, _notifications} ->
+        # FIXME do something with the notifications
+        {:ok, record}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 end
