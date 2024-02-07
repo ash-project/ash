@@ -19,7 +19,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     actions do
-      defaults [:read, :create, :update, :destroy]
+      defaults [:read, :create, :destroy]
 
       create :create_with_confirmation do
         argument :confirm_name, :string do
@@ -99,6 +99,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     actions do
       defaults [:read, :create, :update, :destroy]
+    end
+
+    attributes do
+      attribute :priority, :integer, default: 0
     end
 
     relationships do
@@ -689,6 +693,42 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       |> Api.update!()
 
       assert [%{title: "new_title"}, %{title: "new_title"}] = Api.read!(Post)
+    end
+
+    test "it updates only join records in many_to_many relationships with on_match: :update_join" do
+      post =
+        Post
+        |> Changeset.new()
+        |> Changeset.manage_relationship(
+          :categories,
+          [%{name: "foo", priority: 0}, %{name: "bar", priority: 1}],
+          on_no_match: :create,
+          join_keys: [:priority]
+        )
+        |> Api.create!()
+
+      assert [%{id: foo_id, name: "foo"}, %{id: bar_id, name: "bar"}] =
+               Api.read!(Category) |> Enum.sort_by(& &1.name, :desc)
+
+      assert [%{category_id: ^foo_id, priority: 0}, %{category_id: ^bar_id, priority: 1}] =
+               Api.read!(PostCategory) |> Enum.sort_by(& &1.priority)
+
+      post
+      |> Changeset.new()
+      |> Changeset.manage_relationship(
+        :categories,
+        [%{name: "foo", priority: 2}],
+        on_match: :update_join,
+        use_identities: [:unique_name],
+        join_keys: [:priority]
+      )
+      |> Api.update!()
+
+      assert [%{id: ^foo_id, name: "foo"}, %{id: ^bar_id, name: "bar"}] =
+               Api.read!(Category) |> Enum.sort_by(& &1.name, :desc)
+
+      assert [%{category_id: ^bar_id, priority: 1}, %{category_id: ^foo_id, priority: 2}] =
+               Api.read!(PostCategory) |> Enum.sort_by(& &1.priority)
     end
   end
 
