@@ -3256,7 +3256,8 @@ defmodule Ash.Changeset do
         * `has_one` - a destroy action on the destination resource
         * `belongs_to` - a destroy action on the destination resource
       * `:error`  - an error is returned indicating that a record would have been updated
-      * `:no_match` - ignores the primary key match and follows the `on_no_match` instructions with these records instead.
+      * `:no_match` - follows the `on_no_match` instructions with these records
+      * `:missing` - follows the `on_missing` instructions with these records
       * `:unrelate` - the related item is not destroyed, but the data is "unrelated", making this behave like `remove_from_relationship/3`. The action should be:
         * `many_to_many` - the join resource row is destroyed
         * `has_many` - the `destination_attribute` (on the related record) is set to `nil`

@@ -1630,9 +1630,6 @@ defmodule Ash.Actions.ManagedRelationships do
        ) do
     tenant = changeset.tenant
 
-    action_name =
-      action_name || Ash.Resource.Info.primary_action(relationship.through, :destroy).name
-
     source_value = Map.get(source_record, relationship.source_attribute)
     destination_value = Map.get(record, relationship.destination_attribute)
 
@@ -1691,9 +1688,6 @@ defmodule Ash.Actions.ManagedRelationships do
        when type in [:has_many, :has_one] do
     tenant = changeset.tenant
 
-    action_name =
-      action_name || Ash.Resource.Info.primary_action(relationship.destination, :update).name
-
     record
     |> Ash.Changeset.new()
     |> Ash.Changeset.set_context(%{
@@ -1740,9 +1734,6 @@ defmodule Ash.Actions.ManagedRelationships do
          %{type: :many_to_many} = relationship
        ) do
     tenant = changeset.tenant
-
-    action_name =
-      action_name || Ash.Resource.Info.primary_action(relationship.through, :destroy).name
 
     source_value = Map.get(source_record, relationship.source_attribute)
     destination_value = Map.get(record, relationship.destination_attribute)
@@ -1799,9 +1790,6 @@ defmodule Ash.Actions.ManagedRelationships do
          relationship
        ) do
     tenant = changeset.tenant
-
-    action_name =
-      action_name || Ash.Resource.Info.primary_action(relationship.destination, :update).name
 
     record
     |> Ash.Changeset.new()
