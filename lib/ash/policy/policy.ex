@@ -443,13 +443,13 @@ defmodule Ash.Policy.Policy do
           {condition_and_policy_expression, authorizer} =
             case compile_policy_expression(policies, authorizer) do
               {true, authorizer} ->
-                {condition, authorizer}
+                {condition_expression, authorizer}
 
               {false, authorizer} ->
                 {false, authorizer}
 
               {policy_expression, authorizer} ->
-                {{:and, condition, policy_expression}, authorizer}
+                {{:and, condition_expression, policy_expression}, authorizer}
             end
 
           case condition_and_policy_expression do

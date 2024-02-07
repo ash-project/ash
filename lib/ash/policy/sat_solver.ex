@@ -51,36 +51,33 @@ defmodule Ash.Policy.SatSolver do
   def simplify_clauses([scenario]), do: [scenario]
 
   def simplify_clauses(scenarios) do
-    unnecessary_clauses =
-      scenarios
-      |> Enum.with_index()
-      |> Enum.flat_map(fn {scenario, index} ->
-        scenario
-        |> Enum.flat_map(fn {fact, _value} ->
-          if Enum.find(scenarios, fn other_scenario ->
-               scenario_makes_fact_irrelevant?(other_scenario, scenario, fact)
-             end) do
-            [fact]
-          else
-            []
-          end
-        end)
-        |> Enum.map(fn fact ->
-          {index, fact}
-        end)
-      end)
-      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    indexed = Enum.with_index(scenarios)
 
-    case unnecessary_clauses do
-      empty when empty == %{} ->
+    indexed
+    |> Enum.find_value(fn {scenario, index} ->
+      Enum.find_value(scenario, fn {fact, _value} ->
+        case Enum.find_value(indexed, fn {other_scenario, other_index} ->
+               if scenario != other_scenario &&
+                    scenario_makes_fact_irrelevant?(other_scenario, scenario, fact) do
+                 other_index
+               end
+             end) do
+          nil ->
+            nil
+
+          other_index ->
+            {fact, other_index, index}
+        end
+      end)
+    end)
+    |> case do
+      nil ->
         scenarios
 
-      unnecessary_clauses ->
-        unnecessary_clauses
-        |> Enum.reduce(scenarios, fn {index, facts}, scenarios ->
-          List.update_at(scenarios, index, &Map.drop(&1, facts))
-        end)
-        |> Enum.reject(&(&1 == %{}))
+      {fact, index1, index2} ->
+        scenarios
+        |> List.update_at(index1, &Map.delete(&1, fact))
+        |> List.update_at(index2, &Map.delete(&1, fact))
         |> Enum.uniq()
         |> simplify_clauses()
     end
@@ -91,16 +88,10 @@ defmodule Ash.Policy.SatSolver do
       do: false
 
   def scenario_makes_fact_irrelevant?(potential_irrelevant_maker, scenario, fact) do
-    scenario_is_subset?(Map.delete(potential_irrelevant_maker, fact), scenario) &&
+    Map.delete(potential_irrelevant_maker, fact) == Map.delete(scenario, fact) &&
       Map.has_key?(potential_irrelevant_maker, fact) && Map.has_key?(scenario, fact) &&
       Map.get(potential_irrelevant_maker, fact) !=
         Map.get(scenario, fact)
-  end
-
-  defp scenario_is_subset?(left, right) do
-    Enum.all?(left, fn {fact, value} ->
-      Map.get(right, fact) == value
-    end)
   end
 
   @spec add_negations_and_solve(term, term) :: term | no_return()

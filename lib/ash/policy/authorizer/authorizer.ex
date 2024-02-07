@@ -489,6 +489,10 @@ defmodule Ash.Policy.Authorizer do
         log_successful_policy_breakdown(authorizer, filter)
         {:filter, strict_check_all_facts(authorizer), filter}
 
+      {:filter_and_continue, filter, authorizer} ->
+        log_successful_policy_breakdown(authorizer, filter)
+        {:filter, strict_check_all_facts(authorizer), filter}
+
       {:error, error} ->
         {:error, error}
 
@@ -959,7 +963,7 @@ defmodule Ash.Policy.Authorizer do
             match?(
               {:ok, _},
               Ash.Policy.Policy.fetch_fact(authorizer.facts, {check_module, opts})
-            ) || check_module.type() == :filter
+            )
         end)
       end)
 
