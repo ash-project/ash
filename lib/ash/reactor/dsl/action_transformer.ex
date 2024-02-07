@@ -43,9 +43,8 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
          :ok <- validate_entity_input_names(entity, action, dsl_state),
          :ok <- validate_entity_input_dupes(entity, dsl_state),
          :ok <- validate_entity_input_empty(entity, dsl_state),
-         :ok <- maybe_validate_upsert_identity(entity, dsl_state),
-         {:ok, entity, dsl_state} <- transform_nested_steps(entity, dsl_state) do
-      {:ok, entity, dsl_state}
+         :ok <- maybe_validate_upsert_identity(entity, dsl_state) do
+      transform_nested_steps(entity, dsl_state)
     end
   end
 

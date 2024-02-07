@@ -226,4 +226,204 @@ Target: `Ash.Reactor.Dsl.Create`
 
 
 
+## reactor.update
+```elixir
+update name, resource, action \\ nil
+```
+
+
+Declares a step that will call an update action on a resource.
+
+### Nested DSLs
+ * [actor](#reactor-update-actor)
+ * [inputs](#reactor-update-inputs)
+ * [tenant](#reactor-update-tenant)
+ * [wait_for](#reactor-update-wait_for)
+
+
+### Examples
+```
+update :publish_post, MyApp.Post, :update do
+  initial input(:post)
+  inputs %{
+    published: value(true)
+  }
+  actor result(:get_user)
+  tenant result(:get_organisation, [:id])
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#reactor-update-name){: #reactor-update-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`resource`](#reactor-update-resource){: #reactor-update-resource .spark-required} | `module` |  | The resource to call the action on. |
+| [`action`](#reactor-update-action){: #reactor-update-action } | `atom` |  | The name of the action to call on the resource. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`initial`](#reactor-update-initial){: #reactor-update-initial .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The record to update. |
+| [`api`](#reactor-update-api){: #reactor-update-api } | `module` |  | The API to use when calling the action.  Defaults to the API set in the `ash` section. |
+| [`async?`](#reactor-update-async?){: #reactor-update-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
+| [`authorize?`](#reactor-update-authorize?){: #reactor-update-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
+| [`description`](#reactor-update-description){: #reactor-update-description } | `String.t` |  | A description for the step |
+
+
+## reactor.update.actor
+```elixir
+actor source
+```
+
+
+Specifies the action actor
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-update-actor-source){: #reactor-update-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-update-actor-transform){: #reactor-update-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Actor`
+
+## reactor.update.inputs
+```elixir
+inputs template
+```
+
+
+Specify the inputs for an action
+
+
+
+### Examples
+```
+inputs %{
+  author: result(:get_user),
+  title: input(:title),
+  body: input(:body)
+}
+
+```
+
+```
+inputs(author: result(:get_user))
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`template`](#reactor-update-inputs-template){: #reactor-update-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| Keyword.t(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-update-inputs-transform){: #reactor-update-inputs-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which will transform the inputs before executing the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Inputs`
+
+## reactor.update.tenant
+```elixir
+tenant source
+```
+
+
+Specifies the action tenant
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-update-tenant-source){: #reactor-update-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-update-tenant-transform){: #reactor-update-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Tenant`
+
+## reactor.update.wait_for
+```elixir
+wait_for names
+```
+
+
+Wait for the named step to complete before allowing this one to start.
+
+Desugars to `argument :_, result(step_to_wait_for)`
+
+
+
+
+### Examples
+```
+wait_for :create_user
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#reactor-update-wait_for-names){: #reactor-update-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.WaitFor`
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Update`
+
+
+
 <style type="text/css">.spark-required::after { content: "*"; color: red !important; }</style>

@@ -16,11 +16,13 @@ defmodule Ash.Reactor do
     ]
   }
 
+  @type action :: __MODULE__.Dsl.Create.t() | __MODULE__.Dsl.Update.t()
+
   use Spark.Dsl.Extension,
     sections: [@ash],
     transformers: [__MODULE__.Dsl.ActionTransformer],
     dsl_patches:
-      ~w[Create]
+      ~w[Create Update]
       |> Enum.map(&Module.concat(__MODULE__.Dsl, &1))
       |> Enum.map(&%Spark.Dsl.Patch.AddEntity{section_path: [:reactor], entity: &1.__entity__()})
 

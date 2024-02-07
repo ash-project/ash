@@ -27,7 +27,7 @@ defmodule Ash.Test.ReactorCreateTest do
     end
 
     relationships do
-      has_many :posts, Post
+      has_many :posts, Ash.Test.ReactorCreateTest.Post
     end
   end
 
@@ -54,7 +54,7 @@ defmodule Ash.Test.ReactorCreateTest do
     end
 
     relationships do
-      belongs_to :author, Author do
+      belongs_to :author, Ash.Test.ReactorCreateTest.Author do
         attribute_writable? true
         allow_nil? true
       end
@@ -66,8 +66,8 @@ defmodule Ash.Test.ReactorCreateTest do
     use Ash.Api
 
     resources do
-      resource Author
-      resource Post
+      resource Ash.Test.ReactorCreateTest.Author
+      resource Ash.Test.ReactorCreateTest.Post
     end
   end
 
