@@ -3634,8 +3634,62 @@ defmodule Ash.Filter do
           {key, value}, {:ok, expression} ->
             case get_operator(key) do
               nil ->
-                error = NoSuchFilterPredicate.exception(key: key, resource: context.resource)
-                {:halt, {:error, error}}
+                case get_predicate_function(key, context.resource, context.public?) do
+                  nil ->
+                    error = NoSuchFilterPredicate.exception(key: key, resource: context.resource)
+                    {:halt, {:error, error}}
+
+                  function_module ->
+                    left =
+                      if is_list(at_path) do
+                        %Call{
+                          name: :get_path,
+                          args: [
+                            %Ref{
+                              attribute: attr,
+                              relationship_path: context[:relationship_path] || [],
+                              resource: context.resource,
+                              input?: true
+                            },
+                            at_path
+                          ]
+                        }
+                      else
+                        %Ref{
+                          attribute: attr,
+                          relationship_path: context[:relationship_path] || [],
+                          resource: context.resource,
+                          input?: true
+                        }
+                      end
+
+                    with {:ok, args} <-
+                           hydrate_refs([left, value], context),
+                         refs <- list_refs(args),
+                         :ok <-
+                           validate_refs(
+                             refs,
+                             context.root_resource,
+                             {key, [left, value]}
+                           ),
+                         {:ok, function} <-
+                           Function.new(
+                             function_module,
+                             args
+                           ) do
+                      if is_nil(context.resource) ||
+                           Ash.DataLayer.data_layer_can?(
+                             context.resource,
+                             {:filter_expr, function}
+                           ) do
+                        {:cont,
+                         {:ok, BooleanExpression.optimized_new(:and, expression, function)}}
+                      else
+                        {:halt,
+                         {:error, "data layer does not support the function #{inspect(function)}"}}
+                      end
+                    end
+                end
 
               operator_module ->
                 left =
@@ -3694,6 +3748,16 @@ defmodule Ash.Filter do
         error = InvalidFilterValue.exception(value: values)
         {:error, error}
       end
+    end
+  end
+
+  def get_predicate_function(key, resource, public?) do
+    case get_function(key, resource, public?) |> List.wrap() |> Enum.filter(& &1.predicate?) do
+      [] ->
+        nil
+
+      [function] ->
+        function
     end
   end
 
