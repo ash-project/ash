@@ -3634,7 +3634,7 @@ defmodule Ash.Filter do
           {key, value}, {:ok, expression} ->
             case get_operator(key) do
               nil ->
-                case get_function(key, context.resource, context.public?) do
+                case get_predicate_function(key, context.resource, context.public?) do
                   nil ->
                     error = NoSuchFilterPredicate.exception(key: key, resource: context.resource)
                     {:halt, {:error, error}}
@@ -3748,6 +3748,16 @@ defmodule Ash.Filter do
         error = InvalidFilterValue.exception(value: values)
         {:error, error}
       end
+    end
+  end
+
+  def get_predicate_function(key, resource, public?) do
+    case get_function(key, resource, public?) |> List.wrap() |> Enum.filter(& &1.predicate?) do
+      [] ->
+        nil
+
+      [function] ->
+        function
     end
   end
 
