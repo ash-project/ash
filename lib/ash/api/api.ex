@@ -561,7 +561,8 @@ defmodule Ash.Api do
                              strategy: [
                                type: {:wrap_list, {:one_of, [:atomic, :atomic_batches, :stream]}},
                                default: @bulk_strategy_default,
-                               doc: "The strategy or strategies to enable."
+                               doc:
+                                 "The strategy or strategies to enable. :stream is used in all cases if the data layer does not support atomics."
                              ]
                            ]
                            |> merge_schemas(
@@ -596,7 +597,8 @@ defmodule Ash.Api do
                                 type:
                                   {:wrap_list, {:one_of, [:atomic, :atomic_batches, :stream]}},
                                 default: @bulk_strategy_default,
-                                doc: "The strategy or strategies to enable."
+                                doc:
+                                  "The strategy or strategies to enable. :stream is used in all cases if the data layer does not support atomics."
                               ]
                             ]
                             |> merge_schemas(

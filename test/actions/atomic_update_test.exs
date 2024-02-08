@@ -110,16 +110,17 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
     refute changeset.valid?
   end
 
-  test "an action that cannot be done fully atomically raises an error at runtime" do
-    author =
-      Author
-      |> Ash.Changeset.new(%{name: "fred", score: 0})
-      |> Api.create!()
+  # ets doesn't support atomics, so we can't do this here
+  # test "an action that cannot be done fully atomically raises an error at runtime" do
+  #   author =
+  #     Author
+  #     |> Ash.Changeset.new(%{name: "fred", score: 0})
+  #     |> Api.create!()
 
-    assert_raise Ash.Error.Framework, ~r/must be performed atomically/, fn ->
-      Author.sometimes_atomic!(author, %{atomic: false})
-    end
-  end
+  #   assert_raise Ash.Error.Framework, ~r/must be performed atomically/, fn ->
+  #     Author.sometimes_atomic!(author, %{atomic: false})
+  #   end
+  # end
 
   # See the note in `Ash.Resource.Verifiers.VerifyActionsAtomic` for why we can't introduce
   # this yet.

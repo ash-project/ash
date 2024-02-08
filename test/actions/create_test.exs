@@ -1,5 +1,6 @@
 defmodule Ash.Test.Actions.CreateTest do
   @moduledoc false
+  require Ash.Flags
   use ExUnit.Case, async: true
 
   import Ash.Test
@@ -561,7 +562,11 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Ash.Changeset.select(:bio)
         |> Ash.create!(action: :duplicate_name)
 
-      assert is_nil(author.name)
+      if Ash.Flags.ash_three?() do
+        assert %Ash.NotSelected{field: :name} = author.name
+      else
+        assert is_nil(author.name)
+      end
     end
   end
 

@@ -13,6 +13,8 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   def run(api, %Ash.Query{} = query, action, input, opts, _not_atomic_reason) do
+    opts = set_strategy(opts, query.resource)
+
     query =
       if query.action do
         query
@@ -33,8 +35,7 @@ defmodule Ash.Actions.Update.Bulk do
     fully_atomic_changeset =
       cond do
         :atomic not in opts[:strategy] ->
-          {:not_atomic,
-           "strategy option does not allow atomic updates. Got: #{inspect(opts[:strategy])}"}
+          {:not_atomic, "Not in requested strategies"}
 
         changeset = opts[:atomic_changeset] ->
           changeset
@@ -188,6 +189,8 @@ defmodule Ash.Actions.Update.Bulk do
       raise ArgumentError,
             "Could not determine resource for bulk #{action.type}. Please provide the `resource` option if providing a stream of inputs."
     end
+
+    opts = set_strategy(opts, resource)
 
     action = Ash.Resource.Info.action(resource, action)
 
@@ -403,6 +406,14 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
+  defp set_strategy(opts, resource) do
+    if Ash.DataLayer.data_layer_can?(resource, :update_query) do
+      opts
+    else
+      Keyword.put(opts, :strategy, [:stream])
+    end
+  end
+
   defp do_run(api, stream, action, input, opts, metadata_key, context_key, not_atomic_reason) do
     resource = opts[:resource]
     opts = Ash.Actions.Helpers.set_opts(opts, api)
@@ -412,8 +423,7 @@ defmodule Ash.Actions.Update.Bulk do
     fully_atomic_changeset =
       cond do
         :atomic_batches not in opts[:strategy] ->
-          {:not_atomic,
-           "strategy option does not allow atomic batches. Got: #{inspect(opts[:strategy])}"}
+          {:not_atomic, "Not in requested strategies"}
 
         Enum.empty?(Ash.Resource.Info.primary_key(resource)) ->
           {:not_atomic, "cannot atomically update a stream without a primary key"}

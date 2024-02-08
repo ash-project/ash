@@ -512,7 +512,12 @@ defmodule Ash.Test.Actions.ReadTest do
       |> Api.create!()
 
       assert [%{name: "bruh"}] = Api.read!(Author)
-      assert [%{name: nil}] = Api.read!(Ash.Query.deselect(Author, :name))
+
+      if Ash.Flags.ash_three?() do
+        assert [%{name: %Ash.NotSelected{}}] = Api.read!(Ash.Query.deselect(Author, :name))
+      else
+        assert [%{name: nil}] = Api.read!(Ash.Query.deselect(Author, :name))
+      end
     end
 
     @tag :ash_three

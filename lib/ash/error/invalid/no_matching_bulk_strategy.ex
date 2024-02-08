@@ -21,16 +21,11 @@ defmodule Ash.Error.Invalid.NoMatchingBulkStrategy do
         }) do
       reasons =
         [
-          "Could not perform atomic batches": not_atomic_batches_reason,
-          "Could not perform atomically": not_atomic_reason
+          "Could not use `:stream`": "Not in requested strategies",
+          "Could not use `:atomic_batches`":
+            not_atomic_batches_reason || "Not in requested strategies",
+          "Could not use `:atomic`": not_atomic_reason || "Not in requested strategies"
         ]
-        |> Enum.reject(fn
-          {_, nil} ->
-            true
-
-          _ ->
-            false
-        end)
         |> Enum.map_join("\n", fn {reason, message} -> "#{reason}: #{message}" end)
 
       """

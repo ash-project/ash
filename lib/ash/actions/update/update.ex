@@ -117,7 +117,9 @@ defmodule Ash.Actions.Update do
           end
 
         other ->
-          if action.require_atomic? && match?({:not_atomic, _reason}, other) do
+          if Ash.DataLayer.data_layer_can?(changeset.resource, :update_query) &&
+               action.require_atomic? &&
+               match?({:not_atomic, _reason}, other) do
             {:not_atomic, reason} = other
 
             {:error,
