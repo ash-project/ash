@@ -84,6 +84,16 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
         update = primary_action_name!(relationship.destination, :update)
         {:update, update}
 
+      :update_join ->
+        join_update = primary_action_name!(relationship.through, :update)
+        {:update, nil, join_update, join_keys}
+
+      {:update_join, join_update} ->
+        {:update, nil, join_update, join_keys}
+
+      {:update_join, join_update, join_keys} ->
+        {:update, nil, join_update, join_keys}
+
       :unrelate when is_many_to_many ->
         join_destroy = primary_action_name!(relationship.through, :destroy)
         {:unrelate, join_destroy}

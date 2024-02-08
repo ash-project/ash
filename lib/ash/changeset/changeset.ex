@@ -3249,7 +3249,10 @@ defmodule Ash.Changeset do
       * `:update` - the record is updated using the destination's primary update action
       * `{:update, :action_name}` - the record is updated using the specified action on the destination resource
       * `{:update, :action_name, :join_table_action_name, [:list, :of, :params]}` - Same as `{:update, :action_name}` but takes
-          the list of params specified out and applies them as an update to the join record (only valid for many to many).
+          the list of params specified out and applies them as an update to the join record (only valid for many to many)
+      * `:update_join` - update only the join record (only valid for many to many)
+      * `{:update_join, :join_table_action_name}` - use the specified update action on a join resource
+      * `{:update_join, :join_table_action_name, [:list, :of, :params]}` - pass specified params from input into a join resource update action
       * `{:destroy, :action_name}` - the record is destroyed using the specified action on the destination resource. The action should be:
         * `many_to_many` - a destroy action on the join record
         * `has_many` - a destroy action on the destination resource

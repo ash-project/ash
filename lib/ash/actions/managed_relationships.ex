@@ -1298,7 +1298,7 @@ defmodule Ash.Actions.ManagedRelationships do
               {regular_params, %{}}
 
             is_struct(regular_params) ->
-              Map.from_struct(regular_params)
+              {match, Map.from_struct(regular_params)}
 
             true ->
               {match, regular_params}
@@ -1306,19 +1306,25 @@ defmodule Ash.Actions.ManagedRelationships do
 
         source_value = Map.get(source_record, relationship.source_attribute)
 
-        match
-        |> Ash.Changeset.new()
-        |> Ash.Changeset.set_context(%{
-          accessing_from: %{source: relationship.source, name: relationship.name}
-        })
-        |> Ash.Changeset.for_update(action_name, regular_params,
-          actor: actor,
-          authorize?: opts[:authorize?]
-        )
-        |> Ash.Changeset.set_context(relationship.context)
-        |> Ash.Changeset.set_tenant(changeset.tenant)
-        |> api.update(return_notifications?: true)
-        |> case do
+        update_result =
+          if action_name do
+            match
+            |> Ash.Changeset.new()
+            |> Ash.Changeset.set_context(%{
+              accessing_from: %{source: relationship.source, name: relationship.name}
+            })
+            |> Ash.Changeset.for_update(action_name, regular_params,
+              actor: actor,
+              authorize?: opts[:authorize?]
+            )
+            |> Ash.Changeset.set_context(relationship.context)
+            |> Ash.Changeset.set_tenant(changeset.tenant)
+            |> api.update(return_notifications?: true)
+          else
+            {:ok, match, []}
+          end
+
+        case update_result do
           {:ok, updated, update_notifications} ->
             destination_value = Map.get(updated, relationship.destination_attribute)
 
