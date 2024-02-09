@@ -74,7 +74,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                 Ash.Error.to_error_class(
                   Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
                     resource: query.resource,
-                    action: action.name,
+                    action: query.action.name,
                     requested_strategies: opts[:strategy],
                     not_stream_reason: "could not stream the query",
                     footer: "Non stream reason:\n\n" <> Exception.message(exception)
