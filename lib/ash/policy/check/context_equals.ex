@@ -19,6 +19,9 @@ defmodule Ash.Policy.Check.ContextEquals do
   end
 
   @impl true
+  def requires_original_data?(_, _), do: false
+
+  @impl true
   def match?(_, context, opts) do
     changeset_or_query =
       Map.get(context, :changeset) || Map.get(context, :query) || Map.get(context, :action_input)

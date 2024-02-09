@@ -45,6 +45,9 @@ defmodule Ash.Policy.Policy do
             {:error, authorizer, error}
         end
     end
+  catch
+    {:error, authorizer, error} ->
+      {:error, authorizer, error}
   end
 
   @doc false
@@ -162,21 +165,31 @@ defmodule Ash.Policy.Policy do
     end)
     |> case do
       nil ->
-        case check_module.strict_check(authorizer.actor, authorizer, opts) do
-          {:ok, value} when is_boolean(value) or value == :unknown ->
-            authorizer = %{
-              authorizer
-              | facts: Map.put(authorizer.facts, {check_module, opts}, value)
-            }
+        if check_module.requires_original_data?(authorizer, opts) &&
+             missing_original_data?(authorizer) do
+          throw(
+            {:error, authorizer,
+             Ash.Error.Forbidden.InitialDataRequired.exception(
+               source: "check: #{check_module.describe(opts)}"
+             )}
+          )
+        else
+          case check_module.strict_check(authorizer.actor, authorizer, opts) do
+            {:ok, value} when is_boolean(value) or value == :unknown ->
+              authorizer = %{
+                authorizer
+                | facts: Map.put(authorizer.facts, {check_module, opts}, value)
+              }
 
-            if value == :unknown do
-              {:error, authorizer}
-            else
-              {:ok, value, authorizer}
-            end
+              if value == :unknown do
+                {:error, authorizer}
+              else
+                {:ok, value, authorizer}
+              end
 
-          {:error, error} ->
-            raise "Error produced by #{check_module}'s strict_checking logic: #{inspect(error)}"
+            {:error, error} ->
+              throw({:error, authorizer, Ash.Error.to_ash_error(error)})
+          end
         end
 
       {:ok, :unknown} ->
@@ -186,6 +199,14 @@ defmodule Ash.Policy.Policy do
         {:ok, value, authorizer}
     end
   end
+
+  defp missing_original_data?(%{
+         changeset: %Ash.Changeset{data: %Ash.Changeset.OriginalDataNotAvailable{}}
+       }) do
+    true
+  end
+
+  defp missing_original_data?(_), do: false
 
   def fetch_fact(facts, %{check_module: mod, check_opts: opts}) do
     fetch_fact(facts, {mod, opts})

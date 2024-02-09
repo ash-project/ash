@@ -12,7 +12,7 @@ defmodule Ash.Actions.Update.Bulk do
     run(api, Ash.Query.new(resource), action, input, opts, not_atomic_reason)
   end
 
-  def run(api, %Ash.Query{} = query, action, input, opts, _not_atomic_reason) do
+  def run(api, %Ash.Query{} = query, action, input, opts, not_atomic_reason) do
     opts = set_strategy(opts, query.resource)
 
     query =
@@ -34,6 +34,9 @@ defmodule Ash.Actions.Update.Bulk do
 
     fully_atomic_changeset =
       cond do
+        not_atomic_reason ->
+          {:not_atomic, not_atomic_reason}
+
         :atomic not in opts[:strategy] ->
           {:not_atomic, "Not in requested strategies"}
 
@@ -59,14 +62,37 @@ defmodule Ash.Actions.Update.Bulk do
             read_opts
           end
 
-        run(
-          api,
-          api.stream!(query, read_opts),
-          action,
-          input,
-          Keyword.put(opts, :resource, query.resource),
-          reason
-        )
+        case Ash.Actions.Read.Stream.stream_strategy(
+               query,
+               nil,
+               opts[:allow_stream_with] || :keyset
+             ) do
+          {:error, %Ash.Error.Invalid.NonStreamableAction{} = exception} ->
+            %Ash.BulkResult{
+              status: :error,
+              errors: [
+                Ash.Error.to_error_class(
+                  Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
+                    resource: query.resource,
+                    action: action.name,
+                    requested_strategies: opts[:strategy],
+                    not_stream_reason: "could not stream the query",
+                    footer: "Non stream reason:\n\n" <> Exception.message(exception)
+                  )
+                )
+              ]
+            }
+
+          _ ->
+            run(
+              api,
+              api.stream!(query, Keyword.put(read_opts, :authorize?, opts[:authorize_query?])),
+              action,
+              input,
+              Keyword.put(opts, :resource, query.resource),
+              reason
+            )
+        end
 
       %Ash.Changeset{valid?: false, errors: errors} ->
         %Ash.BulkResult{
@@ -118,7 +144,7 @@ defmodule Ash.Actions.Update.Bulk do
               Ash.DataLayer.transaction(
                 List.wrap(atomic_changeset.resource) ++ action.touches_resources,
                 fn ->
-                  do_atomic_update(query, atomic_changeset, has_after_action_hooks?, opts)
+                  do_atomic_update(query, atomic_changeset, has_after_action_hooks?, input, opts)
                 end,
                 opts[:timeout],
                 %{
@@ -132,7 +158,7 @@ defmodule Ash.Actions.Update.Bulk do
                 }
               )
             else
-              do_atomic_update(query, atomic_changeset, has_after_action_hooks?, opts)
+              do_atomic_update(query, atomic_changeset, has_after_action_hooks?, input, opts)
             end
 
           notifications =
@@ -192,11 +218,23 @@ defmodule Ash.Actions.Update.Bulk do
 
     opts = set_strategy(opts, resource)
 
-    action = Ash.Resource.Info.action(resource, action)
+    action =
+      case action do
+        nil ->
+          Ash.Resource.Info.primary_action!(resource, :update)
 
-    if !action do
-      raise Ash.Error.Invalid.NoSuchAction, resource: resource, action: action, type: :update
-    end
+        name when is_atom(name) ->
+          action = Ash.Resource.Info.action(resource, action)
+
+          if !action do
+            raise Ash.Error.Invalid.NoSuchAction, resource: resource, action: name, type: :update
+          end
+
+          action
+
+        action ->
+          action
+      end
 
     if opts[:transaction] == :all && opts[:return_stream?] do
       raise ArgumentError,
@@ -267,7 +305,7 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp do_atomic_update(query, atomic_changeset, has_after_action_hooks?, opts) do
+  defp do_atomic_update(query, atomic_changeset, has_after_action_hooks?, input, opts) do
     atomic_changeset =
       if opts[:select] do
         Ash.Changeset.select(atomic_changeset, opts[:select])
@@ -396,6 +434,41 @@ defmodule Ash.Actions.Update.Bulk do
           }
       end
     else
+      {:error, %Ash.Error.Forbidden.InitialDataRequired{}} ->
+        case Ash.Actions.Read.Stream.stream_strategy(
+               query,
+               nil,
+               opts[:allow_stream_with] || :keyset
+             ) do
+          {:error, %Ash.Error.Invalid.NonStreamableAction{} = exception} ->
+            %Ash.BulkResult{
+              status: :error,
+              errors: [
+                Ash.Error.to_error_class(
+                  Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
+                    resource: atomic_changeset.resource,
+                    action: atomic_changeset.action.name,
+                    requested_strategies: opts[:strategy],
+                    not_stream_reason: "could not stream the query, see message below for more",
+                    not_atomic_batches_reason: "authorization requires initial data",
+                    not_atomic_reason: "authorization requires initial data",
+                    footer: "Non stream reason:\n\n" <> Exception.message(exception)
+                  )
+                )
+              ]
+            }
+
+          _strategy ->
+            run(
+              atomic_changeset.api,
+              query,
+              atomic_changeset.action,
+              input,
+              opts,
+              "authorization requires initial data"
+            )
+        end
+
       {:error, error} ->
         %Ash.BulkResult{
           status: :error,
@@ -670,7 +743,7 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp authorize_bulk_query(query, opts) do
-    if opts[:authorize?] do
+    if opts[:authorize?] && opts[:authorize_query?] do
       case query.api.can(query, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,

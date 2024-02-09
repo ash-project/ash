@@ -1359,6 +1359,9 @@ defmodule Ash.Policy.Authorizer do
            action: Map.get(authorizer, :action),
            scenarios: []
          )}
+
+      {:error, _authorizer, exception} ->
+        {:error, Ash.Error.to_ash_error(exception)}
     end
   end
 

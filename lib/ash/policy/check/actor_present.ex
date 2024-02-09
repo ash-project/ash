@@ -8,6 +8,9 @@ defmodule Ash.Policy.Check.ActorPresent do
   end
 
   @impl true
+  def requires_original_data?(_, _), do: false
+
+  @impl true
   def match?(nil, _, _opts), do: false
   def match?(_, _, _opts), do: true
 end

@@ -26,6 +26,17 @@ defmodule Ash.Policy.Check.ChangingAttributes do
   end
 
   @impl true
+  def requires_original_data?(_, opts) do
+    Enum.any?(opts[:changing], fn
+      {_key, further} ->
+        Keyword.has_key?(further, :from)
+
+      _ ->
+        false
+    end)
+  end
+
+  @impl true
   def match?(_actor, %{changeset: %Ash.Changeset{} = changeset}, opts) do
     Enum.all?(opts[:changing], fn
       {attribute, opts} ->

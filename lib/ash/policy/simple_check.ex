@@ -24,9 +24,13 @@ defmodule Ash.Policy.SimpleCheck do
 
       def type, do: :simple
 
+      def requires_original_data?(_, _), do: true
+
       def strict_check(actor, context, opts) do
         {:ok, match?(actor, context, opts)}
       end
+
+      defoverridable requires_original_data?: 2
     end
   end
 end

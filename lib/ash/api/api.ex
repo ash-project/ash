@@ -548,6 +548,18 @@ defmodule Ash.Api do
                                doc:
                                  "Batch size to use if provided a query and the query must be streamed"
                              ],
+                             allow_stream_with: [
+                               type: {:one_of, [:keyset, :offset, :full_read]},
+                               doc:
+                                 "The 'worst' strategy allowed to be used to fetch records if the `:stream` strategy is chosen. See `Ash.Api.stream!/2` docs for more.",
+                               default: :keyset
+                             ],
+                             authorize_query?: [
+                               type: :boolean,
+                               default: true,
+                               doc:
+                                 "If a query is given, determines whether or not authorization is run on that query."
+                             ],
                              load: [
                                type: :any,
                                doc:
@@ -592,6 +604,18 @@ defmodule Ash.Api do
                                 type: :integer,
                                 doc:
                                   "Batch size to use if provided a query and the query must be streamed"
+                              ],
+                              allow_stream_with: [
+                                type: {:one_of, [:keyset, :offset, :full_read]},
+                                doc:
+                                  "The 'worst' strategy allowed to be used to fetch records if the `:stream` strategy is chosen. See `Ash.Api.stream!/2` docs for more.",
+                                default: :keyset
+                              ],
+                              authorize_query?: [
+                                type: :boolean,
+                                default: true,
+                                doc:
+                                  "If a query is given, determines whether or not authorization is run on that query."
                               ],
                               strategy: [
                                 type:

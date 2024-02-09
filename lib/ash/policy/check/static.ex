@@ -8,6 +8,9 @@ defmodule Ash.Policy.Check.Static do
   end
 
   @impl true
+  def requires_original_data?(_, _), do: false
+
+  @impl true
   def match?(_actor, _request, options) do
     options[:result]
   end

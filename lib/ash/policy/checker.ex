@@ -93,8 +93,8 @@ defmodule Ash.Policy.Checker do
           scenarios -> {:ok, scenarios, authorizer}
         end
 
-      {:error, authorizer, :unsatisfiable} ->
-        {:error, authorizer, :unsatisfiable}
+      {:error, authorizer, error} ->
+        {:error, authorizer, error}
     end
   end
 

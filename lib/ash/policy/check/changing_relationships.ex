@@ -14,6 +14,9 @@ defmodule Ash.Policy.Check.ChangingRelationships do
   end
 
   @impl true
+  def requires_original_data?(_, _), do: false
+
+  @impl true
   def match?(_actor, %{changeset: %Ash.Changeset{} = changeset}, opts) do
     Enum.any?(opts[:relationships], fn relationship ->
       Ash.Changeset.changing_relationship?(changeset, relationship)
