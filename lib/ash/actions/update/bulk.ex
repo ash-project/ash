@@ -1158,6 +1158,7 @@ defmodule Ash.Actions.Update.Bulk do
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
     |> Ash.Changeset.put_context(context_key, %{index: index})
     |> Ash.Changeset.atomic_update(opts[:atomic_update] || [])
+    |> Ash.Changeset.hydrate_atomic_refs(opts[:actor], opts)
     |> handle_params(
       Keyword.get(opts, :assume_casted?, false),
       action,
