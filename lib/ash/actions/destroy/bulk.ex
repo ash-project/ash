@@ -70,6 +70,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           {:error, %Ash.Error.Invalid.NonStreamableAction{} = exception} ->
             %Ash.BulkResult{
               status: :error,
+              error_count: 1,
               errors: [
                 Ash.Error.to_error_class(
                   Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
@@ -97,6 +98,7 @@ defmodule Ash.Actions.Destroy.Bulk do
       %Ash.Changeset{valid?: false, errors: errors} ->
         %Ash.BulkResult{
           status: :error,
+          error_count: 1,
           errors: [Ash.Error.to_error_class(errors)]
         }
 
@@ -375,6 +377,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         {:error, error} ->
           %Ash.BulkResult{
             status: :error,
+            error_count: 1,
             errors: [Ash.Error.to_error_class(error)]
           }
       end
@@ -388,6 +391,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           {:error, %Ash.Error.Invalid.NonStreamableAction{} = exception} ->
             %Ash.BulkResult{
               status: :error,
+              error_count: 1,
               errors: [
                 Ash.Error.to_error_class(
                   Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
@@ -417,6 +421,7 @@ defmodule Ash.Actions.Destroy.Bulk do
       {:error, error} ->
         %Ash.BulkResult{
           status: :error,
+          error_count: 1,
           errors: [Ash.Error.to_error_class(error)]
         }
     end
@@ -456,15 +461,50 @@ defmodule Ash.Actions.Destroy.Bulk do
 
     case fully_atomic_changeset do
       %Ash.Changeset{} = atomic_changeset ->
-        do_atomic_batches(
-          atomic_changeset,
-          api,
-          stream,
-          action,
-          input,
-          opts,
-          not_atomic_reason
-        )
+        query =
+          resource
+          |> Ash.Query.new()
+          |> Map.put(:action, Ash.Resource.Info.primary_action!(resource, :read))
+
+        case Ash.Actions.Read.Stream.stream_strategy(
+               query,
+               nil,
+               opts[:allow_stream_with] || :keyset
+             ) do
+          {:error, exception} ->
+            if :stream in opts[:strategy] do
+              do_stream_batches(api, stream, action, input, opts)
+            else
+              %Ash.BulkResult{
+                status: :error,
+                error_count: 1,
+                errors: [
+                  Ash.Error.to_error_class(
+                    Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
+                      resource: resource,
+                      action: action.name,
+                      requested_strategies: opts[:strategy],
+                      not_atomic_batches_reason: "could not stream the query",
+                      not_atomic_reason: not_atomic_reason,
+                      not_stream_reason: "could not stream the query",
+                      footer: "Non stream reason:\n\n" <> Exception.message(exception)
+                    )
+                  )
+                ]
+              }
+            end
+
+          _ ->
+            do_atomic_batches(
+              atomic_changeset,
+              api,
+              stream,
+              action,
+              input,
+              opts,
+              not_atomic_reason
+            )
+        end
 
       {:not_atomic, not_atomic_batches_reason} ->
         if :stream in opts[:strategy] do
@@ -472,6 +512,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         else
           %Ash.BulkResult{
             status: :error,
+            error_count: 1,
             errors: [
               Ash.Error.to_error_class(
                 Ash.Error.Invalid.NoMatchingBulkStrategy.exception(
@@ -1616,8 +1657,14 @@ defmodule Ash.Actions.Destroy.Bulk do
           batch =
             Enum.map(batch, fn changeset ->
               if Enum.all?(validation.where || [], fn {module, opts} ->
+                   opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
+                   {:ok, opts} = module.init(opts)
+
                    module.validate(changeset, opts, context) == :ok
                  end) do
+                opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
+                {:ok, opts} = module.init(opts)
+
                 case module.validate(changeset, opts, context) do
                   :ok ->
                     changeset
@@ -1660,6 +1707,8 @@ defmodule Ash.Actions.Destroy.Bulk do
               |> Enum.split_with(fn changeset ->
                 applies_from_where? =
                   Enum.all?(change.where || [], fn {module, opts} ->
+                    opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
+                    {:ok, opts} = module.init(opts)
                     module.validate(changeset, opts, context) == :ok
                   end)
 
@@ -1727,10 +1776,22 @@ defmodule Ash.Actions.Destroy.Bulk do
 
       change_opts ->
         Enum.map(batch, fn changeset ->
+          change_opts = templated_opts(change_opts, actor, changeset.arguments, changeset.context)
           {:ok, change_opts} = module.init(change_opts)
 
           module.change(changeset, change_opts, Map.put(context, :bulk?, true))
         end)
     end
+  end
+
+  defp templated_opts({:templated, opts}, _actor, _arguments, _context), do: opts
+
+  defp templated_opts(opts, actor, arguments, context) do
+    Ash.Filter.build_filter_from_template(
+      opts,
+      actor,
+      arguments,
+      context
+    )
   end
 end

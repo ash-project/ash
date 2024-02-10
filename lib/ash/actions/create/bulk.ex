@@ -1306,10 +1306,13 @@ defmodule Ash.Actions.Create.Bulk do
             Enum.map(batch, fn changeset ->
               if Enum.all?(validation.where || [], fn {module, opts} ->
                    opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
+                   {:ok, opts} = module.init(opts)
 
                    module.validate(changeset, opts, context) == :ok
                  end) do
                 opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
+
+                {:ok, opts} = module.init(opts)
 
                 case module.validate(changeset, opts, context) do
                   :ok ->
@@ -1354,6 +1357,8 @@ defmodule Ash.Actions.Create.Bulk do
                 applies_from_where? =
                   Enum.all?(change.where || [], fn {module, opts} ->
                     opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
+
+                    {:ok, opts} = module.init(opts)
 
                     module.validate(changeset, opts, context) == :ok
                   end)
