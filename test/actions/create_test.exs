@@ -243,6 +243,18 @@ defmodule Ash.Test.Actions.CreateTest do
       end
     end
 
+    changes do
+      change fn changeset, _ ->
+        Ash.Changeset.after_transaction(changeset, fn
+          _, {:error, error} ->
+            send(self(), {:error, error})
+
+          _, result ->
+            result
+        end)
+      end
+    end
+
     attributes do
       uuid_primary_key :id
       attribute(:title, :string, allow_nil?: false)
@@ -907,5 +919,14 @@ defmodule Ash.Test.Actions.CreateTest do
                GlobalValidation
                |> Ash.Changeset.for_create(:manual, %{foo: 5})
     end
+  end
+
+  test "after action hooks are run even on invalid input changesets" do
+    assert {:error, _error} =
+             Post
+             |> Ash.Changeset.for_create(:create, %{title: %{}})
+             |> Ash.create()
+
+    assert_receive {:error, _error}
   end
 end
