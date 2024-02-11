@@ -104,7 +104,7 @@ defmodule Ash.Actions.Create do
     with %{valid?: true} = changeset <- changeset(changeset, api, action, opts),
          %{valid?: true} = changeset <- check_upsert_support(changeset, opts),
          %{valid?: true} = changeset <- authorize(changeset, api, opts),
-         {:ok, result, instructions} <- commit(changeset, api, opts) do
+         {:commit, {:ok, result, instructions}} <- {:commit, commit(changeset, api, opts)} do
       add_notifications(
         changeset.resource,
         result,
@@ -125,9 +125,21 @@ defmodule Ash.Actions.Create do
 
       %Ash.Changeset{errors: errors} = changeset ->
         errors = Helpers.process_errors(changeset, errors)
-        {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
+
+        Ash.Changeset.run_after_transactions(
+          {:error, Ash.Error.to_error_class(errors, changeset: changeset)},
+          changeset
+        )
 
       {:error, error} ->
+        errors = Helpers.process_errors(changeset, List.wrap(error))
+
+        Ash.Changeset.run_after_transactions(
+          {:error, Ash.Error.to_error_class(errors, changeset: changeset)},
+          changeset
+        )
+
+      {:commit, {:error, error}} ->
         errors = Helpers.process_errors(changeset, List.wrap(error))
         {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
     end
@@ -409,11 +421,8 @@ defmodule Ash.Actions.Create do
         |> Helpers.select(changeset)
         |> Helpers.restrict_field_access(changeset)
 
-      {:error, %Ash.Changeset{} = changeset} ->
-        {:error, changeset}
-
-      other ->
-        other
+      {:error, error} ->
+        {:error, error}
     end
   end
 
