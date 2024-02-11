@@ -39,6 +39,7 @@ end
 |------|------|---------|------|
 | [`module`](#pub_sub-module){: #pub_sub-module .spark-required} | `atom` |  | The module to call `broadcast/3` on e.g module.broadcast(topic, event, message). |
 | [`prefix`](#pub_sub-prefix){: #pub_sub-prefix } | `String.t` |  | A prefix for all pubsub messages, e.g `users`. A message with `created` would be published as `users:created` |
+| [`delimiter`](#pub_sub-delimiter){: #pub_sub-delimiter } | `String.t` |  | A delimiter for building topics. Default is a colon (:) |
 | [`broadcast_type`](#pub_sub-broadcast_type){: #pub_sub-broadcast_type } | `:notification \| :phoenix_broadcast \| :broadcast` | `:notification` | What shape the event payloads will be in. See |
 | [`name`](#pub_sub-name){: #pub_sub-name } | `atom` |  | A named pub sub to pass as the first argument to broadcast. |
 
