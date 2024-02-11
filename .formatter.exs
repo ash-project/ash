@@ -74,6 +74,7 @@ spark_locals_without_parens = [
   define_calculation: 2,
   define_for: 1,
   delay_global_validations?: 1,
+  delimiter: 1,
   description: 1,
   destination_attribute: 1,
   destination_attribute_on_join_resource: 1,

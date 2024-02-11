@@ -70,6 +70,10 @@ defmodule Ash.Notifier.PubSub do
         doc:
           "A prefix for all pubsub messages, e.g `users`. A message with `created` would be published as `users:created`"
       ],
+      delimiter: [
+        type: :string,
+        doc: "A delimiter for building topics. Default is a colon (:)"
+      ],
       broadcast_type: [
         type: {:one_of, [:notification, :phoenix_broadcast, :broadcast]},
         default: :notification,
@@ -106,6 +110,8 @@ defmodule Ash.Notifier.PubSub do
 
   use Ash.Notifier
 
+  alias Ash.Notifier.PubSub.Info
+
   @doc false
   def notify(%Ash.Notifier.Notification{resource: resource} = notification) do
     resource
@@ -118,16 +124,17 @@ defmodule Ash.Notifier.PubSub do
     debug? = Application.get_env(:ash, :pub_sub)[:debug?] || false
     event = publish.event || to_string(notification.action.name)
     prefix = prefix(notification.resource) || ""
+    delimiter = Info.delimiter(notification.resource)
 
     topics =
       publish.topic
-      |> fill_template(notification)
+      |> fill_template(notification, delimiter)
       |> Enum.map(fn topic ->
         case {prefix, topic} do
           {"", ""} -> ""
           {prefix, ""} -> prefix
           {"", topic} -> topic
-          {prefix, topic} -> "#{prefix}:#{topic}"
+          {prefix, topic} -> "#{prefix}#{delimiter}#{topic}"
         end
       end)
 
@@ -188,13 +195,13 @@ defmodule Ash.Notifier.PubSub do
     end
   end
 
-  defp fill_template(topic, _) when is_binary(topic), do: [topic]
+  defp fill_template(topic, _notification, _delimiter) when is_binary(topic), do: [topic]
 
-  defp fill_template(topic, notification) do
+  defp fill_template(topic, notification, delimiter) do
     topic
     |> all_combinations_of_values(notification, notification.action.type)
     |> Enum.map(&List.flatten/1)
-    |> Enum.map(&Enum.join(&1, ":"))
+    |> Enum.map(&Enum.join(&1, delimiter))
     |> Enum.uniq()
   end
 

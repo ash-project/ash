@@ -45,12 +45,44 @@ defmodule Ash.Test.Notifier.PubSubTest do
     end
   end
 
+  defmodule User do
+    @moduledoc false
+    use Ash.Resource,
+      data_layer: Ash.DataLayer.Ets,
+      notifiers: [
+        Ash.Notifier.PubSub
+      ]
+
+    pub_sub do
+      module PubSub
+      prefix "users"
+      delimiter "."
+
+      publish :create, [:id, "created"]
+    end
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      defaults [:create]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :name, :string
+    end
+  end
+
   defmodule Registry do
     @moduledoc false
     use Ash.Registry
 
     entries do
       entry Post
+      entry User
     end
   end
 
@@ -143,5 +175,15 @@ defmodule Ash.Test.Notifier.PubSubTest do
 
     message = "post:foo:#{new_id}"
     assert_receive {:broadcast, ^message, "update_pkey", %Ash.Notifier.Notification{}}
+  end
+
+  test "publishing a message with a different delimiter" do
+    user =
+      User
+      |> Ash.Changeset.new(%{name: "Dave"})
+      |> Api.create!()
+
+    message = "users.#{user.id}.created"
+    assert_receive {:broadcast, ^message, "create", %Ash.Notifier.Notification{}}
   end
 end
