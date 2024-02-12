@@ -78,6 +78,7 @@ defmodule Ash.MixProject do
         "documentation/topics/phoenix.md",
         "documentation/topics/policies.md",
         "documentation/topics/pub_sub.md",
+        "documentation/topics/reactor.md",
         "documentation/topics/relationships.md",
         "documentation/topics/security.md",
         "documentation/topics/store-context-in-process.md",
