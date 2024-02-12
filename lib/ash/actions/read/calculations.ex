@@ -151,9 +151,11 @@ defmodule Ash.Actions.Read.Calculations do
   end
 
   defp run_calculation(calculation, ash_query, records) do
+    context = Map.put(calculation.context, :api, ash_query.api)
+
     records
     |> apply_transient_calculation_values(calculation, ash_query, [])
-    |> calculation.module.calculate(calculation.opts, calculation.context)
+    |> calculation.module.calculate(calculation.opts, context)
     |> case do
       :unknown ->
         Enum.map(records, fn _ ->
