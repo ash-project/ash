@@ -6,7 +6,8 @@ defmodule Ash.Notifier.PubSub.Publication do
     :topic,
     :event,
     :type,
-    :dispatcher
+    :dispatcher,
+    :previous_values?
   ]
 
   @schema [
@@ -14,6 +15,12 @@ defmodule Ash.Notifier.PubSub.Publication do
       type: :atom,
       doc: "The name of the action that should be published",
       required: true
+    ],
+    previous_values?: [
+      type: :boolean,
+      default: true,
+      doc:
+        "Whether or not to publish messages with both the new values and the old values for referencing changed attributes"
     ],
     topic: [
       type: {:custom, __MODULE__, :topic, []},
