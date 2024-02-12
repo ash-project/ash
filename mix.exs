@@ -334,7 +334,7 @@ defmodule Ash.MixProject do
       {:telemetry, "~> 1.1"},
       {:plug, ">= 0.0.0", optional: true},
       {:earmark, "~> 1.4"},
-      {:reactor, "~> 0.4 and >= 0.4.1"},
+      {:reactor, "~> 0.5"},
 
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},
@@ -342,6 +342,7 @@ defmodule Ash.MixProject do
       {:ex_check, "~> 0.12", only: [:dev, :test]},
       {:credo, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:dialyxir, ">= 0.0.0", only: [:dev, :test], runtime: false},
+      {:mimic, "~> 1.7", only: [:test]},
       {:sobelow, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:git_ops, "~> 2.5", only: [:dev, :test]},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},

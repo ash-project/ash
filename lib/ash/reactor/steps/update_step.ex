@@ -7,23 +7,27 @@ defmodule Ash.Reactor.UpdateStep do
 
   alias Ash.Changeset
 
-  def run(arguments, _context, options) do
+  def run(arguments, context, options) do
     changeset_options =
       options
       |> maybe_set_kw(:authorize?, options[:authorize?])
       |> maybe_set_kw(:actor, arguments[:actor])
       |> maybe_set_kw(:tenant, arguments[:tenant])
 
+    action_options =
+      [return_notifications?: true]
+      |> maybe_set_kw(:authorize?, options[:authorize?])
+
     arguments[:initial]
     |> Changeset.for_update(options[:action], arguments[:input], changeset_options)
-    |> options[:api].update()
+    |> options[:api].update(action_options)
     |> case do
       {:ok, record} ->
         {:ok, record}
 
-      {:ok, record, _notifications} ->
-        # FIXME do something with the notifications
-        {:ok, record}
+      {:ok, record, notifications} ->
+        with :ok <- Ash.Reactor.Notifications.enqueue_notifications(context, notifications),
+             do: {:ok, record}
 
       {:error, reason} ->
         {:error, reason}

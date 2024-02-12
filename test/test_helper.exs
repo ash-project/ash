@@ -2,6 +2,8 @@ exclude = [
   ash_three: System.get_env("FLAG_ASH_THREE", "false") != "true"
 ]
 
+Mimic.copy(Ash.Notifier)
+
 ExUnit.start(stacktrace_depth: 100, exclude: exclude)
 Logger.configure(level: :debug)
 

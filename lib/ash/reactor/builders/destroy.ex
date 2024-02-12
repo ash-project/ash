@@ -8,7 +8,8 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Destroy do
 
   @spec build(Destroy.t(), Reactor.t()) :: {:ok, Reactor.t()} | {:error, any}
   def build(destroy, reactor) do
-    with {:ok, reactor, arguments} <- build_input_arguments(reactor, destroy) do
+    with {:ok, reactor} <- ensure_hooked(reactor),
+         {:ok, reactor, arguments} <- build_input_arguments(reactor, destroy) do
       arguments =
         arguments
         |> maybe_append(destroy.actor)

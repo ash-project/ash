@@ -58,4 +58,31 @@ defmodule Ash.Reactor.BuilderUtils do
   @spec maybe_append(Enum.t(), Enum.t() | nil) :: Enum.t()
   def maybe_append(lhs, nil), do: lhs
   def maybe_append(lhs, rhs), do: Enum.concat(lhs, [rhs])
+
+  @doc false
+  @spec ensure_hooked(Reactor.t()) :: {:ok, Reactor.t()} | {:error, any}
+  def ensure_hooked(reactor) do
+    with {:ok, reactor} <- ensure_hooked(reactor, :init, &Ash.Reactor.Notifications.init_hook/1),
+         {:ok, reactor} <- ensure_hooked(reactor, :halt, &Ash.Reactor.Notifications.halt_hook/1),
+         {:ok, reactor} <-
+           ensure_hooked(reactor, :complete, &Ash.Reactor.Notifications.complete_hook/2) do
+      ensure_hooked(reactor, :error, &Ash.Reactor.Notifications.error_hook/2)
+    end
+  end
+
+  # Ensure that each hook is only added one time to the reactor.
+  defp ensure_hooked(reactor, hook_type, hook_fn) do
+    hooks = Map.get(reactor.hooks, hook_type, [])
+
+    if hook_fn in hooks do
+      reactor
+    else
+      really_hook(reactor, hook_type, hook_fn)
+    end
+  end
+
+  defp really_hook(reactor, :init, hook_fn), do: Builder.on_init(reactor, hook_fn)
+  defp really_hook(reactor, :halt, hook_fn), do: Builder.on_halt(reactor, hook_fn)
+  defp really_hook(reactor, :complete, hook_fn), do: Builder.on_complete(reactor, hook_fn)
+  defp really_hook(reactor, :error, hook_fn), do: Builder.on_error(reactor, hook_fn)
 end

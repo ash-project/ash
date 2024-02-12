@@ -1,6 +1,8 @@
 defmodule Ash.Test.ReactorTest do
   @moduledoc false
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
+  use Mimic
+  setup :set_mimic_global
 
   test "it can be used directly" do
     defmodule DirectReactor do
@@ -16,5 +18,62 @@ defmodule Ash.Test.ReactorTest do
     end
 
     assert {:ok, "Hello, Marty!"} = Reactor.run(DirectReactor, %{whom: "Marty"})
+  end
+
+  test "notifications are published when the reactor is successful" do
+    defmodule Post do
+      @moduledoc false
+      use Ash.Resource, data_layer: Ash.DataLayer.Ets
+
+      ets do
+        private? true
+      end
+
+      attributes do
+        uuid_primary_key :id
+        attribute :title, :string, allow_nil?: false
+      end
+
+      actions do
+        defaults [:create]
+      end
+    end
+
+    defmodule Api do
+      @moduledoc false
+      use Ash.Api
+
+      resources do
+        resource Ash.Test.ReactorTest.Post
+      end
+    end
+
+    defmodule NotifyingReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      input :title
+
+      ash do
+        default_api Ash.Test.ReactorTest.Api
+      end
+
+      create :create_post, Ash.Test.ReactorTest.Post do
+        inputs(%{title: input(:title)})
+      end
+    end
+
+    expect(Ash.Notifier, :notify, fn notifications ->
+      assert [
+               %Ash.Notifier.Notification{
+                 resource: Ash.Test.ReactorTest.Post,
+                 action: %{name: :create}
+               }
+             ] = notifications
+
+      []
+    end)
+
+    assert {:ok, _post} = Reactor.run(NotifyingReactor, %{title: "Title"})
   end
 end

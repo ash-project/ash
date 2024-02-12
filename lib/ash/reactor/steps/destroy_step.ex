@@ -7,7 +7,7 @@ defmodule Ash.Reactor.DestroyStep do
 
   alias Ash.Changeset
 
-  def run(arguments, _context, options) do
+  def run(arguments, context, options) do
     changeset_options =
       options
       |> maybe_set_kw(:authorize?, options[:authorize?])
@@ -16,7 +16,7 @@ defmodule Ash.Reactor.DestroyStep do
       |> maybe_set_kw(:return_destroyed?, options[:return_destroyed?])
 
     action_options =
-      []
+      [return_notifications?: true]
       |> maybe_set_kw(:authorize?, options[:authorize?])
       |> maybe_set_kw(:return_destroyed?, options[:return_destroyed?])
 
@@ -31,12 +31,12 @@ defmodule Ash.Reactor.DestroyStep do
         {:ok, record}
 
       {:ok, notifications} when is_list(notifications) ->
-        # FIXME do something with the notifications
-        {:ok, :ok}
+        with :ok <- Ash.Reactor.Notifications.enqueue_notifications(context, notifications),
+             do: {:ok, :ok}
 
-      {:ok, record, _notifications} ->
-        # FIXME do something with the notifications
-        {:ok, record}
+      {:ok, record, notifications} ->
+        with :ok <- Ash.Reactor.Notifications.enqueue_notifications(context, notifications),
+             do: {:ok, record}
 
       {:error, reason} ->
         {:error, reason}
