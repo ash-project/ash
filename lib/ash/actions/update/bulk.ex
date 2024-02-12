@@ -316,7 +316,7 @@ defmodule Ash.Actions.Update.Bulk do
       end
 
     atomic_changeset =
-      if atomic_changeset.context[:data_layer][:use_atomic_update_data] do
+      if atomic_changeset.context[:data_layer][:use_atomic_update_data?] do
         atomic_changeset
       else
         %{

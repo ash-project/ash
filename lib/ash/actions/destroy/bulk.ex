@@ -309,6 +309,16 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   defp do_atomic_destroy(query, atomic_changeset, has_after_action_hooks?, input, opts) do
+    atomic_changeset =
+      if atomic_changeset.context[:data_layer][:use_atomic_destroy_data?] do
+        atomic_changeset
+      else
+        %{
+          atomic_changeset
+          | data: %Ash.Changeset.OriginalDataNotAvailable{reason: :atomic_query_destroy}
+        }
+      end
+
     with {:ok, query} <- authorize_bulk_query(query, opts),
          {:ok, atomic_changeset, query} <-
            authorize_atomic_changeset(query, atomic_changeset, opts),
