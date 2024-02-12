@@ -64,9 +64,8 @@ defmodule Ash.Reactor.BuilderUtils do
   def ensure_hooked(reactor) do
     with {:ok, reactor} <- ensure_hooked(reactor, :init, &Ash.Reactor.Notifications.init_hook/1),
          {:ok, reactor} <- ensure_hooked(reactor, :halt, &Ash.Reactor.Notifications.halt_hook/1),
-         {:ok, reactor} <-
-           ensure_hooked(reactor, :complete, &Ash.Reactor.Notifications.complete_hook/2) do
-      ensure_hooked(reactor, :error, &Ash.Reactor.Notifications.error_hook/2)
+         {:ok, reactor} <- ensure_hooked(reactor, :error, &Ash.Reactor.Notifications.error_hook/2) do
+      ensure_hooked(reactor, :complete, &Ash.Reactor.Notifications.complete_hook/2)
     end
   end
 
@@ -75,7 +74,7 @@ defmodule Ash.Reactor.BuilderUtils do
     hooks = Map.get(reactor.hooks, hook_type, [])
 
     if hook_fn in hooks do
-      reactor
+      {:ok, reactor}
     else
       really_hook(reactor, hook_type, hook_fn)
     end

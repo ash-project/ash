@@ -20,6 +20,13 @@ defmodule Ash.Reactor.Dsl.Inputs do
   def __entity__ do
     template_type = Reactor.Template.type()
 
+    input_template_type =
+      {:or,
+       [
+         {:map, :atom, template_type},
+         {:keyword_list, [*: [type: template_type]]}
+       ]}
+
     %Spark.Dsl.Entity{
       name: :inputs,
       describe: "Specify the inputs for an action",
@@ -47,7 +54,7 @@ defmodule Ash.Reactor.Dsl.Inputs do
       imports: [Reactor.Dsl.Argument],
       schema: [
         template: [
-          type: {:or, [{:map, :atom, template_type}, {:keyword_list, template_type}]},
+          type: input_template_type,
           required: true
         ],
         transform: [

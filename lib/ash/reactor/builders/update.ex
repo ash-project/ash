@@ -1,12 +1,10 @@
 defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Update do
   @moduledoc false
 
-  alias Ash.Reactor.{UpdateStep, Dsl.Update}
+  alias Ash.Reactor.UpdateStep
   alias Reactor.{Argument, Builder}
-  alias Spark.Dsl
   import Ash.Reactor.BuilderUtils
 
-  @spec build(Update.t(), Reactor.t()) :: {:ok, Reactor.t()} | {:error, any}
   def build(update, reactor) do
     with {:ok, reactor} <- ensure_hooked(reactor),
          {:ok, reactor, arguments} <- build_input_arguments(reactor, update) do
@@ -38,9 +36,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Update do
     end
   end
 
-  @spec transform(Update.t(), Dsl.t()) :: {:ok, Dsl.t()} | {:error, any}
   def transform(_update, dsl_state), do: {:ok, dsl_state}
 
-  @spec verify(Update.t(), Dsl.t()) :: :ok | {:error, any}
   def verify(_update, _dsl_state), do: :ok
 end

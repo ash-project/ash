@@ -187,8 +187,8 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
       entity.resource
       |> Ash.Resource.Info.attributes()
       |> Enum.map(& &1.name)
-      |> maybe_accept_inputs(action.accept)
-      |> maybe_reject_inputs(action.reject)
+      |> maybe_accept_inputs(action)
+      |> maybe_reject_inputs(action)
       |> Enum.concat(argument_names)
       |> MapSet.new()
 
@@ -249,10 +249,15 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
     end
   end
 
-  defp maybe_accept_inputs(input_names, []), do: input_names
-  defp maybe_accept_inputs(input_names, accepts), do: Enum.filter(input_names, &(&1 in accepts))
-  defp maybe_reject_inputs(input_names, []), do: input_names
-  defp maybe_reject_inputs(input_names, rejects), do: Enum.reject(input_names, &(&1 in rejects))
+  defp maybe_accept_inputs(input_names, action) when length(action.accepts) > 0,
+    do: Enum.filter(input_names, &(&1 in action.accepts))
+
+  defp maybe_accept_inputs(input_names, _), do: input_names
+
+  defp maybe_reject_inputs(input_names, action) when length(action.rejects) > 0,
+    do: Enum.filter(input_names, &(&1 in action.rejects))
+
+  defp maybe_reject_inputs(input_names, _), do: input_names
 
   defp get_entity_resource_action(entity, dsl_state) when is_nil(entity.action) do
     entity.resource

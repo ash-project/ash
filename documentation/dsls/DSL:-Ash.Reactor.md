@@ -136,7 +136,7 @@ inputs(author: result(:get_user))
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`template`](#reactor-create-inputs-template){: #reactor-create-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| Keyword.t(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+| [`template`](#reactor-create-inputs-template){: #reactor-create-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -223,6 +223,598 @@ Target: `Reactor.Dsl.WaitFor`
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Create`
+
+
+
+## reactor.destroy
+```elixir
+destroy name, resource, action \\ nil
+```
+
+
+Declares a step that will call a destroy action on a resource.
+
+### Nested DSLs
+ * [actor](#reactor-destroy-actor)
+ * [inputs](#reactor-destroy-inputs)
+ * [tenant](#reactor-destroy-tenant)
+ * [wait_for](#reactor-destroy-wait_for)
+
+
+### Examples
+```
+destroy :delete_post, MyApp.Post, :destroy do
+  initial input(:post)
+  actor result(:get_user)
+  tenant result(:get_organisation, [:id])
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#reactor-destroy-name){: #reactor-destroy-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`resource`](#reactor-destroy-resource){: #reactor-destroy-resource .spark-required} | `module` |  | The resource to call the action on. |
+| [`action`](#reactor-destroy-action){: #reactor-destroy-action } | `atom` |  | The name of the action to call on the resource. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`initial`](#reactor-destroy-initial){: #reactor-destroy-initial .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The record to update. |
+| [`api`](#reactor-destroy-api){: #reactor-destroy-api } | `module` |  | The API to use when calling the action.  Defaults to the API set in the `ash` section. |
+| [`async?`](#reactor-destroy-async?){: #reactor-destroy-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
+| [`authorize?`](#reactor-destroy-authorize?){: #reactor-destroy-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
+| [`description`](#reactor-destroy-description){: #reactor-destroy-description } | `String.t` |  | A description for the step |
+| [`return_destroyed?`](#reactor-destroy-return_destroyed?){: #reactor-destroy-return_destroyed? } | `boolean` | `false` | Whether or not the step should return the destroyed record upon completion. |
+
+
+## reactor.destroy.actor
+```elixir
+actor source
+```
+
+
+Specifies the action actor
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-destroy-actor-source){: #reactor-destroy-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-destroy-actor-transform){: #reactor-destroy-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Actor`
+
+## reactor.destroy.inputs
+```elixir
+inputs template
+```
+
+
+Specify the inputs for an action
+
+
+
+### Examples
+```
+inputs %{
+  author: result(:get_user),
+  title: input(:title),
+  body: input(:body)
+}
+
+```
+
+```
+inputs(author: result(:get_user))
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`template`](#reactor-destroy-inputs-template){: #reactor-destroy-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-destroy-inputs-transform){: #reactor-destroy-inputs-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which will transform the inputs before executing the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Inputs`
+
+## reactor.destroy.tenant
+```elixir
+tenant source
+```
+
+
+Specifies the action tenant
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-destroy-tenant-source){: #reactor-destroy-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-destroy-tenant-transform){: #reactor-destroy-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Tenant`
+
+## reactor.destroy.wait_for
+```elixir
+wait_for names
+```
+
+
+Wait for the named step to complete before allowing this one to start.
+
+Desugars to `argument :_, result(step_to_wait_for)`
+
+
+
+
+### Examples
+```
+wait_for :create_user
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#reactor-destroy-wait_for-names){: #reactor-destroy-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.WaitFor`
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Destroy`
+
+
+
+## reactor.get
+```elixir
+get name, resource, action \\ nil
+```
+
+
+Declares a step that will call a read action on a resource retuning a single record.
+
+### Nested DSLs
+ * [actor](#reactor-get-actor)
+ * [inputs](#reactor-get-inputs)
+ * [tenant](#reactor-get-tenant)
+ * [wait_for](#reactor-get-wait_for)
+
+
+### Examples
+```
+get :post_by_id, MyApp.Post, :read do
+  inputs %{id: input(:post_id)}
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#reactor-get-name){: #reactor-get-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`resource`](#reactor-get-resource){: #reactor-get-resource .spark-required} | `module` |  | The resource to call the action on. |
+| [`action`](#reactor-get-action){: #reactor-get-action } | `atom` |  | The name of the action to call on the resource. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`api`](#reactor-get-api){: #reactor-get-api } | `module` |  | The API to use when calling the action.  Defaults to the API set in the `ash` section. |
+| [`async?`](#reactor-get-async?){: #reactor-get-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
+| [`authorize?`](#reactor-get-authorize?){: #reactor-get-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
+| [`description`](#reactor-get-description){: #reactor-get-description } | `String.t` |  | A description for the step |
+| [`fail_on_not_found?`](#reactor-get-fail_on_not_found?){: #reactor-get-fail_on_not_found? } | `boolean` | `false` | When set to true the step will fail if the resource is not found. |
+
+
+## reactor.get.actor
+```elixir
+actor source
+```
+
+
+Specifies the action actor
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-get-actor-source){: #reactor-get-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-get-actor-transform){: #reactor-get-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Actor`
+
+## reactor.get.inputs
+```elixir
+inputs template
+```
+
+
+Specify the inputs for an action
+
+
+
+### Examples
+```
+inputs %{
+  author: result(:get_user),
+  title: input(:title),
+  body: input(:body)
+}
+
+```
+
+```
+inputs(author: result(:get_user))
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`template`](#reactor-get-inputs-template){: #reactor-get-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-get-inputs-transform){: #reactor-get-inputs-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which will transform the inputs before executing the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Inputs`
+
+## reactor.get.tenant
+```elixir
+tenant source
+```
+
+
+Specifies the action tenant
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-get-tenant-source){: #reactor-get-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-get-tenant-transform){: #reactor-get-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Tenant`
+
+## reactor.get.wait_for
+```elixir
+wait_for names
+```
+
+
+Wait for the named step to complete before allowing this one to start.
+
+Desugars to `argument :_, result(step_to_wait_for)`
+
+
+
+
+### Examples
+```
+wait_for :create_user
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#reactor-get-wait_for-names){: #reactor-get-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.WaitFor`
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Get`
+
+
+
+## reactor.read
+```elixir
+read name, resource, action \\ nil
+```
+
+
+Declares a step that will call a read action on a resource.
+
+### Nested DSLs
+ * [actor](#reactor-read-actor)
+ * [inputs](#reactor-read-inputs)
+ * [tenant](#reactor-read-tenant)
+ * [wait_for](#reactor-read-wait_for)
+
+
+### Examples
+```
+read :read_posts, MyApp.Post, :read
+
+```
+
+```
+read :read_posts_in_range, MyApp.Post, :read_in_range do
+  inputs %{min_date: input(:min_date), max_date: input(:max_date)}
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#reactor-read-name){: #reactor-read-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`resource`](#reactor-read-resource){: #reactor-read-resource .spark-required} | `module` |  | The resource to call the action on. |
+| [`action`](#reactor-read-action){: #reactor-read-action } | `atom` |  | The name of the action to call on the resource. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`api`](#reactor-read-api){: #reactor-read-api } | `module` |  | The API to use when calling the action.  Defaults to the API set in the `ash` section. |
+| [`async?`](#reactor-read-async?){: #reactor-read-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
+| [`authorize?`](#reactor-read-authorize?){: #reactor-read-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
+| [`description`](#reactor-read-description){: #reactor-read-description } | `String.t` |  | A description for the step |
+
+
+## reactor.read.actor
+```elixir
+actor source
+```
+
+
+Specifies the action actor
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-read-actor-source){: #reactor-read-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-read-actor-transform){: #reactor-read-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Actor`
+
+## reactor.read.inputs
+```elixir
+inputs template
+```
+
+
+Specify the inputs for an action
+
+
+
+### Examples
+```
+inputs %{
+  author: result(:get_user),
+  title: input(:title),
+  body: input(:body)
+}
+
+```
+
+```
+inputs(author: result(:get_user))
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`template`](#reactor-read-inputs-template){: #reactor-read-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-read-inputs-transform){: #reactor-read-inputs-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which will transform the inputs before executing the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Inputs`
+
+## reactor.read.tenant
+```elixir
+tenant source
+```
+
+
+Specifies the action tenant
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-read-tenant-source){: #reactor-read-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-read-tenant-transform){: #reactor-read-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Tenant`
+
+## reactor.read.wait_for
+```elixir
+wait_for names
+```
+
+
+Wait for the named step to complete before allowing this one to start.
+
+Desugars to `argument :_, result(step_to_wait_for)`
+
+
+
+
+### Examples
+```
+wait_for :create_user
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#reactor-read-wait_for-names){: #reactor-read-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.WaitFor`
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Read`
 
 
 
@@ -336,7 +928,7 @@ inputs(author: result(:get_user))
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`template`](#reactor-update-inputs-template){: #reactor-update-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| Keyword.t(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+| [`template`](#reactor-update-inputs-template){: #reactor-update-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
 ### Options
 
 | Name | Type | Default | Docs |

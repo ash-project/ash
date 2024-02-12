@@ -1,12 +1,10 @@
 defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Create do
   @moduledoc false
 
-  alias Ash.Reactor.{CreateStep, Dsl.Create}
+  alias Ash.Reactor.CreateStep
   alias Reactor.Builder
-  alias Spark.Dsl
   import Ash.Reactor.BuilderUtils
 
-  @spec build(Create.t(), Reactor.t()) :: {:ok, Reactor.t()} | {:error, any}
   def build(create, reactor) do
     with {:ok, reactor} <- ensure_hooked(reactor),
          {:ok, reactor, arguments} <- build_input_arguments(reactor, create) do
@@ -37,9 +35,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Create do
     end
   end
 
-  @spec transform(Create.t(), Dsl.t()) :: {:ok, Dsl.t()} | {:error, any}
   def transform(_create, dsl_state), do: {:ok, dsl_state}
 
-  @spec verify(Create.t(), Dsl.t()) :: :ok | {:error, any}
   def verify(_create, _dsl_state), do: :ok
 end

@@ -97,7 +97,7 @@ defmodule Ash.Reactor.Notifications do
   @doc """
   Add notifications to the queue to be published on reactor success.
   """
-  @spec enqueue_notifications(Reactor.context(), Enum.t(Ash.Notifier.Notification.t())) ::
+  @spec enqueue_notifications(Reactor.context(), Enumerable.t(Ash.Notifier.Notification.t())) ::
           :ok | {:error, any}
   def enqueue_notifications(context, notifications) do
     with {:ok, _} <- agent_put(context, notifications) do
