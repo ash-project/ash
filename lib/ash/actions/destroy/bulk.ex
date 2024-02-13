@@ -785,7 +785,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   defp authorize_atomic_changeset(query, changeset, opts) do
     if opts[:authorize?] do
-      case query.api.can(query, opts[:actor],
+      case query.api.can(changeset, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,
              alter_source?: true,

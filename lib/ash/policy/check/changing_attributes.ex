@@ -45,10 +45,10 @@ defmodule Ash.Policy.Check.ChangingAttributes do
               )
 
             {{:ok, from}, :error} ->
-              Ash.Expr.expr(^expr and ref(attribute) != ^from)
+              {:cont, Ash.Expr.expr(^expr and ref(attribute) != ^from)}
 
             {:error, {:ok, to}} ->
-              Ash.Expr.expr(^expr and ^atomic_ref(attribute) != ^to)
+              {:cont, Ash.Expr.expr(^expr and ^atomic_ref(attribute) != ^to)}
           end
         else
           {:cont, expr}

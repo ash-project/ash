@@ -334,7 +334,7 @@ defmodule Ash.Actions.Update.Bulk do
 
     with {:ok, query} <- authorize_bulk_query(query, opts),
          {:ok, atomic_changeset, query} <-
-           authorize_changeset(query, atomic_changeset, opts),
+           authorize_atomic_changeset(query, atomic_changeset, opts),
          {:ok, data_layer_query} <- Ash.Query.data_layer_query(query) do
       case Ash.DataLayer.update_query(
              data_layer_query,
@@ -807,7 +807,7 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp authorize_changeset(query, changeset, opts) do
+  defp authorize_atomic_changeset(query, changeset, opts) do
     if opts[:authorize?] do
       case changeset.api.can(changeset, opts[:actor],
              return_forbidden_error?: true,
