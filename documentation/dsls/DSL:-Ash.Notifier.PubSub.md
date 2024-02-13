@@ -80,6 +80,7 @@ publish :assign, "assigned"
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`previous_values?`](#pub_sub-publish-previous_values?){: #pub_sub-publish-previous_values? } | `boolean` | `true` | Whether or not to publish messages with both the new values and the old values for referencing changed attributes |
 | [`event`](#pub_sub-publish-event){: #pub_sub-publish-event } | `String.t` |  | The name of the event to publish. Defaults to the action name |
 | [`dispatcher`](#pub_sub-publish-dispatcher){: #pub_sub-publish-dispatcher } | `atom` |  | The module to use as a dispatcher. If none is set, the pubsub module provided is used. |
 
@@ -123,6 +124,7 @@ publish_all :create, "created"
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`action`](#pub_sub-publish_all-action){: #pub_sub-publish_all-action } | `atom` |  | The name of the action that should be published |
+| [`previous_values?`](#pub_sub-publish_all-previous_values?){: #pub_sub-publish_all-previous_values? } | `boolean` | `true` | Whether or not to publish messages with both the new values and the old values for referencing changed attributes |
 | [`event`](#pub_sub-publish_all-event){: #pub_sub-publish_all-event } | `String.t` |  | The name of the event to publish. Defaults to the action name |
 | [`dispatcher`](#pub_sub-publish_all-dispatcher){: #pub_sub-publish_all-dispatcher } | `atom` |  | The module to use as a dispatcher. If none is set, the pubsub module provided is used. |
 

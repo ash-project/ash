@@ -512,7 +512,12 @@ defmodule Ash.EmbeddableType do
                 |> Ash.EmbeddableType.copy_source(constraints[:__source__])
                 |> Ash.Query.load(constraints[:load] || [])
 
-              query = Ash.Query.sort(query, constraints[:sort])
+              query =
+                if constraints[:sort] do
+                  Ash.Query.sort(query, constraints[:sort])
+                else
+                  query
+                end
 
               case ShadowApi.read(query) do
                 {:ok, result} ->

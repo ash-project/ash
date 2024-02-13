@@ -167,6 +167,7 @@ spark_locals_without_parens = [
   prefix: 1,
   prepare: 1,
   prepare: 2,
+  previous_values?: 1,
   primary?: 1,
   primary_key?: 1,
   private?: 1,

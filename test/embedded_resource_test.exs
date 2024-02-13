@@ -202,7 +202,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
   end
 
   test "embedded resources can be created" do
-    assert %{profile: %Profile{}, tags: [%Tag{}, %Tag{}]} =
+    assert %{profile: %Profile{}, tags: [%Tag{name: "trainer"}, %Tag{name: "human"}]} =
              Changeset.for_create(
                Author,
                :create,
