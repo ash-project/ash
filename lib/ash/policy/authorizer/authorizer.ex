@@ -713,10 +713,32 @@ defmodule Ash.Policy.Authorizer do
   end
 
   defp do_replace_ref(
+         %{
+           attribute: %struct{name: name},
+           relationship_path: relationship_path,
+           resource: resource
+         } = ref,
+         %{stack: [{_, _path, action} | _]} = acc
+       )
+       when struct in [Ash.Resource.Attribute, Ash.Resource.Aggregate, Ash.Resource.Calculation] and
+              not is_nil(relationship_path) do
+    dbg()
+
+    {expr, acc} =
+      expression_for_ref(resource, name, action, ref, %{
+        acc
+        | stack: [{resource, relationship_path, action} | acc.stack]
+      })
+
+    {expr, acc}
+  end
+
+  defp do_replace_ref(
          %{attribute: %struct{name: name}} = ref,
          %{stack: [{resource, _path, action} | _]} = acc
        )
        when struct in [Ash.Resource.Attribute, Ash.Resource.Aggregate, Ash.Resource.Calculation] do
+    dbg()
     {expr, acc} = expression_for_ref(resource, name, action, ref, acc)
 
     {expr, acc}
