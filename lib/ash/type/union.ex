@@ -260,16 +260,23 @@ defmodule Ash.Type.Union do
   def get_rewrites(merged_load, calculation, path, constraints) do
     merged_load
     |> Enum.flat_map(fn {key, type_load} ->
-      constraints[:types][key][:type]
-      |> Ash.Type.get_rewrites(
-        type_load,
-        calculation,
-        path,
-        constraints[:types][key][:constraints]
-      )
-      |> Enum.map(fn {{rewrite_path, data, name, load}, source} ->
-        {{[key | rewrite_path], data, name, load}, source}
-      end)
+      if Ash.Type.can_load?(
+           constraints[:types][key][:type],
+           constraints[:types][key][:constraints] || []
+         ) do
+        constraints[:types][key][:type]
+        |> Ash.Type.get_rewrites(
+          type_load,
+          calculation,
+          path,
+          constraints[:types][key][:constraints] || []
+        )
+        |> Enum.map(fn {{rewrite_path, data, name, load}, source} ->
+          {{[key | rewrite_path], data, name, load}, source}
+        end)
+      else
+        []
+      end
     end)
   end
 

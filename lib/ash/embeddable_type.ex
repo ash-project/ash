@@ -488,6 +488,7 @@ defmodule Ash.EmbeddableType do
       end
 
       def get_rewrites(merged_load, calculation, path, _) do
+        merged_load = Ash.Query.load(__MODULE__, merged_load)
         Ash.Actions.Read.Calculations.get_all_rewrites(merged_load, calculation, path)
       end
 
