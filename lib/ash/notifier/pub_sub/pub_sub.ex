@@ -124,7 +124,7 @@ defmodule Ash.Notifier.PubSub do
   def requires_original_data?(resource, action) do
     resource
     |> publications()
-    |> Enum.filter(&(&1.previous_values && matches?(&1, action)))
+    |> Enum.filter(&(&1.previous_values? && matches?(&1, action)))
     |> Enum.flat_map(fn publish ->
       publish.topic
       |> List.flatten()
