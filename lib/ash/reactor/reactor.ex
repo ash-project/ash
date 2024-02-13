@@ -22,7 +22,7 @@ defmodule Ash.Reactor do
     sections: [@ash],
     transformers: [__MODULE__.Dsl.ActionTransformer],
     dsl_patches:
-      ~w[Create Destroy Get Read Update]
+      ~w[Action Create Destroy Get Read Update]
       |> Enum.map(&Module.concat(__MODULE__.Dsl, &1))
       |> Enum.map(&%Spark.Dsl.Patch.AddEntity{section_path: [:reactor], entity: &1.__entity__()})
 
