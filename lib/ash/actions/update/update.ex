@@ -102,7 +102,7 @@ defmodule Ash.Actions.Update do
                  query,
                  fully_atomic_changeset.action,
                  params,
-                 Keyword.put(opts, :strategy, [:atomic])
+                 Keyword.merge(opts, strategy: [:atomic], authorize_query?: false)
                ) do
             %Ash.BulkResult{status: :success, records: [record], notifications: notifications} ->
               if opts[:return_notifications?] do
