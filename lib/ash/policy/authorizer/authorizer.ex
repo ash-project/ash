@@ -722,8 +722,6 @@ defmodule Ash.Policy.Authorizer do
        )
        when struct in [Ash.Resource.Attribute, Ash.Resource.Aggregate, Ash.Resource.Calculation] and
               not is_nil(relationship_path) do
-    dbg()
-
     {expr, acc} =
       expression_for_ref(resource, name, action, ref, %{
         acc
@@ -738,7 +736,6 @@ defmodule Ash.Policy.Authorizer do
          %{stack: [{resource, _path, action} | _]} = acc
        )
        when struct in [Ash.Resource.Attribute, Ash.Resource.Aggregate, Ash.Resource.Calculation] do
-    dbg()
     {expr, acc} = expression_for_ref(resource, name, action, ref, acc)
 
     {expr, acc}
