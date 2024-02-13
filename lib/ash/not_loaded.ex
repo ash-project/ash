@@ -11,7 +11,13 @@ defmodule Ash.NotLoaded do
     import Inspect.Algebra
 
     def inspect(not_loaded, opts) do
-      concat(["#Ash.NotLoaded<", to_doc(not_loaded.type, opts), ">"])
+      concat([
+        "#Ash.NotLoaded<",
+        to_doc(not_loaded.type, opts),
+        ", field: ",
+        to_doc(not_loaded.field, opts),
+        ">"
+      ])
     end
   end
 end

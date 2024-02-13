@@ -195,6 +195,7 @@ defmodule Ash.EmbeddableType do
           action,
           Keyword.merge(opts,
             context: context,
+            sorted?: true,
             return_records?: true,
             return_errors?: true,
             batch_size: 1_000_000_000
