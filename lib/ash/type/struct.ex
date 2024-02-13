@@ -64,7 +64,7 @@ defmodule Ash.Type.Struct do
   end
 
   @impl Ash.Type
-  def get_rewrites(merged_load, calculation, path, _) do
+  def get_rewrites(merged_load, calculation, path, constraints) do
     if constraints[:instance_of] && Ash.Resource.Info.resource?(constraints[:instance_of]) do
       merged_load = Ash.Query.load(__MODULE__, merged_load)
       Ash.Actions.Read.Calculations.get_all_rewrites(merged_load, calculation, path)
