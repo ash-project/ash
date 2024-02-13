@@ -177,7 +177,9 @@ defmodule Ash.Actions.Destroy.Bulk do
               bulk_result
             else
               if notify? do
-                notifications = bulk_result.notifications ++ Process.get(:ash_notifications, [])
+                notifications =
+                  (bulk_result.notifications || []) ++ Process.get(:ash_notifications, [])
+
                 remaining_notifications = Ash.Notifier.notify(notifications)
                 Process.delete(:ash_notifications) || []
 
@@ -289,7 +291,8 @@ defmodule Ash.Actions.Destroy.Bulk do
                 %{
                   bulk_result
                   | notifications:
-                      bulk_result.notifications ++ Process.delete(:ash_notifications) || []
+                      (bulk_result.notifications || []) ++ Process.delete(:ash_notifications) ||
+                        []
                 }
               else
                 bulk_result
