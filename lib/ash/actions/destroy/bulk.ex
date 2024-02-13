@@ -87,7 +87,10 @@ defmodule Ash.Actions.Destroy.Bulk do
           _ ->
             run(
               api,
-              api.stream!(query, Keyword.put(read_opts, :authorize?, opts[:authorize_query?])),
+              api.stream!(
+                query,
+                Keyword.put(read_opts, :authorize?, opts[:authorize?] && opts[:authorize_query?])
+              ),
               action,
               input,
               Keyword.put(opts, :resource, query.resource),

@@ -64,15 +64,15 @@ defmodule Ash.Actions.Update do
 
       case fully_atomic_changeset do
         %Ash.Changeset{} = atomic_changeset ->
-          {atomic_changeset, opts} =
-            Ash.Actions.Helpers.add_process_context(api, atomic_changeset, opts)
-
           atomic_changeset =
             %{atomic_changeset | data: changeset.data}
             |> Ash.Changeset.set_context(%{data_layer: %{use_atomic_update_data?: true}})
             |> Map.put(:load, changeset.load)
             |> Map.put(:select, changeset.select)
             |> Ash.Changeset.set_context(changeset.context)
+
+          {atomic_changeset, opts} =
+            Ash.Actions.Helpers.add_process_context(api, atomic_changeset, opts)
 
           opts =
             Keyword.merge(opts,
@@ -102,7 +102,11 @@ defmodule Ash.Actions.Update do
                  query,
                  fully_atomic_changeset.action,
                  params,
-                 Keyword.merge(opts, strategy: [:atomic], authorize_query?: false)
+                 Keyword.merge(opts,
+                   strategy: [:atomic],
+                   authorize_query?: false,
+                   atomic_changeset: atomic_changeset
+                 )
                ) do
             %Ash.BulkResult{status: :success, records: [record], notifications: notifications} ->
               if opts[:return_notifications?] do

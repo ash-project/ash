@@ -101,7 +101,7 @@ defmodule Ash.Actions.Helpers do
   def set_opts(opts, api, query_or_changeset \\ nil) do
     opts
     |> add_actor(query_or_changeset, api)
-    |> add_authorize?(api)
+    |> add_authorize?(query_or_changeset, api)
     |> add_tenant()
     |> add_tracer()
   end
@@ -170,7 +170,7 @@ defmodule Ash.Actions.Helpers do
   defp internal?(%{context: %{private: %{internal?: true}}}), do: true
   defp internal?(_), do: false
 
-  defp add_authorize?(opts, api) do
+  defp add_authorize?(opts, query_or_changeset, api) do
     opts =
       if Keyword.has_key?(opts, :authorize?) do
         opts
@@ -187,7 +187,11 @@ defmodule Ash.Actions.Helpers do
     if api do
       case Ash.Api.Info.authorize(api) do
         :always ->
-          Keyword.put(opts, :authorize?, true)
+          if opts[:authorize?] == false && internal?(query_or_changeset) do
+            opts
+          else
+            Keyword.put(opts, :authorize?, true)
+          end
 
         :by_default ->
           Keyword.put_new(opts, :authorize?, true)
