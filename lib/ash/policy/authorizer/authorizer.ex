@@ -715,7 +715,7 @@ defmodule Ash.Policy.Authorizer do
   defp do_replace_ref(
          %{
            attribute: %struct{name: name},
-           relationship_path: [relationship_path],
+           relationship_path: relationship_path,
            resource: resource
          } = ref,
          %{stack: [{parent, _path, _action} | _]} = acc
