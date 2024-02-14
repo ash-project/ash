@@ -349,7 +349,7 @@ defmodule Ash.Actions.Read do
                relationship_path_filters,
                opts
              ),
-           {%{valid?: true} = query, before_notifications} = run_before_action(query),
+           {%{valid?: true} = query, before_notifications} <- run_before_action(query),
            {:ok, data_layer_query} <-
              Ash.Query.data_layer_query(query, data_layer_calculations: data_layer_calculations),
            {:ok, results} <-
