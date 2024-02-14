@@ -28,6 +28,9 @@ defmodule Ash.Actions.Update do
 
       {fully_atomic_changeset, params} =
         cond do
+          !Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) && opts[:authorize?] ->
+            {{:not_atomic, "data layer does not support adding errors to a query"}, nil}
+
           !Ash.DataLayer.data_layer_can?(changeset.resource, :update_query) ->
             {{:not_atomic, "data layer does not support updating a query"}, nil}
 
@@ -105,7 +108,8 @@ defmodule Ash.Actions.Update do
                  Keyword.merge(opts,
                    strategy: [:atomic],
                    authorize_query?: false,
-                   atomic_changeset: atomic_changeset
+                   atomic_changeset: atomic_changeset,
+                   authorize_changeset_with: :error
                  )
                ) do
             %Ash.BulkResult{status: :success, records: [record], notifications: notifications} ->

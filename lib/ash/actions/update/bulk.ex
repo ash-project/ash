@@ -335,7 +335,8 @@ defmodule Ash.Actions.Update.Bulk do
         atomic_changeset
       end
 
-    with {:ok, query} <- authorize_bulk_query(query, opts),
+    with {:ok, query} <-
+           authorize_bulk_query(query, atomic_changeset, opts),
          {:ok, atomic_changeset, query} <-
            authorize_atomic_changeset(query, atomic_changeset, opts),
          {:ok, data_layer_query} <- Ash.Query.data_layer_query(query) do
@@ -386,7 +387,7 @@ defmodule Ash.Actions.Update.Bulk do
               {[], results, [], 0}
             end
 
-          {results, errors} =
+          {results, errors, error_count} =
             case load_data(
                    results,
                    atomic_changeset.api,
@@ -395,10 +396,10 @@ defmodule Ash.Actions.Update.Bulk do
                    opts
                  ) do
               {:ok, results} ->
-                {results, errors}
+                {results, errors, error_count}
 
               {:error, error} ->
-                {[], List.wrap(error) ++ errors}
+                {[], List.wrap(error) ++ errors, error_count + Enum.count(List.wrap(error))}
             end
 
           notifications =
@@ -430,13 +431,43 @@ defmodule Ash.Actions.Update.Bulk do
             records: results
           }
 
-        {:error, error} ->
+        {:error, :no_rollback,
+         %Ash.Error.Forbidden.Placeholder{
+           authorizer: authorizer
+         }} ->
+          error =
+            Ash.Authorizer.exception(
+              authorizer,
+              :forbidden,
+              query.context[:private][:authorizer_state][authorizer]
+            )
+
           %Ash.BulkResult{
             status: :error,
             error_count: 1,
             notifications: [],
             errors: [Ash.Error.to_error_class(error)]
           }
+
+        {:error, :no_rollback, error} ->
+          %Ash.BulkResult{
+            status: :error,
+            error_count: 1,
+            notifications: [],
+            errors: [Ash.Error.to_error_class(error)]
+          }
+
+        {:error, error} ->
+          if Ash.DataLayer.in_transaction?(atomic_changeset.resource) do
+            Ash.DataLayer.rollback(atomic_changeset.resource, Ash.Error.to_error_class(error))
+          else
+            %Ash.BulkResult{
+              status: :error,
+              error_count: 1,
+              notifications: [],
+              errors: [Ash.Error.to_error_class(error)]
+            }
+          end
       end
     else
       {:error, %Ash.Error.Forbidden.InitialDataRequired{}} ->
@@ -784,11 +815,13 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp authorize_bulk_query(query, opts) do
+  defp authorize_bulk_query(query, atomic_changeset, opts) do
     if opts[:authorize?] && opts[:authorize_query?] do
       case query.api.can(query, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,
+             atomic_changeset: atomic_changeset,
+             filter_with: opts[:authorize_query_with] || :filter,
              run_queries?: false,
              alter_source?: true,
              no_check?: true
@@ -815,6 +848,8 @@ defmodule Ash.Actions.Update.Bulk do
       case changeset.api.can(changeset, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,
+             atomic_changeset: changeset,
+             filter_with: opts[:authorize_changeset_with] || :filter,
              alter_source?: true,
              run_queries?: false,
              base_query: query
@@ -1363,7 +1398,11 @@ defmodule Ash.Actions.Update.Bulk do
 
   defp store_error(ref, empty, _opts, error_count) when empty in [[], nil] do
     {errors, count} = Process.get({:bulk_update_errors, ref}) || {[], 0}
-    Process.put({:bulk_update_errors, ref}, {errors, count + error_count})
+
+    Process.put(
+      {:bulk_update_errors, ref},
+      {errors, count + error_count}
+    )
   end
 
   defp store_error(ref, error, opts, count) do

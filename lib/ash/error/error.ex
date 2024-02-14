@@ -293,14 +293,7 @@ defmodule Ash.Error do
 
     json = Map.merge(unhandled, handled)
 
-    if function_exported?(module, :from_json, 1) do
-      module.from_json(json)
-    else
-      keyword =
-        json |> Map.to_list() |> Enum.map(fn {key, value} -> {atomize_safely(key), value} end)
-
-      module.exception(keyword)
-    end
+    module.from_json(json)
   end
 
   defp process_known_json_keys(json) do
@@ -340,7 +333,8 @@ defmodule Ash.Error do
     end
   end
 
-  defp atomize_safely(value) do
+  @doc false
+  def atomize_safely(value) do
     String.to_existing_atom(value)
   rescue
     _ ->

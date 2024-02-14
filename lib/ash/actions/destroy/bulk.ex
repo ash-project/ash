@@ -325,7 +325,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         }
       end
 
-    with {:ok, query} <- authorize_bulk_query(query, opts),
+    with {:ok, query} <- authorize_bulk_query(query, atomic_changeset, opts),
          {:ok, atomic_changeset, query} <-
            authorize_atomic_changeset(query, atomic_changeset, opts),
          {:ok, data_layer_query} <- Ash.Query.data_layer_query(query) do
@@ -390,12 +390,43 @@ defmodule Ash.Actions.Destroy.Bulk do
             records: results
           }
 
-        {:error, error} ->
+        {:error, :no_rollback,
+         %Ash.Error.Forbidden.Placeholder{
+           authorizer: authorizer
+         }} ->
+          error =
+            Ash.Authorizer.exception(
+              authorizer,
+              :forbidden,
+              query.context[:private][:authorizer_state][authorizer]
+            )
+
           %Ash.BulkResult{
             status: :error,
             error_count: 1,
+            notifications: [],
             errors: [Ash.Error.to_error_class(error)]
           }
+
+        {:error, :no_rollback, error} ->
+          %Ash.BulkResult{
+            status: :error,
+            error_count: 1,
+            notifications: [],
+            errors: [Ash.Error.to_error_class(error)]
+          }
+
+        {:error, error} ->
+          if Ash.DataLayer.in_transaction?(atomic_changeset.resource) do
+            Ash.DataLayer.rollback(atomic_changeset.resource, Ash.Error.to_error_class(error))
+          else
+            %Ash.BulkResult{
+              status: :error,
+              error_count: 1,
+              notifications: [],
+              errors: [Ash.Error.to_error_class(error)]
+            }
+          end
       end
     else
       {:error, %Ash.Error.Forbidden.InitialDataRequired{}} ->
@@ -762,10 +793,12 @@ defmodule Ash.Actions.Destroy.Bulk do
     |> Ash.Changeset.set_arguments(arguments)
   end
 
-  defp authorize_bulk_query(query, opts) do
+  defp authorize_bulk_query(query, atomic_changeset, opts) do
     if opts[:authorize?] && opts[:authorize_query?] do
       case query.api.can(query, opts[:actor],
              return_forbidden_error?: true,
+             atomic_changeset: atomic_changeset,
+             filter_with: opts[:authorize_query_with] || :filter,
              maybe_is: false,
              alter_source?: true
            ) do
@@ -791,6 +824,8 @@ defmodule Ash.Actions.Destroy.Bulk do
       case query.api.can(changeset, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,
+             atomic_changeset: changeset,
+             filter_with: opts[:authorize_changeset_with] || :filter,
              alter_source?: true,
              base_query: query
            ) do

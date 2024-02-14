@@ -450,6 +450,18 @@ defmodule Ash.Api do
       doc:
         "Whether or not to cast attributes and arguments as input. This is an optimization for cases where the input is already casted and/or not in need of casting"
     ],
+    authorize_query_with: [
+      type: {:one_of, [:filter, :error]},
+      default: :filter,
+      doc:
+        "If set to `:error`, instead of filtering unauthorized query results, unauthorized query results will raise an appropriate forbidden error"
+    ],
+    authorize_changeset_with: [
+      type: {:one_of, [:filter, :error]},
+      default: :filter,
+      doc:
+        "If set to `:error`, instead of filtering unauthorized changes, unauthorized changes will raise an appropriate forbidden error"
+    ],
     context: [
       type: :map,
       doc: "Context to set on each changeset"
@@ -771,7 +783,10 @@ defmodule Ash.Api do
         ) ::
           boolean | no_return
   def can?(api, action_or_query_or_changeset, actor, opts \\ []) do
-    opts = Keyword.put_new(opts, :maybe_is, true)
+    opts =
+      opts
+      |> Keyword.put_new(:maybe_is, true)
+      |> Keyword.put_new(:filter_with, :filter)
 
     case can(api, action_or_query_or_changeset, actor, opts) do
       {:ok, :maybe} -> opts[:maybe_is]
@@ -800,6 +815,7 @@ defmodule Ash.Api do
   def can(api, action_or_query_or_changeset, actor, opts \\ []) do
     opts = Keyword.put_new(opts, :maybe_is, :maybe)
     opts = Keyword.put_new(opts, :run_queries?, true)
+    opts = Keyword.put_new(opts, :filter_with, :filter)
 
     {resource, action_or_query_or_changeset, input} =
       case action_or_query_or_changeset do
@@ -1074,10 +1090,56 @@ defmodule Ash.Api do
                 """
 
               {:filter, _authorizer, filter} ->
-                {:cont, {true, Ash.Query.filter(or_query(query, subject.resource, api), ^filter)}}
+                filter =
+                  if opts[:atomic_changeset] do
+                    Ash.Filter.build_filter_from_template(
+                      filter,
+                      actor,
+                      %{},
+                      %{},
+                      opts[:atomic_changeset]
+                    )
+                  else
+                    filter
+                  end
+
+                {:cont,
+                 {true,
+                  apply_filter(
+                    query,
+                    subject.resource,
+                    api,
+                    filter,
+                    authorizer,
+                    authorizer_state,
+                    opts
+                  )}}
 
               {:filter, filter} ->
-                {:cont, {true, Ash.Query.filter(or_query(query, subject.resource, api), ^filter)}}
+                filter =
+                  if opts[:atomic_changeset] do
+                    Ash.Filter.build_filter_from_template(
+                      filter,
+                      actor,
+                      %{},
+                      %{},
+                      opts[:atomic_changeset]
+                    )
+                  else
+                    filter
+                  end
+
+                {:cont,
+                 {true,
+                  apply_filter(
+                    query,
+                    subject.resource,
+                    api,
+                    filter,
+                    authorizer,
+                    authorizer_state,
+                    opts
+                  )}}
 
               {:continue, authorizer_state} ->
                 if opts[:no_check?] do
@@ -1110,14 +1172,33 @@ defmodule Ash.Api do
                 end
 
               {:filter_and_continue, filter, authorizer_state} ->
+                filter =
+                  if opts[:atomic_changeset] do
+                    Ash.Filter.build_filter_from_template(
+                      filter,
+                      actor,
+                      %{},
+                      %{},
+                      opts[:atomic_changeset]
+                    )
+                  else
+                    filter
+                  end
+
                 if opts[:no_check?] || !match?(%Ash.Query{}, subject) do
                   Ash.Authorizer.exception(authorizer, :must_pass_strict_check, authorizer_state)
                 else
                   if opts[:alter_source?] do
                     query_with_hook =
                       query
-                      |> or_query(subject.resource, api)
-                      |> Ash.Query.filter(^filter)
+                      |> apply_filter(
+                        subject.resource,
+                        api,
+                        filter,
+                        authorizer,
+                        authorizer_state,
+                        opts
+                      )
                       |> Ash.Query.authorize_results(fn query, results ->
                         context = Map.merge(context, %{data: results, query: query})
 
@@ -1177,6 +1258,28 @@ defmodule Ash.Api do
           other ->
             other
         end
+    end
+  end
+
+  defp apply_filter(query, resource, api, filter, authorizer, authorizer_state, opts) do
+    case opts[:filter_with] || :filter do
+      :filter ->
+        Ash.Query.filter(or_query(query, resource, api), ^filter)
+
+      :error ->
+        Ash.Query.filter(
+          or_query(query, resource, api),
+          if ^filter do
+            true
+          else
+            error(Ash.Error.Forbidden.Placeholder, %{
+              authorizer: ^inspect(authorizer)
+            })
+          end
+        )
+        |> Ash.Query.set_context(%{
+          private: %{authorizer_state: %{authorizer => authorizer_state}}
+        })
     end
   end
 
@@ -1615,6 +1718,8 @@ defmodule Ash.Api do
       generated.
     - `no_check?` - If set to `true`, the query will not run the checks for runtime policies, and will instead consider the policy to have
       failed. This is used for things like atomic updates, where the policies must check with strict check or filter checks.
+    - `atomic_changeset` - A changeset to use to fill any `atomic_ref` templates.
+    - `filter_with` - If set to `:error`, any filter authorization will produce an error on matches, otherwise matches will be filtered out.
   """
 
   @callback can(
