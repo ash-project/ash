@@ -601,6 +601,8 @@ defmodule Ash.Filter do
       {:_atomic_ref, field} when is_atom(field) ->
         if changeset do
           Ash.Changeset.atomic_ref(changeset, field)
+        else
+          {:_atomic_ref, field}
         end
 
       {:_context, fields} when is_list(fields) ->

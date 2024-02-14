@@ -1051,7 +1051,7 @@ defmodule Ash.Policy.Authorizer do
         {{check_module, check_opts}, true} ->
           result =
             try do
-              check_module.auto_filter(authorizer.actor, authorizer, check_opts)
+              nil_to_false(check_module.auto_filter(authorizer.actor, authorizer, check_opts))
             rescue
               e ->
                 reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
@@ -1071,9 +1071,16 @@ defmodule Ash.Policy.Authorizer do
           result =
             try do
               if :erlang.function_exported(check_module, :auto_filter_not, 3) do
-                check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
+                nil_to_false(
+                  check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
+                )
               else
-                [not: check_module.auto_filter(authorizer.actor, authorizer, check_opts)]
+                [
+                  not:
+                    nil_to_false(
+                      check_module.auto_filter(authorizer.actor, authorizer, check_opts)
+                    )
+                ]
               end
             rescue
               e ->
@@ -1102,6 +1109,9 @@ defmodule Ash.Policy.Authorizer do
       end
     end)
   end
+
+  defp nil_to_false(nil), do: false
+  defp nil_to_false(v), do: v
 
   def print_tuple_boolean({op, l, r}) when op in [:and, :or] do
     "(#{print_tuple_boolean(l)} #{op} #{print_tuple_boolean(r)})"
@@ -1148,12 +1158,15 @@ defmodule Ash.Policy.Authorizer do
       {{check_module, check_opts}, required_status} ->
         additional_filter =
           if required_status do
-            check_module.auto_filter(authorizer.actor, authorizer, check_opts)
+            nil_to_false(check_module.auto_filter(authorizer.actor, authorizer, check_opts))
           else
             if :erlang.function_exported(check_module, :auto_filter_not, 3) do
-              check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
+              nil_to_false(check_module.auto_filter_not(authorizer.actor, authorizer, check_opts))
             else
-              [not: check_module.auto_filter(authorizer.actor, authorizer, check_opts)]
+              [
+                not:
+                  nil_to_false(check_module.auto_filter(authorizer.actor, authorizer, check_opts))
+              ]
             end
           end
 

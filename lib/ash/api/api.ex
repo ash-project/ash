@@ -904,7 +904,7 @@ defmodule Ash.Api do
   end
 
   defp alter_source({:ok, true, query}, api, actor, %Ash.Changeset{} = subject, opts) do
-    case alter_source({:ok, true}, api, actor, subject, opts) do
+    case alter_source({:ok, true}, api, actor, subject, Keyword.put(opts, :base_query, query)) do
       {:ok, true, new_subject} -> {:ok, true, new_subject, query}
       other -> other
     end
@@ -939,48 +939,29 @@ defmodule Ash.Api do
 
               case subject do
                 %Ash.Query{} = query ->
-                  context = Map.put(context, :query, query)
-
-                  with {:ok, query, _} <-
-                         Ash.Authorizer.add_calculations(
-                           authorizer,
-                           query,
-                           authorizer_state,
-                           context
-                         ),
-                       {:ok, new_filter} <-
-                         Ash.Authorizer.alter_filter(
-                           authorizer,
-                           authorizer_state,
-                           query.filter,
-                           context
-                         ),
-                       {:ok, hydrated} <-
-                         Ash.Filter.hydrate_refs(new_filter, %{
-                           resource: query.resource,
-                           public?: false
-                         }),
-                       {:ok, new_sort} <-
-                         Ash.Authorizer.alter_sort(
-                           authorizer,
-                           authorizer_state,
-                           query.sort,
-                           context
-                         ) do
-                    {:ok, true, %{query | filter: hydrated, sort: new_sort}}
-                  end
+                  alter_query(query, authorizer, authorizer_state, context)
 
                 %Ash.Changeset{} = changeset ->
                   context = Map.put(context, :changeset, changeset)
 
-                  with {:ok, changeset, _} <-
+                  with {:ok, changeset, authorizer_state} <-
                          Ash.Authorizer.add_calculations(
                            authorizer,
                            changeset,
                            authorizer_state,
                            context
                          ) do
-                    {:ok, true, changeset}
+                    if opts[:base_query] do
+                      case alter_query(opts[:base_query], authorizer, authorizer_state, context) do
+                        {:ok, true, query} ->
+                          {:ok, true, changeset, query}
+
+                        other ->
+                          other
+                      end
+                    else
+                      {:ok, true, changeset}
+                    end
                   end
 
                 %Ash.ActionInput{} = subject ->
@@ -995,6 +976,39 @@ defmodule Ash.Api do
   end
 
   defp alter_source(other, _, _, _, _), do: other
+
+  defp alter_query(query, authorizer, authorizer_state, context) do
+    context = Map.put(context, :query, query)
+
+    with {:ok, query, _} <-
+           Ash.Authorizer.add_calculations(
+             authorizer,
+             query,
+             authorizer_state,
+             context
+           ),
+         {:ok, new_filter} <-
+           Ash.Authorizer.alter_filter(
+             authorizer,
+             authorizer_state,
+             query.filter,
+             context
+           ),
+         {:ok, hydrated} <-
+           Ash.Filter.hydrate_refs(new_filter, %{
+             resource: query.resource,
+             public?: false
+           }),
+         {:ok, new_sort} <-
+           Ash.Authorizer.alter_sort(
+             authorizer,
+             authorizer_state,
+             query.sort,
+             context
+           ) do
+      {:ok, true, %{query | filter: hydrated, sort: new_sort}}
+    end
+  end
 
   defp run_check(api, actor, subject, opts) do
     authorizers =

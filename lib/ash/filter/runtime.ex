@@ -720,6 +720,15 @@ defmodule Ash.Filter.Runtime do
     end)
   end
 
+  defp resolve_expr({:_actor, _}, _, _, _, _), do: :unknown
+  defp resolve_expr({:_arg, _}, _, _, _, _), do: :unknown
+  defp resolve_expr({:_ref, _}, _, _, _, _), do: :unknown
+  defp resolve_expr({:_ref, _, _}, _, _, _, _), do: :unknown
+  defp resolve_expr({:_parent, _}, _, _, _, _), do: :unknown
+  defp resolve_expr({:_parent, _, _}, _, _, _, _), do: :unknown
+  defp resolve_expr({:_atomic_ref, _}, _, _, _, _), do: :unknown
+  defp resolve_expr({:_context, _}, _, _, _, _), do: :unknown
+
   defp resolve_expr(other, _, _, _, _), do: {:ok, other}
 
   defp try_cast_arguments(:var_args, args) do
