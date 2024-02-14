@@ -2527,18 +2527,10 @@ defmodule Ash.Filter do
 
           resource_calculation ->
             {module, opts} = resource_calculation.calculation
-
-            {args, nested_statement} =
-              case args do
-                {input, nested} ->
-                  {input || %{}, nested}
-
-                args ->
-                  {args, []}
-              end
+            {args, nested_statement} = args
 
             with {:ok, args} <-
-                   Ash.Query.validate_calculation_arguments(resource_calculation, args),
+                   Ash.Query.validate_calculation_arguments(resource_calculation, args || %{}),
                  {:ok, calculation} <-
                    Calculation.new(
                      resource_calculation.name,
