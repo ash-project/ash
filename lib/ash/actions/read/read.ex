@@ -1693,9 +1693,15 @@ defmodule Ash.Actions.Read do
     if opts[:before] || opts[:after] do
       reversed =
         if opts[:before] do
+          reversed_sort = Ash.Sort.reverse(limited.sort)
+          max_index = Enum.count(reversed_sort) - 1
+
+          inverted_sort_input_indices = Enum.map(query.sort_input_indices, &(max_index - &1))
+
           limited
           |> Ash.Query.unset(:sort)
-          |> Ash.Query.sort_input(Ash.Sort.reverse(limited.sort))
+          |> Map.put(:sort, reversed_sort)
+          |> Map.put(:sort_input_indices, inverted_sort_input_indices)
         else
           limited
         end
@@ -1708,13 +1714,13 @@ defmodule Ash.Actions.Read do
         end
 
       case Ash.Page.Keyset.filter(
-             query.resource,
+             query,
              opts[:before] || opts[:after],
              query.sort,
              after_or_before
            ) do
         {:ok, filter} ->
-          {:ok, Ash.Query.filter_input(reversed, filter)}
+          {:ok, Ash.Query.do_filter(reversed, filter)}
 
         {:error, error} ->
           {:error, error}

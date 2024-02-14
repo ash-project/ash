@@ -31,10 +31,11 @@ defmodule Ash.Page.Keyset do
     end)
   end
 
-  def filter(resource, values, sort, after_or_before) when after_or_before in [:after, :before] do
+  def filter(%{resource: resource} = query, values, sort, after_or_before)
+      when after_or_before in [:after, :before] do
     with {:ok, decoded} <- decode_values(values, after_or_before),
          {:ok, zipped} <- zip_fields(sort, decoded, values) do
-      {:ok, filters(zipped, resource, after_or_before)}
+      {:ok, filters(Enum.with_index(zipped), resource, query, after_or_before)}
     end
   end
 
@@ -48,13 +49,13 @@ defmodule Ash.Page.Keyset do
       {:error, Ash.Error.Page.InvalidKeyset.exception(value: values, key: key)}
   end
 
-  defp filters(keyset, resource, after_or_before) do
-    [or: do_filters(keyset, resource, after_or_before)]
+  defp filters(keyset, resource, query, after_or_before) do
+    [or: do_filters(keyset, resource, query, after_or_before)]
   end
 
-  defp do_filters([], _, _), do: []
+  defp do_filters([], _, _, _), do: []
 
-  defp do_filters([{field, direction, value} | rest], resource, after_or_before) do
+  defp do_filters([{{field, direction, value}, index} | rest], resource, query, after_or_before) do
     {operator, nils_first?} = operator(after_or_before, direction)
 
     allow_nil? = allow_nil?(resource, field)
@@ -70,7 +71,14 @@ defmodule Ash.Page.Keyset do
           calc
 
         field ->
-          field
+          Ash.Resource.Info.field(resource, field)
+      end
+
+    field =
+      if index in query.sort_input_indices do
+        %Ash.Query.Ref{attribute: field, relationship_path: [], resource: resource, input?: true}
+      else
+        %Ash.Query.Ref{attribute: field, relationship_path: [], resource: resource}
       end
 
     operator_check =
@@ -110,12 +118,12 @@ defmodule Ash.Page.Keyset do
       end
 
     if is_nil(value) and not nils_first? do
-      Enum.map(do_filters(rest, resource, after_or_before), fn nested ->
+      Enum.map(do_filters(rest, resource, query, after_or_before), fn nested ->
         stacked_check ++ nested
       end)
     else
       check ++
-        Enum.map(do_filters(rest, resource, after_or_before), fn nested ->
+        Enum.map(do_filters(rest, resource, query, after_or_before), fn nested ->
           stacked_check ++ nested
         end)
     end
