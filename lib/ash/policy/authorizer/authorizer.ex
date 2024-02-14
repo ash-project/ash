@@ -722,13 +722,10 @@ defmodule Ash.Policy.Authorizer do
        )
        when struct in [Ash.Resource.Attribute, Ash.Resource.Aggregate, Ash.Resource.Calculation] do
     action =
-      Ash.Resource.Info.relationship(parent, relationship_path).read_action ||
+      Map.get(Ash.Resource.Info.relationship(parent, relationship_path) || %{}, :relationship) ||
         Ash.Resource.Info.primary_action!(resource, :read)
 
-    {expr, acc} =
-      expression_for_ref(resource, name, action, ref, acc)
-
-    {expr, acc}
+    expression_for_ref(resource, name, action, ref, acc)
   end
 
   defp do_replace_ref(
@@ -736,9 +733,7 @@ defmodule Ash.Policy.Authorizer do
          %{stack: [{resource, _path, action} | _]} = acc
        )
        when struct in [Ash.Resource.Attribute, Ash.Resource.Aggregate, Ash.Resource.Calculation] do
-    {expr, acc} = expression_for_ref(resource, name, action, ref, acc)
-
-    {expr, acc}
+    expression_for_ref(resource, name, action, ref, acc)
   end
 
   defp do_replace_ref(ref, acc) do
@@ -783,67 +778,71 @@ defmodule Ash.Policy.Authorizer do
   end
 
   defp field_condition(resource, field, action, acc) do
-    {authorizer, acc} =
-      case Map.fetch(acc.authorizers, {resource, action}) do
-        {:ok, authorizer} ->
-          {authorizer, acc}
+    if Ash.Policy.Authorizer in Ash.Resource.Info.authorizers(resource) do
+      {authorizer, acc} =
+        case Map.fetch(acc.authorizers, {resource, action}) do
+          {:ok, authorizer} ->
+            {authorizer, acc}
 
-        :error ->
-          authorizer = initial_state(acc.actor, resource, action, acc.verbose?)
+          :error ->
+            authorizer = initial_state(acc.actor, resource, action, acc.verbose?)
 
-          {authorizer,
-           %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
-      end
-
-    {expr, authorizer} =
-      if field in Ash.Resource.Info.primary_key(resource) do
-        # primary keys are always accessible
-        {true, authorizer}
-      else
-        policies = Ash.Policy.Info.field_policies_for_field(resource, field)
-
-        case strict_check_result(
-               %{
-                 authorizer
-                 | policies: policies
-               },
-               for_fields: [field],
-               context_description: "accessing field in filter"
-             ) do
-          {:authorized, authorizer} ->
-            {true, authorizer}
-
-          {:error, _} ->
-            {false, authorizer}
-
-          {:filter, authorizer, filter} ->
-            {filter, authorizer}
-
-          {:filter_and_continue, filter, _authorizer} ->
-            raise """
-            Was given a partial filter for a field policy for field #{inspect(field)}.
-
-            Filter: #{inspect(filter)}
-
-            Field policies must currently use only filter checks or simple checks.
-            """
-
-          {:continue, _} ->
-            raise """
-            Detected necessity for a runtime check for a field policy for field #{inspect(field)}.
-
-            Field policies must currently use only filter checks or simple checks.
-            """
+            {authorizer,
+             %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
         end
+
+      {expr, authorizer} =
+        if field in Ash.Resource.Info.primary_key(resource) do
+          # primary keys are always accessible
+          {true, authorizer}
+        else
+          policies = Ash.Policy.Info.field_policies_for_field(resource, field)
+
+          case strict_check_result(
+                 %{
+                   authorizer
+                   | policies: policies
+                 },
+                 for_fields: [field],
+                 context_description: "accessing field in filter"
+               ) do
+            {:authorized, authorizer} ->
+              {true, authorizer}
+
+            {:error, _} ->
+              {false, authorizer}
+
+            {:filter, authorizer, filter} ->
+              {filter, authorizer}
+
+            {:filter_and_continue, filter, _authorizer} ->
+              raise """
+              Was given a partial filter for a field policy for field #{inspect(field)}.
+
+              Filter: #{inspect(filter)}
+
+              Field policies must currently use only filter checks or simple checks.
+              """
+
+            {:continue, _} ->
+              raise """
+              Detected necessity for a runtime check for a field policy for field #{inspect(field)}.
+
+              Field policies must currently use only filter checks or simple checks.
+              """
+          end
+        end
+
+      new_acc = %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}
+
+      if expr == true do
+        {:none, new_acc}
+      else
+        {:expr, expr,
+         %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
       end
-
-    new_acc = %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}
-
-    if expr == true do
-      {:none, new_acc}
     else
-      {:expr, expr,
-       %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
+      {:none, acc}
     end
   end
 

@@ -144,6 +144,7 @@ defmodule Ash.Error.Forbidden.Policy do
 
     policy_explanation =
       policies
+      |> Kernel.||([])
       |> Enum.filter(&relevant?(&1, facts))
       |> Enum.map(&explain_policy(&1, facts, opts[:success?] || false))
       |> Enum.intersperse("\n")
