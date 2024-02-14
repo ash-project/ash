@@ -554,8 +554,7 @@ defmodule Ash.Type do
   end
 
   def cast_input(type, term, nil) do
-    with {:ok, constraints} <-
-           Spark.OptionsHelpers.validate([], Ash.Type.constraints(type)),
+    with {:ok, constraints} <- Spark.OptionsHelpers.validate([], Ash.Type.constraints(type)),
          {:ok, constraints} <- Ash.Type.init(type, constraints) do
       cast_input(type, term, constraints)
     end
