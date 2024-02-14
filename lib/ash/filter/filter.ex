@@ -2525,7 +2525,7 @@ defmodule Ash.Filter do
           nil ->
             add_expression_part({function, [args]}, context, expression)
 
-          resource_calculation ->
+          resource_calculation when tuple_size(args) == 2 ->
             {module, opts} = resource_calculation.calculation
             {args, nested_statement} = args
 
