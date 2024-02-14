@@ -89,6 +89,7 @@ defmodule Ash.Policy.FilterCheckWithContext do
            }) do
         case Ash.Filter.hydrate_refs(expression, %{
                resource: resource,
+               unknown_on_unknown_refs?: true,
                aggregates: %{},
                calculations: %{},
                public?: false
