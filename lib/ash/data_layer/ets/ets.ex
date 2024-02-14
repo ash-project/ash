@@ -361,17 +361,14 @@ defmodule Ash.DataLayer.Ets do
         parent \\ nil
       ) do
     with {:ok, records} <- get_records(resource, tenant),
-         {:ok, records} <-
-           filter_matches(records, filter, api, parent),
+         {:ok, records} <- filter_matches(records, filter, api, parent),
          records <- Sort.runtime_sort(records, distinct_sort || sort, api: api),
          records <- Sort.runtime_distinct(records, distinct, api: api),
          records <- Sort.runtime_sort(records, sort, api: api),
          records <- Enum.drop(records, offset || []),
          records <- do_limit(records, limit),
-         {:ok, records} <-
-           do_add_aggregates(records, api, resource, aggregates),
-         {:ok, records} <-
-           do_add_calculations(records, resource, calculations, api) do
+         {:ok, records} <- do_add_aggregates(records, api, resource, aggregates),
+         {:ok, records} <- do_add_calculations(records, resource, calculations, api) do
       {:ok, records}
     else
       {:error, error} ->
@@ -651,10 +648,8 @@ defmodule Ash.DataLayer.Ets do
                      [record],
                      api
                    ),
-                 {:ok, filtered} <-
-                   filter_matches(related, query.filter, api),
-                 sorted <-
-                   Sort.runtime_sort(filtered, query.sort, api: api) do
+                 {:ok, filtered} <- filter_matches(related, query.filter, api),
+                 sorted <- Sort.runtime_sort(filtered, query.sort, api: api) do
               field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
 
               value =
@@ -1023,8 +1018,7 @@ defmodule Ash.DataLayer.Ets do
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          record <- unload_relationships(resource, record),
-         {:ok, record} <-
-           put_or_insert_new(table, {pkey, record}, resource) do
+         {:ok, record} <- put_or_insert_new(table, {pkey, record}, resource) do
       {:ok, set_loaded(record)}
     else
       {:error, error} -> {:error, Ash.Error.to_ash_error(error)}

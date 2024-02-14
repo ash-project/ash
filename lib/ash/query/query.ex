@@ -2305,8 +2305,7 @@ defmodule Ash.Query do
     query = to_query(query)
 
     with sanitized_statement <- List.wrap(sanitize_loads(statement)),
-         :ok <-
-           validate_load(query, sanitized_statement),
+         :ok <- validate_load(query, sanitized_statement),
          new_loads <- merge_load(query.load, sanitized_statement) do
       %{query | load: new_loads}
     else
@@ -2716,13 +2715,10 @@ defmodule Ash.Query do
              query,
              Map.put(ash_query.context, :action, ash_query.action)
            ),
-         {:ok, query} <-
-           add_tenant(query, ash_query),
+         {:ok, query} <- add_tenant(query, ash_query),
          {:ok, query} <- Ash.DataLayer.select(query, ash_query.select, ash_query.resource),
-         {:ok, query} <-
-           Ash.DataLayer.sort(query, ash_query.sort, resource),
-         {:ok, query} <-
-           Ash.DataLayer.distinct_sort(query, ash_query.distinct_sort, resource),
+         {:ok, query} <- Ash.DataLayer.sort(query, ash_query.sort, resource),
+         {:ok, query} <- Ash.DataLayer.distinct_sort(query, ash_query.distinct_sort, resource),
          {:ok, query} <-
            Ash.DataLayer.add_aggregates(
              query,
@@ -2737,10 +2733,8 @@ defmodule Ash.Query do
              ash_query.resource
            ),
          {:ok, query} <- Ash.DataLayer.distinct(query, ash_query.distinct, resource),
-         {:ok, query} <-
-           Ash.DataLayer.limit(query, ash_query.limit, resource),
-         {:ok, query} <-
-           Ash.DataLayer.offset(query, ash_query.offset, resource),
+         {:ok, query} <- Ash.DataLayer.limit(query, ash_query.limit, resource),
+         {:ok, query} <- Ash.DataLayer.offset(query, ash_query.offset, resource),
          {:ok, query} <- Ash.DataLayer.lock(query, ash_query.lock, resource),
          {:ok, query} <- maybe_return_query(query, resource, opts) do
       if opts[:no_modify?] || !ash_query.action || !ash_query.action.modify_query do

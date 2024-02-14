@@ -2557,20 +2557,10 @@ defmodule Ash.Filter do
       function_module ->
         nested_statement = Tuple.to_list(args)
 
-        with {:ok, args} <-
-               hydrate_refs(List.wrap(nested_statement), context),
+        with {:ok, args} <- hydrate_refs(List.wrap(nested_statement), context),
              refs <- list_refs(args),
-             :ok <-
-               validate_refs(
-                 refs,
-                 context.root_resource,
-                 {function, nested_statement}
-               ),
-             {:ok, function} <-
-               Function.new(
-                 function_module,
-                 args
-               ) do
+             :ok <- validate_refs(refs, context.root_resource, {function, nested_statement}),
+             {:ok, function} <- Function.new(function_module, args) do
           if is_nil(context.resource) ||
                Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do
             {:ok, BooleanExpression.optimized_new(:and, expression, function)}
@@ -2721,15 +2711,9 @@ defmodule Ash.Filter do
         end
 
       op_module = get_operator(field) && match?([_, _ | _], nested_statement) ->
-        with {:ok, [left, right]} <-
-               hydrate_refs(nested_statement, context),
+        with {:ok, [left, right]} <- hydrate_refs(nested_statement, context),
              refs <- list_refs([left, right]),
-             :ok <-
-               validate_refs(
-                 refs,
-                 context.root_resource,
-                 {field, nested_statement}
-               ),
+             :ok <- validate_refs(refs, context.root_resource, {field, nested_statement}),
              {:ok, operator} <- Operator.new(op_module, left, right) do
           if is_boolean(operator) do
             {:ok, BooleanExpression.optimized_new(:and, expression, operator)}
@@ -2912,18 +2896,15 @@ defmodule Ash.Filter do
          context
        ) do
     with :ok <- validate_datalayer_supports_nested_expressions(args, context.resource),
-         {:op, op_module} when not is_nil(op_module) <-
-           {:op, get_operator(name)},
+         {:op, op_module} when not is_nil(op_module) <- {:op, get_operator(name)},
          context <-
            Map.merge(context, %{
              resource: Ash.Resource.Info.related(context.resource, relationship_path),
              relationship_path: []
            }),
-         {:ok, [left, right]} <-
-           hydrate_refs(args, context),
+         {:ok, [left, right]} <- hydrate_refs(args, context),
          refs <- list_refs([left, right]),
-         :ok <-
-           validate_refs(refs, context.root_resource, call),
+         :ok <- validate_refs(refs, context.root_resource, call),
          {:ok, operator} <- Operator.new(op_module, left, right) do
       if is_boolean(operator) do
         {:ok, operator}
@@ -3062,17 +3043,12 @@ defmodule Ash.Filter do
 
       _ ->
         with :ok <- validate_datalayer_supports_nested_expressions(args, context.resource),
-             {:ok, args} <-
-               hydrate_refs(args, context),
+             {:ok, args} <- hydrate_refs(args, context),
              refs <- list_refs(args),
              :ok <- validate_refs(refs, context.root_resource, call),
              {:func, function_module} when not is_nil(function_module) <-
                {:func, get_function(name, context.resource, context.public?)},
-             {:ok, function} <-
-               Function.new(
-                 function_module,
-                 args
-               ) do
+             {:ok, function} <- Function.new(function_module, args) do
           if Ash.Filter.TemplateHelpers.expr?(function) && !match?(%{__predicate__?: _}, function) do
             hydrate_refs(function, context)
           else
@@ -3657,20 +3633,10 @@ defmodule Ash.Filter do
                         }
                       end
 
-                    with {:ok, args} <-
-                           hydrate_refs([left, value], context),
+                    with {:ok, args} <- hydrate_refs([left, value], context),
                          refs <- list_refs(args),
-                         :ok <-
-                           validate_refs(
-                             refs,
-                             context.root_resource,
-                             {key, [left, value]}
-                           ),
-                         {:ok, function} <-
-                           Function.new(
-                             function_module,
-                             args
-                           ) do
+                         :ok <- validate_refs(refs, context.root_resource, {key, [left, value]}),
+                         {:ok, function} <- Function.new(function_module, args) do
                       if is_nil(context.resource) ||
                            Ash.DataLayer.data_layer_can?(
                              context.resource,
@@ -3709,15 +3675,9 @@ defmodule Ash.Filter do
                     }
                   end
 
-                with {:ok, [left, right]} <-
-                       hydrate_refs([left, value], context),
+                with {:ok, [left, right]} <- hydrate_refs([left, value], context),
                      refs <- list_refs([left, right]),
-                     :ok <-
-                       validate_refs(
-                         refs,
-                         context.root_resource,
-                         {attr, value}
-                       ),
+                     :ok <- validate_refs(refs, context.root_resource, {attr, value}),
                      {:ok, operator} <- Operator.new(operator_module, left, right) do
                   if is_boolean(operator) do
                     {:cont, {:ok, operator}}

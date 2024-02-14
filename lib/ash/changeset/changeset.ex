@@ -525,8 +525,7 @@ defmodule Ash.Changeset do
         )
 
       with :ok <- verify_notifiers_support_atomic(resource, action),
-           %Ash.Changeset{} = changeset <-
-             atomic_update(changeset, opts[:atomic_update] || []),
+           %Ash.Changeset{} = changeset <- atomic_update(changeset, opts[:atomic_update] || []),
            %Ash.Changeset{} = changeset <- atomic_params(changeset, action, params, opts),
            %Ash.Changeset{} = changeset <- atomic_changes(changeset, action) do
         hydrate_atomic_refs(changeset, opts[:actor], Keyword.take(opts, [:eager?]))

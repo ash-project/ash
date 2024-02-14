@@ -278,8 +278,7 @@ defmodule Ash.Actions.Read do
 
   defp do_read(%{action: action} = query, calculations_at_runtime, calculations_in_query, opts) do
     maybe_in_transaction(query, opts, fn ->
-      with %{valid?: true} = query <-
-             handle_attribute_multitenancy(query),
+      with %{valid?: true} = query <- handle_attribute_multitenancy(query),
            :ok <- validate_multitenancy(query),
            {:ok, sort} <-
              Ash.Actions.Sort.process(
@@ -293,8 +292,7 @@ defmodule Ash.Actions.Read do
            pre_authorization_query <- query,
            {:ok, query} <- authorize_query(query, opts),
            query_before_pagination <- query,
-           {:ok, query} <-
-             paginate(query, action, opts[:page], opts[:skip_pagination?]),
+           {:ok, query} <- paginate(query, action, opts[:page], opts[:skip_pagination?]),
            query <-
              Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
                query,
@@ -368,13 +366,10 @@ defmodule Ash.Actions.Read do
                query.resource,
                query
              ),
-           :ok <-
-             validate_get(results, query.action, query),
+           :ok <- validate_get(results, query.action, query),
            results <- add_keysets(query, results, query.sort),
-           {:ok, results} <-
-             run_authorize_results(query, results),
-           {:ok, results, after_notifications} <-
-             run_after_action(query, results),
+           {:ok, results} <- run_authorize_results(query, results),
+           {:ok, results, after_notifications} <- run_after_action(query, results),
            {:ok, count} <- maybe_await(count) do
         {:ok, results, count, before_notifications ++ after_notifications}
       else
@@ -1997,10 +1992,8 @@ defmodule Ash.Actions.Read do
          path_filters,
          prefix
        ) do
-    with {:ok, left} <-
-           do_filter_with_related(resource, left, path_filters, prefix),
-         {:ok, right} <-
-           do_filter_with_related(resource, right, path_filters, prefix) do
+    with {:ok, left} <- do_filter_with_related(resource, left, path_filters, prefix),
+         {:ok, right} <- do_filter_with_related(resource, right, path_filters, prefix) do
       {:ok, Ash.Query.BooleanExpression.optimized_new(:or, left, right)}
     end
   end

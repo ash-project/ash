@@ -1431,8 +1431,7 @@ defmodule Ash.Api do
             calculation: {module, calc_opts},
             type: type,
             constraints: constraints
-          }} <-
-           {:calc, Ash.Resource.Info.calculation(resource, calculation)},
+          }} <- {:calc, Ash.Resource.Info.calculation(resource, calculation)},
          record <- struct(record || resource, opts[:refs] || %{}) do
       calc_context =
         opts[:context]
