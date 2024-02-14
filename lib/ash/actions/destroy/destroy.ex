@@ -120,6 +120,13 @@ defmodule Ash.Actions.Destroy do
               end
             end
 
+          %Ash.BulkResult{status: :success, records: []} ->
+            {:error,
+             Ash.Error.Query.NotFound.exception(
+               primary_key: primary_key_filter,
+               resource: atomic_changeset.resource
+             )}
+
           %Ash.BulkResult{status: :error, errors: errors} ->
             {:error, Ash.Error.to_error_class(errors)}
         end
