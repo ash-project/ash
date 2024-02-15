@@ -998,11 +998,19 @@ defmodule Ash.Policy.Authorizer do
           case filter do
             [filter] ->
               log(authorizer, "filtering with: #{inspect(filter)}, authorization complete")
-              {:filter, authorizer, filter}
+
+              with {:ok, %Ash.Filter{expression: filter}} <-
+                     Ash.Filter.parse(authorizer.resource, filter) do
+                {:filter, authorizer, filter}
+              end
 
             filters ->
               log(authorizer, "filtering with: #{inspect(or: filter)}, authorization complete")
-              {:filter, authorizer, [or: filters]}
+
+              with {:ok, %Ash.Filter{expression: filter}} <-
+                     Ash.Filter.parse(authorizer.resource, or: filters) do
+                {:filter, authorizer, filter}
+              end
           end
         end
 
@@ -1011,23 +1019,17 @@ defmodule Ash.Policy.Authorizer do
           nil ->
             maybe_forbid_strict(authorizer)
 
-          {[single_filter], scenarios_without_global} ->
-            log(
-              authorizer,
-              "filtering with: #{inspect(single_filter)}, continuing authorization process"
-            )
-
-            {:filter_and_continue, single_filter,
-             %{authorizer | check_scenarios: scenarios_without_global}}
-
           {filters, scenarios_without_global} ->
             log(
               authorizer,
               "filtering with: #{inspect(and: filters)}, continuing authorization process"
             )
 
-            {:filter_and_continue, [and: filters],
-             %{authorizer | check_scenarios: scenarios_without_global}}
+            with {:ok, %Ash.Filter{expression: filter}} <-
+                   Ash.Filter.parse(authorizer.resource, and: filters) do
+              {:filter_and_continue, filter,
+               %{authorizer | check_scenarios: scenarios_without_global}}
+            end
         end
     end
   end
