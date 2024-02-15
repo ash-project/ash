@@ -969,7 +969,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                         |> Ash.Query.for_read(action.name, action_input,
                           actor: data[:actor],
                           tenant: tenant,
-                          authorize?: data[:authorize?],
+                          authorize?: opts[:authorize?],
                           tracer: data[:tracer]
                         )
                         |> Ash.Query.set_context(%{
@@ -1074,7 +1074,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                         |> Ash.Changeset.for_create(action.name, action_input,
                           actor: data[:actor],
                           tenant: tenant,
-                          authorize?: data[:authorize?],
+                          authorize?: opts[:authorize?],
                           tracer: data[:tracer],
                           upsert?: upsert?,
                           upsert_identity: upsert_identity
@@ -1320,7 +1320,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                               |> Ash.Changeset.for_update(action.name, action_input,
                                 actor: data[:actor],
                                 tenant: tenant,
-                                authorize?: data[:authorize?],
+                                authorize?: opts[:authorize?],
                                 tracer: data[:tracer]
                               )
                               |> api.update()
@@ -1435,10 +1435,12 @@ defmodule Ash.Flow.Executor.AshEngine do
 
                               changeset
                               |> Ash.Changeset.set_tenant(tenant)
-                              |> Ash.Changeset.for_destroy(action.name, action_input,
+                              |> Ash.Changeset.for_destroy(
+                                action.name,
+                                action_input,
                                 actor: data[:actor],
                                 tenant: tenant,
-                                authorize?: data[:authorize?],
+                                authorize?: opts[:authorize?],
                                 tracer: data[:tracer]
                               )
                               |> api.destroy()
