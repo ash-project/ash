@@ -392,7 +392,7 @@ defmodule Ash.Actions.Read.Calculations do
     ash_query.calculations
     |> Map.values()
     |> Enum.reduce({[], [], ash_query}, fn calculation, {in_query, at_runtime, ash_query} ->
-      if :erlang.function_exported(calculation.module, :expression, 2) do
+      if calculation.module.has_expression?() do
         expression =
           calculation.opts
           |> calculation.module.expression(calculation.context)
