@@ -228,7 +228,8 @@ defmodule Ash.Query do
     quote do
       query = unquote(query)
 
-      if query.__validated_for_action__ && !query.context[:private][:in_before_action?] do
+      if !is_atom(query) && query.__validated_for_action__ &&
+           !query.context[:private][:in_before_action?] do
         IO.warn("""
         Query has already been validated for action #{inspect(query.__validated_for_action__)}.
 
