@@ -84,7 +84,7 @@ defmodule Ash.Flow.TenantTest do
 
     Ash.set_tenant("bar")
 
-    assert %Ash.Flow.Result{valid?: true, result: %{destroy_post: nil}} =
+    assert %Ash.Flow.Result{valid?: false} =
              DestroyPost.run(foo_post.id)
 
     Ash.set_tenant("foo")
@@ -97,7 +97,7 @@ defmodule Ash.Flow.TenantTest do
       |> Ash.Changeset.for_create(:create, %{tenant: "foo"})
       |> Api.create!()
 
-    assert %Ash.Flow.Result{valid?: true, result: %{destroy_post: nil}} =
+    assert %Ash.Flow.Result{valid?: false} =
              DestroyPost.run(foo_post.id, tenant: "bar")
 
     assert %Ash.Flow.Result{valid?: true} = DestroyPost.run(foo_post.id, tenant: "foo")
