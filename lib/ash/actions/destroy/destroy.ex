@@ -125,10 +125,14 @@ defmodule Ash.Actions.Destroy do
             end
 
           %Ash.BulkResult{status: :success, records: []} ->
+            primary_key = Ash.Resource.Info.primary_key(atomic_changeset.resource)
+
             {:error,
-             Ash.Error.Query.NotFound.exception(
-               primary_key: primary_key_filter,
-               resource: atomic_changeset.resource
+             Ash.Error.to_error_class(
+               Ash.Error.Changes.StaleRecord.exception(
+                 resource: fully_atomic_changeset.resource,
+                 filters: Map.take(changeset.data, primary_key)
+               )
              )}
 
           %Ash.BulkResult{status: :error, errors: errors} ->
