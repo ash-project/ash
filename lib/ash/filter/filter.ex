@@ -2666,20 +2666,14 @@ defmodule Ash.Filter do
 
         {input, nested_statement} =
           case nested_statement do
-            {input, nested} ->
-              {input || %{}, nested}
+            %{"input" => input} ->
+              {input, Map.delete(nested_statement, "input")}
 
-            nested ->
-              cond do
-                is_map(nested) and Map.has_key?(nested, "input") ->
-                  {Map.get(nested, "input"), Map.delete(nested, "input")}
+            %{input: input} ->
+              {input, Map.delete(nested_statement, :input)}
 
-                is_map(nested) and Map.has_key?(nested, :input) ->
-                  {Map.get(nested, :input), Map.delete(nested, :input)}
-
-                true ->
-                  {%{}, nested}
-              end
+            _ ->
+              {%{}, nested_statement}
           end
 
         with {:ok, args} <-
