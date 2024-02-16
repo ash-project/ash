@@ -51,6 +51,21 @@ defmodule Ash.Flow.TenantTest do
     end
   end
 
+  defmodule GetPost do
+    use Ash.Flow.Step
+
+    def run(%{id: post_id}, _opts, context) do
+      opts = context |> Ash.context_to_opts() |> IO.inspect()
+
+      posts =
+        Post
+        |> Ash.Query.for_read(:get_by_id, %{id: post_id})
+        |> Api.read!(opts)
+
+      {:ok, posts |> List.first()}
+    end
+  end
+
   defmodule DestroyPost do
     use Ash.Flow
 
@@ -65,8 +80,7 @@ defmodule Ash.Flow.TenantTest do
     end
 
     steps do
-      read :get_post, Post, :get_by_id do
-        get? true
+      custom :get_post, GetPost do
         input %{id: arg(:post_id)}
       end
 
