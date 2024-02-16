@@ -1,4 +1,4 @@
-defmodule Ash.FlowTest.TransactionTest do
+defmodule Ash.Flow.TransactionTest do
   @moduledoc false
   use ExUnit.Case, async: false
 

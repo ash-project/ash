@@ -1,4 +1,4 @@
-defmodule Ash.FlowTest.RunFromAction do
+defmodule Ash.Flow.RunFromAction do
   @moduledoc false
   use ExUnit.Case, async: false
 
