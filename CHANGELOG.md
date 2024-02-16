@@ -5,6 +5,253 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.19.0](https://github.com/ash-project/ash/compare/v2.18.1...v2.19.0) (2024-02-16)
+
+
+
+
+### Features:
+
+* allow using custom delimiters for pubsub topics
+
+* support functions in parse predicates (#874)
+
+* support returning streams from mod calc (#864)
+
+### Bug Fixes:
+
+* remove unneeded code for calculations in a filter (#904)
+
+* restore `not_found_error?` behavior in `Ash.Flow`
+
+* handle cases where no primary keys are present better
+
+* ensure that filters are parsed from policy authorizer ahead of time
+
+* check if query is a query before calling `.__validated_for_action__`
+
+* properly authorize actions in flow
+
+* handle warning about incompatible types (#892)
+
+* properly refer to attributes in `changing_attributes/1`
+
+* remove unneeded code for calculations in a filter (#891)
+
+* evaluate templates to unknown at ref
+
+* handle atomic_ref templates and `changing_attributes/1`
+
+* replace refs for relationships use correct action (#888)
+
+* handle not found case in destroy (#890)
+
+* handle not found case in destroy
+
+* add case where authoriztion did not change query
+
+* properly map sort input and non-input refs in keyset filters
+
+* properly match on invalid query from before_action
+
+* ensure proper context set on atomic upgrade
+
+* fix nil ++ list error in bulk destroy
+
+* ensure we retain the sort order of embedded resources
+
+* retain sort on inputs on casting embedded inputs
+
+* properly get rewrites for embedded types
+
+* ensure after_transaction hooks are always run
+
+* handle records in `Ash.destroy` and `Ash.update`
+
+* pre-template change/validation option in bulk update/destroy
+
+* fix query match error in bulk destroy/update
+
+* don't consider primary key matches with `nil` values
+
+* continue cleanup in `ManagedRelationshipHelpers` (#873)
+
+* fix pattern match error on certain policy conditions
+
+* use primary key for lateral join source in ets
+
+* set right `accessing_from` name in many to many managed create (#868)
+
+* set_tenant on fully atomic changesets
+
+* handle api.can case in authorize_changeset
+
+* properly bypass authorization in atomic update switch-over
+
+* properly set action_type on atomic changesets
+
+* extract relationship filters from pre-authorization query
+
+* retain metadata on updates, atomic and otherwise
+
+* properly load expression -> runtime calculation deps
+
+* ignore `input?` when considering refs equal in filter subset checking
+
+* change names of code interface methods for calculations (#863)
+
+* properly mark manuall created input refs with `input?: true`
+
+* clean vars should handle map vars
+
+* properly merge union loads
+
+* support expression calculations referencing runtime calculations
+
+* set default access type properly
+
+* properly handle the case where all valid scenarios are pruned
+
+* properly prevent the atomic handling of manual update actions
+
+* fix passing extra opts to stream
+
+* properly check if data layer can update_query
+
+* Ash.Type.Float to support min/max constraints(#856)
+
+* add calculations before distinct is applied in data layer query
+
+* properly set index on embedded type array errors
+
+* use correct option for relationship in atomic `relate_actor` (#855)
+
+* only count resources the actor is allowed to see (#853)
+
+* only count resources the actor is allowed to see
+
+* deselect known forbidden fields *after* query authorization is complete
+
+* `soft?` in destroy action options is a boolean, not an atom (#851)
+
+* load fails because of empty list instead of query (#847)
+
+* don't attempt to derive `destination_attribute_on_join_resource`
+
+* `join_relationship` in many to many can make `through` optional (#846)
+
+* make sure query has action (#844)
+
+* pass in actor to api.can call (#843)
+
+* pass in actor to api.can call
+
+* do not check primary key fields in filter (#839)
+
+* add page opts to context again (#838)
+
+* return errors with query from read action
+
+* properly set defaults on upsert in mnesia
+
+* don't load through attributes twice, but also don't miss any
+
+* handle errors properly from invalid loads
+
+* handle data layer calculations for missing records
+
+* only load through calculations in the correct order
+
+* properly detect cyclic dependencies in calculation runner
+
+* properly annotate in-query calculations as complete for dependency calculation
+
+* fix `present?` and `load_through` bugs
+
+* don't require pagination in incorrect cases
+
+* get tests passing for bulk creates again
+
+### Improvements:
+
+* handle stale update/destroys
+
+* support `authorize_query_with` for bulk updates/destroys
+
+* support `authorize_changeset_with` for bulk updates/destroys
+
+* don't authorize query on synthesized atomic update/destroys
+
+* show field name in NotLoaded inspect
+
+* implement `requires_original_data?` for `Ash.Notifier.PubSub`
+
+* support policies requiring original data
+
+* change atomicity requirements when datalayers don't support it
+
+* add `on_match: :update_join` to `manage_relationship` (#875)
+
+* don't call telemetry when compiling
+
+* various policy behavior cleanups
+
+* add `join_keys` option to `manage_relationship` (#866)
+
+* don't run `check` in cases that require strict checks
+
+* atomic_batches behavior for bulk destroys
+
+* allow strategy selection for bulk actions
+
+* change nested field filtering to be done with `at_path`
+
+* support referencing non-array embeds in input filters
+
+* bulk update in batches if not given a query
+
+* update action should respect load and select
+
+* introduce `require_atomic?`, which defaults to `false` in 2.0, `true` in 3.0
+
+* better support around the mixing of atomic and non atomic changes/validations
+
+* more atomic implementations
+
+* support loading and selecting in bulk operations
+
+* use atomic create actions where possible
+
+* always define `merge_load/4`
+
+* derive `source_attribute_on_join_resource` for many to many
+
+* atomic implementation for `relate_actor`
+
+* include a message along with the non-atomic signifier
+
+* support transactions on bulk destroys
+
+* support transactions in bulk updates
+
+* `count_nils/1` function
+
+* `present/absent` atomic implementation
+
+* add `atomic_ref/1` template helper
+
+* Change typespec of tenant from String.t() to term() (#845)
+
+* handle pkey-less resources when attaching fields
+
+* set lazy defaults when applying changeset attributes
+
+* add `prepend?: true` option to add_change
+
+* optimize embedded resource creation
+
+* rewrite read actions to not use `Ash.Engine` (#836)
+
 ## [v2.18.1](https://github.com/ash-project/ash/compare/v2.18.0...v2.18.1) (2024-01-12)
 
 
