@@ -55,14 +55,11 @@ defmodule Ash.Flow.TenantTest do
     use Ash.Flow.Step
 
     def run(%{id: post_id}, _opts, context) do
-      opts = context |> Ash.context_to_opts() |> IO.inspect()
+      opts = context |> Ash.context_to_opts()
 
-      posts =
-        Post
-        |> Ash.Query.for_read(:get_by_id, %{id: post_id})
-        |> Api.read!(opts)
-
-      {:ok, posts |> List.first()}
+      Post
+      |> Ash.Query.for_read(:get_by_id, %{id: post_id}, opts)
+      |> Api.read_one(not_found_error?: true)
     end
   end
 

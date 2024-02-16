@@ -120,6 +120,7 @@ defmodule Ash do
     |> add_if_present(map, :actor)
     |> add_if_present(map, :authorize?)
     |> add_if_present(map, :tracer)
+    |> add_if_present(map, :tenant)
   end
 
   defp add_if_present(opts, map, key) do

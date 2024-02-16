@@ -750,6 +750,7 @@ defmodule Ash.Flow.Executor.AshEngine do
       %Step{
         step: %Ash.Flow.Step.Custom{
           name: name,
+          tenant: tenant,
           input: custom_input,
           custom: {mod, opts},
           async?: async?,
@@ -790,7 +791,10 @@ defmodule Ash.Flow.Executor.AshEngine do
                     })
                     |> Ash.Flow.handle_modifiers()
 
-                  context_arg = Map.take(context, [:actor, :authorize?, :async?, :verbose?])
+                  context_arg =
+                    context
+                    |> Map.take([:actor, :authorize?, :async?, :verbose?])
+                    |> Map.put(:tenant, tenant)
 
                   Ash.Tracer.span :custom_flow_step,
                                   "custom step #{inspect(mod)}",

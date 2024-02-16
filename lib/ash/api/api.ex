@@ -2581,6 +2581,17 @@ defmodule Ash.Api do
       query
       |> Ash.Actions.Read.unpaginated_read(action, opts)
       |> unwrap_one()
+      |> case do
+        {:ok, nil} ->
+          if opts[:not_found_error?] do
+            {:error, Ash.Error.to_error_class(NotFound.exception(resource: query.resource))}
+          else
+            {:ok, nil}
+          end
+
+        other ->
+          other
+      end
     else
       {:error, error} ->
         {:error, error}
