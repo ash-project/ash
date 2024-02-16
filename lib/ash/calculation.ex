@@ -32,6 +32,12 @@ defmodule Ash.Calculation do
       else
         def has_expression?, do: false
       end
+
+      if Module.defines?(__MODULE__, {:calculate, 3}) do
+        def has_calculate?, do: true
+      else
+        def has_calculate?, do: false
+      end
     end
   end
 

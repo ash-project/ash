@@ -60,6 +60,7 @@ defmodule Ash.Query.Calculation do
         Map.drop(context, [
           :actor,
           :authorize?,
+          :all_referenced_calcs_support_expressions?,
           :filter_requests,
           :initial_limit,
           :initial_offset,

@@ -106,8 +106,6 @@ defmodule Ash.Actions.Read do
         query
       end
 
-    initial_query = query
-
     query =
       for_read(
         query,
@@ -117,7 +115,10 @@ defmodule Ash.Actions.Read do
         timeout: opts[:timeout],
         tenant: opts[:tenant]
       )
-      |> add_field_level_auth(query.api, opts)
+
+    initial_query = query
+
+    query = add_field_level_auth(query, query.api, opts)
 
     query = %{
       query
@@ -165,8 +166,16 @@ defmodule Ash.Actions.Read do
         query
       end
 
+    pkey = Ash.Resource.Info.primary_key(query.resource)
+
+    missing_pkeys? =
+      opts[:initial_data] &&
+        Enum.any?(opts[:initial_data], fn record ->
+          Enum.any?(Map.take(record, pkey), fn {_, v} -> is_nil(v) end)
+        end)
+
     {calculations_in_query, calculations_at_runtime, query} =
-      Ash.Actions.Read.Calculations.split_and_load_calculations(query.api, query)
+      Ash.Actions.Read.Calculations.split_and_load_calculations(query.api, query, missing_pkeys?)
 
     query =
       if opts[:initial_data] do
@@ -195,7 +204,14 @@ defmodule Ash.Actions.Read do
     try do
       data_result =
         if opts[:initial_data] do
-          load(opts[:initial_data], query, calculations_at_runtime, calculations_in_query, opts)
+          load(
+            opts[:initial_data],
+            query,
+            calculations_at_runtime,
+            calculations_in_query,
+            missing_pkeys?,
+            opts
+          )
         else
           do_read(query, calculations_at_runtime, calculations_in_query, opts)
         end
@@ -243,7 +259,7 @@ defmodule Ash.Actions.Read do
         data
         |> Helpers.restrict_field_access(query)
         |> add_tenant(query)
-        |> attach_fields(opts[:initial_data], initial_query)
+        |> attach_fields(opts[:initial_data], initial_query, missing_pkeys?)
         |> add_page(
           query.action,
           count,
@@ -264,16 +280,6 @@ defmodule Ash.Actions.Read do
         Agent.stop(query.context[:private][:async_limiter])
       end
     end
-  end
-
-  defp attach_fields(data, nil, _query), do: data
-
-  defp attach_fields(data, initial_data, query) do
-    attach_newly_selected_fields(
-      initial_data,
-      data,
-      query
-    )
   end
 
   defp do_read(%{action: action} = query, calculations_at_runtime, calculations_in_query, opts) do
@@ -528,7 +534,14 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp load(initial_data, query, calculations_at_runtime, calculations_in_query, opts) do
+  defp load(
+         initial_data,
+         query,
+         calculations_at_runtime,
+         calculations_in_query,
+         missing_pkeys?,
+         opts
+       ) do
     must_be_reselected = List.wrap(query.select) -- Ash.Resource.Info.primary_key(query.resource)
 
     query =
@@ -541,11 +554,25 @@ defmodule Ash.Actions.Read do
          Enum.empty?(calculations_in_query) do
       {:ok, initial_data}
     else
-      reselect_and_load(initial_data, query, must_be_reselected, calculations_in_query, opts)
+      reselect_and_load(
+        initial_data,
+        query,
+        must_be_reselected,
+        calculations_in_query,
+        missing_pkeys?,
+        opts
+      )
     end
   end
 
-  defp reselect_and_load(initial_data, query, must_be_reselected, calculations_in_query, opts) do
+  defp reselect_and_load(
+         initial_data,
+         query,
+         must_be_reselected,
+         calculations_in_query,
+         missing_pkeys?,
+         opts
+       ) do
     primary_key = Ash.Resource.Info.primary_key(query.resource)
 
     filter =
@@ -626,7 +653,7 @@ defmodule Ash.Actions.Read do
              true
            ) do
       results
-      |> attach_fields(initial_data, query)
+      |> attach_fields(initial_data, query, missing_pkeys?)
       |> compute_expression_at_runtime_for_missing_records(query, data_layer_calculations)
       |> case do
         {:ok, result} ->
@@ -1127,10 +1154,20 @@ defmodule Ash.Actions.Read do
     end)
   end
 
-  defp attach_newly_selected_fields(
+  defp attach_fields(
          data,
+         nil,
+         _original_query,
+         _missing_pkeys?
+       ) do
+    data
+  end
+
+  defp attach_fields(
          data_with_selected,
-         original_query
+         data,
+         original_query,
+         missing_pkeys?
        ) do
     {aggregates_in_data, aggregates_in_aggregates} =
       original_query.aggregates
@@ -1157,9 +1194,10 @@ defmodule Ash.Actions.Read do
          Enum.empty?(fields_from_data) do
       data
     else
+      pkey = Ash.Resource.Info.primary_key(original_query.resource)
       # we have to assume they are all there and in the same order. Not my
       # favorite thing, but no way around it in the short term.
-      if Enum.empty?(Ash.Resource.Info.primary_key(original_query.resource)) do
+      if Enum.empty?(pkey) || missing_pkeys? do
         Enum.zip_with([data, data_with_selected], fn [record, match] ->
           record
           |> Map.merge(Map.take(match, fields_from_data))

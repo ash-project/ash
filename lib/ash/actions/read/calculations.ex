@@ -380,9 +380,10 @@ defmodule Ash.Actions.Read.Calculations do
     end)
   end
 
-  def split_and_load_calculations(api, ash_query) do
+  def split_and_load_calculations(api, ash_query, missing_pkeys?) do
     can_expression_calculation? =
-      Ash.DataLayer.data_layer_can?(ash_query.resource, :expression_calculation)
+      !missing_pkeys? &&
+        Ash.DataLayer.data_layer_can?(ash_query.resource, :expression_calculation)
 
     ash_query =
       Enum.reduce(ash_query.calculations, ash_query, fn {_name, calc}, ash_query ->
@@ -433,17 +434,21 @@ defmodule Ash.Actions.Read.Calculations do
                 {in_query, [calculation | at_runtime], ash_query}
               end
             else
-              {in_query,
-               [
-                 %{
-                   calculation
-                   | module: Ash.Resource.Calculation.RuntimeExpression,
-                     opts: [expr: expression],
-                     required_loads: [],
-                     select: []
-                 }
-                 | at_runtime
-               ], ash_query}
+              if calculation.module.has_calculate?() do
+                {in_query, [calculation | at_runtime], ash_query}
+              else
+                {in_query,
+                 [
+                   %{
+                     calculation
+                     | module: Ash.Resource.Calculation.RuntimeExpression,
+                       opts: [expr: expression],
+                       required_loads: [],
+                       select: []
+                   }
+                   | at_runtime
+                 ], ash_query}
+              end
             end
         end
       else
