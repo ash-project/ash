@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.19.1](https://github.com/ash-project/ash/compare/v2.19.0...v2.19.1) (2024-02-16)
+
+
+
+
+### Bug Fixes:
+
+* honor `not_found_error?` in `read_one`
+
+### Improvements:
+
+* pass `tenant` to context in custom changes
+
+* `Ash.context_to_opts` now checks for a `tenant`
+
 ## [v2.19.0](https://github.com/ash-project/ash/compare/v2.18.1...v2.19.0) (2024-02-16)
 
 
