@@ -972,12 +972,22 @@ defmodule Ash.Flow.Executor.AshEngine do
                           authorize?: opts[:authorize?],
                           tracer: data[:tracer]
                         )
-                        |> Ash.Query.set_context(%{
-                          private: %{get?: get?, not_found_error?: not_found_error?}
-                        })
                         |> then(fn query ->
                           if get? do
-                            api.read_one(query, not_found_error?: not_found_error?)
+                            case api.read_one(query) do
+                              {:ok, nil} ->
+                                if not_found_error? do
+                                  {:error, Ash.Error.Query.NotFound.exception(resource: resource)}
+                                else
+                                  {:ok, nil}
+                                end
+
+                              {:ok, result} ->
+                                {:ok, result}
+
+                              other ->
+                                other
+                            end
                           else
                             api.read(query)
                           end
