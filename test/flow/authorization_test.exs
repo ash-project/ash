@@ -1,4 +1,4 @@
-defmodule Ash.FlowTest.AuthorizationTest do
+defmodule Ash.Flow.AuthorizationTest do
   use ExUnit.Case
 
   defmodule Post do

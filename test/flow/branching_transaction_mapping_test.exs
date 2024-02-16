@@ -1,4 +1,4 @@
-defmodule Ash.FlowTest.BranchingTransactionMappingTest do
+defmodule Ash.Flow.BranchingTransactionMappingTest do
   @moduledoc false
   use ExUnit.Case, async: false
   alias Ash.Test.Flow.{Api, Org}

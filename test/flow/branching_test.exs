@@ -1,4 +1,4 @@
-defmodule Ash.FlowTest.BranchingTest do
+defmodule Ash.Flow.BranchingTest do
   @moduledoc false
   use ExUnit.Case, async: false
 

@@ -1,4 +1,4 @@
-defmodule Ash.FlowTest.HaltingTest do
+defmodule Ash.Flow.HaltingTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
