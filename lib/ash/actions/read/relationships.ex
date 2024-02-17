@@ -711,33 +711,59 @@ defmodule Ash.Actions.Read.Relationships do
       Enum.map(records, fn record ->
         value = Map.get(record, relationship.source_attribute)
 
-        Map.put(
-          record,
-          relationship.name,
-          apply_runtime_query_operations(
-            Map.get(related, value) || default,
-            related_query
+        if relationship.cardinality == :many do
+          Map.put(
+            record,
+            relationship.name,
+            apply_runtime_query_operations(
+              Map.get(related, value) || default,
+              related_query
+            )
           )
-        )
+        else
+          Map.put(
+            record,
+            relationship.name,
+            apply_runtime_query_operations(
+              Enum.at(List.wrap(Map.get(related, value) || default), 0),
+              related_query
+            )
+          )
+        end
       end)
     else
       Enum.map(records, fn record ->
         value = Map.get(record, relationship.source_attribute)
 
-        related
-        |> Enum.find_value(:error, fn result ->
-          destination_value = Map.get(result, relationship.destination_attribute)
+        if relationship.cardinality == :many do
+          related
+          |> Enum.filter(fn result ->
+            destination_value = Map.get(result, relationship.destination_attribute)
 
-          if Ash.Type.equal?(attribute.type, value, destination_value) do
-            {:ok, result}
-          end
-        end)
-        |> then(fn result ->
-          result =
-            apply_runtime_query_operations(result, related_query)
+            Ash.Type.equal?(attribute.type, value, destination_value)
+          end)
+          |> then(fn result ->
+            result =
+              apply_runtime_query_operations({:ok, result}, related_query)
 
-          put_result(record, result, relationship.name, default)
-        end)
+            put_result(record, result, relationship.name, default)
+          end)
+        else
+          related
+          |> Enum.find_value(:error, fn result ->
+            destination_value = Map.get(result, relationship.destination_attribute)
+
+            if Ash.Type.equal?(attribute.type, value, destination_value) do
+              {:ok, result}
+            end
+          end)
+          |> then(fn result ->
+            result =
+              apply_runtime_query_operations(result, related_query)
+
+            put_result(record, result, relationship.name, default)
+          end)
+        end
       end)
     end
   end
