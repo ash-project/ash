@@ -57,15 +57,10 @@ defmodule Ash.Flow.RunFlowTest do
   end
 
   test "CreatePost" do
-    assert %{valid?: true, result: %{post: post}} = CreatePost.run(%{})
+    assert %{valid?: true, result: %{post: _}} = CreatePost.run(%{})
   end
 
   test "CreateTwoPosts" do
-    # COMPILE ERROR with
-    # ** (Spark.Error.DslError) [nil]
-    # create_two_posts:
-    #  Must have at least one step.
-
     defmodule CreateTwoPosts do
       use Ash.Flow
 

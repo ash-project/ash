@@ -75,7 +75,7 @@ publish :assign, "assigned"
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`action`](#pub_sub-publish-action){: #pub_sub-publish-action .spark-required} | `atom` |  | The name of the action that should be published |
-| [`topic`](#pub_sub-publish-topic){: #pub_sub-publish-topic .spark-required} | ``any`` |  | The topic to publish |
+| [`topic`](#pub_sub-publish-topic){: #pub_sub-publish-topic .spark-required} | `any` |  | The topic to publish |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -118,7 +118,7 @@ publish_all :create, "created"
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`type`](#pub_sub-publish_all-type){: #pub_sub-publish_all-type } | `:create \| :update \| :destroy` |  | Publish on all actions of a given type |
-| [`topic`](#pub_sub-publish_all-topic){: #pub_sub-publish_all-topic .spark-required} | ``any`` |  | The topic to publish |
+| [`topic`](#pub_sub-publish_all-topic){: #pub_sub-publish_all-topic .spark-required} | `any` |  | The topic to publish |
 ### Options
 
 | Name | Type | Default | Docs |
