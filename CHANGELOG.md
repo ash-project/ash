@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.19.2](https://github.com/ash-project/ash/compare/v2.19.1...v2.19.2) (2024-02-17)
+
+
+
+
+### Bug Fixes:
+
+* ensure that to-many relationships are loaded as lists
+
 ## [v2.19.1](https://github.com/ash-project/ash/compare/v2.19.0...v2.19.1) (2024-02-16)
 
 
