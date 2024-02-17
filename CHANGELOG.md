@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.19.3](https://github.com/ash-project/ash/compare/v2.19.2...v2.19.3) (2024-02-17)
+
+
+
+
+### Bug Fixes:
+
+* properly annotate `run_flow`'s recursive DSL tag
+
 ## [v2.19.2](https://github.com/ash-project/ash/compare/v2.19.1...v2.19.2) (2024-02-17)
 
 
