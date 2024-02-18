@@ -722,14 +722,7 @@ defmodule Ash.Actions.Helpers do
       end
     end)
     |> Enum.reduce(result, fn key, record ->
-      default_field_value =
-        if Ash.Flags.ash_three?() do
-          %Ash.NotSelected{field: key}
-        else
-          nil
-        end
-
-      Map.put(record, key, default_field_value)
+      Map.put(record, key, %Ash.NotSelected{field: key})
     end)
     |> Ash.Resource.put_metadata(:selected, select)
   end

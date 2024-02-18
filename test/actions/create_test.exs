@@ -574,11 +574,7 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Ash.Changeset.select(:bio)
         |> Ash.create!(action: :duplicate_name)
 
-      if Ash.Flags.ash_three?() do
-        assert %Ash.NotSelected{field: :name} = author.name
-      else
-        assert is_nil(author.name)
-      end
+      assert %Ash.NotSelected{field: :name} = author.name
     end
   end
 
