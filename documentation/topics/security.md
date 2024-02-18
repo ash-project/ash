@@ -1,8 +1,22 @@
 # Security
 
-## Important Note!
+## Authorization Configuration
 
-A great thing to do early on is to be explicit about your security configuration. To that end, once you've read this guide, we highly recommend that you place the configuration found at the bottom of your guide into your api modules, even if you are simply setting them to their default values. Especially the `authorize` option.
+### `d:Ash.Api.Dsl.authorization|require_actor?`
+
+Requires that an actor is set for all requests.
+
+Important: `nil` is still a valid actor, so this won't prevent providing `actor: nil`.
+
+
+### `d:Ash.Api.Dsl.authorization|authorize`
+
+When to run authorization for a given request.
+
+- `:by_default` sets `authorize?: true` if the `authorize?` option was not set (so it can be set to `false`). This is the default.
+- `:always` forces `authorize?: true` on all requests to the Api.
+- `:when_requested` sets `authorize?: true` whenever an actor is set or `authorize?: true` is explicitly passed. This is the default behavior.
+
 
 ## Sensitive Attributes
 
@@ -72,26 +86,3 @@ Ash.set_actor(current_user)
 # This will now use the actor set in the context.
 Api.read!(User)
 ```
-
-### Authorization Configuration
-
-The default behavior is illustrated above, but it can be customized with the options in the `d:Ash.Api.authorization` section of the Api module you are calling.
-
-#### `d:Ash.Api.Dsl.authorization|require_actor?`
-
-Requires that an actor is set for all requests.
-
-Important: `nil` is still a valid actor, so this won't prevent providing `actor: nil`.
-
-
-#### `d:Ash.Api.Dsl.authorization|authorize`
-
-##### Important!
-
-The default value for this is relatively loose, and we intend to change it in the 3.0 release (which is not scheduled for anytime soon). Right now, it is `:when_requested`, but a better default would be `:by_default`, and is what you should choose when starting out.
-
-When to run authorization for a given request.
-
-- `:always` forces `authorize?: true` on all requests to the Api.
-- `:by_default` sets `authorize?: true` if the `authorize?` option was not set (so it can be set to `false`).
-- `:when_requested` sets `authorize?: true` whenever an actor is set or `authorize?: true` is explicitly passed. This is the default behavior.

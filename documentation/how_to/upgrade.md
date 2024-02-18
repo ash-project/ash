@@ -4,6 +4,30 @@
 
 This section contains each breaking change, and the steps required to address it in your application
 
+### `Api.authorization.authorize` now defaults to `:by_default`
+
+Previously, the default was `:when_requested`. This meant that, unless you said `actor: some_actor` or `authorize?: true`, authorization was skipped. This has the obvious drawback of making it easy to accidentally bypass authorization unintentionally. In 3.0, this now defaults to `:by_default`.
+
+#### What you'll need to change
+
+##### Keep old behavior
+
+To avoid making a significant refactor, and to keep your current behavior, you can go to your api and set the configuration below. Otherwise skip to the refactor steps below.
+
+```elixir
+authorization do
+  authorize :when_requested
+end
+```
+
+It is *suggested* that you later follow these steps regardless.
+
+##### Refactor
+
+For each api that has the old configuration, after setting it to the new config, you'll need to revisit each call to that api that doesn't set an actor or the `authorize?` option, and add `authorize?: false`.
+
+This may be a good time to do the refactor from `YourApi.func` to `Ash.func`, if you want to.
+
 ### `require_atomic?` defaults to `true` 
 
 On `:update` actions, and `:destroy` actions, they now default to `require_atomic? true`. This means that the following things will cause errors when attempting to run the action:

@@ -135,7 +135,7 @@ Options for how requests are authorized using this Api. See the [security guide]
 ### Examples
 ```
 authorization do
-  authorize :by_default
+  authorize :when_requested
 end
 
 ```
@@ -148,7 +148,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`require_actor?`](#authorization-require_actor?){: #authorization-require_actor? } | `boolean` | `false` | Requires that an actor has been supplied. |
-| [`authorize`](#authorization-authorize){: #authorization-authorize } | `:always \| :by_default \| :when_requested` | `:when_requested` | When to run authorization for a given request. |
+| [`authorize`](#authorization-authorize){: #authorization-authorize } | `:always \| :by_default \| :when_requested` | `:by_default` | When to run authorization for a given request. |
 
 
 
