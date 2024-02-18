@@ -738,7 +738,7 @@ defmodule Ash.Actions.Helpers do
       end
     end)
     |> Enum.reduce(result, fn key, record ->
-      Map.put(record, key, %Ash.NotSelected{field: key})
+      Map.put(record, key, %Ash.NotLoaded{field: key, type: :attribute})
     end)
     |> Ash.Resource.put_metadata(:selected, select)
   end

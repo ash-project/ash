@@ -1,5 +1,67 @@
 # Upgrade
 
+## Upgrading to 3.0
+
+This section contains each breaking change, and the steps required to address it in your application
+
+### `require_atomic?` defaults to `true` 
+
+On `:update` actions, and `:destroy` actions, they now default to `require_atomic? true`. This means that the following things will cause errors when attempting to run the action:
+
+1. changes or validations exist that do not have the `atomic` callback. *This includes anonymous function changes/validations*.
+2. attributes are being changed that do not support atomic updates. This most notably includes (for now) embedded resources.
+3. the action has a manual implementation
+4. the action has applicable notifiers that require the original data.
+
+Updates and destroys that can be made fully atomic are always safe to do concurrently, and as such we now require that actions meet this criteria. See the [atomics guide](/documentation/topics/atomics.md) for more.
+
+#### What you'll need to change
+
+The vast majority of cases will be caught by warnings emitted at compile time. If you are using `change atomic_update/2` or `Ash.Changeset.atomic_update/2` or `Ash.Changeset.atomic_update/3`, and the type does not support atomic updates, you will get an error unless you do one of the following:
+
+1. for `change atomic_update/2` add the `cast_atomic?: false` option.
+2. for `Ash.Changeset.atomic_update`, pass the value as `{:atomic, expr}`, i.e `Ash.Changeset.atomic_update(changeset, :value, {:atomic, expr(value + 1)})`
+
+For builtin types, the above applies to `:union`, `:map`, `:keyword`, embedded types. It also applies to `:string`, but only if the `match?` constraint is present.
+
+### `Ash.Error.Invalid.NoSuchInput` errors on unknown action inputs
+
+In 2.0, inputs to actions that don't match an accepted attribute or argument were silently ignored. This made it very easy to make certain kinds of mistakes, like assuming that an input is being used by an action when it actually is not. Now, unknown action inputs will cause an `Ash.Error.Invalid.NoSuchInput`. 
+
+#### What you'll need to change
+
+If you have action calls that are erroneously passing in extra values, you will need to do remove them.
+
+### `%Ash.NotLoaded{}` for attributes
+
+In 2.0, attributes that were not selected were replaced with `nil` values. This could lead to confusion when dealing with records that didn't have all attributes selected. If you passed these records to a function it might see that an attribute is `nil` when actually it just wasn't selected. To find out if it was selected, you could look into `record.__metadata__.selected`, but you'd have to know to do that.  To alleviate these issues, attributes that are not selected are now filled in with `%Ash.NotLoaded{}`, just like calculations and aggregates.
+
+#### What you'll need to change
+
+If you have logic that was looking at attribute values that may not be selected, you may have been accidentally working with non selected values. For example:
+
+```elixir
+if record.attribute do
+  handle_present_attribute(...)
+else
+  # unselected attributes would have ended up in this branch
+  handle_not_present_attribute(...)
+end
+```
+
+Now, if it is possible for that attribute to have not been selected, you'll want to do something like this instead:
+
+```elixir
+case record.attribute do
+  %Ash.NotLoaded{} ->
+    handle_not_selected(...)
+  nil ->
+    handle_not_present_attribute(...)
+  value ->
+    handle_present_attribute(...)
+end
+```
+
 ## Upgrading to 2.0
 
 All deprecations will be finalized in version 2.1.

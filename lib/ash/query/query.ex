@@ -600,7 +600,15 @@ defmodule Ash.Query do
       if has_argument?(action, name) do
         set_argument(query, name, value)
       else
-        query
+        error =
+          Ash.Error.Invalid.NoSuchInput.exception(
+            resource: query.resource,
+            action: query.action.name,
+            input: name,
+            inputs: Enum.map(query.action.arguments, & &1.name)
+          )
+
+        add_error(query, Ash.Error.set_path(error, name))
       end
     end)
   end

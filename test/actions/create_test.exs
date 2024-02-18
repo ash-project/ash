@@ -574,7 +574,7 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Ash.Changeset.select(:bio)
         |> Ash.create!(action: :duplicate_name)
 
-      assert %Ash.NotSelected{field: :name} = author.name
+      assert %Ash.NotLoaded{field: :name} = author.name
     end
   end
 

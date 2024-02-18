@@ -115,7 +115,7 @@ defmodule Ash.Test.Policy.SimpleTest do
 
   test "authorize_unless properly combines", %{user: user} do
     Car
-    |> Ash.Changeset.for_create(:authorize_unless, %{users: [user.id]})
+    |> Ash.Changeset.for_create(:authorize_unless, %{})
     |> Api.create!(actor: user)
   end
 

@@ -389,14 +389,21 @@ defmodule Ash.CodeInterface do
         action = Ash.CodeInterface.require_action(resource, interface)
 
         filter_keys =
-          if action.type == :read do
-            if interface.get_by_identity do
+          cond do
+            action.type != :read ->
+              []
+
+            interface.get_by_identity ->
               Ash.Resource.Info.identity(resource, interface.get_by_identity).keys
-            else
-              if interface.get_by do
-                interface.get_by
-              end
-            end
+
+            interface.get_by ->
+              interface.get_by
+
+            interface.get? ->
+              Ash.Resource.Info.primary_key(resource)
+
+            true ->
+              []
           end
 
         args = List.wrap(filter_keys) ++ Ash.CodeInterface.without_optional(interface.args || [])
@@ -479,7 +486,7 @@ defmodule Ash.CodeInterface do
                   {query, query_opts} = Keyword.pop(query_opts, :query)
 
                   query =
-                    if unquote(filter_keys) do
+                    if unquote(filter_keys) && !Enum.empty?(unquote(filter_keys)) do
                       require Ash.Query
                       {filters, params} = Map.split(params, unquote(filter_keys))
 
