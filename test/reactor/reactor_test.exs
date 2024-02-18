@@ -35,7 +35,7 @@ defmodule Ash.Test.ReactorTest do
       end
 
       actions do
-        defaults [:create]
+        defaults [:create, :destroy]
       end
     end
 

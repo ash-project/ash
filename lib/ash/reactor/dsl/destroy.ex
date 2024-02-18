@@ -16,10 +16,11 @@ defmodule Ash.Reactor.Dsl.Destroy do
             name: nil,
             resource: nil,
             return_destroyed?: false,
-            steps: [],
             tenant: [],
             transform: nil,
             type: :destroy,
+            undo_action: nil,
+            undo: :never,
             wait_for: []
 
   @type t :: %__MODULE__{
@@ -36,9 +37,10 @@ defmodule Ash.Reactor.Dsl.Destroy do
           inputs: [Ash.Reactor.Dsl.Inputs.t()],
           resource: module,
           return_destroyed?: boolean,
-          steps: [Reactor.Step.t()],
           tenant: [Ash.Reactor.Dsl.Tenant.t()],
           type: :destroy,
+          undo_action: atom,
+          undo: :always | :never | :outside_transaction,
           wait_for: [Reactor.Dsl.WaitFor.t()]
         }
 
@@ -128,6 +130,25 @@ defmodule Ash.Reactor.Dsl.Destroy do
           default: false,
           required: false,
           doc: "Whether or not the step should return the destroyed record upon completion."
+        ],
+        undo_action: [
+          type: :atom,
+          required: false,
+          doc: """
+          The name of the action to call on the resource when the step is undone.
+          """
+        ],
+        undo: [
+          type: {:in, [:always, :never, :outside_transaction]},
+          required: false,
+          default: :never,
+          doc: """
+          What to do when the reactor is undoing it's work?
+
+          * `always` - The undo action will always be run.
+          * `never` - The action will never be undone.
+          * `outside_transaction` - The action will only be undone if not running inside a transaction.
+          """
         ]
       ]
     }

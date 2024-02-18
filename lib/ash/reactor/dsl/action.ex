@@ -14,7 +14,6 @@ defmodule Ash.Reactor.Dsl.Action do
             inputs: [],
             name: nil,
             resource: nil,
-            steps: [],
             tenant: [],
             transform: nil,
             type: :action,
@@ -32,7 +31,6 @@ defmodule Ash.Reactor.Dsl.Action do
           name: atom,
           inputs: [Ash.Reactor.Dsl.Inputs.t()],
           resource: module,
-          steps: [Reactor.Step.t()],
           tenant: [Ash.Reactor.Dsl.Tenant.t()],
           type: :action,
           wait_for: [Reactor.Dsl.WaitFor.t()]

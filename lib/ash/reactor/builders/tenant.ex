@@ -1,4 +1,6 @@
 defimpl Reactor.Argument.Build, for: Ash.Reactor.Dsl.Tenant do
+  @doc false
+  @impl true
   def build(tenant),
     do:
       {:ok,

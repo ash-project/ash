@@ -5,6 +5,8 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Action do
   alias Reactor.Builder
   import Ash.Reactor.BuilderUtils
 
+  @doc false
+  @impl true
   def build(create, reactor) do
     with {:ok, reactor} <- ensure_hooked(reactor),
          {:ok, reactor, arguments} <- build_input_arguments(reactor, create) do
@@ -35,7 +37,11 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Action do
     end
   end
 
+  @doc false
+  @impl true
   def transform(_create, dsl_state), do: {:ok, dsl_state}
 
+  @doc false
+  @impl true
   def verify(_create, _dsl_state), do: :ok
 end

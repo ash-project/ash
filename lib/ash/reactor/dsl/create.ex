@@ -14,11 +14,12 @@ defmodule Ash.Reactor.Dsl.Create do
             inputs: [],
             name: nil,
             resource: nil,
-            steps: [],
             tenant: [],
             transform: nil,
             type: :create,
             wait_for: [],
+            undo_action: nil,
+            undo: :never,
             upsert_identity: nil,
             upsert?: false
 
@@ -34,10 +35,11 @@ defmodule Ash.Reactor.Dsl.Create do
           name: atom,
           inputs: [Ash.Reactor.Dsl.Inputs.t()],
           resource: module,
-          steps: [Reactor.Step.t()],
           tenant: [Ash.Reactor.Dsl.Tenant.t()],
           type: :create,
           wait_for: [Reactor.Dsl.WaitFor.t()],
+          undo_action: atom,
+          undo: :always | :never | :outside_transaction,
           upsert_identity: nil | atom,
           upsert?: boolean
         }
@@ -119,6 +121,25 @@ defmodule Ash.Reactor.Dsl.Create do
           required: true,
           doc: """
           The resource to call the action on.
+          """
+        ],
+        undo_action: [
+          type: :atom,
+          required: false,
+          doc: """
+          The name of the action to call on the resource when the step is to be undone.
+          """
+        ],
+        undo: [
+          type: {:in, [:always, :never, :outside_transaction]},
+          required: false,
+          default: :never,
+          doc: """
+          What to do when the reactor is undoing it's work?
+
+          * `always` - The undo action will always be run.
+          * `never` - The action will never be undone.
+          * `outside_transaction` - The action will only be undone if not running inside a transaction.
           """
         ],
         upsert_identity: [

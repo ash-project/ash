@@ -3,6 +3,7 @@ exclude = [
 ]
 
 Mimic.copy(Ash.Notifier)
+Mimic.copy(Ash.DataLayer)
 
 ExUnit.start(stacktrace_depth: 100, exclude: exclude)
 Logger.configure(level: :debug)

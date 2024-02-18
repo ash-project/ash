@@ -237,4 +237,40 @@ defmodule Ash.Test.ReactorCreateTest do
     assert author.name == "Marty McFly"
     assert author.organisation == "Hill Valley High School"
   end
+
+  test "it can undo the creation on error" do
+    defmodule UndoingCreateAuthorReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      ash do
+        default_api Api
+      end
+
+      input :author_name
+
+      create :create_author, Author, :create do
+        inputs(%{name: input(:author_name)})
+      end
+
+      step :fail do
+        argument :author, result(:create_author)
+
+        run fn _, _ ->
+          assert [_] = Api.read!(Author)
+
+          raise "hell"
+        end
+      end
+    end
+
+    assert {:error, [error]} =
+             Reactor.run(UndoingCreateAuthorReactor, %{author_name: "Marty McFly"}, %{},
+               async?: false
+             )
+
+    assert Exception.message(error) == "hell"
+
+    assert [] = Api.read!(Author)
+  end
 end

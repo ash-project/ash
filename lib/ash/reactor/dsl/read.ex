@@ -14,7 +14,6 @@ defmodule Ash.Reactor.Dsl.Read do
             inputs: [],
             name: nil,
             resource: nil,
-            steps: [],
             tenant: [],
             transform: nil,
             type: :read,
@@ -32,7 +31,6 @@ defmodule Ash.Reactor.Dsl.Read do
           name: atom,
           inputs: [Ash.Reactor.Dsl.Inputs.t()],
           resource: module,
-          steps: [Reactor.Step.t()],
           tenant: [Ash.Reactor.Dsl.Tenant.t()],
           type: :create,
           wait_for: [Reactor.Dsl.WaitFor.t()]

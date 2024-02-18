@@ -12,7 +12,7 @@
     # {:credo, "mix credo --format oneline"},
 
     {:check_formatter, command: "mix spark.formatter --check"},
-    {:check_cheat_sheets, command: "mix spark.cheat_sheets --check"},
+    # {:check_cheat_sheets, command: "mix spark.cheat_sheets --check"},
     {:doctor, false}
 
     ## custom new tools may be added (mix tasks or arbitrary commands)

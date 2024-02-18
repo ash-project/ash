@@ -48,6 +48,12 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
     end
   end
 
+  defp transform_step(entity, dsl_state) when entity.type == :transaction do
+    with :ok <- validate_entity_resources(entity, dsl_state) do
+      transform_nested_steps(entity, dsl_state)
+    end
+  end
+
   defp transform_step(_entity, _dsl_state), do: :ignore
 
   defp transform_nested_steps(entity, dsl_state) when is_list(entity.steps) do
@@ -65,6 +71,10 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
             {:halt, {:error, reason}}
         end
     end)
+    |> case do
+      {:ok, entity, dsl_state} -> {:ok, %{entity | steps: Enum.reverse(entity.steps)}, dsl_state}
+      other -> other
+    end
   end
 
   defp transform_nested_steps(entity, dsl_state), do: {:ok, entity, dsl_state}
@@ -100,6 +110,35 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
          message:
            "The #{entity.type} step `#{inspect(entity.name)}` has its resource set to `#{inspect(entity.resource)}` but it is not a valid Ash resource."
        )}
+    end
+  end
+
+  defp validate_entity_resources(entity, dsl_state) do
+    entity.resources
+    |> Enum.reject(&(&1.spark_is() == Ash.Resource))
+    |> case do
+      [] ->
+        :ok
+
+      [resource] ->
+        {:error,
+         DslError.exception(
+           module: Transformer.get_persisted(dsl_state, :module),
+           path: [:reactor, entity.type, entity.name],
+           message:
+             "The #{entity.type} step `#{inspect(entity.name)}` has its resources set to `#{inspect(resource)}` but it is not a valid Ash resource."
+         )}
+
+      resources ->
+        resources = Enum.map_join(resources, ", ", &"`#{inspect(&1)}`")
+
+        {:error,
+         DslError.exception(
+           module: Transformer.get_persisted(dsl_state, :module),
+           path: [:reactor, entity.type, entity.name],
+           message:
+             "The #{entity.type} step `#{inspect(entity.name)}` has its resources set to #{resources} but they are not valid Ash resources."
+         )}
     end
   end
 

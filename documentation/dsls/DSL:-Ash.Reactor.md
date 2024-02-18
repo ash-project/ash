@@ -25,6 +25,192 @@ Ash-related configuration for the `Ash.Reactor` extension
 
 
 
+## reactor.action
+```elixir
+action name, resource, action \\ nil
+```
+
+
+Declares a step that will call a generic action on a resource.
+
+### Nested DSLs
+ * [actor](#reactor-action-actor)
+ * [inputs](#reactor-action-inputs)
+ * [tenant](#reactor-action-tenant)
+ * [wait_for](#reactor-action-wait_for)
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#reactor-action-name){: #reactor-action-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`resource`](#reactor-action-resource){: #reactor-action-resource .spark-required} | `module` |  | The resource to call the action on. |
+| [`action`](#reactor-action-action){: #reactor-action-action } | `atom` |  | The name of the action to call on the resource. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`api`](#reactor-action-api){: #reactor-action-api } | `module` |  | The API to use when calling the action.  Defaults to the API set in the `ash` section. |
+| [`async?`](#reactor-action-async?){: #reactor-action-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
+| [`authorize?`](#reactor-action-authorize?){: #reactor-action-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
+| [`description`](#reactor-action-description){: #reactor-action-description } | `String.t` |  | A description for the step |
+
+
+## reactor.action.actor
+```elixir
+actor source
+```
+
+
+Specifies the action actor
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-action-actor-source){: #reactor-action-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-action-actor-transform){: #reactor-action-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Actor`
+
+## reactor.action.inputs
+```elixir
+inputs template
+```
+
+
+Specify the inputs for an action
+
+
+
+### Examples
+```
+inputs %{
+  author: result(:get_user),
+  title: input(:title),
+  body: input(:body)
+}
+
+```
+
+```
+inputs(author: result(:get_user))
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`template`](#reactor-action-inputs-template){: #reactor-action-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-action-inputs-transform){: #reactor-action-inputs-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which will transform the inputs before executing the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Inputs`
+
+## reactor.action.tenant
+```elixir
+tenant source
+```
+
+
+Specifies the action tenant
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-action-tenant-source){: #reactor-action-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-action-tenant-transform){: #reactor-action-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Tenant`
+
+## reactor.action.wait_for
+```elixir
+wait_for names
+```
+
+
+Wait for the named step to complete before allowing this one to start.
+
+Desugars to `argument :_, result(step_to_wait_for)`
+
+
+
+
+### Examples
+```
+wait_for :create_user
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#reactor-action-wait_for-names){: #reactor-action-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.WaitFor`
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Action`
+
+
+
 ## reactor.create
 ```elixir
 create name, resource, action \\ nil
@@ -70,6 +256,8 @@ end
 | [`async?`](#reactor-create-async?){: #reactor-create-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
 | [`authorize?`](#reactor-create-authorize?){: #reactor-create-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
 | [`description`](#reactor-create-description){: #reactor-create-description } | `String.t` |  | A description for the step |
+| [`undo_action`](#reactor-create-undo_action){: #reactor-create-undo_action } | `atom` |  | The name of the action to call on the resource when the step is to be undone. |
+| [`undo`](#reactor-create-undo){: #reactor-create-undo } | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
 | [`upsert_identity`](#reactor-create-upsert_identity){: #reactor-create-upsert_identity } | `atom` |  | The identity to use for the upsert |
 | [`upsert?`](#reactor-create-upsert?){: #reactor-create-upsert? } | `boolean` | `false` | Whether or not this action should be executed as an upsert. |
 
@@ -270,6 +458,8 @@ end
 | [`authorize?`](#reactor-destroy-authorize?){: #reactor-destroy-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
 | [`description`](#reactor-destroy-description){: #reactor-destroy-description } | `String.t` |  | A description for the step |
 | [`return_destroyed?`](#reactor-destroy-return_destroyed?){: #reactor-destroy-return_destroyed? } | `boolean` | `false` | Whether or not the step should return the destroyed record upon completion. |
+| [`undo_action`](#reactor-destroy-undo_action){: #reactor-destroy-undo_action } | `atom` |  | The name of the action to call on the resource when the step is undone. |
+| [`undo`](#reactor-destroy-undo){: #reactor-destroy-undo } | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
 
 
 ## reactor.destroy.actor
@@ -818,6 +1008,78 @@ Target: `Ash.Reactor.Dsl.Read`
 
 
 
+## reactor.transaction
+```elixir
+transaction name, resources
+```
+
+
+Creates a group of steps which will be executed inside a data layer transaction.
+
+### Nested DSLs
+ * [wait_for](#reactor-transaction-wait_for)
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#reactor-transaction-name){: #reactor-transaction-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`resources`](#reactor-transaction-resources){: #reactor-transaction-resources .spark-required} | `module \| list(module)` |  | A resource or list of resources to consider in the transaction. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`return`](#reactor-transaction-return){: #reactor-transaction-return } | `atom` |  | The name of the step whose result will be returned as the return value of the transaction. |
+| [`timeout`](#reactor-transaction-timeout){: #reactor-transaction-timeout } | `pos_integer \| :infinity` | `15000` | How long to allow the transaction to run before timing out. |
+
+
+## reactor.transaction.wait_for
+```elixir
+wait_for names
+```
+
+
+Wait for the named step to complete before allowing this one to start.
+
+Desugars to `argument :_, result(step_to_wait_for)`
+
+
+
+
+### Examples
+```
+wait_for :create_user
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#reactor-transaction-wait_for-names){: #reactor-transaction-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.WaitFor`
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Transaction`
+
+
+
 ## reactor.update
 ```elixir
 update name, resource, action \\ nil
@@ -864,6 +1126,8 @@ end
 | [`async?`](#reactor-update-async?){: #reactor-update-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
 | [`authorize?`](#reactor-update-authorize?){: #reactor-update-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
 | [`description`](#reactor-update-description){: #reactor-update-description } | `String.t` |  | A description for the step |
+| [`undo_action`](#reactor-update-undo_action){: #reactor-update-undo_action } | `atom` |  | The name of the action to call on the resource when the step is undone. |
+| [`undo`](#reactor-update-undo){: #reactor-update-undo } | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
 
 
 ## reactor.update.actor

@@ -55,17 +55,23 @@ defmodule Ash.Reactor.BuilderUtils do
   end
 
   @doc false
-  @spec maybe_append(Enum.t(), Enum.t() | nil) :: Enum.t()
+  @spec maybe_append(Enum.t(), nil | any) :: Enum.t()
   def maybe_append(lhs, nil), do: lhs
   def maybe_append(lhs, rhs), do: Enum.concat(lhs, [rhs])
 
   @doc false
   @spec ensure_hooked(Reactor.t()) :: {:ok, Reactor.t()} | {:error, any}
+  def ensure_hooked(reactor) when is_map_key(reactor.context, :__ash_hooked__),
+    do: {:ok, reactor}
+
   def ensure_hooked(reactor) do
     with {:ok, reactor} <- ensure_hooked(reactor, :init, &Ash.Reactor.Notifications.init_hook/1),
          {:ok, reactor} <- ensure_hooked(reactor, :halt, &Ash.Reactor.Notifications.halt_hook/1),
-         {:ok, reactor} <- ensure_hooked(reactor, :error, &Ash.Reactor.Notifications.error_hook/2) do
-      ensure_hooked(reactor, :complete, &Ash.Reactor.Notifications.complete_hook/2)
+         {:ok, reactor} <-
+           ensure_hooked(reactor, :error, &Ash.Reactor.Notifications.error_hook/2),
+         {:ok, reactor} <-
+           ensure_hooked(reactor, :complete, &Ash.Reactor.Notifications.complete_hook/2) do
+      {:ok, %{reactor | context: Map.put(reactor.context, :__ash_hooked__, true)}}
     end
   end
 
