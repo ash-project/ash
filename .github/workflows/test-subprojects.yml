@@ -3,7 +3,7 @@ on:
   push:
     tags:
       - "v*"
-    branches: [main]
+    branches: [main, "3.0"]
 jobs:
   test-subprojects:
     runs-on: ubuntu-latest
