@@ -178,15 +178,11 @@ defmodule Ash.ActionInput do
       if has_argument?(input.action, name) do
         set_argument(input, name, value)
       else
-        if Ash.Flags.ash_three?() do
-          error =
-            InvalidArgument.exception(field: name, value: value, message: "Unknown argument")
+        error =
+          InvalidArgument.exception(field: name, value: value, message: "Unknown argument")
 
-          input = %{input | invalid_keys: MapSet.put(input.invalid_keys, name)}
-          add_error(input, Ash.Error.set_path(error, name))
-        else
-          input
-        end
+        input = %{input | invalid_keys: MapSet.put(input.invalid_keys, name)}
+        add_error(input, Ash.Error.set_path(error, name))
       end
     end)
   end
