@@ -21,7 +21,7 @@ defmodule Ash.Flow.RunFromAction do
     |> Ash.Changeset.for_create(:create, %{parent_resource: parent_resource})
     |> Api.create!(authorize?: false)
 
-    {:ok, %{status: :canceled}} =
-      ParentResource.cancel(parent_resource)
+    assert %{status: :canceled} =
+             ParentResource.cancel!(parent_resource)
   end
 end

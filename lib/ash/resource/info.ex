@@ -616,6 +616,23 @@ defmodule Ash.Resource.Info do
     end
   end
 
+  @doc "Returns true or false if the input is accepted by the action, as an argument or an attribute"
+  @spec action_input?(Ash.Resource.t(), action :: atom(), input :: atom() | String.t()) ::
+          boolean()
+  def action_input?(resource, action, input) do
+    case Extension.get_persisted(resource, {:action_inputs, action}) do
+      nil -> false
+      map_set -> input in map_set
+    end
+  end
+
+  @doc "Returns the list of possible accepted keys by an action"
+  @spec action_inputs(Ash.Resource.t(), action :: atom()) ::
+          MapSet.t()
+  def action_inputs(resource, action) do
+    Extension.get_persisted(resource, {:action_inputs, action}) || MapSet.new()
+  end
+
   @doc "Returns all attributes of a resource"
   @spec attributes(Spark.Dsl.t() | Ash.Resource.t()) :: [Ash.Resource.Attribute.t()]
   def attributes(resource) do

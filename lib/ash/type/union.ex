@@ -29,16 +29,22 @@ defmodule Ash.Type.Union do
             ],
             object: [
               type: MyObjectType,
+              # The default value is `true`
+              # this passes the tag key/value to the nested type
+              # when casting input
+              cast_tag?: true,
               tag: :type,
               tag_value: "my_object"
             ],
             other_object: [
               type: MyOtherObjectType,
+              cast_tag?: true,
               tag: :type,
               tag_value: "my_other_object"
             ],
             other_object_without_type: [
               type: MyOtherObjectTypeWithoutType,
+              cast_tag?: false,
               tag: :type,
               tag_value: nil
             ]
@@ -371,6 +377,13 @@ defmodule Ash.Type.Union do
         tags_equal? = tags_equal?(tag_value, their_tag_value)
 
         if tags_equal? do
+          value =
+            if Keyword.get(config, :cast_tag?, true) do
+              value
+            else
+              Map.drop(value, [config[:tag], to_string(config[:tag])])
+            end
+
           case Ash.Type.cast_input(type, value, config[:constraints] || []) do
             {:ok, value} ->
               case Ash.Type.apply_constraints(type, value, config[:constraints] || []) do
@@ -694,10 +707,22 @@ defmodule Ash.Type.Union do
           new_values =
             Enum.map(new_values, fn
               {:union_value, value, _} ->
-                value
+                case value do
+                  %{__index__: _} = value ->
+                    Map.delete(value, :__index__)
 
-              other ->
-                other
+                  value ->
+                    value
+                end
+
+              value ->
+                case value do
+                  %{__index__: _} = value ->
+                    Map.delete(value, :__index__)
+
+                  value ->
+                    value
+                end
             end)
 
           type = constraints[:types][name][:type]

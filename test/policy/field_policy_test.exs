@@ -77,7 +77,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
     } do
       assert :representative ==
                User
-               |> Ash.Query.for_read(:read, authorize?: true, actor: representative)
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
                |> Ash.Query.filter(id == ^representative.id)
                |> Api.read_one!(authorize?: true, actor: representative)
                |> Map.get(:role)
@@ -89,7 +89,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
     } do
       assert :representative ==
                User
-               |> Ash.Query.for_read(:read, authorize?: true, actor: admin)
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: admin)
                |> Ash.Query.filter(id == ^representative.id)
                |> Api.read_one!(authorize?: true, actor: admin)
                |> Map.get(:role)
@@ -100,7 +100,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
     } do
       assert %Ash.ForbiddenField{field: :ticket_count, type: :aggregate} ==
                User
-               |> Ash.Query.for_read(:read, authorize?: true, actor: representative)
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
                |> Ash.Query.filter(id == ^representative.id)
                |> Ash.Query.load([:ticket_count])
                |> Api.read_one!(authorize?: true, actor: representative)
@@ -113,7 +113,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
     } do
       assert %Ash.ForbiddenField{field: :role, type: :attribute} ==
                User
-               |> Ash.Query.for_read(:read, authorize?: true, actor: representative)
+               |> Ash.Query.for_read(:read, %{})
                |> Ash.Query.filter(id == ^representative.id)
                |> Api.read_one!(authorize?: true, actor: user)
                |> Map.get(:role)
@@ -126,7 +126,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
       assert %Ash.ForbiddenField{field: :role, type: :attribute} ==
                User
                |> Ash.Query.select([])
-               |> Ash.Query.for_read(:read, authorize?: true, actor: representative)
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
                |> Ash.Query.filter(id == ^representative.id)
                |> Api.read_one!(authorize?: true, actor: user)
                |> Api.load!(:role, authorize?: true)

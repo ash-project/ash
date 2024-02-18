@@ -51,7 +51,7 @@ defmodule Ash.Test.Policy.StrictConditionTest do
 
     assert_raise Ash.Error.Forbidden, fn ->
       Resource
-      |> Ash.Query.for_read(:read, actor: %{id: "foo"})
+      |> Ash.Query.for_read(:read, %{}, actor: %{id: "foo"})
       |> Api.read!()
     end
   end

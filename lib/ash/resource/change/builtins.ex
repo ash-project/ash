@@ -185,10 +185,16 @@ defmodule Ash.Resource.Change.Builtins do
 
   @doc """
   Updates an attribute using an expression. See `Ash.Changeset.atomic_update/3` for more.
+
+  Options:
+
+  * `:cast_atomic?` - set to `false` to ignore atomic type casting logic. Defaults to `true`.
   """
-  @spec atomic_update(attribute :: atom, expr :: Ash.Expr.t()) :: Ash.Resource.Change.ref()
-  def atomic_update(attribute, expr) do
-    {Ash.Resource.Change.Atomic, attribute: attribute, expr: expr}
+  @spec atomic_update(attribute :: atom, expr :: Ash.Expr.t(), opts :: Keyword.t()) ::
+          Ash.Resource.Change.ref()
+  def atomic_update(attribute, expr, opts \\ []) do
+    {Ash.Resource.Change.Atomic,
+     attribute: attribute, expr: expr, cast_atomic?: Keyword.get(opts, :cast_atomic?, true)}
   end
 
   @doc """
