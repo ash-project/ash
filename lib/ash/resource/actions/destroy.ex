@@ -60,7 +60,7 @@ defmodule Ash.Resource.Actions.Destroy do
                   doc: """
                   Require that the update be atomic. Only relevant if `soft?` is set to `true`. This means that all changes and validations implement the `atomic` callback. See the guide on atomic updates for more.
                   """,
-                  default: false
+                  default: true
                 ]
               ]
               |> Spark.OptionsHelpers.merge_schemas(
