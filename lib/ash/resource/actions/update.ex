@@ -53,14 +53,12 @@ defmodule Ash.Resource.Actions.Update do
                   Override the update behavior. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
                   """
                 ],
-                # Flags.ash_three?
-                # here and in destroy actions
                 require_atomic?: [
                   type: :boolean,
                   doc: """
                   Require that the update be atomic. This means that all changes and validations implement the `atomic` callback. See the guide on atomic updates for more.
                   """,
-                  default: false
+                  default: true
                 ]
               ]
               |> Spark.OptionsHelpers.merge_schemas(
