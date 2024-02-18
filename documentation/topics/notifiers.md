@@ -64,7 +64,7 @@ Post
 |> Api.update!()
 ```
 
-Ash doesn't support bulk database operations yet, so it performs the following operations:
+`Ash.Changeset.manage_relationship` doesn't leverage bulk operations yet, so it performs the following operations:
 
 - a read of the currently related posts
 - a read of the currently related comments
