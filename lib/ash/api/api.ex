@@ -538,9 +538,7 @@ defmodule Ash.Api do
     ]
   ]
 
-  @bulk_strategy_default if Ash.Flags.ash_three?(),
-                           do: :atomic,
-                           else: [:atomic, :atomic_batches, :stream]
+  @bulk_strategy_default :atomic
 
   @bulk_update_opts_schema [
                              resource: [
