@@ -56,7 +56,7 @@ defmodule Ash.Api.Dsl do
     examples: [
       """
       authorization do
-        authorize :by_default
+        authorize :when_requested
       end
       """
     ],
@@ -68,7 +68,7 @@ defmodule Ash.Api.Dsl do
       ],
       authorize: [
         type: {:in, [:always, :by_default, :when_requested]},
-        default: :when_requested,
+        default: :by_default,
         doc: """
         When to run authorization for a given request.
         """
