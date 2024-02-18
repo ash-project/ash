@@ -312,7 +312,7 @@ defmodule Ash.Test.Actions.UpdateTest do
         |> Ash.Changeset.new(%{title: "foo", contents: "bar"})
         |> Api.create!()
 
-      assert %Post{title: "bar", contents: %Ash.NotSelected{}} =
+      assert %Post{title: "bar", contents: %Ash.NotLoaded{}} =
                post
                |> Ash.Changeset.new(%{title: "bar", contents: "foo"})
                |> Ash.Changeset.select(:title)

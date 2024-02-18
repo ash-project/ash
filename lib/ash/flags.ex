@@ -22,7 +22,8 @@ defmodule Ash.Flags do
   #   actual = Map.get(@flag_values, flag)
 
   #   heading =
-  #     "Expected value of the `#{inspect(flag)}` feature flag to be `#{inspect(expected)}`, however it is `#{inspect(actual)}`."
+  #     "Expected value of the `#{inspect(flag)}` feature flag to be `#{inspect(expected)}`,
+  #   however it is `#{inspect(actual)}`."
 
   #   quote do
   #     raise Ash.Error.Framework.FlagAssertionFailed.exception(

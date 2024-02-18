@@ -708,7 +708,7 @@ defmodule Ash.Test.CalculationTest do
     admin_role: role
   } do
     role
-    |> Ash.Changeset.for_update(:update, %{user_id: user1.id})
+    |> Ash.Changeset.for_update(:update)
     |> Ash.Changeset.manage_relationship(:user, user1, type: :append)
     |> Api.update!()
 
@@ -722,7 +722,7 @@ defmodule Ash.Test.CalculationTest do
     admin_role: role
   } do
     role
-    |> Ash.Changeset.for_update(:update, %{user_id: user1.id})
+    |> Ash.Changeset.for_update(:update, %{})
     |> Ash.Changeset.manage_relationship(:user, user1, type: :append)
     |> Api.update!()
 
@@ -1111,7 +1111,7 @@ defmodule Ash.Test.CalculationTest do
     user1 = user
 
     role
-    |> Ash.Changeset.for_update(:update, %{user_id: user1.id}, actor: actor)
+    |> Ash.Changeset.for_update(:update, %{}, actor: actor)
     |> Ash.Changeset.manage_relationship(:user, user1, type: :append)
     |> Api.update!(actor: actor)
 

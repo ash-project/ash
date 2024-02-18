@@ -520,7 +520,7 @@ defmodule Ash.Test.Actions.ReadTest do
 
       assert [%{name: "bruh"}] = Api.read!(Author)
 
-      assert [%{name: %Ash.NotSelected{}}] = Api.read!(Ash.Query.deselect(Author, :name))
+      assert [%{name: %Ash.NotLoaded{}}] = Api.read!(Ash.Query.deselect(Author, :name))
     end
 
     @tag :ash_three
@@ -531,7 +531,7 @@ defmodule Ash.Test.Actions.ReadTest do
 
       assert [%{name: "bruh"}] = Api.read!(Author)
 
-      assert [%{name: %Ash.NotSelected{field: :name}}] =
+      assert [%{name: %Ash.NotLoaded{field: :name}}] =
                Api.read!(Ash.Query.deselect(Author, :name))
     end
 

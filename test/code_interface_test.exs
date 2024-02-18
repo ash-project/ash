@@ -12,8 +12,8 @@ defmodule Ash.Test.CodeInterfaceTest do
 
     code_interface do
       define_for Ash.Test.CodeInterfaceTest.Api
-      define :get_user, action: :read, get?: true, args: [:id]
-      define :get_user_safely, action: :read, get?: true, args: [:id], not_found_error?: false
+      define :get_user, action: :read, get?: true
+      define :get_user_safely, action: :read, get?: true, not_found_error?: false
       define :read_users, action: :read
       define :get_by_id, action: :read, get_by: [:id]
       define :create, args: [{:optional, :first_name}]

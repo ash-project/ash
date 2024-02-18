@@ -36,8 +36,6 @@ defmodule Ash.Test.Flows.CancelParentResource do
       map :cancel_child_resources, result(:child_resources) do
         update :cancel_child_resource, Ash.Test.Flow.ChildResource, :system_cancel do
           record element(:cancel_child_resources)
-
-          input %{actor: arg(:actor)}
         end
       end
     end

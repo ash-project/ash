@@ -51,7 +51,7 @@ defmodule Ash.Test.Policy.FilterConditionTest do
 
     [visible_resource] =
       Resource
-      |> Ash.Query.for_read(:read, actor: %{id: "foo"})
+      |> Ash.Query.for_read(:read, %{}, actor: %{id: "foo"})
       |> Api.read!()
 
     assert visible_resource.visible == true

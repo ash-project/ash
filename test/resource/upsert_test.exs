@@ -192,13 +192,13 @@ defmodule Ash.Test.Resource.UpsertTest do
     end
 
     test "upsert with :replace_all" do
-      product = Product.upsert!(%{name: "fred", other: "george", other_2: "hagrid"})
+      product = Product.upsert!(%{name: "fred", other: "george"})
       assert product.name == "fred"
       assert product.other == "george"
 
       product =
         Product
-        |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy", other_2: "harry"},
+        |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy"},
           upsert_fields: :replace_all
         )
         |> ProductCatalog.create!()

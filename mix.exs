@@ -213,7 +213,6 @@ defmodule Ash.MixProject do
           Ash.UUID,
           Ash.NotLoaded,
           Ash.ForbiddenField,
-          Ash.NotSelected,
           Ash.Changeset.ManagedRelationshipHelpers,
           Ash.DataLayer.Simple,
           Ash.Filter.Simple,
