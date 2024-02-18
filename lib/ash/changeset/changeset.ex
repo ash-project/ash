@@ -242,6 +242,7 @@ defmodule Ash.Changeset do
     Changes.NoSuchAttribute,
     Changes.NoSuchRelationship,
     Changes.Required,
+    Invalid.NoSuchInput,
     Invalid.NoSuchResource
   }
 
@@ -777,7 +778,7 @@ defmodule Ash.Changeset do
               Ash.Expr.expr(^condition and ^expr)
             end
 
-          {:cont, {:atomic, new_expr}}
+          {:cont, new_expr}
 
         {:not_atomic, reason} ->
           {:halt, {:not_atomic, reason}}
@@ -1650,6 +1651,17 @@ defmodule Ash.Changeset do
 
     Enum.reduce(params, changeset, fn {name, value}, changeset ->
       cond do
+        !Ash.Resource.Info.action_input?(changeset.resource, action.name, name) ->
+          add_error(
+            changeset,
+            NoSuchInput.exception(
+              resource: changeset.resource,
+              action: action.name,
+              input: name,
+              inputs: Ash.Resource.Info.action_inputs(changeset.resource, action.name)
+            )
+          )
+
         argument = get_action_argument(action, name) ->
           do_set_argument(changeset, argument.name, value, true)
 

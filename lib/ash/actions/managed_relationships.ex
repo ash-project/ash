@@ -223,7 +223,7 @@ defmodule Ash.Actions.ManagedRelationships do
                               name: relationship.name
                             }
                           })
-                          |> Ash.Query.for_read(read, input,
+                          |> Ash.Query.for_read(read, %{},
                             actor: actor,
                             authorize?: opts[:authorize?]
                           )
@@ -849,7 +849,7 @@ defmodule Ash.Actions.ManagedRelationships do
                   |> Ash.Query.set_context(%{
                     accessing_from: %{source: relationship.source, name: relationship.name}
                   })
-                  |> Ash.Query.for_read(read, input, actor: actor, authorize?: opts[:authorize?])
+                  |> Ash.Query.for_read(read, %{}, actor: actor, authorize?: opts[:authorize?])
                   |> Ash.Query.filter(^keys)
                   |> sort_and_filter(relationship)
                   |> Ash.Query.set_context(relationship.context)

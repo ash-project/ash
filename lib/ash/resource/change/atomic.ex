@@ -9,6 +9,10 @@ defmodule Ash.Resource.Change.Atomic do
 
   @impl true
   def atomic(_changeset, opts, _context) do
-    {:atomic, %{opts[:attribute] => opts[:expr]}}
+    if opts[:cast_atomic?] do
+      {:atomic, %{opts[:attribute] => opts[:expr]}}
+    else
+      {:atomic, %{opts[:attribute] => {:atomic, opts[:expr]}}}
+    end
   end
 end

@@ -12,7 +12,7 @@ defmodule Ash.Test.Policy.ComplexTest do
       Application.delete_env(:ash, :policies)
     end)
 
-    me = User.create!("me", %{email: "me@app.com", bio: "this is my bio"})
+    me = User.create!("me", %{email: "me@app.com", bio_text: "this is my bio"})
     my_friend = User.create!("my friend", %{email: "my_friend@app.com"})
 
     a_friend_of_my_friend =

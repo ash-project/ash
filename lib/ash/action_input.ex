@@ -179,9 +179,13 @@ defmodule Ash.ActionInput do
         set_argument(input, name, value)
       else
         error =
-          InvalidArgument.exception(field: name, value: value, message: "Unknown argument")
+          Ash.Error.Invalid.NoSuchInput.exception(
+            resource: input.resource,
+            action: input.action.name,
+            input: name,
+            inputs: Enum.map(input.action.arguments, & &1.name)
+          )
 
-        input = %{input | invalid_keys: MapSet.put(input.invalid_keys, name)}
         add_error(input, Ash.Error.set_path(error, name))
       end
     end)
