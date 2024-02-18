@@ -1,10 +1,5 @@
 import Config
 
-config :ash,
-  flags: [
-    ash_three?: System.get_env("ASH_THREE", "false") == "true"
-  ]
-
 if Mix.env() == :dev do
   config :git_ops,
     mix_project: Ash.MixProject,
