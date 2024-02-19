@@ -1351,10 +1351,27 @@ defmodule Ash.Changeset do
   """
   def present?(changeset, attribute) do
     arg_or_attribute_value =
-      case Ash.Changeset.get_argument_or_attribute(changeset, attribute) do
-        %Ash.NotLoaded{} -> nil
-        %Ash.ForbiddenField{} -> nil
-        other -> other
+      case Ash.Changeset.fetch_argument(changeset, attribute) do
+        {:ok, nil} ->
+          Ash.Changeset.get_attribute(changeset, attribute)
+
+        :error ->
+          Ash.Changeset.get_attribute(changeset, attribute)
+
+        {:ok, value} ->
+          {:ok, value}
+      end
+
+    arg_or_attribute_value =
+      case arg_or_attribute_value do
+        %Ash.NotLoaded{} ->
+          nil
+
+        %Ash.ForbiddenField{} ->
+          nil
+
+        other ->
+          other
       end
 
     not is_nil(arg_or_attribute_value) ||
