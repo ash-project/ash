@@ -87,15 +87,15 @@ defmodule Ash.Actions.Destroy do
 
         query =
           atomic_changeset.resource
-          |> Ash.Query.set_context(%{private: %{internal?: true}})
-          |> Ash.Query.for_read(primary_read.name,
+          |> Ash.Query.for_read(primary_read.name, %{},
             actor: opts[:actor],
             authorize?: false,
-            tracer: opts[:tracer],
-            tenant: atomic_changeset.tenant
+            context: atomic_changeset.context,
+            tenant: atomic_changeset.tenant,
+            tracer: opts[:tracer]
           )
+          |> Ash.Query.set_context(%{private: %{internal?: true}})
           |> Ash.Query.do_filter(primary_key_filter)
-          |> Ash.Query.set_context(changeset.context)
 
         case Ash.Actions.Destroy.Bulk.run(
                api,
