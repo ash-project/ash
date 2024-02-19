@@ -640,14 +640,15 @@ defmodule Ash.Actions.Update.Bulk do
         pkeys = [or: Enum.map(batch, &Map.take(&1, pkey))]
 
         resource
-        |> Ash.Query.for_read(Ash.Resource.Info.primary_action!(resource, :read).name,
+        |> Ash.Query.for_read(Ash.Resource.Info.primary_action!(resource, :read).name, %{},
           actor: opts[:actor],
           authorize?: false,
+          context: atomic_changeset.context,
           tenant: atomic_changeset.tenant,
           tracer: opts[:tracer]
         )
-        |> Ash.Query.filter(^pkeys)
         |> Ash.Query.set_context(%{private: %{internal?: true}})
+        |> Ash.Query.filter(^pkeys)
         |> Ash.Query.select([])
         |> then(fn query ->
           run(api, query, action.name, input,

@@ -499,7 +499,7 @@ defmodule Ash.Query do
           |> set_actor(opts)
           |> set_authorize?(opts)
           |> set_tracer(opts)
-          |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
+          |> set_tenant(opts[:tenant] || query.tenant)
           |> cast_params(action, args)
           |> set_argument_defaults(action)
           |> require_arguments(action)
