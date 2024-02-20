@@ -17,6 +17,12 @@ on:
       postgres:
         type: boolean
         default: false
+      ash_postgres:
+        type: boolean
+        default: true
+      ecto_postgres:
+        type: boolean
+        default: false
       postgres-version:
         type: string
         default: "13"
@@ -151,25 +157,30 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: team-alembic/staple-actions/actions/mix-task@main
+        if: ${{inputs.postgres && inputs.ash_postgres}}
         with:
           mix-env: test
           task: ash_postgres.generate_migrations --check
-        if: ${{inputs.postgres}}
       - uses: team-alembic/staple-actions/actions/mix-task@main
         with:
           mix-env: test
           task: ash_postgres.create
-        if: ${{inputs.postgres}}
+        if: ${{inputs.postgres && inputs.ash_postgres}}
       - uses: team-alembic/staple-actions/actions/mix-task@main
         with:
           mix-env: test
           task: ash_postgres.migrate
-        if: ${{inputs.postgres}}
+        if: ${{inputs.postgres && inputs.ash_postgres}}
       - uses: team-alembic/staple-actions/actions/mix-task@main
         with:
           mix-env: test
           task: ash_postgres.migrate --tenants
-        if: ${{inputs.postgres}}
+        if: ${{inputs.postgres && inputs.ash_postgres}}
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        with:
+          mix-env: test
+          task: ecto.migrate
+        if: ${{inputs.postgres && inputs.ecto_postgres}}
       - uses: team-alembic/staple-actions/actions/mix-task@main
         with:
           mix-env: test
