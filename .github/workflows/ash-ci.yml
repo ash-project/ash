@@ -169,6 +169,11 @@ jobs:
       - uses: team-alembic/staple-actions/actions/mix-task@main
         with:
           mix-env: test
+          task: ecto.create
+        if: ${{inputs.postgres && inputs.ecto_postgres}}
+      - uses: team-alembic/staple-actions/actions/mix-task@main
+        with:
+          mix-env: test
           task: ash_postgres.migrate
         if: ${{inputs.postgres && inputs.ash_postgres}}
       - uses: team-alembic/staple-actions/actions/mix-task@main
