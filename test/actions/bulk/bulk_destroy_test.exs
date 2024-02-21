@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  require Ash.Query
+
   defmodule AddAfterToTitle do
     use Ash.Resource.Change
 
@@ -43,7 +45,12 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      defaults [:create, :update, :destroy]
+
+      read :read do
+        primary? true
+        pagination keyset?: true, required?: false
+      end
 
       destroy :destroy_with_change do
         change fn changeset, _ ->
@@ -319,6 +326,21 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                  resource: Post,
                  return_records?: true,
                  return_errors?: true
+               )
+    end
+
+    test "policy success results in successes with query" do
+      Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+        return_records?: true
+      )
+
+      assert %Ash.BulkResult{errors: []} =
+               Post
+               |> Ash.Query.filter(title: ["title1", "title2"])
+               |> Api.bulk_destroy(
+                 :destroy_with_policy,
+                 %{authorize?: true},
+                 authorize?: true
                )
     end
 
