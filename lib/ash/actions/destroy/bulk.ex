@@ -29,6 +29,13 @@ defmodule Ash.Actions.Destroy.Bulk do
         query
       end
 
+    query =
+      if opts[:context] do
+        Ash.Query.set_context(query, opts[:context])
+      else
+        query
+      end
+
     query = %{query | api: api}
 
     fully_atomic_changeset =
@@ -111,6 +118,13 @@ defmodule Ash.Actions.Destroy.Bulk do
           Ash.Actions.Helpers.add_process_context(api, atomic_changeset, opts)
 
         atomic_changeset = %{atomic_changeset | api: api}
+
+        atomic_changeset =
+          if opts[:context] do
+            Ash.Query.set_context(atomic_changeset, opts[:context])
+          else
+            atomic_changeset
+          end
 
         notify? =
           if opts[:notify?] do
