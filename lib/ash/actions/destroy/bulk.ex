@@ -51,17 +51,6 @@ defmodule Ash.Actions.Destroy.Bulk do
 
     case fully_atomic_changeset do
       {:not_atomic, reason} ->
-        read_opts =
-          opts
-          |> Keyword.drop([
-            :resource,
-            :stream_batch_size,
-            :batch_size,
-            :stream_with,
-            :allow_stream_with
-          ])
-          |> Keyword.put(:batch_size, opts[:stream_batch_size])
-
         case Ash.Actions.Read.Stream.stream_strategy(
                query,
                nil,
@@ -85,11 +74,23 @@ defmodule Ash.Actions.Destroy.Bulk do
             }
 
           _ ->
+            read_opts =
+              opts
+              |> then(fn read_opts ->
+                if opts[:batch_size] do
+                  Keyword.put(read_opts, :batch_size, opts[:stream_batch_size])
+                else
+                  read_opts
+                end
+              end)
+              |> Keyword.put(:authorize?, opts[:authorize?] && opts[:authorize_query?])
+              |> Keyword.take(Ash.Api.stream_opt_keys())
+
             run(
               api,
               api.stream!(
                 query,
-                Keyword.put(read_opts, :authorize?, opts[:authorize?] && opts[:authorize_query?])
+                read_opts
               ),
               action,
               input,

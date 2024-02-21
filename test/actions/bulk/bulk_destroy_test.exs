@@ -101,6 +101,10 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       policy action(:destroy_with_policy) do
         authorize_if context_equals(:authorize?, true)
       end
+
+      policy action(:read) do
+        authorize_if always()
+      end
     end
 
     attributes do
@@ -336,11 +340,12 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
 
       assert %Ash.BulkResult{errors: []} =
                Post
-               |> Ash.Query.filter(title: ["title1", "title2"])
+               |> Ash.Query.filter(title: [in: ["title1", "title2"]])
                |> Api.bulk_destroy(
                  :destroy_with_policy,
                  %{authorize?: true},
-                 authorize?: true
+                 authorize?: true,
+                 return_errors?: true
                )
     end
 
