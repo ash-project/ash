@@ -2,6 +2,9 @@ defmodule Ash.Reactor do
   @moduledoc """
   `Ash.Reactor` is a [`Reactor`](https://hex.pm/packages/reactor) extension
   which provides steps for working with Ash resources and actions.
+
+  See the [Ash Reactor Guide](https://hexdocs.pm/ash/reactor.html) for more
+  information.
   """
 
   @ash %Spark.Dsl.Section{
