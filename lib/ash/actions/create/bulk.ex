@@ -787,6 +787,7 @@ defmodule Ash.Actions.Create.Bulk do
         if changeset.valid? do
           case api.can(changeset, opts[:actor],
                  return_forbidden_error?: true,
+                 run_queries?: false,
                  maybe_is: false,
                  alter_source?: true
                ) do

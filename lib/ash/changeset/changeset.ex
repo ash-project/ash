@@ -24,6 +24,7 @@ defmodule Ash.Changeset do
     filters: %{},
     action_failed?: false,
     atomics: [],
+    atomic_validations: [],
     after_action: [],
     after_transaction: [],
     arguments: %{},
@@ -590,7 +591,7 @@ defmodule Ash.Changeset do
     case List.wrap(module.atomic(changeset, validation_opts)) do
       [{:atomic, _, _, _} | _] = atomics ->
         Enum.reduce_while(atomics, changeset, fn
-          {:atomic, fields, condition_expr, error_expr}, changeset ->
+          {:atomic, _fields, condition_expr, error_expr}, changeset ->
             condition_expr = rewrite_atomics(changeset, condition_expr)
 
             Ash.Filter.walk_filter_template(condition_expr, fn
@@ -601,26 +602,21 @@ defmodule Ash.Changeset do
                 other
             end)
 
-            with {:changing?, true} <-
-                   {:changing?,
-                    fields == :* || Enum.any?(fields, &changing_attribute?(changeset, &1))},
-                 {:atomic, condition} <- atomic_condition(where, changeset) do
-              case condition do
-                true ->
-                  {:cont, validate_atomically(changeset, condition_expr, error_expr)}
+            case atomic_condition(where, changeset) do
+              {:atomic, condition} ->
+                case condition do
+                  true ->
+                    {:cont, validate_atomically(changeset, condition_expr, error_expr)}
 
-                false ->
-                  {:cont, changeset}
+                  false ->
+                    {:cont, changeset}
 
-                condition ->
-                  condition_expr =
-                    Ash.Expr.expr(^condition and condition_expr)
+                  condition ->
+                    condition_expr =
+                      Ash.Expr.expr(^condition and condition_expr)
 
-                  {:cont, validate_atomically(changeset, condition_expr, error_expr)}
-              end
-            else
-              {:changing?, false} ->
-                {:cont, changeset}
+                    {:cont, validate_atomically(changeset, condition_expr, error_expr)}
+                end
 
               {:not_atomic, reason} ->
                 {:halt, {:not_atomic, reason}}
@@ -719,19 +715,10 @@ defmodule Ash.Changeset do
   defp atomic_with_changeset(other, _), do: other
 
   defp validate_atomically(changeset, condition_expr, error_expr) do
-    [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
-
-    atomic_update(
-      changeset,
-      first_pkey_field,
-      Ash.Expr.expr(
-        if ^condition_expr do
-          ^error_expr
-        else
-          ^atomic_ref(changeset, first_pkey_field)
-        end
-      )
-    )
+    %{
+      changeset
+      | atomic_validations: [{condition_expr, error_expr} | changeset.atomic_validations]
+    }
   end
 
   @doc """
@@ -1826,37 +1813,106 @@ defmodule Ash.Changeset do
     end)
     |> case do
       {:ok, hydrated_changeset} ->
-        if Keyword.get(opts, :eager?, true) do
-          add_known_atomic_errors(hydrated_changeset)
-        else
-          hydrated_changeset
-        end
+        hydrated_changeset
+        |> add_atomic_validations(actor, opts)
+        |> Map.put(:atomic_validations, [])
 
       other ->
         other
     end
   end
 
-  defp add_known_atomic_errors(changeset) do
-    Enum.reduce(changeset.atomics, changeset, fn
-      {_,
-       %Ash.Query.Function.Error{
-         arguments: [exception, input]
-       }},
-      changeset ->
-        if Ash.Filter.TemplateHelpers.expr?(input) do
-          changeset
-        else
-          add_error(
-            changeset,
-            Ash.Error.from_json(exception, Jason.decode!(Jason.encode!(input)))
-          )
-        end
+  defp add_atomic_validations(changeset, actor, opts) do
+    eager? = Keyword.get(opts, :eager?, true)
 
-      _other, changeset ->
-        changeset
+    changeset.atomic_validations
+    |> Enum.reduce_while(changeset, fn {condition_expr, error_expr}, changeset ->
+      condition_expr =
+        Ash.Filter.build_filter_from_template(
+          condition_expr,
+          actor,
+          changeset.arguments,
+          changeset.context,
+          changeset
+        )
+
+      error_expr =
+        Ash.Filter.build_filter_from_template(
+          error_expr,
+          actor,
+          changeset.arguments,
+          changeset.context,
+          changeset
+        )
+
+      with {:expr, {:ok, condition_expr}, _expr} <-
+             {:expr,
+              Ash.Filter.hydrate_refs(condition_expr, %{
+                resource: changeset.resource,
+                public?: false
+              }), condition_expr},
+           {:expr, {:ok, error_expr}, _} <-
+             {:expr,
+              Ash.Filter.hydrate_refs(error_expr, %{resource: changeset.resource, public?: false}),
+              error_expr} do
+        case extract_eager_error(condition_expr, error_expr, eager?) do
+          {:ok, error} ->
+            {:cont,
+             add_error(
+               changeset,
+               error
+             )}
+
+          :error ->
+            [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
+
+            full_atomic_update =
+              Ash.Expr.expr(
+                if ^condition_expr do
+                  ^error_expr
+                else
+                  ^atomic_ref(changeset, first_pkey_field)
+                end
+              )
+
+            case Ash.Filter.hydrate_refs(full_atomic_update, %{
+                   resource: changeset.resource,
+                   public: false
+                 }) do
+              {:ok, full_atomic_update} ->
+                {:cont,
+                 atomic_update(
+                   changeset,
+                   first_pkey_field,
+                   full_atomic_update
+                 )}
+
+              {:error, error} ->
+                {:halt,
+                 {:not_atomic,
+                  "Failed to validate expression #{inspect(full_atomic_update)}: #{inspect(error)}"}}
+            end
+        end
+      else
+        {:expr, {:error, error}, expr} ->
+          {:halt,
+           {:not_atomic, "Failed to validate expression #{inspect(expr)}: #{inspect(error)}"}}
+      end
     end)
   end
+
+  defp extract_eager_error(true, error_expr, true) do
+    with %Ash.Query.Function.Error{arguments: [exception, input]} <- error_expr,
+         false <- Ash.Filter.TemplateHelpers.expr?(exception),
+         false <- Ash.Filter.TemplateHelpers.expr?(input) do
+      {:ok, Ash.Error.from_json(exception, Jason.decode!(Jason.encode!(input)))}
+    else
+      _ ->
+        :error
+    end
+  end
+
+  defp extract_eager_error(_, _, _), do: :error
 
   @doc false
   def set_defaults(changeset, action_type, lazy? \\ false)

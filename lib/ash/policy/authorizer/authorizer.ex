@@ -496,6 +496,9 @@ defmodule Ash.Policy.Authorizer do
       {:error, error} ->
         {:error, error}
 
+      {:continue, authorizer} ->
+        {:continue, authorizer}
+
       {other, _authorizer} ->
         other
     end

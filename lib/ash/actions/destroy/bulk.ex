@@ -869,6 +869,7 @@ defmodule Ash.Actions.Destroy.Bulk do
              return_forbidden_error?: true,
              atomic_changeset: atomic_changeset,
              filter_with: opts[:authorize_query_with] || :filter,
+             run_queries?: false,
              maybe_is: false,
              alter_source?: true
            ) do
@@ -895,6 +896,7 @@ defmodule Ash.Actions.Destroy.Bulk do
              return_forbidden_error?: true,
              maybe_is: false,
              atomic_changeset: changeset,
+             run_queries?: false,
              filter_with: opts[:authorize_changeset_with] || :filter,
              alter_source?: true,
              base_query: query

@@ -1154,6 +1154,7 @@ defmodule Ash.Api do
 
                           case authorizer.check(authorizer_state, context) do
                             :authorized -> {:ok, results}
+                            {:error, :forbidden, error} -> {:error, error}
                             {:error, error} -> {:error, error}
                             {:data, data} -> {:ok, data}
                           end
