@@ -209,31 +209,6 @@ defmodule Ash.CodeInterface do
     Ash.CodeInterface.define_interface(MyApp.Accounting, MyApp.Accounting.Invoice)
   end
   ```
-
-  Keep in mind that you can have this "automatically" defined in your resources by using the `define_for`
-  flag in a resource.
-
-  For example:
-
-  ```elixir
-  defmodule MyApp.Accounting.Transaction do
-    use Ash.Resource
-
-    ...
-
-    code_interface do
-      define_for MyApp.Accounting
-
-      define :start do
-        args [:invoice_id]
-      end
-    end
-  end
-
-  # Which can now be used like so:
-
-  MyApp.Accounting.Transaction.start!(invoice.id)
-  ```
   """
   defmacro define_interface(api, resource) do
     quote bind_quoted: [api: api, resource: resource], generated: true, location: :keep do

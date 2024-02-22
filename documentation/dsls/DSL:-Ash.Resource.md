@@ -1793,7 +1793,6 @@ Functions that will be defined on the Api module to interact with this resource.
 ### Examples
 ```
 code_interface do
-  define_for MyApp.Api
   define :create_user, action: :create
   define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
 end
@@ -1807,7 +1806,8 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`define_for`](#code_interface-define_for){: #code_interface-define_for } | `module` | `false` | Defines the code interface on the resource module directly, using the provided Api. |
+| [`api`](#code_interface-api){: #code_interface-api } | `module` | `false` | Use the provided Api instead of the resources configured api when calling actions. |
+| [`define?`](#code_interface-define?){: #code_interface-define? } | `boolean` |  | Whether or not to define the code interface in the resource. |
 
 
 

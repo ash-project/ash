@@ -4,17 +4,15 @@ One of the ways that we interact with our resources is via hand-written code. Th
 
 ```elixir
 code_interface do
-  define_for Helpdesk.Support
-
   define :open, args: [:subject]
 end
 ```
 
 This simple setup now allows you to open a ticket with `Helpdesk.Support.Ticket.open(subject)`. You can cause it to raise errors instead of return them with `Helpdesk.Support.Ticket.open!(subject)`. For information on the options and additional inputs these defined functions take, look at the generated function documentation, which you can do in iex with `h Helpdesk.Support.Ticket.open`. For more information on the code interface, read the DSL documentation: `d:Ash.Resource.Dsl.code_interface`.
 
-## define_for and define_interface
+## define_interface
 
-Notice how we included a specific Api module using `define_for` above. Without this, no functions will be defined in the resource. This is because you might want to define the interface for multiple resources in a single module. While we encourage the use of `define_for Api`, it is not the only way to do it. You could also do something like this:
+The interface will be defined on the resource by default, as long as the `api` option was given to `use Ash.Resource`. If you would like to define it in a different module, you can use `define? false` in the `code_interface` block, and then use `Ash.CodeInterface` to define the interface elsewhere, as shown below.
 
 ```elixir
 defmodule MyApp.MyApi.Interface do
@@ -73,7 +71,6 @@ calculations do
 end
 
 code_interface do
-  define_for YourApi
   define_calculation :full_name, args: [:first_name, :last_name, {:optional, :separator}]
   # or if you want to take a record as an argument
   define_calculation :full_name, args: [:_record]

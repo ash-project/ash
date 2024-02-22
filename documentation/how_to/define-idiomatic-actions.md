@@ -47,7 +47,6 @@ But the better way to model this would be something like this:
 
 ```elixir
 code_interface do
-  define_for MyApp.Tweets
   define :front_page, args: [:sort_by]
 end
   

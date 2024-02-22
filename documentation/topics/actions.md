@@ -75,8 +75,6 @@ And here is the "right way", where the rules about getting the top tickets have 
 # in the resource
 
 code_interface do
-  define_for Helpdesk.Support
-
   define :top, args: [:user_id]
 end
 

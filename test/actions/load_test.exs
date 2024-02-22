@@ -226,8 +226,6 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     code_interface do
-      define_for(Api)
-
       define :get_by_id do
         action(:read)
         get_by([:id])

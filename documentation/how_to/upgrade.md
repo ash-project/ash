@@ -4,7 +4,11 @@
 
 This section contains each breaking change, and the steps required to address it in your application
 
-### the `Api` of a resource must now be known when constructing a changeset
+### DSL Changes
+
+* `code_interface.define_for` is now `code_interface.api`. Additionally, it is set automatically if the `api` option is specified on `use Ash.Resource`.
+
+### the `Api` of a resource must now be known when constructing a changeset, query or action input
 
 In order to honor rules on the `Api` module about authorization and timeouts, we have to know the `Api` when building the changeset.
 
@@ -43,8 +47,6 @@ For example:
 MyResource
 |> Ash.Changeset.for_create(:create, input, api: MyApp.MyApi)
 ```
-
-
 
 ### `Api.authorization.authorize` now defaults to `:by_default`
 
