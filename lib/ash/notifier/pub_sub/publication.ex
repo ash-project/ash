@@ -18,7 +18,7 @@ defmodule Ash.Notifier.PubSub.Publication do
     ],
     previous_values?: [
       type: :boolean,
-      default: true,
+      default: false,
       doc:
         "Whether or not to publish messages with both the new values and the old values for referencing changed attributes"
     ],

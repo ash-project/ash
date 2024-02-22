@@ -26,7 +26,7 @@ defmodule Ash.Policy.FilterCheckWithContext do
 
       def type, do: :filter
 
-      def requires_original_data?(_, _), do: true
+      def requires_original_data?(_, _), do: false
 
       def strict_check_context(opts) do
         []
