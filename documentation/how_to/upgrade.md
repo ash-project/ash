@@ -8,6 +8,17 @@ This section contains each breaking change, and the steps required to address it
 
 * `code_interface.define_for` is now `code_interface.api`. Additionally, it is set automatically if the `api` option is specified on `use Ash.Resource`.
 
+### `Ash.Registry` has been removed
+
+`Ash.Registry` is no longer needed. Place each resource in the api instead.
+
+```elixir
+resources do
+  resource Resource1
+  resource Resource2
+end
+```
+
 ### the `Api` of a resource must now be known when constructing a changeset, query or action input
 
 In order to honor rules on the `Api` module about authorization and timeouts, we have to know the `Api` when building the changeset.

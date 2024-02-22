@@ -85,8 +85,6 @@ spark_locals_without_parens = [
   destroy: 4,
   dispatcher: 1,
   eager_check_with: 1,
-  entry: 1,
-  entry: 2,
   error_handler: 1,
   event: 1,
   exists: 2,
@@ -182,7 +180,6 @@ spark_locals_without_parens = [
   read: 4,
   read_action: 1,
   record: 1,
-  registry: 1,
   reject: 1,
   relationship_context: 1,
   require_actor?: 1,
@@ -239,7 +236,6 @@ spark_locals_without_parens = [
   validate_destination_attribute?: 1,
   violation_message: 1,
   wait_for: 1,
-  warn_on_empty?: 1,
   where: 1,
   writable?: 1
 ]
