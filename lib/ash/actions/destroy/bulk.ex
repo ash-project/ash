@@ -179,7 +179,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
         atomic_changeset =
           if opts[:context] do
-            Ash.Query.set_context(atomic_changeset, opts[:context])
+            Ash.Changeset.set_context(atomic_changeset, opts[:context])
           else
             atomic_changeset
           end
