@@ -128,9 +128,17 @@ defmodule Ash.Resource.Info do
   @doc """
   The Api to define the interface for, when defining it in the resource
   """
-  @spec define_interface_for(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
-  def define_interface_for(resource) do
-    Extension.get_opt(resource, [:code_interface], :define_for, nil)
+  @spec code_interface_api(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
+  def code_interface_api(resource) do
+    Extension.get_opt(resource, [:code_interface], :api, nil)
+  end
+
+  @doc """
+  Whether or not to define the interface on the resource
+  """
+  @spec define_interface?(Spark.Dsl.t() | Ash.Resource.t()) :: boolean
+  def define_interface?(resource) do
+    Extension.get_opt(resource, [:code_interface], :define?, true)
   end
 
   @doc """

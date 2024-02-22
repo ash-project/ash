@@ -6,19 +6,6 @@ defmodule Ash.Resource.Interface do
 
   @type t :: %__MODULE__{}
 
-  defmacro __using__(_) do
-    quote bind_quoted: [], generated: true do
-      if define_for = Ash.Resource.Info.define_interface_for(__MODULE__) do
-        require Ash.CodeInterface
-
-        Ash.CodeInterface.define_interface(
-          define_for,
-          __MODULE__
-        )
-      end
-    end
-  end
-
   def transform(definition) do
     if definition.get_by || definition.get_by_identity do
       {:ok, %{definition | get?: true}}

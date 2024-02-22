@@ -42,8 +42,6 @@ defmodule Ash.Test.Flow.User do
   end
 
   code_interface do
-    define_for Ash.Test.Flow.Api
-
     define :to_approved, action: :approve
   end
 
