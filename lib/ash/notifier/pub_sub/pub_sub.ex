@@ -96,18 +96,6 @@ defmodule Ash.Notifier.PubSub do
 
   use Spark.Dsl.Extension, sections: @sections
 
-  @deprecated "use Ash.Notifier.PubSub.Info.publications/1 instead"
-  defdelegate publications(resource), to: Ash.Notifier.PubSub.Info
-
-  @deprecated "use Ash.Notifier.PubSub.Info.module/1 instead"
-  defdelegate module(resource), to: Ash.Notifier.PubSub.Info
-
-  @deprecated "use Ash.Notifier.PubSub.Info.prefix/1 instead"
-  defdelegate prefix(resource), to: Ash.Notifier.PubSub.Info
-
-  @deprecated "use Ash.Notifier.PubSub.Info.name/1 instead"
-  defdelegate name(resource), to: Ash.Notifier.PubSub.Info
-
   use Ash.Notifier
 
   alias Ash.Notifier.PubSub.Info
@@ -115,7 +103,7 @@ defmodule Ash.Notifier.PubSub do
   @doc false
   def notify(%Ash.Notifier.Notification{resource: resource} = notification) do
     resource
-    |> publications()
+    |> Ash.Notifier.PubSub.Info.publications()
     |> Enum.filter(&matches?(&1, notification.action))
     |> Enum.each(&publish_notification(&1, notification))
   end
@@ -123,7 +111,7 @@ defmodule Ash.Notifier.PubSub do
   @doc false
   def requires_original_data?(resource, action) do
     resource
-    |> publications()
+    |> Ash.Notifier.PubSub.Info.publications()
     |> Enum.filter(&(&1.previous_values? && matches?(&1, action)))
     |> Enum.flat_map(fn publish ->
       publish.topic
@@ -136,7 +124,7 @@ defmodule Ash.Notifier.PubSub do
   defp publish_notification(publish, notification) do
     debug? = Application.get_env(:ash, :pub_sub)[:debug?] || false
     event = publish.event || to_string(notification.action.name)
-    prefix = prefix(notification.resource) || ""
+    prefix = Ash.Notifier.PubSub.Info.prefix(notification.resource) || ""
     delimiter = Info.delimiter(notification.resource)
 
     topics =
@@ -153,7 +141,7 @@ defmodule Ash.Notifier.PubSub do
 
     if debug? do
       Logger.debug("""
-      Broadcasting to topics #{inspect(topics)} via #{inspect(module(notification.resource))}.broadcast
+      Broadcasting to topics #{inspect(topics)} via #{inspect(Ash.Notifier.PubSub.Info.module(notification.resource))}.broadcast
 
       Notification:
 
@@ -163,7 +151,7 @@ defmodule Ash.Notifier.PubSub do
 
     Enum.each(topics, fn topic ->
       args =
-        case name(notification.resource) do
+        case Ash.Notifier.PubSub.Info.name(notification.resource) do
           nil ->
             [topic, event, to_payload(topic, event, notification)]
 
@@ -182,7 +170,7 @@ defmodule Ash.Notifier.PubSub do
             args ++ dispatcher
         end
 
-      apply(module(notification.resource), :broadcast, args)
+      apply(Ash.Notifier.PubSub.Info.module(notification.resource), :broadcast, args)
     end)
   end
 

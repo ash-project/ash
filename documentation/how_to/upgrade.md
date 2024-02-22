@@ -19,6 +19,36 @@ resources do
 end
 ```
 
+### PubSub notifier no longer publishes events for previous values by default
+
+Previously, the Ash notifier would publish a message containing both the old *and* new values for changing attributes. Typically, we use
+things like IDs in notification topics, that do not change, so for most this will not have an impact.
+
+If you wish to send a notification for the old value and the new value, then an action cannot be done atomically. Bulk actions must update each record in turn, and atomic updates can't be leveraged.
+
+If you're comfortable with the performance implications, you can restore the previous behavior by addding `previous_values?: true` to your publications in your pub_sub notifier
+
+```elixir
+publish :update, ["user:updated", :email], previous_values?: true
+```
+
+### Custom checks and notifiers will not have access to the original data by default
+
+In your notifiers and policy checks, when you get a changeset you currently have access to the `data` field,
+which is the original record prior to being updated or destroyed. However, this is not compatible with atomic/bulk
+updates/destroys, where we may be given a query and told to destroy it. In those cases, `changeset.data` will be
+`%Ash.Changeset.OriginalDataNotAvailable{}`. When you write a custom check or a custom notifier, if you need access to the original data, you must add the following function:
+
+```elixir
+# in custom checks
+def requires_original_data?(_authorizer, _opts), do: true
+
+# in notifiers
+def requires_original_data?(_resource, _action), do: true
+```
+
+Keep in mind, this will prevent the usage of these checks/notifiers with atomic actions.
+
 ### the `Api` of a resource must now be known when constructing a changeset, query or action input
 
 In order to honor rules on the `Api` module about authorization and timeouts, we have to know the `Api` when building the changeset.
