@@ -3,7 +3,8 @@ defmodule Ash.Test.Flow.Api do
   use Ash.Api
 
   resources do
-    registry Ash.Test.Flow.Registry
+    resource Ash.Test.Flow.User
+    resource Ash.Test.Flow.Org
     allow_unregistered? true
   end
 end

@@ -6,6 +6,7 @@ defmodule Ash.Test.Actions.HasManyTest do
 
   defmodule Comment do
     use Ash.Resource,
+      api: Ash.Test.Actions.HasManyTest.OtherApi,
       data_layer: Ash.DataLayer.Ets
 
     actions do
@@ -23,25 +24,18 @@ defmodule Ash.Test.Actions.HasManyTest do
     end
   end
 
-  defmodule OtherRegistry do
-    use Ash.Registry
-
-    entries do
-      entry Comment
-    end
-  end
-
   defmodule OtherApi do
     use Ash.Api
 
     resources do
-      registry OtherRegistry
+      resource Comment
     end
   end
 
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
+      api: Ash.Test.Actions.HasManyTest.Api,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -77,21 +71,12 @@ defmodule Ash.Test.Actions.HasManyTest do
     end
   end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Post)
-    end
-  end
-
   defmodule Api do
     @moduledoc false
     use Ash.Api
 
     resources do
-      registry Registry
+      resource Post
     end
   end
 

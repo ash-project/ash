@@ -4,10 +4,12 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
 
   import ExUnit.CaptureLog
   require Ash.Query
+  alias Ash.Test.AnyApi, as: Api
 
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Mnesia,
       authorizers: [
         Ash.Test.Authorizer
@@ -68,6 +70,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Mnesia,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -121,7 +124,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
 
   defmodule PostCategory do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Mnesia
 
     actions do
       defaults [:create, :read, :destroy]
@@ -138,7 +141,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
 
   defmodule Category do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Mnesia
 
     actions do
       defaults [:create, :read]
@@ -157,33 +160,12 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
     end
   end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Author)
-      entry(Post)
-      entry(Category)
-      entry(PostCategory)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
-    end
-  end
-
   import Ash.Changeset
 
   describe "context" do
     setup do
       capture_log(fn ->
-        Ash.DataLayer.Mnesia.start(Api)
+        Ash.DataLayer.Mnesia.start(Api, [Category, PostCategory, Post, Author])
       end)
 
       on_exit(fn ->
@@ -259,7 +241,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
   describe "loads" do
     setup do
       capture_log(fn ->
-        Ash.DataLayer.Mnesia.start(Api)
+        Ash.DataLayer.Mnesia.start(Api, [Category, PostCategory, Post, Author])
       end)
 
       on_exit(fn ->

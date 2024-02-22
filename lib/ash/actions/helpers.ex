@@ -4,6 +4,8 @@ defmodule Ash.Actions.Helpers do
   require Ash.Flags
 
   def rollback_if_in_transaction({:error, error}, resource, changeset) do
+    error = Ash.Error.to_ash_error(error)
+
     if Ash.DataLayer.in_transaction?(resource) do
       case changeset do
         %Ash.Changeset{} = changeset ->

@@ -4,10 +4,12 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
 
   import ExUnit.CaptureLog
   require Ash.Query
+  alias Ash.Test.AnyApi, as: Api
 
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Mnesia,
       authorizers: [
         Ash.Test.Authorizer
@@ -30,6 +32,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Mnesia
 
     actions do
@@ -53,7 +56,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
 
   defmodule PostCategory do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Mnesia
 
     actions do
       defaults [:create, :read, :update, :destroy]
@@ -70,7 +73,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
 
   defmodule Category do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Mnesia
 
     actions do
       defaults [:create, :read, :update, :destroy]
@@ -89,30 +92,9 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
     end
   end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Author)
-      entry(Post)
-      entry(Category)
-      entry(PostCategory)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
-    end
-  end
-
   setup do
     capture_log(fn ->
-      Ash.DataLayer.Mnesia.start(Api)
+      Ash.DataLayer.Mnesia.start(Api, [Author, Post, Category, PostCategory])
     end)
 
     pid = self()
@@ -120,10 +102,10 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
     events =
       [
         [:ash, :request_step],
-        [:ash, :api, :read],
-        [:ash, :api, :create],
-        [:ash, :api, :destroy],
-        [:ash, :api, :update],
+        [:ash, :any_api, :read],
+        [:ash, :any_api, :create],
+        [:ash, :any_api, :destroy],
+        [:ash, :any_api, :update],
         [:ash, :flow]
       ]
       |> Enum.flat_map(fn list ->
@@ -169,7 +151,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
     assert [
              %Ash.Tracer.Simple.Span{
                type: :action,
-               name: "api:post.read",
+               name: "any_api:post.read",
                metadata: %{
                  action: :read,
                  resource: Ash.Test.TracerTest.AsyncLoadTest.Post
@@ -189,41 +171,41 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
              },
              %Ash.Tracer.Simple.Span{
                type: :action,
-               name: "api:post.create",
+               name: "any_api:post.create",
                metadata: %{
                  action: :create,
-                 api: Ash.Test.TracerTest.AsyncLoadTest.Api,
+                 api: Ash.Test.AnyApi,
                  resource: Ash.Test.TracerTest.AsyncLoadTest.Post
                }
              }
            ] = Ash.Tracer.Simple.gather_spans()
 
     assert_receive {:telemetry,
-                    {[:ash, :api, :create, :start], %{system_time: _},
+                    {[:ash, :any_api, :create, :start], %{system_time: _},
                      %{resource_short_name: :post}, _}}
 
     assert_receive {:telemetry,
-                    {[:ash, :api, :create, :stop], %{duration: _}, %{resource_short_name: :post},
-                     _}}
+                    {[:ash, :any_api, :create, :stop], %{duration: _},
+                     %{resource_short_name: :post}, _}}
 
     Post
     |> Ash.Query.load(:author)
     |> Api.read!(tracer: Ash.Tracer.Simple)
 
     assert_receive {:telemetry,
-                    {[:ash, :api, :read, :start], %{system_time: _},
+                    {[:ash, :any_api, :read, :start], %{system_time: _},
                      %{resource_short_name: :post}, []}}
 
     assert_receive {:telemetry,
-                    {[:ash, :api, :read, :start], %{system_time: _},
+                    {[:ash, :any_api, :read, :start], %{system_time: _},
                      %{resource_short_name: :author}, []}}
 
     assert_receive {:telemetry,
-                    {[:ash, :api, :read, :stop], %{duration: _, system_time: _},
+                    {[:ash, :any_api, :read, :stop], %{duration: _, system_time: _},
                      %{resource_short_name: :author}, []}}
 
     assert_receive {:telemetry,
-                    {[:ash, :api, :read, :stop], %{duration: _, system_time: _},
+                    {[:ash, :any_api, :read, :stop], %{duration: _, system_time: _},
                      %{resource_short_name: :post}, []}}
 
     refute_receive {:telemetry, _}
@@ -231,7 +213,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
     assert [
              %Ash.Tracer.Simple.Span{
                type: :action,
-               name: "api:post.read",
+               name: "any_api:post.read",
                metadata: %{
                  action: :read,
                  resource: Ash.Test.TracerTest.AsyncLoadTest.Post
@@ -240,6 +222,6 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
              }
            ] = Ash.Tracer.Simple.gather_spans()
 
-    assert Enum.any?(spans, &(&1.name == "api:author.read"))
+    assert Enum.any?(spans, &(&1.name == "any_api:author.read"))
   end
 end

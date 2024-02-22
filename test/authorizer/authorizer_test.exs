@@ -133,11 +133,11 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "test"})
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "foo"})
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
       assert [%Post{title: "foo"}] = Api.read!(Post, authorize?: true)
     end
@@ -157,12 +157,12 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
 
       good_post =
         Post
-        |> Ash.Changeset.for_create(:create, %{title: "foo"})
+        |> Ash.Changeset.for_create(:create, %{title: "foo"}, authorize?: false)
         |> Api.create!()
 
       bad_post =
         Post
-        |> Ash.Changeset.for_create(:create, %{title: "test"})
+        |> Ash.Changeset.for_create(:create, %{title: "test"}, authorize?: false)
         |> Api.create!()
 
       # Filters apply to the base data

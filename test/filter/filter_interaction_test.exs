@@ -5,12 +5,13 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
   import Ash.Test
 
   alias Ash.DataLayer.Mnesia
+  alias Ash.Test.AnyApi, as: Api
 
   require Ash.Query
 
   defmodule Profile do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     actions do
       defaults [:create, :read, :update, :destroy]
@@ -28,7 +29,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
   defmodule User do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     actions do
       defaults [:create, :read, :update, :destroy]
@@ -55,7 +56,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
   defmodule PostLink do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Mnesia
 
     actions do
       defaults [:create, :read, :update, :destroy]
@@ -76,7 +77,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Mnesia
 
     actions do
       defaults [:create, :read, :update, :destroy]
@@ -103,32 +104,11 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     end
   end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Post)
-      entry(User)
-      entry(Profile)
-      entry(PostLink)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
-    end
-  end
-
   import Ash.Changeset
 
   setup do
     capture_log(fn ->
-      Mnesia.start(Api)
+      Mnesia.start(Api, [Post, PostLink])
     end)
 
     on_exit(fn ->

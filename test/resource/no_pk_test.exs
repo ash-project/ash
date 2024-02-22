@@ -2,10 +2,11 @@ defmodule Ash.Test.Resource.NoPkTest do
   @moduledoc false
   use ExUnit.Case, async: true
   alias Ash.Changeset
+  alias Ash.Test.AnyApi, as: Api
 
   defmodule Temperature do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     resource do
       require_primary_key? false
@@ -33,7 +34,7 @@ defmodule Ash.Test.Resource.NoPkTest do
 
   defmodule Location do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
@@ -46,16 +47,6 @@ defmodule Ash.Test.Resource.NoPkTest do
     attributes do
       uuid_primary_key :id
       attribute :location, :string
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      resource Temperature
-      resource Location
     end
   end
 

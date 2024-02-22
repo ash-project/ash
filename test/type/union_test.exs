@@ -2,6 +2,8 @@ defmodule Ash.Test.Type.UnionTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Foo do
     use Ash.Resource, data_layer: :embedded
 
@@ -35,11 +37,13 @@ defmodule Ash.Test.Type.UnionTest do
         types: [
           foo: [
             type: Foo,
+            cast_tag?: false,
             tag: :type,
             tag_value: :foo
           ],
           bar: [
             type: Bar,
+            cast_tag?: false,
             tag: :type,
             tag_value: :bar
           ]
@@ -48,7 +52,7 @@ defmodule Ash.Test.Type.UnionTest do
   end
 
   defmodule Example do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
@@ -61,7 +65,9 @@ defmodule Ash.Test.Type.UnionTest do
         argument :new_thing, FooBarUnion, allow_nil?: false
 
         change fn changeset, _ ->
-          new_thing = Ash.Changeset.get_argument(changeset, :new_thing)
+          new_thing =
+            Ash.Changeset.get_argument(changeset, :new_thing)
+
           things = Ash.Changeset.get_attribute(changeset, :things)
 
           Ash.Changeset.change_attribute(
@@ -81,11 +87,13 @@ defmodule Ash.Test.Type.UnionTest do
                       types: [
                         foo: [
                           type: Foo,
+                          cast_tag?: false,
                           tag: :type,
                           tag_value: :foo
                         ],
                         bar: [
                           type: Bar,
+                          cast_tag?: false,
                           tag: :type,
                           tag_value: :bar
                         ]
@@ -98,11 +106,13 @@ defmodule Ash.Test.Type.UnionTest do
           types: [
             foo: [
               type: Foo,
+              cast_tag?: false,
               tag: :type,
               tag_value: "foo"
             ],
             bar: [
               type: Bar,
+              cast_tag?: false,
               tag: :type,
               tag_value: "bar"
             ]
@@ -187,6 +197,8 @@ defmodule Ash.Test.Type.UnionTest do
       types: [
         foo: [
           type: Foo,
+          cast_tag?: false,
+          constraints: [api: Api],
           tag: :type,
           tag_value: :foo
         ],
@@ -246,11 +258,15 @@ defmodule Ash.Test.Type.UnionTest do
         types: [
           foo: [
             type: Foo,
+            cast_tag?: false,
+            constraints: [api: Api],
             tag: :type,
             tag_value: :foo
           ],
           bar: [
             type: Bar,
+            cast_tag?: false,
+            constraints: [api: Api],
             tag: :type,
             tag_value: :bar
           ]

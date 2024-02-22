@@ -46,7 +46,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
     use Ash.Resource, data_layer: :embedded
 
     attributes do
-      uuid_primary_key :id
+      uuid_primary_key :id, writable?: true
       attribute :first_name, :string
       attribute :last_name, :string
       attribute :counter, :integer, default: 0, allow_nil?: false
@@ -119,7 +119,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
     use Ash.Resource, data_layer: :embedded
 
     attributes do
-      uuid_primary_key :id
+      uuid_primary_key :id, writable?: true
       attribute :type, :string
       attribute :name, :string
       attribute :score, :integer
@@ -148,7 +148,9 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
   end
 
   defmodule Author do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource,
+      api: Ash.Test.Changeset.EmbeddedResourceTest.Api,
+      data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -160,7 +162,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
     end
 
     attributes do
-      uuid_primary_key :id
+      uuid_primary_key :id, writable?: true
 
       attribute :profile, Profile,
         constraints: [

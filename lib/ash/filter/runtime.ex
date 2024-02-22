@@ -110,7 +110,7 @@ defmodule Ash.Filter.Runtime do
           |> Ash.Query.load(need_to_load)
           |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-        case api.load(records, query) do
+        case api.load(records, query, authorize?: false) do
           {:ok, loaded} ->
             filter_matches(api, loaded, filter, opts)
 

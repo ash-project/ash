@@ -2,11 +2,14 @@ defmodule Ash.Test.Dsl.Resource.Actions.DestroyTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
         @moduledoc false
         use Ash.Resource,
+          api: Api,
           data_layer: Ash.DataLayer.Ets
 
         attributes do

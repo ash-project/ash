@@ -5,12 +5,13 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
   alias __MODULE__
   alias Ash.Resource.Relationships.HasMany
   alias Ash.Resource.Relationships.ManyToMany
+  alias Ash.Test.AnyApi, as: Api
 
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
         attributes do
           uuid_primary_key :id

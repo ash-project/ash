@@ -1,9 +1,14 @@
 defmodule Ash.Test.Policy.StrictConditionTest do
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Resource do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, authorizers: [Ash.Policy.Authorizer]
+    use Ash.Resource,
+      api: Api,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
 
     ets do
       private?(true)
@@ -24,19 +29,6 @@ defmodule Ash.Test.Policy.StrictConditionTest do
       policy [action(:read), expr(visible == true)] do
         authorize_if always()
       end
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    authorization do
-      authorize :by_default
-    end
-
-    resources do
-      resource Resource
     end
   end
 

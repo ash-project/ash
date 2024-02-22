@@ -842,13 +842,25 @@ defmodule Ash.Type do
   def cast_atomic_update({:array, type}, term, constraints) do
     type = get_type(type)
 
-    type.cast_atomic_update_array(term, item_constraints(constraints))
+    with {:ok, value} <- maybe_cast_input({:array, type}, term, constraints) do
+      type.cast_atomic_update_array(value, item_constraints(constraints))
+    end
   end
 
   def cast_atomic_update(type, term, constraints) do
     type = get_type(type)
 
-    type.cast_atomic_update(term, constraints)
+    with {:ok, value} <- maybe_cast_input(type, term, constraints) do
+      type.cast_atomic_update(value, constraints)
+    end
+  end
+
+  defp maybe_cast_input(type, term, constraints) do
+    if Ash.Filter.TemplateHelpers.expr?(term) do
+      {:ok, term}
+    else
+      Ash.Type.cast_input(type, term, constraints)
+    end
   end
 
   @doc """
@@ -895,7 +907,11 @@ defmodule Ash.Type do
     type.equal?(left, right)
   end
 
-  @spec include_source(t(), Ash.Changeset.t() | Ash.Query.t(), constraints()) :: constraints()
+  @spec include_source(
+          t(),
+          Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t(),
+          constraints()
+        ) :: constraints()
   def include_source({:array, type}, changeset_or_query, constraints) do
     Keyword.put(
       constraints,

@@ -234,7 +234,11 @@ defmodule Ash.Actions.Read do
                opts[:authorize?]
              ),
            {:ok, data} <-
-             Ash.Actions.Read.Relationships.load(data, query, opts[:lazy?]),
+             Ash.Actions.Read.Relationships.load(
+               data,
+               query,
+               opts[:lazy?]
+             ),
            {:ok, data} <-
              Ash.Actions.Read.Calculations.run(
                data,

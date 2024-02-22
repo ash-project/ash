@@ -6,11 +6,13 @@ defmodule Ash.Test.Resource.CalculationsTest do
   alias Ash.Test.Support.PolicySimple.Api
   alias Ash.Test.Support.PolicySimple.Post
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource
+        use Ash.Resource, api: Api
 
         attributes do
           uuid_primary_key :id
@@ -76,7 +78,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
     test "calculations can access attributes of parent" do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
         attributes do
           uuid_primary_key :id
@@ -110,7 +112,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
 
       defmodule Comment do
         @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
         attributes do
           uuid_primary_key :id
@@ -133,34 +135,15 @@ defmodule Ash.Test.Resource.CalculationsTest do
         end
       end
 
-      defmodule Registry do
-        @moduledoc false
-        use Ash.Registry
-
-        entries do
-          entry(Post)
-          entry(Comment)
-        end
-      end
-
-      defmodule MyApi do
-        @moduledoc false
-        use Ash.Api
-
-        resources do
-          registry Registry
-        end
-      end
-
       post =
         Post
         |> Ash.Changeset.for_create(:create, %{name: "Post 1", contents: "Contents 1"})
-        |> MyApi.create!()
+        |> Api.create!()
 
       comment =
         Comment
         |> Ash.Changeset.for_create(:create, %{post_id: post.id})
-        |> MyApi.create!()
+        |> Api.create!()
 
       # assert true == true
       comment_with_post_name = Api.load!(comment, :post_name)
@@ -170,7 +153,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
     test "calculations can access attributes of parent in multitenant context" do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
         multitenancy do
           strategy(:context)
@@ -208,7 +191,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
 
       defmodule Comment do
         @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
         multitenancy do
           strategy(:context)
@@ -232,25 +215,6 @@ defmodule Ash.Test.Resource.CalculationsTest do
 
         calculations do
           calculate(:post_name, :string, PostName)
-        end
-      end
-
-      defmodule Registry do
-        @moduledoc false
-        use Ash.Registry
-
-        entries do
-          entry(Post)
-          entry(Comment)
-        end
-      end
-
-      defmodule MyApi do
-        @moduledoc false
-        use Ash.Api
-
-        resources do
-          registry Registry
         end
       end
 
@@ -261,12 +225,12 @@ defmodule Ash.Test.Resource.CalculationsTest do
         |> Ash.Changeset.for_create(:create, %{name: "Post 1", contents: "Contents 1"},
           tenant: tenant_id
         )
-        |> MyApi.create!()
+        |> Api.create!()
 
       comment =
         Comment
         |> Ash.Changeset.for_create(:create, %{post_id: post.id}, tenant: tenant_id)
-        |> MyApi.create!()
+        |> Api.create!()
 
       comment_with_post_name = Api.load!(comment, :post_name, tenant: tenant_id)
       assert comment_with_post_name.post_name == post.name

@@ -2,6 +2,8 @@ defmodule Ash.Test.Type.TypeTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule PostTitle do
     @moduledoc false
     use Ash.Type
@@ -46,7 +48,7 @@ defmodule Ash.Test.Type.TypeTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -60,24 +62,6 @@ defmodule Ash.Test.Type.TypeTest do
 
     actions do
       defaults [:create, :read]
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Post
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

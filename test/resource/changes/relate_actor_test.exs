@@ -2,8 +2,11 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Author do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets
 
     attributes do
@@ -26,6 +29,7 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
 
   defmodule Account do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets
 
     attributes do
@@ -39,6 +43,7 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
 
   defmodule Post do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets
 
     attributes do
@@ -68,25 +73,6 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
       create :create_possibly_without_actor do
         change relate_actor(:author, allow_nil?: true)
       end
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Account
-      entry Author
-      entry Post
-    end
-  end
-
-  defmodule Api do
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

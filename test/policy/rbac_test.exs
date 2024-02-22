@@ -8,8 +8,8 @@ defmodule Ash.Test.Policy.RbacTest do
 
   setup do
     [
-      user: Api.create!(Ash.Changeset.new(User)),
-      org: Api.create!(Ash.Changeset.new(Organization))
+      user: Api.create!(Ash.Changeset.new(User), authorize?: false),
+      org: Api.create!(Ash.Changeset.new(Organization), authorize?: false)
     ]
   end
 
@@ -141,13 +141,13 @@ defmodule Ash.Test.Policy.RbacTest do
     |> Ash.Changeset.new(%{role: role, resource: resource, resource_id: resource_id})
     |> Ash.Changeset.manage_relationship(:user, user, type: :append_and_remove)
     |> Ash.Changeset.manage_relationship(:organization, org, type: :append_and_remove)
-    |> Api.create!()
+    |> Api.create!(authorize?: false)
   end
 
   defp create_file(org, name) do
     File
     |> Ash.Changeset.new(%{name: name})
     |> Ash.Changeset.manage_relationship(:organization, org, type: :append_and_remove)
-    |> Api.create!()
+    |> Api.create!(authorize?: false)
   end
 end

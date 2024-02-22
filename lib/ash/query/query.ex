@@ -458,9 +458,14 @@ defmodule Ash.Query do
   def for_read(query, action_name, args \\ %{}, opts \\ []) do
     query = to_query(query)
 
+    api =
+      query.api || opts[:api] || Ash.Resource.Info.api(query.resource) ||
+        raise ArgumentError,
+              "Could not determine api for query. Provide the `api` option or configure an api in the resource directly."
+
     {query, opts} =
       Ash.Actions.Helpers.add_process_context(
-        query.api || opts[:api] || Ash.Resource.Info.api(query.resource),
+        api,
         query,
         opts
       )
@@ -509,7 +514,7 @@ defmodule Ash.Query do
         end
       end
     else
-      add_error(query, :action, "No such action #{action_name}")
+      add_error(query, :action, "No such action #{inspect(action_name)}")
     end
   end
 
@@ -1736,11 +1741,12 @@ defmodule Ash.Query do
         )
 
       with {:arg, argument} when not is_nil(argument) <- {:arg, argument},
+           value <- Ash.Type.Helpers.handle_indexed_maps(argument.type, value),
+           constraints <- Ash.Type.include_source(argument.type, query, argument.constraints),
            {:ok, casted} <-
-             Ash.Type.Helpers.cast_input(argument.type, value, argument.constraints, query),
+             Ash.Type.cast_input(argument.type, value, constraints),
            {:constrained, {:ok, casted}, argument} when not is_nil(casted) <-
-             {:constrained,
-              Ash.Type.apply_constraints(argument.type, casted, argument.constraints),
+             {:constrained, Ash.Type.apply_constraints(argument.type, casted, constraints),
               argument} do
         %{query | arguments: Map.put(query.arguments, argument.name, casted)}
       else

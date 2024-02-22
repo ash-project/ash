@@ -4,8 +4,11 @@ defmodule Ash.Test.Actions.AggregateTest do
 
   require Ash.Query
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Comment do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -43,6 +46,7 @@ defmodule Ash.Test.Actions.AggregateTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -126,61 +130,45 @@ defmodule Ash.Test.Actions.AggregateTest do
     end
   end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Post)
-      entry(Comment)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
-    end
-  end
-
   describe "Api.aggregate" do
     test "allows counting records" do
-      assert %{count: 0} = Api.aggregate!(Post, {:count, :count})
+      assert %{count: 0} = Api.aggregate!(Post, {:count, :count}, authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "title"})
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
-      assert %{count: 1} = Api.aggregate!(Post, {:count, :count})
+      assert %{count: 1} = Api.aggregate!(Post, {:count, :count}, authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "title"})
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
-      assert %{count: 2} = Api.aggregate!(Post, {:count, :count})
+      assert %{count: 2} = Api.aggregate!(Post, {:count, :count}, authorize?: false)
     end
 
     test "honors tenant" do
-      assert %{count: 0} = Api.aggregate!(Post, {:count, :count})
+      assert %{count: 0} = Api.aggregate!(Post, {:count, :count}, authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "title", tenant: "foo"})
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
-      assert %{count: 1} = Api.aggregate!(Post, {:count, :count}, tenant: "foo")
+      assert %{count: 1} =
+               Api.aggregate!(Post, {:count, :count}, tenant: "foo", authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "title", tenant: "foo"})
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "title", tenant: "bar"})
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
-      assert %{count: 2} = Api.aggregate!(Post, {:count, :count}, tenant: "foo")
-      assert %{count: 3} = Api.aggregate!(Post, {:count, :count})
+      assert %{count: 2} =
+               Api.aggregate!(Post, {:count, :count}, tenant: "foo", authorize?: false)
+
+      assert %{count: 3} = Api.aggregate!(Post, {:count, :count}, authorize?: false)
     end
 
     test "runs authorization" do
@@ -190,7 +178,7 @@ defmodule Ash.Test.Actions.AggregateTest do
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "title"})
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
       assert %{count: 0} = Api.aggregate!(Post, {:count, :count}, authorize?: true)
       assert 0 = Api.count!(Post, authorize?: true)
@@ -203,12 +191,12 @@ defmodule Ash.Test.Actions.AggregateTest do
       assert %{count: 1} =
                Api.aggregate!(Post, {:count, :count}, actor: nil, action: :unpublic)
 
-      assert 1 = Api.count!(Post, actor: nil, action: :unpublic)
+      assert 1 = Api.count!(Post, actor: nil, action: :unpublic, authorize?: true)
       assert 0 = Api.count!(Post, authorize?: true)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "title", public: true})
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
       assert %{count: 1} = Api.aggregate!(Post, {:count, :count}, authorize?: true)
       assert 1 = Api.count!(Post, authorize?: true)
@@ -220,18 +208,20 @@ defmodule Ash.Test.Actions.AggregateTest do
       post =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "title", public: true})
-        |> Api.create!()
+        |> Api.create!(authorize?: false)
 
       Comment
       |> Ash.Changeset.for_create(:create, %{post_id: post.id, public: true})
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
       Comment
       |> Ash.Changeset.for_create(:create, %{post_id: post.id, public: false})
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
       assert %{count_of_comments: 2, count_of_comments_unauthorized: 2} =
-               Api.load!(post, [:count_of_comments, :count_of_comments_unauthorized])
+               Api.load!(post, [:count_of_comments, :count_of_comments_unauthorized],
+                 authorize?: false
+               )
 
       assert %{count_of_comments: 1, count_of_comments_unauthorized: 2} =
                Api.load!(post, [:count_of_comments, :count_of_comments_unauthorized],
@@ -247,7 +237,7 @@ defmodule Ash.Test.Actions.AggregateTest do
           public: true,
           thing: "not the same"
         })
-        |> Api.create!()
+        |> Api.create!(authorize?: false)
 
       Comment
       |> Ash.Changeset.for_create(:create, %{
@@ -255,9 +245,9 @@ defmodule Ash.Test.Actions.AggregateTest do
         public: true,
         thing: "doesnt match"
       })
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
-      assert Api.load!(post, :count_of_comment_posts_with_matching_things).count_of_comment_posts_with_matching_things ==
+      assert Api.load!(post, :count_of_comment_posts_with_matching_things, authorize?: false).count_of_comment_posts_with_matching_things ==
                0
 
       Comment
@@ -266,9 +256,9 @@ defmodule Ash.Test.Actions.AggregateTest do
         public: true,
         thing: "not the same"
       })
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
-      assert Api.load!(post, :count_of_comment_posts_with_matching_things).count_of_comment_posts_with_matching_things ==
+      assert Api.load!(post, :count_of_comment_posts_with_matching_things, authorize?: false).count_of_comment_posts_with_matching_things ==
                1
     end
 
@@ -280,7 +270,7 @@ defmodule Ash.Test.Actions.AggregateTest do
           public: true,
           thing: "not the same"
         })
-        |> Api.create!()
+        |> Api.create!(authorize?: false)
 
       Comment
       |> Ash.Changeset.for_create(:create, %{
@@ -290,7 +280,7 @@ defmodule Ash.Test.Actions.AggregateTest do
         thing2: 10,
         thing3: 100
       })
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
       Comment
       |> Ash.Changeset.for_create(:create, %{
@@ -300,7 +290,7 @@ defmodule Ash.Test.Actions.AggregateTest do
         thing2: 20,
         thing3: 200
       })
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
       Comment
       |> Ash.Changeset.for_create(:create, %{
@@ -310,15 +300,26 @@ defmodule Ash.Test.Actions.AggregateTest do
         thing2: nil,
         thing3: nil
       })
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
-      assert Decimal.eq?(Api.load!(post, :min_of_thing2).min_of_thing2, Decimal.new(10))
-      assert Decimal.eq?(Api.load!(post, :max_of_thing2).max_of_thing2, Decimal.new(20))
-      assert Decimal.eq?(Api.load!(post, :average_of_thing2).average_of_thing2, Decimal.new(15))
+      assert Decimal.eq?(
+               Api.load!(post, :min_of_thing2, authorize?: false).min_of_thing2,
+               Decimal.new(10)
+             )
 
-      assert Api.load!(post, :min_of_thing3).min_of_thing3 == 100
-      assert Api.load!(post, :max_of_thing3).max_of_thing3 == 200
-      assert Api.load!(post, :average_of_thing3).average_of_thing3 == 150
+      assert Decimal.eq?(
+               Api.load!(post, :max_of_thing2, authorize?: false).max_of_thing2,
+               Decimal.new(20)
+             )
+
+      assert Decimal.eq?(
+               Api.load!(post, :average_of_thing2, authorize?: false).average_of_thing2,
+               Decimal.new(15)
+             )
+
+      assert Api.load!(post, :min_of_thing3, authorize?: false).min_of_thing3 == 100
+      assert Api.load!(post, :max_of_thing3, authorize?: false).max_of_thing3 == 200
+      assert Api.load!(post, :average_of_thing3, authorize?: false).average_of_thing3 == 150
     end
   end
 end

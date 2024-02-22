@@ -1,6 +1,7 @@
 defmodule Ash.Test.Flow.ParentResource do
   @moduledoc false
   use Ash.Resource,
+    api: Ash.Test.Flow.Api,
     authorizers: [Ash.Policy.Authorizer],
     data_layer: Ash.DataLayer.Ets
 

@@ -12,25 +12,31 @@ defmodule Ash.Test.Policy.ComplexTest do
       Application.delete_env(:ash, :policies)
     end)
 
-    me = User.create!("me", %{email: "me@app.com", bio_text: "this is my bio"})
-    my_friend = User.create!("my friend", %{email: "my_friend@app.com"})
+    me = User.create!("me", %{email: "me@app.com", bio_text: "this is my bio"}, authorize?: false)
+    my_friend = User.create!("my friend", %{email: "my_friend@app.com"}, authorize?: false)
 
     a_friend_of_my_friend =
-      User.create!("a friend of my friend", %{email: "friends_friend@app.com"})
+      User.create!("a friend of my friend", %{email: "friends_friend@app.com"}, authorize?: false)
 
-    User.add_friend!(me, my_friend.id, actor: me)
-    User.add_friend!(my_friend, a_friend_of_my_friend.id, actor: my_friend)
-    post_by_me = Post.create!("post by me", actor: me)
-    post_by_my_friend = Post.create!("post by my friend", actor: my_friend)
+    User.add_friend!(me, my_friend.id, actor: me, authorize?: false)
+    User.add_friend!(my_friend, a_friend_of_my_friend.id, actor: my_friend, authorize?: false)
+    post_by_me = Post.create!("post by me", actor: me, authorize?: false)
+    post_by_my_friend = Post.create!("post by my friend", actor: my_friend, authorize?: false)
 
     post_by_a_friend_of_my_friend =
-      Post.create!("post by a friend of my friend", actor: a_friend_of_my_friend)
+      Post.create!("post by a friend of my friend",
+        actor: a_friend_of_my_friend,
+        authorize?: false
+      )
 
     comment_by_me_on_my_post =
-      Comment.create!(post_by_me.id, "comment by me on my own post", actor: me)
+      Comment.create!(post_by_me.id, "comment by me on my own post", actor: me, authorize?: false)
 
     comment_by_my_friend_on_my_post =
-      Comment.create!(post_by_me.id, "comment by my friend on my", actor: my_friend)
+      Comment.create!(post_by_me.id, "comment by my friend on my",
+        actor: my_friend,
+        authorize?: false
+      )
 
     # comment_by_a_friend_of_a_friend_on_my_post =
     Comment.create!(
@@ -44,14 +50,16 @@ defmodule Ash.Test.Policy.ComplexTest do
       Comment.create!(
         post_by_a_friend_of_my_friend.id,
         "comment by a friend of a friend on his own post",
-        actor: a_friend_of_my_friend
+        actor: a_friend_of_my_friend,
+        authorize?: false
       )
 
     comment_by_a_friend_of_a_friend_on_my_friends_post =
       Comment.create!(
         post_by_my_friend.id,
         "comment by a friend of a friend on my friend's post",
-        actor: a_friend_of_my_friend
+        actor: a_friend_of_my_friend,
+        authorize?: false
       )
 
     [
@@ -106,12 +114,13 @@ defmodule Ash.Test.Policy.ComplexTest do
              |> Api.read!(actor: me)
   end
 
-  test "it properly scopes single loads" do
+  test "it properly scopes single loads", %{me: me} do
     assert [%{best_friend: %{name: "me"}}] =
              User
              |> Ash.Query.filter(best_friend.name == "me")
-             |> Api.read!()
-             |> Api.load!(:best_friend)
+             |> Ash.Query.deselect(:private_email)
+             |> Api.read!(actor: me)
+             |> Api.load!(:best_friend, actor: me)
   end
 
   test "aggregates can be loaded and filtered on", %{me: me} do
@@ -126,7 +135,7 @@ defmodule Ash.Test.Policy.ComplexTest do
       Post
       |> Ash.Query.load(:count_of_commenters)
       |> Ash.Query.filter(id == ^post_by_me.id)
-      |> Api.read_one!()
+      |> Api.read_one!(authorize?: false)
       |> Map.get(:count_of_commenters)
 
     count_of_commenters_with_authorization =

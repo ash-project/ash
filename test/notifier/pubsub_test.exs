@@ -2,6 +2,8 @@ defmodule Ash.Test.Notifier.PubSubTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule PubSub do
     def broadcast(topic, event, notification) do
       send(
@@ -14,6 +16,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       notifiers: [
         Ash.Notifier.PubSub
@@ -48,6 +51,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
   defmodule User do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       notifiers: [
         Ash.Notifier.PubSub
@@ -73,24 +77,6 @@ defmodule Ash.Test.Notifier.PubSubTest do
       uuid_primary_key :id
 
       attribute :name, :string
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Post
-      entry User
-    end
-  end
-
-  defmodule Api do
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

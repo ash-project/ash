@@ -2,9 +2,11 @@ defmodule Ash.Test.Policy.Actions.BelongsToTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -31,7 +33,10 @@ defmodule Ash.Test.Policy.Actions.BelongsToTest do
 
   defmodule Reviewer do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, authorizers: [Ash.Policy.Authorizer]
+    use Ash.Resource,
+      api: Api,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
 
     ets do
       private?(true)
@@ -50,29 +55,6 @@ defmodule Ash.Test.Policy.Actions.BelongsToTest do
       policy always() do
         authorize_if never()
       end
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Post)
-      entry(Reviewer)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    authorization do
-      authorize :by_default
-    end
-
-    resources do
-      registry Registry
     end
   end
 

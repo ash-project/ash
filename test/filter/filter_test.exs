@@ -5,6 +5,7 @@ defmodule Ash.Test.Filter.FilterTest do
   import Ash.Test
 
   alias Ash.Filter
+  alias Ash.Test.AnyApi, as: Api
 
   require Ash.Query
 
@@ -21,7 +22,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
   defmodule Profile do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -51,7 +52,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
   defmodule User do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -80,7 +81,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
   defmodule PostLink do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -103,7 +104,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -150,7 +151,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
   defmodule SoftDeletePost do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
@@ -174,28 +175,6 @@ defmodule Ash.Test.Filter.FilterTest do
     attributes do
       uuid_primary_key :id
       attribute :deleted_at, :utc_datetime
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Post)
-      entry(SoftDeletePost)
-      entry(User)
-      entry(Profile)
-      entry(PostLink)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 
