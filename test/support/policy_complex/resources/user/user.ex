@@ -69,7 +69,6 @@ defmodule Ash.Test.Support.PolicyComplex.User do
   end
 
   code_interface do
-    define_for Ash.Test.Support.PolicyComplex.Api
     define :create, args: [:name]
     define :add_friend, args: [:friend_id]
     define :set_bio, args: [:bio]

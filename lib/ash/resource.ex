@@ -195,13 +195,16 @@ defmodule Ash.Resource do
         """
       end
 
-      if api = Ash.Resource.Info.define_interface_for(__MODULE__) do
-        if api == __MODULE__ do
-          raise "code_interface.define_for should be set to the API module you want it to call, not the resource."
-        end
+      if Ash.Resource.Info.define_interface?(__MODULE__) do
+        if api =
+             Ash.Resource.Info.code_interface_api(__MODULE__) || Ash.Resource.Info.api(__MODULE__) do
+          if api == __MODULE__ do
+            raise "code_interface.api should be set to the API module you want it to call, not the resource."
+          end
 
-        require Ash.CodeInterface
-        Ash.CodeInterface.define_interface(api, __MODULE__)
+          require Ash.CodeInterface
+          Ash.CodeInterface.define_interface(api, __MODULE__)
+        end
       end
 
       @default_short_name __MODULE__
