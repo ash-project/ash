@@ -115,12 +115,14 @@ defmodule Ash.Test.Reactor.TransactionTest do
     Ash.DataLayer
     |> expect(:rollback, fn resources, reason ->
       assert resources == [Post]
-      assert reason == "hell"
+      assert Exception.message(reason) == "hell"
 
       raise reason
     end)
 
-    assert {:error, "hell"} =
+    assert {:error, [error]} =
              Reactor.run(FailAndRollBackTransactionReactor, %{}, %{}, async?: false)
+
+    assert Exception.message(error) =~ "hell"
   end
 end

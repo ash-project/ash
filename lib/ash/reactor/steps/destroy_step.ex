@@ -58,8 +58,14 @@ defmodule Ash.Reactor.DestroyStep do
       [return_notifications?: false]
       |> maybe_set_kw(:authorize?, options[:authorize?])
 
-    record
-    |> Changeset.for_create(options[:undo_action], arguments[:input], changeset_options)
+    attributes =
+      options[:resource]
+      |> Ash.Resource.Info.attributes()
+      |> Map.new(&{&1.name, record[&1]})
+      |> then(&Map.merge(arguments[:input], &1))
+
+    options[:resource]
+    |> Changeset.for_create(options[:undo_action], attributes, changeset_options)
     |> options[:api].create(action_options)
     |> case do
       {:ok, record} -> {:ok, record}

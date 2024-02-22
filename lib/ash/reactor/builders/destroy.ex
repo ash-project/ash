@@ -66,7 +66,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Destroy do
     end
   end
 
-  defp verify_returning_destroyed?(destroy, _dsl_state) when destroy.returning_destroyed? == true,
+  defp verify_returning_destroyed?(destroy, _dsl_state) when destroy.return_destroyed? == true,
     do: :ok
 
   defp verify_returning_destroyed?(_destroy, dsl_state) do

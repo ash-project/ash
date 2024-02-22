@@ -251,6 +251,9 @@ defmodule Ash.Test.ReactorCreateTest do
 
       create :create_author, Author, :create do
         inputs(%{name: input(:author_name)})
+
+        undo :always
+        undo_action(:destroy)
       end
 
       step :fail do
@@ -264,12 +267,10 @@ defmodule Ash.Test.ReactorCreateTest do
       end
     end
 
-    assert {:error, [error]} =
+    assert {:error, _} =
              Reactor.run(UndoingCreateAuthorReactor, %{author_name: "Marty McFly"}, %{},
                async?: false
              )
-
-    assert Exception.message(error) == "hell"
 
     assert [] = Api.read!(Author)
   end

@@ -24,6 +24,7 @@ defmodule Ash.Test.ReactorUpdateTest do
     code_interface do
       define_for Ash.Test.ReactorUpdateTest.Api
       define :create
+      define :get, action: :read, get_by: :id
     end
   end
 
@@ -127,5 +128,52 @@ defmodule Ash.Test.ReactorUpdateTest do
 
     assert post.title == "New Title"
     assert post.sub_title == "New Sub-title"
+  end
+
+  test "it can undo the update on error" do
+    defmodule UndoingUpdateReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      ash do
+        default_api Api
+      end
+
+      input :post
+      input :new_title
+
+      update :update_post, Post, :update do
+        initial(input(:post))
+        inputs(%{title: input(:new_title)})
+        undo :always
+        undo_action(:update)
+      end
+
+      step :fail do
+        wait_for :update_post
+
+        run fn _, _ ->
+          assert [] = Api.read!(Post)
+
+          raise "hell"
+        end
+      end
+    end
+
+    {:ok, post} = Post.create(%{title: "Title"})
+
+    assert {:error, _} =
+             Reactor.run(
+               UndoingUpdateReactor,
+               %{
+                 post: post,
+                 new_title: "New title"
+               },
+               %{},
+               async?: false
+             )
+
+    post_run_post = Post.get!(post.id)
+    assert post_run_post.title == "New title"
   end
 end

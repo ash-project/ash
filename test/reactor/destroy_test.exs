@@ -24,6 +24,7 @@ defmodule Ash.Test.ReactorDestroyTest do
     code_interface do
       define_for Ash.Test.ReactorDestroyTest.Api
       define :create
+      define :get, get_by: :id, action: :read
     end
   end
 
@@ -85,5 +86,48 @@ defmodule Ash.Test.ReactorDestroyTest do
     assert original_post.__struct__ == post.__struct__
     assert original_post.id == post.id
     assert post.__meta__.state == :deleted
+  end
+
+  test "it can undo the destruction on error" do
+    defmodule UndoingDestroyPostReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      ash do
+        default_api Api
+      end
+
+      input :post
+
+      destroy :delete_post, Post, :destroy do
+        initial(input(:post))
+
+        undo :always
+        undo_action(:create)
+        return_destroyed?(true)
+      end
+
+      step :fail do
+        wait_for :delete_post
+
+        run fn _, _ ->
+          assert [] = Api.read!(Post)
+
+          raise "hell"
+        end
+      end
+    end
+
+    {:ok, post} = Post.create(%{title: "Title"})
+
+    assert {:error, _} =
+             Reactor.run(
+               UndoingDestroyPostReactor,
+               %{post: post},
+               %{},
+               async?: false
+             )
+
+    assert Post.get(post.id)
   end
 end
