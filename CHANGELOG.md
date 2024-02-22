@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.19.4](https://github.com/ash-project/ash/compare/v2.19.3...v2.19.4) (2024-02-22)
+
+
+
+
+### Bug Fixes:
+
+* honor soft destroys for atomic bulk destroys
+
+* properly set context on query and changeset
+
+* pass correct options into `Api.stream!` for bulk_destroy
+
+* check attributes after arguments for `present?`
+
+* correct `for_read` calls in update and destroy actions (#907)
+
 ## [v2.19.3](https://github.com/ash-project/ash/compare/v2.19.2...v2.19.3) (2024-02-17)
 
 
