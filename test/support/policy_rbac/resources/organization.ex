@@ -1,6 +1,7 @@
 defmodule Ash.Test.Support.PolicyRbac.Organization do
   @moduledoc false
   use Ash.Resource,
+    api: Ash.Test.Support.PolicyRbac.Api,
     data_layer: Ash.DataLayer.Ets
 
   ets do

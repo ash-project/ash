@@ -1,6 +1,6 @@
 defmodule Ash.Test.Flow.Org do
   @moduledoc false
-  use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
+  use Ash.Resource, api: Ash.Test.Flow.Api, data_layer: Ash.DataLayer.Mnesia
 
   resource do
     description "Org model"

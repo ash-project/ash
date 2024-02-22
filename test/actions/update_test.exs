@@ -6,10 +6,12 @@ defmodule Ash.Test.Actions.UpdateTest do
   import Ash.Test
   require Ash.Query
   require Ash.Expr
+  alias Ash.Test.AnyApi, as: Api
 
   defmodule Authorized do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Test.Authorizer]
 
@@ -29,7 +31,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
   defmodule Profile do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -82,14 +84,14 @@ defmodule Ash.Test.Actions.UpdateTest do
          data
          |> Ash.Changeset.new()
          |> Ash.Changeset.change_attribute(:name, "manual")
-         |> Ash.Test.Actions.UpdateTest.Api.update!()}
+         |> Api.update!()}
       end)
     end
   end
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -121,7 +123,7 @@ defmodule Ash.Test.Actions.UpdateTest do
            changeset.data
            |> Ash.Changeset.for_update(:update, changeset.attributes)
            |> Ash.Changeset.force_change_attribute(:name, "manual")
-           |> Ash.Test.Actions.UpdateTest.Api.update!()}
+           |> Api.update!()}
         end
       end
     end
@@ -142,7 +144,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
   defmodule PostLink do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -169,7 +171,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -197,6 +199,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
   defmodule PaginatedPrimaryRead do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -214,29 +217,6 @@ defmodule Ash.Test.Actions.UpdateTest do
         primary? true
         pagination offset?: true, required?: true
       end
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Author)
-      entry(Post)
-      entry(Profile)
-      entry(PostLink)
-      entry(Authorized)
-      entry(PaginatedPrimaryRead)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 
@@ -811,7 +791,7 @@ defmodule Ash.Test.Actions.UpdateTest do
         |> Api.update!(authorize?: true)
       end)
 
-      assert Api.get!(Authorized, record.id).name == "bar"
+      assert Api.get!(Authorized, record.id, authorize?: false).name == "bar"
     end
   end
 end

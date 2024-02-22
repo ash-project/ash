@@ -3,9 +3,11 @@ defmodule Ash.Actions.PaginationTest do
 
   require Ash.Query
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -34,7 +36,7 @@ defmodule Ash.Actions.PaginationTest do
 
   defmodule User do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -110,24 +112,6 @@ defmodule Ash.Actions.PaginationTest do
 
     relationships do
       has_many :posts, Post
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry User
-      entry Post
-    end
-  end
-
-  defmodule Api do
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

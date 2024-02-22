@@ -378,8 +378,6 @@ defmodule Ash.Type.Union do
     types = constraints[:types] || []
 
     types
-    |> Enum.sort_by(fn {_type_name, config} -> config[:tag] end)
-    |> Enum.reverse()
     |> Enum.reduce_while({:error, []}, fn {type_name, config}, {:error, errors} ->
       type = config[:type]
 
@@ -419,9 +417,20 @@ defmodule Ash.Type.Union do
               Map.drop(value, [config[:tag], to_string(config[:tag])])
             end
 
-          case Ash.Type.cast_input(type, value, config[:constraints] || []) do
+          constraints_with_source =
+            Ash.Type.include_source(
+              config[:type],
+              constraints[:__source__],
+              config[:constraints] || []
+            )
+
+          case Ash.Type.cast_input(
+                 type,
+                 value,
+                 constraints_with_source
+               ) do
             {:ok, value} ->
-              case Ash.Type.apply_constraints(type, value, config[:constraints] || []) do
+              case Ash.Type.apply_constraints(type, value, constraints_with_source) do
                 {:ok, value} ->
                   {:halt,
                    {:ok,
@@ -762,12 +771,17 @@ defmodule Ash.Type.Union do
 
           type = constraints[:types][name][:type]
 
+          item_constraints =
+            Ash.Type.include_source({:array, type}, constraints[:__source__],
+              items: constraints[:types][name][:constraints] || []
+            )
+
           result =
             Ash.Type.prepare_change(
               {:array, type},
               old_values_by_type[name] || [],
               new_values,
-              items: constraints[:types][name][:constraints]
+              item_constraints
             )
 
           case result do
@@ -815,6 +829,11 @@ defmodule Ash.Type.Union do
     else
       {:ok, new_values}
     end
+  end
+
+  @impl true
+  def include_source(constraints, changeset) do
+    Keyword.put(constraints || [], :__source__, changeset)
   end
 
   @impl true

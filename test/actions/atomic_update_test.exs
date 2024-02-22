@@ -5,6 +5,8 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
   require Ash.Query
   require Ash.Expr
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Atomic do
     use Ash.Resource.Change
 
@@ -23,7 +25,7 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -63,18 +65,8 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
     end
 
     code_interface do
-      define_for Ash.Test.Actions.AtomicUpdateTest.Api
       define :increment_score
       define :sometimes_atomic
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      resource Author
     end
   end
 

@@ -1,17 +1,11 @@
 defmodule Ash.Test.Policy.FieldPolicy.ExpressionConditionTest do
   use ExUnit.Case, async: true
 
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      allow_unregistered? true
-    end
-  end
+  alias Ash.Test.AnyApi, as: Api
 
   defmodule ResourceWithMultiplePoliciesForOneField do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -57,8 +51,6 @@ defmodule Ash.Test.Policy.FieldPolicy.ExpressionConditionTest do
     end
 
     code_interface do
-      define_for Api
-
       define :create
       define :read
     end

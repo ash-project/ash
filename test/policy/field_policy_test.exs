@@ -7,10 +7,14 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
   alias Ash.Test.Support.PolicyField.{Api, Ticket, User}
 
   setup do
-    rep = Api.create!(Ash.Changeset.new(User, %{role: :representative, points: 4}))
-    user = Api.create!(Ash.Changeset.new(User, %{role: :user, points: 3}))
-    admin = Api.create!(Ash.Changeset.new(User, %{role: :admin, points: 2}))
-    other_user = Api.create!(Ash.Changeset.new(User, %{role: :user, points: 1}))
+    rep =
+      Api.create!(Ash.Changeset.new(User, %{role: :representative, points: 4}), authorize?: false)
+
+    user = Api.create!(Ash.Changeset.new(User, %{role: :user, points: 3}), authorize?: false)
+    admin = Api.create!(Ash.Changeset.new(User, %{role: :admin, points: 2}), authorize?: false)
+
+    other_user =
+      Api.create!(Ash.Changeset.new(User, %{role: :user, points: 1}), authorize?: false)
 
     [
       user: user,
@@ -233,6 +237,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
            user: user
          } do
       # someone who is allowed because it's accessed through the ticket
+
       assert [ticket] =
                Ticket
                |> Ash.Query.select([])
@@ -240,7 +245,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.filter(reporter.ticket_count > 0)
                |> Ash.Query.load(reporter: [:ticket_count])
                |> Ash.Query.limit(1)
-               |> Api.read!(authorize?: true)
+               |> Api.read!()
 
       assert is_number(ticket.reporter.ticket_count)
       assert ticket.reporter.ticket_count > 0

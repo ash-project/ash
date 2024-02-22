@@ -4,9 +4,11 @@ defmodule Ash.Test.Actions.DestroyTest do
 
   require Ash.Query
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Profile do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -32,7 +34,7 @@ defmodule Ash.Test.Actions.DestroyTest do
 
     def change(changeset, _, _) do
       Ash.Changeset.after_action(changeset, fn _changeset, data ->
-        Ash.Test.Actions.DestroyTest.Api.destroy!(data)
+        Api.destroy!(data)
 
         {:ok, data}
       end)
@@ -41,7 +43,7 @@ defmodule Ash.Test.Actions.DestroyTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, authorizers: [Ash.Test.Authorizer]
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets, authorizers: [Ash.Test.Authorizer]
 
     ets do
       private?(true)
@@ -54,7 +56,7 @@ defmodule Ash.Test.Actions.DestroyTest do
         accept []
 
         manual fn changeset, _ ->
-          Ash.Test.Actions.DestroyTest.Api.destroy(changeset.data, return_destroyed?: true)
+          Api.destroy(changeset.data, return_destroyed?: true)
         end
       end
     end
@@ -79,7 +81,7 @@ defmodule Ash.Test.Actions.DestroyTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -100,26 +102,6 @@ defmodule Ash.Test.Actions.DestroyTest do
 
     relationships do
       belongs_to :author, Author
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Author)
-      entry(Post)
-      entry(Profile)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 
@@ -168,7 +150,7 @@ defmodule Ash.Test.Actions.DestroyTest do
       author =
         Author
         |> new(%{name: "foobar"})
-        |> Api.create!()
+        |> Api.create!(authorize?: false)
 
       start_supervised({Ash.Test.Authorizer, strict_check: :continue, check: :forbidden})
 
@@ -176,7 +158,7 @@ defmodule Ash.Test.Actions.DestroyTest do
         Api.destroy!(author, authorize?: true)
       end)
 
-      assert Api.get!(Author, author.id)
+      assert Api.get!(Author, author.id, authorize?: false)
     end
   end
 

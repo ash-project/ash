@@ -2,13 +2,15 @@ defmodule Ash.Test.ErrorTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule TestError do
     use Ash.Error.Exception
     def_ash_error([:some_field])
   end
 
   defmodule TestResource do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     actions do
       defaults [:create, :read, :update, :destroy]

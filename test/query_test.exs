@@ -4,9 +4,11 @@ defmodule Ash.Test.QueryTest do
 
   require Ash.Query
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule User do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -35,23 +37,6 @@ defmodule Ash.Test.QueryTest do
 
     relationships do
       belongs_to :best_friend, __MODULE__
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(User)
-    end
-  end
-
-  defmodule Api do
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

@@ -1,8 +1,11 @@
 defmodule Ash.Test.Policy.SelectingTest do
   use ExUnit.Case
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Parent do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -37,6 +40,7 @@ defmodule Ash.Test.Policy.SelectingTest do
 
   defmodule OwnerOnlyResource do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -91,26 +95,17 @@ defmodule Ash.Test.Policy.SelectingTest do
     end
   end
 
-  defmodule Api do
-    use Ash.Api
-
-    resources do
-      resource Parent
-      resource OwnerOnlyResource
-    end
-  end
-
   test "owner can can select forbidden field on related resource" do
     parent =
       Parent
       |> Ash.Changeset.new(%{owner_id: "owner", guest_id: "guest"})
       |> Ash.Changeset.for_create(:create)
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
     OwnerOnlyResource
     |> Ash.Changeset.new(%{parent_id: parent.id, state: "active"})
     |> Ash.Changeset.for_create(:create)
-    |> Api.create!()
+    |> Api.create!(authorize?: false)
 
     assert {:ok, parent} =
              Parent
@@ -127,12 +122,12 @@ defmodule Ash.Test.Policy.SelectingTest do
       Parent
       |> Ash.Changeset.new(%{owner_id: "owner", guest_id: "guest"})
       |> Ash.Changeset.for_create(:create)
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
     OwnerOnlyResource
     |> Ash.Changeset.new(%{parent_id: parent.id, state: "active"})
     |> Ash.Changeset.for_create(:create)
-    |> Api.create!()
+    |> Api.create!(authorize?: false)
 
     assert {:error, %Ash.Error.Forbidden{}} =
              Parent

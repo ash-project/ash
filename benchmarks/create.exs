@@ -1,5 +1,5 @@
 defmodule Resource do
-  use Ash.Resource
+  use Ash.Resource, api: Ash.Test.AnyApi
 
   attributes do
     uuid_primary_key :id
@@ -7,14 +7,6 @@ defmodule Resource do
 
   actions do
     defaults [:create, :update, :destroy, :read]
-  end
-end
-
-defmodule Api do
-  use Ash.Api
-
-  resources do
-    resource Resource
   end
 end
 

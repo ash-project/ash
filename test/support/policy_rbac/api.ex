@@ -3,6 +3,9 @@ defmodule Ash.Test.Support.PolicyRbac.Api do
   use Ash.Api
 
   resources do
-    registry(Ash.Test.Support.PolicyRbac.Registry)
+    resource Ash.Test.Support.PolicyRbac.User
+    resource Ash.Test.Support.PolicyRbac.Organization
+    resource Ash.Test.Support.PolicyRbac.Membership
+    resource Ash.Test.Support.PolicyRbac.File
   end
 end

@@ -901,7 +901,7 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Ash.create!(authorize?: true)
       end)
 
-      assert [] = Ash.read!(Authorized)
+      assert [] = Ash.read!(Authorized, authorize?: false)
     end
   end
 

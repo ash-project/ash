@@ -5,9 +5,11 @@ defmodule Ash.Test.Filter.SimplificationTest do
   require Ash.Query
   require Ash.Test.Helpers
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)

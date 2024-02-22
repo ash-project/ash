@@ -16,7 +16,7 @@ defmodule Ash.DataLayer.EtsTest do
   alias Ash.Test.AnyApi, as: Api
 
   defmodule EtsTestUser do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
@@ -42,6 +42,7 @@ defmodule Ash.DataLayer.EtsTest do
     assert_raise Spark.Error.DslError, ~r/pre_check_with/, fn ->
       defmodule Example do
         use Ash.Resource,
+          api: Api,
           data_layer: Ash.DataLayer.Ets
 
         attributes do

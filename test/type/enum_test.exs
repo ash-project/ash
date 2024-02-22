@@ -5,6 +5,8 @@ defmodule Ash.Test.Type.EnumTest do
   import Ash.Changeset
   require Ash.Query
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Status do
     use Ash.Type.Enum, values: [:open, :Closed, :NeverHappened, :Always_Was]
   end
@@ -22,7 +24,7 @@ defmodule Ash.Test.Type.EnumTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -36,24 +38,6 @@ defmodule Ash.Test.Type.EnumTest do
       uuid_primary_key :id
 
       attribute :status, Status
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Post
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

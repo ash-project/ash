@@ -6,7 +6,7 @@ defmodule Ash.Test.Helpers do
       {:module, mod, _, _} =
         defmodule Module.concat(["rand#{System.unique_integer([:positive])}", Post]) do
           @moduledoc false
-          use Ash.Resource, data_layer: Ash.DataLayer.Ets
+          use Ash.Resource, api: Ash.Test.AnyApi, data_layer: Ash.DataLayer.Ets
 
           attributes do
             uuid_primary_key :id

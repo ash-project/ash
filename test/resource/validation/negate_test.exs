@@ -4,8 +4,10 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
 
   alias Ash.Resource.Validation.Negate
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Post do
-    use Ash.Resource
+    use Ash.Resource, api: Api
 
     attributes do
       uuid_primary_key :id

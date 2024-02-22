@@ -8,7 +8,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, api: Ash.Test.AnyApi, data_layer: Ash.DataLayer.Ets
 
         attributes do
           uuid_primary_key :id

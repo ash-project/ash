@@ -112,6 +112,10 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       policy action(:read) do
         authorize_if always()
       end
+
+      policy always() do
+        authorize_if always()
+      end
     end
 
     attributes do
@@ -251,7 +255,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_destroy(:destroy, %{title: %{invalid: :value}},
+             |> Api.bulk_destroy(:destroy_with_argument, %{a_title: %{invalid: :value}},
                resource: Post,
                return_errors?: true
              )

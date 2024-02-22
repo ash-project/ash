@@ -171,9 +171,9 @@ defmodule Ash.Api.Info do
   end
 
   @doc "When authorization should happen for a given api"
-  @spec authorize(Ash.Api.t()) :: :when_requested | :always | :by_default
+  @spec authorize(Ash.Api.t()) :: :always | :by_default | :when_requested
   def authorize(api) do
-    Extension.get_opt(api, [:authorization], :authorize, :when_requested, true)
+    Extension.get_opt(api, [:authorization], :authorize, :by_default, true)
   end
 
   @doc "Whether or not the api allows unregistered resources to be used with it"

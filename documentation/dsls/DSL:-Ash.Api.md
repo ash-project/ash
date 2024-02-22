@@ -135,7 +135,7 @@ Options for how requests are authorized using this Api. See the [security guide]
 ### Examples
 ```
 authorization do
-  authorize :when_requested
+  authorize :always
 end
 
 ```

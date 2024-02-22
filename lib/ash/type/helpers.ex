@@ -1,25 +1,6 @@
 defmodule Ash.Type.Helpers do
   @moduledoc false
 
-  def cast_input(type, term, constraints, changeset, return_value? \\ false)
-
-  def cast_input(type, value, constraints, changeset, return_value?) do
-    value = handle_indexed_maps(type, value)
-    constraints = Ash.Type.include_source(type, changeset, constraints)
-
-    case Ash.Type.cast_input(type, value, constraints) do
-      {:ok, value} ->
-        {:ok, value}
-
-      {:error, error} ->
-        if return_value? do
-          {{:error, error}, value}
-        else
-          {:error, error}
-        end
-    end
-  end
-
   def handle_indexed_maps({:array, type}, term) when is_map(term) and term != %{} do
     term
     |> Enum.reduce_while({:ok, []}, fn

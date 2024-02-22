@@ -4,8 +4,19 @@ defmodule Ash.Test.Actions.ManyToManyTest do
 
   require Ash.Query
 
+  alias Ash.Test.AnyApi, as: Api
+
+  defmodule OtherApi do
+    use Ash.Api
+
+    resources do
+      allow_unregistered? true
+    end
+  end
+
   defmodule PostLink do
     use Ash.Resource,
+      api: OtherApi,
       data_layer: Ash.DataLayer.Ets
 
     actions do
@@ -23,25 +34,10 @@ defmodule Ash.Test.Actions.ManyToManyTest do
     end
   end
 
-  defmodule OtherRegistry do
-    use Ash.Registry
-
-    entries do
-      entry PostLink
-    end
-  end
-
-  defmodule OtherApi do
-    use Ash.Api
-
-    resources do
-      registry OtherRegistry
-    end
-  end
-
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -77,24 +73,6 @@ defmodule Ash.Test.Actions.ManyToManyTest do
         source_attribute_on_join_resource :source_id
         destination_attribute_on_join_resource :destination_id
       end
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Post)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

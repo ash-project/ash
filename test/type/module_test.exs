@@ -4,6 +4,8 @@ defmodule Ash.Test.Type.ModuleTest do
 
   require Ash.Query
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule StinkyBehaviour do
     @moduledoc false
     @callback stinky? :: boolean
@@ -35,7 +37,7 @@ defmodule Ash.Test.Type.ModuleTest do
 
   defmodule ModuleAttr do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
@@ -54,7 +56,7 @@ defmodule Ash.Test.Type.ModuleTest do
 
   defmodule ModuleAttrWithBehaviourConstraint do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
@@ -75,7 +77,7 @@ defmodule Ash.Test.Type.ModuleTest do
 
   defmodule ModuleAttrWithProtocolConstraint do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
@@ -91,26 +93,6 @@ defmodule Ash.Test.Type.ModuleTest do
       attribute :module, :module do
         constraints protocol: StinkyProtocol
       end
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry ModuleAttr
-      entry ModuleAttrWithBehaviourConstraint
-      entry ModuleAttrWithProtocolConstraint
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

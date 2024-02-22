@@ -456,6 +456,12 @@ defmodule Ash.Actions.ManagedRelationships do
          instructions,
          index
        ) do
+    input =
+      Map.take(
+        input,
+        Enum.to_list(Ash.Resource.Info.action_inputs(relationship.destination, action_name))
+      )
+
     relationship.destination
     |> Ash.Changeset.new()
     |> Ash.Changeset.set_context(%{
@@ -1015,6 +1021,14 @@ defmodule Ash.Actions.ManagedRelationships do
               {found, input}
           end
 
+        input =
+          Map.take(
+            input,
+            Enum.to_list(
+              Ash.Resource.Info.action_inputs(relationship.destination, create_or_update)
+            )
+          )
+
         found
         |> Ash.Changeset.new()
         |> Ash.Changeset.set_context(%{
@@ -1076,6 +1090,14 @@ defmodule Ash.Actions.ManagedRelationships do
                     input
                   end
 
+                input =
+                  Map.take(
+                    input,
+                    Enum.to_list(
+                      Ash.Resource.Info.action_inputs(relationship.destination, action_name)
+                    )
+                  )
+
                 relationship.destination
                 |> Ash.Changeset.new()
                 |> Ash.Changeset.set_context(%{
@@ -1129,6 +1151,14 @@ defmodule Ash.Actions.ManagedRelationships do
           if is_struct(input, relationship.destination) do
             {:ok, input, [], [input]}
           else
+            regular_params =
+              Map.take(
+                regular_params,
+                Enum.to_list(
+                  Ash.Resource.Info.action_inputs(relationship.destination, action_name)
+                )
+              )
+
             relationship.destination
             |> Ash.Changeset.new()
             |> Ash.Changeset.set_context(%{
@@ -1268,6 +1298,12 @@ defmodule Ash.Actions.ManagedRelationships do
               {match, input}
           end
 
+        input =
+          Map.take(
+            input,
+            Enum.to_list(Ash.Resource.Info.action_inputs(relationship.destination, action_name))
+          )
+
         match
         |> Ash.Changeset.new()
         |> Ash.Changeset.set_context(%{
@@ -1303,6 +1339,12 @@ defmodule Ash.Actions.ManagedRelationships do
             true ->
               {match, regular_params}
           end
+
+        regular_params =
+          Map.take(
+            regular_params,
+            Enum.to_list(Ash.Resource.Info.action_inputs(relationship.destination, action_name))
+          )
 
         source_value = Map.get(source_record, relationship.source_attribute)
 
