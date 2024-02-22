@@ -56,6 +56,14 @@ defmodule Ash.ActionInput do
           %{input | action: action}
       end
 
+    api =
+      input.api || opts[:api] || Ash.Resource.Info.api(input.resource) ||
+        raise ArgumentError,
+          message:
+            "Could not determine api for action. Provide the `api` option or configure an api in the resource directly."
+
+    input = %{input | api: api}
+
     {input, _opts} = Ash.Actions.Helpers.add_process_context(input.api, input, opts)
 
     input
@@ -121,11 +129,12 @@ defmodule Ash.ActionInput do
         )
 
       if argument do
-        with {:ok, casted} <-
-               Ash.Type.Helpers.cast_input(argument.type, value, argument.constraints, input),
+        with value <- Ash.Type.Helpers.handle_indexed_maps(argument.type, value),
+             constraints <- Ash.Type.include_source(argument.type, input, argument.constraints),
+             {:ok, casted} <-
+               Ash.Type.cast_input(argument.type, value, constraints),
              {:constrained, {:ok, casted}, argument} when not is_nil(casted) <-
-               {:constrained,
-                Ash.Type.apply_constraints(argument.type, casted, argument.constraints),
+               {:constrained, Ash.Type.apply_constraints(argument.type, casted, constraints),
                 argument} do
           %{input | arguments: Map.put(input.arguments, argument.name, casted)}
         else

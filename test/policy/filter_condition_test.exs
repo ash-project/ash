@@ -3,7 +3,10 @@ defmodule Ash.Test.Policy.FilterConditionTest do
 
   defmodule Resource do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, authorizers: [Ash.Policy.Authorizer]
+    use Ash.Resource,
+      api: Ash.Test.Policy.FilterConditionTest.Api,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
 
     ets do
       private?(true)

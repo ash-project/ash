@@ -15,6 +15,7 @@ defmodule Ash.Test.Actions.ManualReadTest do
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
+      api: Ash.Test.Actions.ManualReadTest.Api,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -38,21 +39,12 @@ defmodule Ash.Test.Actions.ManualReadTest do
     end
   end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Author
-    end
-  end
-
   defmodule Api do
     @moduledoc false
     use Ash.Api
 
     resources do
-      registry Registry
+      resource Author
     end
   end
 

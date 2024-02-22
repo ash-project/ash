@@ -4,6 +4,48 @@
 
 This section contains each breaking change, and the steps required to address it in your application
 
+### the `Api` of a resource must now be known when constructing a changeset
+
+In order to honor rules on the `Api` module about authorization and timeouts, we have to know the `Api` when building the changeset.
+
+#### What you'll need to change
+
+##### Embedded Resources
+
+The api for the calls to embedded resources is gotten from the parent changeset. No need to change them at all. an `api` constraint
+has been added in case you wish to make a given embedded resource use a specific api always.
+
+For example:
+
+```elixir
+attribute :bio, MyApp.Bio do
+  constraints api: MyApp.SomeApi
+end
+```
+
+##### Single Api resources
+
+While it is possible for resources to be used with multiple APIs, it almost never happens in practice. Any resources that are only used from a single 
+api only (*not* including embedded resources) should be modified to have an `api` option specified in their call to `use Ash.Resource`. For example:
+
+```elixir
+use Ash.Resource,
+  api: MyApp.MyApi
+```
+
+##### Multi Api resources
+
+For these, you will need to include the `api` option every time you construct a changeset.
+
+For example:
+
+```elixir
+MyResource
+|> Ash.Changeset.for_create(:create, input, api: MyApp.MyApi)
+```
+
+
+
 ### `Api.authorization.authorize` now defaults to `:by_default`
 
 Previously, the default was `:when_requested`. This meant that, unless you said `actor: some_actor` or `authorize?: true`, authorization was skipped. This has the obvious drawback of making it easy to accidentally bypass authorization unintentionally. In 3.0, this now defaults to `:by_default`.
@@ -12,15 +54,13 @@ Previously, the default was `:when_requested`. This meant that, unless you said 
 
 ##### Keep old behavior
 
-To avoid making a significant refactor, and to keep your current behavior, you can go to your api and set the configuration below. Otherwise skip to the refactor steps below.
+To avoid making a significant refactor, and to keep your current behavior, you can go to your api and set the configuration below. Otherwise skip to the refactor steps below. We advise that you take this route to start, but we *highly suggest* that you change your apis to `authorize :by_default` in the future. `authorize :when_requested` will not be deprecated, so there is no time constraint.
 
 ```elixir
 authorization do
   authorize :when_requested
 end
 ```
-
-It is *suggested* that you later follow these steps regardless.
 
 ##### Refactor
 
@@ -55,6 +95,11 @@ In 2.0, inputs to actions that don't match an accepted attribute or argument wer
 #### What you'll need to change
 
 If you have action calls that are erroneously passing in extra values, you will need to do remove them.
+
+A logic error was fixed in this behavior for embedded resources. If you are using embedded resources in `{:array, _}` types, and are relying on including the primary key of that embedded resource to match records up for updating/destroy behavior, you will need to make sure that you do one of the following
+
+1. add the `writable?: true` flag to the uuid of the embedded resource (probably what you want)
+2. modify the actions to accept an `id` argument and set the argument to the provided value
 
 ### `%Ash.NotLoaded{}` for attributes
 

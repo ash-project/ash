@@ -88,10 +88,26 @@ defmodule Ash.Resource do
   @impl Spark.Dsl
   def handle_opts(opts) do
     quote bind_quoted: [
+            opts: opts,
             embedded?: opts[:embedded?],
             api: opts[:api],
+            has_api?: Keyword.has_key?(opts, :api),
             embed_nil_values?: opts[:embed_nil_values?]
           ] do
+      unless has_api? || embedded? do
+        IO.warn("""
+        Configuration Error:
+
+        `api` option missing for #{inspect(__MODULE__)}
+
+        If you wish to make a resource compatible with multiple apis, set the api to `nil` explicitly.
+
+        Example configuration:
+
+        use Ash.Resource, #{String.trim_trailing(String.trim_leading(inspect([{:api, YourApi} | opts], pretty: true), "["), "]")}
+        """)
+      end
+
       if api do
         @persist {:api, api}
       end

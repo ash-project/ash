@@ -2,16 +2,17 @@ defmodule Ash.Test.CodeInterfaceTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule User do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     code_interface do
-      define_for Ash.Test.CodeInterfaceTest.Api
       define :get_user, action: :read, get?: true
       define :get_user_safely, action: :read, get?: true, not_found_error?: false
       define :read_users, action: :read
@@ -69,24 +70,6 @@ defmodule Ash.Test.CodeInterfaceTest do
       end
 
       attribute :last_name, :string
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(User)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

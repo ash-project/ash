@@ -2,11 +2,13 @@ defmodule Ash.Test.Resource.IdentitiesTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource
+        use Ash.Resource, api: Api
 
         attributes do
           uuid_primary_key :id
@@ -76,7 +78,7 @@ defmodule Ash.Test.Resource.IdentitiesTest do
                    fn ->
                      defmodule Site do
                        @moduledoc false
-                       use Ash.Resource
+                       use Ash.Resource, api: Api
 
                        attributes do
                          uuid_primary_key :id

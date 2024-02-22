@@ -4,10 +4,12 @@ defmodule Ash.Test.SeedTest do
 
   import Ash.Seed
   require Ash.Query
+  alias Ash.Test.AnyApi, as: Api
 
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -34,7 +36,7 @@ defmodule Ash.Test.SeedTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -68,7 +70,7 @@ defmodule Ash.Test.SeedTest do
 
   defmodule PostCategory do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -89,7 +91,7 @@ defmodule Ash.Test.SeedTest do
 
   defmodule Category do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -114,6 +116,7 @@ defmodule Ash.Test.SeedTest do
 
   defmodule Rating do
     use Ash.Resource,
+      api: Ash.Test.SeedTest.Api2,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -131,38 +134,8 @@ defmodule Ash.Test.SeedTest do
 
     relationships do
       belongs_to :post, Post do
-        api Ash.Test.SeedTest.Api
+        api Api
       end
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Author)
-      entry(Post)
-      entry(Category)
-      entry(PostCategory)
-    end
-  end
-
-  defmodule Registry2 do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Rating)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 
@@ -171,7 +144,7 @@ defmodule Ash.Test.SeedTest do
     use Ash.Api
 
     resources do
-      registry Registry2
+      resource(Rating)
     end
   end
 

@@ -9,6 +9,7 @@ defmodule Ash.Test.GeneratorTest do
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -43,7 +44,7 @@ defmodule Ash.Test.GeneratorTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -75,7 +76,7 @@ defmodule Ash.Test.GeneratorTest do
 
   defmodule PostCategory do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -96,7 +97,7 @@ defmodule Ash.Test.GeneratorTest do
 
   defmodule Category do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -125,6 +126,7 @@ defmodule Ash.Test.GeneratorTest do
 
   defmodule Rating do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets
 
     ets do

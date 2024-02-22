@@ -3,10 +3,11 @@ defmodule Ash.Test.Resource.AggregatesTest do
   use ExUnit.Case, async: true
 
   alias Ash.Resource.Aggregate
+  alias Ash.Test.AnyApi, as: Api
 
   defmodule Comment do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
@@ -20,7 +21,7 @@ defmodule Ash.Test.Resource.AggregatesTest do
 
   defmodule Like do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
@@ -32,7 +33,7 @@ defmodule Ash.Test.Resource.AggregatesTest do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
         attributes do
           uuid_primary_key :id

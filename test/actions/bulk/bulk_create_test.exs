@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule AddAfterToTitle do
     use Ash.Resource.Change
 
@@ -35,6 +37,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   defmodule Org do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets
 
     attributes do
@@ -49,6 +52,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -149,25 +153,6 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Org
-      entry Post
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
-    end
-  end
-
   test "returns created records" do
     org =
       Org
@@ -178,6 +163,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_records?: true,
                return_errors?: true,
+               authorize?: false,
                sorted?: true,
                tenant: org.id
              )
@@ -187,6 +173,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     assert %Ash.BulkResult{records: [%{title: "title1_stuff"}, %{title: "title2_stuff"}]} =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create_with_change,
                return_records?: true,
+               authorize?: false,
                sorted?: true
              )
   end
@@ -198,7 +185,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                Post,
                :create_with_argument,
                return_records?: true,
-               sorted?: true
+               sorted?: true,
+               authorize?: false
              )
   end
 
@@ -211,7 +199,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                Post,
                :create_with_after_batch,
                return_records?: true,
-               sorted?: true
+               sorted?: true,
+               authorize?: false
              )
   end
 
@@ -222,7 +211,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                Post,
                :create_with_change,
                return_records?: true,
-               sorted?: true
+               sorted?: true,
+               authorize?: false
              )
   end
 
@@ -238,7 +228,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                :create_with_change,
                return_records?: true,
                return_errors?: true,
-               sorted?: true
+               sorted?: true,
+               authorize?: false
              )
   end
 
@@ -257,7 +248,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                Post,
                :create,
                return_records?: true,
-               sorted?: true
+               sorted?: true,
+               authorize?: false
              )
 
     assert %Ash.BulkResult{
@@ -277,7 +269,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                upsert?: true,
                upsert_identity: :unique_title,
                upsert_fields: [:title2],
-               sorted?: true
+               sorted?: true,
+               authorize?: false
              )
   end
 
@@ -296,7 +289,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                Post,
                :create,
                return_records?: true,
-               sorted?: true
+               sorted?: true,
+               authorize?: false
              )
 
     assert %Ash.BulkResult{
@@ -316,7 +310,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                upsert?: true,
                upsert_identity: :unique_title,
                upsert_fields: {:replace, [:title2]},
-               sorted?: true
+               sorted?: true,
+               authorize?: false
              )
   end
 
@@ -335,7 +330,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                Post,
                :create,
                return_records?: true,
-               sorted?: true
+               sorted?: true,
+               authorize?: false
              )
 
     assert %Ash.BulkResult{
@@ -355,7 +351,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                upsert?: true,
                upsert_identity: :unique_title,
                upsert_fields: :replace_all,
-               sorted?: true
+               sorted?: true,
+               authorize?: false
              )
   end
 
@@ -374,7 +371,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                Post,
                :create,
                return_records?: true,
-               sorted?: true
+               sorted?: true,
+               authorize?: false
              )
 
     assert %Ash.BulkResult{
@@ -394,7 +392,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                upsert?: true,
                upsert_identity: :unique_title,
                upsert_fields: {:replace_all_except, [:title, :title3]},
-               sorted?: true
+               sorted?: true,
+               authorize?: false
              )
   end
 
@@ -405,7 +404,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                Post,
                :create_with_after_action,
                return_records?: true,
-               sorted?: true
+               sorted?: true,
+               authorize?: false
              )
   end
 
@@ -416,7 +416,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                Post,
                :create_with_after_transaction,
                return_records?: true,
-               sorted?: true
+               sorted?: true,
+               authorize?: false
              )
   end
 

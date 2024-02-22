@@ -220,11 +220,12 @@ defmodule Ash.Flow do
           end
 
         {:ok, value} ->
-          with {:ok, value} <-
-                 Ash.Type.Helpers.cast_input(arg.type, value, arg.constraints, flow),
-               {:constrained, {:ok, casted}}
-               when not is_nil(value) <-
-                 {:constrained, Ash.Type.apply_constraints(arg.type, value, arg.constraints)} do
+          with value <- Ash.Type.Helpers.handle_indexed_maps(arg.type, value),
+               constraints <- Ash.Type.include_source(arg.type, flow, arg.constraints),
+               {:ok, casted} <-
+                 Ash.Type.cast_input(arg.type, value, constraints),
+               {:constrained, {:ok, casted}} when not is_nil(casted) <-
+                 {:constrained, Ash.Type.apply_constraints(arg.type, casted, constraints)} do
             {:cont, {:ok, Map.put(acc, arg.name, casted)}}
           else
             {:constrained, {:ok, nil}} ->

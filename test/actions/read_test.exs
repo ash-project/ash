@@ -23,7 +23,7 @@ defmodule Ash.Test.Actions.ReadTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -45,7 +45,7 @@ defmodule Ash.Test.Actions.ReadTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     identities do
       identity(:backup_id, [:uuid], pre_check_with: Api)
@@ -523,8 +523,7 @@ defmodule Ash.Test.Actions.ReadTest do
       assert [%{name: %Ash.NotLoaded{}}] = Api.read!(Ash.Query.deselect(Author, :name))
     end
 
-    @tag :ash_three
-    test "deselected fields don't return nil after Ash 3.0.0" do
+    test "deselected fields don't return nil" do
       Author
       |> new(%{name: "bruh"})
       |> Api.create!()

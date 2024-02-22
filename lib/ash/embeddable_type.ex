@@ -24,6 +24,11 @@ defmodule Ash.EmbeddableType do
       Aggregates are not supported on embedded resources.
       """
     ],
+    api: [
+      type: {:spark, Ash.Api},
+      doc:
+        "The api to use when interacting with the resource. Defaults to the api of the source changeset."
+    ],
     min_length: [
       type: :non_neg_integer,
       doc: "A minimum length for the items"
@@ -156,7 +161,7 @@ defmodule Ash.EmbeddableType do
 
         __MODULE__
         |> Ash.Changeset.new()
-        |> Ash.EmbeddableType.copy_source(constraints[:__source__])
+        |> Ash.EmbeddableType.copy_source(constraints)
         |> Ash.Changeset.for_create(action, value)
         |> ShadowApi.create()
         |> case do
@@ -252,7 +257,7 @@ defmodule Ash.EmbeddableType do
                 __MODULE__
                 |> Ash.DataLayer.Simple.set_data([casted])
                 |> Ash.Query.load(load)
-                |> Ash.Query.for_read(action)
+                |> Ash.Query.for_read(action, %{}, api: ShadowApi)
                 |> ShadowApi.read()
                 |> case do
                   {:ok, [casted]} ->
@@ -321,6 +326,7 @@ defmodule Ash.EmbeddableType do
             :create_action,
             :destroy_action,
             :update_action,
+            :api,
             :__source__
           ])
 
@@ -401,7 +407,7 @@ defmodule Ash.EmbeddableType do
 
           old_value
           |> Ash.Changeset.new()
-          |> Ash.EmbeddableType.copy_source(constraints[:__source__])
+          |> Ash.EmbeddableType.copy_source(constraints)
           |> Ash.Changeset.for_update(action, new_uncasted_value)
           |> ShadowApi.update()
           |> case do
@@ -433,7 +439,7 @@ defmodule Ash.EmbeddableType do
 
               old_value
               |> Ash.Changeset.new()
-              |> Ash.EmbeddableType.copy_source(constraints[:__source__])
+              |> Ash.EmbeddableType.copy_source(constraints)
               |> Ash.Changeset.for_update(action, new_uncasted_value)
               |> ShadowApi.update()
               |> case do
@@ -512,7 +518,7 @@ defmodule Ash.EmbeddableType do
               query =
                 __MODULE__
                 |> Ash.DataLayer.Simple.set_data(term)
-                |> Ash.EmbeddableType.copy_source(constraints[:__source__])
+                |> Ash.EmbeddableType.copy_source(constraints)
                 |> Ash.Query.load(constraints[:load] || [])
 
               query =
@@ -537,7 +543,7 @@ defmodule Ash.EmbeddableType do
                 query =
                   __MODULE__
                   |> Ash.DataLayer.Simple.set_data(term)
-                  |> Ash.EmbeddableType.copy_source(constraints[:__source__])
+                  |> Ash.EmbeddableType.copy_source(constraints)
                   |> Ash.Query.load(constraints[:load] || [])
 
                 ShadowApi.load(term, query)
@@ -724,7 +730,7 @@ defmodule Ash.EmbeddableType do
                   if value_updating_from do
                     value_updating_from
                     |> Ash.Changeset.new()
-                    |> Ash.EmbeddableType.copy_source(constraints[:__source__])
+                    |> Ash.EmbeddableType.copy_source(constraints)
                     |> Ash.Changeset.for_update(action, new)
                     |> ShadowApi.update()
                     |> case do
@@ -776,12 +782,22 @@ defmodule Ash.EmbeddableType do
     end
   end
 
-  def copy_source(changeset, %Ash.Changeset{} = source) do
-    changeset
-    |> Ash.Changeset.set_tenant(source.tenant)
-    |> Ash.Changeset.set_context(source.context)
-    |> Ash.Changeset.set_context(%{__source__: source})
-  end
+  def copy_source(changeset, opts) do
+    changeset =
+      if source = opts[:__source__] do
+        changeset
+        |> Ash.Changeset.set_tenant(source.tenant)
+        |> Ash.Changeset.set_context(source.context)
+        |> Ash.Changeset.set_context(%{__source__: source})
+        |> Map.put(:api, source.api)
+      else
+        changeset
+      end
 
-  def copy_source(changeset, _), do: changeset
+    if api = opts[:api] do
+      Map.put(changeset, :api, api)
+    else
+      changeset
+    end
+  end
 end

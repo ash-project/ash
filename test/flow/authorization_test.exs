@@ -1,8 +1,11 @@
 defmodule Ash.Flow.AuthorizationTest do
   use ExUnit.Case
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Post do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -28,26 +31,6 @@ defmodule Ash.Flow.AuthorizationTest do
         authorize_if(action_type(:read))
         authorize_if(actor_attribute_equals(:admin, true))
       end
-    end
-  end
-
-  defmodule Registry do
-    use Ash.Registry
-
-    entries do
-      entry(Post)
-    end
-  end
-
-  defmodule Api do
-    use Ash.Api
-
-    authorization do
-      authorize(:by_default)
-    end
-
-    resources do
-      registry(Registry)
     end
   end
 

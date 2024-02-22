@@ -5,7 +5,7 @@ defmodule Ash.Test.Resource.Validation.StringLengthTest do
   alias Ash.Resource.Validation.StringLength
 
   defmodule Post do
-    use Ash.Resource
+    use Ash.Resource, api: Ash.Test.AnyApi
 
     attributes do
       uuid_primary_key :id

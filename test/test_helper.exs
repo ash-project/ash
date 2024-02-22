@@ -1,11 +1,7 @@
-exclude = [
-  ash_three: System.get_env("FLAG_ASH_THREE", "false") != "true"
-]
-
 Mimic.copy(Ash.Reactor.Notifications)
 Mimic.copy(Ash.DataLayer)
 
-ExUnit.start(stacktrace_depth: 100, exclude: exclude)
+ExUnit.start(stacktrace_depth: 100)
 Logger.configure(level: :debug)
 
 # We compile modules with the same name often while testing the DSL

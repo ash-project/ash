@@ -2,8 +2,10 @@ defmodule Ash.Test.Resource.Preparations.LifecycleHooksTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule TimeMachine do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
@@ -56,24 +58,6 @@ defmodule Ash.Test.Resource.Preparations.LifecycleHooksTest do
                   {:ok, records}
                 end)
       end
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry TimeMachine
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

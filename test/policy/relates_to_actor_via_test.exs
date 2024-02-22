@@ -2,8 +2,10 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
   @doc false
   use ExUnit.Case
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Actor do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     actions do
       defaults [:create, :read, :update, :destroy]
@@ -36,7 +38,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
   end
 
   defmodule User do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     actions do
       defaults [:create, :read, :update, :destroy]
@@ -53,6 +55,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
 
   defmodule Account do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -85,7 +88,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
   end
 
   defmodule Role do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     actions do
       defaults [:create, :read, :update, :destroy]
@@ -106,6 +109,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
 
   defmodule BadPolicyRelName do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -130,6 +134,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
 
   defmodule BadPolicyRelPathName do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -149,29 +154,6 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
       policy always() do
         authorize_if relates_to_actor_via([:does_not_exist, :neither_does_this])
       end
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Account
-      entry Actor
-      entry User
-      entry Role
-      entry BadPolicyRelName
-      entry BadPolicyRelPathName
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

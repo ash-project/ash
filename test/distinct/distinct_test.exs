@@ -4,9 +4,11 @@ defmodule Ash.Test.Sort.DistinctTest do
 
   require Ash.Query
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -24,15 +26,6 @@ defmodule Ash.Test.Sort.DistinctTest do
     calculations do
       calculate :first_title_word, :string, expr(at(string_split(title, " ", trim?: true), 0))
       calculate :second_title_word, :string, expr(at(string_split(title, " ", trim?: true), 1))
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      allow_unregistered? true
     end
   end
 

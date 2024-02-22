@@ -1,6 +1,7 @@
 defmodule Ash.Test.Support.PolicySimple.Organization do
   @moduledoc false
   use Ash.Resource,
+    api: Ash.Test.Support.PolicySimple.Api,
     data_layer: Ash.DataLayer.Ets
 
   ets do

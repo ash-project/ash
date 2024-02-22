@@ -3,8 +3,10 @@ defmodule Ash.Test.Resource.Changes.SetNewAttributeTest do
 
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Resource do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
@@ -18,23 +20,6 @@ defmodule Ash.Test.Resource.Changes.SetNewAttributeTest do
       create :create do
         change set_new_attribute(:name, "default_name")
       end
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Resource
-    end
-  end
-
-  defmodule Api do
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

@@ -5,9 +5,11 @@ defmodule Ash.Test.Type.CiString do
   import Ash.Changeset
   require Ash.Query
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -34,24 +36,6 @@ defmodule Ash.Test.Type.CiString do
 
       attribute :string_e, :ci_string, constraints: [min_length: 3, max_length: 6]
       attribute :string_f, :ci_string, constraints: [min_length: 3, max_length: 6, trim?: false]
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Post
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 
