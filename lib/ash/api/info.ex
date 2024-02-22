@@ -12,19 +12,12 @@ defmodule Ash.Api.Info do
   """
   @spec resources(Ash.Api.t()) :: list(Ash.Resource.t())
   def resources(api) do
-    registry_resources =
-      if registry = registry(api) do
-        Ash.Registry.Info.entries(registry)
-      else
-        []
-      end
-
     api_resources =
       api
       |> Extension.get_entities([:resources])
       |> Enum.map(& &1.resource)
 
-    registry_resources ++ api_resources
+    api_resources
   end
 
   def find_manage_relationships_with_identity_not_configured(otp_app) do
@@ -98,13 +91,6 @@ defmodule Ash.Api.Info do
     quote do
       Code.ensure_compiled!(unquote(api))
 
-      if registry = Ash.Api.Info.registry(unquote(api)) do
-        Code.ensure_compiled!(registry)
-        # I guess I have to do this because the module name is dynamic?
-        # Still, seems pretty strange. This works, at least.
-        Kernel.LexicalTracker.remote_dispatch(__ENV__.lexical_tracker, unquote(api), :compile)
-      end
-
       for resource <- Ash.Api.Info.resources(unquote(api)) do
         Code.ensure_compiled!(resource)
         # same note as above
@@ -120,12 +106,6 @@ defmodule Ash.Api.Info do
   @spec description(Spark.Dsl.t() | Ash.Api.t()) :: String.t() | nil
   def description(api) do
     Extension.get_opt(api, [:api], :description, nil)
-  end
-
-  @doc "The resource registry for an api"
-  @spec registry(Ash.Api.t()) :: atom | nil
-  def registry(api) do
-    Extension.get_opt(api, [:resources], :registry, nil, true)
   end
 
   @doc "The allow MFA for an api"

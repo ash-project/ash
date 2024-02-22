@@ -1,6 +1,6 @@
 defmodule Ash.Api.Verifiers.EnsureNoEmbeds do
   @moduledoc """
-  Ensures that all resources for a given registry are not embeds.
+  Ensures that all resources for a given api are not embeds.
   """
   use Spark.Dsl.Verifier
   alias Spark.Dsl.Verifier
@@ -17,7 +17,7 @@ defmodule Ash.Api.Verifiers.EnsureNoEmbeds do
 
       rejected ->
         {:error,
-         "Embedded resources should not be listed in the registry. Please remove #{inspect(rejected)} from the registry."}
+         "Embedded resources should not be listed in the api. Please remove #{inspect(rejected)} from the api."}
     end
   end
 end
