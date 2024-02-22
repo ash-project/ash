@@ -4,10 +4,11 @@ defmodule Ash.Test.Resource.InfoTest do
 
   alias Ash.Resource
   alias Ash.Resource.Info
+  alias Ash.Test.AnyApi, as: Api
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
@@ -36,7 +37,7 @@ defmodule Ash.Test.Resource.InfoTest do
 
   defmodule Tag do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
@@ -46,7 +47,7 @@ defmodule Ash.Test.Resource.InfoTest do
 
   defmodule TagOnPost do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
@@ -60,7 +61,7 @@ defmodule Ash.Test.Resource.InfoTest do
 
   defmodule PostPrivate do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
@@ -74,7 +75,7 @@ defmodule Ash.Test.Resource.InfoTest do
 
   defmodule Comment do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id

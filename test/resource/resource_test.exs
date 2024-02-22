@@ -2,11 +2,13 @@ defmodule Ash.Test.Resource.ResourceTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
         actions do
           defaults [:create, :read, :update, :destroy]
@@ -44,7 +46,7 @@ defmodule Ash.Test.Resource.ResourceTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource
+    use Ash.Resource, api: Api
 
     actions do
       defaults [:create, :read, :update, :destroy]
@@ -53,24 +55,6 @@ defmodule Ash.Test.Resource.ResourceTest do
     attributes do
       uuid_primary_key :id
       attribute :name, :string
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Post)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

@@ -8,7 +8,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
   require Ash.Query
 
   defmodule Category do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -60,6 +60,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [
         Ash.Test.Authorizer
@@ -91,7 +92,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   defmodule PostCategory do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -118,7 +119,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -146,7 +147,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   defmodule TenantPost do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -184,7 +185,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   defmodule CompositeKeyPost do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -213,7 +214,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   defmodule UniqueNamePerAuthor do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)

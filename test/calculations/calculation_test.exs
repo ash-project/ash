@@ -3,9 +3,11 @@ defmodule Ash.Test.CalculationTest do
   use ExUnit.Case, async: true
 
   require Ash.Query
+  alias Ash.Test.AnyApi, as: Api
 
   defmodule FriendLink do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -257,7 +259,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule Role do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     actions do
       defaults([:create, :read, :update, :destroy])
@@ -327,7 +329,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule Bio do
-    use Ash.Resource, data_layer: :embedded
+    use Ash.Resource, api: Api, data_layer: :embedded
 
     attributes do
       attribute :greeting, :string
@@ -342,7 +344,7 @@ defmodule Ash.Test.CalculationTest do
 
   defmodule User do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -569,6 +571,7 @@ defmodule Ash.Test.CalculationTest do
 
   defmodule Actor do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets
 
     actions do
@@ -595,18 +598,6 @@ defmodule Ash.Test.CalculationTest do
       belongs_to :role, Role do
         attribute_writable?(true)
       end
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      resource(User)
-      resource(FriendLink)
-      resource(Role)
-      resource(Actor)
     end
   end
 

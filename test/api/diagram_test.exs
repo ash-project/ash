@@ -33,8 +33,8 @@ defmodule Ash.Test.Api.Info.DiagramTest do
                    read()
                    for_org(UUID org)
                    by_name(String name)
-                   create(UUID org, UUID id, String first_name, String last_name, ...)
-                   update(UUID id, String first_name, String last_name, String email)
+                   create(UUID org, String first_name, String last_name, String email)
+                   update(String first_name, String last_name, String email)
                    approve()
                    unapprove()
                }
@@ -43,9 +43,9 @@ defmodule Ash.Test.Api.Info.DiagramTest do
                    String name
                    User[] users
                    destroy()
-                   update(UUID id, String name)
+                   update(String name)
                    read()
-                   create(UUID id, String name)
+                   create(String name)
                    by_name(String name)
                }
 
@@ -91,8 +91,8 @@ defmodule Ash.Test.Api.Info.DiagramTest do
                    read()
                    for_org(UUID org)
                    by_name(String name)
-                   create(UUID org, UUID id, String first_name, String last_name, ...)
-                   update(UUID id, String first_name, String last_name, String email)
+                   create(UUID org, String first_name, String last_name, String email)
+                   update(String first_name, String last_name, String email)
                    approve()
                    unapprove()
                }
@@ -101,9 +101,9 @@ defmodule Ash.Test.Api.Info.DiagramTest do
                    String name
                    User[] users
                    destroy()
-                   update(UUID id, String name)
+                   update(String name)
                    read()
-                   create(UUID id, String name)
+                   create(String name)
                    by_name(String name)
                }
 

@@ -21,8 +21,8 @@ defmodule Ash.Test.Api.Info.LivebookTest do
                      read()
                      for_org(UUID org)
                      by_name(String name)
-                     create(UUID org, UUID id, String first_name, String last_name, ...)
-                     update(UUID id, String first_name, String last_name, String email)
+                     create(UUID org, String first_name, String last_name, String email)
+                     update(String first_name, String last_name, String email)
                      approve()
                      unapprove()
                  }
@@ -31,9 +31,9 @@ defmodule Ash.Test.Api.Info.LivebookTest do
                      String name
                      User[] users
                      destroy()
-                     update(UUID id, String name)
+                     update(String name)
                      read()
-                     create(UUID id, String name)
+                     create(String name)
                      by_name(String name)
                  }
 
@@ -86,8 +86,8 @@ defmodule Ash.Test.Api.Info.LivebookTest do
              | **read** | _read_ | <ul></ul> |  |
              | **for_org** | _read_ | <ul><li><b>org</b> <i>UUID</i> </li></ul> |  |
              | **by_name** | _read_ | <ul><li><b>name</b> <i>String</i> </li></ul> |  |
-             | **create** | _create_ | <ul><li><b>org</b> <i>UUID</i> </li><li><b>id</b> <i>UUID</i> attribute</li><li><b>first_name</b> <i>String</i> attribute</li><li><b>last_name</b> <i>String</i> attribute</li><li><b>email</b> <i>String</i> attribute</li></ul> |  |
-             | **update** | _update_ | <ul><li><b>id</b> <i>UUID</i> attribute</li><li><b>first_name</b> <i>String</i> attribute</li><li><b>last_name</b> <i>String</i> attribute</li><li><b>email</b> <i>String</i> attribute</li></ul> |  |
+             | **create** | _create_ | <ul><li><b>org</b> <i>UUID</i> </li><li><b>first_name</b> <i>String</i> attribute</li><li><b>last_name</b> <i>String</i> attribute</li><li><b>email</b> <i>String</i> attribute</li></ul> |  |
+             | **update** | _update_ | <ul><li><b>first_name</b> <i>String</i> attribute</li><li><b>last_name</b> <i>String</i> attribute</li><li><b>email</b> <i>String</i> attribute</li></ul> |  |
              | **approve** | _update_ | <ul></ul> |  |
              | **unapprove** | _update_ | <ul></ul> |  |
 
@@ -107,9 +107,9 @@ defmodule Ash.Test.Api.Info.LivebookTest do
              | Name | Type | Input | Description |
              | ---- | ---- | ----- | ----------- |
              | **destroy** | _destroy_ | <ul></ul> |  |
-             | **update** | _update_ | <ul><li><b>id</b> <i>UUID</i> attribute</li><li><b>name</b> <i>String</i> attribute</li></ul> |  |
+             | **update** | _update_ | <ul><li><b>name</b> <i>String</i> attribute</li></ul> |  |
              | **read** | _read_ | <ul></ul> |  |
-             | **create** | _create_ | <ul><li><b>id</b> <i>UUID</i> attribute</li><li><b>name</b> <i>String</i> attribute</li></ul> |  |
+             | **create** | _create_ | <ul><li><b>name</b> <i>String</i> attribute</li></ul> |  |
              | **by_name** | _read_ | <ul><li><b>name</b> <i>String</i> </li></ul> |  |
 
              """

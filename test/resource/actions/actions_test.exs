@@ -39,7 +39,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
           end
         end
 
-      assert Info.action(resource, :all_params).accept == [:id, :first_name, :last_name]
+      assert Info.action(resource, :all_params).accept == [:first_name, :last_name]
       assert Info.action(resource, :no_params).accept == []
       assert Info.action(resource, :one_param).accept == [:first_name]
       assert Info.action(resource, :destroy).accept == []
@@ -65,7 +65,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
 
       assert Info.action(resource, :some_params).accept == [:last_name]
       assert Info.action(resource, :no_params).accept == []
-      assert Info.action(resource, :all_params).accept == [:id, :first_name, :last_name]
+      assert Info.action(resource, :all_params).accept == [:first_name, :last_name]
     end
 
     test "no params" do
@@ -87,7 +87,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
 
       assert Info.action(resource, :default_params).accept == []
       assert Info.action(resource, :one_param).accept == [:first_name]
-      assert Info.action(resource, :all_params).accept == [:id, :first_name, :last_name]
+      assert Info.action(resource, :all_params).accept == [:first_name, :last_name]
     end
   end
 

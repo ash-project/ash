@@ -3,6 +3,8 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
 
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule ActorAndAuthorizeMustBeInContext do
     use Ash.Resource.Validation
 
@@ -32,7 +34,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   end
 
   defmodule SubSubEmbeddedResource do
-    use Ash.Resource, data_layer: :embedded
+    use Ash.Resource, api: Api, data_layer: :embedded
 
     attributes do
       uuid_primary_key :id
@@ -57,7 +59,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   end
 
   defmodule SubEmbeddedResource do
-    use Ash.Resource, data_layer: :embedded
+    use Ash.Resource, api: Api, data_layer: :embedded
 
     attributes do
       uuid_primary_key :id
@@ -83,7 +85,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   end
 
   defmodule EmbeddedResource do
-    use Ash.Resource, data_layer: :embedded
+    use Ash.Resource, api: Api, data_layer: :embedded
 
     attributes do
       uuid_primary_key :id
@@ -109,7 +111,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   end
 
   defmodule Resource do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
@@ -129,23 +131,6 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
 
     validations do
       validate {ActorAndAuthorizeMustBeInContext, []}
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Resource
-    end
-  end
-
-  defmodule Api do
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

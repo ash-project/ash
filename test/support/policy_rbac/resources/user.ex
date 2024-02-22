@@ -1,6 +1,7 @@
 defmodule Ash.Test.Support.PolicyRbac.User do
   @moduledoc false
   use Ash.Resource,
+    api: Ash.Test.Support.PolicyRbac.Api,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [
       Ash.Policy.Authorizer

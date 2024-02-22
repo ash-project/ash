@@ -6,7 +6,7 @@ defmodule Ash.Test.Actions.IdentityTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)

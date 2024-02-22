@@ -56,7 +56,7 @@ defmodule Ash.Api.Dsl do
     examples: [
       """
       authorization do
-        authorize :when_requested
+        authorize :always
       end
       """
     ],

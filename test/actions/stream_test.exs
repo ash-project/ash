@@ -2,9 +2,11 @@ defmodule Ash.Test.Actions.StreamTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
@@ -26,24 +28,6 @@ defmodule Ash.Test.Actions.StreamTest do
       attribute :title, :string, allow_nil?: false
 
       timestamps()
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Post
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

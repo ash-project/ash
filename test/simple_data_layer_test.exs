@@ -1,8 +1,10 @@
 defmodule Ash.Test.SimpleDataLayerTest do
   use ExUnit.Case
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Person do
-    use Ash.Resource
+    use Ash.Resource, api: Api
 
     attributes do
       uuid_primary_key :id
@@ -48,14 +50,6 @@ defmodule Ash.Test.SimpleDataLayerTest do
 
     defp offset(list, nil), do: list
     defp offset(list, value), do: Enum.drop(list, value)
-  end
-
-  defmodule Api do
-    use Ash.Api
-
-    resources do
-      allow_unregistered? true
-    end
   end
 
   test "set_data can be used in a before_action callback" do

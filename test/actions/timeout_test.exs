@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.TimeoutTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Sleep do
     @moduledoc false
     use Ash.Resource.Change
@@ -17,7 +19,7 @@ defmodule Ash.Test.Actions.TimeoutTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     actions do
       defaults [:read, :update, :destroy]
@@ -32,24 +34,6 @@ defmodule Ash.Test.Actions.TimeoutTest do
       uuid_primary_key :id
       attribute(:name, :string)
       attribute(:bio, :string)
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Author)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

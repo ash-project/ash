@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.GenericActionsTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule PassingFredOrGeorge do
     use Ash.Policy.SimpleCheck
 
@@ -14,7 +16,10 @@ defmodule Ash.Test.Actions.GenericActionsTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, authorizers: [Ash.Policy.Authorizer]
+    use Ash.Resource,
+      api: Api,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
 
     ets do
       private?(true)
@@ -46,24 +51,6 @@ defmodule Ash.Test.Actions.GenericActionsTest do
     end
   end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Post)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
-    end
-  end
-
   describe "generic actions can be called" do
     test "generic actions can be run" do
       assert "Hello fred" =
@@ -85,8 +72,7 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       end
     end
 
-    @tag :ash_three
-    test "generic actions don't accept unknown keys in Ash 3.0" do
+    test "generic actions don't accept unknown keys" do
       assert {:error, %Ash.Error.Invalid{}} =
                Post
                |> Ash.ActionInput.for_action(:hello, %{name: "fred", one: 1})

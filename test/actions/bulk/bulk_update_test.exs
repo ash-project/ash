@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule AddAfterToTitle do
     use Ash.Resource.Change
 
@@ -69,6 +71,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -143,14 +146,12 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
 
     policies do
-      policy action(:create_with_policy) do
-        authorize_if context_equals(:authorize?, true)
-      end
-    end
-
-    policies do
       policy action(:update_with_policy) do
         authorize_if context_equals(:authorize?, true)
+      end
+
+      policy always() do
+        authorize_if always()
       end
     end
 
@@ -169,20 +170,12 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      resource Post
-    end
-  end
-
   test "returns updated records" do
     assert %Ash.BulkResult{records: [%{title2: "updated value"}, %{title2: "updated value"}]} =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
              |> Stream.map(fn {:ok, result} ->
                result
@@ -190,7 +183,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Api.bulk_update!(:update, %{title2: "updated value"},
                resource: Post,
                return_records?: true,
-               return_errors?: true
+               return_errors?: true,
+               authorize?: false
              )
   end
 
@@ -203,7 +197,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
            } =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
              |> Stream.map(fn {:ok, result} ->
                result
@@ -211,7 +206,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Api.bulk_update!(:update_with_change, %{title2: "updated value"},
                resource: Post,
                return_records?: true,
-               return_errors?: true
+               return_errors?: true,
+               authorize?: false
              )
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
@@ -227,7 +223,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
            } =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
              |> Stream.map(fn {:ok, result} ->
                result
@@ -235,7 +232,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Api.bulk_update!(:update_with_argument, %{a_title: "updated value"},
                resource: Post,
                return_records?: true,
-               return_errors?: true
+               return_errors?: true,
+               authorize?: false
              )
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
@@ -251,7 +249,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
            } =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
              |> Stream.map(fn {:ok, result} ->
                result
@@ -259,7 +258,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Api.bulk_update!(:update_with_after_batch, %{title2: "updated value"},
                resource: Post,
                return_records?: true,
-               return_errors?: true
+               return_errors?: true,
+               authorize?: false
              )
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
@@ -307,14 +307,16 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
            } =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
              |> Api.bulk_update(:update, %{title2: %{invalid: :value}},
                resource: Post,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
   end
 
@@ -325,14 +327,16 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
            } =
              Api.bulk_create!([%{title: "title1"}], Post, :create,
                return_stream?: true,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
              |> Api.bulk_update(:update, %{title2: %{invalid: :value}},
                resource: Post,
-               return_errors?: true
+               return_errors?: true,
+               authorize?: false
              )
   end
 
@@ -345,7 +349,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
            } =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
              |> Stream.map(fn {:ok, result} ->
                result
@@ -353,7 +358,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Api.bulk_update!(:update_with_after_action, %{title2: "updated value"},
                resource: Post,
                return_records?: true,
-               return_errors?: true
+               return_errors?: true,
+               authorize?: false
              )
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
@@ -369,7 +375,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
            } =
              Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
              |> Stream.map(fn {:ok, result} ->
                result
@@ -377,7 +384,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Api.bulk_update!(:update_with_after_transaction, %{title2: "updated value"},
                resource: Post,
                return_records?: true,
-               return_errors?: true
+               return_errors?: true,
+               authorize?: false
              )
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
@@ -389,7 +397,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       assert %Ash.BulkResult{records: [_, _], errors: []} =
                Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                  return_stream?: true,
-                 return_records?: true
+                 return_records?: true,
+                 authorize?: false
                )
                |> Stream.map(fn {:ok, result} ->
                  result
@@ -420,7 +429,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              } =
                Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                  return_stream?: true,
-                 return_records?: true
+                 return_records?: true,
+                 authorize?: false
                )
                |> Stream.map(fn {:ok, result} ->
                  result
@@ -440,7 +450,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       assert %Ash.BulkResult{errors: [_, _], records: []} =
                Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                  return_stream?: true,
-                 return_records?: true
+                 return_records?: true,
+                 authorize?: false
                )
                |> Stream.map(fn {:ok, result} ->
                  result

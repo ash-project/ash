@@ -169,6 +169,16 @@ defmodule Ash.Type.NewType do
         end
       end
 
+      if function_exported?(subtype_of, :include_source, 2) do
+        @impl Ash.Type
+        def include_source(constraints, source) do
+          unquote(subtype_of).include_source(
+            constraints,
+            source
+          )
+        end
+      end
+
       if function_exported?(subtype_of, :dump_to_embedded, 2) do
         @impl Ash.Type
         def dump_to_embedded(value, constraints) do

@@ -4,9 +4,12 @@ defmodule Ash.Test.Actions.LoadTest do
 
   require Ash.Query
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Campaign do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -136,6 +139,7 @@ defmodule Ash.Test.Actions.LoadTest do
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [
         Ash.Test.Authorizer
@@ -203,7 +207,7 @@ defmodule Ash.Test.Actions.LoadTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -222,7 +226,7 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     code_interface do
-      define_for(Ash.Test.Actions.LoadTest.Api)
+      define_for(Api)
 
       define :get_by_id do
         action(:read)
@@ -258,7 +262,7 @@ defmodule Ash.Test.Actions.LoadTest do
 
   defmodule PostCategory do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -280,7 +284,7 @@ defmodule Ash.Test.Actions.LoadTest do
 
   defmodule Category do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -306,6 +310,7 @@ defmodule Ash.Test.Actions.LoadTest do
 
   defmodule Rating do
     use Ash.Resource,
+      api: Ash.Test.Actions.LoadTest.Api2,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -323,39 +328,8 @@ defmodule Ash.Test.Actions.LoadTest do
 
     relationships do
       belongs_to :post, Post do
-        api(Ash.Test.Actions.LoadTest.Api)
+        api(Api)
       end
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Author)
-      entry(Post)
-      entry(Category)
-      entry(PostCategory)
-      entry(Campaign)
-    end
-  end
-
-  defmodule Registry2 do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Rating)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry(Registry)
     end
   end
 
@@ -364,7 +338,7 @@ defmodule Ash.Test.Actions.LoadTest do
     use Ash.Api
 
     resources do
-      registry(Registry2)
+      resource Rating
     end
   end
 
@@ -857,7 +831,11 @@ defmodule Ash.Test.Actions.LoadTest do
   describe "loading through attributes" do
     test "can load calculations through attributes" do
       Author
-      |> new(%{name: "zerg", bio: %{first_name: "donald", last_name: "duck"}})
+      |> Ash.Changeset.for_create(
+        :create,
+        %{name: "zerg", bio: %{first_name: "donald", last_name: "duck"}},
+        authorize?: false
+      )
       |> Api.create!()
 
       assert [%{bio: %{full_name: "donald duck"}}] =
@@ -879,14 +857,22 @@ defmodule Ash.Test.Actions.LoadTest do
 
     test "can load calculations through union" do
       Author
-      |> new(%{name: "zerg", bio_union: %{type: "bio", first_name: "donald", last_name: "duck"}})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(
+        :create,
+        %{name: "zerg", bio_union: %{type: "bio", first_name: "donald", last_name: "duck"}},
+        authorize?: false
+      )
+      |> Api.create!(authorize?: false)
 
       Author
-      |> new(%{
-        name: "zerg",
-        bio_union: %{type: "other_kind_of_bio", first_name: "donald", last_name: "duck"}
-      })
+      |> Ash.Changeset.for_create(
+        :create,
+        %{
+          name: "zerg",
+          bio_union: %{type: "other_kind_of_bio", first_name: "donald", last_name: "duck"}
+        },
+        authorize?: false
+      )
       |> Api.create!()
 
       assert [
@@ -908,14 +894,25 @@ defmodule Ash.Test.Actions.LoadTest do
 
     test "can load calculations through union produced by a calculation" do
       Author
-      |> new(%{name: "zerg", bio_union: %{type: "bio", first_name: "donald", last_name: "duck"}})
+      |> Ash.Changeset.for_create(
+        :create,
+        %{
+          name: "zerg",
+          bio_union: %{type: "bio", first_name: "donald", last_name: "duck"}
+        },
+        authorize?: false
+      )
       |> Api.create!()
 
       Author
-      |> new(%{
-        name: "zerg",
-        bio_union: %{type: "other_kind_of_bio", first_name: "donald", last_name: "duck"}
-      })
+      |> Ash.Changeset.for_create(
+        :create,
+        %{
+          name: "zerg",
+          bio_union: %{type: "other_kind_of_bio", first_name: "donald", last_name: "duck"}
+        },
+        authorize?: false
+      )
       |> Api.create!()
 
       assert [

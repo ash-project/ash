@@ -324,8 +324,10 @@ defmodule Ash.Changeset do
 
     context = Ash.Resource.Info.default_context(resource) || %{}
 
+    api = Ash.Resource.Info.api(resource)
+
     if Ash.Resource.Info.resource?(resource) do
-      %__MODULE__{resource: resource, data: record, action_type: :update}
+      %__MODULE__{resource: resource, data: record, action_type: :update, api: api}
       |> change_attributes(params)
       |> set_context(context)
       |> set_tenant(tenant)
@@ -333,7 +335,8 @@ defmodule Ash.Changeset do
       %__MODULE__{
         resource: resource,
         action_type: :update,
-        data: struct(resource)
+        data: struct(resource),
+        api: api
       }
       |> add_error(NoSuchResource.exception(resource: resource))
       |> set_tenant(tenant)
@@ -346,7 +349,8 @@ defmodule Ash.Changeset do
       %__MODULE__{
         resource: resource,
         action_type: :create,
-        data: struct(resource)
+        data: struct(resource),
+        api: Ash.Resource.Info.api(resource)
       }
       |> change_attributes(params)
     else
@@ -1060,6 +1064,14 @@ defmodule Ash.Changeset do
       get_action_entity(changeset.resource, action_or_name) ||
         raise_no_action(changeset.resource, action_or_name, :destroy)
 
+    api =
+      changeset.api || opts[:api] || Ash.Resource.Info.api(changeset.resource) ||
+        raise ArgumentError,
+          message:
+            "Could not determine api for changeset. Provide the `api` option or configure an api in the resource directly."
+
+    changeset = %{changeset | api: api}
+
     if changeset.valid? do
       if action do
         if action.soft? do
@@ -1067,7 +1079,7 @@ defmodule Ash.Changeset do
         else
           {changeset, opts} =
             Ash.Actions.Helpers.add_process_context(
-              changeset.api || opts[:api] || Ash.Resource.Info.api(changeset.resource),
+              api,
               changeset,
               opts
             )
@@ -1296,12 +1308,20 @@ defmodule Ash.Changeset do
   end
 
   defp do_for_action(changeset, action_or_name, params, opts) do
+    api =
+      changeset.api || opts[:api] || Ash.Resource.Info.api(changeset.resource) ||
+        raise ArgumentError,
+          message:
+            "Could not determine api for changeset. Provide the `api` option or configure an api in the resource directly."
+
     {changeset, opts} =
       Ash.Actions.Helpers.add_process_context(
-        changeset.api || opts[:api] || Ash.Resource.Info.api(changeset.resource),
+        api,
         changeset,
         opts
       )
+
+    changeset = %{changeset | api: api}
 
     if changeset.valid? do
       action = get_action_entity(changeset.resource, action_or_name)
@@ -1366,10 +1386,27 @@ defmodule Ash.Changeset do
   """
   def present?(changeset, attribute) do
     arg_or_attribute_value =
-      case Ash.Changeset.get_argument_or_attribute(changeset, attribute) do
-        %Ash.NotLoaded{} -> nil
-        %Ash.ForbiddenField{} -> nil
-        other -> other
+      case Ash.Changeset.fetch_argument(changeset, attribute) do
+        {:ok, nil} ->
+          Ash.Changeset.get_attribute(changeset, attribute)
+
+        :error ->
+          Ash.Changeset.get_attribute(changeset, attribute)
+
+        {:ok, value} ->
+          {:ok, value}
+      end
+
+    arg_or_attribute_value =
+      case arg_or_attribute_value do
+        %Ash.NotLoaded{} ->
+          nil
+
+        %Ash.ForbiddenField{} ->
+          nil
+
+        other ->
+          other
       end
 
     not is_nil(arg_or_attribute_value) ||
@@ -1671,7 +1708,15 @@ defmodule Ash.Changeset do
           if attr.writable? do
             do_change_attribute(changeset, attr.name, value, true)
           else
-            changeset
+            add_error(
+              changeset,
+              NoSuchInput.exception(
+                resource: changeset.resource,
+                action: action.name,
+                input: name,
+                inputs: Ash.Resource.Info.action_inputs(changeset.resource, action.name)
+              )
+            )
           end
 
         true ->
@@ -4107,11 +4152,12 @@ defmodule Ash.Changeset do
 
       if argument do
         with value <- Ash.Type.Helpers.handle_indexed_maps(argument.type, value),
+             constraints <-
+               Ash.Type.include_source(argument.type, changeset, argument.constraints),
              {:ok, casted} <-
-               Ash.Type.Helpers.cast_input(argument.type, value, argument.constraints, changeset),
+               Ash.Type.cast_input(argument.type, value, constraints),
              {:constrained, {:ok, casted}, _last_val} when not is_nil(casted) <-
-               {:constrained,
-                Ash.Type.apply_constraints(argument.type, casted, argument.constraints),
+               {:constrained, Ash.Type.apply_constraints(argument.type, casted, constraints),
                 casted} do
           %{changeset | arguments: Map.put(changeset.arguments, argument.name, casted)}
           |> store_casted_argument(argument.name, casted, store_casted?)
@@ -4242,20 +4288,25 @@ defmodule Ash.Changeset do
 
       attribute ->
         with value <- Ash.Type.Helpers.handle_indexed_maps(attribute.type, value),
+             constraints <-
+               Ash.Type.include_source(attribute.type, changeset, attribute.constraints),
              {{:ok, prepared}, _} <-
-               {prepare_change(changeset, attribute, value, attribute.constraints), value},
+               {prepare_change(changeset, attribute, value, constraints), value},
              {:ok, casted} <-
-               Ash.Type.Helpers.cast_input(
+               Ash.Type.cast_input(
                  attribute.type,
                  prepared,
-                 attribute.constraints,
-                 changeset,
-                 true
+                 constraints
                ),
              {:ok, casted} <-
-               handle_change(changeset, attribute, casted, attribute.constraints),
+               handle_change(
+                 changeset,
+                 attribute,
+                 casted,
+                 constraints
+               ),
              {:ok, casted} <-
-               Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
+               Ash.Type.apply_constraints(attribute.type, casted, constraints) do
           data_value = Map.get(changeset.data, attribute.name)
           changeset = remove_default(changeset, attribute.name)
 
@@ -4370,18 +4421,15 @@ defmodule Ash.Changeset do
 
       attribute ->
         with value <- Ash.Type.Helpers.handle_indexed_maps(attribute.type, value),
+             constraints <-
+               Ash.Type.include_source(attribute.type, changeset, attribute.constraints),
              {:ok, prepared} <-
-               prepare_change(changeset, attribute, value, attribute.constraints),
+               prepare_change(changeset, attribute, value, constraints),
              {:ok, casted} <-
-               Ash.Type.Helpers.cast_input(
-                 attribute.type,
-                 prepared,
-                 attribute.constraints,
-                 changeset
-               ),
-             {:ok, casted} <- handle_change(changeset, attribute, casted, attribute.constraints),
+               Ash.Type.cast_input(attribute.type, prepared, constraints),
+             {:ok, casted} <- handle_change(changeset, attribute, casted, constraints),
              {:ok, casted} <-
-               Ash.Type.apply_constraints(attribute.type, casted, attribute.constraints) do
+               Ash.Type.apply_constraints(attribute.type, casted, constraints) do
           data_value = Map.get(changeset.data, attribute.name)
 
           changeset = remove_default(changeset, attribute.name)

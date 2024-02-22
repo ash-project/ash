@@ -7,13 +7,13 @@ defmodule Ash.Test.Policy.SimpleTest do
 
   setup do
     [
-      user: Api.create!(Ash.Changeset.new(User)),
-      admin: Api.create!(Ash.Changeset.new(User, %{admin: true}))
+      user: Api.create!(Ash.Changeset.new(User), authorize?: false),
+      admin: Api.create!(Ash.Changeset.new(User, %{admin: true}), authorize?: false)
     ]
   end
 
   test "bypass with condition does not apply subsequent filters", %{admin: admin, user: user} do
-    Api.create!(Ash.Changeset.new(Tweet))
+    Api.create!(Ash.Changeset.new(Tweet), authorize?: false)
 
     assert [_] = Api.read!(Tweet, actor: admin)
     assert [] = Api.read!(Tweet, actor: user)
@@ -48,7 +48,7 @@ defmodule Ash.Test.Policy.SimpleTest do
   end
 
   test "filter checks work on create/update/destroy actions", %{user: user} do
-    user2 = Api.create!(Ash.Changeset.new(User))
+    user2 = Api.create!(Ash.Changeset.new(User), authorize?: false)
 
     assert_raise Ash.Error.Forbidden, fn ->
       Api.update!(Ash.Changeset.new(user), actor: user2)
@@ -60,7 +60,7 @@ defmodule Ash.Test.Policy.SimpleTest do
       Tweet
       |> Ash.Changeset.for_create(:create)
       |> Ash.Changeset.manage_relationship(:user, user, type: :append_and_remove)
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
     changeset = Ash.Changeset.for_update(tweet, :update)
 
@@ -69,7 +69,7 @@ defmodule Ash.Test.Policy.SimpleTest do
     tweet =
       Tweet
       |> Ash.Changeset.for_create(:create)
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
     changeset = Ash.Changeset.for_update(tweet, :update)
 
@@ -77,7 +77,7 @@ defmodule Ash.Test.Policy.SimpleTest do
   end
 
   test "non-filter checks work on create/update/destroy actions" do
-    user = Api.create!(Ash.Changeset.new(User))
+    user = Api.create!(Ash.Changeset.new(User), authorize?: false)
 
     assert_raise Ash.Error.Forbidden, fn ->
       Api.create!(Ash.Changeset.new(Post, %{text: "foo"}), actor: user)
@@ -88,21 +88,21 @@ defmodule Ash.Test.Policy.SimpleTest do
     organization =
       Organization
       |> Ash.Changeset.for_create(:create, %{owner: user.id})
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
     post1 =
       Post
       |> Ash.Changeset.for_create(:create, %{author: user.id, text: "aaa"})
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
     post2 =
       Post
       |> Ash.Changeset.for_create(:create, %{organization: organization.id, text: "bbb"})
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
     Post
     |> Ash.Changeset.for_create(:create, %{text: "invalid"})
-    |> Api.create!()
+    |> Api.create!(authorize?: false)
 
     ids =
       Post
@@ -123,12 +123,12 @@ defmodule Ash.Test.Policy.SimpleTest do
     car1 =
       Car
       |> Ash.Changeset.for_create(:create, %{users: [user.id]})
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
     car2 =
       Car
       |> Ash.Changeset.for_create(:create, %{})
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
 
     results =
       Car

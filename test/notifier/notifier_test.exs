@@ -2,6 +2,8 @@ defmodule Ash.Test.NotifierTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Notifier do
     use Ash.Notifier
 
@@ -12,6 +14,7 @@ defmodule Ash.Test.NotifierTest do
 
   defmodule PostLink do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       notifiers: [
         Notifier
@@ -38,6 +41,7 @@ defmodule Ash.Test.NotifierTest do
 
   defmodule Comment do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       notifiers: [
         Notifier
@@ -67,6 +71,7 @@ defmodule Ash.Test.NotifierTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       notifiers: [
         Notifier
@@ -86,7 +91,7 @@ defmodule Ash.Test.NotifierTest do
           Ash.Changeset.after_action(changeset, fn _changeset, result ->
             Comment
             |> Ash.Changeset.for_create(:create, %{post_id: result.id, name: "auto"})
-            |> Ash.Test.NotifierTest.Api.create!()
+            |> Api.create!()
 
             {:ok, result}
           end)
@@ -107,25 +112,6 @@ defmodule Ash.Test.NotifierTest do
         destination_attribute_on_join_resource: :destination_post_id
 
       has_many :comments, Comment, destination_attribute: :post_id
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Post
-      entry PostLink
-      entry Comment
-    end
-  end
-
-  defmodule Api do
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 

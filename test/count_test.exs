@@ -1,8 +1,11 @@
 defmodule Ash.Test.CountTest do
   use ExUnit.Case
 
+  alias Ash.Test.AnyApi, as: Api
+
   defmodule Countable do
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -36,26 +39,18 @@ defmodule Ash.Test.CountTest do
     end
   end
 
-  defmodule Api do
-    use Ash.Api
-
-    resources do
-      resource Countable
-    end
-  end
-
   test "counts all entries without authorization" do
     Enum.each(1..10, fn _ ->
       Countable
       |> Ash.Changeset.new(%{owner_id: "foo"})
       |> Ash.Changeset.for_create(:create)
-      |> Api.create!()
+      |> Api.create!(authorize?: false)
     end)
 
     assert {:ok, %Ash.Page.Offset{count: count}} =
              Countable
              |> Ash.Query.for_read(:read)
-             |> Api.read(page: [count: true])
+             |> Api.read(page: [count: true], authorize?: false)
 
     assert count == 10
   end
@@ -64,14 +59,14 @@ defmodule Ash.Test.CountTest do
     Enum.each(1..10, fn _ ->
       Countable
       |> Ash.Changeset.new(%{owner_id: "foo"})
-      |> Ash.Changeset.for_create(:create)
+      |> Ash.Changeset.for_create(:create, %{}, authorize?: false)
       |> Api.create!()
     end)
 
     Enum.each(1..10, fn _ ->
       Countable
       |> Ash.Changeset.new(%{owner_id: "bar"})
-      |> Ash.Changeset.for_create(:create)
+      |> Ash.Changeset.for_create(:create, %{}, authorize?: false)
       |> Api.create!()
     end)
 
