@@ -610,7 +610,7 @@ defmodule Ash.Api do
                               resource: [
                                 type: {:spark, Ash.Resource},
                                 doc:
-                                  "The resource being updated. This must be provided if the input given is a stream, so we know ahead of time what the resource being updated is."
+                                  "The resource being destroyed. This must be provided if the input given is a stream, so we know ahead of time what the resource being updated is."
                               ],
                               stream_batch_size: [
                                 type: :integer,
@@ -1979,14 +1979,16 @@ defmodule Ash.Api do
   """
   @callback bulk_update!(
               Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
-              atom,
+              action :: atom,
               input :: map,
-              Keyword.t()
+              opts :: Keyword.t()
             ) ::
               Ash.BulkResult.t() | no_return
 
   @doc """
-  Updates all items in the provided enumerable or query with the provided input.
+  Updates all items in the provided enumerable or query with the provided input for the action, which
+  is a map, where the keys are the primary keys of the records to update, and the values are maps
+  of values to apply to that record.
 
   If the data layer supports updating from a query, and the update action can be done fully atomically,
   it will be updated in a single pass using the data layer.
@@ -1999,9 +2001,9 @@ defmodule Ash.Api do
   """
   @callback bulk_update(
               Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
-              atom,
+              action :: atom,
               input :: map,
-              Keyword.t()
+              opts :: Keyword.t()
             ) ::
               Ash.BulkResult.t()
 
@@ -2010,14 +2012,16 @@ defmodule Ash.Api do
   """
   @callback bulk_destroy!(
               Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
-              atom,
+              action :: atom,
               input :: map,
-              Keyword.t()
+              opts :: Keyword.t()
             ) ::
               Ash.BulkResult.t() | no_return
 
   @doc """
-  Destroys all items in the provided enumerable or query with the provided input.
+  Destroys all items in the provided enumerable or query with the provided input for the action, which
+  is a map, where the keys are the primary keys of the records to update, and the values are maps
+  of values to apply to that record.
 
   If the data layer supports destroying from a query, and the destroy action can be done fully atomically,
   it will be updated in a single pass using the data layer.
