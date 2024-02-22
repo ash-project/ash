@@ -108,10 +108,6 @@ Relationships (also known as _associations_) are named links between resources, 
 
 See the [Relationships guide](/documentation/topics/relationships.md) for more information.
 
-## Registry
-
-A registry defines the set of resources available in your application, via listing entries. You'll probably never need to interact with one directly after setting it up, but it works efficiently for compile-time optimization.
-
 ## Resource
 
 The central concept in Ash, a resource is a domain model object in your system, the nouns that your app revolves around. Resources contain definitions of the data they hold in the form of attributes, but also define [actions](#action) that can be taken on that data and [actors](#actor) that are allowed to run them.

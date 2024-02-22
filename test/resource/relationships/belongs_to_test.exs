@@ -231,20 +231,11 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
           end
         end
 
-        defmodule Registry do
-          @moduledoc false
-          use Ash.Registry
-
-          entries do
-            entry Post
-          end
-        end
-
         defmodule Api do
           use Ash.Api
 
           resources do
-            registry Registry
+            resource Post
           end
         end
       end

@@ -3,6 +3,10 @@ defmodule Ash.Test.Support.PolicyComplex.Api do
   use Ash.Api
 
   resources do
-    registry(Ash.Test.Support.PolicyComplex.Registry)
+    resource(Ash.Test.Support.PolicyComplex.User)
+    resource(Ash.Test.Support.PolicyComplex.FriendLink)
+    resource(Ash.Test.Support.PolicyComplex.Post)
+    resource(Ash.Test.Support.PolicyComplex.Comment)
+    resource(Ash.Test.Support.PolicyComplex.Bio)
   end
 end

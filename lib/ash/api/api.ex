@@ -6,20 +6,12 @@ defmodule Ash.Api do
   for all resources in that Api. You include them in an Api like so:
 
   ```elixir
-  defmodule MyApp.Registry do
-    use Ash.Registry
-
-    entries do
-      entry OneResource
-      entry SecondResource
-    end
-  end
-
   defmodule MyApp.Api do
     use Ash.Api
 
     resources do
-      registry MyApp.Registry
+      resource OneResource
+      resource SecondResource
     end
   end
   ```
@@ -2172,30 +2164,6 @@ defmodule Ash.Api do
       end
     end
   end
-
-  @deprecated "use Ash.Api.Info.resource/2 instead"
-  defdelegate resource(api, resource), to: Ash.Api.Info
-
-  @deprecated "use Ash.Api.Info.resources/1 instead"
-  defdelegate resources(api), to: Ash.Api.Info
-
-  @deprecated "use Ash.Api.Info.registry/1 instead"
-  defdelegate registry(api), to: Ash.Api.Info
-
-  @deprecated "use Ash.Api.Info.allow/1 instead"
-  defdelegate allow(api), to: Ash.Api.Info
-
-  @deprecated "use Ash.Api.Info.timeout/1 instead"
-  defdelegate timeout(api), to: Ash.Api.Info
-
-  @deprecated "use Ash.Api.Info.require_actor?/1 instead"
-  defdelegate require_actor?(api), to: Ash.Api.Info
-
-  @deprecated "use Ash.Api.Info.authorize/1 instead"
-  defdelegate authorize(api), to: Ash.Api.Info
-
-  @deprecated "use Ash.Api.Info.allow_unregistered?/1 instead"
-  defdelegate allow_unregistered?(api), to: Ash.Api.Info
 
   @doc false
   @spec get!(Ash.Api.t(), Ash.Resource.t(), term(), Keyword.t()) ::
