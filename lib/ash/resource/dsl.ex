@@ -825,19 +825,21 @@ defmodule Ash.Resource.Dsl do
     examples: [
       """
       code_interface do
-        define_for MyApp.Api
         define :create_user, action: :create
         define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
       end
       """
     ],
-    no_depend_modules: [:define_for],
+    no_depend_modules: [:api],
     schema: [
-      define_for: [
+      api: [
         type: {:spark, Ash.Api},
-        doc:
-          "Defines the code interface on the resource module directly, using the provided Api.",
+        doc: "Use the provided Api instead of the resources configured api when calling actions.",
         default: false
+      ],
+      define?: [
+        type: :boolean,
+        doc: "Whether or not to define the code interface in the resource."
       ]
     ],
     entities: [

@@ -51,7 +51,6 @@ defmodule Ash.Test.Flow.ParentResource do
   end
 
   code_interface do
-    define_for Ash.Test.Flow.Api
     define :cancel, action: :disable
   end
 

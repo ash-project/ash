@@ -51,7 +51,6 @@ defmodule Ash.Test.Support.PolicyComplex.Comment do
   end
 
   code_interface do
-    define_for Ash.Test.Support.PolicyComplex.Api
     define :create, args: [:post_id, :text]
   end
 

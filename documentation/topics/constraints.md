@@ -44,7 +44,6 @@ defmodule MyProject.MyApi.Account do
   # ...
 
   code_interface do
-    define_for MyProject.MyApi.Account
     define :create, action: :create
   end
 
@@ -123,7 +122,6 @@ defmodule MyProject.MyApi.Account do
   # ...
 
   code_interface do
-    define_for MyProject.MyApi.Account
     define :create_username_with_age, action: :create_username_with_age
   end
 

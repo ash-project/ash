@@ -30,7 +30,6 @@ defmodule Ash.Test.Support.PolicyComplex.Bio do
   end
 
   code_interface do
-    define_for Ash.Test.Support.PolicyComplex.Api
     define :create, args: [:text]
   end
 
