@@ -17,6 +17,11 @@ defmodule Ash.Actions.Destroy.Bulk do
           %Ash.Query{resource: resource} ->
             resource
 
+          resource when is_atom(resource) ->
+            if Ash.Resource.Info.resource?(resource) do
+              resource
+            end
+
           _ ->
             nil
         end
@@ -38,6 +43,11 @@ defmodule Ash.Actions.Destroy.Bulk do
 
           %Ash.Query{resource: resource} ->
             resource
+
+          resource when is_atom(resource) ->
+            if Ash.Resource.Info.resource?(resource) do
+              resource
+            end
 
           _ ->
             nil
