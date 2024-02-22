@@ -27,9 +27,9 @@ defmodule Ash.Test.Notifier.PubSubTest do
       prefix "post"
 
       publish :destroy, ["foo", :id]
-      publish :update, ["foo", :id]
-      publish :update, ["bar", :name], event: "name_change"
-      publish :update_pkey, ["foo", :_pkey]
+      publish :update, ["foo", :id], previous_values?: true
+      publish :update, ["bar", :name], event: "name_change", previous_values?: true
+      publish :update_pkey, ["foo", :_pkey], previous_values?: true
     end
 
     ets do

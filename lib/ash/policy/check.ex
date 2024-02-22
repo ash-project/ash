@@ -48,7 +48,8 @@ defmodule Ash.Policy.Check do
   @doc "Describe the check in human readable format, given the options"
   @callback describe(options()) :: String.t()
 
-  @callback requires_original_data?(actor(), options()) :: boolean()
+  @doc "Whether or not your check requires the original data of a changeset (if applicable)"
+  @callback requires_original_data?(sactor(), options()) :: boolean()
 
   @doc """
   The type of the check
@@ -73,7 +74,7 @@ defmodule Ash.Policy.Check do
       @behaviour Ash.Policy.Check
 
       def type, do: :manual
-      def requires_original_data?(_, _), do: true
+      def requires_original_data?(_, _), do: false
 
       defoverridable type: 0, requires_original_data?: 2
     end
