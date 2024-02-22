@@ -9,7 +9,7 @@ defmodule Ash.Notifier do
     quote do
       @behaviour Ash.Notifier
 
-      def requires_original_data?(_, _), do: true
+      def requires_original_data?(_, _), do: false
 
       defoverridable requires_original_data?: 2
     end

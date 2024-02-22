@@ -25,7 +25,7 @@ defmodule Ash.Policy.SimpleCheck do
 
       def type, do: :simple
 
-      def requires_original_data?(_, _), do: true
+      def requires_original_data?(_, _), do: false
 
       def strict_check(actor, context, opts) do
         {:ok, match?(actor, context, opts)}
