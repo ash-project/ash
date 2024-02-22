@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.19.5](https://github.com/ash-project/ash/compare/v2.19.4...v2.19.5) (2024-02-22)
+
+
+
+
+### Bug Fixes:
+
+* properly fail early on missing actor in policies
+
+* handle `:continue` case in authorizer
+
+* validations run regardless of if the relevant fields are changing
+
 ## [v2.19.4](https://github.com/ash-project/ash/compare/v2.19.3...v2.19.4) (2024-02-22)
 
 
