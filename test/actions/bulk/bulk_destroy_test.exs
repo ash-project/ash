@@ -3,6 +3,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
   use ExUnit.Case, async: true
 
   require Ash.Query
+  alias Ash.Test.AnyApi, as: Api
 
   defmodule AddAfterToTitle do
     use Ash.Resource.Change
@@ -37,6 +38,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
+      api: Api,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -89,6 +91,11 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
 
         change set_context(%{authorize?: arg(:authorize?)})
       end
+
+      destroy :soft do
+        soft? true
+        change set_attribute(:title2, "archived")
+      end
     end
 
     identities do
@@ -114,15 +121,6 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       attribute :title3, :string
 
       timestamps()
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      resource Post
     end
   end
 
@@ -311,6 +309,30 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              end)
 
     assert [] = Api.read!(Post)
+  end
+
+  test "soft destroys" do
+    assert %Ash.BulkResult{
+             records: [
+               %{title2: "archived"},
+               %{title2: "archived"}
+             ]
+           } =
+             Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+               return_stream?: true,
+               return_records?: true
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Api.bulk_destroy!(:soft, %{},
+               resource: Post,
+               return_records?: true,
+               return_errors?: true
+             )
+             |> Map.update!(:records, fn records ->
+               Enum.sort_by(records, & &1.title)
+             end)
   end
 
   describe "authorization" do

@@ -7,6 +7,61 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   def run(api, resource, action, input, opts, not_atomic_reason \\ nil)
 
+  def run(api, stream, action, input, opts, not_atomic_reason) when is_atom(action) do
+    resource =
+      opts[:resource] ||
+        case stream do
+          [%resource{} | _] ->
+            resource
+
+          %Ash.Query{resource: resource} ->
+            resource
+
+          _ ->
+            nil
+        end
+
+    if !resource do
+      raise ArgumentError,
+            "Could not determine resource for bulk destroy. Please provide the `resource` option if providing a stream of inputs."
+    end
+
+    run(api, stream, Ash.Resource.Info.action(resource, action), input, opts, not_atomic_reason)
+  end
+
+  def run(api, stream, nil, input, opts, not_atomic_reason) do
+    resource =
+      opts[:resource] ||
+        case stream do
+          [%resource{} | _] ->
+            resource
+
+          %Ash.Query{resource: resource} ->
+            resource
+
+          _ ->
+            nil
+        end
+
+    if !resource do
+      raise ArgumentError,
+            "Could not determine resource for bulk destroy. Please provide the `resource` option if providing a stream of inputs."
+    end
+
+    run(
+      api,
+      stream,
+      Ash.Resource.Info.primary_action!(resource, :destroy),
+      input,
+      opts,
+      not_atomic_reason
+    )
+  end
+
+  def run(api, stream, %{soft?: true} = action, input, opts, not_atomic_reason) do
+    Ash.Actions.Update.Bulk.run(api, stream, action, input, opts, not_atomic_reason)
+  end
+
   def run(api, resource, action, input, opts, not_atomic_reason) when is_atom(resource) do
     run(api, Ash.Query.new(resource), action, input, opts, not_atomic_reason)
   end
@@ -253,72 +308,68 @@ defmodule Ash.Actions.Destroy.Bulk do
           action
       end
 
-    if action.soft? do
-      Ash.Actions.Update.Bulk.run(api, stream, action.name, input, opts)
-    else
-      if opts[:transaction] == :all && opts[:return_stream?] do
-        raise ArgumentError,
-              "Cannot specify `transaction: :all` and `return_stream?: true` together"
-      end
+    if opts[:transaction] == :all && opts[:return_stream?] do
+      raise ArgumentError,
+            "Cannot specify `transaction: :all` and `return_stream?: true` together"
+    end
 
-      if opts[:return_stream?] && opts[:sorted?] do
-        raise ArgumentError, "Cannot specify `sorted?: true` and `return_stream?: true` together"
-      end
+    if opts[:return_stream?] && opts[:sorted?] do
+      raise ArgumentError, "Cannot specify `sorted?: true` and `return_stream?: true` together"
+    end
 
-      if opts[:transaction] == :all &&
-           Ash.DataLayer.data_layer_can?(resource, :transact) do
-        notify? =
-          if opts[:notify?] do
-            if Process.get(:ash_started_transaction?) do
-              false
-            else
-              Process.put(:ash_started_transaction?, true)
-              true
-            end
-          else
+    if opts[:transaction] == :all &&
+         Ash.DataLayer.data_layer_can?(resource, :transact) do
+      notify? =
+        if opts[:notify?] do
+          if Process.get(:ash_started_transaction?) do
             false
+          else
+            Process.put(:ash_started_transaction?, true)
+            true
           end
-
-        Ash.DataLayer.transaction(
-          List.wrap(resource) ++ action.touches_resources,
-          fn ->
-            do_run(api, stream, action, input, opts, not_atomic_reason)
-          end,
-          opts[:timeout],
-          %{
-            type: :bulk_destroy,
-            metadata: %{
-              resource: resource,
-              action: action.name,
-              actor: opts[:actor]
-            },
-            data_layer_context: opts[:data_layer_context] || %{}
-          }
-        )
-        |> case do
-          {:ok, bulk_result} ->
-            bulk_result =
-              if notify? do
-                %{
-                  bulk_result
-                  | notifications:
-                      (bulk_result.notifications || []) ++ Process.delete(:ash_notifications) ||
-                        []
-                }
-              else
-                bulk_result
-              end
-
-            handle_bulk_result(bulk_result, resource, action, opts)
-
-          {:error, error} ->
-            {:error, error}
+        else
+          false
         end
-      else
-        api
-        |> do_run(stream, action, input, opts, not_atomic_reason)
-        |> handle_bulk_result(resource, action, opts)
+
+      Ash.DataLayer.transaction(
+        List.wrap(resource) ++ action.touches_resources,
+        fn ->
+          do_run(api, stream, action, input, opts, not_atomic_reason)
+        end,
+        opts[:timeout],
+        %{
+          type: :bulk_destroy,
+          metadata: %{
+            resource: resource,
+            action: action.name,
+            actor: opts[:actor]
+          },
+          data_layer_context: opts[:data_layer_context] || %{}
+        }
+      )
+      |> case do
+        {:ok, bulk_result} ->
+          bulk_result =
+            if notify? do
+              %{
+                bulk_result
+                | notifications:
+                    (bulk_result.notifications || []) ++ Process.delete(:ash_notifications) ||
+                      []
+              }
+            else
+              bulk_result
+            end
+
+          handle_bulk_result(bulk_result, resource, action, opts)
+
+        {:error, error} ->
+          {:error, error}
       end
+    else
+      api
+      |> do_run(stream, action, input, opts, not_atomic_reason)
+      |> handle_bulk_result(resource, action, opts)
     end
   end
 
