@@ -59,7 +59,6 @@ end
 |------|------|---------|------|
 | [`allow`](#resources-allow){: #resources-allow } | `mfa` |  | Support a dynamic resource list by providing a callback that checks whether or not the resource should be allowed. |
 | [`allow_unregistered?`](#resources-allow_unregistered?){: #resources-allow_unregistered? } | `boolean` | `false` | Whether the Api will support only registered entries or not. |
-| [`registry`](#resources-registry){: #resources-registry } | `module` |  | Configure a registry that contains the resources. This option is generally not necessary anymore, and remains for backwards compatibility. Instead, configure resources in this block directly. |
 
 
 

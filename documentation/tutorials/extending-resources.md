@@ -219,7 +219,3 @@ defmodule MyApp.Tweet do
   use MyApp.Resource
 end
 ```
-
-## Ensuring that all resources use your base extension
-
-To do this, you could create an extension very similar to `Ash.Registry.ResourceValidations`, that ensures that any resource present uses your extension. `Spark.extensions/1` can be used to see what extensions a given module or `dsl_config` has adopted.

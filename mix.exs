@@ -92,8 +92,8 @@ defmodule Ash.MixProject do
         "documentation/dsls/DSL:-Ash.Flow.md",
         "documentation/dsls/DSL:-Ash.DataLayer.Ets.md",
         "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md",
-        "documentation/dsls/DSL:-Ash.Registry.md",
-        "documentation/dsls/DSL:-Ash.Reactor.md"
+        "documentation/dsls/DSL:-Ash.Reactor.md",
+        "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md"
       ],
       groups_for_extras: [
         Tutorials: ~r'documentation/tutorials',
@@ -107,10 +107,8 @@ defmodule Ash.MixProject do
         Ash.Policy.Authorizer,
         Ash.Api.Transformers,
         Ash.Api.Verifiers,
-        Ash.Registry.Transformers,
         Ash.Resource.Transformers,
         Ash.Resource.Verifiers,
-        Ash.Registry.ResourceValidations,
         Ash.Query.Function,
         Ash.Query.Operator,
         Ash.Resource.Change,
@@ -184,13 +182,16 @@ defmodule Ash.MixProject do
           Ash.DataLayer.Mnesia,
           Ash.DataLayer.Simple,
           Ash.Notifier.PubSub,
+<<<<<<< HEAD
           Ash.Policy.Authorizer,
           Ash.Registry,
           Ash.Reactor
+=======
+          Ash.Policy.Authorizer
+>>>>>>> c75c3115 (improvement!: remove registries)
         ],
         Introspection: [
           Ash.Api.Info,
-          Ash.Registry.Info,
           Ash.Resource.Info,
           Ash.Flow.Info,
           Ash.Policy.Info,
@@ -257,8 +258,7 @@ defmodule Ash.MixProject do
         ],
         "DSL Transformers": [
           ~r/\.Transformers\./,
-          ~r/\.Verifiers\./,
-          Ash.Registry.ResourceValidations
+          ~r/\.Verifiers\./
         ],
         Expressions: [
           Ash.Filter.Predicate,
@@ -291,7 +291,6 @@ defmodule Ash.MixProject do
           ~r/Ash.Flow/,
           Ash.Mix.Tasks.Helpers,
           Ash.Policy.FieldPolicy,
-          ~r/Ash.Registry/,
           Ash.Policy.Policy,
           Ash.Notifier.PubSub.Publication
         ],
@@ -363,11 +362,19 @@ defmodule Ash.MixProject do
         "spark.cheat_sheets_in_search"
       ],
       "spark.cheat_sheets_in_search":
+<<<<<<< HEAD
         "spark.cheat_sheets_in_search --extensions Ash.Resource.Dsl,Ash.Api.Dsl,Ash.Flow.Dsl,Ash.Registry.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor",
       "spark.formatter":
         "spark.formatter --extensions Ash.Resource.Dsl,Ash.Api.Dsl,Ash.Flow.Dsl,Ash.Registry.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor",
       "spark.cheat_sheets":
         "spark.cheat_sheets --extensions Ash.Resource.Dsl,Ash.Api.Dsl,Ash.Flow.Dsl,Ash.Registry.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor"
+=======
+        "spark.cheat_sheets_in_search --extensions Ash.Resource.Dsl,Ash.Api.Dsl,Ash.Flow.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer",
+      "spark.formatter":
+        "spark.formatter --extensions Ash.Resource.Dsl,Ash.Api.Dsl,Ash.Flow.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer",
+      "spark.cheat_sheets":
+        "spark.cheat_sheets --extensions Ash.Resource.Dsl,Ash.Api.Dsl,Ash.Flow.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer"
+>>>>>>> c75c3115 (improvement!: remove registries)
     ]
   end
 end
