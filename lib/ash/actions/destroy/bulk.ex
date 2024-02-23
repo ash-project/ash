@@ -1280,12 +1280,17 @@ defmodule Ash.Actions.Destroy.Bulk do
     end)
     |> Enum.reduce(batch, fn {%{change: {module, change_opts}}, index}, batch ->
       if changes[index] == :all do
-        module.before_batch(batch, change_opts, %{
-          actor: opts[:actor],
-          tenant: opts[:tenant],
-          tracer: opts[:tracer],
-          authorize?: opts[:authorize?]
-        })
+        module.before_batch(
+          batch,
+          change_opts,
+          struct(Ash.Resource.Change.Context, %{
+            bulk?: true,
+            actor: opts[:actor],
+            tenant: opts[:tenant],
+            tracer: opts[:tracer],
+            authorize?: opts[:authorize?]
+          })
+        )
       else
         {matches, non_matches} =
           batch
@@ -1298,12 +1303,17 @@ defmodule Ash.Actions.Destroy.Bulk do
           end)
 
         before_batch_results =
-          module.before_batch(matches, change_opts, %{
-            actor: opts[:actor],
-            tenant: opts[:tenant],
-            tracer: opts[:tracer],
-            authorize?: opts[:authorize?]
-          })
+          module.before_batch(
+            matches,
+            change_opts,
+            struct(Ash.Resource.Change.Context, %{
+              bulk?: true,
+              actor: opts[:actor],
+              tenant: opts[:tenant],
+              tracer: opts[:tracer],
+              authorize?: opts[:authorize?]
+            })
+          )
 
         Enum.concat([before_batch_results, non_matches])
       end
@@ -1708,12 +1718,20 @@ defmodule Ash.Actions.Destroy.Bulk do
             {changesets_by_index[result.__metadata__.bulk_destroy_index], result}
           end)
 
-        module.after_batch(results, change_opts, %{
-          actor: opts[:actor],
-          tenant: opts[:tenant],
-          tracer: opts[:tracer],
-          authorize?: opts[:authorize?]
-        })
+        module.after_batch(
+          results,
+          change_opts,
+          struct(
+            Ash.Resource.Change.Context,
+            %{
+              bulk?: true,
+              actor: opts[:actor],
+              tenant: opts[:tenant],
+              tracer: opts[:tracer],
+              authorize?: opts[:authorize?]
+            }
+          )
+        )
         |> handle_after_batch_results(ref, opts)
       else
         {matches, non_matches} =
@@ -1732,12 +1750,20 @@ defmodule Ash.Actions.Destroy.Bulk do
           end)
 
         after_batch_results =
-          module.after_batch(matches, change_opts, %{
-            actor: opts[:actor],
-            tenant: opts[:tenant],
-            tracer: opts[:tracer],
-            authorize?: opts[:authorize?]
-          })
+          module.after_batch(
+            matches,
+            change_opts,
+            struct(
+              Ash.Resource.Change.Context,
+              %{
+                bulk?: true,
+                actor: opts[:actor],
+                tenant: opts[:tenant],
+                tracer: opts[:tracer],
+                authorize?: opts[:authorize?]
+              }
+            )
+          )
           |> handle_after_batch_results(ref, opts)
 
         Enum.concat([after_batch_results, non_matches])
@@ -1792,7 +1818,11 @@ defmodule Ash.Actions.Destroy.Bulk do
                    opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
                    {:ok, opts} = module.init(opts)
 
-                   module.validate(changeset, opts, context) == :ok
+                   module.validate(
+                     changeset,
+                     opts,
+                     struct(Ash.Resource.Validation.Context, context)
+                   ) == :ok
                  end) do
                 opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
                 {:ok, opts} = module.init(opts)
@@ -1800,7 +1830,10 @@ defmodule Ash.Actions.Destroy.Bulk do
                 case module.validate(
                        changeset,
                        opts,
-                       Map.put(context, :message, validation.message)
+                       struct(
+                         Ash.Resource.Validation.Context,
+                         Map.put(context, :message, validation.message)
+                       )
                      ) do
                   :ok ->
                     changeset
@@ -1845,7 +1878,12 @@ defmodule Ash.Actions.Destroy.Bulk do
                   Enum.all?(change.where || [], fn {module, opts} ->
                     opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
                     {:ok, opts} = module.init(opts)
-                    module.validate(changeset, opts, context) == :ok
+
+                    module.validate(
+                      changeset,
+                      opts,
+                      struct(Ash.Resource.Validation.Context, context)
+                    ) == :ok
                   end)
 
                 applies_from_only_when_valid? =
@@ -1895,12 +1933,21 @@ defmodule Ash.Actions.Destroy.Bulk do
     case change_opts do
       {:templated, change_opts} ->
         if function_exported?(module, :batch_change, 4) do
-          module.batch_change(batch, change_opts, context, actor)
+          module.batch_change(
+            batch,
+            change_opts,
+            struct(struct(Ash.Resource.Change.Context, context), bulk?: true),
+            actor
+          )
         else
           Enum.map(batch, fn changeset ->
             {:ok, change_opts} = module.init(change_opts)
 
-            module.change(changeset, change_opts, Map.put(context, :bulk?, true))
+            module.change(
+              changeset,
+              change_opts,
+              struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
+            )
           end)
         end
 
@@ -1909,7 +1956,11 @@ defmodule Ash.Actions.Destroy.Bulk do
           change_opts = templated_opts(change_opts, actor, changeset.arguments, changeset.context)
           {:ok, change_opts} = module.init(change_opts)
 
-          module.change(changeset, change_opts, Map.put(context, :bulk?, true))
+          module.change(
+            changeset,
+            change_opts,
+            struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
+          )
         end)
     end
   end

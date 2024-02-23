@@ -1247,7 +1247,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares a named calculation on the resource.
 
-    Takes a module that must adopt the `Ash.Calculation` behaviour. See that module
+    Takes a module that must adopt the `Ash.Resource.Calculation` behaviour. See that module
     for more information.
 
     To ensure that the necessary fields are selected:
@@ -1260,7 +1260,7 @@ defmodule Ash.Resource.Dsl do
     """,
     examples: [
       {
-        "`Ash.Calculation` implementation example:",
+        "`Ash.Resource.Calculation` implementation example:",
         "calculate :full_name, :string, {MyApp.FullName, keys: [:first_name, :last_name]}, select: [:first_name, :last_name]"
       },
       {

@@ -245,10 +245,12 @@ defmodule Ash.Actions.Sort do
              field,
              module,
              opts,
-             {type, constraints},
-             Map.put(input, :context, context),
-             calc.filterable?,
-             calc.load
+             type,
+             constraints,
+             arguments: input,
+             filterable?: calc.filterable?,
+             load: calc.load,
+             source_context: context
            ) do
       calc = Map.put(calc, :load, field)
       {sorts ++ [{calc, order}], errors}
@@ -325,7 +327,7 @@ defmodule Ash.Actions.Sort do
 
   defp resolve_field(record, %Ash.Query.Calculation{} = calc, resource, opts) do
     cond do
-      :erlang.function_exported(calc.module, :calculate, 3) ->
+      calc.module.has_calculate?() ->
         context = Map.put(calc.context, :api, opts[:api])
 
         case calc.module.calculate([record], calc.opts, context) do
@@ -333,7 +335,7 @@ defmodule Ash.Actions.Sort do
           _ -> nil
         end
 
-      :erlang.function_exported(calc.module, :expression, 2) ->
+      calc.module.has_expression?() ->
         expression = calc.module.expression(calc.opts, calc.context)
 
         case Ash.Filter.hydrate_refs(expression, %{

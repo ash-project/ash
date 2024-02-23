@@ -4,7 +4,7 @@ defmodule Ash.Resource.Calculation.LoadAttribute do
 
   Can be used to load the same attribute with different load statements applied.
   """
-  use Ash.Calculation
+  use Ash.Resource.Calculation
 
   def load(_query, opts, _) do
     [opts[:attribute]]
@@ -13,11 +13,7 @@ defmodule Ash.Resource.Calculation.LoadAttribute do
   def calculate(list, opts, context) do
     api = opts[:api]
 
-    load_opts =
-      context
-      |> Map.take([:actor, :tenant, :authorize?, :tracer])
-      |> Map.to_list()
-      |> Keyword.merge(opts[:opts] || [])
+    load_opts = Ash.context_to_opts(context, opts[:opts] || [])
 
     if opts[:load] do
       api.load(list, [{opts[:attribute], opts[:load]}], load_opts)

@@ -47,12 +47,22 @@ defmodule Ash.Resource.Preparation do
     {:error, "Expected a module and opts, got: #{inspect(other)}"}
   end
 
-  @type context :: %{
-          optional(:actor) => Ash.Resource.record(),
-          optional(any) => any
-        }
+  defmodule Context do
+    @moduledoc """
+    The context for a preparation.
+    """
+    defstruct [:actor, :tenant, :authorize?, :tracer]
+
+    @type t :: %__MODULE__{
+            actor: Ash.Resource.record() | nil,
+            tenant: term(),
+            authorize?: boolean() | nil,
+            tracer: Ash.Tracer.t() | [Ash.Tracer.t()] | nil
+          }
+  end
+
   @callback init(opts :: Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
-  @callback prepare(query :: Ash.Query.t(), opts :: Keyword.t(), context :: context) ::
+  @callback prepare(query :: Ash.Query.t(), opts :: Keyword.t(), context :: Context.t()) ::
               Ash.Query.t()
 
   defmacro __using__(_) do

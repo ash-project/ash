@@ -115,6 +115,7 @@ defmodule Ash do
   @doc """
   Converts a context map to opts to be passed into an action.
   """
+
   def context_to_opts(map, add_to \\ []) when is_map(map) do
     add_to
     |> add_if_present(map, :actor)

@@ -32,9 +32,9 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule FullNameWithSelect do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
-    def select(_, _, _) do
+    def load(_, _, _) do
       [:first_name, :last_name]
     end
 
@@ -46,7 +46,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule Metadata do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def calculate(records, _opts, _context) do
       Enum.map(records, &Ash.Resource.get_metadata(&1, :example_metadata))
@@ -55,7 +55,7 @@ defmodule Ash.Test.CalculationTest do
 
   defmodule Concat do
     # An example concatenation calculation, that accepts the delimiter as an argument
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def init(opts) do
       if opts[:keys] && is_list(opts[:keys]) && Enum.all?(opts[:keys], &is_atom/1) do
@@ -65,7 +65,7 @@ defmodule Ash.Test.CalculationTest do
       end
     end
 
-    def calculate(records, opts, %{separator: separator}) do
+    def calculate(records, opts, %{arguments: %{separator: separator}}) do
       Enum.map(records, fn record ->
         Enum.map_join(opts[:keys], separator, fn key ->
           to_string(Map.get(record, key))
@@ -76,7 +76,7 @@ defmodule Ash.Test.CalculationTest do
 
   defmodule NameWithUsersName do
     # Don't do this kind of thing in real life
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_, _, _) do
       [:full_name]
@@ -91,7 +91,7 @@ defmodule Ash.Test.CalculationTest do
 
   defmodule ConcatWithLoad do
     # An example concatenation calculation, that accepts the delimiter as an argument
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def init(opts) do
       if opts[:keys] && is_list(opts[:keys]) && Enum.all?(opts[:keys], &is_atom/1) do
@@ -105,10 +105,6 @@ defmodule Ash.Test.CalculationTest do
       opts[:keys]
     end
 
-    def select(_query, opts, _) do
-      opts[:keys]
-    end
-
     def calculate(records, opts, _) do
       Enum.map(records, fn record ->
         Enum.map_join(opts[:keys], " ", fn key ->
@@ -119,7 +115,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule BestFriendsName do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_query, _opts, _) do
       [best_friend: :full_name]
@@ -133,9 +129,9 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule NamesOfBestFriendsOfMe do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
-    def load(_query, _opts, args) do
+    def load(_query, _opts, %{arguments: args}) do
       if args[:only_special] do
         query =
           Ash.Test.CalculationTest.User
@@ -159,7 +155,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule BestFriendsFirstNamePlusStuff do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_query, _opts, _) do
       [:best_friends_first_name]
@@ -173,7 +169,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule BestFriendsBestFriendsFirstName do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_query, _opts, _) do
       [best_friend: :best_friends_first_name]
@@ -187,14 +183,10 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule FullNamePlusFirstName do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_, _, _) do
-      [:full_name_with_select]
-    end
-
-    def select(_, _, _) do
-      [:first_name]
+      [:first_name, :full_name_with_select]
     end
 
     def calculate(records, _, _) do
@@ -205,7 +197,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule FriendsNames do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_query, _opts, _) do
       [
@@ -233,7 +225,7 @@ defmodule Ash.Test.CalculationTest do
   defmodule RoleHasUser do
     @moduledoc "never do this, this is done for testing only"
 
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_, _, _) do
       [:user]
@@ -245,7 +237,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule RolesHaveUser do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_, _, _) do
       [roles: [:has_user]]
@@ -385,8 +377,10 @@ defmodule Ash.Test.CalculationTest do
 
     calculations do
       calculate :say_hello_to_fred, :string do
-        calculation fn record, _ ->
-          record.bio.say_hello
+        calculation fn records, _ ->
+          Enum.map(records, fn record ->
+            record.bio.say_hello
+          end)
         end
 
         load bio: [say_hello: %{to: "Fred"}]
@@ -399,8 +393,10 @@ defmodule Ash.Test.CalculationTest do
       calculate :say_hello_to_george_expr, :string, expr(record.bio.say_hello(to: "George"))
 
       calculate :say_hello_to_george, :string do
-        calculation fn record, _ ->
-          record.bio.say_hello
+        calculation fn records, _ ->
+          Enum.map(records, fn record ->
+            record.bio.say_hello
+          end)
         end
 
         load bio: [say_hello: %{to: "George"}]
@@ -413,7 +409,7 @@ defmodule Ash.Test.CalculationTest do
       calculate(:active, :boolean, expr(is_active))
 
       calculate :full_name, :string, {Concat, keys: [:first_name, :last_name]} do
-        select([:first_name, :last_name])
+        load([:first_name, :last_name])
         # We currently need to use the [allow_empty?: true, trim?: false] constraints here.
         # As it's an empty string, the separator would otherwise be trimmed and set to `nil`.
         argument(:separator, :string,
@@ -558,7 +554,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule ActorActive do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_, _, _) do
       [user: [:active], role: [:active]]

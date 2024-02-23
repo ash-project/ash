@@ -19,7 +19,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
       create :create_with_before_action do
         argument :caller, :term
 
-        change before_action(fn changeset ->
+        change before_action(fn changeset, _context ->
                  send(changeset.arguments.caller, changeset.phase)
                  changeset
                end)
@@ -28,7 +28,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
       create :create_with_before_transaction do
         argument :caller, :term
 
-        change before_transaction(fn changeset ->
+        change before_transaction(fn changeset, _context ->
                  send(changeset.arguments.caller, changeset.phase)
 
                  changeset
@@ -38,7 +38,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
       create :create_with_after_action do
         argument :caller, :term
 
-        change after_action(fn changeset, record ->
+        change after_action(fn changeset, record, _context ->
                  send(changeset.arguments.caller, changeset.phase)
 
                  {:ok, record}
@@ -48,7 +48,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
       create :create_with_after_transaction do
         argument :caller, :term
 
-        change after_transaction(fn changeset, {:ok, record} ->
+        change after_transaction(fn changeset, {:ok, record}, _context ->
                  send(changeset.arguments.caller, changeset.phase)
 
                  {:ok, record}
