@@ -5,7 +5,7 @@ defmodule Ash.Resource.Validation do
   See `Ash.Resource.Validation.Builtins` for a list of builtin validations.
 
   To write your own validation, define a module that implements the `c:init/1` callback
-  to validate options at compile time, and `c:validate/2` callback to do the validation.
+  to validate options at compile time, and `c:validate/3` callback to do the validation.
 
   Then, in a resource, you can say:
 
