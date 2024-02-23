@@ -227,10 +227,10 @@ defmodule Ash.Test.GeneratorTest do
         constraints =
           case type do
             {:array, type} ->
-              [items: Spark.OptionsHelpers.validate!([], Ash.Type.constraints(type))]
+              [items: Spark.Options.validate!([], Ash.Type.constraints(type))]
 
             type ->
-              Spark.OptionsHelpers.validate!([], Ash.Type.constraints(type))
+              Spark.Options.validate!([], Ash.Type.constraints(type))
           end
 
         test "#{inspect(type)} type can be generated" do

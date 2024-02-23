@@ -12,7 +12,7 @@ defmodule Ash.Type.Atom do
 
   ### Constraints
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
 

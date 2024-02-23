@@ -21,7 +21,7 @@ defmodule Ash.Query.Function.StringSplit do
 
   ## Options
 
-  #{Spark.OptionsHelpers.docs(@options)}
+  #{Spark.Options.docs(@options)}
   """
 
   use Ash.Query.Function, name: :string_split

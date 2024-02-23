@@ -103,7 +103,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you pass a string to `through`" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  invalid value for :through option: expected atom, got: \"some_table\"",
+        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  expected module in :through option, got: \"some_table\"",
         fn ->
           defposts do
             relationships do

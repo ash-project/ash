@@ -60,7 +60,7 @@ defmodule Ash.Type.Map do
 
   A builtin type that can be referenced via `:map`
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
 
