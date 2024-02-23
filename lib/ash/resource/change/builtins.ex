@@ -52,7 +52,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Options
 
-  #{Spark.OptionsHelpers.docs(@relate_actor_opts)}
+  #{Spark.Options.docs(@relate_actor_opts)}
 
   ## Examples
 
@@ -159,7 +159,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Options
 
-  #{Spark.OptionsHelpers.docs(Keyword.drop(@set_attribute_opts, [:attribute, :value]))}
+  #{Spark.Options.docs(Keyword.drop(@set_attribute_opts, [:attribute, :value]))}
 
   ## Examples
 

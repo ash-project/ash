@@ -16,7 +16,7 @@ defmodule Ash.Resource.Validation.Negate do
 
   @impl true
   def init(opts) do
-    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @opt_schema),
+    with {:ok, opts} <- Spark.Options.validate(opts, @opt_schema),
          {validation, validation_opts} = opts[:validation],
          {:module, validation} <- Code.ensure_compiled(validation),
          true <- function_exported?(validation, :describe, 1),

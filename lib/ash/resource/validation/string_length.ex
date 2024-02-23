@@ -7,7 +7,7 @@ defmodule Ash.Resource.Validation.StringLength do
 
   @impl true
   def init(opts) do
-    case Spark.OptionsHelpers.validate(
+    case Spark.Options.validate(
            opts,
            Keyword.put(Ash.Resource.Validation.Builtins.string_length_opts(), :attribute,
              type: :atom,

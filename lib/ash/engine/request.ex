@@ -776,7 +776,7 @@ defmodule Ash.Engine.Request do
         query.context
       )
     else
-      Ash.Filter.parse!(resource, filter, query.aggregates, query.calculations, query.context)
+      Ash.Filter.parse!(resource, filter, query.context)
     end
   end
 

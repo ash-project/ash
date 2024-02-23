@@ -47,12 +47,11 @@ defmodule Ash.Resource.Relationships.HasMany do
         }
 
   import Ash.Resource.Relationships.SharedOptions
-  alias Spark.OptionsHelpers
 
   @global_opts shared_options()
-               |> OptionsHelpers.set_default!(:source_attribute, :id)
+               |> Spark.Options.Helpers.set_default!(:source_attribute, :id)
 
-  @opt_schema Spark.OptionsHelpers.merge_schemas(
+  @opt_schema Spark.Options.merge(
                 [
                   manual(),
                   no_attributes()

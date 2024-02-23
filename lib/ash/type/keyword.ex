@@ -59,7 +59,7 @@ defmodule Ash.Type.Keyword do
 
   A builtin type that can be referenced via `:keyword_list`
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
 

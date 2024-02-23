@@ -14,7 +14,7 @@ defmodule Ash.Flow.Chart.Mermaid do
   ]
 
   def chart(flow, opts \\ []) do
-    opts = Spark.OptionsHelpers.validate!(opts, @opts)
+    opts = Spark.Options.validate!(opts, @opts)
 
     # This is a hack that may not work forever
     # Eventually, we may need a separate mode/option for `build`

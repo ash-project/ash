@@ -25,7 +25,7 @@ defmodule Ash.Resource.Validation.Match do
 
   @impl true
   def init(opts) do
-    case Spark.OptionsHelpers.validate(opts, @opt_schema) do
+    case Spark.Options.validate(opts, @opt_schema) do
       {:ok, opts} ->
         {:ok, opts}
 

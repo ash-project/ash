@@ -15,5 +15,5 @@ defmodule Ash.Flow.Step.Branch do
           doc: "Which step to use as the output. Defaults to the last step."
         ]
       ]
-      |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
+      |> Spark.Options.merge(@shared_opts, "Global Options")
 end

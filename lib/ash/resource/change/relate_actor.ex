@@ -6,7 +6,7 @@ defmodule Ash.Resource.Change.RelateActor do
 
   @impl true
   def init(opts) do
-    case Spark.OptionsHelpers.validate(opts, Ash.Resource.Change.Builtins.relate_actor_opts()) do
+    case Spark.Options.validate(opts, Ash.Resource.Change.Builtins.relate_actor_opts()) do
       {:ok, opts} ->
         {:ok, opts}
 

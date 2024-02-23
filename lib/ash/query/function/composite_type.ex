@@ -15,7 +15,7 @@ defmodule Ash.Query.Function.CompositeType do
   end
 
   def new([val, type, constraints]) do
-    case Spark.OptionsHelpers.validate(constraints, Ash.Type.constraints(type)) do
+    case Spark.Options.validate(constraints, Ash.Type.constraints(type)) do
       {:ok, constraints} ->
         {:ok, %__MODULE__{arguments: [val, type, constraints]}}
 
