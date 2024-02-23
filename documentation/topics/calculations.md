@@ -22,13 +22,13 @@ See the [Expressions guide](/documentation/topics/expressions.md) for more.
 
 ### Module Calculations
 
-When calculations require more complex code or can't be pushed down into the data layer, a module that uses `Ash.Calculation` can be used.
+When calculations require more complex code or can't be pushed down into the data layer, a module that uses `Ash.Resource.Calculation` can be used.
 
 ```elixir
 defmodule Concat do
   # An example concatenation calculation, that accepts the delimiter as an argument,
   #and the fields to concatenate as options
-  use Ash.Calculation
+  use Ash.Resource.Calculation
 
   # Optional callback that verifies the passed in options (and optionally transforms them)
   @impl true
@@ -77,7 +77,7 @@ calculations do
 end
 ```
 
-See the documentation for the calculations section in [Resource DSL docs](dsl-ash-resource.html#calculations) and the `Ash.Calculation` docs for more information.
+See the documentation for the calculations section in [Resource DSL docs](dsl-ash-resource.html#calculations) and the `Ash.Resource.Calculation` docs for more information.
 
 The calculations declared on a resource allow for declaring a set of named calculations that can be used by extensions.
 They can also be loaded in the query using `Ash.Query.load/2`, or after the fact using `c:Ash.Api.load/3`. Calculations declared on the resource will be keys in the resource's struct.

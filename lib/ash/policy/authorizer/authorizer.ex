@@ -923,7 +923,8 @@ defmodule Ash.Policy.Authorizer do
               {:__ash_fields_are_visible__, fields},
               Ash.Resource.Calculation.Expression,
               [expr: expr],
-              :boolean
+              :boolean,
+              []
             )
 
           case query_or_changeset do

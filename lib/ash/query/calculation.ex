@@ -17,38 +17,64 @@ defmodule Ash.Query.Calculation do
 
   @type t :: %__MODULE__{}
 
-  def new(name, module, opts, type, context \\ %{}, filterable? \\ true, required_loads \\ []) do
-    {type, constraints} =
-      case type do
-        {:array, type} ->
-          {{:array, type}, []}
+  @opt_schema [
+    arguments: [
+      type: :map,
+      doc: "Arguments to pass to the calculation",
+      default: %{}
+    ],
+    filterable?: [
+      type: :boolean,
+      doc: "Whether or not this calculation can be filtered on",
+      default: true
+    ],
+    load: [
+      type: :any,
+      doc: "Loads that are required for the calculation."
+    ],
+    source_context: [
+      type: :map,
+      doc: "Context from the source query or changeset.",
+      default: %{}
+    ]
+  ]
 
-        {type, constraints} ->
-          {type, constraints}
+  @doc """
+  Creates a new query calculation.
 
-        other ->
-          {other, []}
-      end
+  ## Options
 
-    context = Map.put(context, :ash, %{type: type, constraints: constraints})
+  #{Spark.OptionsHelpers.docs(@opt_schema)}
+  """
+  def new(
+        name,
+        module,
+        calc_opts,
+        type,
+        constraints,
+        opts \\ []
+      ) do
+    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @opt_schema),
+         {:ok, calc_opts} <- module.init(calc_opts) do
+      context = %Ash.Resource.Calculation.Context{
+        arguments: opts[:arguments],
+        type: type,
+        constraints: constraints,
+        source_context: opts[:source_context]
+      }
 
-    case module.init(opts) do
-      {:ok, opts} ->
-        {:ok,
-         %__MODULE__{
-           name: name,
-           module: module,
-           type: type,
-           opts: opts,
-           calc_name: name,
-           constraints: constraints,
-           context: context,
-           required_loads: required_loads,
-           filterable?: filterable?
-         }}
-
-      {:error, error} ->
-        {:error, error}
+      {:ok,
+       %__MODULE__{
+         name: name,
+         module: module,
+         type: type,
+         opts: calc_opts,
+         calc_name: name,
+         constraints: constraints,
+         context: context,
+         required_loads: opts[:load],
+         filterable?: opts[:filterable?]
+       }}
     end
   end
 

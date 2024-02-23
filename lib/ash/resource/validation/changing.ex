@@ -27,7 +27,7 @@ defmodule Ash.Resource.Validation.Changing do
   end
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, _context) do
     case Ash.Resource.Info.relationship(changeset.resource, opts[:field]) do
       nil ->
         if Ash.Changeset.changing_attribute?(changeset, opts[:field]) do

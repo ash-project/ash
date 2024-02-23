@@ -25,7 +25,7 @@ defmodule Ash.Test.Resource.ResourceTest do
 
   defmodule Concat do
     # An example concatenation calculation, that accepts the delimiter as an argument
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def init(opts) do
       if opts[:keys] && is_list(opts[:keys]) && Enum.all?(opts[:keys], &is_atom/1) do
@@ -35,7 +35,9 @@ defmodule Ash.Test.Resource.ResourceTest do
       end
     end
 
-    def calculate(records, opts, %{separator: separator}) do
+    def calculate(records, opts, %Ash.Resource.Calculation.Context{
+          arguments: %{separator: separator}
+        }) do
       Enum.map(records, fn record ->
         Enum.map_join(opts[:keys], separator, fn key ->
           to_string(Map.get(record, key))

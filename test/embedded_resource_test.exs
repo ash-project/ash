@@ -11,7 +11,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
 
     def init(opts), do: {:ok, opts}
 
-    def validate(changeset, opts) do
+    def validate(changeset, opts, _) do
       field = Keyword.get(opts, :field)
 
       if Changeset.changing_attribute?(changeset, field) do
@@ -32,7 +32,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
 
     def init(opts), do: {:ok, opts}
 
-    def validate(changeset, _opts) do
+    def validate(changeset, _opts, _) do
       if Changeset.get_attribute(changeset, :first_name) == "destroy" &&
            Changeset.get_attribute(changeset, :last_name) == "me" do
         :ok

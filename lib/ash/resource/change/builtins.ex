@@ -329,7 +329,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Example
 
-      change after_action(fn changeset, record ->
+      change after_action(fn changeset, record, _context ->
         Logger.debug("Successfully executed action #{changeset.action.name} on #{inspect(changeset.resource)}")
         {:ok, record}
       end)
@@ -357,10 +357,10 @@ defmodule Ash.Resource.Change.Builtins do
   ## Example
 
       change after_transaction(fn
-        changeset, {:ok, record} ->
+        changeset, {:ok, record}, _context ->
           Logger.debug("Successfully executed transaction for action #{changeset.action.name} on #{inspect(changeset.resource)}")
           {:ok, record}
-        changeset, {:error, reason} ->
+        changeset, {:error, reason}, _context ->
           Logger.debug("Failed to execute transaction for action #{changeset.action.name} on #{inspect(changeset.resource)}, reason: #{inspect(reason)}")
           {:error, reason}
       end)
@@ -386,7 +386,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Example
 
-      change before_action(fn changeset ->
+      change before_action(fn changeset, _context ->
         Logger.debug("About to execute #{changeset.action.name} on #{inspect(changeset.resource)})
 
         changeset
@@ -413,7 +413,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Example
 
-      change before_transaction(fn changeset ->
+      change before_transaction(fn changeset, _context ->
         Logger.debug("About to execute transaction for #{changeset.action.name} on #{inspect(changeset.resource)})
 
         changeset
