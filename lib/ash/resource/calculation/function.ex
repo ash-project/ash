@@ -1,26 +1,16 @@
-defmodule Ash.Calculation.Function do
+defmodule Ash.Resource.Calculation.Function do
   @moduledoc false
-  use Ash.Calculation
+  use Ash.Resource.Calculation
 
   def calculate(results, [fun: fun], context) do
-    Enum.reduce_while(results, {:ok, []}, fn result, {:ok, acc} ->
-      case apply_fun(fun, result, context) do
-        {:ok, result} -> {:cont, {:ok, [result | acc]}}
-        {:error, error} -> {:halt, {:error, error}}
-        result -> {:cont, {:ok, [result | acc]}}
-      end
-    end)
-    |> case do
-      {:ok, results} -> {:ok, Enum.reverse(results)}
-      error -> error
-    end
+    apply_fun(fun, results, context)
   end
 
-  defp apply_fun({m, f, a}, result, context) do
-    apply(m, f, [result, context | a])
+  defp apply_fun({m, f, a}, results, context) do
+    apply(m, f, [results, context | a])
   end
 
-  defp apply_fun(fun, result, context) do
-    fun.(result, context)
+  defp apply_fun(fun, results, context) do
+    fun.(results, context)
   end
 end

@@ -1,22 +1,22 @@
 defmodule Ash.Resource.Calculation.Expression do
   @moduledoc false
-  use Ash.Calculation
+  use Ash.Resource.Calculation
 
   def expression(opts, context) do
     expr =
       Ash.Filter.build_filter_from_template(
         opts[:expr],
-        context[:actor],
-        context,
-        context[:context] || %{}
+        context.actor,
+        context.arguments,
+        context.source_context
       )
 
-    if context[:ash][:type] do
+    if context.type do
       {:ok, expr} =
         Ash.Query.Function.Type.new([
           expr,
-          context[:ash][:type],
-          context[:ash][:constraints] || []
+          context.type,
+          context.constraints || []
         ])
 
       expr
@@ -29,7 +29,12 @@ defmodule Ash.Resource.Calculation.Expression do
 
   def calculate([%resource{} | _] = records, opts, context) do
     expression =
-      Ash.Filter.build_filter_from_template(opts[:expr], nil, context, context[:context] || %{})
+      Ash.Filter.build_filter_from_template(
+        opts[:expr],
+        context.actor,
+        context.arguments,
+        context.source_context || %{}
+      )
 
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, values} ->
       case Ash.Filter.hydrate_refs(expression, %{
@@ -45,7 +50,7 @@ defmodule Ash.Resource.Calculation.Expression do
                  unknown_on_unknown_refs?: true
                ) do
             {:ok, value} ->
-              value = try_cast_stored(value, context[:ash][:type], context[:ash][:constraints])
+              value = try_cast_stored(value, context.type, context.constraints)
               {:cont, {:ok, [value | values]}}
 
             :unknown ->
@@ -82,27 +87,12 @@ defmodule Ash.Resource.Calculation.Expression do
 
   def load(query, opts, context) do
     expr =
-      Ash.Filter.build_filter_from_template(opts[:expr], nil, context, context[:context] || %{})
-
-    case Ash.Filter.hydrate_refs(expr, %{
-           resource: query.resource,
-           calculations: query.calculations,
-           aggregates: query.aggregates,
-           public?: false
-         }) do
-      {:ok, expression} ->
-        expression
-        |> Ash.Filter.used_aggregates()
-        |> Enum.uniq()
-
-      {:error, _} ->
-        []
-    end
-  end
-
-  def select(query, opts, context) do
-    expr =
-      Ash.Filter.build_filter_from_template(opts[:expr], nil, context, context[:context] || %{})
+      Ash.Filter.build_filter_from_template(
+        opts[:expr],
+        context.actor,
+        context.arguments,
+        context.source_context || %{}
+      )
 
     case Ash.Filter.hydrate_refs(expr, %{
            resource: query.resource,
@@ -113,12 +103,11 @@ defmodule Ash.Resource.Calculation.Expression do
       {:ok, expression} ->
         expression
         |> Ash.Filter.list_refs()
-        |> Enum.filter(fn ref ->
-          ref.relationship_path == [] && match?(%Ash.Resource.Attribute{}, ref.attribute)
-        end)
-        |> Enum.map(& &1.attribute.name)
+        |> Enum.map(& &1.attribute)
+        |> Enum.concat(Ash.Filter.used_aggregates(expression))
+        |> Enum.uniq()
 
-      _ ->
+      {:error, _} ->
         []
     end
   end

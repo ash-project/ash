@@ -1521,39 +1521,39 @@ defmodule Ash.Api do
     with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, Ash.Api.calculate_opts()),
          {:calc,
           %{
-            arguments: arguments,
+            arguments: calc_arguments,
             calculation: {module, calc_opts},
             type: type,
             constraints: constraints
           }} <- {:calc, Ash.Resource.Info.calculation(resource, calculation)},
          record <- struct(record || resource, opts[:refs] || %{}) do
-      calc_context =
-        opts[:context]
-        |> Kernel.||(%{})
-        |> Map.merge(%{
-          actor: opts[:actor],
-          tenant: opts[:tenant],
-          authorize?: opts[:authorize?],
-          tracer: opts[:tracer],
-          resource: resource
-        })
-        |> Map.merge(opts[:args] || %{})
-        |> Map.put(:ash, %{type: type, constraints: constraints})
+      args = opts[:args] || %{}
 
-      calc_context =
-        Enum.reduce(arguments, calc_context, fn arg, context ->
-          if Map.has_key?(context, arg.name) do
-            context
+      arguments =
+        Enum.reduce(calc_arguments, %{}, fn arg, arguments ->
+          if Map.has_key?(args, arg.name) do
+            Map.put(arguments, arg.name, args[arg.name])
           else
             if is_nil(arg.default) do
-              context
+              arguments
             else
-              Map.put(context, arg.name, arg.default)
+              Map.put(arguments, arg.name, arg.default)
             end
           end
         end)
-        |> Map.put(:actor, opts[:actor])
-        |> Map.put(:api, opts[:api])
+
+      calc_context =
+        %Ash.Resource.Calculation.Context{
+          actor: opts[:actor],
+          api: opts[:api],
+          tenant: opts[:tenant],
+          authorize?: opts[:authorize?],
+          tracer: opts[:tracer],
+          resource: opts[:resource],
+          arguments: arguments,
+          type: type,
+          constraints: constraints
+        }
 
       if module.has_expression?() do
         expr =

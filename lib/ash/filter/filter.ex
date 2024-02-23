@@ -2221,7 +2221,7 @@ defmodule Ash.Filter do
         attribute: %Calculation{module: module, opts: opts, context: context},
         relationship_path: calc_relationship_path
       } = ref ->
-        if expand_calculations? && function_exported?(module, :expression, 2) do
+        if expand_calculations? && module.has_expression?() do
           expression = module.expression(opts, context)
 
           case hydrate_refs(expression, %{
@@ -2546,10 +2546,11 @@ defmodule Ash.Filter do
                      resource_calculation.name,
                      module,
                      opts,
-                     {resource_calculation.type, resource_calculation.constraints},
-                     args,
-                     resource_calculation.filterable?,
-                     resource_calculation.load
+                     resource_calculation.type,
+                     resource_calculation.constraints,
+                     arguments: args,
+                     filterable?: resource_calculation.filterable?,
+                     load: resource_calculation.load
                    ) do
               case parse_predicates(nested_statement, calculation, context) do
                 {:ok, nested_statement} ->
@@ -2700,10 +2701,11 @@ defmodule Ash.Filter do
                  resource_calculation.name,
                  module,
                  opts,
-                 {resource_calculation.type, resource_calculation.constraints},
-                 args,
-                 resource_calculation.filterable?,
-                 resource_calculation.load
+                 resource_calculation.type,
+                 resource_calculation.constraints,
+                 arguments: args,
+                 filterable?: resource_calculation.filterable?,
+                 load: resource_calculation.load
                ) do
           case parse_predicates(nested_statement, calculation, context) do
             {:ok, nested_statement} ->
@@ -3031,10 +3033,11 @@ defmodule Ash.Filter do
                  resource_calculation.name,
                  module,
                  opts,
-                 {resource_calculation.type, resource_calculation.constraints},
-                 args,
-                 resource_calculation.filterable?,
-                 resource_calculation.load
+                 resource_calculation.type,
+                 resource_calculation.constraints,
+                 arguments: args,
+                 filterable?: resource_calculation.filterable?,
+                 load: resource_calculation.load
                ) do
           {:ok,
            %Ref{
@@ -3218,10 +3221,11 @@ defmodule Ash.Filter do
                      resource_calculation.name,
                      module,
                      opts,
-                     {resource_calculation.type, resource_calculation.constraints},
-                     args,
-                     resource_calculation.filterable?,
-                     resource_calculation.load
+                     resource_calculation.type,
+                     resource_calculation.constraints,
+                     arguments: args,
+                     filterable?: resource_calculation.filterable?,
+                     load: resource_calculation.load
                    ) do
               {:ok, %{ref | attribute: calculation, resource: related}}
             else

@@ -8,7 +8,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   defmodule ActorAndAuthorizeMustBeInContext do
     use Ash.Resource.Validation
 
-    def validate(changeset, _opts) do
+    def validate(changeset, _opts, _) do
       case changeset.context do
         %{private: %{actor: _, authorize?: _}} ->
           :ok
@@ -22,7 +22,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   defmodule ActorAndAuthorizeMustBeInSourceContext do
     use Ash.Resource.Validation
 
-    def validate(changeset, _opts) do
+    def validate(changeset, _opts, _) do
       case changeset.context do
         %{__source__: %{data: %{name: _}, context: %{private: %{actor: _, authorize?: _}}}} ->
           :ok

@@ -785,7 +785,7 @@ defmodule Ash.Filter.Runtime do
         {:ok, result}
 
       :unknown ->
-        if function_exported?(module, :expression, 2) do
+        if module.has_expression?() do
           expression = module.expression(opts, context)
 
           hydrated =

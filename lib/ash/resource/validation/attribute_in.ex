@@ -31,7 +31,7 @@ defmodule Ash.Resource.Validation.AttributeIn do
   end
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, _context) do
     value = Ash.Changeset.get_attribute(changeset, opts[:attribute])
 
     if value in opts[:list] do

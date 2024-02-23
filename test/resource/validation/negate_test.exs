@@ -19,7 +19,7 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
     use Ash.Resource.Validation
 
     @impl true
-    def validate(_, _), do: {:error, :some_error}
+    def validate(_, _, _), do: {:error, :some_error}
 
     @impl true
     def describe(_opts), do: [message: "Custom validation error message", vars: []]
@@ -29,7 +29,7 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
     use Ash.Resource.Validation
 
     @impl true
-    def validate(_, _), do: {:error, :some_error}
+    def validate(_, _, _), do: {:error, :some_error}
   end
 
   describe "Negate validation" do

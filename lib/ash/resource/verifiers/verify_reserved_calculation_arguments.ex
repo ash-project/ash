@@ -2,7 +2,7 @@ defmodule Ash.Resource.Verifiers.VerifyReservedCalculationArguments do
   @moduledoc "Verifies that standard context keys are not used as calculation arguments"
   use Spark.Dsl.Verifier
 
-  @reserved_calculation_argument_names ~w(actor tenant authorize? tracer as context)a
+  @reserved_calculation_argument_names ~w(as)a
 
   def verify(dsl) do
     dsl

@@ -549,10 +549,10 @@ defmodule Ash.DataLayer.Ets do
             expression =
               Ash.Actions.Read.add_calc_context_to_filter(
                 expression,
-                calculation.context[:actor],
-                calculation.context[:authorize?],
-                calculation.context[:tenant],
-                calculation.context[:tracer]
+                calculation.context.actor,
+                calculation.context.authorize?,
+                calculation.context.tenant,
+                calculation.context.tracer
               )
 
             case Ash.Expr.eval_hydrated(expression, record: record, resource: resource, api: api) do
