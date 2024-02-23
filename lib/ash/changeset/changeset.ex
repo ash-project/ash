@@ -582,7 +582,7 @@ defmodule Ash.Changeset do
         end
 
       %{validation: _} = validation, changeset ->
-        case run_atomic_validation(changeset, validation) do
+        case run_atomic_validation(changeset, validation, context) do
           {:not_atomic, reason} ->
             {:halt, {:not_atomic, reason}}
 
@@ -592,20 +592,18 @@ defmodule Ash.Changeset do
     end)
   end
 
-  defp run_atomic_validation(changeset, %{
-         validation: {module, validation_opts},
-         where: where,
-         message: message
-       }) do
-    context = %{
-      actor: changeset.context[:private][:actor],
-      tenant: changeset.tenant,
-      authorize?: changeset.context[:private][:authorize?],
-      tracer: changeset.context[:private][:tracer],
-      message: message
-    }
-
-    case List.wrap(module.atomic(changeset, validation_opts, context)) do
+  defp run_atomic_validation(
+         changeset,
+         %{validation: {module, validation_opts}, where: where, message: message},
+         context
+       ) do
+    case List.wrap(
+           module.atomic(
+             changeset,
+             validation_opts,
+             struct(Ash.Resource.Validation.Context, Map.put(context, :message, message))
+           )
+         ) do
       [{:atomic, _, _, _} | _] = atomics ->
         Enum.reduce_while(atomics, changeset, fn
           {:atomic, _fields, condition_expr, error_expr}, changeset ->
@@ -619,7 +617,7 @@ defmodule Ash.Changeset do
                 other
             end)
 
-            case atomic_condition(where, changeset) do
+            case atomic_condition(where, changeset, context) do
               {:atomic, condition} ->
                 case condition do
                   true ->
@@ -676,8 +674,11 @@ defmodule Ash.Changeset do
          context
        ) do
     with {:atomic, changeset, atomic_changes} <-
-           atomic_with_changeset(module.atomic(changeset, change_opts, context), changeset),
-         {:atomic, condition} <- atomic_condition(where, changeset) do
+           atomic_with_changeset(
+             module.atomic(changeset, change_opts, struct(Ash.Resource.Change.Context, context)),
+             changeset
+           ),
+         {:atomic, condition} <- atomic_condition(where, changeset, context) do
       changeset = add_after_atomic(changeset, module, change_opts)
 
       case condition do
@@ -719,7 +720,7 @@ defmodule Ash.Changeset do
   defp add_after_atomic(changeset, module, opts) do
     if function_exported?(module, :after_atomic?, 3) do
       after_action(changeset, fn changeset, result ->
-        context = %{
+        context = %Ash.Resource.Change.Context{
           actor: changeset.context[:private][:actor],
           tenant: changeset.tenant,
           authorize?: changeset.context[:private][:authorize?],
@@ -764,18 +765,14 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp atomic_condition(where, changeset) do
-    context = %{
-      actor: changeset.context[:private][:actor],
-      tenant: changeset.tenant,
-      authorize?: changeset.context[:private][:authorize?] || false,
-      tracer: changeset.context[:private][:tracer],
-      message: nil
-    }
-
+  defp atomic_condition(where, changeset, context) do
     Enum.reduce_while(where, {:atomic, true}, fn {module, validation_opts},
                                                  {:atomic, condition} ->
-      case module.atomic(changeset, validation_opts, context) do
+      case module.atomic(
+             changeset,
+             validation_opts,
+             struct(Ash.Resource.Validation.Context, context)
+           ) do
         {:atomic, _, expr, _as_error} ->
           new_expr =
             if condition == true do
@@ -1786,7 +1783,7 @@ defmodule Ash.Changeset do
         end
 
       %{always_atomic?: true, validation: _} = change, changeset ->
-        run_atomic_validation(changeset, change)
+        run_atomic_validation(changeset, change, context)
 
       %{change: {module, opts}, where: where} = change, changeset ->
         if module.has_change?() do
@@ -1806,7 +1803,11 @@ defmodule Ash.Changeset do
                        changeset.context
                      )
 
-                   module.validate(changeset, opts, context) == :ok
+                   module.validate(
+                     changeset,
+                     opts,
+                     struct(Ash.Resource.Validation.Context, context)
+                   ) == :ok
                  end
                end
              end) do
@@ -1827,7 +1828,11 @@ defmodule Ash.Changeset do
                     changeset.context
                   )
 
-                module.change(changeset, opts, context)
+                module.change(
+                  changeset,
+                  opts,
+                  struct(Ash.Resource.Change.Context, context)
+                )
               end
             end
           else
@@ -2160,7 +2165,14 @@ defmodule Ash.Changeset do
         end
       end
     else
-      case run_atomic_validation(changeset, validation) do
+      context = %{
+        actor: changeset.context[:private][:actor],
+        tenant: changeset.tenant,
+        authorize?: changeset.context[:private][:authorize?] || false,
+        tracer: changeset.context[:private][:tracer]
+      }
+
+      case run_atomic_validation(changeset, validation, context) do
         {:not_atomic, reason} ->
           Ash.Changeset.add_error(
             changeset,
@@ -2192,7 +2204,8 @@ defmodule Ash.Changeset do
 
          case module.init(opts) do
            {:ok, opts} ->
-             module.validate(changeset, opts, context) == :ok
+             module.validate(changeset, opts, struct(Ash.Resource.Validation.Context, context)) ==
+               :ok
 
            _ ->
              false
@@ -2218,7 +2231,10 @@ defmodule Ash.Changeset do
                  validation.module.validate(
                    changeset,
                    opts,
-                   Map.put(context, :message, validation.message)
+                   struct(
+                     Ash.Resource.Validation.Context,
+                     Map.put(context, :message, validation.message)
+                   )
                  ) do
             changeset
           else

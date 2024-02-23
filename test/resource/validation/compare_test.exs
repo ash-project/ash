@@ -23,7 +23,7 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
       {:ok, opts} = Compare.init(attribute: :number_one, greater_than: 1)
       changeset = Post |> Ash.Changeset.new(%{number_one: 100})
 
-      assert :ok = Compare.validate(changeset, opts)
+      assert :ok = Compare.validate(changeset, opts, %{})
     end
 
     test "validate success against argument" do
@@ -34,7 +34,7 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
         |> Ash.Changeset.new(%{number_one: 100})
         |> Ash.Changeset.set_argument(:foo, 1)
 
-      assert :ok = Compare.validate(changeset, opts)
+      assert :ok = Compare.validate(changeset, opts, %{})
     end
 
     test "validate success against attribute" do
@@ -44,7 +44,7 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
         Post
         |> Ash.Changeset.new(%{number_one: 100, number_two: 1})
 
-      assert :ok = Compare.validate(changeset, opts)
+      assert :ok = Compare.validate(changeset, opts, %{})
     end
 
     test "decimals can be compared against" do
@@ -54,7 +54,7 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
         Post
         |> Ash.Changeset.new(%{number_three: Decimal.new(1)})
 
-      assert :ok = Compare.validate(changeset, opts)
+      assert :ok = Compare.validate(changeset, opts, %{})
     end
 
     test "floats can be compared against" do
@@ -64,7 +64,7 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
         Post
         |> Ash.Changeset.new(%{number_four: 1.0})
 
-      assert :ok = Compare.validate(changeset, opts)
+      assert :ok = Compare.validate(changeset, opts, %{})
     end
 
     test "decimals can be compared with" do
@@ -74,7 +74,7 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
         Post
         |> Ash.Changeset.new(%{number_one: 1})
 
-      assert :ok = Compare.validate(changeset, opts)
+      assert :ok = Compare.validate(changeset, opts, %{})
     end
 
     test "floats can be compared with" do
@@ -84,7 +84,7 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
         Post
         |> Ash.Changeset.new(%{number_one: 1})
 
-      assert :ok = Compare.validate(changeset, opts)
+      assert :ok = Compare.validate(changeset, opts, %{})
     end
 
     test "validate failure against number" do
@@ -117,7 +117,7 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
   end
 
   defp assert_error(changeset, opts, expected_message) do
-    {:error, %{message: message, vars: vars}} = Compare.validate(changeset, opts)
+    {:error, %{message: message, vars: vars}} = Compare.validate(changeset, opts, %{})
     assert expected_message == translate_message(message, vars)
   end
 

@@ -72,7 +72,7 @@ defmodule Ash.Resource.Validation.Negate do
         end
       end
 
-    case validation.atomic(changeset, validation_opts) do
+    case validation.atomic(changeset, validation_opts, context) do
       list when is_list(list) ->
         Enum.map(list, &negate_atomic(&1, message, vars))
 

@@ -41,11 +41,29 @@ defmodule Ash.Sort do
       require Ash.Expr
       type = unquote(type)
 
+      {type, constraints} =
+        case type do
+          {:array, _} ->
+            {type, []}
+
+          {type, constraints} ->
+            {type, constraints}
+
+          type ->
+            {type, []}
+
+          nil ->
+            {nil, []}
+        end
+
+      type = type && Ash.Type.get_type(type)
+
       case Ash.Query.Calculation.new(
              :expr_sort,
              Ash.Resource.Calculation.Expression,
              [expr: Ash.Expr.expr(unquote(expression))],
-             type && Ash.Type.get_type(type)
+             type,
+             constraints
            ) do
         {:ok, calc} -> calc
         {:error, term} -> raise Ash.Error.to_ash_error(term)

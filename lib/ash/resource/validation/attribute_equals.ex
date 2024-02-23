@@ -44,7 +44,7 @@ defmodule Ash.Resource.Validation.AttributeEquals do
   end
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, _context) do
     value = Ash.Changeset.get_attribute(changeset, opts[:attribute])
 
     if value != opts[:value] do

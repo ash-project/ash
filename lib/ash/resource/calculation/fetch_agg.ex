@@ -1,6 +1,6 @@
 defmodule Ash.Resource.Calculation.FetchAgg do
   @moduledoc false
-  use Ash.Calculation
+  use Ash.Resource.Calculation
 
   def calculate(records, opts, _context) do
     if load = opts[:load] do

@@ -70,7 +70,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       end
 
       destroy :destroy_with_after_action do
-        change after_action(fn _changeset, result ->
+        change after_action(fn _changeset, result, _context ->
                  {:ok, %{result | title: result.title <> "_stuff"}}
                end)
       end
@@ -81,7 +81,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       end
 
       destroy :destroy_with_after_transaction do
-        change after_transaction(fn _changeset, {:ok, result} ->
+        change after_transaction(fn _changeset, {:ok, result}, _context ->
                  {:ok, %{result | title: result.title <> "_stuff"}}
                end)
       end

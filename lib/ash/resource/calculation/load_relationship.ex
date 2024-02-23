@@ -4,7 +4,7 @@ defmodule Ash.Resource.Calculation.LoadRelationship do
 
   Can be used to load the same relationship with a different query.
   """
-  use Ash.Calculation
+  use Ash.Resource.Calculation
 
   def load(query, opts, _) do
     relationship = Ash.Resource.Info.relationship(query.resource, opts[:relationship])
@@ -34,12 +34,9 @@ defmodule Ash.Resource.Calculation.LoadRelationship do
       raise "Must provide the `api` option to load #{inspect(__MODULE__)}"
     end
 
-    opts[:api].load(results, [{relationship.name, query}],
-      authorize?: context[:authorize?],
-      tenant: context[:tenant],
-      actor: context[:actor],
-      tracer: context[:tracer]
-    )
+    load_opts = Ash.context_to_opts(context, opts[:opts] || [])
+
+    opts[:api].load(results, [{relationship.name, query}], load_opts)
     |> case do
       {:ok, results} ->
         {:ok,
@@ -52,40 +49,3 @@ defmodule Ash.Resource.Calculation.LoadRelationship do
     end
   end
 end
-
-# defmodule Ash.Resource.Calculation.LoadRelationship do
-#   @moduledoc """
-#   Loads a relationship as a calculation.
-
-#   Can be used to load the same relationship with a different query.
-#   """
-#   use Ash.Calculation
-
-#   def load(query, opts, _) do
-#     relationship = Ash.Resource.Info.relationship(query.resource, opts[:relationship])
-
-#     query =
-#       opts[:query] ||
-#         query.resource
-#         |> Ash.Resource.Info.relationship(opts[:relationship])
-#         |> Map.get(:destination)
-#         |> Ash.Query.new()
-
-#     query = Ash.Query.to_query(query)
-
-#     [relationship.source_attribute, {relationship.name, query}]
-#   end
-
-#   # We should be doing this in the load callback, not the `calculate/3` callback
-#   # however, we don't have much of a choice currently. We need to rewrite data loading
-#   # from the ground up, and a byproduct of that will be making data loading more efficient
-#   # across the board.
-#   def calculate([], _, _), do: {:ok, []}
-
-#   def calculate(results, opts, _context) do
-#     {:ok,
-#      Enum.map(results, fn result ->
-#        Map.get(result, opts[:relationship])
-#      end)}
-#   end
-# end

@@ -1431,31 +1431,27 @@ defmodule Ash.Actions.Read do
   def add_calc_context(calc, actor, authorize?, tenant, tracer) do
     %{
       calc
-      | context:
-          Map.merge(
-            %{
-              actor: actor,
-              authorize?: authorize?,
-              tenant: tenant,
-              tracer: tracer
-            },
-            calc.context
-          )
+      | context: %{
+          calc.context
+          | actor: actor,
+            authorize?: authorize?,
+            tenant: tenant,
+            tracer: tracer
+        }
     }
   end
 
   @doc false
-  def add_calc_context(calc, map) do
+  def add_calc_context(calc, context) do
     %{
       calc
-      | context:
-          Map.merge(
-            Map.take(
-              map,
-              [:actor, :authorize?, :tenant, :tracer]
-            ),
-            calc.context
-          )
+      | context: %{
+          calc.context
+          | actor: context.actor,
+            authorize?: context.authorize?,
+            tenant: context.tenant,
+            tracer: context.tracer
+        }
     }
   end
 
@@ -1893,10 +1889,18 @@ defmodule Ash.Actions.Read do
     end)
     |> Enum.reduce(query, fn
       {:calc, %{load: nil} = calc}, query ->
-        Ash.Query.calculate(query, calc.name, {calc.module, calc.opts}, calc.type, calc.context)
+        Ash.Query.calculate(
+          query,
+          calc.name,
+          {calc.module, calc.opts},
+          calc.type,
+          calc.context.arguments,
+          calc.constraints,
+          calc.context
+        )
 
-      {:calc, %{load: load, context: context}}, query ->
-        Ash.Query.load(query, [{load, context}])
+      {:calc, calc}, query ->
+        Ash.Query.load(query, calc)
 
       {:agg, field}, query ->
         Ash.Query.load(query, field)
@@ -2041,9 +2045,9 @@ defmodule Ash.Actions.Read do
         expression =
           Ash.Filter.build_filter_from_template(
             expression,
-            calculation.context[:actor],
-            calculation.context,
-            calculation.context
+            calculation.context.actor,
+            calculation.context.arguments,
+            calculation.context.source_context
           )
 
         case Ash.Filter.hydrate_refs(expression, %{

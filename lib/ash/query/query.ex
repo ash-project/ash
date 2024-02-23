@@ -651,7 +651,8 @@ defmodule Ash.Query do
                   query.context
                 )
 
-              case module.prepare(query, opts, %{
+              case module.prepare(query, opts, %Ash.Resource.Preparation.Context{
+                     tenant: query.tenant,
                      actor: actor,
                      authorize?: authorize?,
                      tracer: tracer
@@ -1289,10 +1290,12 @@ defmodule Ash.Query do
                name,
                module,
                opts,
-               {resource_calculation.type, resource_calculation.constraints},
-               Map.put(args, :context, query.context),
-               resource_calculation.filterable?,
-               resource_calculation.load
+               resource_calculation.type,
+               resource_calculation.constraints,
+               arguments: args,
+               filterable?: resource_calculation.filterable?,
+               load: resource_calculation.load,
+               source_context: query.context
              ) do
         calculation =
           select_and_load_calc(
@@ -1325,25 +1328,12 @@ defmodule Ash.Query do
     module = calculation.module
     opts = calculation.opts
 
-    resource_calculation_select =
-      if resource_calculation do
-        List.wrap(resource_calculation.select)
-      else
-        []
-      end
-
     resource_calculation_load =
       if resource_calculation do
         List.wrap(resource_calculation.load)
       else
         []
       end
-
-    fields_to_select =
-      resource_calculation_select
-      |> Enum.concat(module.select(query, opts, calculation.context) || [])
-      |> Enum.uniq()
-      |> Enum.filter(&Ash.Resource.Info.attribute(query.resource, &1))
 
     loads =
       module.load(
@@ -1355,7 +1345,7 @@ defmodule Ash.Query do
       |> Enum.concat(resource_calculation_load)
       |> reify_calculations(query)
 
-    %{calculation | select: fields_to_select, required_loads: loads}
+    %{calculation | required_loads: loads}
   end
 
   @doc false
@@ -1449,10 +1439,12 @@ defmodule Ash.Query do
              name,
              module,
              opts,
-             {resource_calculation.type, resource_calculation.constraints},
-             Map.put(args, :context, query.context),
-             resource_calculation.filterable?,
-             resource_calculation.load
+             resource_calculation.type,
+             resource_calculation.constraints,
+             arguments: args,
+             filterable?: resource_calculation.filterable?,
+             load: resource_calculation.load,
+             source_context: query.context
            ) do
       {:ok,
        select_and_load_calc(
@@ -2020,8 +2012,8 @@ defmodule Ash.Query do
       {:calculate, {name, module_and_opts, type}}, query ->
         calculate(query, name, module_and_opts, type)
 
-      {:calculate, {name, module_and_opts, type, context}}, query ->
-        calculate(query, name, module_and_opts, type, context)
+      {:calculate, {name, module_and_opts, type, arguments}}, query ->
+        calculate(query, name, module_and_opts, type, arguments)
 
       {:select, fields}, query ->
         select(query, fields)
@@ -2191,9 +2183,17 @@ defmodule Ash.Query do
   Calculations are made available on the `calculations` field of the records returned
 
   The `module_and_opts` argument accepts either a `module` or a `{module, opts}`. For more information
-  on what that module should look like, see `Ash.Calculation`.
+  on what that module should look like, see `Ash.Resource.Calculation`.
   """
-  def calculate(query, name, module_and_opts, type, context \\ %{}, constraints \\ []) do
+  def calculate(
+        query,
+        name,
+        module_and_opts,
+        type,
+        arguments \\ %{},
+        constraints \\ [],
+        extra_context \\ %{}
+      ) do
     query = to_query(query)
 
     {module, opts} =
@@ -2212,28 +2212,33 @@ defmodule Ash.Query do
            name,
            module,
            opts,
-           {type, constraints},
-           Map.put(context, :context, query.context)
+           type,
+           constraints,
+           arguments: arguments,
+           source_context: query.context
          ) do
       {:ok, calculation} ->
-        fields_to_select =
-          query
-          |> module.select(opts, calculation.context)
-          |> List.wrap()
-          |> Enum.concat(calculation.select)
-          |> Enum.filter(&Ash.Resource.Info.attribute(query.resource, &1))
+        context = %{
+          calculation.context
+          | actor: Map.get(extra_context, :actor),
+            tenant: Map.get(extra_context, :tenant),
+            tracer: Map.get(extra_context, :tracer),
+            authorize?: Map.get(extra_context, :authorize?)
+        }
+
+        calculation = %{calculation | context: context}
 
         loads =
           module.load(
             query,
             opts,
-            Map.put(calculation.context, :context, query.context)
+            calculation.context
           )
           |> Ash.Actions.Helpers.validate_calculation_load!(module)
           |> Enum.concat(List.wrap(calculation.required_loads))
           |> reify_calculations(query)
 
-        calculation = %{calculation | select: fields_to_select, required_loads: loads}
+        calculation = %{calculation | required_loads: loads}
         %{query | calculations: Map.put(query.calculations, name, calculation)}
 
       {:error, error} ->

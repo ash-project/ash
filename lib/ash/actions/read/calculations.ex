@@ -404,15 +404,15 @@ defmodule Ash.Actions.Read.Calculations do
           calculation.opts
           |> calculation.module.expression(calculation.context)
           |> Ash.Filter.build_filter_from_template(
-            calculation.context[:actor],
-            calculation.context,
-            calculation.context
+            calculation.context.actor,
+            calculation.context.arguments,
+            calculation.context.source_context
           )
           |> Ash.Actions.Read.add_calc_context_to_filter(
-            calculation.context[:actor],
-            calculation.context[:authorize?],
-            calculation.context[:tenant],
-            calculation.context[:tracer]
+            calculation.context.actor,
+            calculation.context.authorize?,
+            calculation.context.tenant,
+            calculation.context.tracer
           )
 
         case try_evaluate(
@@ -536,15 +536,15 @@ defmodule Ash.Actions.Read.Calculations do
         calculation.opts
         |> calculation.module.expression(calculation.context)
         |> Ash.Filter.build_filter_from_template(
-          calculation.context[:actor],
-          calculation.context,
-          calculation.context
+          calculation.context.actor,
+          calculation.context.arguments,
+          calculation.context.source_context
         )
         |> Ash.Actions.Read.add_calc_context_to_filter(
-          calculation.context[:actor],
-          calculation.context[:authorize?],
-          calculation.context[:tenant],
-          calculation.context[:tracer]
+          calculation.context.actor,
+          calculation.context.authorize?,
+          calculation.context.tenant,
+          calculation.context.tracer
         )
 
     case Map.fetch(calculation.context, :all_referenced_calcs_support_expressions?) do
@@ -686,11 +686,46 @@ defmodule Ash.Actions.Read.Calculations do
                       {Ash.Resource.Calculation.FetchAgg,
                        load: equivalent_aggregate.name, name: equivalent_aggregate.load},
                       equivalent_aggregate.type,
-                      equivalent_aggregate.context,
-                      equivalent_aggregate.constraints
+                      %{},
+                      equivalent_aggregate.constraints,
+                      equivalent_aggregate.context
                     )
                     |> add_calculation_dependency(calc_name, new_calc_name)
                   end
+
+                :error ->
+                  new_agg =
+                    if query.aggregates[aggregate.name] do
+                      %{
+                        aggregate
+                        | name:
+                            {:__calc_dep__,
+                             [
+                               {calc_path, {:agg, aggregate.name, aggregate.load}, calc_name,
+                                calc_load}
+                             ]},
+                          load: nil
+                      }
+                    else
+                      new_calc_name =
+                        {:__calc_dep__,
+                         [
+                           {calc_path,
+                            {:agg, equivalent_aggregate.name, equivalent_aggregate.load},
+                            calc_name, calc_load}
+                         ]}
+
+                      Ash.Query.calculate(
+                        query,
+                        new_calc_name,
+                        {Ash.Resource.Calculation.FetchAgg,
+                         load: equivalent_aggregate.name, name: equivalent_aggregate.load},
+                        equivalent_aggregate.type,
+                        equivalent_aggregate.context,
+                        equivalent_aggregate.constraints
+                      )
+                      |> add_calculation_dependency(calc_name, new_calc_name)
+                    end
 
                 :error ->
                   new_agg =
@@ -812,10 +847,12 @@ defmodule Ash.Actions.Read.Calculations do
                      name,
                      module,
                      opts,
-                     {resource_calculation.type, resource_calculation.constraints},
-                     Map.put(args, :context, query.context),
-                     resource_calculation.filterable?,
-                     resource_calculation.load
+                     resource_calculation.type,
+                     resource_calculation.constraints,
+                     arguments: args,
+                     filterable?: resource_calculation.filterable?,
+                     load: resource_calculation.load,
+                     source_context: query.context
                    ) do
               calculation =
                 Ash.Query.select_and_load_calc(
@@ -1068,8 +1105,9 @@ defmodule Ash.Actions.Read.Calculations do
             {Ash.Resource.Calculation.FetchCalc,
              load: equivalent_calculation.name, name: equivalent_calculation.load},
             equivalent_calculation.type,
-            equivalent_calculation.context,
-            equivalent_calculation.constraints
+            equivalent_calculation.context.arguments,
+            equivalent_calculation.constraints,
+            equivalent_calculation.context
           )
           |> add_calculation_dependency(calc_name, new_calc_name)
           |> add_calculation_dependency(new_calc_name, equivalent_calculation.name)

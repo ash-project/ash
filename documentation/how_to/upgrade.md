@@ -19,6 +19,96 @@ resources do
 end
 ```
 
+### Module/function changes
+
+#### Ash.Resource.Validation
+
+`validate/2` is now `validate/3`, with the third argument being the context of the validation.
+
+#### Ash.Query.Calculation
+
+The function signature of `Ash.Query.Calculation.new` has been changed.  We use an options list over optional arguments, and now require constraints to be provided. You will need to adjust your calls to this function.
+
+#### Ash.Calculation
+
+This module has been renamed to `Ash.Resource.Calculation`. You will need to rename your references to it.
+
+#### Builtin Changes
+
+The functions provided to `after_action/1`, `after_transaction/1`, `before_transaction/1` and `before_action/1` must all now take an additional argument, which is the change context.
+
+For example,
+
+```elixir
+change after_action(fn changeset, result -> ... end)
+```
+
+is now
+
+```elixir
+change after_action(fn changeset, result, context -> ... end)
+```
+
+### Context in changes, preparations, validations, calculations are now structs
+
+To help make it clear what keys are available in the context provided to callbacks on these modules, they have been adjusted to provide a *struct* instead of a `map`. This helps avoid potential ambiguity, and
+acts as documentation.
+
+#### What you'll need to change
+
+If you are using something like `Keyword.new(context)` to generate options to pass into an action, change that to `Ash.context_to_opts(context)`.
+
+### Calculation arguments are now in `context.arguments`
+
+Per the above change, we have specified the values available in the context of a calculation, with `Ash.Resource.Calculation.Context`. In Ash 2.0, context was merged with arguments, which was problematic in various ways. Now, arguments are in `context.arguments`. 
+
+#### What you'll need to change
+
+You will need to update your module-backed calculations to account for this. 
+
+```elixir
+def calculate(records, _opts, context) do
+  Enum.map(records, fn record -> 
+    record.first_name <> context.delimiter <> record.last_name
+  end)
+end
+```
+
+would need to be adjusted to access arguments in the context:
+
+```elixir
+def calculate(records, _opts, %{arguments: arguments}) do
+  Enum.map(records, fn record -> 
+    record.first_name <> arguments.delimiter <> record.last_name
+  end)
+end
+```
+
+### Anonymous calculations now operate on a list, just like module calculations
+
+Previously, anonymous function calculations were special cased to operate on a single record. For consistency, these anonymous functions now take the list of records.
+
+#### What you'll need to change
+
+Update any anonymous function calculations to take and return a list, for example:
+
+```elixir
+calculate :full_name, :string, fn record, _context -> 
+  record.first_name <> " " <> record.last_name
+end
+```
+
+would become
+
+```elixir
+calculate :full_name, :string, fn records, _context -> 
+  # note, you can also return `{:ok, list}` or `{:error, error}`
+  Enum.map(records, fn record -> 
+    record.first_name <> " " <> record.last_name
+  end)
+end
+```
+
 ### PubSub notifier no longer publishes events for previous values by default
 
 Previously, the Ash notifier would publish a message containing both the old *and* new values for changing attributes. Typically, we use
@@ -173,128 +263,3 @@ case record.attribute do
     handle_present_attribute(...)
 end
 ```
-
-## Upgrading to 2.0
-
-All deprecations will be finalized in version 2.1.
-
-### Ash.Flow
-
-While still more experimental than the rest of the framework, Ash.Flow is no longer feature-gated behind a configuration flag. It has been changed only slightly, and now returns an `Ash.Flow.Result` in all cases.
-
-### New DSL tooling
-
-The DSL tooling has been moved out of the Ash name space and into a more generalized tool called `Spark`. If you have written your own extensions, you will need
-to refer to those modules. They are all the same, but they have different names. You will get compiler errors/warnings on the modules you need to change, for example: `Ash.Dsl` -> `Spark.Dsl` and `Ash.Dsl.Transformer` -> `Spark.Dsl.Transformer`. One exception, `Ash.Error.Dsl.DslError`, has been changed to `Spark.Error.DslError`.
-
-## DSL name changes
-
-These should all be straight forward enough to do a simple find and replace in your resources.
-
-- `source_field` -> `source_attribute`
-- `destination_field` -> `destination_attribute`
-- `define_field?` -> `define_attribute?`
-- `field_type` -> `attribute_type`
-- `source_field_on_join_table` -> `source_attribute_on_join_resource`
-- `destination_field_on_join_table` -> `destination_attribute_on_join_resource`
-- `no_fields?` -> `no_attributes?`
-- `expensive?` -> `before_action?` (on validations)
-- `required?` -> `allow_nil?` (on belongs_to relationships) Be sure to flip the boolean value!!
-
-### DSL changes
-
-A new option has been added to the pub_sub notifier. If you are using it with phoenix, and you want it to publish a `%Phoenix.Socket.Broadcast{}` struct (which is what it used to do if you specified the `name` option with pub sub), then you'll need to set `broadcast_type :phoenix_broadcast`
-
-### Validation Changes
-
-`validate match/3` is now `validate match/2`. It used to accept a message as its third argument, but there is now support for setting a message on *all* validations like so:
-
-```elxir
-validate match(:attribute, ~r/regex/), message: "message"
-```
-
-### Policy Changes
-
-When using a filter template that references the actor, it was previously acceptable for the actor to be `nil` and still have the check pass. For example, instead of:
-
-```elixir
-authorize_if expr(actor(:field) != 10)
-```
-
-you might want
-
-```elixir
-authorize_if is_nil(actor(:field))
-forbid_if expr(actor(:field) != 10)
-```
-
-### Function Changes
-
-The following functions have been moved from `Ash.Resource.Info` to `Ash.Resource`. The old functions still exist, but will warn as deprecated.
-
-- `set_metadata/2`
-- `put_metadata/3`
-- `unload_many/2`
-- `unload/2`
-- `get_metadata/2`
-- `selected?/2`
-
-The following functions have been moved from `Ash.Api` to `Ash.Api.Info`. The old functions still exist, but will warn as deprecated.
-
-- `resource/2`
-- `resources/1`
-- `registry/1`
-- `allow/1`
-- `timeout/1`
-- `require_actor?/1`
-- `authorize/1`
-- `allow_unregistered?/1`
-
-The following functions have been moved from `Ash.Notifier.PubSub` to `Ash.Notifier.PubSub.Info`. The old functions still exist, but will warn as deprecated.
-
-- `publications/1`
-- `module/1`
-- `prefix/1`
-- `name/1`
-
-The following functions have been moved. The old functions still exist, but will warn as deprecated.
-
-- `Ash.DataLayer.Ets.private?/1` -> `Ash.DataLayer.Ets.Info.private?/1`
-- `Ash.DataLayer.Ets.table/1` -> `Ash.DataLayer.Ets.Info.table/1`
-- `Ash.DataLayer.Mnesia.table/1` -> `Ash.DataLayer.Mnesia.table/1`
-- `Ash.Registry.warn_on_empty?/1` -> `Ash.Registry.Info.warn_on_empty?/1`
-- `Ash.Registry.entries/1` -> `Ash.Registry.Info.entries/1`
-
-The following functions have been moved:
-
-- Ash.Resource.extensions/1 -> `Spark.extensions/1`
-
-The following functions have been deprecated, and will be removed in 2.1
-
-- `Ash.Changeset.replace_relationship/4` - use `manage_relationship/4` instead. 
-- `Ash.Changeset.append_to_relationship/4` - use `manage_relationship/4` instead. 
-- `Ash.Changeset.remove_from_relationship/4` - use `manage_relationship/4` instead. 
-
-### Expression Changes
-
-The `has` operator has been removed from expressions. This is a holdover from when expressions only had partial support for nesting, and is unnecessary now. Now you can do `item in list` so `has` is unnecessary.
-
-## Upgrading to 1.53
-
-### Default actions
-
-Before 2.0.0, a resource would automatically get the four action types defined. Now, you need to specify them using the `defaults` option. For example:
-
-```elixir
-actions do
-  defaults [:create, :read, :update, :destroy]
-end
-```
-
-### Primary Actions
-
-Primary actions have been simplified for 2.0.0. If there was a single action of a given type before, it would have been marked as `primary?` automatically. Now, `primary?` actions are fully optional, although you may still want to configure them. Certain things like managing relationships can be much simpler when paired with primary actions. For a fully explicit experience everywhere, however, you may want to skip primary actions altogether. To make sure your application behaves the same, go to each of your resources and check to see if they only have one action of each type. If they do, mark that single action as `primary?`. Additionally, the `primary_actions?` option has been removed now that all primary actions are explicit.
-
-### Ash.Error.Query.NotFound
-
-We used to return/raise this error directly when something wasn't found, but it was the only place in the framework not using an Error Class. So if you had anything matching on `%Ash.Error.Query.NotFound{}` it should instead now match on `%Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}`.

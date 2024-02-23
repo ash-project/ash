@@ -25,7 +25,7 @@ defmodule Ash.Resource.Validation.Compare do
   end
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, _context) do
     case Ash.Changeset.fetch_argument_or_change(changeset, opts[:attribute]) do
       {:ok, value} ->
         Enum.reduce(
@@ -134,7 +134,7 @@ defmodule Ash.Resource.Validation.Compare do
         end)
 
       {:ok, _} ->
-        validate(changeset, opts)
+        validate(changeset, opts, context)
     end
   end
 
