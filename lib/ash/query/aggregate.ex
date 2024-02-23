@@ -124,7 +124,7 @@ defmodule Ash.Query.Aggregate do
 
   Options:
 
-  #{Spark.OptionsHelpers.docs(@schema)}
+  #{Spark.Options.docs(@schema)}
   """
   def new(resource, name, kind, opts \\ []) do
     opts =
@@ -136,7 +136,7 @@ defmodule Ash.Query.Aggregate do
           false
       end)
 
-    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @schema) do
+    with {:ok, opts} <- Spark.Options.validate(opts, @schema) do
       related = Ash.Resource.Info.related(resource, opts[:path] || [])
 
       query =
@@ -284,7 +284,7 @@ defmodule Ash.Query.Aggregate do
     parent_resources =
       relationships |> Enum.map(& &1.destination) |> Enum.concat([top_parent_resource])
 
-    Ash.Filter.parse(last_relationship.destination, filter, %{}, %{}, %{
+    Ash.Filter.parse(last_relationship.destination, filter, %{
       parent_stack: parent_resources
     })
   end

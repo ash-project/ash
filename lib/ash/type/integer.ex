@@ -16,7 +16,7 @@ defmodule Ash.Type.Integer do
 
   ### Constraints
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
 

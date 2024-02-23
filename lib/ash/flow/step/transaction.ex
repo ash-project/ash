@@ -22,5 +22,5 @@ defmodule Ash.Flow.Step.Transaction do
           """
         ]
       ]
-      |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
+      |> Spark.Options.merge(@shared_opts, "Global Options")
 end

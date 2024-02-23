@@ -19,6 +19,6 @@ defmodule Ash.Flow.Step.Custom do
         default: false
       ]
     ]
-    |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
+    |> Spark.Options.merge(@shared_opts, "Global Options")
   end
 end

@@ -102,7 +102,7 @@ defmodule Ash.Type.Union do
        end
 
        schema = Ash.Type.constraints(type)
-       constraints = Spark.OptionsHelpers.validate!(config[:constraints] || [], schema)
+       constraints = Spark.Options.validate!(config[:constraints] || [], schema)
 
        {key, config |> Keyword.put(:constraints, constraints) |> Keyword.put(:type, type)}
      end)}
@@ -116,7 +116,7 @@ defmodule Ash.Type.Union do
 
   ## Constraints
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
 

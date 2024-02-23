@@ -44,7 +44,7 @@ defmodule Ash.Query.Calculation do
 
   ## Options
 
-  #{Spark.OptionsHelpers.docs(@opt_schema)}
+  #{Spark.Options.docs(@opt_schema)}
   """
   def new(
         name,
@@ -54,7 +54,7 @@ defmodule Ash.Query.Calculation do
         constraints,
         opts \\ []
       ) do
-    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @opt_schema),
+    with {:ok, opts} <- Spark.Options.validate(opts, @opt_schema),
          {:ok, calc_opts} <- module.init(calc_opts) do
       context = %Ash.Resource.Calculation.Context{
         arguments: opts[:arguments],

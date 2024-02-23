@@ -444,7 +444,7 @@ defmodule Ash.Error do
     end
   end
 
-  def to_ash_error(%NimbleOptions.ValidationError{message: message}, stacktrace, opts) do
+  def to_ash_error(%Spark.Options.ValidationError{message: message}, stacktrace, opts) do
     to_ash_error(Ash.Error.Action.InvalidOptions.exception(message: message), stacktrace, opts)
   end
 

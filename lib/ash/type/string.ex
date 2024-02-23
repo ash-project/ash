@@ -34,7 +34,7 @@ defmodule Ash.Type.String do
 
   ### Constraints
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
 

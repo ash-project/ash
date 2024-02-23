@@ -87,7 +87,7 @@ defmodule Ash.Resource.Actions.Action do
                      {Ash.Resource.Action.ImplementationFunction, 2}}
                 ]
               ]
-              |> Spark.OptionsHelpers.merge_schemas(
+              |> Spark.Options.merge(
                 @global_opts,
                 "Action Options"
               )

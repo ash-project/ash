@@ -39,8 +39,6 @@ defmodule Ash.Api do
       ]
     ]
 
-  import Spark.OptionsHelpers, only: [merge_schemas: 3]
-
   alias Ash.Actions.{Create, Destroy, Read, Update}
 
   alias Ash.Error.Invalid.{
@@ -109,7 +107,7 @@ defmodule Ash.Api do
     ]
   ]
 
-  @read_opts_schema merge_schemas(
+  @read_opts_schema Spark.Options.merge(
                       [
                         page: [
                           doc: "Pagination options, see the pagination docs for more",
@@ -156,7 +154,7 @@ defmodule Ash.Api do
   @doc false
   def read_opts_schema, do: @read_opts_schema
 
-  @read_one_opts_schema merge_schemas(
+  @read_one_opts_schema Spark.Options.merge(
                           [
                             not_found_error?: [
                               type: :boolean,
@@ -187,7 +185,7 @@ defmodule Ash.Api do
                      "The specific strategy to use to fetch records. See `Ash.Api.stream!/2` docs for more."
                  ]
                ]
-               |> merge_schemas(
+               |> Spark.Options.merge(
                  @read_opts_schema,
                  "Read Options"
                )
@@ -231,7 +229,7 @@ defmodule Ash.Api do
 
   ## Options
 
-  #{Spark.OptionsHelpers.docs(@stream_opts)}
+  #{Spark.Options.docs(@stream_opts)}
   """
   @callback stream!(Ash.Query.t(), opts :: Keyword.t()) :: Enumerable.t(Ash.Resource.record())
 
@@ -300,13 +298,13 @@ defmodule Ash.Api do
   end
 
   defp validate_or_error(opts, schema) do
-    case Spark.OptionsHelpers.validate(opts, schema) do
+    case Spark.Options.validate(opts, schema) do
       {:ok, value} -> {:ok, value}
       {:error, error} -> {:error, Exception.message(error)}
     end
   end
 
-  @load_opts_schema merge_schemas(
+  @load_opts_schema Spark.Options.merge(
                       [
                         lazy?: [
                           type: :boolean,
@@ -363,7 +361,7 @@ defmodule Ash.Api do
                        """
                      ]
                    ]
-                   |> merge_schemas(@global_opts, "Global Options")
+                   |> Spark.Options.merge(@global_opts, "Global Options")
 
   @shared_created_update_and_destroy_opts_schema [
     load: [
@@ -572,19 +570,19 @@ defmodule Ash.Api do
                                  "The strategy or strategies to enable. :stream is used in all cases if the data layer does not support atomics."
                              ]
                            ]
-                           |> merge_schemas(
+                           |> Spark.Options.merge(
                              Keyword.delete(@global_opts, :action),
                              "Global options"
                            )
-                           |> merge_schemas(
+                           |> Spark.Options.merge(
                              Keyword.delete(@stream_opts, :batch_size),
                              "Stream Options"
                            )
-                           |> merge_schemas(
+                           |> Spark.Options.merge(
                              @shared_created_update_and_destroy_opts_schema,
                              "Shared create/update/destroy options"
                            )
-                           |> merge_schemas(
+                           |> Spark.Options.merge(
                              @shared_bulk_opts_schema,
                              "Shared bulk options"
                            )
@@ -620,19 +618,19 @@ defmodule Ash.Api do
                                   "The strategy or strategies to enable. :stream is used in all cases if the data layer does not support atomics."
                               ]
                             ]
-                            |> merge_schemas(
+                            |> Spark.Options.merge(
                               Keyword.delete(@global_opts, :action),
                               "Global options"
                             )
-                            |> merge_schemas(
+                            |> Spark.Options.merge(
                               Keyword.delete(@stream_opts, :batch_size),
                               "Stream Options"
                             )
-                            |> merge_schemas(
+                            |> Spark.Options.merge(
                               @shared_created_update_and_destroy_opts_schema,
                               "Shared create/update/destroy options"
                             )
-                            |> merge_schemas(
+                            |> Spark.Options.merge(
                               @shared_bulk_opts_schema,
                               "Shared bulk options"
                             )
@@ -668,15 +666,15 @@ defmodule Ash.Api do
                                  "The fields to upsert. If not set, the action's `upsert_fields` is used. Unlike singular `create`, `bulk_create` with `upsert?` requires that `upsert_fields` be specified explicitly in one of these two locations."
                              ]
                            ]
-                           |> merge_schemas(
+                           |> Spark.Options.merge(
                              Keyword.delete(@global_opts, :action),
                              "Global options"
                            )
-                           |> merge_schemas(
+                           |> Spark.Options.merge(
                              @shared_created_update_and_destroy_opts_schema,
                              "Shared create/update/destroy options"
                            )
-                           |> merge_schemas(
+                           |> Spark.Options.merge(
                              @shared_bulk_opts_schema,
                              "Shared bulk options"
                            )
@@ -708,15 +706,15 @@ defmodule Ash.Api do
                              "If true, the destroyed record is included in the return result, e.g `{:ok, destroyed}` or `{:ok, destroyed, notifications}`"
                          ]
                        ]
-                       |> merge_schemas(@global_opts, "Global Opts")
-                       |> merge_schemas(
+                       |> Spark.Options.merge(@global_opts, "Global Opts")
+                       |> Spark.Options.merge(
                          @shared_created_update_and_destroy_opts_schema,
                          "Shared create/update/destroy Options"
                        )
 
   def destroy_opts_schema, do: @destroy_opts_schema
 
-  @aggregate_opts [] |> Spark.OptionsHelpers.merge_schemas(@global_opts, "Global Options")
+  @aggregate_opts [] |> Spark.Options.merge(@global_opts, "Global Options")
 
   @doc false
   def aggregate_opts, do: @aggregate_opts
@@ -728,7 +726,7 @@ defmodule Ash.Api do
   @doc """
   Runs an aggregate or aggregates over a resource query
 
-  #{Spark.OptionsHelpers.docs(@aggregate_opts)}
+  #{Spark.Options.docs(@aggregate_opts)}
   """
   @spec aggregate(
           api :: Ash.Api.t(),
@@ -739,7 +737,7 @@ defmodule Ash.Api do
           {:ok, term} | {:error, Ash.Error.t()}
   def aggregate(api, query, aggregate_or_aggregates, opts \\ []) do
     query = Ash.Query.new(query)
-    opts = Spark.OptionsHelpers.validate!(opts, @aggregate_opts)
+    opts = Spark.Options.validate!(opts, @aggregate_opts)
 
     Ash.Actions.Aggregate.run(api, query, List.wrap(aggregate_or_aggregates), opts)
   end
@@ -1475,12 +1473,12 @@ defmodule Ash.Api do
 
   Options:
 
-  #{Spark.OptionsHelpers.docs(@run_action_opts)}
+  #{Spark.Options.docs(@run_action_opts)}
   """
   @spec run_action(api :: Ash.Api.t(), input :: Ash.ActionInput.t(), opts :: Keyword.t()) ::
           {:ok, term} | {:error, Ash.Error.t()}
   def run_action(api, input, opts \\ []) do
-    case Spark.OptionsHelpers.validate(opts, @run_action_opts) do
+    case Spark.Options.validate(opts, @run_action_opts) do
       {:ok, opts} ->
         input = %{input | api: api}
 
@@ -1499,7 +1497,7 @@ defmodule Ash.Api do
 
   If a record is provided, its field values will be used to evaluate the calculation.
 
-  #{Spark.OptionsHelpers.docs(@calculate_opts)}
+  #{Spark.Options.docs(@calculate_opts)}
   """
   def calculate(resource_or_record, calculation, opts \\ []) do
     {resource, record} =
@@ -1508,7 +1506,7 @@ defmodule Ash.Api do
         resource -> {resource, opts[:record]}
       end
 
-    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, Ash.Api.calculate_opts()),
+    with {:ok, opts} <- Spark.Options.validate(opts, Ash.Api.calculate_opts()),
          {:calc,
           %{
             arguments: calc_arguments,
@@ -1784,7 +1782,7 @@ defmodule Ash.Api do
   For a resource with a composite primary key, pass a keyword list, e.g
   `MyApi.get(MyResource, first_key: 1, second_key: 2)`
 
-  #{Spark.OptionsHelpers.docs(@get_opts_schema)}
+  #{Spark.Options.docs(@get_opts_schema)}
   """
   @callback get(
               resource :: Ash.Resource.t(),
@@ -1807,7 +1805,7 @@ defmodule Ash.Api do
 
   ## Options
 
-  #{Spark.OptionsHelpers.docs(@read_one_opts_schema)}
+  #{Spark.Options.docs(@read_one_opts_schema)}
   """
   @callback read_one(Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
               {:ok, Ash.Resource.record()}
@@ -1827,15 +1825,15 @@ defmodule Ash.Api do
 
   For more information on building a query, see `Ash.Query`.
 
-  #{Spark.OptionsHelpers.docs(@read_opts_schema)}
+  #{Spark.Options.docs(@read_opts_schema)}
 
   ## Pagination
 
   #### Limit/offset pagination
-  #{Spark.OptionsHelpers.docs(@offset_page_opts)}
+  #{Spark.Options.docs(@offset_page_opts)}
 
   #### Keyset pagination
-  #{Spark.OptionsHelpers.docs(@keyset_page_opts)}
+  #{Spark.Options.docs(@keyset_page_opts)}
   """
   @callback read(Ash.Query.t(), opts :: Keyword.t()) ::
               {:ok, list(Ash.Resource.record())}
@@ -1881,7 +1879,7 @@ defmodule Ash.Api do
   which case the loaded fields of the query are used. Relationship loads can be nested, for
   example: `MyApi.load(record, [posts: [:comments]])`.
 
-  #{Spark.OptionsHelpers.docs(@load_opts_schema)}
+  #{Spark.Options.docs(@load_opts_schema)}
   """
   @callback load(
               record_or_records :: Ash.Resource.record() | [Ash.Resource.record()],
@@ -1901,7 +1899,7 @@ defmodule Ash.Api do
   @doc """
   Create a record.
 
-  #{Spark.OptionsHelpers.docs(@create_opts_schema)}
+  #{Spark.Options.docs(@create_opts_schema)}
   """
   @callback create(Ash.Changeset.t(), opts :: Keyword.t()) ::
               {:ok, Ash.Resource.record()}
@@ -1954,7 +1952,7 @@ defmodule Ash.Api do
 
   ## Options
 
-  #{Spark.OptionsHelpers.docs(@bulk_create_opts_schema)}
+  #{Spark.Options.docs(@bulk_create_opts_schema)}
   """
   @callback bulk_create(
               [map],
@@ -1991,7 +1989,7 @@ defmodule Ash.Api do
 
   ## Options
 
-  #{Spark.OptionsHelpers.docs(@bulk_update_opts_schema)}
+  #{Spark.Options.docs(@bulk_update_opts_schema)}
   """
   @callback bulk_update(
               Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
@@ -2023,7 +2021,7 @@ defmodule Ash.Api do
 
   ## Options
 
-  #{Spark.OptionsHelpers.docs(@bulk_destroy_opts_schema)}
+  #{Spark.Options.docs(@bulk_destroy_opts_schema)}
   """
   @callback bulk_destroy(
               Enumerable.t(Ash.Resource.record()) | Ash.Query.t(),
@@ -2036,7 +2034,7 @@ defmodule Ash.Api do
   @doc """
   Creates many records, raising on any errors. See `bulk_create/2` for more.
 
-  #{Spark.OptionsHelpers.docs(@bulk_create_opts_schema)}
+  #{Spark.Options.docs(@bulk_create_opts_schema)}
   """
   @callback bulk_create!(
               [map],
@@ -2057,7 +2055,7 @@ defmodule Ash.Api do
   @doc """
   Update a record.
 
-  #{Spark.OptionsHelpers.docs(@update_opts_schema)}
+  #{Spark.Options.docs(@update_opts_schema)}
   """
   @callback update(Ash.Changeset.t(), opts :: Keyword.t()) ::
               {:ok, Ash.Resource.record()}
@@ -2077,7 +2075,7 @@ defmodule Ash.Api do
   @doc """
   Destroy a record.
 
-  #{Spark.OptionsHelpers.docs(@destroy_opts_schema)}
+  #{Spark.Options.docs(@destroy_opts_schema)}
   """
   @callback destroy(Ash.Changeset.t() | Ash.Resource.record(), opts :: Keyword.t()) ::
               :ok
@@ -2161,7 +2159,7 @@ defmodule Ash.Api do
   @spec get!(Ash.Api.t(), Ash.Resource.t(), term(), Keyword.t()) ::
           Ash.Resource.record() | no_return
   def get!(api, resource, id, opts \\ []) do
-    opts = Spark.OptionsHelpers.validate!(opts, @get_opts_schema)
+    opts = Spark.Options.validate!(opts, @get_opts_schema)
 
     api
     |> get(resource, id, opts)
@@ -2172,11 +2170,11 @@ defmodule Ash.Api do
   @spec get(Ash.Api.t(), Ash.Resource.t(), term(), Keyword.t()) ::
           {:ok, Ash.Resource.record()} | {:error, term}
   def get(api, resource, id, opts) do
-    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @get_opts_schema),
+    with {:ok, opts} <- Spark.Options.validate(opts, @get_opts_schema),
          {:ok, resource} <- Ash.Api.Info.resource(api, resource),
          {:ok, filter} <- Ash.Filter.get_filter(resource, id),
          {:ok, read_opts} <-
-           Spark.OptionsHelpers.validate(
+           Spark.Options.validate(
              Keyword.take(opts, Keyword.keys(@read_opts_schema)),
              @read_opts_schema
            ) do
@@ -2385,7 +2383,7 @@ defmodule Ash.Api do
 
   @doc false
   def load!(api, data, query, opts \\ []) do
-    opts = Spark.OptionsHelpers.validate!(opts, @load_opts_schema)
+    opts = Spark.Options.validate!(opts, @load_opts_schema)
 
     api
     |> load(data, query, opts)
@@ -2446,7 +2444,7 @@ defmodule Ash.Api do
 
     with %{valid?: true} <- query,
          {:ok, action} <- get_action(query.resource, opts, :read, query.action),
-         {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @load_opts_schema) do
+         {:ok, opts} <- Spark.Options.validate(opts, @load_opts_schema) do
       Read.unpaginated_read(query, action, Keyword.merge(opts, initial_data: data))
     else
       {:error, error} ->
@@ -2514,7 +2512,7 @@ defmodule Ash.Api do
   @spec stream!(api :: module(), query :: Ash.Query.t(), opts :: Keyword.t()) ::
           Enumerable.t(Ash.Resource.record())
   def stream!(api, query, opts \\ []) do
-    opts = Spark.OptionsHelpers.validate!(opts, @stream_opts)
+    opts = Spark.Options.validate!(opts, @stream_opts)
 
     Ash.Actions.Read.Stream.run!(api, query, opts)
   end
@@ -2523,7 +2521,7 @@ defmodule Ash.Api do
   @spec read!(Ash.Api.t(), Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
           list(Ash.Resource.record()) | Ash.Page.page() | no_return
   def read!(api, query, opts \\ []) do
-    opts = Spark.OptionsHelpers.validate!(opts, @read_opts_schema)
+    opts = Spark.Options.validate!(opts, @read_opts_schema)
 
     api
     |> read(query, opts)
@@ -2549,7 +2547,7 @@ defmodule Ash.Api do
         query
       end
 
-    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @read_opts_schema),
+    with {:ok, opts} <- Spark.Options.validate(opts, @read_opts_schema),
          {:ok, action} <- get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- pagination_check(action, query.resource, opts) do
       Read.run(query, action, opts)
@@ -2571,7 +2569,7 @@ defmodule Ash.Api do
     query = Ash.Query.to_query(query)
     query = Ash.Query.set_api(query, api)
 
-    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @read_one_opts_schema),
+    with {:ok, opts} <- Spark.Options.validate(opts, @read_one_opts_schema),
          {:ok, action} <- get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- pagination_check(action, query.resource, opts) do
       query
@@ -2649,13 +2647,17 @@ defmodule Ash.Api do
     |> unwrap_or_raise!()
   end
 
+  def thing(opts) do
+    Spark.Options.validate(opts, @create_opts_schema)
+  end
+
   @doc false
   @spec create(Ash.Api.t(), Ash.Changeset.t(), Keyword.t()) ::
           {:ok, Ash.Resource.record()}
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
   def create(api, changeset, opts) do
-    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @create_opts_schema),
+    with {:ok, opts} <- Spark.Options.validate(opts, @create_opts_schema),
          {:ok, resource} <- Ash.Api.Info.resource(api, changeset.resource),
          {:ok, action} <- get_action(resource, opts, :create, changeset.action) do
       Create.run(api, changeset, action, opts)
@@ -2715,7 +2717,7 @@ defmodule Ash.Api do
         end
 
       inputs ->
-        case Spark.OptionsHelpers.validate(opts, @bulk_create_opts_schema) do
+        case Spark.Options.validate(opts, @bulk_create_opts_schema) do
           {:ok, opts} ->
             Create.Bulk.run(api, resource, action, inputs, opts)
 
@@ -2790,7 +2792,7 @@ defmodule Ash.Api do
         end
 
       query_or_stream ->
-        case Spark.OptionsHelpers.validate(opts, @bulk_update_opts_schema) do
+        case Spark.Options.validate(opts, @bulk_update_opts_schema) do
           {:ok, opts} ->
             Update.Bulk.run(api, query_or_stream, action, input, opts)
 
@@ -2865,7 +2867,7 @@ defmodule Ash.Api do
         end
 
       query_or_stream ->
-        case Spark.OptionsHelpers.validate(opts, @bulk_destroy_opts_schema) do
+        case Spark.Options.validate(opts, @bulk_destroy_opts_schema) do
           {:ok, opts} ->
             %Ash.BulkResult{} =
               result = Destroy.Bulk.run(api, query_or_stream, action, input, opts)
@@ -2880,7 +2882,7 @@ defmodule Ash.Api do
 
   @doc false
   def update!(api, changeset, opts) do
-    opts = Spark.OptionsHelpers.validate!(opts, @update_opts_schema)
+    opts = Spark.Options.validate!(opts, @update_opts_schema)
 
     api
     |> update(changeset, opts)
@@ -2893,7 +2895,7 @@ defmodule Ash.Api do
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
   def update(api, changeset, opts) do
-    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @update_opts_schema),
+    with {:ok, opts} <- Spark.Options.validate(opts, @update_opts_schema),
          {:ok, resource} <- Ash.Api.Info.resource(api, changeset.resource),
          {:ok, action} <- get_action(resource, opts, :update, changeset.action) do
       Update.run(api, changeset, action, opts)
@@ -2908,7 +2910,7 @@ defmodule Ash.Api do
           | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | no_return()
   def destroy!(api, changeset, opts) do
-    opts = Spark.OptionsHelpers.validate!(opts, @destroy_opts_schema)
+    opts = Spark.Options.validate!(opts, @destroy_opts_schema)
 
     api
     |> destroy(changeset, opts)
@@ -2923,7 +2925,7 @@ defmodule Ash.Api do
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
   def destroy(api, %Ash.Changeset{resource: resource} = changeset, opts) do
-    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @destroy_opts_schema),
+    with {:ok, opts} <- Spark.Options.validate(opts, @destroy_opts_schema),
          {:ok, resource} <- Ash.Api.Info.resource(api, resource),
          {:ok, action} <- get_action(resource, opts, :destroy, changeset.action) do
       Destroy.run(api, changeset, action, opts)
