@@ -92,11 +92,11 @@ defmodule Ash.Resource.Actions.Create do
                   """
                 ]
               ]
-              |> Spark.OptionsHelpers.merge_schemas(
+              |> Spark.Options.merge(
                 @global_opts,
                 "Action Options"
               )
-              |> Spark.OptionsHelpers.merge_schemas(
+              |> Spark.Options.merge(
                 @create_update_opts,
                 "Create/Update Options"
               )

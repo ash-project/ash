@@ -17,7 +17,7 @@ defmodule Ash.Type.Module do
 
   ### Constraints
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
 

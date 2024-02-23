@@ -23,7 +23,7 @@ end
 
 #### Ash.Filter
 
-`Ash.Filter.parse/5` is now `Ash.Filter.parse/3`. `Ash.Filter.parse_input/5` is now `Ash.Filter.parse_input/2` The third and fourth optional arguments are unnecessary and were previously ignored, and the fifth argument is not necessary for `parse_input`.
+Ash.Filter.parse/5 is now `Ash.Filter.parse/3`. Ash.Filter.parse_input/5 is now `Ash.Filter.parse_input/2` The third and fourth optional arguments are unnecessary and were previously ignored, and the fifth argument is not necessary for `parse_input`.
 
 #### Ash.Resource.Validation
 

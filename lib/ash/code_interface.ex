@@ -409,7 +409,7 @@ defmodule Ash.CodeInterface do
 
         ## Options
 
-        #{Spark.OptionsHelpers.docs(Ash.Resource.Interface.interface_options(action.type))}
+        #{Spark.Options.docs(Ash.Resource.Interface.interface_options(action.type))}
         """
 
         resolve_opts_params =

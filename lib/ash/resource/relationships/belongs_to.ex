@@ -52,14 +52,12 @@ defmodule Ash.Resource.Relationships.BelongsTo do
 
   import Ash.Resource.Relationships.SharedOptions
 
-  alias Spark.OptionsHelpers
-
   @global_opts shared_options()
-               |> OptionsHelpers.set_default!(:destination_attribute, :id)
-               |> OptionsHelpers.append_doc!(:source_attribute, "Defaults to <name>_id")
+               |> Spark.Options.Helpers.set_default!(:destination_attribute, :id)
+               |> Spark.Options.Helpers.append_doc!(:source_attribute, "Defaults to <name>_id")
                |> Keyword.delete(:could_be_related_at_creation?)
 
-  @opt_schema Spark.OptionsHelpers.merge_schemas(
+  @opt_schema Spark.Options.merge(
                 [
                   primary_key?: [
                     type: :boolean,

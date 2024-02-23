@@ -152,7 +152,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if the destination is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :destination option: expected atom, got: \"foobar\"",
+        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected module in :destination option, got: \"foobar\"",
         fn ->
           defposts do
             relationships do

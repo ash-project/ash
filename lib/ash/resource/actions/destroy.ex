@@ -63,11 +63,11 @@ defmodule Ash.Resource.Actions.Destroy do
                   default: true
                 ]
               ]
-              |> Spark.OptionsHelpers.merge_schemas(
+              |> Spark.Options.merge(
                 @global_opts,
                 "Action Options"
               )
-              |> Spark.OptionsHelpers.merge_schemas(
+              |> Spark.Options.merge(
                 @create_update_opts,
                 "Create/Update Options (for soft destroys)"
               )

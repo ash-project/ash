@@ -75,7 +75,7 @@ defmodule Ash.Type do
 
   To specify a list of values, use `{:array, Type}`. Arrays are special, and have special constraints:
 
-  #{Spark.OptionsHelpers.docs(@doc_array_constraints)}
+  #{Spark.Options.docs(@doc_array_constraints)}
 
   ## Defining Custom Types
 
@@ -554,7 +554,7 @@ defmodule Ash.Type do
   end
 
   def cast_input(type, term, nil) do
-    with {:ok, constraints} <- Spark.OptionsHelpers.validate([], Ash.Type.constraints(type)),
+    with {:ok, constraints} <- Spark.Options.validate([], Ash.Type.constraints(type)),
          {:ok, constraints} <- Ash.Type.init(type, constraints) do
       cast_input(type, term, constraints)
     end
@@ -1564,7 +1564,7 @@ defmodule Ash.Type do
         array_constraints = array_constraints(type)
 
         with {:ok, new_constraints} <-
-               Spark.OptionsHelpers.validate(
+               Spark.Options.validate(
                  Keyword.delete(constraints || [], :items),
                  Keyword.delete(array_constraints, :items)
                ),
@@ -1575,7 +1575,7 @@ defmodule Ash.Type do
       type ->
         schema = constraints(type)
 
-        case Spark.OptionsHelpers.validate(constraints, schema) do
+        case Spark.Options.validate(constraints, schema) do
           {:ok, constraints} ->
             validate_none_reserved(constraints, type)
 

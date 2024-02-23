@@ -394,7 +394,7 @@ defmodule Ash.Query do
           if Keyword.get(opts, :base_filter?, true) do
             filter =
               resource
-              |> Ash.Filter.parse!(filter, query.aggregates, query.calculations, query.context)
+              |> Ash.Filter.parse!(filter, query.context)
               |> Ash.Filter.embed_predicates()
 
             do_filter(query, filter)
@@ -452,7 +452,7 @@ defmodule Ash.Query do
 
   ### Opts
 
-  #{Spark.OptionsHelpers.docs(@for_read_opts)}
+  #{Spark.Options.docs(@for_read_opts)}
 
   """
   def for_read(query, action_name, args \\ %{}, opts \\ []) do
@@ -1970,7 +1970,7 @@ defmodule Ash.Query do
 
   ## Options
 
-  #{Spark.OptionsHelpers.docs(@build_opts)}
+  #{Spark.Options.docs(@build_opts)}
   """
   @spec build(Ash.Resource.t(), Ash.Api.t() | nil, Keyword.t()) :: t()
   def build(resource, api \\ nil, keyword) do
@@ -2409,8 +2409,6 @@ defmodule Ash.Query do
             Ash.Filter.parse(
               query.resource,
               filter,
-              query.aggregates,
-              query.calculations,
               with_parent_stack(%{}, opts)
             )
 
@@ -2471,8 +2469,6 @@ defmodule Ash.Query do
           Ash.Filter.parse(
             query.resource,
             statement,
-            query.aggregates,
-            query.calculations,
             with_parent_stack(%{}, opts)
           )
         end

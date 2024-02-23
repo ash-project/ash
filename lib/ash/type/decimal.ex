@@ -16,7 +16,7 @@ defmodule Ash.Type.Decimal do
 
   ### Constraints
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   require Decimal
   use Ash.Type

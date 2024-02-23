@@ -7,7 +7,7 @@ defmodule Ash.Flow.Step.Debug do
     [
       input: Ash.Flow.Step.input()
     ]
-    |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
+    |> Spark.Options.merge(@shared_opts, "Global Options")
     |> Keyword.delete(:touches_resources)
   end
 end

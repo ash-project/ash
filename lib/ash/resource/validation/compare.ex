@@ -9,7 +9,7 @@ defmodule Ash.Resource.Validation.Compare do
 
   @impl true
   def init(opts) do
-    case Spark.OptionsHelpers.validate(
+    case Spark.Options.validate(
            opts,
            Keyword.put(Ash.Resource.Validation.Builtins.compare_opts(), :attribute,
              type: :atom,

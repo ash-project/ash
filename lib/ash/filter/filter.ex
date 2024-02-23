@@ -556,7 +556,7 @@ defmodule Ash.Filter do
     - skip_invalid?:
   """
   def to_simple_filter(%{resource: resource, expression: expression}, opts \\ []) do
-    opts = NimbleOptions.validate!(opts, @to_simple_filter_options)
+    opts = Spark.Options.validate!(opts, @to_simple_filter_options)
     predicates = get_predicates(expression, opts[:skip_invalid?])
 
     %Simple{resource: resource, predicates: predicates}

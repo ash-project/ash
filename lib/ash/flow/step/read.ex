@@ -31,6 +31,6 @@ defmodule Ash.Flow.Step.Read do
           """
         ]
       ]
-      |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
-      |> Spark.OptionsHelpers.merge_schemas(@shared_action_opts, "Action Step Opts")
+      |> Spark.Options.merge(@shared_opts, "Global Options")
+      |> Spark.Options.merge(@shared_action_opts, "Action Step Opts")
 end

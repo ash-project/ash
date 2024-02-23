@@ -137,7 +137,7 @@ defmodule Ash.Resource.Validation.Builtins do
 
   ## Options
 
-  #{Spark.OptionsHelpers.docs(@string_length_opts)}
+  #{Spark.Options.docs(@string_length_opts)}
 
   ## Examples
 
@@ -184,7 +184,7 @@ defmodule Ash.Resource.Validation.Builtins do
   The values provided for each option may be a literal value, attribute, argument, or a zero argument function.
 
   ## Options
-  #{Spark.OptionsHelpers.docs(@compare_opts)}
+  #{Spark.Options.docs(@compare_opts)}
 
   ## Examples
 
@@ -248,7 +248,7 @@ defmodule Ash.Resource.Validation.Builtins do
 
   ## Options
 
-  #{Spark.OptionsHelpers.docs(@present_opts)}
+  #{Spark.Options.docs(@present_opts)}
   """
   @spec present(attributes_or_arguments :: atom | list(atom), opts :: Keyword.t()) ::
           Validation.ref()
@@ -271,7 +271,7 @@ defmodule Ash.Resource.Validation.Builtins do
 
   ## Options
 
-  #{String.replace(Spark.OptionsHelpers.docs(@present_opts), "present", "absent")}
+  #{String.replace(Spark.Options.docs(@present_opts), "present", "absent")}
   """
   @spec absent(attributes_or_arguments :: atom | list(atom), opts :: Keyword.t()) ::
           Validation.ref()

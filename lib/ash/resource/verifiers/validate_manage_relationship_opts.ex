@@ -68,13 +68,13 @@ defmodule Ash.Resource.Verifiers.ValidateManagedRelationshipOpts do
 
                 Enum.reduce(defaults, Ash.Changeset.manage_relationship_schema(), fn {key, value},
                                                                                      manage_opts ->
-                  Spark.OptionsHelpers.set_default!(manage_opts, key, value)
+                  Spark.Options.Helpers.set_default!(manage_opts, key, value)
                 end)
               else
                 Ash.Changeset.manage_relationship_schema()
               end
 
-            opts = Spark.OptionsHelpers.validate!(opts[:opts], manage_opts)
+            opts = Spark.Options.validate!(opts[:opts], manage_opts)
 
             ManagedRelationshipHelpers.sanitize_opts(relationship, opts)
           rescue

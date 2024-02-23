@@ -40,7 +40,7 @@ defmodule Ash.Resource.Actions.Read do
 
   @global_opts shared_options()
 
-  @opt_schema Spark.OptionsHelpers.merge_schemas(
+  @opt_schema Spark.Options.merge(
                 [
                   filter: [
                     type: :any,

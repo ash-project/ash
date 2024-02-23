@@ -7,7 +7,7 @@ defmodule Ash.Resource.Validation.Present do
 
   @impl true
   def init(opts) do
-    case Spark.OptionsHelpers.validate(
+    case Spark.Options.validate(
            opts,
            Keyword.put(Ash.Resource.Validation.Builtins.present_opts(), :attributes,
              type: {:wrap_list, :atom},

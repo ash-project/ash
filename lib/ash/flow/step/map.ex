@@ -16,5 +16,5 @@ defmodule Ash.Flow.Step.Map do
           doc: "Which step to use when constructing the output list. Defaults to the last step."
         ]
       ]
-      |> Spark.OptionsHelpers.merge_schemas(@shared_opts, "Global Options")
+      |> Spark.Options.merge(@shared_opts, "Global Options")
 end
