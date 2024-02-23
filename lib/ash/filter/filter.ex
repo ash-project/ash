@@ -235,23 +235,16 @@ defmodule Ash.Filter do
   """
   def parse_input(
         resource,
-        statement,
-        _aggregates \\ %{},
-        _calculations \\ %{},
-        context \\ %{}
+        statement
       ) do
-    context =
-      Map.merge(
-        %{
-          resource: resource,
-          root_resource: resource,
-          relationship_path: [],
-          public?: true,
-          input?: true,
-          data_layer: Ash.DataLayer.data_layer(resource)
-        },
-        context
-      )
+    context = %{
+      resource: resource,
+      root_resource: resource,
+      relationship_path: [],
+      public?: true,
+      input?: true,
+      data_layer: Ash.DataLayer.data_layer(resource)
+    }
 
     with {:ok, expression} <- parse_expression(statement, context),
          {:ok, expression} <- hydrate_refs(expression, context),
@@ -266,8 +259,8 @@ defmodule Ash.Filter do
 
   See `parse_input/2` for more
   """
-  def parse_input!(resource, statement, aggregates \\ %{}, calculations \\ %{}, context \\ %{}) do
-    case parse_input(resource, statement, aggregates, calculations, context) do
+  def parse_input!(resource, statement) do
+    case parse_input(resource, statement) do
       {:ok, filter} ->
         filter
 
@@ -281,8 +274,8 @@ defmodule Ash.Filter do
 
   See `parse/2` for more
   """
-  def parse!(resource, statement, _aggregates \\ %{}, _calculations \\ %{}, context \\ %{}) do
-    case parse(resource, statement, %{}, %{}, context) do
+  def parse!(resource, statement, context \\ %{}) do
+    case parse(resource, statement, context) do
       {:ok, filter} ->
         filter
 
@@ -306,13 +299,13 @@ defmodule Ash.Filter do
   filters over public attributes/relationships.
   """
   # TODO: remove aggregates/calculation arguments. They are old and are no longer necessary (unused)
-  def parse(resource, statement, aggregates \\ %{}, calculations \\ %{}, context \\ %{})
+  def parse(resource, statement, context \\ %{})
 
-  def parse(_resource, nil, _aggregates, _calculations, _context) do
+  def parse(_resource, nil, _context) do
     {:ok, nil}
   end
 
-  def parse(resource, statement, _aggregates, _calculations, original_context) do
+  def parse(resource, statement, original_context) do
     context =
       Map.merge(
         %{
@@ -1086,7 +1079,7 @@ defmodule Ash.Filter do
   end
 
   def add_to_filter(%__MODULE__{} = base, statement, op, aggregates, calculations, context) do
-    case parse(base.resource, statement, %{}, %{}, context) do
+    case parse(base.resource, statement, context) do
       {:ok, filter} -> add_to_filter(base, filter, op, aggregates, calculations)
       {:error, error} -> {:error, error}
     end
