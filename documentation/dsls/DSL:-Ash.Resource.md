@@ -3104,7 +3104,7 @@ calculate name, type, calculation \\ nil
 
 Declares a named calculation on the resource.
 
-Takes a module that must adopt the `Ash.Calculation` behaviour. See that module
+Takes a module that must adopt the `Ash.Resource.Calculation` behaviour. See that module
 for more information.
 
 To ensure that the necessary fields are selected:
@@ -3121,7 +3121,7 @@ See the [calculations guide](/documentation/topics/calculations.md) for more.
 
 
 ### Examples
-`Ash.Calculation` implementation example:
+`Ash.Resource.Calculation` implementation example:
 ```
 calculate :full_name, :string, {MyApp.FullName, keys: [:first_name, :last_name]}, select: [:first_name, :last_name]
 ```
@@ -3147,7 +3147,6 @@ calculate :full_name, :string, expr(first_name <> " " <> last_name)
 | [`constraints`](#calculations-calculate-constraints){: #calculations-calculate-constraints } | `keyword` | `[]` | Constraints to provide to the type. See `Ash.Type` for more. |
 | [`description`](#calculations-calculate-description){: #calculations-calculate-description } | `String.t` |  | An optional description for the calculation |
 | [`private?`](#calculations-calculate-private?){: #calculations-calculate-private? } | `boolean` | `false` | Whether or not the calculation will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql See the [security guide](/documentation/topics/security.md) for more. |
-| [`select`](#calculations-calculate-select){: #calculations-calculate-select } | `list(atom)` | `[]` | A list of fields to ensure selected if the calculation is used. |
 | [`load`](#calculations-calculate-load){: #calculations-calculate-load } | `any` | `[]` | A load statement to be applied if the calculation is used. |
 | [`allow_nil?`](#calculations-calculate-allow_nil?){: #calculations-calculate-allow_nil? } | `boolean` | `true` | Whether or not the calculation can return nil. |
 | [`filterable?`](#calculations-calculate-filterable?){: #calculations-calculate-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the calculation should be usable in filters. |
