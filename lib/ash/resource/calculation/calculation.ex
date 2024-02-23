@@ -72,6 +72,10 @@ defmodule Ash.Resource.Calculation do
   ]
 
   defmodule Context do
+    @moduledoc """
+    The context and arguments of a calculation
+    """
+
     defstruct [
       :actor,
       :tenant,

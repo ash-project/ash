@@ -101,6 +101,8 @@ defmodule Ash.Resource.Change do
           }
   end
 
+  @type context :: Context.t()
+
   @callback init(opts :: Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
   @callback change(changeset :: Ash.Changeset.t(), opts :: Keyword.t(), context :: Context.t()) ::
               Ash.Changeset.t()

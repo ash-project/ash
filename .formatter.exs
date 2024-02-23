@@ -193,7 +193,6 @@ spark_locals_without_parens = [
   run: 1,
   run_flow: 2,
   run_flow: 3,
-  select: 1,
   sensitive?: 1,
   short_name: 1,
   simple_notifiers: 1,
