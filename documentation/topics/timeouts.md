@@ -6,7 +6,7 @@ Timeouts in Ash work a bit differently than other tools. The following considera
 2. If the resource action you are running, and any of its `touches_resources` is *already in a transaction* then the timeout is ignored, as the outer transaction is handling the timeout.
 3. If the resource is not in a transaction, and supports async execution (ash_postgres does), then everything is run in a task and awaited with the provided timeout.
 4. If the data layer of the resource does not support timeouts, or async execution then timeouts are **ignored**.
-5. As of the writing of this guide, none of the API extensions support specifying a timeout. If/when they do, they will run the action they are meant to run in a `Task`.
+5. As of the writing of this guide, none of the web API extensions support specifying a timeout. If/when they do, they will run the action they are meant to run in a `Task`.
 
 ## Ways to Specify Timeouts
 
@@ -15,7 +15,7 @@ You have a few options.
 You can specify a timeout when you call an action. This takes the highest precedence.
 
 ```elixir
-MyApi.read!(query, timeout: :timer.seconds(30))
+Ash.read!(query, timeout: :timer.seconds(30))
 ```
 
 You can specify one using `Ash.Changeset.timeout/2` or `Ash.Query.timeout/2`. This can be useful if you want to conditionally set a timeout based on the details of the request. For example, you might do something like this:
@@ -43,7 +43,7 @@ actions do
 end
 ```
 
-And you can specify a default timeout on the Api module that you call your resources with. Overriding an api with a default timeout requires providing a timeout of `:infinity` in one of the other methods.
+And you can specify a default timeout on the domain module that you call your resources with. Overriding a domain with a default timeout requires providing a timeout of `:infinity` in one of the other methods.
 
 ```elixir
 execution do

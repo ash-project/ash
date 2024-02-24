@@ -2,11 +2,11 @@ defmodule Ash.Test.Filter.ParentTest do
   use ExUnit.Case, async: false
 
   require Ash.Query
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule User do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
       defaults [:create, :read, :update, :destroy]
@@ -28,7 +28,7 @@ defmodule Ash.Test.Filter.ParentTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
@@ -59,21 +59,21 @@ defmodule Ash.Test.Filter.ParentTest do
     author =
       User
       |> new(%{name: "best"})
-      |> Api.create!()
+      |> Domain.create!()
 
     Post
     |> new(%{title: "best"})
     |> manage_relationship(:author, author, type: :append_and_remove)
-    |> Api.create!()
+    |> Domain.create!()
 
     assert [_] =
              User
              |> Ash.Query.filter(exists(posts, title == parent(name)))
-             |> Api.read!()
+             |> Domain.read!()
 
     assert [] =
              User
              |> Ash.Query.filter(exists(posts, title == parent(name <> "foo")))
-             |> Api.read!()
+             |> Domain.read!()
   end
 end

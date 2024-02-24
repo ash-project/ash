@@ -17,7 +17,7 @@ lib/ # top level lib folder for your whole project
 │  │  ├─ user/ # resource w/ additional files
 │  │  ├─ token.ex # A resource without additional files
 │  │  ├─ password_helper.ex # A non-resource file
-│  │  ├─ accounts.ex # The Accounts API module
+│  │  ├─ accounts.ex # The Accounts domain module
 │  ├─ helpdesk/ # A Helpdesk context
 │  │  ├─ notification.ex # A resource without additional files
 │  │  ├─ other_file.ex # A non-resource file
@@ -28,6 +28,6 @@ lib/ # top level lib folder for your whole project
 │  │  │  ├─ ticket.ex # The resource file
 ```
 
-Generally speaking, your Ash application lives in the standard place within your elixir application, i.e `lib/my_app`. Within that folder, you create one folder for each context that you have. Each context has an `Ash.Api` module within it, and the resources that live within that context. All resource interaction ultimately goes through an Api module.
+Generally speaking, your Ash application lives in the standard place within your elixir application, i.e `lib/my_app`. Within that folder, you create one folder for each context that you have. Each context has an `Ash.Domain` module within it, and the resources that live within that context. All resource interaction ultimately goes through an domain module.
 
-Alongside the API module, you have your resources, as well as any other files used in the context. If a resource has any additional files that are used to implement it, they should be placed in a folder with the same name as the resource, in subfolders grouping the files type, and *the resource should be placed there too*. This is optional, as stated above, but we've found that with large contexts it keeps things very simple.
+Alongside the domain module, you have your resources, as well as any other files used in the context. If a resource has any additional files that are used to implement it, they should be placed in a folder with the same name as the resource, in subfolders grouping the files type, and *the resource should be placed there too*. This is optional, as stated above, but we've found that with large contexts it keeps things very simple.

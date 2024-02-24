@@ -1,7 +1,7 @@
 defmodule Ash.Test.Support.PolicyRbac.File do
   @moduledoc false
   use Ash.Resource,
-    api: Ash.Test.Support.PolicyRbac.Api,
+    domain: Ash.Test.Support.PolicyRbac.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer]
 

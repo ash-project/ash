@@ -2,7 +2,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule PubSub do
     def broadcast(topic, event, notification) do
@@ -16,7 +16,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       notifiers: [
         Ash.Notifier.PubSub
@@ -51,7 +51,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
   defmodule User do
     @moduledoc false
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       notifiers: [
         Ash.Notifier.PubSub
@@ -90,9 +90,9 @@ defmodule Ash.Test.Notifier.PubSubTest do
     post =
       Post
       |> Ash.Changeset.new(%{})
-      |> Api.create!()
+      |> Domain.create!()
 
-    Api.destroy!(post)
+    Domain.destroy!(post)
 
     message = "post:foo:#{post.id}"
     assert_receive {:broadcast, ^message, "destroy", %Ash.Notifier.Notification{}}
@@ -102,9 +102,9 @@ defmodule Ash.Test.Notifier.PubSubTest do
     post =
       Post
       |> Ash.Changeset.new(%{})
-      |> Api.create!()
+      |> Domain.create!()
 
-    Api.destroy!(post)
+    Domain.destroy!(post)
 
     message = "post:foo:#{post.id}"
     pid = self()
@@ -115,9 +115,9 @@ defmodule Ash.Test.Notifier.PubSubTest do
     post =
       Post
       |> Ash.Changeset.new(%{})
-      |> Api.create!()
+      |> Domain.create!()
 
-    Api.destroy!(post, notification_metadata: %{foo: :bar})
+    Domain.destroy!(post, notification_metadata: %{foo: :bar})
 
     message = "post:foo:#{post.id}"
 
@@ -129,11 +129,11 @@ defmodule Ash.Test.Notifier.PubSubTest do
     post =
       Post
       |> Ash.Changeset.new(%{name: "ted"})
-      |> Api.create!()
+      |> Domain.create!()
 
     post
     |> Ash.Changeset.new(%{name: "joe"})
-    |> Api.update!()
+    |> Domain.update!()
 
     message = "post:foo:#{post.id}"
     assert_receive {:broadcast, ^message, "update", %Ash.Notifier.Notification{}}
@@ -148,13 +148,13 @@ defmodule Ash.Test.Notifier.PubSubTest do
     post =
       Post
       |> Ash.Changeset.new(%{name: "ted"})
-      |> Api.create!()
+      |> Domain.create!()
 
     new_id = Ash.UUID.generate()
 
     post
     |> Ash.Changeset.new(%{id: new_id})
-    |> Api.update!(action: :update_pkey)
+    |> Domain.update!(action: :update_pkey)
 
     message = "post:foo:#{post.id}"
     assert_receive {:broadcast, ^message, "update_pkey", %Ash.Notifier.Notification{}}
@@ -167,7 +167,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
     user =
       User
       |> Ash.Changeset.new(%{name: "Dave"})
-      |> Api.create!()
+      |> Domain.create!()
 
     message = "users.#{user.id}.created"
     assert_receive {:broadcast, ^message, "create", %Ash.Notifier.Notification{}}

@@ -1,5 +1,5 @@
 defmodule Ash.Error.Forbidden.Placeholder do
-  @moduledoc "Used when an api that has `require_actor? true` is provided no actor"
+  @moduledoc "A placeholder exception that the user should never see"
   use Ash.Error.Exception
 
   def_ash_error([:authorizer], class: :forbidden)

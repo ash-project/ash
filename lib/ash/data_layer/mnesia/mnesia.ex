@@ -41,16 +41,16 @@ defmodule Ash.DataLayer.Mnesia do
   alias :mnesia, as: Mnesia
 
   @doc """
-  Creates the table for each mnesia resource in an api
+  Creates the table for each mnesia resource in a domain
   """
-  def start(api, resources \\ []) do
+  def start(domain, resources \\ []) do
     Mnesia.create_schema([node()])
     Mnesia.start()
 
-    Code.ensure_compiled(api)
+    Code.ensure_compiled(domain)
 
-    api
-    |> Ash.Api.Info.resources()
+    domain
+    |> Ash.Domain.Info.resources()
     |> Enum.concat(resources)
     |> Enum.filter(&(__MODULE__ in Spark.extensions(&1)))
     |> Enum.flat_map(fn resource ->
@@ -64,7 +64,7 @@ defmodule Ash.DataLayer.Mnesia do
   defmodule Query do
     @moduledoc false
     defstruct [
-      :api,
+      :domain,
       :resource,
       :filter,
       :limit,
@@ -128,10 +128,10 @@ defmodule Ash.DataLayer.Mnesia do
 
   @doc false
   @impl true
-  def resource_to_query(resource, api) do
+  def resource_to_query(resource, domain) do
     %Query{
       resource: resource,
-      api: api
+      domain: domain
     }
   end
 
@@ -175,7 +175,7 @@ defmodule Ash.DataLayer.Mnesia do
 
   @doc false
   @impl true
-  def run_aggregate_query(%{api: api} = query, aggregates, resource) do
+  def run_aggregate_query(%{domain: domain} = query, aggregates, resource) do
     case run_query(query, resource) do
       {:ok, results} ->
         Enum.reduce_while(aggregates, {:ok, %{}}, fn
@@ -190,7 +190,7 @@ defmodule Ash.DataLayer.Mnesia do
           },
           {:ok, acc} ->
             results
-            |> filter_matches(Map.get(query || %{}, :filter), api)
+            |> filter_matches(Map.get(query || %{}, :filter), domain)
             |> case do
               {:ok, matches} ->
                 field = field || Enum.at(Ash.Resource.Info.primary_key(resource), 0)
@@ -221,7 +221,7 @@ defmodule Ash.DataLayer.Mnesia do
   @impl true
   def run_query(
         %Query{
-          api: api,
+          domain: domain,
           resource: resource,
           filter: filter,
           offset: offset,
@@ -238,14 +238,14 @@ defmodule Ash.DataLayer.Mnesia do
            end),
          {:ok, records} <-
            records |> Enum.map(&elem(&1, 2)) |> Ash.DataLayer.Ets.cast_records(resource),
-         {:ok, filtered} <- filter_matches(records, filter, api),
+         {:ok, filtered} <- filter_matches(records, filter, domain),
          offset_records <-
-           filtered |> Sort.runtime_sort(sort, api: api) |> Enum.drop(offset || 0),
+           filtered |> Sort.runtime_sort(sort, domain: domain) |> Enum.drop(offset || 0),
          limited_records <- do_limit(offset_records, limit),
          {:ok, records} <-
            Ash.DataLayer.Ets.do_add_aggregates(
              limited_records,
-             api,
+             domain,
              resource,
              aggregates
            ),
@@ -254,7 +254,7 @@ defmodule Ash.DataLayer.Mnesia do
              records,
              resource,
              calculations,
-             api
+             domain
            ) do
       {:ok, records}
     else
@@ -269,10 +269,10 @@ defmodule Ash.DataLayer.Mnesia do
   defp do_limit(records, nil), do: records
   defp do_limit(records, limit), do: Enum.take(records, limit)
 
-  defp filter_matches(records, nil, _api), do: {:ok, records}
+  defp filter_matches(records, nil, _domain), do: {:ok, records}
 
-  defp filter_matches(records, filter, api) do
-    Ash.Filter.Runtime.filter_matches(api, records, filter)
+  defp filter_matches(records, filter, domain) do
+    Ash.Filter.Runtime.filter_matches(domain, records, filter)
   end
 
   @doc false
@@ -414,7 +414,7 @@ defmodule Ash.DataLayer.Mnesia do
       query = Ash.Query.do_filter(resource, and: [key_filters])
 
       resource
-      |> resource_to_query(changeset.api)
+      |> resource_to_query(changeset.domain)
       |> Map.put(:filter, query.filter)
       |> Map.put(:tenant, changeset.tenant)
       |> run_query(resource)

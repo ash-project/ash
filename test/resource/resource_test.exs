@@ -2,13 +2,13 @@ defmodule Ash.Test.Resource.ResourceTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
         actions do
           defaults [:create, :read, :update, :destroy]
@@ -48,7 +48,7 @@ defmodule Ash.Test.Resource.ResourceTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, api: Api
+    use Ash.Resource, domain: Domain
 
     actions do
       defaults [:create, :read, :update, :destroy]
@@ -63,9 +63,9 @@ defmodule Ash.Test.Resource.ResourceTest do
   test "it returns the correct error when doing a read with no data layer setup" do
     Post
     |> Ash.Changeset.new(%{name: "foo"})
-    |> Api.create()
+    |> Domain.create()
 
-    {_, error} = Api.read(Post)
+    {_, error} = Domain.read(Post)
     [%Ash.Error.SimpleDataLayer.NoDataProvided{message: message} | _] = error.errors
     assert message != nil
   end

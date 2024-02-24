@@ -188,9 +188,9 @@ defmodule Ash.Flow.Dsl do
       @argument
     ],
     schema: [
-      api: [
-        type: {:behaviour, Ash.Api},
-        doc: "An api to use by default when calling actions"
+      domain: [
+        type: {:behaviour, Ash.Domain},
+        doc: "An domain to use by default when calling actions"
       ],
       description: [
         type: :string,
@@ -338,7 +338,7 @@ defmodule Ash.Flow.Dsl do
   }
 
   @transformers [
-    Ash.Flow.Transformers.SetApi
+    Ash.Flow.Transformers.SetDomain
   ]
 
   @verifiers [

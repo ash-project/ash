@@ -1,12 +1,12 @@
 defmodule Ash.Test.Policy.StrictConditionTest do
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Resource do
     @moduledoc false
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -35,16 +35,16 @@ defmodule Ash.Test.Policy.StrictConditionTest do
   test "condition in filter policy is evaluated" do
     Resource
     |> Ash.Changeset.for_create(:create, %{visible: true}, authorize?: false)
-    |> Api.create!()
+    |> Domain.create!()
 
     Resource
     |> Ash.Changeset.for_create(:create, %{visible: false}, authorize?: false)
-    |> Api.create!()
+    |> Domain.create!()
 
     assert_raise Ash.Error.Forbidden, fn ->
       Resource
       |> Ash.Query.for_read(:read, %{}, actor: %{id: "foo"})
-      |> Api.read!()
+      |> Domain.read!()
     end
   end
 end

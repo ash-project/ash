@@ -7,7 +7,7 @@ defmodule Ash.Policy.Authorizer do
     :action_input,
     :data,
     :action,
-    :api,
+    :domain,
     :verbose?,
     :scenarios,
     :real_scenarios,
@@ -456,12 +456,12 @@ defmodule Ash.Policy.Authorizer do
 
   @impl true
   def strict_check_context(_authorizer) do
-    [:query, :changeset, :api, :resource, :action_input]
+    [:query, :changeset, :domain, :resource, :action_input]
   end
 
   @impl true
   def check_context(_authorizer) do
-    [:query, :changeset, :data, :api, :resource]
+    [:query, :changeset, :data, :domain, :resource]
   end
 
   @impl true
@@ -476,7 +476,7 @@ defmodule Ash.Policy.Authorizer do
       | query: context.query,
         changeset: context.changeset,
         action_input: context[:action_input],
-        api: context.api
+        domain: context.domain
     }
     |> get_policies()
     |> strict_check_result()

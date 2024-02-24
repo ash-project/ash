@@ -4,12 +4,12 @@ defmodule Ash.Test.SeedTest do
 
   import Ash.Seed
   require Ash.Query
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -36,7 +36,7 @@ defmodule Ash.Test.SeedTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -58,7 +58,7 @@ defmodule Ash.Test.SeedTest do
       belongs_to :author, Author
 
       has_many :ratings, Ash.Test.SeedTest.Rating do
-        api Ash.Test.SeedTest.Api2
+        domain(Ash.Test.SeedTest.Domain2)
       end
 
       many_to_many :categories, Ash.Test.SeedTest.Category,
@@ -70,7 +70,7 @@ defmodule Ash.Test.SeedTest do
 
   defmodule PostCategory do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -91,7 +91,7 @@ defmodule Ash.Test.SeedTest do
 
   defmodule Category do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -116,7 +116,7 @@ defmodule Ash.Test.SeedTest do
 
   defmodule Rating do
     use Ash.Resource,
-      api: Ash.Test.SeedTest.Api2,
+      domain: Ash.Test.SeedTest.Domain2,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -134,14 +134,14 @@ defmodule Ash.Test.SeedTest do
 
     relationships do
       belongs_to :post, Post do
-        api Api
+        domain(Domain)
       end
     end
   end
 
-  defmodule Api2 do
+  defmodule Domain2 do
     @moduledoc false
-    use Ash.Api
+    use Ash.Domain
 
     resources do
       resource(Rating)
@@ -152,14 +152,14 @@ defmodule Ash.Test.SeedTest do
     test "it creates a single record with resource and input" do
       assert %Post{id: id, title: "seeded"} = seed!(Post, %{title: "seeded"})
 
-      assert post = Api.get!(Post, id)
+      assert post = Domain.get!(Post, id)
       assert post.title == "seeded"
     end
 
     test "it creates a single record with a struct" do
       assert %Post{id: id, title: "seeded"} = seed!(%Post{title: "seeded"})
 
-      assert post = Api.get!(Post, id)
+      assert post = Domain.get!(Post, id)
       assert post.title == "seeded"
     end
 
@@ -189,7 +189,7 @@ defmodule Ash.Test.SeedTest do
                categories: categories,
                author: %Author{name: "ted dansen"},
                ratings: ratings
-             } = Post |> Api.get!(id) |> Api.load!([:categories, :author, :ratings])
+             } = Post |> Domain.get!(id) |> Domain.load!([:categories, :author, :ratings])
 
       assert categories |> Enum.map(& &1.name) |> Enum.sort() == ["bar", "foo"]
       assert ratings |> Enum.map(& &1.rating) |> Enum.sort() == [1, 2]
@@ -216,7 +216,7 @@ defmodule Ash.Test.SeedTest do
                categories: categories,
                author: author,
                ratings: ratings
-             } = Post |> Api.get!(id) |> Api.load!([:categories, :author, :ratings])
+             } = Post |> Domain.get!(id) |> Domain.load!([:categories, :author, :ratings])
 
       assert %Post{id: id} =
                seed!(%Post{
@@ -232,15 +232,15 @@ defmodule Ash.Test.SeedTest do
                categories: categories,
                author: author,
                ratings: ratings
-             } = Post |> Api.get!(id) |> Api.load!([:categories, :author, :ratings])
+             } = Post |> Domain.get!(id) |> Domain.load!([:categories, :author, :ratings])
 
       assert categories |> Enum.map(& &1.name) |> Enum.sort() == ["bar", "foo"]
       assert ratings |> Enum.map(& &1.rating) |> Enum.sort() == [1, 2]
       assert author.name == "ted dansen"
 
-      assert Enum.count(Api.read!(Category)) == 2
-      assert Enum.count(Api.read!(Rating)) == 2
-      assert Enum.count(Api.read!(Author)) == 1
+      assert Enum.count(Domain.read!(Category)) == 2
+      assert Enum.count(Domain.read!(Rating)) == 2
+      assert Enum.count(Domain.read!(Author)) == 1
     end
   end
 end

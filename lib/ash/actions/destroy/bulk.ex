@@ -2,39 +2,12 @@ defmodule Ash.Actions.Destroy.Bulk do
   @moduledoc false
   require Ash.Query
 
-  @spec run(Ash.Api.t(), Enumerable.t() | Ash.Query.t(), atom(), input :: map, Keyword.t()) ::
+  @spec run(Ash.Domain.t(), Enumerable.t() | Ash.Query.t(), atom(), input :: map, Keyword.t()) ::
           Ash.BulkResult.t()
 
-  def run(api, resource, action, input, opts, not_atomic_reason \\ nil)
+  def run(domain, resource, action, input, opts, not_atomic_reason \\ nil)
 
-  def run(api, stream, action, input, opts, not_atomic_reason) when is_atom(action) do
-    resource =
-      opts[:resource] ||
-        case stream do
-          [%resource{} | _] ->
-            resource
-
-          %Ash.Query{resource: resource} ->
-            resource
-
-          resource when is_atom(resource) ->
-            if Ash.Resource.Info.resource?(resource) do
-              resource
-            end
-
-          _ ->
-            nil
-        end
-
-    if !resource do
-      raise ArgumentError,
-            "Could not determine resource for bulk destroy. Please provide the `resource` option if providing a stream of inputs."
-    end
-
-    run(api, stream, Ash.Resource.Info.action(resource, action), input, opts, not_atomic_reason)
-  end
-
-  def run(api, stream, nil, input, opts, not_atomic_reason) do
+  def run(domain, stream, action, input, opts, not_atomic_reason) when is_atom(action) do
     resource =
       opts[:resource] ||
         case stream do
@@ -59,7 +32,41 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
 
     run(
-      api,
+      domain,
+      stream,
+      Ash.Resource.Info.action(resource, action),
+      input,
+      opts,
+      not_atomic_reason
+    )
+  end
+
+  def run(domain, stream, nil, input, opts, not_atomic_reason) do
+    resource =
+      opts[:resource] ||
+        case stream do
+          [%resource{} | _] ->
+            resource
+
+          %Ash.Query{resource: resource} ->
+            resource
+
+          resource when is_atom(resource) ->
+            if Ash.Resource.Info.resource?(resource) do
+              resource
+            end
+
+          _ ->
+            nil
+        end
+
+    if !resource do
+      raise ArgumentError,
+            "Could not determine resource for bulk destroy. Please provide the `resource` option if providing a stream of inputs."
+    end
+
+    run(
+      domain,
       stream,
       Ash.Resource.Info.primary_action!(resource, :destroy),
       input,
@@ -68,15 +75,15 @@ defmodule Ash.Actions.Destroy.Bulk do
     )
   end
 
-  def run(api, stream, %{soft?: true} = action, input, opts, not_atomic_reason) do
-    Ash.Actions.Update.Bulk.run(api, stream, action, input, opts, not_atomic_reason)
+  def run(domain, stream, %{soft?: true} = action, input, opts, not_atomic_reason) do
+    Ash.Actions.Update.Bulk.run(domain, stream, action, input, opts, not_atomic_reason)
   end
 
-  def run(api, resource, action, input, opts, not_atomic_reason) when is_atom(resource) do
-    run(api, Ash.Query.new(resource), action, input, opts, not_atomic_reason)
+  def run(domain, resource, action, input, opts, not_atomic_reason) when is_atom(resource) do
+    run(domain, Ash.Query.new(resource), action, input, opts, not_atomic_reason)
   end
 
-  def run(api, %Ash.Query{} = query, action, input, opts, not_atomic_reason) do
+  def run(domain, %Ash.Query{} = query, action, input, opts, not_atomic_reason) do
     opts = set_strategy(opts, query.resource)
 
     query =
@@ -89,12 +96,12 @@ defmodule Ash.Actions.Destroy.Bulk do
             Ash.Resource.Info.primary_action!(query.resource, :read).name
           )
 
-        {query, _opts} = Ash.Actions.Helpers.add_process_context(api, query, opts)
+        {query, _opts} = Ash.Actions.Helpers.add_process_context(domain, query, opts)
 
         query
       end
 
-    query = %{query | api: api}
+    query = %{query | domain: domain}
 
     fully_atomic_changeset =
       cond do
@@ -149,11 +156,11 @@ defmodule Ash.Actions.Destroy.Bulk do
                 end
               end)
               |> Keyword.put(:authorize?, opts[:authorize?] && opts[:authorize_query?])
-              |> Keyword.take(Ash.Api.stream_opt_keys())
+              |> Keyword.take(Ash.Domain.stream_opt_keys())
 
             run(
-              api,
-              api.stream!(
+              domain,
+              domain.stream!(
                 query,
                 read_opts
               ),
@@ -173,9 +180,9 @@ defmodule Ash.Actions.Destroy.Bulk do
 
       atomic_changeset ->
         {atomic_changeset, opts} =
-          Ash.Actions.Helpers.add_process_context(api, atomic_changeset, opts)
+          Ash.Actions.Helpers.add_process_context(domain, atomic_changeset, opts)
 
-        atomic_changeset = %{atomic_changeset | api: api}
+        atomic_changeset = %{atomic_changeset | domain: domain}
 
         atomic_changeset =
           if opts[:context] do
@@ -277,7 +284,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
-  def run(api, stream, action, input, opts, not_atomic_reason) do
+  def run(domain, stream, action, input, opts, not_atomic_reason) do
     not_atomic_reason =
       not_atomic_reason || "Cannot perform atomic destroys on a stream of inputs"
 
@@ -344,7 +351,7 @@ defmodule Ash.Actions.Destroy.Bulk do
       Ash.DataLayer.transaction(
         List.wrap(resource) ++ action.touches_resources,
         fn ->
-          do_run(api, stream, action, input, opts, not_atomic_reason)
+          do_run(domain, stream, action, input, opts, not_atomic_reason)
         end,
         opts[:timeout],
         %{
@@ -377,7 +384,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           {:error, error}
       end
     else
-      api
+      domain
       |> do_run(stream, action, input, opts, not_atomic_reason)
       |> handle_bulk_result(resource, action, opts)
     end
@@ -531,7 +538,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
           _strategy ->
             run(
-              atomic_changeset.api,
+              atomic_changeset.domain,
               query,
               atomic_changeset.action,
               input,
@@ -557,11 +564,11 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
-  defp do_run(api, stream, action, input, opts, not_atomic_reason) do
+  defp do_run(domain, stream, action, input, opts, not_atomic_reason) do
     resource = opts[:resource]
-    opts = Ash.Actions.Helpers.set_opts(opts, api)
+    opts = Ash.Actions.Helpers.set_opts(opts, domain)
 
-    {_, opts} = Ash.Actions.Helpers.add_process_context(api, Ash.Changeset.new(resource), opts)
+    {_, opts} = Ash.Actions.Helpers.add_process_context(domain, Ash.Changeset.new(resource), opts)
 
     fully_atomic_changeset =
       cond do
@@ -595,7 +602,7 @@ defmodule Ash.Actions.Destroy.Bulk do
              ) do
           {:error, exception} ->
             if :stream in opts[:strategy] do
-              do_stream_batches(api, stream, action, input, opts)
+              do_stream_batches(domain, stream, action, input, opts)
             else
               %Ash.BulkResult{
                 status: :error,
@@ -619,7 +626,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           _ ->
             do_atomic_batches(
               atomic_changeset,
-              api,
+              domain,
               stream,
               action,
               input,
@@ -630,7 +637,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
       {:not_atomic, not_atomic_batches_reason} ->
         if :stream in opts[:strategy] do
-          do_stream_batches(api, stream, action, input, opts)
+          do_stream_batches(domain, stream, action, input, opts)
         else
           %Ash.BulkResult{
             status: :error,
@@ -651,7 +658,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
-  defp do_atomic_batches(atomic_changeset, api, stream, action, input, opts, not_atomic_reason) do
+  defp do_atomic_batches(atomic_changeset, domain, stream, action, input, opts, not_atomic_reason) do
     batch_size = opts[:batch_size] || 100
     resource = opts[:resource]
     ref = make_ref()
@@ -679,7 +686,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         |> Ash.Query.select([])
         |> then(fn query ->
           run(
-            api,
+            domain,
             query,
             action.name,
             input,
@@ -717,7 +724,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     |> run_batches(ref, opts)
   end
 
-  defp do_stream_batches(api, stream, action, input, opts) do
+  defp do_stream_batches(domain, stream, action, input, opts) do
     resource = opts[:resource]
 
     manual_action_can_bulk? =
@@ -738,7 +745,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
     ref = make_ref()
 
-    base_changeset = base_changeset(resource, api, opts, action, input)
+    base_changeset = base_changeset(resource, domain, opts, action, input)
 
     all_changes =
       pre_template_all_changes(action, resource, action.type, base_changeset, opts[:actor])
@@ -762,11 +769,11 @@ defmodule Ash.Actions.Destroy.Bulk do
               opts,
               input,
               argument_names,
-              api
+              domain
             )
           )
           |> reject_and_maybe_store_errors(ref, opts)
-          |> handle_batch(api, resource, action, all_changes, opts, ref)
+          |> handle_batch(domain, resource, action, all_changes, opts, ref)
         after
           if opts[:notify?] && !opts[:return_notifications?] do
             Ash.Notifier.notify(Process.delete({:bulk_destroy_notifications, ref}))
@@ -839,7 +846,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
-  defp base_changeset(resource, api, opts, action, input) do
+  defp base_changeset(resource, domain, opts, action, input) do
     arguments =
       Enum.reduce(input, %{}, fn {key, value}, acc ->
         argument =
@@ -862,7 +869,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
     resource
     |> Ash.Changeset.new()
-    |> Map.put(:api, api)
+    |> Map.put(:domain, domain)
     |> Ash.Actions.Helpers.add_context(opts)
     |> Ash.Changeset.set_context(opts[:context] || %{})
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
@@ -871,7 +878,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   defp authorize_bulk_query(query, atomic_changeset, opts) do
     if opts[:authorize?] && opts[:authorize_query?] do
-      case query.api.can(query, opts[:actor],
+      case query.domain.can(query, opts[:actor],
              return_forbidden_error?: true,
              atomic_changeset: atomic_changeset,
              filter_with: opts[:authorize_query_with] || :filter,
@@ -898,7 +905,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   defp authorize_atomic_changeset(query, changeset, opts) do
     if opts[:authorize?] do
-      case query.api.can(changeset, opts[:actor],
+      case query.domain.can(changeset, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,
              atomic_changeset: changeset,
@@ -1000,7 +1007,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     )
   end
 
-  defp handle_batch(batch, api, resource, action, all_changes, opts, ref) do
+  defp handle_batch(batch, domain, resource, action, all_changes, opts, ref) do
     if opts[:transaction] == :batch &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
       context = batch |> Enum.at(0) |> Kernel.||(%{}) |> Map.get(:context)
@@ -1023,7 +1030,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           fn ->
             do_handle_batch(
               batch,
-              api,
+              domain,
               resource,
               action,
               opts,
@@ -1068,11 +1075,11 @@ defmodule Ash.Actions.Destroy.Bulk do
         end
       end
     else
-      do_handle_batch(batch, api, resource, action, opts, all_changes, ref)
+      do_handle_batch(batch, domain, resource, action, opts, all_changes, ref)
     end
   end
 
-  defp do_handle_batch(batch, api, resource, action, opts, all_changes, ref) do
+  defp do_handle_batch(batch, domain, resource, action, opts, all_changes, ref) do
     must_return_records? =
       opts[:notify?] ||
         Enum.any?(batch, fn item ->
@@ -1096,7 +1103,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
     batch =
       batch
-      |> authorize(api, opts)
+      |> authorize(domain, opts)
       |> Enum.to_list()
       |> run_bulk_before_batches(
         changes,
@@ -1116,10 +1123,10 @@ defmodule Ash.Actions.Destroy.Bulk do
       opts,
       must_return_records?,
       must_return_records_for_changes?,
-      api,
+      domain,
       ref
     )
-    |> run_after_action_hooks(opts, api, ref, changesets_by_index)
+    |> run_after_action_hooks(opts, domain, ref, changesets_by_index)
     |> process_results(changes, all_changes, opts, ref, changesets_by_index)
     |> then(fn stream ->
       if opts[:return_stream?] do
@@ -1139,11 +1146,11 @@ defmodule Ash.Actions.Destroy.Bulk do
          opts,
          input,
          argument_names,
-         api
+         domain
        ) do
     record
     |> Ash.Changeset.new()
-    |> Map.put(:api, api)
+    |> Map.put(:domain, domain)
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
     |> Ash.Changeset.put_context(:bulk_destroy, %{index: index})
     |> handle_params(
@@ -1392,12 +1399,12 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
-  defp authorize(batch, api, opts) do
+  defp authorize(batch, domain, opts) do
     if opts[:authorize?] do
       batch
       |> Enum.map(fn changeset ->
         if changeset.valid? do
-          case api.can(
+          case domain.can(
                  changeset,
                  opts[:actor],
                  return_forbidden_error?: true,
@@ -1464,7 +1471,7 @@ defmodule Ash.Actions.Destroy.Bulk do
          opts,
          must_return_records?,
          must_return_records_for_changes?,
-         api,
+         domain,
          ref
        ) do
     batch
@@ -1526,7 +1533,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                     batch_size: opts[:batch_size],
                     authorize?: opts[:authorize?],
                     tracer: opts[:tracer],
-                    api: api,
+                    domain: domain,
                     return_records?:
                       opts[:return_records?] || must_return_records? ||
                         must_return_records_for_changes?,
@@ -1553,7 +1560,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                       tenant: opts[:tenant],
                       authorize?: opts[:authorize?],
                       tracer: opts[:tracer],
-                      api: api
+                      domain: domain
                     })
 
                   case result do
@@ -1612,9 +1619,9 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
-  defp manage_relationships(destroyed, api, changeset, engine_opts) do
+  defp manage_relationships(destroyed, domain, changeset, engine_opts) do
     with {:ok, loaded} <-
-           Ash.Actions.ManagedRelationships.load(api, destroyed, changeset, engine_opts),
+           Ash.Actions.ManagedRelationships.load(domain, destroyed, changeset, engine_opts),
          {:ok, with_relationships, new_notifications} <-
            Ash.Actions.ManagedRelationships.manage_relationships(
              loaded,
@@ -1629,14 +1636,14 @@ defmodule Ash.Actions.Destroy.Bulk do
   defp run_after_action_hooks(
          batch_results,
          opts,
-         api,
+         domain,
          ref,
          changesets_by_index
        ) do
     Enum.flat_map(batch_results, fn result ->
       changeset = changesets_by_index[result.__metadata__.bulk_destroy_index]
 
-      case manage_relationships(result, api, changeset,
+      case manage_relationships(result, domain, changeset,
              actor: opts[:actor],
              authorize?: opts[:authorize?]
            ) do
@@ -1791,7 +1798,7 @@ defmodule Ash.Actions.Destroy.Bulk do
   defp notification(changeset, result, opts) do
     %Ash.Notifier.Notification{
       resource: changeset.resource,
-      api: changeset.api,
+      domain: changeset.domain,
       actor: opts[:actor],
       action: changeset.action,
       data: result,

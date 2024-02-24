@@ -2,13 +2,13 @@ defmodule Ash.Test.Resource.IdentitiesTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, api: Api
+        use Ash.Resource, domain: Domain
 
         attributes do
           uuid_primary_key :id
@@ -32,7 +32,7 @@ defmodule Ash.Test.Resource.IdentitiesTest do
         end
 
         identities do
-          identity :foobar, [:name, :contents], pre_check_with: Api
+          identity :foobar, [:name, :contents], pre_check_with: Domain
         end
       end
 
@@ -46,7 +46,9 @@ defmodule Ash.Test.Resource.IdentitiesTest do
                    fn ->
                      defposts do
                        identities do
-                         identity :foobar, [:name], eager_check_with: Api, pre_check_with: Api
+                         identity :foobar, [:name],
+                           eager_check_with: Domain,
+                           pre_check_with: Domain
                        end
                      end
                    end
@@ -63,7 +65,7 @@ defmodule Ash.Test.Resource.IdentitiesTest do
         identities do
           identity :foobar, [:name, :contents],
             description: "require one of name/contents",
-            pre_check_with: Api
+            pre_check_with: Domain
         end
       end
 
@@ -78,7 +80,7 @@ defmodule Ash.Test.Resource.IdentitiesTest do
                    fn ->
                      defmodule Site do
                        @moduledoc false
-                       use Ash.Resource, api: Api
+                       use Ash.Resource, domain: Domain
 
                        attributes do
                          uuid_primary_key :id

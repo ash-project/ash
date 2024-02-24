@@ -6,7 +6,7 @@ defmodule Ash.Test.Resource.ValidationsTest do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, api: Ash.Test.AnyApi
+        use Ash.Resource, domain: Ash.Test.Domain
 
         attributes do
           uuid_primary_key :id

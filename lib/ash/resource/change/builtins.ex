@@ -275,7 +275,7 @@ defmodule Ash.Resource.Change.Builtins do
   end
 
   @doc """
-  Passes the provided value into `changeset.api.load()`, after the action has completed.
+  Passes the provided value into `Ash.load` after the action has completed.
 
   ## Example
 

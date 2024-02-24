@@ -3,19 +3,19 @@ defmodule Ash.Test.Changeset.ChangesetTest do
   use ExUnit.Case, async: true
 
   alias Ash.Changeset
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   require Ash.Query
 
   defmodule Category do
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     identities do
-      identity :unique_name, [:name], pre_check_with: Api
+      identity :unique_name, [:name], pre_check_with: Domain
     end
 
     actions do
@@ -60,7 +60,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [
         Ash.Test.Authorizer
@@ -92,7 +92,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   defmodule PostCategory do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -119,7 +119,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -147,7 +147,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   defmodule TenantPost do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -185,7 +185,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   defmodule CompositeKeyPost do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -214,7 +214,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   defmodule UniqueNamePerAuthor do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -225,7 +225,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     identities do
-      identity :unique_name_per_author, [:title, :author_id], pre_check_with: Api
+      identity :unique_name_per_author, [:title, :author_id], pre_check_with: Domain
     end
 
     attributes do
@@ -276,7 +276,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       record =
         Category
         |> Changeset.new(%{name: "foo"})
-        |> Api.create!()
+        |> Domain.create!()
 
       assert %Changeset{
                action_type: :update,
@@ -314,7 +314,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       changeset = %{changeset | before_action: [capitalize_name]}
 
-      category = changeset |> Api.create!()
+      category = changeset |> Domain.create!()
 
       assert %Category{name: "Foo"} = category
     end
@@ -330,10 +330,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       changeset = %{changeset | after_action: [capitalize_name]}
 
-      category = changeset |> Api.create!()
+      category = changeset |> Domain.create!()
       assert %Category{name: "modified"} = category
 
-      assert {:ok, %Category{name: "foo"}} = Api.get(Category, category.id)
+      assert {:ok, %Category{name: "foo"}} = Domain.get(Category, category.id)
     end
 
     test "it applies an around_transaction function on a changeset" do
@@ -357,7 +357,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Changeset.new(%{name: "foo"})
         |> Changeset.around_transaction(change_name)
 
-      category = changeset |> Api.create!()
+      category = changeset |> Domain.create!()
 
       assert %Category{name: "foo_before_after"} = category
     end
@@ -368,7 +368,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       category =
         Category
         |> Changeset.new(%{name: "foo"})
-        |> Api.create!()
+        |> Domain.create!()
 
       {:ok, %{category: category}}
     end
@@ -405,7 +405,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       category =
         Category
         |> Changeset.new(%{name: "foo"})
-        |> Api.create!()
+        |> Domain.create!()
 
       changeset =
         category
@@ -455,11 +455,11 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Post
         |> Changeset.new()
         |> Changeset.manage_relationship(:author, author, on_no_match: :create)
-        |> Api.create!()
+        |> Domain.create!()
 
-      assert [%{name: "title"}] = Api.read!(Author)
+      assert [%{name: "title"}] = Domain.read!(Author)
 
-      assert %{name: "title"} = Api.load!(post, :author).author
+      assert %{name: "title"} = Domain.load!(post, :author).author
     end
 
     test "it removes belongs_to entities on replace" do
@@ -469,7 +469,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Post
         |> Changeset.new()
         |> Changeset.manage_relationship(:author, author, on_no_match: :create)
-        |> Api.create!()
+        |> Domain.create!()
 
       new_author = %{name: "title2"}
 
@@ -480,17 +480,17 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           on_no_match: :create,
           on_missing: :destroy
         )
-        |> Api.update!()
+        |> Domain.update!()
 
-      assert [%{name: "title2"}] = Api.read!(Author)
+      assert [%{name: "title2"}] = Domain.read!(Author)
 
-      assert %{name: "title2"} = Api.load!(post, :author).author
+      assert %{name: "title2"} = Domain.load!(post, :author).author
     end
 
     test "upsert with many_to_many relationships creates and relates records, and returns the created/related records" do
       Category
       |> Changeset.new(name: "foo")
-      |> Api.create!()
+      |> Domain.create!()
 
       post =
         Post
@@ -499,7 +499,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           on_lookup: :relate,
           on_no_match: :create
         )
-        |> Api.create!()
+        |> Domain.create!()
 
       assert [%{name: "bar"}, %{name: "foo"}] = Enum.sort_by(post.categories, & &1.name)
     end
@@ -534,14 +534,14 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     test "upsert with many_to_many relationships can eager validate" do
       Category
       |> Changeset.new(name: "foo")
-      |> Api.create!()
+      |> Domain.create!()
 
       assert %{valid?: false, errors: [%Ash.Error.Query.NotFound{}]} =
                Post
                |> Changeset.new()
                |> Changeset.manage_relationship(:categories, [%{name: "foo"}, %{name: "bar"}],
                  on_lookup: :relate,
-                 eager_validate_with: Api,
+                 eager_validate_with: Domain,
                  use_identities: [:unique_name]
                )
 
@@ -550,7 +550,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                |> Changeset.new()
                |> Changeset.manage_relationship(:categories, [%{name: "foo"}],
                  on_lookup: :relate,
-                 eager_validate_with: Api,
+                 eager_validate_with: Domain,
                  use_identities: [:unique_name]
                )
     end
@@ -563,11 +563,11 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Author
         |> Changeset.new()
         |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
-        |> Api.create!()
+        |> Domain.create!()
 
-      assert [%{title: "title"}, %{title: "title"}] = Api.read!(Post)
+      assert [%{title: "title"}, %{title: "title"}] = Domain.read!(Post)
 
-      assert %{posts: [%{title: "title"}, %{title: "title"}]} = Api.load!(author, :posts)
+      assert %{posts: [%{title: "title"}, %{title: "title"}]} = Domain.load!(author, :posts)
     end
 
     test "it ignores creates if configured" do
@@ -578,11 +578,11 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Author
         |> Changeset.new()
         |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :ignore)
-        |> Api.create!()
+        |> Domain.create!()
 
-      assert [] = Api.read!(Post)
+      assert [] = Domain.read!(Post)
 
-      assert %{posts: []} = Api.load!(author, :posts)
+      assert %{posts: []} = Domain.load!(author, :posts)
     end
 
     test "it errors on creates if configured" do
@@ -595,7 +595,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                      Author
                      |> Changeset.new()
                      |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :error)
-                     |> Api.create!()
+                     |> Domain.create!()
                    end
     end
 
@@ -607,16 +607,16 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Author
         |> Changeset.new()
         |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
-        |> Api.create!()
+        |> Domain.create!()
 
-      assert [%{title: "title"}, %{title: "title"}] = Api.read!(Post)
+      assert [%{title: "title"}, %{title: "title"}] = Domain.read!(Post)
 
       author
       |> Changeset.new()
       |> Changeset.manage_relationship(:posts, [], on_missing: :destroy)
-      |> Api.update!()
+      |> Domain.update!()
 
-      assert [] = Api.read!(Post)
+      assert [] = Domain.read!(Post)
     end
 
     test "it unrelates records if specified" do
@@ -630,10 +630,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           on_no_match: :create,
           use_identities: [:unique_name_per_author]
         )
-        |> Api.create!()
+        |> Domain.create!()
 
       assert [%{title: "title"}, %{title: "title1"}] =
-               Enum.sort_by(Api.read!(UniqueNamePerAuthor), & &1.title)
+               Enum.sort_by(Domain.read!(UniqueNamePerAuthor), & &1.title)
 
       author =
         author
@@ -642,12 +642,12 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           on_missing: :unrelate,
           use_identities: [:unique_name_per_author]
         )
-        |> Api.update!()
+        |> Domain.update!()
 
       assert [%{title: "title"}, %{title: "title1"}] =
-               Enum.sort_by(Api.read!(UniqueNamePerAuthor), & &1.title)
+               Enum.sort_by(Domain.read!(UniqueNamePerAuthor), & &1.title)
 
-      assert %{unique_posts: [%{title: "title"}]} = Api.load!(author, :unique_posts)
+      assert %{unique_posts: [%{title: "title"}]} = Domain.load!(author, :unique_posts)
     end
 
     test "it properly assumes the destination field of the relationship matches records when not provided" do
@@ -658,19 +658,19 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Author
         |> Changeset.new()
         |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
-        |> Api.create!()
+        |> Domain.create!()
 
-      assert [%{title: "title"}, %{title: "title"}] = Api.read!(Post)
+      assert [%{title: "title"}, %{title: "title"}] = Domain.read!(Post)
 
       author =
         author
         |> Changeset.new()
         |> Changeset.manage_relationship(:posts, [], on_missing: :unrelate)
-        |> Api.update!()
+        |> Domain.update!()
 
-      assert [%{title: "title"}, %{title: "title"}] = Api.read!(Post)
+      assert [%{title: "title"}, %{title: "title"}] = Domain.read!(Post)
 
-      assert %{posts: []} = Api.load!(author, :posts)
+      assert %{posts: []} = Domain.load!(author, :posts)
     end
 
     test "it updates records" do
@@ -681,9 +681,9 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Author
         |> Changeset.new()
         |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
-        |> Api.create!()
+        |> Domain.create!()
 
-      assert posts = [%{title: "title"}, %{title: "title"}] = Api.read!(Post)
+      assert posts = [%{title: "title"}, %{title: "title"}] = Domain.read!(Post)
 
       post_ids = Enum.map(posts, &Map.get(&1, :id))
       input = Enum.map(post_ids, &%{"id" => &1, title: "new_title"})
@@ -691,9 +691,9 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       author
       |> Changeset.new()
       |> Changeset.manage_relationship(:posts, input, on_match: :update)
-      |> Api.update!()
+      |> Domain.update!()
 
-      assert [%{title: "new_title"}, %{title: "new_title"}] = Api.read!(Post)
+      assert [%{title: "new_title"}, %{title: "new_title"}] = Domain.read!(Post)
     end
 
     test "it updates only join records in many_to_many relationships with on_match: :update_join" do
@@ -706,13 +706,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           on_no_match: :create,
           join_keys: [:priority]
         )
-        |> Api.create!()
+        |> Domain.create!()
 
       assert [%{id: foo_id, name: "foo"}, %{id: bar_id, name: "bar"}] =
-               Api.read!(Category) |> Enum.sort_by(& &1.name, :desc)
+               Domain.read!(Category) |> Enum.sort_by(& &1.name, :desc)
 
       assert [%{category_id: ^foo_id, priority: 0}, %{category_id: ^bar_id, priority: 1}] =
-               Api.read!(PostCategory) |> Enum.sort_by(& &1.priority)
+               Domain.read!(PostCategory) |> Enum.sort_by(& &1.priority)
 
       post
       |> Changeset.new()
@@ -723,32 +723,32 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         use_identities: [:unique_name],
         join_keys: [:priority]
       )
-      |> Api.update!()
+      |> Domain.update!()
 
       assert [%{id: ^foo_id, name: "foo"}, %{id: ^bar_id, name: "bar"}] =
-               Api.read!(Category) |> Enum.sort_by(& &1.name, :desc)
+               Domain.read!(Category) |> Enum.sort_by(& &1.name, :desc)
 
       assert [%{category_id: ^bar_id, priority: 1}, %{category_id: ^foo_id, priority: 2}] =
-               Api.read!(PostCategory) |> Enum.sort_by(& &1.priority)
+               Domain.read!(PostCategory) |> Enum.sort_by(& &1.priority)
     end
   end
 
   describe "manage_relationship/3 type: :append_and_remove" do
     test "it replaces entities to a resource's relationship" do
-      post1 = Post |> Changeset.new(%{title: "title1"}) |> Api.create!()
-      post2 = Post |> Changeset.new(%{title: "title2"}) |> Api.create!()
+      post1 = Post |> Changeset.new(%{title: "title1"}) |> Domain.create!()
+      post2 = Post |> Changeset.new(%{title: "title2"}) |> Domain.create!()
 
       author =
         Author
         |> Changeset.new()
         |> Changeset.manage_relationship(:posts, [post1], type: :append_and_remove)
-        |> Api.create!()
+        |> Domain.create!()
 
       [author] =
         Author
         |> Ash.Query.load(posts: [:author])
         |> Ash.Query.filter(id == ^author.id)
-        |> Api.read!()
+        |> Domain.read!()
 
       assert [author_post] = author.posts
 
@@ -758,13 +758,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         author
         |> Changeset.new()
         |> Changeset.manage_relationship(:posts, [post2], type: :append_and_remove)
-        |> Api.update!()
+        |> Domain.update!()
 
       [author] =
         Author
         |> Ash.Query.load(posts: [:author])
         |> Ash.Query.filter(id == ^author.id)
-        |> Api.read!()
+        |> Domain.read!()
 
       assert [author_post] = author.posts
 
@@ -775,7 +775,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       post1 =
         CompositeKeyPost
         |> Changeset.new(%{serial: 1})
-        |> Api.create!()
+        |> Domain.create!()
 
       author =
         Author
@@ -785,27 +785,27 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           [%{id: post1.id, serial: post1.serial}],
           type: :append_and_remove
         )
-        |> Api.create!()
+        |> Domain.create!()
 
       [fetched_post] =
         CompositeKeyPost
         |> Ash.Query.load(author: :composite_key_posts)
         |> Ash.Query.filter(id == ^post1.id and serial == ^post1.serial)
-        |> Api.read!()
+        |> Domain.read!()
 
-      assert Api.reload!(author) == Api.reload!(fetched_post.author)
+      assert Domain.reload!(author) == Domain.reload!(fetched_post.author)
     end
 
     test "it accepts a list of maps representing primary_keys as a second param" do
       post1 =
         CompositeKeyPost
         |> Changeset.new(%{serial: 1})
-        |> Api.create!()
+        |> Domain.create!()
 
       post2 =
         CompositeKeyPost
         |> Changeset.new(%{serial: 2})
-        |> Api.create!()
+        |> Domain.create!()
 
       author =
         Author
@@ -818,27 +818,27 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           ],
           type: :append_and_remove
         )
-        |> Api.create!()
+        |> Domain.create!()
 
       [fetched_post] =
         CompositeKeyPost
         |> Ash.Query.load(author: :composite_key_posts)
         |> Ash.Query.filter(id == ^post1.id and serial == ^post1.serial)
-        |> Api.read!()
+        |> Domain.read!()
 
-      assert Api.reload!(author) == Api.reload!(fetched_post.author)
+      assert Domain.reload!(author) == Domain.reload!(fetched_post.author)
     end
 
     test "it accepts mix of entities and maps representing primary_keys as a second param" do
       post1 =
         CompositeKeyPost
         |> Changeset.new(%{serial: 1})
-        |> Api.create!()
+        |> Domain.create!()
 
       post2 =
         CompositeKeyPost
         |> Changeset.new(%{serial: 2})
-        |> Api.create!()
+        |> Domain.create!()
 
       author =
         Author
@@ -851,13 +851,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           ],
           type: :append_and_remove
         )
-        |> Api.create!()
+        |> Domain.create!()
 
       [fetched_author] =
         Author
         |> Ash.Query.load(:composite_key_posts)
         |> Ash.Query.filter(id == ^author.id)
-        |> Api.read!()
+        |> Domain.read!()
 
       assert Enum.sort(Enum.map(fetched_author.composite_key_posts, & &1.id)) ==
                Enum.sort([post1.id, post2.id])
@@ -867,17 +867,17 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       post1 =
         CompositeKeyPost
         |> Changeset.new(%{serial: 1})
-        |> Api.create!()
+        |> Domain.create!()
 
       post2 =
         CompositeKeyPost
         |> Changeset.new(%{serial: 2})
-        |> Api.create!()
+        |> Domain.create!()
 
       invalid_post =
         Post
         |> Changeset.new(%{title: "a title"})
-        |> Api.create!()
+        |> Domain.create!()
 
       changeset =
         Author
@@ -897,7 +897,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     test "it returns error if relationship does not exists" do
-      post1 = Post |> Changeset.new(%{title: "foo"}) |> Api.create!()
+      post1 = Post |> Changeset.new(%{title: "foo"}) |> Domain.create!()
 
       changeset =
         Author
@@ -923,7 +923,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   describe "changing_relationship?/2" do
     test "it returns true if the attribute is being changed by the current changeset" do
-      post = Post |> Changeset.new(%{title: "title2"}) |> Api.create!()
+      post = Post |> Changeset.new(%{title: "title2"}) |> Domain.create!()
 
       changeset =
         Author
@@ -968,14 +968,14 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       Category
       |> Changeset.new(%{"name" => "foo"})
       |> Changeset.set_argument(:confirm_name, "foo")
-      |> Api.create!(action: :create_with_confirmation)
+      |> Domain.create!(action: :create_with_confirmation)
     end
 
     test "arguments can be provided as strings" do
       Category
       |> Changeset.new(%{"name" => "foo"})
       |> Changeset.set_argument("confirm_name", "foo")
-      |> Api.create!(action: :create_with_confirmation)
+      |> Domain.create!(action: :create_with_confirmation)
     end
 
     test "arguments can be used in invalid changes" do
@@ -983,7 +983,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Category
         |> Changeset.new(%{"name" => "foo"})
         |> Changeset.set_argument(:confirm_name, "bar")
-        |> Api.create!(action: :create_with_confirmation)
+        |> Domain.create!(action: :create_with_confirmation)
       end
     end
 
@@ -991,7 +991,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       assert_raise Ash.Error.Invalid, ~r/argument confirm_name is required/, fn ->
         Category
         |> Changeset.new(%{"name" => "foo"})
-        |> Api.create!(action: :create_with_confirmation)
+        |> Domain.create!(action: :create_with_confirmation)
       end
     end
 

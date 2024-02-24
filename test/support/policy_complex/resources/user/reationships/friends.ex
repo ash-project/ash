@@ -3,13 +3,13 @@ defmodule Ash.Test.Support.PolicyComplex.User.Relationships.Friends do
   use Ash.Resource.ManualRelationship
   require Ash.Query
 
-  def load(users, _, %{api: api, query: query}) do
+  def load(users, _, %{domain: domain, query: query}) do
     user_ids = Enum.map(users, & &1.id)
 
     friend_links =
       Ash.Test.Support.PolicyComplex.FriendLink
       |> Ash.Query.filter(source_id in ^user_ids or destination_id in ^user_ids)
-      |> api.read!(authorize?: false)
+      |> domain.read!(authorize?: false)
 
     all_relevant_user_ids =
       friend_links
@@ -21,7 +21,7 @@ defmodule Ash.Test.Support.PolicyComplex.User.Relationships.Friends do
     all_relevant_users =
       query
       |> Ash.Query.filter(id in ^all_relevant_user_ids)
-      |> api.read!(authorize?: false)
+      |> domain.read!(authorize?: false)
       |> Map.new(&{&1.id, &1})
 
     {:ok,

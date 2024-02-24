@@ -1,10 +1,10 @@
 defmodule Mix.Tasks.Ash.Migrate do
   @moduledoc """
-  Runs all migration tasks for any extension on any resource/api in your application.
+  Runs all migration tasks for any extension on any resource/domain in your application.
   """
   use Mix.Task
 
-  @shortdoc "Runs all migration tasks for any extension on any resource/api in your application."
+  @shortdoc "Runs all migration tasks for any extension on any resource/domain in your application."
   def run(argv) do
     Mix.Task.run("compile")
 

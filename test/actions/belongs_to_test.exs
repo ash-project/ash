@@ -2,7 +2,7 @@ defmodule Ash.Test.Actions.BelongsToTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule UpdateReviewFields do
     @moduledoc false
@@ -27,7 +27,7 @@ defmodule Ash.Test.Actions.BelongsToTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -62,7 +62,7 @@ defmodule Ash.Test.Actions.BelongsToTest do
 
   defmodule Reviewer do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -82,7 +82,7 @@ defmodule Ash.Test.Actions.BelongsToTest do
     reviewer =
       Reviewer
       |> Ash.Changeset.for_create(:create, %{name: "Zach"})
-      |> Api.create!()
+      |> Domain.create!()
 
     post =
       Post
@@ -92,16 +92,16 @@ defmodule Ash.Test.Actions.BelongsToTest do
         reviewer_id: reviewer.id,
         review_by_date: DateTime.utc_now()
       })
-      |> Api.create!()
-      |> Api.load!(:reviewer)
+      |> Domain.create!()
+      |> Domain.load!(:reviewer)
 
     updated_post =
       post
       |> Ash.Changeset.for_update(:update_with_reviewer, %{
         requires_review: false
       })
-      |> Api.update!()
-      |> Api.load!(:reviewer)
+      |> Domain.update!()
+      |> Domain.load!(:reviewer)
 
     assert updated_post.requires_review == false
     assert updated_post.review_by_date == nil

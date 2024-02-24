@@ -4,11 +4,11 @@ defmodule Ash.Test.Actions.DestroyTest do
 
   require Ash.Query
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Profile do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -34,7 +34,7 @@ defmodule Ash.Test.Actions.DestroyTest do
 
     def change(changeset, _, _) do
       Ash.Changeset.after_action(changeset, fn _changeset, data ->
-        Api.destroy!(data)
+        Domain.destroy!(data)
 
         {:ok, data}
       end)
@@ -43,7 +43,10 @@ defmodule Ash.Test.Actions.DestroyTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets, authorizers: [Ash.Test.Authorizer]
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Test.Authorizer]
 
     ets do
       private?(true)
@@ -56,7 +59,7 @@ defmodule Ash.Test.Actions.DestroyTest do
         accept []
 
         manual fn changeset, _ ->
-          Api.destroy(changeset.data, return_destroyed?: true)
+          Domain.destroy(changeset.data, return_destroyed?: true)
         end
       end
     end
@@ -81,7 +84,7 @@ defmodule Ash.Test.Actions.DestroyTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -112,53 +115,53 @@ defmodule Ash.Test.Actions.DestroyTest do
       post =
         Post
         |> new(%{title: "foo", contents: "bar"})
-        |> Api.create!()
+        |> Domain.create!()
 
-      assert Api.destroy!(post) == :ok
+      assert Domain.destroy!(post) == :ok
 
-      refute Api.read_one!(Ash.Query.filter(Post, id == ^post.id))
+      refute Domain.read_one!(Ash.Query.filter(Post, id == ^post.id))
     end
 
     test "returns the record if requested" do
       post =
         Post
         |> new(%{title: "foo", contents: "bar"})
-        |> Api.create!()
+        |> Domain.create!()
 
       post_id = post.id
 
-      assert {:ok, %{id: ^post_id}} = Api.destroy(post, return_destroyed?: true)
+      assert {:ok, %{id: ^post_id}} = Domain.destroy(post, return_destroyed?: true)
 
-      refute Api.read_one!(Ash.Query.filter(Post, id == ^post.id))
+      refute Domain.read_one!(Ash.Query.filter(Post, id == ^post.id))
     end
 
     test "returns the record and notifications if requested" do
       post =
         Post
         |> new(%{title: "foo", contents: "bar"})
-        |> Api.create!()
+        |> Domain.create!()
 
       post_id = post.id
 
       assert {:ok, %{id: ^post_id}, [_]} =
-               Api.destroy(post, return_destroyed?: true, return_notifications?: true)
+               Domain.destroy(post, return_destroyed?: true, return_notifications?: true)
 
-      refute Api.read_one!(Ash.Query.filter(Post, id == ^post.id))
+      refute Domain.read_one!(Ash.Query.filter(Post, id == ^post.id))
     end
 
     test "the destroy does not happen if it is unauthorized" do
       author =
         Author
         |> new(%{name: "foobar"})
-        |> Api.create!(authorize?: false)
+        |> Domain.create!(authorize?: false)
 
       start_supervised({Ash.Test.Authorizer, strict_check: :continue, check: :forbidden})
 
       assert_raise(Ash.Error.Forbidden, fn ->
-        Api.destroy!(author, authorize?: true)
+        Domain.destroy!(author, authorize?: true)
       end)
 
-      assert Api.get!(Author, author.id, authorize?: false)
+      assert Domain.get!(Author, author.id, authorize?: false)
     end
   end
 
@@ -167,11 +170,11 @@ defmodule Ash.Test.Actions.DestroyTest do
       author =
         Author
         |> new(%{name: "foo"})
-        |> Api.create!()
+        |> Domain.create!()
 
-      assert Api.destroy!(author, action: :manual) == :ok
+      assert Domain.destroy!(author, action: :manual) == :ok
 
-      refute Api.read_one!(Ash.Query.filter(Author, id == ^author.id))
+      refute Domain.read_one!(Ash.Query.filter(Author, id == ^author.id))
     end
   end
 end

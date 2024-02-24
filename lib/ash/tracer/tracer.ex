@@ -21,7 +21,7 @@ defmodule Ash.Tracer do
           | {:custom, atom()}
 
   @type metadata() :: %{
-          api: nil | module(),
+          domain: nil | module(),
           resource: nil | module(),
           actor: term(),
           tenant: term(),

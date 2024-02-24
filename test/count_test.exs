@@ -1,11 +1,11 @@
 defmodule Ash.Test.CountTest do
   use ExUnit.Case
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Countable do
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -44,13 +44,13 @@ defmodule Ash.Test.CountTest do
       Countable
       |> Ash.Changeset.new(%{owner_id: "foo"})
       |> Ash.Changeset.for_create(:create)
-      |> Api.create!(authorize?: false)
+      |> Domain.create!(authorize?: false)
     end)
 
     assert {:ok, %Ash.Page.Offset{count: count}} =
              Countable
              |> Ash.Query.for_read(:read)
-             |> Api.read(page: [count: true], authorize?: false)
+             |> Domain.read(page: [count: true], authorize?: false)
 
     assert count == 10
   end
@@ -60,20 +60,20 @@ defmodule Ash.Test.CountTest do
       Countable
       |> Ash.Changeset.new(%{owner_id: "foo"})
       |> Ash.Changeset.for_create(:create, %{}, authorize?: false)
-      |> Api.create!()
+      |> Domain.create!()
     end)
 
     Enum.each(1..10, fn _ ->
       Countable
       |> Ash.Changeset.new(%{owner_id: "bar"})
       |> Ash.Changeset.for_create(:create, %{}, authorize?: false)
-      |> Api.create!()
+      |> Domain.create!()
     end)
 
     assert {:ok, %Ash.Page.Offset{count: count}} =
              Countable
              |> Ash.Query.for_read(:read)
-             |> Api.read(actor: %{id: "foo"}, page: [count: true])
+             |> Domain.read(actor: %{id: "foo"}, page: [count: true])
 
     assert count == 10
   end

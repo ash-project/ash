@@ -198,7 +198,7 @@ defmodule Ash.CodeInterface do
   end
 
   @doc """
-  Defines the code interface for a given resource + api combination in the current module. For example:
+  Defines the code interface for a given resource + domain combination in the current module. For example:
 
   ```elixir
   defmodule MyApp.Accounting do
@@ -210,8 +210,8 @@ defmodule Ash.CodeInterface do
   end
   ```
   """
-  defmacro define_interface(api, resource) do
-    quote bind_quoted: [api: api, resource: resource], generated: true, location: :keep do
+  defmacro define_interface(domain, resource) do
+    quote bind_quoted: [domain: domain, resource: resource], generated: true, location: :keep do
       interfaces_for_defaults =
         Enum.group_by(Ash.Resource.Info.calculation_interfaces(resource), fn interface ->
           {interface.name, Enum.count(interface.args, &is_atom/1), Enum.count(interface.args)}
@@ -316,7 +316,7 @@ defmodule Ash.CodeInterface do
               end
             )
 
-          unquote(api).calculate!(unquote(resource), unquote(interface.calculation),
+          unquote(domain).calculate!(unquote(resource), unquote(interface.calculation),
             refs: refs,
             args: arguments,
             actor: opts[:actor],
@@ -351,7 +351,7 @@ defmodule Ash.CodeInterface do
               end
             )
 
-          unquote(api).calculate(unquote(resource), unquote(interface.calculation),
+          unquote(domain).calculate(unquote(resource), unquote(interface.calculation),
             refs: refs,
             args: arguments,
             actor: opts[:actor],
@@ -445,8 +445,8 @@ defmodule Ash.CodeInterface do
                     |> Ash.ActionInput.for_action(unquote(action.name), params, input_opts)
                 end
 
-              act = quote do: unquote(api).run_action(input, opts)
-              act! = quote do: unquote(api).run_action!(input, opts)
+              act = quote do: unquote(domain).run_action(input, opts)
+              act! = quote do: unquote(domain).run_action!(input, opts)
 
               {subject, [], resolve_subject, act, act!}
 
@@ -491,7 +491,7 @@ defmodule Ash.CodeInterface do
                   quote do
                     unquote(resolve_not_found_error?)
 
-                    unquote(api).read_one(query, opts)
+                    unquote(domain).read_one(query, opts)
                     |> case do
                       {:ok, nil} when not_found_error? ->
                         {:error, Ash.Error.Query.NotFound.exception(resource: query.resource)}
@@ -501,7 +501,7 @@ defmodule Ash.CodeInterface do
                     end
                   end
                 else
-                  quote do: unquote(api).read(query, opts)
+                  quote do: unquote(domain).read(query, opts)
                 end
 
               act! =
@@ -509,7 +509,7 @@ defmodule Ash.CodeInterface do
                   quote do
                     unquote(resolve_not_found_error?)
 
-                    unquote(api).read_one!(query, opts)
+                    unquote(domain).read_one!(query, opts)
                     |> case do
                       nil when not_found_error? ->
                         raise Ash.Error.Query.NotFound, resource: query.resource
@@ -519,7 +519,7 @@ defmodule Ash.CodeInterface do
                     end
                   end
                 else
-                  quote do: unquote(api).read!(query, opts)
+                  quote do: unquote(domain).read!(query, opts)
                 end
 
               {subject, [], resolve_subject, act, act!}
@@ -540,8 +540,8 @@ defmodule Ash.CodeInterface do
                     |> Ash.Changeset.for_create(unquote(action.name), params, changeset_opts)
                 end
 
-              act = quote do: unquote(api).create(changeset, opts)
-              act! = quote do: unquote(api).create!(changeset, opts)
+              act = quote do: unquote(domain).create(changeset, opts)
+              act! = quote do: unquote(domain).create!(changeset, opts)
 
               {subject, [], resolve_subject, act, act!}
 
@@ -559,8 +559,8 @@ defmodule Ash.CodeInterface do
                     |> Ash.Changeset.for_update(unquote(action.name), params, changeset_opts)
                 end
 
-              act = quote do: unquote(api).update(changeset, opts)
-              act! = quote do: unquote(api).update!(changeset, opts)
+              act = quote do: unquote(domain).update(changeset, opts)
+              act! = quote do: unquote(domain).update!(changeset, opts)
 
               {subject, subject_args, resolve_subject, act, act!}
 
@@ -578,8 +578,8 @@ defmodule Ash.CodeInterface do
                     |> Ash.Changeset.for_destroy(unquote(action.name), params, changeset_opts)
                 end
 
-              act = quote do: unquote(api).destroy(changeset, opts)
-              act! = quote do: unquote(api).destroy!(changeset, opts)
+              act = quote do: unquote(domain).destroy(changeset, opts)
+              act! = quote do: unquote(domain).destroy!(changeset, opts)
 
               {subject, subject_args, resolve_subject, act, act!}
           end
@@ -589,7 +589,7 @@ defmodule Ash.CodeInterface do
         resolve_subject =
           quote do
             unquote(resolve_subject)
-            unquote(subject) = %{unquote(subject) | api: unquote(api)}
+            unquote(subject) = %{unquote(subject) | domain: unquote(domain)}
           end
 
         common_args =
@@ -632,7 +632,7 @@ defmodule Ash.CodeInterface do
           unquote(resolve_opts_params)
           opts = Keyword.put(opts, :actor, actor)
           unquote(resolve_subject)
-          unquote(api).can(unquote(subject), actor, opts)
+          unquote(domain).can(unquote(subject), actor, opts)
         end
 
         # sobelow_skip ["DOS.BinToAtom"]
@@ -641,7 +641,7 @@ defmodule Ash.CodeInterface do
           unquote(resolve_opts_params)
           opts = Keyword.put(opts, :actor, actor)
           unquote(resolve_subject)
-          unquote(api).can?(unquote(subject), actor, opts)
+          unquote(domain).can?(unquote(subject), actor, opts)
         end
       end
     end

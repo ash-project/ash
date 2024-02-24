@@ -5,7 +5,7 @@ defmodule Ash.Query do
   Ash queries are used for read actions and loads, and ultimately
   map to queries to a resource's data layer.
 
-  Queries are run by calling `read` on an API that contains the resource in question
+  Queries are run by calling `Ash.read`.
 
   Examples:
 
@@ -13,25 +13,25 @@ defmodule Ash.Query do
   MyApp.Post
   |> Ash.Query.filter(likes > 10)
   |> Ash.Query.sort([:title])
-  |> MyApp.Api.read!()
+  |> Ash.read!()
 
   MyApp.Author
   |> Ash.Query.aggregate(:published_post_count, :posts, query: [filter: [published: true]])
   |> Ash.Query.sort(published_post_count: :desc)
   |> Ash.Query.limit(10)
-  |> MyApp.Api.read!()
+  |> Ash.read!()
 
   MyApp.Author
   |> Ash.Query.load([:post_count, :comment_count])
   |> Ash.Query.load(posts: [:comments])
-  |> MyApp.Api.read!()
+  |> Ash.read!()
   ```
   """
 
   defstruct [
     :__validated_for_action__,
     :action,
-    :api,
+    :domain,
     :distinct,
     :filter,
     :resource,
@@ -65,7 +65,7 @@ defmodule Ash.Query do
   @type t :: %__MODULE__{
           __validated_for_action__: atom | nil,
           action: Ash.Resource.Actions.Read.t() | nil,
-          api: module | nil,
+          domain: module | nil,
           distinct: [atom],
           filter: Ash.Filter.t() | nil,
           resource: module,
@@ -375,12 +375,12 @@ defmodule Ash.Query do
   end
 
   @doc "Create a new query"
-  def new(resource, api \\ nil, opts \\ [])
+  def new(resource, domain \\ nil, opts \\ [])
   def new(%__MODULE__{} = query, _, _opts), do: query
 
-  def new(resource, api, opts) when is_atom(resource) do
+  def new(resource, domain, opts) when is_atom(resource) do
     query = %__MODULE__{
-      api: api,
+      domain: domain,
       filter: nil,
       resource: resource
     }
@@ -445,7 +445,7 @@ defmodule Ash.Query do
   Creates a query for a given read action and prepares it.
 
   Multitenancy is *not* validated until an action is called. This allows you to avoid specifying a tenant until just before calling
-  the api action.
+  the domain action.
 
   ### Arguments
   Provide a map or keyword list of arguments for the read action
@@ -458,14 +458,14 @@ defmodule Ash.Query do
   def for_read(query, action_name, args \\ %{}, opts \\ []) do
     query = to_query(query)
 
-    api =
-      query.api || opts[:api] || Ash.Resource.Info.api(query.resource) ||
+    domain =
+      query.domain || opts[:domain] || Ash.Resource.Info.domain(query.resource) ||
         raise ArgumentError,
-              "Could not determine api for query. Provide the `api` option or configure an api in the resource directly."
+              "Could not determine domain for query. Provide the `domain` option or configure an domain in the resource directly."
 
     {query, opts} =
       Ash.Actions.Helpers.add_process_context(
-        api,
+        domain,
         query,
         opts
       )
@@ -1155,7 +1155,7 @@ defmodule Ash.Query do
       Ash.Actions.Read.Calculations.merge_query_load(
         left,
         right,
-        context.api,
+        context.domain,
         context[:calc_path],
         context[:calc_name],
         context[:calc_load],
@@ -1976,9 +1976,9 @@ defmodule Ash.Query do
 
   #{Spark.Options.docs(@build_opts)}
   """
-  @spec build(Ash.Resource.t(), Ash.Api.t() | nil, Keyword.t()) :: t()
-  def build(resource, api \\ nil, keyword) do
-    Enum.reduce(keyword, new(resource, api), fn
+  @spec build(Ash.Resource.t(), Ash.Domain.t() | nil, Keyword.t()) :: t()
+  def build(resource, domain \\ nil, keyword) do
+    Enum.reduce(keyword, new(resource, domain), fn
       {:filter, value}, query ->
         do_filter(query, value)
 
@@ -2029,10 +2029,10 @@ defmodule Ash.Query do
     end)
   end
 
-  @doc "Set the query's api, and any loaded query's api"
-  def set_api(query, api) do
+  @doc "Set the query's domain, and any loaded query's domain"
+  def set_domain(query, domain) do
     query = to_query(query)
-    %{query | api: api, load: set_load_api(query.load, api)}
+    %{query | domain: domain, load: set_load_domain(query.load, domain)}
   end
 
   @doc """
@@ -2692,7 +2692,7 @@ defmodule Ash.Query do
     |> struct([{key, Map.get(new, key)}])
   end
 
-  defp do_unset(query, key, _new) when key in [:api, :resource] do
+  defp do_unset(query, key, _new) when key in [:domain, :resource] do
     query
   end
 
@@ -2717,8 +2717,8 @@ defmodule Ash.Query do
     {:error, Ash.Error.to_error_class(errors)}
   end
 
-  def data_layer_query(%{resource: resource, api: api} = ash_query, opts) do
-    query = opts[:initial_query] || Ash.DataLayer.resource_to_query(resource, api)
+  def data_layer_query(%{resource: resource, domain: domain} = ash_query, opts) do
+    query = opts[:initial_query] || Ash.DataLayer.resource_to_query(resource, domain)
 
     with {:ok, query} <-
            Ash.DataLayer.set_context(
@@ -2878,16 +2878,16 @@ defmodule Ash.Query do
     end
   end
 
-  defp set_load_api(nil, _), do: nil
-  defp set_load_api([], _), do: []
+  defp set_load_domain(nil, _), do: nil
+  defp set_load_domain([], _), do: []
 
-  defp set_load_api(%__MODULE__{} = query, api) do
-    set_api(query, api)
+  defp set_load_domain(%__MODULE__{} = query, domain) do
+    set_domain(query, domain)
   end
 
-  defp set_load_api(loads, api) do
+  defp set_load_domain(loads, domain) do
     Enum.map(loads, fn {key, further} ->
-      {key, set_load_api(further, api)}
+      {key, set_load_domain(further, domain)}
     end)
   end
 

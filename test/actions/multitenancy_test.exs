@@ -3,11 +3,11 @@ defmodule Ash.Actions.MultitenancyTest do
 
   require Ash.Query
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule User do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -38,7 +38,7 @@ defmodule Ash.Actions.MultitenancyTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -63,7 +63,7 @@ defmodule Ash.Actions.MultitenancyTest do
   defmodule Comment do
     @doc false
 
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -99,7 +99,7 @@ defmodule Ash.Actions.MultitenancyTest do
       User
       |> Ash.Changeset.new()
       |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Domain.create!()
     end
 
     test "a record written to one tenant cannot be read from another", %{
@@ -109,9 +109,9 @@ defmodule Ash.Actions.MultitenancyTest do
       User
       |> Ash.Changeset.new()
       |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Domain.create!()
 
-      assert User |> Ash.Query.set_tenant(tenant2) |> Api.read!() == []
+      assert User |> Ash.Query.set_tenant(tenant2) |> Domain.read!() == []
     end
 
     test "a record written to one tenant cannot be read from another with aggregate queries", %{
@@ -130,20 +130,20 @@ defmodule Ash.Actions.MultitenancyTest do
       User
       |> Ash.Changeset.new()
       |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Domain.create!()
       |> Ash.Changeset.new()
-      |> Api.update!()
+      |> Domain.update!()
 
-      assert User |> Ash.Query.set_tenant(tenant2) |> Api.read!() == []
+      assert User |> Ash.Query.set_tenant(tenant2) |> Domain.read!() == []
     end
 
     test "a record can be destroyed in a tenant", %{tenant1: tenant1} do
       User
       |> Ash.Changeset.new()
       |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Domain.create!()
       |> Ash.Changeset.new()
-      |> Api.destroy!()
+      |> Domain.destroy!()
     end
   end
 
@@ -156,7 +156,7 @@ defmodule Ash.Actions.MultitenancyTest do
       Comment
       |> Ash.Changeset.new()
       |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Domain.create!()
     end
 
     test "a record written to one tenant cannot be read from another", %{
@@ -166,29 +166,29 @@ defmodule Ash.Actions.MultitenancyTest do
       Comment
       |> Ash.Changeset.new()
       |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Domain.create!()
 
-      assert Comment |> Ash.Query.set_tenant(tenant2) |> Api.read!() == []
+      assert Comment |> Ash.Query.set_tenant(tenant2) |> Domain.read!() == []
     end
 
     test "a record can be updated in a tenant", %{tenant1: tenant1, tenant2: tenant2} do
       Comment
       |> Ash.Changeset.new()
       |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Domain.create!()
       |> Ash.Changeset.new()
-      |> Api.update!()
+      |> Domain.update!()
 
-      assert Comment |> Ash.Query.set_tenant(tenant2) |> Api.read!() == []
+      assert Comment |> Ash.Query.set_tenant(tenant2) |> Domain.read!() == []
     end
 
     test "a record can be destroyed in a tenant", %{tenant1: tenant1} do
       Comment
       |> Ash.Changeset.new()
       |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Domain.create!()
       |> Ash.Changeset.new()
-      |> Api.destroy!()
+      |> Domain.destroy!()
     end
 
     test "a record cannot be read without tenant specified", %{
@@ -197,9 +197,9 @@ defmodule Ash.Actions.MultitenancyTest do
       Comment
       |> Ash.Changeset.new()
       |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Domain.create!()
 
-      result = Comment |> Api.read()
+      result = Comment |> Domain.read()
       assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.TenantRequired{}]}} = result
     end
 

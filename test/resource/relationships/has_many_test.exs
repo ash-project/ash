@@ -3,13 +3,13 @@ defmodule Ash.Test.Resource.Relationships.HasManyTest do
   use ExUnit.Case, async: true
 
   alias Ash.Resource.Relationships.HasMany
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
         attributes do
           uuid_primary_key :id

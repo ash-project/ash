@@ -4,18 +4,18 @@ defmodule Ash.Mix.Tasks.Helpers do
   """
 
   @doc """
-  Gets all extensions in use by the current project's apis and resources
+  Gets all extensions in use by the current project's domains and resources
   """
   def extensions!(argv, opts \\ []) do
     if opts[:in_use?] do
-      apis = Ash.Mix.Tasks.Helpers.apis!(argv)
+      domains = Ash.Mix.Tasks.Helpers.domains!(argv)
 
       resource_extensions =
-        apis
-        |> Enum.flat_map(&Ash.Api.Info.resources/1)
+        domains
+        |> Enum.flat_map(&Ash.Domain.Info.resources/1)
         |> all_extensions()
 
-      Enum.uniq(all_extensions(apis) ++ resource_extensions)
+      Enum.uniq(all_extensions(domains) ++ resource_extensions)
     else
       Application.loaded_applications()
       |> Enum.map(&elem(&1, 0))
@@ -34,22 +34,22 @@ defmodule Ash.Mix.Tasks.Helpers do
   end
 
   @doc """
-  Get all apis for the current project and ensure they are compiled.
+  Get all domains for the current project and ensure they are compiled.
   """
-  def apis!(argv) do
-    {opts, _} = OptionParser.parse!(argv, strict: [apis: :string])
+  def domains!(argv) do
+    {opts, _} = OptionParser.parse!(argv, strict: [domains: :string])
 
-    apis =
-      if opts[:apis] && opts[:apis] != "" do
-        opts[:apis]
+    domains =
+      if opts[:domains] && opts[:domains] != "" do
+        opts[:domains]
         |> Kernel.||("")
         |> String.split(",")
         |> Enum.flat_map(fn
           "" ->
             []
 
-          api ->
-            [Module.concat([api])]
+          domain ->
+            [Module.concat([domain])]
         end)
       else
         apps =
@@ -63,17 +63,17 @@ defmodule Ash.Mix.Tasks.Helpers do
             []
           end
 
-        Enum.flat_map(apps, &Application.get_env(&1, :ash_apis, []))
+        Enum.flat_map(apps, &Application.get_env(&1, :ash_domains, []))
       end
 
-    apis
+    domains
     |> Enum.map(&ensure_compiled(&1, argv))
     |> case do
       [] ->
-        raise "must supply the --apis argument, or set `config :my_app, ash_apis: [...]` in config"
+        raise "must supply the --domains argument, or set `config :my_app, ash_domains: [...]` in config"
 
-      apis ->
-        apis
+      domains ->
+        domains
     end
   end
 
@@ -83,7 +83,7 @@ defmodule Ash.Mix.Tasks.Helpers do
     |> Enum.uniq()
   end
 
-  defp ensure_compiled(api, args) do
+  defp ensure_compiled(domain, args) do
     if Code.ensure_loaded?(Mix.Tasks.App.Config) do
       Mix.Task.run("app.config", args)
     else
@@ -91,17 +91,17 @@ defmodule Ash.Mix.Tasks.Helpers do
       "--no-compile" not in args && Mix.Task.run("compile", args)
     end
 
-    case Code.ensure_compiled(api) do
+    case Code.ensure_compiled(domain) do
       {:module, _} ->
         # TODO: We shouldn't need to make sure that the resources are compiled
-        api
-        |> Ash.Api.Info.resources()
+        domain
+        |> Ash.Domain.Info.resources()
         |> Enum.each(&Code.ensure_compiled/1)
 
-        api
+        domain
 
       {:error, error} ->
-        Mix.raise("Could not load #{inspect(api)}, error: #{inspect(error)}. ")
+        Mix.raise("Could not load #{inspect(domain)}, error: #{inspect(error)}. ")
     end
   end
 end

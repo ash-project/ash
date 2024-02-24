@@ -4,8 +4,8 @@ defmodule Ash.Changeset do
 
   Create a changeset with `new/1` or `new/2`, and alter the attributes
   and relationships using the functions provided in this module.  Nothing in this module
-  actually incurs changes in a data layer. To commit a changeset, see `c:Ash.Api.create/2`
-  and `c:Ash.Api.update/2`.
+  actually incurs changes in a data layer. To commit a changeset, see `c:Ash.Domain.create/2`
+  and `c:Ash.Domain.update/2`.
 
   See the action DSL documentation for more.
   """
@@ -14,7 +14,7 @@ defmodule Ash.Changeset do
     :__validated_for_action__,
     :action_type,
     :action,
-    :api,
+    :domain,
     :data,
     :handle_errors,
     :resource,
@@ -79,9 +79,9 @@ defmodule Ash.Changeset do
           empty()
         end
 
-      api =
-        if changeset.api do
-          concat("api: ", to_doc(changeset.api, opts))
+      domain =
+        if changeset.domain do
+          concat("domain: ", to_doc(changeset.domain, opts))
         else
           empty()
         end
@@ -110,7 +110,7 @@ defmodule Ash.Changeset do
       container_doc(
         "#Ash.Changeset<",
         [
-          api,
+          domain,
           concat("action_type: ", inspect(changeset.action_type)),
           concat("action: ", inspect(changeset.action && changeset.action.name)),
           tenant,
@@ -189,7 +189,7 @@ defmodule Ash.Changeset do
           after_action: [after_action_fun | {after_action_fun, map}],
           after_transaction: [after_transaction_fun | {after_transaction_fun, map}],
           atomics: Keyword.t(),
-          api: module | nil,
+          domain: module | nil,
           arguments: %{optional(atom) => any},
           around_action: [around_action_fun | {around_action_fun, map}],
           around_transaction: [around_transaction_fun | {around_transaction_fun, map}],
@@ -324,10 +324,10 @@ defmodule Ash.Changeset do
 
     context = Ash.Resource.Info.default_context(resource) || %{}
 
-    api = Ash.Resource.Info.api(resource)
+    domain = Ash.Resource.Info.domain(resource)
 
     if Ash.Resource.Info.resource?(resource) do
-      %__MODULE__{resource: resource, data: record, action_type: :update, api: api}
+      %__MODULE__{resource: resource, data: record, action_type: :update, domain: domain}
       |> change_attributes(params)
       |> set_context(context)
       |> set_tenant(tenant)
@@ -336,7 +336,7 @@ defmodule Ash.Changeset do
         resource: resource,
         action_type: :update,
         data: struct(resource),
-        api: api
+        domain: domain
       }
       |> add_error(NoSuchResource.exception(resource: resource))
       |> set_tenant(tenant)
@@ -350,7 +350,7 @@ defmodule Ash.Changeset do
         resource: resource,
         action_type: :create,
         data: struct(resource),
-        api: Ash.Resource.Info.api(resource)
+        domain: Ash.Resource.Info.domain(resource)
       }
       |> change_attributes(params)
     else
@@ -525,7 +525,7 @@ defmodule Ash.Changeset do
 
       {changeset, _opts} =
         Ash.Actions.Helpers.add_process_context(
-          opts[:api] || Ash.Resource.Info.api(resource),
+          opts[:domain] || Ash.Resource.Info.domain(resource),
           changeset,
           opts
         )
@@ -929,7 +929,7 @@ defmodule Ash.Changeset do
   or `before_action/2`.
 
   Multitenancy is *not* validated until an action is called. This allows you to avoid specifying a tenant until just before calling
-  the api action.
+  the domain action.
 
   ### Params
   `params` may be attributes, relationships, or arguments. You can safely pass user/form input directly into this function.
@@ -1061,13 +1061,13 @@ defmodule Ash.Changeset do
       get_action_entity(changeset.resource, action_or_name) ||
         raise_no_action(changeset.resource, action_or_name, :destroy)
 
-    api =
-      changeset.api || opts[:api] || Ash.Resource.Info.api(changeset.resource) ||
+    domain =
+      changeset.domain || opts[:domain] || Ash.Resource.Info.domain(changeset.resource) ||
         raise ArgumentError,
           message:
-            "Could not determine api for changeset. Provide the `api` option or configure an api in the resource directly."
+            "Could not determine domain for changeset. Provide the `domain` option or configure an domain in the resource directly."
 
-    changeset = %{changeset | api: api}
+    changeset = %{changeset | domain: domain}
 
     if changeset.valid? do
       if action do
@@ -1076,7 +1076,7 @@ defmodule Ash.Changeset do
         else
           {changeset, opts} =
             Ash.Actions.Helpers.add_process_context(
-              api,
+              domain,
               changeset,
               opts
             )
@@ -1305,20 +1305,20 @@ defmodule Ash.Changeset do
   end
 
   defp do_for_action(changeset, action_or_name, params, opts) do
-    api =
-      changeset.api || opts[:api] || Ash.Resource.Info.api(changeset.resource) ||
+    domain =
+      changeset.domain || opts[:domain] || Ash.Resource.Info.domain(changeset.resource) ||
         raise ArgumentError,
           message:
-            "Could not determine api for changeset. Provide the `api` option or configure an api in the resource directly."
+            "Could not determine domain for changeset. Provide the `domain` option or configure an domain in the resource directly."
 
     {changeset, opts} =
       Ash.Actions.Helpers.add_process_context(
-        api,
+        domain,
         changeset,
         opts
       )
 
-    changeset = %{changeset | api: api}
+    changeset = %{changeset | domain: domain}
 
     if changeset.valid? do
       action = get_action_entity(changeset.resource, action_or_name)
@@ -1477,7 +1477,7 @@ defmodule Ash.Changeset do
   defp validate_identity(
          %{context: %{private: %{upsert?: true, upsert_identity: name}}} = changeset,
          %{name: name},
-         _api
+         _domain
        ) do
     changeset
   end
@@ -1485,32 +1485,32 @@ defmodule Ash.Changeset do
   defp validate_identity(
          %{action: %{soft?: true}} = changeset,
          identity,
-         api
+         domain
        ) do
-    do_validate_identity(changeset, identity, api)
+    do_validate_identity(changeset, identity, domain)
   end
 
   defp validate_identity(
          %{action: %{type: type}} = changeset,
          identity,
-         api
+         domain
        )
        when type in [:create, :update] do
-    do_validate_identity(changeset, identity, api)
+    do_validate_identity(changeset, identity, domain)
   end
 
   defp validate_identity(
          %{action: %{type: type}} = changeset,
          identity,
-         api
+         domain
        )
        when type in [:create, :update] do
-    do_validate_identity(changeset, identity, api)
+    do_validate_identity(changeset, identity, domain)
   end
 
   defp validate_identity(changeset, _, _), do: changeset
 
-  defp do_validate_identity(changeset, identity, api) do
+  defp do_validate_identity(changeset, identity, domain) do
     if changeset.context[:private][:upsert_identity] == identity.name do
       changeset
     else
@@ -1547,7 +1547,7 @@ defmodule Ash.Changeset do
         |> Ash.Query.do_filter(values)
         |> Ash.Query.limit(1)
         |> Ash.Query.set_context(%{private: %{internal?: true}})
-        |> api.read_one(authorize?: false)
+        |> domain.read_one(authorize?: false)
         |> case do
           {:ok, nil} ->
             changeset
@@ -2777,7 +2777,7 @@ defmodule Ash.Changeset do
       set_phase(changeset, :before_transaction),
       fn before_transaction, changeset ->
         metadata = %{
-          api: changeset.api,
+          domain: changeset.domain,
           resource: changeset.resource,
           resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
           actor: changeset.context[:private][:actor],
@@ -2828,7 +2828,7 @@ defmodule Ash.Changeset do
       {changeset, %{notifications: []}},
       fn before_action, {changeset, instructions} ->
         metadata = %{
-          api: changeset.api,
+          domain: changeset.domain,
           resource: changeset.resource,
           resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
           actor: changeset.context[:private][:actor],
@@ -2916,7 +2916,7 @@ defmodule Ash.Changeset do
         tracer = changeset.context[:private][:tracer]
 
         metadata = %{
-          api: changeset.api,
+          domain: changeset.domain,
           resource: changeset.resource,
           resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
           actor: changeset.context[:private][:actor],
@@ -3017,7 +3017,7 @@ defmodule Ash.Changeset do
         tracer = changeset.context[:private][:tracer]
 
         metadata = %{
-          api: changeset.api,
+          domain: changeset.domain,
           resource: changeset.resource,
           resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
           actor: changeset.context[:private][:actor],
@@ -3325,7 +3325,7 @@ defmodule Ash.Changeset do
       type: :atom,
       default: false,
       doc:
-        "Validates that any referenced entities exist *before* the action is being performed, using the provided API for the read."
+        "Validates that any referenced entities exist *before* the action is being performed, using the provided domain for the read."
     ],
     on_no_match: [
       type: :any,
@@ -3563,11 +3563,11 @@ defmodule Ash.Changeset do
       |> Ash.Changeset.after_action(fn _changeset, result ->
         # An example of updating comments based on a result of other changes
         for comment <- input do
-          comment = MyApi.get(Comment, comment.id)
+          comment = Ash.get(Comment, comment.id)
 
           comment
           |> Map.update(:rating, 0, &(&1 * result.rating_weight))
-          |> MyApi.update!()
+          |> Ash.update!()
         end
 
         {:ok, result}
@@ -3586,15 +3586,15 @@ defmodule Ash.Changeset do
   ```elixir
   post1 =
     changeset
-    |> Api.create!()
+    |> Ash.create!()
     |> Ash.Resource.put_metadata(:join_keys, %{type: "a"})
 
   post1 =
     changeset2
-    |> Api.create!()
+    |> Ash.create!()
     |> Ash.Resource.put_metadata(:join_keys, %{type: "b"})
 
-  author = Api.create!(author_changeset)
+  author = Ash.create!(author_changeset)
 
   Ash.Changeset.manage_relationship(
     author,
@@ -3774,10 +3774,17 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp eager_validate_relationship_input(_relationship, [], _changeset, _api, _error_path, _opts),
-    do: :ok
+  defp eager_validate_relationship_input(
+         _relationship,
+         [],
+         _changeset,
+         _domain,
+         _error_path,
+         _opts
+       ),
+       do: :ok
 
-  defp eager_validate_relationship_input(relationship, input, changeset, api, error_path, opts) do
+  defp eager_validate_relationship_input(relationship, input, changeset, domain, error_path, opts) do
     pkeys = Ash.Actions.ManagedRelationships.pkeys(relationship, opts)
 
     pkeys =
@@ -3859,7 +3866,7 @@ defmodule Ash.Changeset do
         )
         |> Ash.Query.limit(Enum.count(input))
         |> Ash.Query.do_filter(search)
-        |> api.read()
+        |> domain.read()
       end
 
     case results do

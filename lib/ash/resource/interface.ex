@@ -35,7 +35,7 @@ defmodule Ash.Resource.Interface do
       authorize?: [
         type: :boolean,
         doc: """
-        Whether or not to perform authorization. The default behavior depends on the api configuration.
+        Whether or not to perform authorization. The default behavior depends on the domain configuration.
         """
       ],
       verbose?: [

@@ -2,7 +2,7 @@ defmodule Ash.Test.Type.UnionTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Foo do
     use Ash.Resource, data_layer: :embedded
@@ -52,7 +52,7 @@ defmodule Ash.Test.Type.UnionTest do
   end
 
   defmodule Example do
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
@@ -198,7 +198,7 @@ defmodule Ash.Test.Type.UnionTest do
         foo: [
           type: Foo,
           cast_tag?: false,
-          constraints: [api: Api],
+          constraints: [domain: Domain],
           tag: :type,
           tag_value: :foo
         ],
@@ -259,14 +259,14 @@ defmodule Ash.Test.Type.UnionTest do
           foo: [
             type: Foo,
             cast_tag?: false,
-            constraints: [api: Api],
+            constraints: [domain: Domain],
             tag: :type,
             tag_value: :foo
           ],
           bar: [
             type: Bar,
             cast_tag?: false,
-            constraints: [api: Api],
+            constraints: [domain: Domain],
             tag: :type,
             tag_value: :bar
           ]
@@ -303,17 +303,17 @@ defmodule Ash.Test.Type.UnionTest do
   test "it handles changing union attribute on a resource" do
     Example
     |> Ash.Changeset.for_create(:create, %{thing: %Foo{type: "foo", foo: "foo"}})
-    |> Ash.Test.AnyApi.create!()
+    |> Ash.Test.Domain.create!()
     |> Ash.Changeset.new()
     |> Ash.Changeset.change_attribute(:thing, %Bar{type: "bar", bar: "bar"})
     |> Ash.Changeset.for_update(:update)
-    |> Ash.Test.AnyApi.update!()
+    |> Ash.Test.Domain.update!()
   end
 
   test "it handles paths on a resource" do
     Example
     |> Ash.Changeset.for_create(:create, %{things: [%{type: :foo, foo: "bar"}]})
-    |> Ash.Test.AnyApi.create()
+    |> Ash.Test.Domain.create()
   end
 
   test "it dumps to native as explicit maps by default" do
@@ -373,8 +373,8 @@ defmodule Ash.Test.Type.UnionTest do
     assert {:ok, _} =
              Example
              |> Ash.Changeset.for_create(:create, %{things: []})
-             |> Ash.Test.AnyApi.create!()
+             |> Ash.Test.Domain.create!()
              |> Ash.Changeset.for_update(:add_thing, %{new_thing: %{type: :foo, foo: "foo"}})
-             |> Ash.Test.AnyApi.update()
+             |> Ash.Test.Domain.update()
   end
 end

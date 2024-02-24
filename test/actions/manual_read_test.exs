@@ -15,7 +15,7 @@ defmodule Ash.Test.Actions.ManualReadTest do
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
-      api: Ash.Test.Actions.ManualReadTest.Api,
+      domain: Ash.Test.Actions.ManualReadTest.Domain,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -39,9 +39,9 @@ defmodule Ash.Test.Actions.ManualReadTest do
     end
   end
 
-  defmodule Api do
+  defmodule Domain do
     @moduledoc false
-    use Ash.Api
+    use Ash.Domain
 
     resources do
       resource Author
@@ -51,16 +51,16 @@ defmodule Ash.Test.Actions.ManualReadTest do
   test "reading works" do
     Author
     |> Ash.Changeset.for_create(:create, %{name: "name"})
-    |> Api.create!()
+    |> Domain.create!()
 
     assert [] =
              Author
              |> Ash.Query.for_read(:read)
-             |> Api.read!()
+             |> Domain.read!()
 
     assert [_] =
              Author
              |> Ash.Query.for_read(:all)
-             |> Api.read!()
+             |> Domain.read!()
   end
 end

@@ -8,16 +8,16 @@ Ash emits the following telemetry events, suffixed with `:start` and `:stop`. St
 
 ### Important
 
-Note the mention of `:start` and `:stop` suffixes. The event below `[:ash, (api_short_name), :create]`, is actually referring to two events, `[:ash, (api_short_name), :create, :start]` and `[:ash, (api_short_name), :create, :stop]`.
+Note the mention of `:start` and `:stop` suffixes. The event below `[:ash, (domain_short_name), :create]`, is actually referring to two events, `[:ash, (domain_short_name), :create, :start]` and `[:ash, (domain_short_name), :create, :stop]`.
 
-_Replace `(api_short_name)` with your API short name, from `d:Ash.Api.Info.short_name`._
+_Replace `(domain_short_name)` with your domain short name, from `d:Ash.Domain.Info.short_name`.
 
 ### Events
 
-- `[:ash, (api_short_name), :create]` - The execution of a create action. Use `resource_short_name` and `action` metadata to break down measurements.
-- `[:ash, (api_short_name), :update]` - The execution of a update action. Use `resource_short_name` and `action` metadata to break down measurements.
-- `[:ash, (api_short_name), :read]` - The execution of a read action. Use `resource_short_name` and `action` metadata to break down measurements.
-- `[:ash, (api_short_name), :destroy]` - The execution of a destroy action. Use `resource_short_name` and `action` metadata to break down measurements.
+- `[:ash, (domain_short_name), :create]` - The execution of a create action. Use `resource_short_name` and `action` metadata to break down measurements.
+- `[:ash, (domain_short_name), :update]` - The execution of a update action. Use `resource_short_name` and `action` metadata to break down measurements.
+- `[:ash, (domain_short_name), :read]` - The execution of a read action. Use `resource_short_name` and `action` metadata to break down measurements.
+- `[:ash, (domain_short_name), :destroy]` - The execution of a destroy action. Use `resource_short_name` and `action` metadata to break down measurements.
 - `[:ash, :changeset]` - A changeset being processed for a given action, i.e with `Ash.Changeset.for_create`. Use `resource_short_name` metadata to break down measurements.
 - `[:ash, :query]` - A query being processed for an action, with `Ash.Query.for_read`. Use `resource_short_name` metadata to break down measurements.
 - `[:ash, :validation]` - A validation being run on a changeset. Use `resource_short_name` and `validation` metadata to break down measurements.
@@ -39,19 +39,19 @@ A tracer can be configured globally in application config.
 config :ash, :tracer, MyApp.Tracer
 ```
 
-Additionally, one can be provide when creating changesets or calling an api, i.e
+Additionally, one can be provide when creating changesets or calling an domain, i.e
 
 ```elixir
 Resource
-# better to put it here, as changesets are traced as well. It will be carried over to the api action
+# better to put it here, as changesets are traced as well. It will be carried over to the domain action
 |> Ash.Changeset.for_create(:create, %{}, tracer: MyApp.Tracer)
 # but you can also pass it here.
-|> Api.create!(tracer: MyApp.Tracer)
+|> Domain.create!(tracer: MyApp.Tracer)
 ```
 
 For customizing the names created for each span, see:
 
-- `d:Ash.Api.Dsl.execution|trace_name`
+- `d:Ash.Domain.Dsl.execution|trace_name`
 - `d:Ash.Resource.Dsl.resource|trace_name`
 - `d:Ash.Flow.Dsl.flow|trace_name`
 

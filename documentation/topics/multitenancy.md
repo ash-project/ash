@@ -26,7 +26,7 @@ end
 
 In this case, if you were to try to run a query without specifying a tenant, you would get an error telling you that the tenant is required.
 
-Setting the tenant when using the code API is done via `Ash.Query.set_tenant/2` and `Ash.Changeset.set_tenant/2`. If you are using an extension, such as `AshJsonApi` or `AshGraphql` the method of setting tenant context is explained in that extension's documentation.
+Setting the tenant is done via `Ash.Query.set_tenant/2` and `Ash.Changeset.set_tenant/2`. If you are using an extension, such as `AshJsonMyDomain` or `AshGraphql` the method of setting tenant context is explained in that extension's documentation.
 
 Example usage of the above:
 
@@ -34,17 +34,17 @@ Example usage of the above:
 # Error when not setting a tenant
 MyApp.Users
 |> Ash.Query.filter(name == "fred")
-|> MyApi.read!()
+|> MyMyDomain.read!()
 ** (Ash.Error.Invalid)
 
 * "Queries against the Helpdesk.Accounts.User resource require a tenant to be specified"
-    (ash 1.22.0) lib/ash/api/api.ex:944: Ash.Api.unwrap_or_raise!/2
+    (ash 1.22.0) lib/ash/domain/domain.ex:944: Ash.Domain.unwrap_or_raise!/2
 
 # Automatically filtering by `organization_id == 1`
 MyApp.Users
 |> Ash.Query.filter(name == "fred")
 |> Ash.Query.set_tenant(1)
-|> MyApi.read!()
+|> MyMyDomain.read!()
 
 [...]
 
@@ -52,7 +52,7 @@ MyApp.Users
 MyApp.Users
 |> Ash.Changeset.new(name: "fred")
 |> Ash.Changeset.set_tenant(1)
-|> MyApi.create!()
+|> MyMyDomain.create!()
 
 %MyApp.User{organization_id: 1}
 ```

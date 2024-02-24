@@ -3,7 +3,7 @@ defmodule Ash.Flow.FlowCompositionTest do
   use ExUnit.Case, async: false
 
   alias Ash.Flow.Result
-  alias Ash.Test.Flow.{Api, Org, User}
+  alias Ash.Test.Flow.{Domain, Org, User}
 
   alias Ash.Test.Flow.Flows.{
     GetOrgAndUsers,
@@ -13,7 +13,7 @@ defmodule Ash.Flow.FlowCompositionTest do
 
   setup do
     ExUnit.CaptureLog.capture_log(fn ->
-      Ash.DataLayer.Mnesia.start(Api)
+      Ash.DataLayer.Mnesia.start(Domain)
     end)
 
     on_exit(fn ->
@@ -28,15 +28,15 @@ defmodule Ash.Flow.FlowCompositionTest do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
-      |> Api.create!()
+      |> Domain.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "abc", org: org.id})
-    |> Api.create!()
+    |> Domain.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "def", org: org.id})
-    |> Api.create!()
+    |> Domain.create!()
 
     org_id = org.id
 
@@ -50,36 +50,36 @@ defmodule Ash.Flow.FlowCompositionTest do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
-      |> Api.create!()
+      |> Domain.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "abc", org: org.id})
     |> Ash.Changeset.force_change_attribute(:approved, true)
-    |> Api.create!()
+    |> Domain.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "def", org: org.id})
     |> Ash.Changeset.force_change_attribute(:approved, true)
-    |> Api.create!()
+    |> Domain.create!()
 
     GetOrgAndUsersAndUnapproveThem.run!("Org 1")
 
-    assert Enum.all?(User |> Api.read!(), &(&1.approved == false))
+    assert Enum.all?(User |> Domain.read!(), &(&1.approved == false))
   end
 
   test "a custom step can be used to introduce custom logic" do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
-      |> Api.create!()
+      |> Domain.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "abc", org: org.id})
-    |> Api.create!()
+    |> Domain.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "def", org: org.id})
-    |> Api.create!()
+    |> Domain.create!()
 
     assert %Result{result: 2} = GetOrgAndUsersAndUnapproveThemReturningCount.run!("Org 1")
   end

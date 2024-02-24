@@ -3,11 +3,11 @@ defmodule Ash.Actions.PaginationTest do
 
   require Ash.Query
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -36,7 +36,7 @@ defmodule Ash.Actions.PaginationTest do
 
   defmodule User do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -117,26 +117,26 @@ defmodule Ash.Actions.PaginationTest do
 
   test "pagination is required by default" do
     assert_raise Ash.Error.Invalid, ~r/Pagination is required/, fn ->
-      Api.read!(User, page: false)
+      Domain.read!(User, page: false)
     end
   end
 
   test "a default limit allows not specifying page parameters" do
     assert_raise Ash.Error.Invalid, ~r/Limit is required/, fn ->
-      Api.read!(User, page: [offset: 1])
+      Domain.read!(User, page: [offset: 1])
     end
 
-    Api.read!(User, action: :required_offset_with_default)
+    Domain.read!(User, action: :required_offset_with_default)
   end
 
   describe "offset pagination" do
     setup do
       for i <- 0..9 do
-        user = Api.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
+        user = Domain.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
 
         if i != 0 do
           for x <- 1..i do
-            Api.create!(Ash.Changeset.new(Post, %{body: "#{i}-#{x}", user_id: user.id}))
+            Domain.create!(Ash.Changeset.new(Post, %{body: "#{i}-#{x}", user_id: user.id}))
           end
         end
       end
@@ -145,38 +145,45 @@ defmodule Ash.Actions.PaginationTest do
     end
 
     test "can be limited" do
-      assert Enum.count(Api.read!(User, action: :optional_offset, page: false)) == 10
-      assert Enum.count(Api.read!(User, action: :optional_offset, page: [limit: 5]).results) == 5
+      assert Enum.count(Domain.read!(User, action: :optional_offset, page: false)) == 10
+
+      assert Enum.count(Domain.read!(User, action: :optional_offset, page: [limit: 5]).results) ==
+               5
     end
 
     test "can be offset" do
-      assert Enum.count(Api.read!(User, action: :optional_offset, page: false)) == 10
+      assert Enum.count(Domain.read!(User, action: :optional_offset, page: false)) == 10
 
       assert Enum.count(
-               Api.read!(User, action: :optional_offset, page: [offset: 5, limit: 5]).results
+               Domain.read!(User, action: :optional_offset, page: [offset: 5, limit: 5]).results
              ) == 5
     end
 
     test "can include a full count" do
-      assert Api.read!(User, action: :optional_offset, page: [limit: 1, count: true]).count == 10
+      assert Domain.read!(User, action: :optional_offset, page: [limit: 1, count: true]).count ==
+               10
     end
 
     test "can include a full count with an offset" do
-      assert Api.read!(User, action: :optional_offset, page: [offset: 5, limit: 1, count: true]).count ==
+      assert Domain.read!(User,
+               action: :optional_offset,
+               page: [offset: 5, limit: 1, count: true]
+             ).count ==
                10
     end
 
     test "can default to including a count" do
-      assert Api.read!(User, action: :offset_countable_by_default, page: [limit: 1]).count == 10
+      assert Domain.read!(User, action: :offset_countable_by_default, page: [limit: 1]).count ==
+               10
     end
 
     test "count is not included by default otherwise" do
-      assert is_nil(Api.read!(User, action: :optional_offset, page: [limit: 1]).count)
+      assert is_nil(Domain.read!(User, action: :optional_offset, page: [limit: 1]).count)
     end
 
     test "`count: false` prevents the count from occurring even if it is on `by_default`" do
       assert is_nil(
-               Api.read!(User,
+               Domain.read!(User,
                  action: :offset_countable_by_default,
                  page: [limit: 1, count: false]
                ).count
@@ -187,7 +194,7 @@ defmodule Ash.Actions.PaginationTest do
       names =
         User
         |> Ash.Query.sort(:name)
-        |> Api.read!(page: [offset: 5, limit: 5])
+        |> Domain.read!(page: [offset: 5, limit: 5])
         |> Map.get(:results)
         |> Enum.map(& &1.name)
 
@@ -198,7 +205,7 @@ defmodule Ash.Actions.PaginationTest do
       names =
         User
         |> Ash.Query.sort(name: :desc)
-        |> Api.read!(page: [offset: 5, limit: 5])
+        |> Domain.read!(page: [offset: 5, limit: 5])
         |> Map.get(:results)
         |> Enum.map(& &1.name)
 
@@ -210,7 +217,7 @@ defmodule Ash.Actions.PaginationTest do
         User
         |> Ash.Query.sort(name: :desc)
         |> Ash.Query.filter(name in ["4", "3", "2", "1", "0"])
-        |> Api.read!(page: [offset: 1, limit: 5])
+        |> Domain.read!(page: [offset: 1, limit: 5])
         |> Map.get(:results)
         |> Enum.map(& &1.name)
 
@@ -223,9 +230,9 @@ defmodule Ash.Actions.PaginationTest do
                User
                |> Ash.Query.sort(name: :desc)
                |> Ash.Query.filter(name in ["4", "3", "2", "1", "0"])
-               |> Api.read!(page: [offset: 1, limit: 1])
+               |> Domain.read!(page: [offset: 1, limit: 1])
 
-      assert %{results: [%{name: "2"}]} = Api.page!(page, :next)
+      assert %{results: [%{name: "2"}]} = Domain.page!(page, :next)
     end
 
     test "the previous page can be fetched" do
@@ -234,9 +241,9 @@ defmodule Ash.Actions.PaginationTest do
                User
                |> Ash.Query.sort(name: :desc)
                |> Ash.Query.filter(name in ["4", "3", "2", "1", "0"])
-               |> Api.read!(page: [offset: 1, limit: 1])
+               |> Domain.read!(page: [offset: 1, limit: 1])
 
-      assert %{results: [%{name: "4"}]} = Api.page!(page, :prev)
+      assert %{results: [%{name: "4"}]} = Domain.page!(page, :prev)
     end
 
     test "the first page can be fetched" do
@@ -245,9 +252,9 @@ defmodule Ash.Actions.PaginationTest do
                User
                |> Ash.Query.sort(name: :desc)
                |> Ash.Query.filter(name in ["4", "3", "2", "1", "0"])
-               |> Api.read!(page: [offset: 2, limit: 1])
+               |> Domain.read!(page: [offset: 2, limit: 1])
 
-      assert %{results: [%{name: "4"}]} = Api.page!(page, :first)
+      assert %{results: [%{name: "4"}]} = Domain.page!(page, :first)
     end
 
     test "the last page can be fetched if the count was requested" do
@@ -256,9 +263,9 @@ defmodule Ash.Actions.PaginationTest do
                User
                |> Ash.Query.sort(name: :desc)
                |> Ash.Query.filter(name in ["4", "3", "2", "1", "0"])
-               |> Api.read!(page: [offset: 1, limit: 1, count: true])
+               |> Domain.read!(page: [offset: 1, limit: 1, count: true])
 
-      assert %{results: [%{name: "0"}]} = Api.page!(page, :last)
+      assert %{results: [%{name: "0"}]} = Domain.page!(page, :last)
     end
 
     test "the same page can be re-fetched" do
@@ -267,9 +274,9 @@ defmodule Ash.Actions.PaginationTest do
                User
                |> Ash.Query.sort(name: :desc)
                |> Ash.Query.filter(name in ["4", "3", "2", "1", "0"])
-               |> Api.read!(page: [offset: 1, limit: 1, count: true])
+               |> Domain.read!(page: [offset: 1, limit: 1, count: true])
 
-      assert %{results: [%{name: "3"}]} = Api.page!(page, :self)
+      assert %{results: [%{name: "3"}]} = Domain.page!(page, :self)
     end
   end
 
@@ -278,9 +285,9 @@ defmodule Ash.Actions.PaginationTest do
       users =
         for i <- 0..9 do
           if rem(i, 2) == 0 do
-            Api.create!(Ash.Changeset.new(User, %{name: "#{i}", subname: "#{i}"}))
+            Domain.create!(Ash.Changeset.new(User, %{name: "#{i}", subname: "#{i}"}))
           else
-            Api.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
+            Domain.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
           end
         end
 
@@ -292,7 +299,7 @@ defmodule Ash.Actions.PaginationTest do
         User
         |> Ash.Query.sort([:subname, :name])
         |> Ash.Query.select([:name])
-        |> Api.read!(action: :keyset, page: [limit: 5])
+        |> Domain.read!(action: :keyset, page: [limit: 5])
 
       assert Enum.map(first_results, & &1.name) == ~w(0 2 4 6 8)
 
@@ -303,7 +310,7 @@ defmodule Ash.Actions.PaginationTest do
         User
         |> Ash.Query.sort([:subname, :name])
         |> Ash.Query.select([:name])
-        |> Api.read!(action: :keyset, page: [limit: 5, after: keyset])
+        |> Domain.read!(action: :keyset, page: [limit: 5, after: keyset])
 
       assert Enum.map(second_results, & &1.name) == ~w(1 3 5 7 9)
     end
@@ -312,7 +319,7 @@ defmodule Ash.Actions.PaginationTest do
       %{results: first_results} =
         User
         |> Ash.Query.sort([:subname, :name])
-        |> Api.read!(action: :keyset, page: [limit: 6])
+        |> Domain.read!(action: :keyset, page: [limit: 6])
 
       assert Enum.map(first_results, & &1.name) == ~w(0 2 4 6 8 1)
 
@@ -322,7 +329,7 @@ defmodule Ash.Actions.PaginationTest do
       %{results: second_results} =
         User
         |> Ash.Query.sort([:subname, :name])
-        |> Api.read!(action: :keyset, page: [limit: 6, after: keyset])
+        |> Domain.read!(action: :keyset, page: [limit: 6, after: keyset])
 
       assert Enum.map(second_results, & &1.name) == ~w(3 5 7 9)
     end
@@ -331,7 +338,7 @@ defmodule Ash.Actions.PaginationTest do
       %{results: first_results} =
         User
         |> Ash.Query.sort(subname: :asc_nils_first, name: :asc_nils_first)
-        |> Api.read!(action: :keyset, page: [limit: 5])
+        |> Domain.read!(action: :keyset, page: [limit: 5])
 
       assert Enum.map(first_results, & &1.name) == ~w(1 3 5 7 9)
 
@@ -341,7 +348,7 @@ defmodule Ash.Actions.PaginationTest do
       %{results: second_results} =
         User
         |> Ash.Query.sort(subname: :asc_nils_first, name: :asc_nils_first)
-        |> Api.read!(action: :keyset, page: [limit: 5, after: keyset])
+        |> Domain.read!(action: :keyset, page: [limit: 5, after: keyset])
 
       assert Enum.map(second_results, & &1.name) == ~w(0 2 4 6 8)
     end
@@ -350,7 +357,7 @@ defmodule Ash.Actions.PaginationTest do
       %{results: first_results} =
         User
         |> Ash.Query.sort(subname: :desc_nils_first, name: :desc_nils_first)
-        |> Api.read!(action: :keyset, page: [limit: 5])
+        |> Domain.read!(action: :keyset, page: [limit: 5])
 
       assert Enum.map(first_results, & &1.name) == ~w(9 7 5 3 1)
 
@@ -360,7 +367,7 @@ defmodule Ash.Actions.PaginationTest do
       %{results: second_results} =
         User
         |> Ash.Query.sort(subname: :desc_nils_first, name: :desc_nils_first)
-        |> Api.read!(action: :keyset, page: [limit: 5, after: keyset])
+        |> Domain.read!(action: :keyset, page: [limit: 5, after: keyset])
 
       assert Enum.map(second_results, & &1.name) == ~w(8 6 4 2 0)
     end
@@ -369,7 +376,7 @@ defmodule Ash.Actions.PaginationTest do
       %{results: first_results} =
         User
         |> Ash.Query.sort(subname: :asc_nils_first, name: :asc_nils_first)
-        |> Api.read!(action: :keyset, page: [limit: 6])
+        |> Domain.read!(action: :keyset, page: [limit: 6])
 
       assert Enum.map(first_results, & &1.name) == ~w(1 3 5 7 9 0)
 
@@ -379,7 +386,7 @@ defmodule Ash.Actions.PaginationTest do
       %{results: second_results} =
         User
         |> Ash.Query.sort(subname: :asc_nils_first, name: :asc_nils_first)
-        |> Api.read!(action: :keyset, page: [limit: 5, after: keyset])
+        |> Domain.read!(action: :keyset, page: [limit: 5, after: keyset])
 
       assert Enum.map(second_results, & &1.name) == ~w(2 4 6 8)
     end
@@ -388,7 +395,7 @@ defmodule Ash.Actions.PaginationTest do
       %{results: first_results} =
         User
         |> Ash.Query.sort(subname: :desc_nils_first, name: :desc_nils_first)
-        |> Api.read!(action: :keyset, page: [limit: 6])
+        |> Domain.read!(action: :keyset, page: [limit: 6])
 
       assert Enum.map(first_results, & &1.name) == ~w(9 7 5 3 1 8)
 
@@ -398,7 +405,7 @@ defmodule Ash.Actions.PaginationTest do
       %{results: second_results} =
         User
         |> Ash.Query.sort(subname: :desc_nils_first, name: :desc_nils_first)
-        |> Api.read!(action: :keyset, page: [limit: 5, after: keyset])
+        |> Domain.read!(action: :keyset, page: [limit: 5, after: keyset])
 
       assert Enum.map(second_results, & &1.name) == ~w(6 4 2 0)
     end
@@ -408,11 +415,11 @@ defmodule Ash.Actions.PaginationTest do
     setup do
       users =
         for i <- 0..9 do
-          user = Api.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
+          user = Domain.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
 
           if i != 0 do
             for x <- 1..i do
-              Api.create!(Ash.Changeset.new(Post, %{body: "#{i}-#{x}", user_id: user.id}))
+              Domain.create!(Ash.Changeset.new(Post, %{body: "#{i}-#{x}", user_id: user.id}))
             end
           end
         end
@@ -421,33 +428,37 @@ defmodule Ash.Actions.PaginationTest do
     end
 
     test "can be limited" do
-      assert Enum.count(Api.read!(User, action: :optional_keyset, page: false)) == 10
-      assert Enum.count(Api.read!(User, action: :optional_keyset, page: [limit: 5]).results) == 5
+      assert Enum.count(Domain.read!(User, action: :optional_keyset, page: false)) == 10
+
+      assert Enum.count(Domain.read!(User, action: :optional_keyset, page: [limit: 5]).results) ==
+               5
     end
 
     test "can include a full count" do
-      assert Api.read!(User, action: :optional_keyset, page: [limit: 1, count: true]).count == 10
+      assert Domain.read!(User, action: :optional_keyset, page: [limit: 1, count: true]).count ==
+               10
     end
 
     test "can include a full count with a sort and limit" do
       assert 10 =
                User
                |> Ash.Query.sort(:name)
-               |> Api.read!(action: :optional_keyset, page: [limit: 1, count: true])
+               |> Domain.read!(action: :optional_keyset, page: [limit: 1, count: true])
                |> Map.get(:count)
     end
 
     test "can default to including a count" do
-      assert Api.read!(User, action: :keyset_countable_by_default, page: [limit: 1]).count == 10
+      assert Domain.read!(User, action: :keyset_countable_by_default, page: [limit: 1]).count ==
+               10
     end
 
     test "count is not included by default otherwise" do
-      assert is_nil(Api.read!(User, action: :optional_keyset, page: [limit: 1]).count)
+      assert is_nil(Domain.read!(User, action: :optional_keyset, page: [limit: 1]).count)
     end
 
     test "`count: false` prevents the count from occurring even if it is on `by_default`" do
       assert is_nil(
-               Api.read!(User,
+               Domain.read!(User,
                  action: :keyset_countable_by_default,
                  page: [limit: 1, count: false]
                ).count
@@ -456,20 +467,20 @@ defmodule Ash.Actions.PaginationTest do
 
     test "can ask for records after a specific keyset" do
       %{results: [%{id: id, __metadata__: %{keyset: keyset}}]} =
-        Api.read!(User, action: :keyset, page: [limit: 1])
+        Domain.read!(User, action: :keyset, page: [limit: 1])
 
       %{results: [%{id: next_id}]} =
-        Api.read!(User, action: :keyset, page: [limit: 1, after: keyset])
+        Domain.read!(User, action: :keyset, page: [limit: 1, after: keyset])
 
       refute id == next_id
     end
 
     test "can get the full count when asking for records after a specific keyset" do
       %{results: [%{__metadata__: %{keyset: keyset}}], count: 10} =
-        Api.read!(User, action: :keyset, page: [count: true, limit: 1])
+        Domain.read!(User, action: :keyset, page: [count: true, limit: 1])
 
       assert %{count: 10} =
-               Api.read!(User, action: :keyset, page: [count: true, limit: 1, after: keyset])
+               Domain.read!(User, action: :keyset, page: [count: true, limit: 1, after: keyset])
     end
 
     test "can get the full count when asking for records after a specific keyset use the query after applying `before_action` hooks" do
@@ -485,28 +496,28 @@ defmodule Ash.Actions.PaginationTest do
 
     test "an invalid keyset returns an appropriate error" do
       assert_raise(Ash.Error.Invalid, ~r/Invalid value provided as a keyset/, fn ->
-        Api.read!(User, action: :keyset, page: [limit: 1, after: "~"])
+        Domain.read!(User, action: :keyset, page: [limit: 1, after: "~"])
       end)
     end
 
     test "can ask for records before a specific keyset" do
       %{results: [%{id: id, __metadata__: %{keyset: keyset}}]} =
-        Api.read!(User, action: :keyset, page: [limit: 1])
+        Domain.read!(User, action: :keyset, page: [limit: 1])
 
       %{results: [%{id: next_id, __metadata__: %{keyset: keyset2}}]} =
-        Api.read!(User, action: :keyset, page: [limit: 1, after: keyset])
+        Domain.read!(User, action: :keyset, page: [limit: 1, after: keyset])
 
       refute id == next_id
 
       %{results: [%{id: before_id}]} =
-        Api.read!(User, action: :keyset, page: [limit: 1, before: keyset2])
+        Domain.read!(User, action: :keyset, page: [limit: 1, before: keyset2])
 
       assert id == before_id
     end
 
     test "can ask for records before a specific keyset, with the sort order honored" do
       %{results: users} =
-        User |> Ash.Query.sort(:name) |> Api.read!(action: :keyset, page: [limit: 100])
+        User |> Ash.Query.sort(:name) |> Domain.read!(action: :keyset, page: [limit: 100])
 
       users = Enum.sort_by(users, & &1.name)
       last_user = List.last(users)
@@ -514,7 +525,7 @@ defmodule Ash.Actions.PaginationTest do
       %{results: results} =
         User
         |> Ash.Query.sort(:name)
-        |> Api.read!(action: :keyset, page: [limit: 2, before: last_user.__metadata__.keyset])
+        |> Domain.read!(action: :keyset, page: [limit: 2, before: last_user.__metadata__.keyset])
 
       assert Enum.map(results, & &1.name) == [
                "7",
@@ -524,7 +535,7 @@ defmodule Ash.Actions.PaginationTest do
 
     test "can ask for records before a specific keyset, with the full count shown" do
       %{results: users} =
-        User |> Ash.Query.sort(:name) |> Api.read!(action: :keyset, page: [limit: 100])
+        User |> Ash.Query.sort(:name) |> Domain.read!(action: :keyset, page: [limit: 100])
 
       users = Enum.sort_by(users, & &1.name)
       last_user = List.last(users)
@@ -533,7 +544,7 @@ defmodule Ash.Actions.PaginationTest do
       assert %{count: 10} =
                User
                |> Ash.Query.sort(:name)
-               |> Api.read!(
+               |> Domain.read!(
                  action: :keyset,
                  page: [count: true, limit: 2, before: last_user.__metadata__.keyset]
                )
@@ -544,14 +555,14 @@ defmodule Ash.Actions.PaginationTest do
         User
         |> Ash.Query.filter(name == "4")
         |> Ash.Query.sort(:name)
-        |> Api.read!(page: [limit: 1])
+        |> Domain.read!(page: [limit: 1])
 
       keyset = Enum.at(page.results, 0).__metadata__.keyset
 
       names =
         User
         |> Ash.Query.sort(:name)
-        |> Api.read!(page: [after: keyset, limit: 5])
+        |> Domain.read!(page: [after: keyset, limit: 5])
         |> Map.get(:results)
         |> Enum.map(& &1.name)
 
@@ -563,14 +574,14 @@ defmodule Ash.Actions.PaginationTest do
         User
         |> Ash.Query.filter(name == "4")
         |> Ash.Query.sort(name: :desc)
-        |> Api.read!(page: [limit: 1])
+        |> Domain.read!(page: [limit: 1])
 
       keyset = Enum.at(page.results, 0).__metadata__.keyset
 
       names =
         User
         |> Ash.Query.sort(:name)
-        |> Api.read!(page: [after: keyset, limit: 5])
+        |> Domain.read!(page: [after: keyset, limit: 5])
         |> Map.get(:results)
         |> Enum.map(& &1.name)
 
@@ -582,14 +593,14 @@ defmodule Ash.Actions.PaginationTest do
         User
         |> Ash.Query.filter(count_of_posts == 4)
         |> Ash.Query.sort(:name)
-        |> Api.read!(page: [limit: 1])
+        |> Domain.read!(page: [limit: 1])
 
       keyset = Enum.at(page.results, 0).__metadata__.keyset
 
       page =
         User
         |> Ash.Query.sort(:count_of_posts)
-        |> Api.read!(page: [after: keyset, limit: 4])
+        |> Domain.read!(page: [after: keyset, limit: 4])
 
       names =
         page
@@ -605,14 +616,14 @@ defmodule Ash.Actions.PaginationTest do
         User
         |> Ash.Query.filter(count_of_posts == 5)
         |> Ash.Query.sort(:name)
-        |> Api.read!(page: [limit: 1])
+        |> Domain.read!(page: [limit: 1])
 
       keyset = Enum.at(page.results, 0).__metadata__.keyset
 
       page =
         User
         |> Ash.Query.sort(:count_of_posts)
-        |> Api.read!(page: [after: keyset, limit: 4])
+        |> Domain.read!(page: [after: keyset, limit: 4])
 
       names =
         page
@@ -628,14 +639,14 @@ defmodule Ash.Actions.PaginationTest do
         User
         |> Ash.Query.filter(count_of_posts == 4)
         |> Ash.Query.sort(:name)
-        |> Api.read!(page: [limit: 1])
+        |> Domain.read!(page: [limit: 1])
 
       keyset = Enum.at(page.results, 0).__metadata__.keyset
 
       page =
         User
         |> Ash.Query.sort(:count_of_posts)
-        |> Api.read!(page: [before: keyset, limit: 3])
+        |> Domain.read!(page: [before: keyset, limit: 3])
 
       names =
         page
@@ -648,7 +659,7 @@ defmodule Ash.Actions.PaginationTest do
       page =
         User
         |> Ash.Query.sort(:count_of_posts)
-        |> Api.read!(page: [after: keyset, limit: 4])
+        |> Domain.read!(page: [after: keyset, limit: 4])
 
       names =
         page
@@ -664,14 +675,14 @@ defmodule Ash.Actions.PaginationTest do
         User
         |> Ash.Query.filter(count_of_posts == 4)
         |> Ash.Query.sort(:name)
-        |> Api.read!(page: [limit: 1])
+        |> Domain.read!(page: [limit: 1])
 
       keyset = Enum.at(page.results, 0).__metadata__.keyset
 
       page =
         User
         |> Ash.Query.sort(:count_of_posts)
-        |> Api.read!(page: [before: keyset, limit: 4])
+        |> Domain.read!(page: [before: keyset, limit: 4])
 
       names =
         page
@@ -685,7 +696,7 @@ defmodule Ash.Actions.PaginationTest do
     test "pagination works with a sort applied that uses an aggregate desc" do
       User
       |> Ash.Query.load(:count_of_posts)
-      |> Api.read!(page: [limit: 10])
+      |> Domain.read!(page: [limit: 10])
       |> Map.get(:results)
       |> Enum.map(&{&1.name, &1.count_of_posts})
 
@@ -693,14 +704,14 @@ defmodule Ash.Actions.PaginationTest do
         User
         |> Ash.Query.filter(count_of_posts == 4)
         |> Ash.Query.sort(:name)
-        |> Api.read!(page: [limit: 1])
+        |> Domain.read!(page: [limit: 1])
 
       keyset = Enum.at(page.results, 0).__metadata__.keyset
 
       names =
         User
         |> Ash.Query.sort(count_of_posts: :desc)
-        |> Api.read!(page: [after: keyset, limit: 5])
+        |> Domain.read!(page: [after: keyset, limit: 5])
         |> Map.get(:results)
         |> Enum.map(& &1.name)
 
@@ -712,14 +723,14 @@ defmodule Ash.Actions.PaginationTest do
         User
         |> Ash.Query.filter(name_with_arg(does_nothing: true) == "4")
         |> Ash.Query.sort(name_with_arg: %{does_nothing: true})
-        |> Api.read!(page: [limit: 1])
+        |> Domain.read!(page: [limit: 1])
 
       keyset = Enum.at(page.results, 0).__metadata__.keyset
 
       names =
         User
         |> Ash.Query.sort(name_with_arg: %{does_nothing: true})
-        |> Api.read!(page: [after: keyset, limit: 5])
+        |> Domain.read!(page: [after: keyset, limit: 5])
         |> Map.get(:results)
         |> Enum.map(& &1.name)
 
@@ -740,14 +751,14 @@ defmodule Ash.Actions.PaginationTest do
         User
         |> Ash.Query.filter(name_with_arg(does_nothing: true) == "4")
         |> Ash.Query.sort(name_with_arg: {:desc, %{does_nothing: true}})
-        |> Api.read!(page: [limit: 1])
+        |> Domain.read!(page: [limit: 1])
 
       keyset = Enum.at(page.results, 0).__metadata__.keyset
 
       names =
         User
         |> Ash.Query.sort(name_with_arg: {:desc, %{does_nothing: true}})
-        |> Api.read!(page: [after: keyset, limit: 5])
+        |> Domain.read!(page: [after: keyset, limit: 5])
         |> Map.get(:results)
         |> Enum.map(& &1.name)
 
@@ -759,14 +770,14 @@ defmodule Ash.Actions.PaginationTest do
         User
         |> Ash.Query.filter(name == "5")
         |> Ash.Query.sort(name: :desc)
-        |> Api.read!(page: [limit: 1])
+        |> Domain.read!(page: [limit: 1])
 
       keyset = Enum.at(page.results, 0).__metadata__.keyset
 
       names =
         User
         |> Ash.Query.sort(name: :desc)
-        |> Api.read!(page: [after: keyset, limit: 5])
+        |> Domain.read!(page: [after: keyset, limit: 5])
         |> Map.get(:results)
         |> Enum.map(& &1.name)
 
@@ -778,7 +789,7 @@ defmodule Ash.Actions.PaginationTest do
         User
         |> Ash.Query.filter(name == "5")
         |> Ash.Query.sort(name: :desc)
-        |> Api.read!(page: [limit: 1])
+        |> Domain.read!(page: [limit: 1])
 
       keyset = Enum.at(page.results, 0).__metadata__.keyset
 
@@ -786,7 +797,7 @@ defmodule Ash.Actions.PaginationTest do
         User
         |> Ash.Query.sort(name: :desc)
         |> Ash.Query.filter(name != "4")
-        |> Api.read!(page: [after: keyset, limit: 5])
+        |> Domain.read!(page: [after: keyset, limit: 5])
         |> Map.get(:results)
         |> Enum.map(& &1.name)
 
@@ -799,9 +810,9 @@ defmodule Ash.Actions.PaginationTest do
                User
                |> Ash.Query.sort(name: :desc)
                |> Ash.Query.filter(name in ["4", "3", "2", "1", "0"])
-               |> Api.read!(page: [limit: 1])
+               |> Domain.read!(page: [limit: 1])
 
-      assert %{results: [%{name: "3"}]} = Api.page!(page, :next)
+      assert %{results: [%{name: "3"}]} = Domain.page!(page, :next)
     end
 
     test "the previous page can be fetched" do
@@ -810,10 +821,10 @@ defmodule Ash.Actions.PaginationTest do
                User
                |> Ash.Query.sort(name: :desc)
                |> Ash.Query.filter(name in ["4", "3", "2", "1", "0"])
-               |> Api.read!(page: [limit: 1], action: :optional_keyset)
+               |> Domain.read!(page: [limit: 1], action: :optional_keyset)
 
-      assert %{results: [%{name: "3"}]} = page = Api.page!(page, :next)
-      assert %{results: [%{name: "4"}]} = Api.page!(page, :prev)
+      assert %{results: [%{name: "3"}]} = page = Domain.page!(page, :next)
+      assert %{results: [%{name: "4"}]} = Domain.page!(page, :prev)
     end
 
     test "the first page can be fetched" do
@@ -822,10 +833,10 @@ defmodule Ash.Actions.PaginationTest do
                User
                |> Ash.Query.sort(name: :desc)
                |> Ash.Query.filter(name in ["4", "3", "2", "1", "0"])
-               |> Api.read!(page: [limit: 1])
+               |> Domain.read!(page: [limit: 1])
 
-      assert %{results: [%{name: "3"}]} = page = Api.page!(page, :next)
-      assert %{results: [%{name: "4"}]} = Api.page!(page, :first)
+      assert %{results: [%{name: "3"}]} = page = Domain.page!(page, :next)
+      assert %{results: [%{name: "4"}]} = Domain.page!(page, :first)
     end
 
     test "the same page can be re-fetched" do
@@ -834,10 +845,10 @@ defmodule Ash.Actions.PaginationTest do
                User
                |> Ash.Query.sort(name: :desc)
                |> Ash.Query.filter(name in ["4", "3", "2", "1", "0"])
-               |> Api.read!(page: [limit: 1])
+               |> Domain.read!(page: [limit: 1])
 
-      assert %{results: [%{name: "3"}]} = page = Api.page!(page, :next)
-      assert %{results: [%{name: "3"}]} = Api.page!(page, :self)
+      assert %{results: [%{name: "3"}]} = page = Domain.page!(page, :next)
+      assert %{results: [%{name: "3"}]} = Domain.page!(page, :self)
     end
 
     test "the prev request right after the initial query remains the same as the initial result (like offset pagination)" do
@@ -846,27 +857,27 @@ defmodule Ash.Actions.PaginationTest do
                User
                |> Ash.Query.sort(name: :desc)
                |> Ash.Query.filter(name in ["4", "3", "2", "1", "0"])
-               |> Api.read!(action: :keyset, page: [limit: 1])
+               |> Domain.read!(action: :keyset, page: [limit: 1])
 
-      assert %{results: [%{name: "4"}]} = Api.page!(page, :prev)
+      assert %{results: [%{name: "4"}]} = Domain.page!(page, :prev)
     end
   end
 
   describe "when both are supported" do
     setup do
       for i <- 0..9 do
-        Api.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
+        Domain.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
       end
 
       :ok
     end
 
     test "it defaults to offset pagination" do
-      assert %Ash.Page.Offset{} = Api.read!(User, action: :both_optional, page: [limit: 10])
+      assert %Ash.Page.Offset{} = Domain.read!(User, action: :both_optional, page: [limit: 10])
     end
 
     test "it adds a keyset to the records, even though it returns an offset page" do
-      for result <- Api.read!(User, action: :both_optional, page: [limit: 10]).results do
+      for result <- Domain.read!(User, action: :both_optional, page: [limit: 10]).results do
         refute is_nil(result.__metadata__.keyset)
       end
     end
@@ -874,12 +885,12 @@ defmodule Ash.Actions.PaginationTest do
 
   describe "loading with pagination" do
     test "it does not paginate loads" do
-      user = Api.create!(Ash.Changeset.new(User, %{name: "user"}))
-      Api.create!(Ash.Changeset.new(Post, %{user_id: user.id}))
+      user = Domain.create!(Ash.Changeset.new(User, %{name: "user"}))
+      Domain.create!(Ash.Changeset.new(Post, %{user_id: user.id}))
 
       assert [_ | _] =
                user
-               |> Api.load!([posts: :user], tenant: nil, actor: nil)
+               |> Domain.load!([posts: :user], tenant: nil, actor: nil)
                |> Map.get(:posts)
     end
   end

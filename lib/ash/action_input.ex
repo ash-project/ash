@@ -9,7 +9,7 @@ defmodule Ash.ActionInput do
 
   defstruct [
     :action,
-    :api,
+    :domain,
     :resource,
     :tenant,
     invalid_keys: MapSet.new(),
@@ -28,11 +28,11 @@ defmodule Ash.ActionInput do
           resource: Ash.Resource.t(),
           invalid_keys: MapSet.t(),
           context: map(),
-          api: Ash.Api.t(),
+          domain: Ash.Domain.t(),
           valid?: boolean()
         }
-  def new(resource, api \\ nil) do
-    %__MODULE__{resource: resource, api: api}
+  def new(resource, domain \\ nil) do
+    %__MODULE__{resource: resource, domain: domain}
   end
 
   @doc """
@@ -56,15 +56,15 @@ defmodule Ash.ActionInput do
           %{input | action: action}
       end
 
-    api =
-      input.api || opts[:api] || Ash.Resource.Info.api(input.resource) ||
+    domain =
+      input.domain || opts[:domain] || Ash.Resource.Info.domain(input.resource) ||
         raise ArgumentError,
           message:
-            "Could not determine api for action. Provide the `api` option or configure an api in the resource directly."
+            "Could not determine domain for action. Provide the `domain` option or configure an domain in the resource directly."
 
-    input = %{input | api: api}
+    input = %{input | domain: domain}
 
-    {input, _opts} = Ash.Actions.Helpers.add_process_context(input.api, input, opts)
+    {input, _opts} = Ash.Actions.Helpers.add_process_context(input.domain, input, opts)
 
     input
     |> cast_params(params)

@@ -2,10 +2,10 @@ defmodule Ash.Test.Flow.Flows.BranchingTransactionMapping do
   @moduledoc false
   use Ash.Flow
 
-  alias Ash.Test.Flow.{Api, Org, User}
+  alias Ash.Test.Flow.{Domain, Org, User}
 
   flow do
-    api Api
+    domain(Domain)
 
     argument :org_name, :string do
       allow_nil? false
@@ -69,7 +69,7 @@ defmodule Ash.Test.Flow.Steps.CreateUser do
     created_user =
       Ash.Test.Flow.User
       |> Changeset.for_create(:create, input.attributes |> Map.merge(%{org: input.org}))
-      |> Ash.Test.Flow.Api.create()
+      |> Ash.Test.Flow.Domain.create()
 
     case created_user do
       {:ok, resource_record} ->
@@ -93,12 +93,12 @@ defmodule Ash.Test.Flow.Steps.UpdateUser do
         :by_name,
         %{name: input.attributes.first_name}
       )
-      |> Ash.Test.Flow.Api.read_one!()
+      |> Ash.Test.Flow.Domain.read_one!()
 
     user_updated =
       user_to_update
       |> Changeset.for_update(:update, input.attributes)
-      |> Ash.Test.Flow.Api.update()
+      |> Ash.Test.Flow.Domain.update()
 
     case user_updated do
       {:ok, resource_record} ->
