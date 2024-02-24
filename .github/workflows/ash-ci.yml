@@ -31,6 +31,9 @@ on:
         default: false
       hex-api-key:
         type: string
+      sat-solver:
+        type: string
+        default: "Picosat"
 
 jobs:
   deps:

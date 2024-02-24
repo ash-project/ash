@@ -87,10 +87,30 @@ defp deps do
   [
     # {:dep_from_hexpm, "~> 0.3.0"},
     # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
-    {:ash, "~> 2.21.1"} # <-- add this line
+    {:ash, "~> 3.0"}, # <-- add this line
+    {:picosat_elixir, "~> 0.2"} # <- and this line
   ]
 end
 ```
+
+### Picosat Installation Issues
+
+In rare cases, users have trouble installing picosat (usually on windows)
+if that is the case, use `simple_sat` instead. We _highly recommend_ that you
+get `picosat_elixir` working before shipping to production if you intend to use
+Ash policies. We've provided `simple_sat` to get you up and running more easily
+and to allow you to explore Ash without roadblocks.
+
+```elixir
+defp deps do
+  [
+    # {:picosat_elixir, "~> 0.2"} # instead of this
+    {:simple_sat, "~> 0.1"} # <- use this
+  ]
+end
+```
+
+### Formatting
 
 To ensure that your code stays formatted like the examples here, you can add `:ash` as an import dependency in your `.formatter.exs`:
 
