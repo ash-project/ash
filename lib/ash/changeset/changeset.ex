@@ -804,7 +804,7 @@ defmodule Ash.Changeset do
                       {:halt, {:not_atomic, reason}}
                   end
 
-                %{valid?: false} ->
+                %{valid?: false} = changeset ->
                   {:cont, changeset}
               end
             else
