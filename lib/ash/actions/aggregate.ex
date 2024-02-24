@@ -56,7 +56,8 @@ defmodule Ash.Actions.Aggregate do
 
             with {:ok, query} <- authorize_query(query, opts, agg_authorize?),
                  {:ok, data_layer_query} <-
-                   Ash.Query.data_layer_query(Ash.Query.unset(query, :aggregates)),
+                   Ash.Query.data_layer_query(Ash.Query.new(query.resource)),
+                 aggregates <- merge_query_into_aggregates(query, aggregates),
                  {:ok, result} <-
                    Ash.DataLayer.run_aggregate_query(data_layer_query, aggregates, query.resource) do
               {:cont, {:ok, Map.merge(acc, result)}}
@@ -68,6 +69,27 @@ defmodule Ash.Actions.Aggregate do
         end
       end)
     end
+  end
+
+  defp merge_query_into_aggregates(query, aggregates) do
+    Enum.map(aggregates, fn aggregate ->
+      %{
+        aggregate
+        | query:
+            aggregate.query
+            |> Ash.Query.do_filter(query.filter)
+            |> Ash.Query.sort(query.sort, prepend?: true)
+            |> Ash.Query.distinct_sort(query.distinct_sort, prepend?: true)
+            |> Ash.Query.limit(query.limit)
+            |> Ash.Query.set_tenant(query.tenant)
+            |> merge_offset(query.offset)
+            |> Ash.Query.set_context(query.context)
+      }
+    end)
+  end
+
+  defp merge_offset(query, offset) do
+    Ash.Query.offset(query, query.offset + (offset || 0))
   end
 
   defp authorize_query(query, opts, agg_authorize?) do
