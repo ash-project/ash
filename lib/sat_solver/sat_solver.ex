@@ -942,8 +942,33 @@ defmodule Ash.SatSolver do
     end
   end
 
-  def solve_expression(cnf) do
-    Picosat.solve(cnf)
+  cond do
+    Application.compile_env(:ash, :sat_testing) ->
+      def solve_expression(cnf) do
+        Module.concat([System.get_env("SAT_SOLVER") || "Picosat"]).solve(cnf)
+      end
+
+    Code.ensure_loaded?(Picosat) ->
+      def solve_expression(cnf) do
+        Picosat.solve(cnf)
+      end
+
+    Code.ensure_loaded?(SimpleSat) ->
+      def solve_expression(cnf) do
+        SimpleSat.solve(cnf)
+      end
+
+    true ->
+      def solve_expression(cnf) do
+        raise """
+        No SAT solver available.
+
+        Please add one of the following dependencies to your application to use sat solver features:
+
+        * `:picosat_elixir` (recommended) - A NIF wrapper around the PicoSAT SAT solver. Fast, production ready, battle tested.
+        * `:simple_sat` - A pure Elixir SAT solver. Slower than PicoSAT, but no NIF dependency.
+        """
+      end
   end
 
   def contains?([], _), do: false
