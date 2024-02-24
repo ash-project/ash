@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.19.6](https://github.com/ash-project/ash/compare/v2.19.5...v2.19.6) (2024-02-24)
+
+
+
+
+### Bug Fixes:
+
+* properly catch errors in atomic changeset casting
+
+* use `Ash.Changeset.set_context` on changesets
+
 ## [v2.19.5](https://github.com/ash-project/ash/compare/v2.19.4...v2.19.5) (2024-02-22)
 
 
