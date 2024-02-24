@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.19.7](https://github.com/ash-project/ash/compare/v2.19.6...v2.19.7) (2024-02-24)
+
+
+
+
+### Bug Fixes:
+
+* return proper pattern from select builtin change
+
 ## [v2.19.6](https://github.com/ash-project/ash/compare/v2.19.5...v2.19.6) (2024-02-24)
 
 
