@@ -8,6 +8,11 @@ on:
     branches: [main, "3.0"]
 jobs:
   ash-ci:
+    strategy:
+      matrix:
+        sat_solver: ["SimpleSat", "Picosat"]
     uses: ash-project/ash/.github/workflows/ash-ci.yml@main
     secrets:
       HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+    with:
+      sat-solver: ${{ matrix.sat_solver }}
