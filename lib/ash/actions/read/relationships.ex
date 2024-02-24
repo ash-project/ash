@@ -72,7 +72,7 @@ defmodule Ash.Actions.Read.Relationships do
         |> Enum.map(&Ash.Resource.set_metadata(&1, %{lazy_join_source: record_pkey}))
       end)
 
-    related_query.api.load(related_records_with_lazy_join_source, related_query,
+    related_query.domain.load(related_records_with_lazy_join_source, related_query,
       lazy?: true,
       actor: related_query.context.private[:actor],
       tenant: related_query.tenant,
@@ -94,7 +94,7 @@ defmodule Ash.Actions.Read.Relationships do
         {relationship,
          {:lazy,
           related_query
-          |> Map.put(:api, query.api)
+          |> Map.put(:domain, query.domain)
           |> Ash.Query.set_context(%{
             private: %{async_limiter: query.context[:private][:async_limiter]}
           })}}
@@ -131,7 +131,7 @@ defmodule Ash.Actions.Read.Relationships do
         actor: query.context[:private][:actor],
         tracer: query.context[:private][:tracer]
       )
-      |> Map.put(:api, relationship.api || query.api)
+      |> Map.put(:domain, relationship.domain || query.domain)
       |> Ash.Query.sort(relationship.sort)
       |> Ash.Query.do_filter(relationship.filter)
       |> Ash.Query.set_context(relationship.context)
@@ -170,11 +170,11 @@ defmodule Ash.Actions.Read.Relationships do
               relationship.source_attribute_on_join_resource,
               relationship.destination_attribute_on_join_resource
             ])
-            |> Map.put(:api, join_relationship.api || related_query.api)
+            |> Map.put(:domain, join_relationship.domain || related_query.domain)
             |> hydrate_refs(relationship.source)
 
           if source_query.context[:private][:authorize?] do
-            case through_query.api.can(
+            case through_query.domain.can(
                    through_query,
                    source_query.context[:private][:actor],
                    return_forbidden_error?: true,
@@ -282,7 +282,7 @@ defmodule Ash.Actions.Read.Relationships do
               }),
             actor: related_query.context[:private][:actor],
             authorize?: related_query.context[:private][:authorize?],
-            api: related_query.api,
+            domain: related_query.domain,
             tenant: related_query.tenant
           })
           |> case do
@@ -293,7 +293,7 @@ defmodule Ash.Actions.Read.Relationships do
                 |> List.wrap()
                 |> Enum.map(&Ash.Resource.put_metadata(&1, :manual_key, key))
               end)
-              |> related_query.api.load(related_query,
+              |> related_query.domain.load(related_query,
                 actor: related_query.context[:private][:actor],
                 authorize?: related_query.context[:private][:authorize?],
                 tenant: related_query.tenant
@@ -378,7 +378,7 @@ defmodule Ash.Actions.Read.Relationships do
         relationship.source_attribute_on_join_resource,
         relationship.destination_attribute_on_join_resource
       ])
-      |> Map.put(:api, join_relationship.api || related_query.api)
+      |> Map.put(:domain, join_relationship.domain || related_query.domain)
 
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,

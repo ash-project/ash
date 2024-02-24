@@ -2,11 +2,11 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule TimeMachine do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
@@ -64,7 +64,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
         name: "Delorean DMC-12",
         caller: self()
       )
-      |> Api.create!()
+      |> Domain.create!()
 
       assert_received :before_action
     end
@@ -77,7 +77,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
         name: "Delorean DMC-12",
         caller: self()
       )
-      |> Api.create!()
+      |> Domain.create!()
 
       assert_received :before_transaction
     end
@@ -90,7 +90,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
         name: "Delorean DMC-12",
         caller: self()
       )
-      |> Api.create!()
+      |> Domain.create!()
 
       assert_received :after_action
     end
@@ -103,7 +103,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
         name: "Delorean DMC-12",
         caller: self()
       )
-      |> Api.create!()
+      |> Domain.create!()
 
       assert_received :after_transaction
     end

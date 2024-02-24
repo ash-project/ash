@@ -9,7 +9,7 @@ defmodule Ash.Resource.ManualRelationship do
           optional(:actor) => term,
           optional(:tenant) => term,
           optional(:authorize?) => boolean,
-          optional(:api) => module,
+          optional(:domain) => module,
           optional(any) => any
         }
 

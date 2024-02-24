@@ -3,7 +3,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
 
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule ActorAndAuthorizeMustBeInContext do
     use Ash.Resource.Validation
@@ -34,7 +34,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   end
 
   defmodule SubSubEmbeddedResource do
-    use Ash.Resource, api: Api, data_layer: :embedded
+    use Ash.Resource, domain: Domain, data_layer: :embedded
 
     attributes do
       uuid_primary_key :id
@@ -59,7 +59,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   end
 
   defmodule SubEmbeddedResource do
-    use Ash.Resource, api: Api, data_layer: :embedded
+    use Ash.Resource, domain: Domain, data_layer: :embedded
 
     attributes do
       uuid_primary_key :id
@@ -85,7 +85,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   end
 
   defmodule EmbeddedResource do
-    use Ash.Resource, api: Api, data_layer: :embedded
+    use Ash.Resource, domain: Domain, data_layer: :embedded
 
     attributes do
       uuid_primary_key :id
@@ -111,7 +111,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   end
 
   defmodule Resource do
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
@@ -149,7 +149,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
       authorize?: true,
       tenant: "one"
     )
-    |> Api.create!()
+    |> Domain.create!()
   end
 
   test "changeset during validation and changes includes actor, authorize and tenant for an embedded resource used as an argument" do
@@ -168,6 +168,6 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
                authorize?: true,
                tenant: "one"
              )
-             |> Api.update()
+             |> Domain.update()
   end
 end

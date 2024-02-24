@@ -12,7 +12,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :source_attribute,
     :source,
     :read_action,
-    :api,
+    :domain,
     :not_found_message,
     :violation_message,
     :allow_nil?,

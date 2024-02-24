@@ -3,13 +3,13 @@ defmodule Ash.Test.Resource.AttributesTest do
   use ExUnit.Case, async: true
 
   alias Ash.Resource.Attribute
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, api: Api
+        use Ash.Resource, domain: Domain
 
         attributes do
           uuid_primary_key :id
@@ -101,7 +101,7 @@ defmodule Ash.Test.Resource.AttributesTest do
           fn ->
             defmodule :"Elixir.Resource#{name}" do
               @moduledoc false
-              use Ash.Resource, api: Api
+              use Ash.Resource, domain: Domain
 
               attributes do
                 uuid_primary_key :id

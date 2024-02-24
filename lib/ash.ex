@@ -3,7 +3,7 @@ defmodule Ash do
   General purpose tools for working with Ash and Ash resources.
   """
 
-  for {function, arity} <- Ash.Api.Functions.functions() do
+  for {function, arity} <- Ash.Domain.Functions.functions() do
     if function == :load do
       def load({:ok, result}, load) do
         load(result, load)
@@ -38,29 +38,33 @@ defmodule Ash do
     args = Macro.generate_arguments(arity, __MODULE__)
 
     docs_arity =
-      if function in Ash.Api.Functions.no_opts_functions() do
+      if function in Ash.Domain.Functions.no_opts_functions() do
         arity
       else
         arity + 1
       end
 
-    @doc "Calls `c:Ash.Api.#{function}/#{docs_arity}` on the resource's configured api. See those callback docs for more."
+    @doc "Calls `c:Ash.Domain.#{function}/#{docs_arity}` on the resource's configured domain. See those callback docs for more."
     def unquote(function)(unquote_splicing(args)) do
       resource =
-        Ash.Api.GlobalInterface.resource_from_args!(unquote(function), unquote(arity), [
+        Ash.Domain.GlobalInterface.resource_from_args!(unquote(function), unquote(arity), [
           unquote_splicing(args)
         ])
 
-      api = Ash.Resource.Info.api(resource)
+      domain = Ash.Resource.Info.domain(resource)
 
-      if !api do
-        Ash.Api.GlobalInterface.raise_no_api_error!(resource, unquote(function), unquote(arity))
+      if !domain do
+        Ash.Domain.GlobalInterface.raise_no_domain_error!(
+          resource,
+          unquote(function),
+          unquote(arity)
+        )
       end
 
-      apply(api, unquote(function), [unquote_splicing(args)])
+      apply(domain, unquote(function), [unquote_splicing(args)])
     end
 
-    unless function in Ash.Api.Functions.no_opts_functions() do
+    unless function in Ash.Domain.Functions.no_opts_functions() do
       args = Macro.generate_arguments(arity + 1, __MODULE__)
 
       if function == :load! do
@@ -94,20 +98,24 @@ defmodule Ash do
         end
       end
 
-      @doc "Calls `c:Ash.Api.#{function}/#{arity + 1}` on the resource's configured api. See those callback docs for more."
+      @doc "Calls `c:Ash.Domain.#{function}/#{arity + 1}` on the resource's configured domain. See those callback docs for more."
       def unquote(function)(unquote_splicing(args)) do
         resource =
-          Ash.Api.GlobalInterface.resource_from_args!(unquote(function), unquote(arity), [
+          Ash.Domain.GlobalInterface.resource_from_args!(unquote(function), unquote(arity), [
             unquote_splicing(args)
           ])
 
-        api = Ash.Resource.Info.api(resource)
+        domain = Ash.Resource.Info.domain(resource)
 
-        if !api do
-          Ash.Api.GlobalInterface.raise_no_api_error!(resource, unquote(function), unquote(arity))
+        if !domain do
+          Ash.Domain.GlobalInterface.raise_no_domain_error!(
+            resource,
+            unquote(function),
+            unquote(arity)
+          )
         end
 
-        apply(api, unquote(function), [unquote_splicing(args)])
+        apply(domain, unquote(function), [unquote_splicing(args)])
       end
     end
   end

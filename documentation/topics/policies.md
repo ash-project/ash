@@ -180,7 +180,7 @@ defmodule MyApp.Checks.ActorIsOldEnough do
     "actor is old enough"
   end
 
-  # The context here may have a changeset, query, resource, and api module, depending
+  # The context here may have a changeset, query, resource, and domain module, depending
   # on the action being run.
   # `match?` should return true or false, and answer the statement being posed in the description,
   # i.e "is the actor old enough?"

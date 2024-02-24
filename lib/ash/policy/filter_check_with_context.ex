@@ -7,7 +7,7 @@ defmodule Ash.Policy.FilterCheckWithContext do
   @type context :: %{
           required(:action) => Ash.Resource.Actions.action(),
           required(:resource) => Ash.Resource.t(),
-          required(:api) => Ash.Api.t(),
+          required(:domain) => Ash.Domain.t(),
           optional(:query) => Ash.Query.t(),
           optional(:changeset) => Ash.Query.t(),
           optional(any) => any
@@ -190,10 +190,10 @@ defmodule Ash.Policy.FilterCheckWithContext do
           end
 
         authorizer.resource
-        |> authorizer.api.query()
+        |> authorizer.domain.query()
         |> Ash.Query.filter(^filter)
         |> Ash.Query.filter(^auto_filter(actor, authorizer, opts))
-        |> authorizer.api.read()
+        |> authorizer.domain.read()
         |> case do
           {:ok, authorized_data} ->
             authorized_pkeys = Enum.map(authorized_data, &Map.take(&1, pkey))

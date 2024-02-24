@@ -50,9 +50,9 @@ defmodule Ash.Actions.Helpers do
   defp set_context(%{__struct__: Ash.ActionInput} = action_input, context),
     do: Ash.ActionInput.set_context(action_input, context)
 
-  def add_process_context(api, query_or_changeset, opts) do
+  def add_process_context(domain, query_or_changeset, opts) do
     query_or_changeset = set_context(query_or_changeset, opts[:context] || %{})
-    api = api || query_or_changeset.api
+    domain = domain || query_or_changeset.domain
 
     opts =
       case query_or_changeset.context do
@@ -93,17 +93,17 @@ defmodule Ash.Actions.Helpers do
           opts
       end
 
-    opts = set_opts(opts, api, query_or_changeset)
+    opts = set_opts(opts, domain, query_or_changeset)
 
     query_or_changeset = add_context(query_or_changeset, opts)
 
     {query_or_changeset, opts}
   end
 
-  def set_opts(opts, api, query_or_changeset \\ nil) do
+  def set_opts(opts, domain, query_or_changeset \\ nil) do
     opts
-    |> add_actor(query_or_changeset, api)
-    |> add_authorize?(query_or_changeset, api)
+    |> add_actor(query_or_changeset, domain)
+    |> add_authorize?(query_or_changeset, domain)
     |> add_tenant()
     |> add_tracer()
   end
@@ -141,7 +141,7 @@ defmodule Ash.Actions.Helpers do
     end
   end
 
-  defp add_actor(opts, query_or_changeset, api) do
+  defp add_actor(opts, query_or_changeset, domain) do
     opts =
       if Keyword.has_key?(opts, :actor) do
         opts
@@ -155,19 +155,19 @@ defmodule Ash.Actions.Helpers do
         end
       end
 
-    if api do
-      if !skip_requiring_actor?(query_or_changeset) && !internal?(query_or_changeset) &&
-           !Keyword.has_key?(opts, :actor) &&
-           Ash.Api.Info.require_actor?(api) do
-        raise Ash.Error.to_error_class(Ash.Error.Forbidden.ApiRequiresActor.exception(api: api))
-      end
-
-      opts
-    else
-      # The only time api would be nil here is when we call this helper inside of `Changeset.for_*` and `Query.for_read`
-      # meaning this will be run again later with the api, so we skip the validations on the api
-      opts
+    if !domain do
+      raise Ash.Error.Framework.AssumptionFailed,
+        message: "Could not determine domain for action."
     end
+
+    if !skip_requiring_actor?(query_or_changeset) && !internal?(query_or_changeset) && !Keyword.has_key?(opts, :actor) &&
+         Ash.Domain.Info.require_actor?(domain) do
+      raise Ash.Error.to_error_class(
+              Ash.Error.Forbidden.DomainRequiresActor.exception(domain: domain)
+            )
+    end
+
+    opts
   end
 
   defp internal?(%{context: %{private: %{internal?: true}}}), do: true
@@ -176,7 +176,7 @@ defmodule Ash.Actions.Helpers do
   defp skip_requiring_actor?(%{context: %{private: %{require_actor?: false}}}), do: true
   defp skip_requiring_actor?(_), do: false
 
-  defp add_authorize?(opts, query_or_changeset, api) do
+  defp add_authorize?(opts, query_or_changeset, domain) do
     opts =
       if Keyword.has_key?(opts, :authorize?) do
         opts
@@ -190,29 +190,28 @@ defmodule Ash.Actions.Helpers do
         end
       end
 
-    if api do
-      case Ash.Api.Info.authorize(api) do
-        :always ->
-          if opts[:authorize?] == false && internal?(query_or_changeset) do
-            opts
-          else
-            Keyword.put(opts, :authorize?, true)
-          end
+    if !domain do
+      raise Ash.Error.Framework.AssumptionFailed,
+        message: "Could not determine domain for action."
+    end
 
-        :by_default ->
+    case Ash.Domain.Info.authorize(domain) do
+      :always ->
+        if opts[:authorize?] == false && internal?(query_or_changeset) do
+          opts
+        else
+          Keyword.put(opts, :authorize?, true)
+        end
+
+      :by_default ->
+        Keyword.put_new(opts, :authorize?, true)
+
+      :when_requested ->
+        if Keyword.has_key?(opts, :actor) do
           Keyword.put_new(opts, :authorize?, true)
-
-        :when_requested ->
-          if Keyword.has_key?(opts, :actor) do
-            Keyword.put_new(opts, :authorize?, true)
-          else
-            Keyword.put(opts, :authorize?, opts[:authorize?] || Keyword.has_key?(opts, :actor))
-          end
-      end
-    else
-      # The only time api would be nil here is when we call this helper inside of `Changeset.for_*` and `Query.for_read`
-      # meaning this will be run again later with the api, so we skip the validations on the api
-      opts
+        else
+          Keyword.put(opts, :authorize?, opts[:authorize?] || Keyword.has_key?(opts, :actor))
+        end
     end
   end
 
@@ -302,7 +301,7 @@ defmodule Ash.Actions.Helpers do
   defp resource_notification(changeset, result, opts) do
     %Ash.Notifier.Notification{
       resource: changeset.resource,
-      api: changeset.api,
+      domain: changeset.domain,
       actor: changeset.context[:private][:actor],
       action: changeset.action,
       data: result,
@@ -538,7 +537,7 @@ defmodule Ash.Actions.Helpers do
     end
   end
 
-  def load({:ok, result, instructions}, changeset, api, opts) do
+  def load({:ok, result, instructions}, changeset, domain, opts) do
     if changeset.load in [nil, []] do
       {:ok, result, instructions}
     else
@@ -547,7 +546,7 @@ defmodule Ash.Actions.Helpers do
         |> Ash.Query.load(changeset.load)
         |> select_selected(result)
 
-      case api.load(result, query, opts) do
+      case domain.load(result, query, opts) do
         {:ok, result} ->
           {:ok, result, instructions}
 
@@ -557,7 +556,7 @@ defmodule Ash.Actions.Helpers do
     end
   end
 
-  def load({:ok, result}, changeset, api, opts) do
+  def load({:ok, result}, changeset, domain, opts) do
     if changeset.load in [nil, []] do
       {:ok, result, %{}}
     else
@@ -566,7 +565,7 @@ defmodule Ash.Actions.Helpers do
         |> Ash.Query.load(changeset.load)
         |> select_selected(result)
 
-      case api.load(result, query, opts) do
+      case domain.load(result, query, opts) do
         {:ok, result} ->
           {:ok, result, %{}}
 

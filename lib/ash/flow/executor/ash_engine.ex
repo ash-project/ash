@@ -139,7 +139,7 @@ defmodule Ash.Flow.Executor.AshEngine do
     :tenant,
     :condition,
     :resource,
-    :api,
+    :domain,
     :action
   ]
 
@@ -892,7 +892,7 @@ defmodule Ash.Flow.Executor.AshEngine do
       %Step{step: %Ash.Flow.Step.Read{} = read, input: input} ->
         %{
           action: action,
-          api: api,
+          domain: domain,
           name: name,
           resource: resource,
           input: action_input,
@@ -918,7 +918,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                 action: action,
                 action_input: action_input,
                 resource: resource,
-                api: api,
+                domain: domain,
                 dep_paths: dep_paths,
                 tenant: tenant,
                 request_deps: request_deps
@@ -927,7 +927,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                   all_steps,
                   resource,
                   action,
-                  api,
+                  domain,
                   action_input,
                   input,
                   transaction_name,
@@ -978,7 +978,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                         )
                         |> then(fn query ->
                           if get? do
-                            case api.read_one(query) do
+                            case domain.read_one(query) do
                               {:ok, nil} ->
                                 if not_found_error? do
                                   {:error, Ash.Error.Query.NotFound.exception(resource: resource)}
@@ -993,7 +993,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                                 other
                             end
                           else
-                            api.read(query)
+                            domain.read(query)
                           end
                         end)
                     end
@@ -1006,7 +1006,7 @@ defmodule Ash.Flow.Executor.AshEngine do
       %Step{step: %Ash.Flow.Step.Create{} = create, input: input} ->
         %{
           action: action,
-          api: api,
+          domain: domain,
           name: name,
           resource: resource,
           input: action_input,
@@ -1031,7 +1031,7 @@ defmodule Ash.Flow.Executor.AshEngine do
               %{
                 action: action,
                 resource: resource,
-                api: api,
+                domain: domain,
                 action_input: action_input,
                 dep_paths: dep_paths,
                 tenant: tenant,
@@ -1041,7 +1041,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                   all_steps,
                   resource,
                   action,
-                  api,
+                  domain,
                   action_input,
                   input,
                   transaction_name,
@@ -1093,7 +1093,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                           upsert?: upsert?,
                           upsert_identity: upsert_identity
                         )
-                        |> api.create()
+                        |> domain.create()
                     end
                   end)
               )
@@ -1236,7 +1236,7 @@ defmodule Ash.Flow.Executor.AshEngine do
       %Step{step: %Ash.Flow.Step.Update{} = update, input: input} ->
         %{
           action: action,
-          api: api,
+          domain: domain,
           name: name,
           resource: resource,
           input: action_input,
@@ -1261,7 +1261,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                 action: action,
                 action_input: action_input,
                 resource: resource,
-                api: api,
+                domain: domain,
                 dep_paths: dep_paths,
                 tenant: tenant,
                 request_deps: request_deps
@@ -1270,7 +1270,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                   all_steps,
                   resource,
                   action,
-                  api,
+                  domain,
                   action_input,
                   input,
                   transaction_name,
@@ -1337,7 +1337,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                                 authorize?: opts[:authorize?],
                                 tracer: data[:tracer]
                               )
-                              |> api.update()
+                              |> domain.update()
                           end
                       end
                     end)
@@ -1354,7 +1354,7 @@ defmodule Ash.Flow.Executor.AshEngine do
       %Step{step: %Ash.Flow.Step.Destroy{} = destroy, input: input} ->
         %{
           action: action,
-          api: api,
+          domain: domain,
           name: name,
           resource: resource,
           input: action_input,
@@ -1379,7 +1379,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                 action: action,
                 action_input: action_input,
                 resource: resource,
-                api: api,
+                domain: domain,
                 dep_paths: dep_paths,
                 tenant: tenant,
                 request_deps: request_deps
@@ -1388,7 +1388,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                   all_steps,
                   resource,
                   action,
-                  api,
+                  domain,
                   action_input,
                   input,
                   transaction_name,
@@ -1457,7 +1457,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                                 authorize?: opts[:authorize?],
                                 tracer: data[:tracer]
                               )
-                              |> api.destroy()
+                              |> domain.destroy()
                               |> case do
                                 :ok ->
                                   {:ok, record}
@@ -1793,7 +1793,7 @@ defmodule Ash.Flow.Executor.AshEngine do
          all_steps,
          resource,
          action,
-         api,
+         domain,
          action_input,
          input,
          transaction_name,
@@ -1804,7 +1804,7 @@ defmodule Ash.Flow.Executor.AshEngine do
     {tenant, tenant_deps} = Ash.Flow.Template.handle_input_template(tenant, input)
     {_, additional_deps} = Ash.Flow.Template.handle_input_template(additional, input)
     {resource, resource_deps} = Ash.Flow.Template.handle_input_template(resource, input)
-    {api, api_deps} = Ash.Flow.Template.handle_input_template(api, input)
+    {domain, domain_deps} = Ash.Flow.Template.handle_input_template(domain, input)
     {action, action_deps} = Ash.Flow.Template.handle_input_template(action, input)
 
     action =
@@ -1814,7 +1814,7 @@ defmodule Ash.Flow.Executor.AshEngine do
     dep_paths =
       get_dep_paths(
         all_steps,
-        deps ++ tenant_deps ++ api_deps ++ resource_deps ++ action_deps,
+        deps ++ tenant_deps ++ domain_deps ++ resource_deps ++ action_deps,
         transaction_name,
         additional_deps
       )
@@ -1823,7 +1823,7 @@ defmodule Ash.Flow.Executor.AshEngine do
 
     %{
       resource: resource,
-      api: api,
+      domain: domain,
       action: action,
       action_input: action_input,
       dep_paths: dep_paths,

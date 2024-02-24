@@ -5,7 +5,7 @@ defmodule Ash.Test.Type.EnumTest do
   import Ash.Changeset
   require Ash.Query
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Status do
     use Ash.Type.Enum, values: [:open, :Closed, :NeverHappened, :Always_Was]
@@ -13,7 +13,7 @@ defmodule Ash.Test.Type.EnumTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -33,32 +33,32 @@ defmodule Ash.Test.Type.EnumTest do
   test "it handles exact matches" do
     Post
     |> new(%{status: :open})
-    |> Api.create!()
+    |> Domain.create!()
   end
 
   test "it handles string matches" do
     Post
     |> new(%{status: "open"})
-    |> Api.create!()
+    |> Domain.create!()
   end
 
   test "it handles mixed case string matches" do
     Post
     |> new(%{status: "OpEn"})
-    |> Api.create!()
+    |> Domain.create!()
   end
 
   test "it handles mixed case string matches against mixed case atoms" do
     Post
     |> new(%{status: "nEveRHAppened"})
-    |> Api.create!()
+    |> Domain.create!()
   end
 
   test "it fails on mismatches" do
     assert_raise Ash.Error.Invalid, fn ->
       Post
       |> new(%{status: "what"})
-      |> Api.create!()
+      |> Domain.create!()
     end
   end
 

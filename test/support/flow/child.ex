@@ -1,7 +1,7 @@
 defmodule Ash.Test.Flow.ChildResource do
   @moduledoc false
   use Ash.Resource,
-    api: Ash.Test.Flow.Api,
+    domain: Ash.Test.Flow.Domain,
     authorizers: [Ash.Policy.Authorizer],
     data_layer: Ash.DataLayer.Ets
 

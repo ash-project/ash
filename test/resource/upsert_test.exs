@@ -3,7 +3,7 @@ defmodule Ash.Test.Resource.UpsertTest do
   use ExUnit.Case, async: true
   import Ash.Expr
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule LazyLoadVariants do
     @moduledoc false
@@ -11,7 +11,7 @@ defmodule Ash.Test.Resource.UpsertTest do
 
     def change(changeset, _opts, _context) do
       Ash.Changeset.after_action(changeset, fn _changeset, record ->
-        Api.load(record, :variants, lazy?: true)
+        Domain.load(record, :variants, lazy?: true)
       end)
     end
   end
@@ -22,7 +22,7 @@ defmodule Ash.Test.Resource.UpsertTest do
 
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
-      api: Api,
+      domain: Domain,
       extensions: []
 
     code_interface do
@@ -37,7 +37,7 @@ defmodule Ash.Test.Resource.UpsertTest do
 
     identities do
       identity :unique_name, [:name] do
-        pre_check_with Api
+        pre_check_with Domain
       end
     end
 
@@ -86,12 +86,12 @@ defmodule Ash.Test.Resource.UpsertTest do
     alias ProductCatalog.Product, warn: false
 
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       extensions: []
 
     identities do
-      identity(:sku, [:sku], pre_check_with: Api)
+      identity(:sku, [:sku], pre_check_with: Domain)
     end
 
     actions do
@@ -128,7 +128,7 @@ defmodule Ash.Test.Resource.UpsertTest do
           upsert_identity: :unique_name
         )
         |> Ash.Changeset.atomic_update(:name, expr(name <> " bar"))
-        |> Api.create!()
+        |> Domain.create!()
 
       assert product.name == "foo"
 
@@ -139,7 +139,7 @@ defmodule Ash.Test.Resource.UpsertTest do
           upsert_identity: :unique_name
         )
         |> Ash.Changeset.atomic_update(:name, expr(name <> " bar"))
-        |> Api.create!()
+        |> Domain.create!()
 
       assert updated.id == product.id
       assert updated.name == "foo bar"
@@ -182,7 +182,7 @@ defmodule Ash.Test.Resource.UpsertTest do
         |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy"},
           upsert_fields: :replace_all
         )
-        |> Api.create!()
+        |> Domain.create!()
 
       assert product.other == "malfoy"
     end
@@ -197,7 +197,7 @@ defmodule Ash.Test.Resource.UpsertTest do
         |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy"},
           upsert_fields: [:name]
         )
-        |> Api.create!()
+        |> Domain.create!()
 
       assert product.other == "george"
     end
@@ -212,7 +212,7 @@ defmodule Ash.Test.Resource.UpsertTest do
         |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy"},
           upsert_fields: {:replace, [:name]}
         )
-        |> Api.create!()
+        |> Domain.create!()
 
       assert product.other == "george"
     end
@@ -227,7 +227,7 @@ defmodule Ash.Test.Resource.UpsertTest do
         |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy"},
           upsert_fields: {:replace_all_except, [:other]}
         )
-        |> Api.create!()
+        |> Domain.create!()
 
       assert product.other == "george"
     end

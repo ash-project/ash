@@ -10,7 +10,7 @@ defmodule Ash.Engine.Request do
     :data,
     :notification_data,
     :name,
-    :api,
+    :domain,
     :query,
     :intermediate_data,
     :data_layer_query,
@@ -131,7 +131,7 @@ defmodule Ash.Engine.Request do
     * action_type - The action_type of the request
     * action - The action being performed on the data
     * async? - Whether or not the request *can* be asynchronous, defaults to `true`.
-    * api - The api module being called
+    * domain - The domain module being called
     * name - A human readable name for the request, used when logging/in errors
     * strict_check_only? - If true, authorization will not be allowed to proceed to a runtime check (so it cannot run db queries unless authorization is assured)
     * actor - The actor performing the action, used for authorization
@@ -178,7 +178,7 @@ defmodule Ash.Engine.Request do
       error_path: opts[:error_path],
       touches_resources: opts[:touches_resources] || [],
       data_layer_query: resolve([], fn _ -> nil end),
-      api: opts[:api],
+      domain: opts[:domain],
       name: opts[:name],
       strict_check_only?: opts[:strict_check_only?],
       state: :strict_check,
@@ -195,7 +195,7 @@ defmodule Ash.Engine.Request do
   def resource_notification(request) do
     %Ash.Notifier.Notification{
       resource: request.resource,
-      api: request.api,
+      domain: request.domain,
       actor: request.actor,
       action: request.action,
       data: request.notification_data,
@@ -906,7 +906,7 @@ defmodule Ash.Engine.Request do
       |> Ash.Query.filter(^filter)
 
     new_query
-    |> Map.put(:api, request.api)
+    |> Map.put(:domain, request.domain)
     |> Ash.Query.select([])
     |> Ash.Query.data_layer_query()
     |> case do
@@ -959,7 +959,7 @@ defmodule Ash.Engine.Request do
     query_with_pkey_filter = Ash.Query.filter(new_query, ^pkey)
 
     query_with_pkey_filter
-    |> Map.put(:api, request.api)
+    |> Map.put(:domain, request.domain)
     |> Ash.Query.select([])
     |> Ash.Query.data_layer_query()
     |> case do

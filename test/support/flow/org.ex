@@ -1,13 +1,13 @@
 defmodule Ash.Test.Flow.Org do
   @moduledoc false
-  use Ash.Resource, api: Ash.Test.Flow.Api, data_layer: Ash.DataLayer.Mnesia
+  use Ash.Resource, domain: Ash.Test.Flow.Domain, data_layer: Ash.DataLayer.Mnesia
 
   resource do
     description "Org model"
   end
 
   identities do
-    identity :unique_name, [:name], pre_check_with: Ash.Test.Flow.Api
+    identity :unique_name, [:name], pre_check_with: Ash.Test.Flow.Domain
   end
 
   actions do

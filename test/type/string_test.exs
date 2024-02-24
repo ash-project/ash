@@ -2,11 +2,11 @@ defmodule Ash.Test.Type.StringTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -47,7 +47,7 @@ defmodule Ash.Test.Type.StringTest do
         string_c: "  bar  ",
         string_d: "  bar  "
       })
-      |> Api.create!()
+      |> Domain.create!()
 
     assert post.string_a == "foo"
     assert post.string_b == "  foo  "
@@ -64,7 +64,7 @@ defmodule Ash.Test.Type.StringTest do
         string_c: " ",
         string_d: " "
       })
-      |> Api.create!()
+      |> Domain.create!()
 
     assert post.string_a == nil
     assert post.string_b == nil
@@ -81,7 +81,7 @@ defmodule Ash.Test.Type.StringTest do
     Enum.each(allowed_values, fn {e_val, f_val} ->
       Post
       |> new(%{string_e: e_val, string_f: f_val})
-      |> Api.create!()
+      |> Domain.create!()
     end)
   end
 
@@ -89,13 +89,13 @@ defmodule Ash.Test.Type.StringTest do
     assert_raise(Ash.Error.Invalid, ~r/string_e: length must be greater/, fn ->
       Post
       |> new(%{string_e: "   45   "})
-      |> Api.create!()
+      |> Domain.create!()
     end)
 
     assert_raise(Ash.Error.Invalid, ~r/string_f: length must be greater/, fn ->
       Post
       |> new(%{string_f: "12"})
-      |> Api.create!()
+      |> Domain.create!()
     end)
   end
 
@@ -103,13 +103,13 @@ defmodule Ash.Test.Type.StringTest do
     assert_raise(Ash.Error.Invalid, ~r/string_e: length must be less/, fn ->
       Post
       |> new(%{string_e: "1234567"})
-      |> Api.create!()
+      |> Domain.create!()
     end)
 
     assert_raise(Ash.Error.Invalid, ~r/string_f: length must be less/, fn ->
       Post
       |> new(%{string_f: "   45   "})
-      |> Api.create!()
+      |> Domain.create!()
     end)
   end
 end

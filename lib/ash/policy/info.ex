@@ -36,7 +36,7 @@ defmodule Ash.Policy.Info do
     raise "Cannot use `strict_check/3` unless an action has been set on the query/changeset"
   end
 
-  def strict_check(actor, %{__struct__: Ash.Query} = query, api) do
+  def strict_check(actor, %{__struct__: Ash.Query} = query, domain) do
     query = Ash.Query.set_context(query, %{private: %{pre_flight_authorization?: true}})
 
     authorizer = %Ash.Policy.Authorizer{
@@ -46,7 +46,7 @@ defmodule Ash.Policy.Info do
     }
 
     case Ash.Policy.Authorizer.strict_check(authorizer, %{
-           api: api,
+           domain: domain,
            query: query,
            changeset: nil
          }) do
@@ -64,7 +64,7 @@ defmodule Ash.Policy.Info do
     end
   end
 
-  def strict_check(actor, %{__struct__: Ash.Changeset} = changeset, api) do
+  def strict_check(actor, %{__struct__: Ash.Changeset} = changeset, domain) do
     changeset =
       Ash.Changeset.set_context(changeset, %{private: %{pre_flight_authorization?: true}})
 
@@ -75,7 +75,7 @@ defmodule Ash.Policy.Info do
     }
 
     case Ash.Policy.Authorizer.strict_check(authorizer, %{
-           api: api,
+           domain: domain,
            changeset: changeset,
            query: nil
          }) do

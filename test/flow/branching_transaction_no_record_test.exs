@@ -1,13 +1,13 @@
 defmodule Ash.Flow.BranchingTransactionNoRecordTest do
   @moduledoc false
   use ExUnit.Case, async: false
-  alias Ash.Test.Flow.{Api, Org, User}
+  alias Ash.Test.Flow.{Domain, Org, User}
 
   alias Ash.Test.Flow.Flows.SignUpUser
 
   setup do
     ExUnit.CaptureLog.capture_log(fn ->
-      Ash.DataLayer.Mnesia.start(Ash.Test.Flow.Api)
+      Ash.DataLayer.Mnesia.start(Ash.Test.Flow.Domain)
     end)
 
     on_exit(fn ->
@@ -20,7 +20,7 @@ defmodule Ash.Flow.BranchingTransactionNoRecordTest do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
-      |> Api.create!()
+      |> Domain.create!()
 
     SignUpUser.run!(org.name, "Bruce", "Wayne")
     :ok
@@ -37,7 +37,7 @@ defmodule Ash.Flow.BranchingTransactionNoRecordTest do
     user =
       User
       |> Ash.Query.for_read(:by_name, %{name: "Bat"})
-      |> Api.read!()
+      |> Domain.read!()
 
     assert user == []
 
@@ -49,7 +49,7 @@ defmodule Ash.Flow.BranchingTransactionNoRecordTest do
     users =
       User
       |> Ash.Query.for_read(:read)
-      |> Api.read!()
+      |> Domain.read!()
 
     assert length(users) == 2
   end

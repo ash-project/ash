@@ -63,10 +63,10 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       The read action on the destination resource to use when loading data and filtering.
       """
     ],
-    api: [
+    domain: [
       type: :atom,
       doc: """
-      The API module to use when working with the related entity.
+      The domain module to use when working with the related entity.
       """
     ],
     filter: [

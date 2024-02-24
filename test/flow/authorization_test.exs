@@ -1,11 +1,11 @@
 defmodule Ash.Flow.AuthorizationTest do
   use ExUnit.Case
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Post do
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -38,7 +38,7 @@ defmodule Ash.Flow.AuthorizationTest do
     use Ash.Flow
 
     flow do
-      api Api
+      domain(Domain)
 
       argument :post_id, :uuid do
         allow_nil? false
@@ -60,23 +60,23 @@ defmodule Ash.Flow.AuthorizationTest do
   end
 
   setup do
-    post = Post |> Ash.Changeset.for_create(:create) |> Api.create!()
+    post = Post |> Ash.Changeset.for_create(:create) |> Domain.create!()
 
     %{post: post}
   end
 
-  test "Api.destroy should fail when actor is not admin", %{post: post} do
+  test "Domain.destroy should fail when actor is not admin", %{post: post} do
     Ash.set_actor(%{admin: false})
 
     assert_raise Ash.Error.Forbidden, fn ->
-      post |> Api.destroy!()
+      post |> Domain.destroy!()
     end
   end
 
-  test "Api.destroy should succeed when actor is admin", %{post: post} do
+  test "Domain.destroy should succeed when actor is admin", %{post: post} do
     Ash.set_actor(%{admin: true})
 
-    post |> Api.destroy!()
+    post |> Domain.destroy!()
   end
 
   test "flow should fail when actor is not admin", %{post: post} do

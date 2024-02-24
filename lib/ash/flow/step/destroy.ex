@@ -1,6 +1,6 @@
 defmodule Ash.Flow.Step.Destroy do
   @moduledoc "Represents a destroy action step in an Ash.Flow"
-  use Ash.Flow.Step.BuiltinStep, [:resource, :action, :api, :input, :tenant, :record]
+  use Ash.Flow.Step.BuiltinStep, [:resource, :action, :domain, :input, :tenant, :record]
   @shared_opts Ash.Flow.Step.shared_opts()
   @shared_action_opts Ash.Flow.Step.shared_action_opts()
 

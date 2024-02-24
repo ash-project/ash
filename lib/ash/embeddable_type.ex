@@ -24,10 +24,10 @@ defmodule Ash.EmbeddableType do
       Aggregates are not supported on embedded resources.
       """
     ],
-    api: [
-      type: {:spark, Ash.Api},
+    domain: [
+      type: {:spark, Ash.Domain},
       doc:
-        "The api to use when interacting with the resource. Defaults to the api of the source changeset."
+        "The domain to use when interacting with the resource. Defaults to the domain of the source changeset."
     ],
     min_length: [
       type: :non_neg_integer,
@@ -64,9 +64,9 @@ defmodule Ash.EmbeddableType do
     ]
   ]
 
-  defmodule ShadowApi do
+  defmodule ShadowDomain do
     @moduledoc false
-    use Ash.Api, validate_config_inclusion?: false
+    use Ash.Domain, validate_config_inclusion?: false
 
     resources do
       allow_unregistered?(true)
@@ -144,7 +144,7 @@ defmodule Ash.EmbeddableType do
   defmacro single_embed_implementation(opts) do
     # credo:disable-for-next-line Credo.Check.Refactor.LongQuoteBlocks
     quote generated: true, location: :keep, bind_quoted: [opts: opts] do
-      alias Ash.EmbeddableType.ShadowApi
+      alias Ash.EmbeddableType.ShadowDomain
 
       def storage_type(_), do: :map
 
@@ -163,7 +163,7 @@ defmodule Ash.EmbeddableType do
         |> Ash.Changeset.new()
         |> Ash.EmbeddableType.copy_source(constraints)
         |> Ash.Changeset.for_create(action, value)
-        |> ShadowApi.create()
+        |> ShadowDomain.create()
         |> case do
           {:ok, result} ->
             {:ok, result}
@@ -195,7 +195,7 @@ defmodule Ash.EmbeddableType do
           end
 
         values
-        |> ShadowApi.bulk_create(
+        |> ShadowDomain.bulk_create(
           __MODULE__,
           action,
           Keyword.merge(opts,
@@ -257,8 +257,8 @@ defmodule Ash.EmbeddableType do
                 __MODULE__
                 |> Ash.DataLayer.Simple.set_data([casted])
                 |> Ash.Query.load(load)
-                |> Ash.Query.for_read(action, %{}, api: ShadowApi)
-                |> ShadowApi.read()
+                |> Ash.Query.for_read(action, %{}, domain: ShadowDomain)
+                |> ShadowDomain.read()
                 |> case do
                   {:ok, [casted]} ->
                     {:ok, casted}
@@ -326,14 +326,14 @@ defmodule Ash.EmbeddableType do
             :create_action,
             :destroy_action,
             :update_action,
-            :api,
+            :domain,
             :__source__
           ])
 
       def apply_constraints(nil, _), do: {:ok, nil}
 
       def apply_constraints(term, constraints) do
-        ShadowApi.load(term, constraints[:load] || [], lazy?: true)
+        ShadowDomain.load(term, constraints[:load] || [], lazy?: true)
       end
 
       def handle_change(nil, new_value, _constraints) do
@@ -345,7 +345,7 @@ defmodule Ash.EmbeddableType do
           constraints[:destroy_action] ||
             Ash.Resource.Info.primary_action!(__MODULE__, :destroy).name
 
-        case ShadowApi.destroy(old_value, action: action) do
+        case ShadowDomain.destroy(old_value, action: action) do
           :ok -> {:ok, nil}
           {:error, error} -> {:error, Ash.EmbeddableType.handle_errors(error)}
         end
@@ -368,7 +368,7 @@ defmodule Ash.EmbeddableType do
               constraints[:destroy_action] ||
                 Ash.Resource.Info.primary_action!(__MODULE__, :destroy).name
 
-            case ShadowApi.destroy(old_value, action: action) do
+            case ShadowDomain.destroy(old_value, action: action) do
               :ok ->
                 {:ok, new_value}
 
@@ -409,7 +409,7 @@ defmodule Ash.EmbeddableType do
           |> Ash.Changeset.new()
           |> Ash.EmbeddableType.copy_source(constraints)
           |> Ash.Changeset.for_update(action, new_uncasted_value)
-          |> ShadowApi.update()
+          |> ShadowDomain.update()
           |> case do
             {:ok, value} -> {:ok, value}
             {:error, error} -> {:error, Ash.EmbeddableType.handle_errors(error)}
@@ -441,7 +441,7 @@ defmodule Ash.EmbeddableType do
               |> Ash.Changeset.new()
               |> Ash.EmbeddableType.copy_source(constraints)
               |> Ash.Changeset.for_update(action, new_uncasted_value)
-              |> ShadowApi.update()
+              |> ShadowDomain.update()
               |> case do
                 {:ok, value} -> {:ok, value}
                 {:error, error} -> {:error, Ash.EmbeddableType.handle_errors(error)}
@@ -458,13 +458,13 @@ defmodule Ash.EmbeddableType do
   defmacro array_embed_implementation do
     # credo:disable-for-next-line Credo.Check.Refactor.LongQuoteBlocks
     quote location: :keep do
-      alias Ash.EmbeddableType.ShadowApi
+      alias Ash.EmbeddableType.ShadowDomain
 
       def cast_atomic_update_array(_, _) do
         {:not_atomic, "Embedded attributes do not support atomic updates"}
       end
 
-      def load(record, load, _constraints, %{api: api} = context) do
+      def load(record, load, _constraints, %{domain: domain} = context) do
         opts = Ash.context_to_opts(context)
 
         attribute_loads = __MODULE__ |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
@@ -475,7 +475,7 @@ defmodule Ash.EmbeddableType do
             load_statement -> attribute_loads ++ List.wrap(load_statement)
           end
 
-        api.load(record, load, opts)
+        domain.load(record, load, opts)
       end
 
       def merge_load(left, right, constraints, context) do
@@ -524,7 +524,7 @@ defmodule Ash.EmbeddableType do
                   query
                 end
 
-              case ShadowApi.read(query) do
+              case ShadowDomain.read(query) do
                 {:ok, result} ->
                   case Ash.Type.list_constraint_errors(result, constraints) do
                     [] ->
@@ -542,7 +542,7 @@ defmodule Ash.EmbeddableType do
                   |> Ash.EmbeddableType.copy_source(constraints)
                   |> Ash.Query.load(constraints[:load] || [])
 
-                ShadowApi.load(term, query)
+                ShadowDomain.load(term, query)
               else
                 {:ok, term}
               end
@@ -637,7 +637,7 @@ defmodule Ash.EmbeddableType do
           end)
         end)
         |> Enum.reduce_while(:ok, fn {record, index}, :ok ->
-          case ShadowApi.destroy(record, action: destroy_action) do
+          case ShadowDomain.destroy(record, action: destroy_action) do
             :ok ->
               {:cont, :ok}
 
@@ -728,7 +728,7 @@ defmodule Ash.EmbeddableType do
                     |> Ash.Changeset.new()
                     |> Ash.EmbeddableType.copy_source(constraints)
                     |> Ash.Changeset.for_update(action, new)
-                    |> ShadowApi.update()
+                    |> ShadowDomain.update()
                     |> case do
                       {:ok, value} ->
                         {:cont, {:ok, [value | new_uncasted_values]}}
@@ -785,13 +785,13 @@ defmodule Ash.EmbeddableType do
         |> Ash.Changeset.set_tenant(source.tenant)
         |> Ash.Changeset.set_context(source.context)
         |> Ash.Changeset.set_context(%{__source__: source})
-        |> Map.put(:api, source.api)
+        |> Map.put(:domain, source.domain)
       else
         changeset
       end
 
-    if api = opts[:api] do
-      Map.put(changeset, :api, api)
+    if domain = opts[:domain] do
+      Map.put(changeset, :domain, domain)
     else
       changeset
     end

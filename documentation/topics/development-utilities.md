@@ -2,7 +2,7 @@
 
 ## ElixirSense Plugin
 
-The Ash ElixirSense plugin offers custom auto complete inside of any Ash DSL module (i.e `Ash.Resource`/`Ash.Api`)
+The Ash ElixirSense plugin offers custom auto complete inside of any Ash DSL module (i.e `Ash.Resource`/`Ash.Domain`)
 
 As of this writing, this does not work with the currently released VSCode package. We are waiting for them to do another release
 to resolve this issue. However, you can clone down the elixir-ls repository, run its release command, and configure VSCode to point

@@ -2,11 +2,11 @@ defmodule Ash.Test.CodeInterfaceTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule User do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -155,7 +155,9 @@ defmodule Ash.Test.CodeInterfaceTest do
   describe "calculations" do
     test "calculation value can be fetched dynamically" do
       assert {:ok, "Zach Daniel"} =
-               Api.calculate(User, :full_name, refs: %{first_name: "Zach", last_name: "Daniel"})
+               Domain.calculate(User, :full_name,
+                 refs: %{first_name: "Zach", last_name: "Daniel"}
+               )
     end
 
     test "the same calculation can be fetched with the calculation interface" do
@@ -171,7 +173,7 @@ defmodule Ash.Test.CodeInterfaceTest do
       user =
         User
         |> Ash.Changeset.for_create(:create, %{first_name: "Zach", last_name: "Daniel"})
-        |> Api.create!()
+        |> Domain.create!()
 
       assert "Zach Daniel" = User.full_name_record!(user)
     end
@@ -181,7 +183,7 @@ defmodule Ash.Test.CodeInterfaceTest do
     user =
       User
       |> Ash.Changeset.for_create(:create, %{first_name: "ted", last_name: "Danson"})
-      |> Api.create!()
+      |> Domain.create!()
 
     assert User.get_by_id!(user.id).id == user.id
   end

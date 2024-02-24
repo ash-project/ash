@@ -3,7 +3,7 @@ defmodule Ash.Flow.Step.Read do
   use Ash.Flow.Step.BuiltinStep, [
     :resource,
     :action,
-    :api,
+    :domain,
     :input,
     :tenant,
     get?: false,

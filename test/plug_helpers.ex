@@ -58,9 +58,9 @@ defmodule Ash.Test.PlugHelpersTest do
     end
   end
 
-  defmodule Api do
+  defmodule Domain do
     @moduledoc false
-    use Ash.Api
+    use Ash.Domain
 
     resources do
       resource Customer
@@ -75,13 +75,13 @@ defmodule Ash.Test.PlugHelpersTest do
 
     User
     |> Changeset.for_create(:create, attrs, tenant: attrs.customer_id)
-    |> Api.create!()
+    |> Domain.create!()
   end
 
   def build_tenant(attrs) do
     Customer
     |> Changeset.for_create(:create, attrs)
-    |> Api.create!()
+    |> Domain.create!()
   end
 
   doctest Ash.PlugHelpers

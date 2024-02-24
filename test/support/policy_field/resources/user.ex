@@ -1,7 +1,7 @@
 defmodule Ash.Test.Support.PolicyField.User do
   @moduledoc false
   use Ash.Resource,
-    api: Ash.Test.Support.PolicyField.Api,
+    domain: Ash.Test.Support.PolicyField.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer]
 

@@ -3,16 +3,16 @@ defmodule Ash.Test.Resource.CalculationsTest do
   use ExUnit.Case, async: true
 
   alias Ash.Resource.Calculation
-  alias Ash.Test.Support.PolicySimple.Api
+  alias Ash.Test.Support.PolicySimple.Domain
   alias Ash.Test.Support.PolicySimple.Post
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, api: Api
+        use Ash.Resource, domain: Domain
 
         attributes do
           uuid_primary_key :id
@@ -78,7 +78,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
     test "calculations can access attributes of parent" do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
         attributes do
           uuid_primary_key :id
@@ -112,7 +112,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
 
       defmodule Comment do
         @moduledoc false
-        use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
         attributes do
           uuid_primary_key :id
@@ -138,22 +138,22 @@ defmodule Ash.Test.Resource.CalculationsTest do
       post =
         Post
         |> Ash.Changeset.for_create(:create, %{name: "Post 1", contents: "Contents 1"})
-        |> Api.create!()
+        |> Domain.create!()
 
       comment =
         Comment
         |> Ash.Changeset.for_create(:create, %{post_id: post.id})
-        |> Api.create!()
+        |> Domain.create!()
 
       # assert true == true
-      comment_with_post_name = Api.load!(comment, :post_name)
+      comment_with_post_name = Domain.load!(comment, :post_name)
       assert comment_with_post_name.post_name == post.name
     end
 
     test "calculations can access attributes of parent in multitenant context" do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
         multitenancy do
           strategy(:context)
@@ -191,7 +191,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
 
       defmodule Comment do
         @moduledoc false
-        use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
         multitenancy do
           strategy(:context)
@@ -225,14 +225,14 @@ defmodule Ash.Test.Resource.CalculationsTest do
         |> Ash.Changeset.for_create(:create, %{name: "Post 1", contents: "Contents 1"},
           tenant: tenant_id
         )
-        |> Api.create!()
+        |> Domain.create!()
 
       comment =
         Comment
         |> Ash.Changeset.for_create(:create, %{post_id: post.id}, tenant: tenant_id)
-        |> Api.create!()
+        |> Domain.create!()
 
-      comment_with_post_name = Api.load!(comment, :post_name, tenant: tenant_id)
+      comment_with_post_name = Domain.load!(comment, :post_name, tenant: tenant_id)
       assert comment_with_post_name.post_name == post.name
     end
   end

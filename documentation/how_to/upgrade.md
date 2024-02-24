@@ -6,11 +6,11 @@ This section contains each breaking change, and the steps required to address it
 
 ### DSL Changes
 
-* `code_interface.define_for` is now `code_interface.api`. Additionally, it is set automatically if the `api` option is specified on `use Ash.Resource`.
+* `code_interface.define_for` is now `code_interface.domain`. Additionally, it is set automatically if the `domain` option is specified on `use Ash.Resource`.
 
 ### `Ash.Registry` has been removed
 
-`Ash.Registry` is no longer needed. Place each resource in the api instead.
+`Ash.Registry` is no longer needed. Place each resource in the domain instead.
 
 ```elixir
 resources do
@@ -143,47 +143,65 @@ def requires_original_data?(_resource, _action), do: true
 
 Keep in mind, this will prevent the usage of these checks/notifiers with atomic actions.
 
-### the `Api` of a resource must now be known when constructing a changeset, query or action input
+### the `Domain` of a resource must now be known when constructing a changeset, query or action input
 
-In order to honor rules on the `Api` module about authorization and timeouts, we have to know the `Api` when building the changeset.
+In order to honor rules on the `Domain` module about authorization and timeouts, we have to know the `Domain` when building the changeset.
 
 #### What you'll need to change
 
 ##### Embedded Resources
 
-The api for the calls to embedded resources is gotten from the parent changeset. No need to change them at all. an `api` constraint
-has been added in case you wish to make a given embedded resource use a specific api always.
+The domain for the calls to embedded resources is gotten from the parent changeset. No need to change them at all. a `domain` constraint has been added in case you wish to make a given embedded resource use a specific domain always.
 
 For example:
 
 ```elixir
 attribute :bio, MyApp.Bio do
-  constraints api: MyApp.SomeApi
+  constraints domain: MyApp.SomeDomain
 end
 ```
 
-##### Single Api resources
+##### Single Domain resources
 
-While it is possible for resources to be used with multiple APIs, it almost never happens in practice. Any resources that are only used from a single 
-api only (*not* including embedded resources) should be modified to have an `api` option specified in their call to `use Ash.Resource`. For example:
+While it is possible for resources to be used with multiple domains, it almost never happens in practice. Any resources that are only used from a single domain only (*not* including embedded resources) should be modified to have a `domain` option specified in their call to `use Ash.Resource`. For example:
 
 ```elixir
 use Ash.Resource,
-  api: MyApp.MyApi
+  domain: MyApp.MyDomain
 ```
 
-##### Multi Api resources
+###### Using `Ash.*` to interact with your resources
 
-For these, you will need to include the `api` option every time you construct a changeset.
+For resources that have a static domain configured, you can now use functions in `Ash` to interact with your resources. They are the same as what is available in your domain module. For example:
+
+```elixir
+MyDomain1.create!(changeset)
+MyDomain2.read!(query)
+MyDomain3.calculate!(...)
+```
+
+can now be written as
+
+```elixir
+Ash.create!(changeset)
+Ash.read!(query)
+Ash.calculate!(query)
+```
+
+This makes refactoring resources easier, as you no longer need to change the call site, it remains the same regardless of what Domain a resource is in.
+
+##### Multi Domain resources
+
+For these, you will need to include the `domain` option every time you construct a changeset.
 
 For example:
 
 ```elixir
 MyResource
-|> Ash.Changeset.for_create(:create, input, api: MyApp.MyApi)
+|> Ash.Changeset.for_create(:create, input, domain: MyApp.MyDomain)
 ```
 
-### `Api.authorization.authorize` now defaults to `:by_default`
+### `Domain.authorization.authorize` now defaults to `:by_default`
 
 Previously, the default was `:when_requested`. This meant that, unless you said `actor: some_actor` or `authorize?: true`, authorization was skipped. This has the obvious drawback of making it easy to accidentally bypass authorization unintentionally. In 3.0, this now defaults to `:by_default`.
 
@@ -191,7 +209,7 @@ Previously, the default was `:when_requested`. This meant that, unless you said 
 
 ##### Keep old behavior
 
-To avoid making a significant refactor, and to keep your current behavior, you can go to your api and set the configuration below. Otherwise skip to the refactor steps below. We advise that you take this route to start, but we *highly suggest* that you change your apis to `authorize :by_default` in the future. `authorize :when_requested` will not be deprecated, so there is no time constraint.
+To avoid making a significant refactor, and to keep your current behavior, you can go to your domain and set the configuration below. Otherwise skip to the refactor steps below. We advise that you take this route to start, but we *highly suggest* that you change your domains to `authorize :by_default` in the future. `authorize :when_requested` will not be deprecated, so there is no time constraint.
 
 ```elixir
 authorization do
@@ -201,9 +219,9 @@ end
 
 ##### Refactor
 
-For each api that has the old configuration, after setting it to the new config, you'll need to revisit each call to that api that doesn't set an actor or the `authorize?` option, and add `authorize?: false`.
+For each domain that has the old configuration, after setting it to the new config, you'll need to revisit each call to that domain that doesn't set an actor or the `authorize?` option, and add `authorize?: false`.
 
-This may be a good time to do the refactor from `YourApi.func` to `Ash.func`, if you want to.
+This may be a good time to do the refactor from `YourDomain.func` to `Ash.func`, if you want to. See the section about domains being required when building changesets.
 
 ### `require_atomic?` defaults to `true` 
 

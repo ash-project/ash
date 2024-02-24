@@ -29,11 +29,11 @@ If a Project resource has_many Ticket resources, an example of an aggregate on t
 
 See the [Aggregates guide](/documentation/topics/aggregates.md) for more information.
 
-## API
+## Domain
 
-A method of broadly separating resources into different [bounded contexts](https://martinfowler.com/bliki/BoundedContext.html). Small apps might only have one API, in which case you can set-and-forget it, but apps with larger domains can benefit from different contexts having different views of the same resource.
+A method of broadly separating resources into different [domains](https://en.wikipedia.org/wiki/Domain_(software_engineering)), A.K.A [bounded contexts](https://martinfowler.com/bliki/BoundedContext.html).
 
-See `d:Ash.Api` for more information.
+See `d:Ash.Domain` for more information.
 
 ## Attribute
 

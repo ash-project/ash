@@ -18,7 +18,7 @@ Tweet
 |> Ash.Query.for_read(:read)
 |> Ash.Query.sort(posted_at: :desc)
 |> Ash.Query.filter(author.id == ^current_user.id or exists(author.friends, id == ^current_user.id))
-# assuming the name of your api was `Tweets`
+# assuming the name of your domain was `Tweets`
 |> Tweets.read!()
 ```
 
@@ -37,7 +37,7 @@ Tweet
   end
 end)
 |> Ash.Query.filter(author.id == ^current_user.id or exists(author.friends, id == ^current_user.id))
-# assuming the name of your api was `Tweets`
+# assuming the name of your domain was `Tweets`
 |> Tweets.read!()
 ```
 

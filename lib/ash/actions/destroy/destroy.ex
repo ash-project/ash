@@ -5,12 +5,12 @@ defmodule Ash.Actions.Destroy do
 
   require Ash.Tracer
 
-  @spec run(Ash.Api.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
+  @spec run(Ash.Domain.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
           {:ok, list(Ash.Notifier.Notification.t())}
           | :ok
           | {:error, Ash.Changeset.t()}
           | {:error, term}
-  def run(api, changeset, %{soft?: true} = action, opts) do
+  def run(domain, changeset, %{soft?: true} = action, opts) do
     changeset =
       if changeset.__validated_for_action__ == action.name do
         %{changeset | action_type: :destroy}
@@ -20,11 +20,11 @@ defmodule Ash.Actions.Destroy do
         )
       end
 
-    Ash.Actions.Update.run(api, changeset, action, opts)
+    Ash.Actions.Update.run(domain, changeset, action, opts)
   end
 
-  def run(api, changeset, action, opts) do
-    {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
+  def run(domain, changeset, action, opts) do
+    {changeset, opts} = Ash.Actions.Helpers.add_process_context(domain, changeset, opts)
 
     Ash.Tracer.span :action,
                     Ash.Api.Info.span_name(
@@ -79,11 +79,11 @@ defmodule Ash.Actions.Destroy do
               __STACKTRACE__
   end
 
-  def do_run(api, changeset, action, opts) do
-    {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
+  def do_run(domain, changeset, action, opts) do
+    {changeset, opts} = Ash.Actions.Helpers.add_process_context(domain, changeset, opts)
 
     return_destroyed? = opts[:return_destroyed?]
-    changeset = %{changeset | api: api}
+    changeset = %{changeset | domain: domain}
 
     changeset =
       if opts[:tenant] do
@@ -93,9 +93,9 @@ defmodule Ash.Actions.Destroy do
       end
 
     with %{valid?: true} = changeset <- Ash.Changeset.validate_multitenancy(changeset),
-         %{valid?: true} = changeset <- changeset(changeset, api, action, opts),
-         %{valid?: true} = changeset <- authorize(changeset, api, opts),
-         {:commit, {:ok, result, instructions}} <- {:commit, commit(changeset, api, opts)} do
+         %{valid?: true} = changeset <- changeset(changeset, domain, action, opts),
+         %{valid?: true} = changeset <- authorize(changeset, domain, opts),
+         {:commit, {:ok, result, instructions}} <- {:commit, commit(changeset, domain, opts)} do
       changeset.resource
       |> add_notifications(
         changeset.action,
@@ -136,9 +136,9 @@ defmodule Ash.Actions.Destroy do
     end
   end
 
-  defp authorize(changeset, api, opts) do
+  defp authorize(changeset, domain, opts) do
     if opts[:authorize?] do
-      case api.can(changeset, opts[:actor],
+      case domain.can(changeset, opts[:actor],
              alter_source?: true,
              return_forbidden_error?: true,
              maybe_is: false
@@ -157,7 +157,7 @@ defmodule Ash.Actions.Destroy do
     end
   end
 
-  defp commit(changeset, api, opts) do
+  defp commit(changeset, domain, opts) do
     changeset
     |> Ash.Changeset.put_context(:private, %{actor: opts[:actor], authorize?: opts[:authorize?]})
     |> Ash.Changeset.with_hooks(
@@ -166,7 +166,7 @@ defmodule Ash.Actions.Destroy do
           {:error, changeset}
 
         changeset ->
-          case Helpers.load({:ok, changeset.data, %{}}, changeset, api,
+          case Helpers.load({:ok, changeset.data, %{}}, changeset, domain,
                  actor: opts[:actor],
                  authorize?: opts[:authorize?],
                  tracer: opts[:tracer]
@@ -184,7 +184,7 @@ defmodule Ash.Actions.Destroy do
                     actor: opts[:actor],
                     tenant: changeset.tenant,
                     authorize?: opts[:authorize?],
-                    api: changeset.api
+                    domain: changeset.domain
                   })
                   |> validate_manual_action_return_result!(changeset.resource, changeset.action)
                 end
@@ -321,8 +321,8 @@ defmodule Ash.Actions.Destroy do
     result
   end
 
-  defp changeset(changeset, api, action, opts) do
-    changeset = %{changeset | api: api}
+  defp changeset(changeset, domain, action, opts) do
+    changeset = %{changeset | domain: domain}
 
     if changeset.__validated_for_action__ == action.name do
       changeset

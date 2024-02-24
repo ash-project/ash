@@ -19,14 +19,14 @@ defmodule Ash.Resource do
       extensions: [Ash.Resource.Dsl]
     ],
     opt_schema: [
-      validate_api_inclusion?: [
+      validate_domain_inclusion?: [
         type: :boolean,
         default: true
       ],
-      api: [
+      domain: [
         type: :atom,
         doc:
-          "The api to use when interacting with this resource. Also sets defaults for various options that ask for an api."
+          "The domain to use when interacting with this resource. Also sets defaults for various options that ask for an domain."
       ],
       embed_nil_values?: [
         type: :boolean,
@@ -51,34 +51,35 @@ defmodule Ash.Resource do
 
   @impl true
   def verify(module, opts) do
-    if Application.get_env(:ash, :validate_api_resource_inclusion?, true) &&
-         Keyword.get(opts, :validate_api_inclusion?, true) && !Ash.Resource.Info.embedded?(module) &&
+    if Application.get_env(:ash, :validate_domain_resource_inclusion?, true) &&
+         Keyword.get(opts, :validate_domain_inclusion?, true) &&
+         !Ash.Resource.Info.embedded?(module) &&
          Code.ensure_loaded?(Mix.Project) do
       otp_app = Mix.Project.config()[:app]
 
-      apis =
-        Application.get_env(otp_app, :ash_apis, [])
+      domains =
+        Application.get_env(otp_app, :ash_domains, [])
 
-      contained_in_api =
-        apis
-        |> Enum.flat_map(&Ash.Api.Info.resources/1)
+      contained_in_domain =
+        domains
+        |> Enum.flat_map(&Ash.Domain.Info.resources/1)
         |> Enum.any?(&(&1 == module))
 
-      if !contained_in_api do
+      if !contained_in_domain do
         IO.warn("""
-        Resource #{inspect(module)} is not present in any known Ash.Api module.
+        Resource #{inspect(module)} is not present in any known Ash.Domain module.
 
-        Api modules checked: #{inspect(apis)}
+        Domain modules checked: #{inspect(domains)}
 
-        We check the following configuration for api modules:
+        We check the following configuration for domain modules:
 
-           config :#{otp_app}, ash_apis: #{inspect(apis)}
+           config :#{otp_app}, ash_domains: #{inspect(domains)}
 
         To resolve this warning, do one of the following.
 
-        1. Add the resource to one of your configured api modules.
-        2. Add the option `validate_api_inclusion?: false` to `use Ash.Resource`
-        3. Configure all resources not to warn, with `config :ash, :validate_api_resource_inclusion?, false`
+        1. Add the resource to one of your configured domain modules.
+        2. Add the option `validate_domain_inclusion?: false` to `use Ash.Resource`
+        3. Configure all resources not to warn, with `config :ash, :validate_domain_resource_inclusion?, false`
         """)
       end
     end
@@ -90,26 +91,26 @@ defmodule Ash.Resource do
     quote bind_quoted: [
             opts: opts,
             embedded?: opts[:embedded?],
-            api: opts[:api],
-            has_api?: Keyword.has_key?(opts, :api),
+            domain: opts[:domain],
+            has_domain?: Keyword.has_key?(opts, :domain),
             embed_nil_values?: opts[:embed_nil_values?]
           ] do
-      unless has_api? || embedded? do
+      unless has_domain? || embedded? do
         IO.warn("""
         Configuration Error:
 
-        `api` option missing for #{inspect(__MODULE__)}
+        `domain` option missing for #{inspect(__MODULE__)}
 
-        If you wish to make a resource compatible with multiple apis, set the api to `nil` explicitly.
+        If you wish to make a resource compatible with multiple domains, set the domain to `nil` explicitly.
 
         Example configuration:
 
-        use Ash.Resource, #{String.trim_trailing(String.trim_leading(inspect([{:api, YourApi} | opts], pretty: true), "["), "]")}
+        use Ash.Resource, #{String.trim_trailing(String.trim_leading(inspect([{:domain, YourDomain} | opts], pretty: true), "["), "]")}
         """)
       end
 
-      if api do
-        @persist {:api, api}
+      if domain do
+        @persist {:domain, domain}
       end
 
       if embedded? do
@@ -130,11 +131,11 @@ defmodule Ash.Resource do
         def cast_input(%struct{} = value, _) when struct == __MODULE__, do: {:ok, value}
 
         @impl Ash.Type
-        def load(records, load, _constraints, %{api: api} = context) do
+        def load(records, load, _constraints, %{domain: domain} = context) do
           opts = Ash.context_to_opts(context)
           attribute_loads = __MODULE__ |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
 
-          api.load(records, List.wrap(load), opts)
+          domain.load(records, List.wrap(load), opts)
         end
 
         @impl Ash.Type
@@ -196,14 +197,15 @@ defmodule Ash.Resource do
       end
 
       if Ash.Resource.Info.define_interface?(__MODULE__) do
-        if api =
-             Ash.Resource.Info.code_interface_api(__MODULE__) || Ash.Resource.Info.api(__MODULE__) do
-          if api == __MODULE__ do
-            raise "code_interface.api should be set to the API module you want it to call, not the resource."
+        if domain =
+             Ash.Resource.Info.code_interface_domain(__MODULE__) ||
+               Ash.Resource.Info.domain(__MODULE__) do
+          if domain == __MODULE__ do
+            raise "code_interface.domain should be set to a Domain module, not the resource."
           end
 
           require Ash.CodeInterface
-          Ash.CodeInterface.define_interface(api, __MODULE__)
+          Ash.CodeInterface.define_interface(domain, __MODULE__)
         end
       end
 
@@ -271,7 +273,7 @@ defmodule Ash.Resource do
       ```elixir
       Resource
       |> Ash.Changeset.for_create(:create, %{embedded: EmbeddedResource.input(foo: 1, bar: 2)})
-      |> MyApp.Api.create()
+      |> Ash.create()
       ```
       """
       @spec input(values :: map | Keyword.t()) :: map | no_return

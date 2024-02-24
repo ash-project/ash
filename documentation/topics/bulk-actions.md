@@ -14,10 +14,10 @@ create :create do
 end
 ```
 
-You could then call `YourApi.bulk_create` like so:
+You could then call `Ash.bulk_create` like so:
 
 ```elixir
-YourApi.bulk_create([ %{title: "foo", subtitle: "bar"}, %{title: "baz", subtitle: "buz"}], Resource, :action)
+Ash.bulk_create([ %{title: "foo", subtitle: "bar"}, %{title: "baz", subtitle: "buz"}], Resource, :action)
 ```
 
 ## Considerations
@@ -36,7 +36,7 @@ Returning a stream allows you to work with a bulk action as an Elixir Stream. Fo
 
 ```elixir
 input_stream()
-|> YourApi.bulk_create(Resource, :action, return_stream?: true, return_records?: true)
+|> Ash.bulk_create(Resource, :action, return_stream?: true, return_records?: true)
 |> Stream.map(fn {:ok, result} -> 
   # process results
   {:error, error} ->
@@ -55,7 +55,7 @@ Because streams are lazily evaluated, if you were to do something like this:
 
 ```elixir
 [input1, input2, ...] # has 300 things in it
-|> YourApi.bulk_create(Resource, :action, return_stream?: true, return_records?: true, batch_size: 100) # the default is 100
+|> Ash.bulk_create(Resource, :action, return_stream?: true, return_records?: true, batch_size: 100) # the default is 100
 |> Enum.take(150)
 ```
 

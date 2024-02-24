@@ -11,14 +11,14 @@ defmodule Ash.Resource.Calculation.LoadAttribute do
   end
 
   def calculate(list, opts, context) do
-    api = opts[:api]
+    domain = opts[:domain]
 
     load_opts = Ash.context_to_opts(context, opts[:opts] || [])
 
     if opts[:load] do
-      api.load(list, [{opts[:attribute], opts[:load]}], load_opts)
+      domain.load(list, [{opts[:attribute], opts[:load]}], load_opts)
     else
-      api.load(list, [opts[:attribute]], load_opts)
+      domain.load(list, [opts[:attribute]], load_opts)
     end
     |> case do
       {:ok, values} ->

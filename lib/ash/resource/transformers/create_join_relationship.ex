@@ -37,7 +37,7 @@ defmodule Ash.Resource.Transformers.CreateJoinRelationship do
                 name: relationship.join_relationship,
                 destination: relationship.through,
                 destination_attribute: relationship.source_attribute_on_join_resource,
-                api: relationship.api,
+                domain: relationship.domain,
                 source_attribute: relationship.source_attribute,
                 private?: true
               ]

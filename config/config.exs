@@ -15,15 +15,15 @@ if Mix.env() == :dev do
 end
 
 if Mix.env() == :test do
-  config :ash, :ash_apis, [
-    Ash.Test.Flow.Api,
-    Ash.Test.Support.PolicyRbac.Api,
-    Ash.Test.Support.PolicyComplex.Api,
-    Ash.Test.Support.PolicySimple.Api
+  config :ash, :ash_domains, [
+    Ash.Test.Flow.Domain,
+    Ash.Test.Support.PolicyRbac.Domain,
+    Ash.Test.Support.PolicyComplex.Domain,
+    Ash.Test.Support.PolicySimple.Domain
   ]
 
   config :ash, :sat_testing, true
 
-  config :ash, :validate_api_resource_inclusion?, false
-  config :ash, :validate_api_config_inclusion?, false
+  config :ash, :validate_domain_resource_inclusion?, false
+  config :ash, :validate_domain_config_inclusion?, false
 end

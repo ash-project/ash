@@ -460,7 +460,7 @@ end
 | [`not_found_message`](#relationships-has_one-not_found_message){: #relationships-has_one-not_found_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships. |
 | [`writable?`](#relationships-has_one-writable?){: #relationships-has_one-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-has_one-read_action){: #relationships-has_one-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
-| [`api`](#relationships-has_one-api){: #relationships-has_one-api } | `atom` |  | The API module to use when working with the related entity. |
+| [`domain`](#relationships-has_one-domain){: #relationships-has_one-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filter`](#relationships-has_one-filter){: #relationships-has_one-filter } | `any` |  | A filter to be applied when reading the relationship. |
 | [`filterable?`](#relationships-has_one-filterable?){: #relationships-has_one-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sort`](#relationships-has_one-sort){: #relationships-has_one-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
@@ -521,7 +521,7 @@ end
 | [`not_found_message`](#relationships-has_many-not_found_message){: #relationships-has_many-not_found_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships. |
 | [`writable?`](#relationships-has_many-writable?){: #relationships-has_many-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-has_many-read_action){: #relationships-has_many-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
-| [`api`](#relationships-has_many-api){: #relationships-has_many-api } | `atom` |  | The API module to use when working with the related entity. |
+| [`domain`](#relationships-has_many-domain){: #relationships-has_many-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filter`](#relationships-has_many-filter){: #relationships-has_many-filter } | `any` |  | A filter to be applied when reading the relationship. |
 | [`filterable?`](#relationships-has_many-filterable?){: #relationships-has_many-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sort`](#relationships-has_many-sort){: #relationships-has_many-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
@@ -593,7 +593,7 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 | [`not_found_message`](#relationships-many_to_many-not_found_message){: #relationships-many_to_many-not_found_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships. |
 | [`writable?`](#relationships-many_to_many-writable?){: #relationships-many_to_many-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-many_to_many-read_action){: #relationships-many_to_many-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
-| [`api`](#relationships-many_to_many-api){: #relationships-many_to_many-api } | `atom` |  | The API module to use when working with the related entity. |
+| [`domain`](#relationships-many_to_many-domain){: #relationships-many_to_many-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filter`](#relationships-many_to_many-filter){: #relationships-many_to_many-filter } | `any` |  | A filter to be applied when reading the relationship. |
 | [`filterable?`](#relationships-many_to_many-filterable?){: #relationships-many_to_many-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sort`](#relationships-many_to_many-sort){: #relationships-many_to_many-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
@@ -659,7 +659,7 @@ end
 | [`not_found_message`](#relationships-belongs_to-not_found_message){: #relationships-belongs_to-not_found_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on update or create, or when managing relationships. |
 | [`writable?`](#relationships-belongs_to-writable?){: #relationships-belongs_to-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-belongs_to-read_action){: #relationships-belongs_to-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
-| [`api`](#relationships-belongs_to-api){: #relationships-belongs_to-api } | `atom` |  | The API module to use when working with the related entity. |
+| [`domain`](#relationships-belongs_to-domain){: #relationships-belongs_to-domain } | `atom` |  | The domain module to use when working with the related entity. |
 | [`filter`](#relationships-belongs_to-filter){: #relationships-belongs_to-filter } | `any` |  | A filter to be applied when reading the relationship. |
 | [`filterable?`](#relationships-belongs_to-filterable?){: #relationships-belongs_to-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sort`](#relationships-belongs_to-sort){: #relationships-belongs_to-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
@@ -763,7 +763,7 @@ action name, returns
 
 Declares a generic action. A combination of arguments, a return type and a run function.
 
-For calling this action, see the `Ash.Api` documentation.
+For calling this action, see the `Ash.Domain` documentation.
 
 
 ### Nested DSLs
@@ -860,7 +860,7 @@ create name
 ```
 
 
-Declares a `create` action. For calling this action, see the `Ash.Api` documentation.
+Declares a `create` action. For calling this action, see the `Ash.Domain` documentation.
 
 
 ### Nested DSLs
@@ -1101,7 +1101,7 @@ read name
 ```
 
 
-Declares a `read` action. For calling this action, see the `Ash.Api` documentation.
+Declares a `read` action. For calling this action, see the `Ash.Domain` documentation.
 
 
 ### Nested DSLs
@@ -1310,7 +1310,7 @@ update name
 ```
 
 
-Declares a `update` action. For calling this action, see the `Ash.Api` documentation.
+Declares a `update` action. For calling this action, see the `Ash.Domain` documentation.
 
 
 ### Nested DSLs
@@ -1545,7 +1545,7 @@ destroy name
 ```
 
 
-Declares a `destroy` action. For calling this action, see the `Ash.Api` documentation.
+Declares a `destroy` action. For calling this action, see the `Ash.Domain` documentation.
 
 
 ### Nested DSLs
@@ -1782,7 +1782,7 @@ Target: `Ash.Resource.Actions.Destroy`
 
 
 ## code_interface
-Functions that will be defined on the Api module to interact with this resource. See the [code interface guide](/documentation/topics/code-interface.md) for more.
+Functions that will be defined on the resource. See the [code interface guide](/documentation/topics/code-interface.md) for more.
 
 
 ### Nested DSLs
@@ -1806,7 +1806,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`api`](#code_interface-api){: #code_interface-api } | `module` | `false` | Use the provided Api instead of the resources configured api when calling actions. |
+| [`domain`](#code_interface-domain){: #code_interface-domain } | `module` | `false` | Use the provided Domain instead of the resources configured domain when calling actions. |
 | [`define?`](#code_interface-define?){: #code_interface-define? } | `boolean` |  | Whether or not to define the code interface in the resource. |
 
 
@@ -1988,7 +1988,7 @@ identity :full_name, [:first_name, :last_name]
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`eager_check_with`](#identities-identity-eager_check_with){: #identities-identity-eager_check_with } | `module` |  | Validates that the unique identity provided is unique at validation time, outside of any transactions, using the api module provided. |
+| [`eager_check_with`](#identities-identity-eager_check_with){: #identities-identity-eager_check_with } | `module` |  | Validates that the unique identity provided is unique at validation time, outside of any transactions, using the domain module provided. |
 | [`pre_check_with`](#identities-identity-pre_check_with){: #identities-identity-pre_check_with } | `module` |  | Validates that the unique identity provided is unique in a before_action hook. |
 | [`description`](#identities-identity-description){: #identities-identity-description } | `String.t` |  | An optional description for the identity |
 | [`message`](#identities-identity-message){: #identities-identity-message } | `String.t` |  | An error message to use when the unique identity would be violated |

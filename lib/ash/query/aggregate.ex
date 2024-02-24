@@ -120,7 +120,7 @@ defmodule Ash.Query.Aggregate do
   end
 
   @doc """
-  Create a new aggregate, used with `Query.aggregate` or `Api.aggregate`
+  Create a new aggregate, used with `Query.aggregate` or `Ash.aggregate`
 
   Options:
 

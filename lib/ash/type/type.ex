@@ -62,10 +62,7 @@ defmodule Ash.Type do
                              "Constraints for the elements of the list. See the contained type's docs for more."
                          )
   @moduledoc """
-  Describes how to convert data to `Ecto.Type` and eventually into the database.
-
-  This behaviour is a superset of the `Ecto.Type` behaviour, that also contains
-  API level information, like what kinds of filters are allowed.
+  The `Ash.Type` behaviour is used to define a value type in Ash.
 
   ## Built in types
 
@@ -166,7 +163,7 @@ defmodule Ash.Type do
   @type error :: :error | {:error, String.t() | Keyword.t()}
 
   @type load_context :: %{
-          api: Ash.Api.t(),
+          domain: Ash.Domain.t(),
           actor: term() | nil,
           tenant: term(),
           tracer: list(Ash.Tracer.t()) | Ash.Tracer.t() | nil,
@@ -174,7 +171,7 @@ defmodule Ash.Type do
         }
 
   @type merge_load_context :: %{
-          api: Ash.Api.t(),
+          domain: Ash.Domain.t(),
           calc_name: term(),
           calc_load: term(),
           calc_path: list(atom),

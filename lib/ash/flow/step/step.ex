@@ -78,10 +78,10 @@ defmodule Ash.Flow.Step do
         required: true,
         doc: "The action to call on the resource."
       ],
-      api: [
+      domain: [
         type: :any,
         doc:
-          "The api to use when calling the action. Defaults to the api set in the `flow` section."
+          "The domain to use when calling the action. Defaults to the domain set in the `flow` section."
       ],
       tenant: [
         type: :any,

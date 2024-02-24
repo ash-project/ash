@@ -192,18 +192,18 @@ performing relationship operations like filtering and loading.
 
 See the docs for more: `d:Ash.Resource.Dsl.relationships.many_to_many`
 
-### Relationships across APIs
+### Cross-domain relationships
 
-You will need to specify the `api` option in the relationship if the destination resource and/or the join table are parts of a different API:
+You will need to specify the `domain` option in the relationship if the destination resource and/or the join table are parts of a different domain:
 
 ```elixir
-many_to_many :authors, MyApp.OtherApi.Resource do
-  api MyApp.OtherApi
+many_to_many :authors, MyApp.OtherDomain.Resource do
+  domain MyApp.OtherDomain
   ...
 end
 ```
 
-However, if the join table is a part of the same API but the destination resource is a part of a different API, you will have to add a custom `has_many` association to the source API as well. Suppose you have an API called `MyApp.Organizations` with a resource named `MyApp.Organizations.Organization`, an API called `MyApp.Accounts` with a resource named `MyApp.Accounts.User`, as well as a join resource `MyApp.Organizations.OrganizationUsers`. Then, in order to add `many_to_many :users` for `MyApp.Organizations.Organization`, you'll need the following setup:
+However, if the join table is a part of the same domain but the destination resource is a part of a different domain, you will have to add a custom `has_many` association to the source domain as well. Suppose you have an domain called `MyApp.Organizations` with a resource named `MyApp.Organizations.Organization`, an domain called `MyApp.Accounts` with a resource named `MyApp.Accounts.User`, as well as a join resource `MyApp.Organizations.OrganizationUsers`. Then, in order to add `many_to_many :users` for `MyApp.Organizations.Organization`, you'll need the following setup:
 
 ```elixir
 relationships do
@@ -212,7 +212,7 @@ relationships do
   has_many :users_join_assoc, MyApp.Organizations.OrganizationUsers
 
   many_to_many :users, MyApp.Accounts.User do
-    api MyApp.Accounts
+    domain MyApp.Accounts
     through MyApp.Organizations.OrganizationUsers
     source_attribute_on_join_resource :organization_id
     destination_attribute_on_join_resource :user_id
@@ -225,18 +225,18 @@ end
 There are two ways to load relationships:
 
 - in the query using `Ash.Query.load/2`
-- directly on records using `c:Ash.Api.load/3`
+- directly on records using `c:Ash.Domain.load/3`
 
 ### On records
 
-Given a single record or a set of records, it is possible to load their relationships by calling the `load` function on the record's parent API. For example:
+Given a single record or a set of records, it is possible to load their relationships by calling the `load` function on the record's parent domain. For example:
 
 ```elixir
 # user = %User{...}
-YourApi.load(user, :tweets)
+Ash.load(user, :tweets)
 
 # users = [%User{...}, %User{...}, ....]
-YourApi.load(users, :tweets)
+Ash.load(users, :tweets)
 ```
 
 This will fetch the tweets for each user, and set them in the corresponding `tweets` key.
@@ -252,7 +252,7 @@ This will fetch the tweets for each user, and set them in the corresponding `twe
 }
 ```
 
-See `c:Ash.Api.load/3` for more information.
+See `c:Ash.Domain.load/3` for more information.
 
 ### In the query
 
@@ -261,7 +261,7 @@ The following will return a list of users with their tweets loaded identically t
 ```elixir
 User
 |> Ash.Query.load(:tweets)
-|> YourApi.read()
+|> Ash.read()
 ```
 
 At present, loading relationships in the query is fundamentally the same as loading on records. Eventually, data layers will be able to optimize these loads (potentially including them as joins in the main query).
@@ -273,13 +273,13 @@ See `Ash.Query.load/2` for more information.
 Multiple relationships can be loaded at once, i.e
 
 ```elixir
-YourApi.load(users, [:tweets, :followers])
+Ash.load(users, [:tweets, :followers])
 ```
 
 Nested relationships can be loaded:
 
 ```elixir
-YourApi.load(users, followers: [:tweets, :followers])
+Ash.load(users, followers: [:tweets, :followers])
 ```
 
 The queries used for loading can be customized by providing a query as the value.
@@ -287,7 +287,7 @@ The queries used for loading can be customized by providing a query as the value
 ```elixir
 followers = Ash.Query.sort(User, follower_count: :asc)
 
-YourApi.load(users, followers: followers)
+Ash.load(users, followers: followers)
 ```
 
 Nested loads will be included in the parent load.
@@ -299,7 +299,7 @@ followers =
   |> Ash.Query.load(:followers)
 
 # Will load followers and followers of those followers
-YourApi.load(users, followers: followers)
+Ash.load(users, followers: followers)
 ```
 
 ## no_attributes? true

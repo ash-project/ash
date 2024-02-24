@@ -2,7 +2,7 @@ defmodule Ash.Test.ErrorTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule TestError do
     use Ash.Error.Exception
@@ -10,7 +10,7 @@ defmodule Ash.Test.ErrorTest do
   end
 
   defmodule TestResource do
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
       defaults [:create, :read, :update, :destroy]

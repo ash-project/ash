@@ -1,12 +1,12 @@
 defmodule Ash.Flow.BranchingTransactionMappingTest do
   @moduledoc false
   use ExUnit.Case, async: false
-  alias Ash.Test.Flow.{Api, Org}
+  alias Ash.Test.Flow.{Domain, Org}
   alias Ash.Test.Flow.Flows.SignUpUser
 
   setup do
     ExUnit.CaptureLog.capture_log(fn ->
-      Ash.DataLayer.Mnesia.start(Ash.Test.Flow.Api)
+      Ash.DataLayer.Mnesia.start(Ash.Test.Flow.Domain)
     end)
 
     on_exit(fn ->
@@ -19,7 +19,7 @@ defmodule Ash.Flow.BranchingTransactionMappingTest do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
-      |> Api.create!()
+      |> Domain.create!()
 
     SignUpUser.run!(org.name, "Bruce", "Wayne")
     :ok

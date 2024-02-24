@@ -3,7 +3,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
   use ExUnit.Case, async: true
 
   require Ash.Query
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule AddAfterToTitle do
     use Ash.Resource.Change
@@ -38,7 +38,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -100,7 +100,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
 
     identities do
       identity :unique_title, :title do
-        pre_check_with Ash.Test.Actions.BulkUpdateTest.Api
+        pre_check_with Ash.Test.Actions.BulkUpdateTest.Domain
       end
     end
 
@@ -130,20 +130,20 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
 
   test "returns destroyed records" do
     assert %Ash.BulkResult{records: [%{}, %{}]} =
-             Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+             Domain.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
                return_records?: true
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_destroy!(:destroy, %{},
+             |> Domain.bulk_destroy!(:destroy, %{},
                resource: Post,
                return_records?: true,
                return_errors?: true
              )
 
-    assert [] = Api.read!(Post)
+    assert [] = Domain.read!(Post)
   end
 
   test "runs changes" do
@@ -153,14 +153,14 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                %{title: "title2_stuff"}
              ]
            } =
-             Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+             Domain.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
                return_records?: true
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_destroy!(:destroy_with_change, %{},
+             |> Domain.bulk_destroy!(:destroy_with_change, %{},
                resource: Post,
                return_records?: true,
                return_errors?: true
@@ -169,7 +169,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                Enum.sort_by(records, & &1.title)
              end)
 
-    assert [] = Api.read!(Post)
+    assert [] = Domain.read!(Post)
   end
 
   test "accepts arguments" do
@@ -179,14 +179,14 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                %{title: "title2", title2: "updated value"}
              ]
            } =
-             Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+             Domain.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
                return_records?: true
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_destroy!(:destroy_with_argument, %{a_title: "updated value"},
+             |> Domain.bulk_destroy!(:destroy_with_argument, %{a_title: "updated value"},
                resource: Post,
                return_records?: true,
                return_errors?: true
@@ -195,7 +195,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                Enum.sort_by(records, & &1.title)
              end)
 
-    assert [] = Api.read!(Post)
+    assert [] = Domain.read!(Post)
   end
 
   test "runs after batch hooks" do
@@ -205,14 +205,14 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                %{title: "before_title2_after"}
              ]
            } =
-             Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+             Domain.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
                return_records?: true
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_destroy!(:destroy_with_after_batch, %{},
+             |> Domain.bulk_destroy!(:destroy_with_after_batch, %{},
                resource: Post,
                return_records?: true,
                return_errors?: true
@@ -221,26 +221,26 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                Enum.sort_by(records, & &1.title)
              end)
 
-    assert [] = Api.read!(Post)
+    assert [] = Domain.read!(Post)
   end
 
   test "will return error count" do
     assert %Ash.BulkResult{
              error_count: 2
            } =
-             Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+             Domain.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
                return_records?: true
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_destroy(:destroy, %{title2: "what"},
+             |> Domain.bulk_destroy(:destroy, %{title2: "what"},
                resource: Post,
                return_records?: true
              )
 
-    assert [_, _] = Api.read!(Post)
+    assert [_, _] = Domain.read!(Post)
   end
 
   test "will return errors on request" do
@@ -248,19 +248,19 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              error_count: 1,
              errors: [%Ash.Changeset{}]
            } =
-             Api.bulk_create!([%{title: "title1"}], Post, :create,
+             Domain.bulk_create!([%{title: "title1"}], Post, :create,
                return_stream?: true,
                return_records?: true
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_destroy(:destroy_with_argument, %{a_title: %{invalid: :value}},
+             |> Domain.bulk_destroy(:destroy_with_argument, %{a_title: %{invalid: :value}},
                resource: Post,
                return_errors?: true
              )
 
-    assert [_] = Api.read!(Post)
+    assert [_] = Domain.read!(Post)
   end
 
   test "runs after action hooks" do
@@ -270,14 +270,14 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                %{title: "title2_stuff"}
              ]
            } =
-             Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+             Domain.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
                return_records?: true
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_destroy!(:destroy_with_after_action, %{},
+             |> Domain.bulk_destroy!(:destroy_with_after_action, %{},
                resource: Post,
                return_records?: true,
                return_errors?: true
@@ -286,7 +286,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                Enum.sort_by(records, & &1.title)
              end)
 
-    assert [] = Api.read!(Post)
+    assert [] = Domain.read!(Post)
   end
 
   test "runs after transaction hooks" do
@@ -296,14 +296,14 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                %{title: "title2_stuff"}
              ]
            } =
-             Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+             Domain.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
                return_records?: true
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_destroy!(:destroy_with_after_transaction, %{},
+             |> Domain.bulk_destroy!(:destroy_with_after_transaction, %{},
                resource: Post,
                return_records?: true,
                return_errors?: true
@@ -312,7 +312,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                Enum.sort_by(records, & &1.title)
              end)
 
-    assert [] = Api.read!(Post)
+    assert [] = Domain.read!(Post)
   end
 
   test "soft destroys" do
@@ -322,14 +322,14 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                %{title2: "archived"}
              ]
            } =
-             Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+             Domain.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
                return_records?: true
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_destroy!(:soft, %{},
+             |> Domain.bulk_destroy!(:soft, %{},
                resource: Post,
                return_records?: true,
                return_errors?: true
@@ -342,14 +342,14 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
   describe "authorization" do
     test "policy success results in successes" do
       assert %Ash.BulkResult{records: [_, _], errors: []} =
-               Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+               Domain.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                  return_stream?: true,
                  return_records?: true
                )
                |> Stream.map(fn {:ok, result} ->
                  result
                end)
-               |> Api.bulk_destroy(
+               |> Domain.bulk_destroy(
                  :destroy_with_policy,
                  %{authorize?: true},
                  authorize?: true,
@@ -360,14 +360,14 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     end
 
     test "policy success results in successes with query" do
-      Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+      Domain.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
         return_records?: true
       )
 
       assert %Ash.BulkResult{errors: []} =
                Post
                |> Ash.Query.filter(title: [in: ["title1", "title2"]])
-               |> Api.bulk_destroy(
+               |> Domain.bulk_destroy(
                  :destroy_with_policy,
                  %{authorize?: true},
                  authorize?: true,
@@ -377,14 +377,14 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
 
     test "policy failure results in failures" do
       assert %Ash.BulkResult{errors: [_, _], records: []} =
-               Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+               Domain.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                  return_stream?: true,
                  return_records?: true
                )
                |> Stream.map(fn {:ok, result} ->
                  result
                end)
-               |> Api.bulk_destroy(
+               |> Domain.bulk_destroy(
                  :destroy_with_policy,
                  %{authorize?: false},
                  authorize?: true,

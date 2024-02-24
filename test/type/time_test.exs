@@ -2,11 +2,11 @@ defmodule Ash.Test.Type.TimeTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -33,7 +33,7 @@ defmodule Ash.Test.Type.TimeTest do
         time_a: ~T[08:30:00],
         time_b: ~T[15:45:30]
       })
-      |> Api.create!()
+      |> Domain.create!()
 
     assert post.time_a == ~T[08:30:00]
     assert post.time_b == ~T[15:45:30]
