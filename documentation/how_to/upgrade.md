@@ -53,6 +53,13 @@ is now
 change after_action(fn changeset, result, context -> ... end)
 ```
 
+### Ash.Api is now Ash.Domain
+
+The previous name was often confusing as this is an overloaded term for many. To that end, `Ash.Api` has been renamed to `Ash.Domain`, which better fits our usage and concepts. To make this change you will need to do two primary things:
+
+1. replace `Ash.Api` with `Ash.Domain` in your application
+2. replace places where an `:api` option is passed to a function with the `:domain` option. For example, `AshPhoenix.Form.for_create(..., api: MyApp.SomeApi)` should now be `AshPhoenix.Form.for_create(..., domain: MyApp.SomeDomain)`
+
 ### Context in changes, preparations, validations, calculations are now structs
 
 To help make it clear what keys are available in the context provided to callbacks on these modules, they have been adjusted to provide a *struct* instead of a `map`. This helps avoid potential ambiguity, and
