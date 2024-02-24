@@ -4,10 +4,10 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
 
   alias Ash.Resource.Validation.Compare
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Post do
-    use Ash.Resource, api: Api
+    use Ash.Resource, domain: Domain
 
     attributes do
       uuid_primary_key :id

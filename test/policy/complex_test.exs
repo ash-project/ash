@@ -3,7 +3,7 @@ defmodule Ash.Test.Policy.ComplexTest do
   use ExUnit.Case, async?: false
   require Ash.Query
 
-  alias Ash.Test.Support.PolicyComplex.{Api, Bio, Comment, Post, User}
+  alias Ash.Test.Support.PolicyComplex.{Bio, Comment, Domain, Post, User}
 
   setup do
     Application.put_env(:ash, :policies, show_policy_breakdowns?: true)
@@ -83,7 +83,7 @@ defmodule Ash.Test.Policy.ComplexTest do
   } do
     assert [post_by_me.id, post_by_my_friend.id] |> Enum.sort() ==
              Post
-             |> Api.read!(actor: me)
+             |> Domain.read!(actor: me)
              |> Enum.map(& &1.id)
              |> Enum.sort()
   end
@@ -95,7 +95,7 @@ defmodule Ash.Test.Policy.ComplexTest do
   } do
     assert [comment_by_me_on_my_post.id, comment_by_my_friend_on_my_post.id] |> Enum.sort() ==
              Comment
-             |> Api.read!(actor: me)
+             |> Domain.read!(actor: me)
              |> Enum.map(& &1.id)
              |> Enum.sort()
   end
@@ -104,14 +104,14 @@ defmodule Ash.Test.Policy.ComplexTest do
     assert [_] =
              Post
              |> Ash.Query.filter(comments.text == "comment by a friend of a friend on my post")
-             |> Api.read!(actor: me, authorize?: false)
+             |> Domain.read!(actor: me, authorize?: false)
 
     assert [] =
              Post
              |> Ash.Query.filter_input(
                comments: [text: "comment by a friend of a friend on my post"]
              )
-             |> Api.read!(actor: me)
+             |> Domain.read!(actor: me)
   end
 
   test "it properly scopes single loads", %{me: me} do
@@ -119,15 +119,15 @@ defmodule Ash.Test.Policy.ComplexTest do
              User
              |> Ash.Query.filter(best_friend.name == "me")
              |> Ash.Query.deselect(:private_email)
-             |> Api.read!(actor: me)
-             |> Api.load!(:best_friend, actor: me)
+             |> Domain.read!(actor: me)
+             |> Domain.load!(:best_friend, actor: me)
   end
 
   test "aggregates can be loaded and filtered on", %{me: me} do
     Post
     |> Ash.Query.load(:count_of_comments)
     |> Ash.Query.filter(count_of_comments == 10)
-    |> Api.read!(actor: me)
+    |> Domain.read!(actor: me)
   end
 
   test "aggregates join paths are authorized", %{me: me, post_by_me: post_by_me} do
@@ -135,7 +135,7 @@ defmodule Ash.Test.Policy.ComplexTest do
       Post
       |> Ash.Query.load(:count_of_commenters)
       |> Ash.Query.filter(id == ^post_by_me.id)
-      |> Api.read_one!(authorize?: false)
+      |> Domain.read_one!(authorize?: false)
       |> Map.get(:count_of_commenters)
 
     assert count_of_commenters_without_authorization == 3
@@ -144,7 +144,7 @@ defmodule Ash.Test.Policy.ComplexTest do
       Post
       |> Ash.Query.load(:count_of_commenters)
       |> Ash.Query.filter(id == ^post_by_me.id)
-      |> Api.read_one!(actor: me)
+      |> Domain.read_one!(actor: me)
       |> Map.get(:count_of_commenters)
 
     assert count_of_commenters_with_authorization == 2
@@ -153,32 +153,32 @@ defmodule Ash.Test.Policy.ComplexTest do
   test "aggregates in calculations are authorized", %{me: me} do
     Post
     |> Ash.Query.load([:count_of_comments_calc, :count_of_comments])
-    |> Api.read!(actor: me, authorize?: true)
+    |> Domain.read!(actor: me, authorize?: true)
   end
 
   test "data can be loaded without forbidden errors from selecting", %{me: me} do
     users =
       Ash.Test.Support.PolicyComplex.User
       |> Ash.Query.deselect(:private_email)
-      |> Api.read!(actor: me)
+      |> Domain.read!(actor: me)
 
     users
-    |> Api.load!([:posts], actor: me, authorize?: true)
+    |> Domain.load!([:posts], actor: me, authorize?: true)
   end
 
   test "loading data honors `accessing_from` policies", %{me: me} do
-    Api.load!(me, [:bio], authorize?: true, actor: me)
+    Domain.load!(me, [:bio], authorize?: true, actor: me)
     me |> User.set_bio!("New bio!", authorize?: true, actor: me)
 
     User
     |> Ash.Query.filter(bio == "New bio!")
     |> Ash.Query.deselect(:private_email)
-    |> Api.read_one!(authorize?: true, actor: me)
+    |> Domain.read_one!(authorize?: true, actor: me)
 
-    me |> Api.load!([:bio_text], authorize?: true, actor: me)
+    me |> Domain.load!([:bio_text], authorize?: true, actor: me)
 
     assert_raise Ash.Error.Forbidden, fn ->
-      Api.read!(Bio, actor: me, authorize?: true)
+      Domain.read!(Bio, actor: me, authorize?: true)
     end
   end
 end

@@ -2,11 +2,11 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Author do
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     attributes do
@@ -29,7 +29,7 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
 
   defmodule Account do
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     attributes do
@@ -43,7 +43,7 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
 
   defmodule Post do
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     attributes do
@@ -80,21 +80,21 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     actor =
       Author
       |> Ash.Changeset.for_create(:create)
-      |> Api.create!()
+      |> Domain.create!()
 
     params = [text: "foo"]
 
     post_with =
       Post
       |> Ash.Changeset.for_create(:create_with_actor, params, actor: actor)
-      |> Api.create!()
+      |> Domain.create!()
 
     assert post_with.author_id == actor.id
 
     {:error, changeset} =
       Post
       |> Ash.Changeset.for_create(:create_with_actor, params, actor: nil)
-      |> Api.create()
+      |> Domain.create()
 
     assert changeset.errors |> Enum.count() == 1
   end
@@ -103,17 +103,17 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     account =
       Account
       |> Ash.Changeset.for_create(:create, %{})
-      |> Api.create!()
+      |> Domain.create!()
 
     actor =
       Author
       |> Ash.Changeset.for_create(:create_with_account, %{account: account})
-      |> Api.create!()
+      |> Domain.create!()
 
     post =
       Post
       |> Ash.Changeset.for_create(:create_with_actor_field, %{text: "foo"}, actor: actor)
-      |> Api.create!()
+      |> Domain.create!()
 
     assert post.account_id == account.id
   end
@@ -122,13 +122,13 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     actor =
       Author
       |> Ash.Changeset.for_create(:create)
-      |> Api.create!()
-      |> Api.load!(:account)
+      |> Domain.create!()
+      |> Domain.load!(:account)
 
     {:error, changeset} =
       Post
       |> Ash.Changeset.for_create(:create_with_actor_field, %{text: "foo"}, actor: actor)
-      |> Api.create()
+      |> Domain.create()
 
     assert changeset.errors |> Enum.count() == 1
   end
@@ -137,21 +137,21 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     actor =
       Author
       |> Ash.Changeset.for_create(:create)
-      |> Api.create!()
+      |> Domain.create!()
 
     params = [text: "foo"]
 
     post_with =
       Post
       |> Ash.Changeset.for_create(:create_possibly_without_actor, params, actor: actor)
-      |> Api.create!()
+      |> Domain.create!()
 
     assert post_with.author_id == actor.id
 
     post_without =
       Post
       |> Ash.Changeset.for_create(:create_possibly_without_actor, params, actor: nil)
-      |> Api.create!()
+      |> Domain.create!()
 
     assert is_nil(post_without.author_id)
   end

@@ -4,10 +4,10 @@ defmodule Ash.Test.Actions.ManyToManyTest do
 
   require Ash.Query
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
-  defmodule OtherApi do
-    use Ash.Api
+  defmodule OtherDomain do
+    use Ash.Domain
 
     resources do
       allow_unregistered? true
@@ -16,7 +16,7 @@ defmodule Ash.Test.Actions.ManyToManyTest do
 
   defmodule PostLink do
     use Ash.Resource,
-      api: OtherApi,
+      domain: OtherDomain,
       data_layer: Ash.DataLayer.Ets
 
     actions do
@@ -37,7 +37,7 @@ defmodule Ash.Test.Actions.ManyToManyTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -64,7 +64,7 @@ defmodule Ash.Test.Actions.ManyToManyTest do
     relationships do
       has_many :post_links, PostLink do
         destination_attribute :source_id
-        api OtherApi
+        domain(OtherDomain)
       end
 
       many_to_many :linked_posts, __MODULE__ do
@@ -83,7 +83,7 @@ defmodule Ash.Test.Actions.ManyToManyTest do
         title: "buz",
         linked_posts: [%{title: "foo"}, %{title: "bar"}]
       })
-      |> Api.create!()
+      |> Domain.create!()
     end
   end
 end

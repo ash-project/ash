@@ -86,7 +86,7 @@ defmodule Ash.MixProject do
         "documentation/topics/timeouts.md",
         "documentation/topics/validations.md",
         "documentation/dsls/DSL:-Ash.Resource.md",
-        "documentation/dsls/DSL:-Ash.Api.md",
+        "documentation/dsls/DSL:-Ash.Domain.md",
         "documentation/dsls/DSL:-Ash.Notifier.PubSub.md",
         "documentation/dsls/DSL:-Ash.Policy.Authorizer.md",
         "documentation/dsls/DSL:-Ash.Flow.md",
@@ -105,8 +105,8 @@ defmodule Ash.MixProject do
         Ash.Error,
         Ash.Flow.Transformers,
         Ash.Policy.Authorizer,
-        Ash.Api.Transformers,
-        Ash.Api.Verifiers,
+        Ash.Domain.Transformers,
+        Ash.Domain.Verifiers,
         Ash.Resource.Transformers,
         Ash.Resource.Verifiers,
         Ash.Query.Function,
@@ -148,7 +148,7 @@ defmodule Ash.MixProject do
         ],
         "Action Input & Interface": [
           Ash,
-          Ash.Api,
+          Ash.Domain,
           Ash.Query,
           Ash.Changeset,
           Ash.ActionInput,
@@ -186,14 +186,14 @@ defmodule Ash.MixProject do
           Ash.Reactor
         ],
         Introspection: [
-          Ash.Api.Info,
+          Ash.Domain.Info,
           Ash.Resource.Info,
           Ash.Flow.Info,
           Ash.Policy.Info,
           Ash.DataLayer.Ets.Info,
           Ash.DataLayer.Mnesia.Info,
           Ash.Notifier.PubSub.Info,
-          ~r/Ash.Api.Dsl.*/
+          ~r/Ash.Domain.Dsl.*/
         ],
         Utilities: [
           Ash.Expr,
@@ -221,8 +221,8 @@ defmodule Ash.MixProject do
           Ash.SatSolver
         ],
         Visualizations: [
-          Ash.Api.Info.Diagram,
-          Ash.Api.Info.Livebook,
+          Ash.Domain.Info.Diagram,
+          Ash.Domain.Info.Livebook,
           Ash.Policy.Chart.Mermaid
         ],
         Testing: [

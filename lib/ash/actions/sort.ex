@@ -265,7 +265,7 @@ defmodule Ash.Actions.Sort do
 
   Opts
 
-  * `:api` - The api to use if data needs to be loaded
+  * `:domain` - The domain to use if data needs to be loaded
   * `:lazy?` - Whether to use already loaded values or to re-load them when necessary. Defaults to `false`
   """
   def runtime_sort(results, sort, opts \\ [])
@@ -276,7 +276,7 @@ defmodule Ash.Actions.Sort do
   def runtime_sort([%resource{} | _] = results, [{field, direction} | rest], opts) do
     results
     |> load_field(field, resource, opts)
-    |> Enum.group_by(&resolve_field(&1, field, resource, api: opts))
+    |> Enum.group_by(&resolve_field(&1, field, resource, domain: opts))
     |> Enum.sort_by(fn {key, _value} -> key end, to_sort_by_fun(direction))
     |> Enum.flat_map(fn {_, records} ->
       runtime_sort(records, rest, Keyword.put(opts, :rekey?, false))
@@ -302,7 +302,7 @@ defmodule Ash.Actions.Sort do
   def runtime_distinct([%resource{} | _] = results, [{field, direction} | rest], opts) do
     results
     |> load_field(field, resource, opts)
-    |> Enum.group_by(&resolve_field(&1, field, resource, api: opts))
+    |> Enum.group_by(&resolve_field(&1, field, resource, domain: opts))
     |> Enum.sort_by(fn {key, _value} -> key end, to_sort_by_fun(direction))
     |> Enum.map(fn {_key, [first | _]} ->
       first
@@ -312,7 +312,7 @@ defmodule Ash.Actions.Sort do
   end
 
   defp load_field(records, field, resource, opts) do
-    if is_nil(opts[:api]) || (opts[:lazy?] && Ash.Resource.loaded?(records, field)) do
+    if is_nil(opts[:domain]) || (opts[:lazy?] && Ash.Resource.loaded?(records, field)) do
       records
     else
       query =
@@ -321,14 +321,14 @@ defmodule Ash.Actions.Sort do
         |> Ash.Query.load(field)
         |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-      opts[:api].load!(records, query)
+      opts[:domain].load!(records, query)
     end
   end
 
   defp resolve_field(record, %Ash.Query.Calculation{} = calc, resource, opts) do
     cond do
       calc.module.has_calculate?() ->
-        context = Map.put(calc.context, :api, opts[:api])
+        context = Map.put(calc.context, :domain, opts[:domain])
 
         case calc.module.calculate([record], calc.opts, context) do
           {:ok, [value]} -> value

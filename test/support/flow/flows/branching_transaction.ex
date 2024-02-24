@@ -3,7 +3,7 @@ defmodule Ash.Test.Flow.Flows.BranchingTransaction do
   use Ash.Flow
 
   flow do
-    api Ash.Test.Flow.Api
+    domain(Ash.Test.Flow.Domain)
 
     argument :do_branch, :boolean do
       allow_nil? false

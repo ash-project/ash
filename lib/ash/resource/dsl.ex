@@ -429,7 +429,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares a generic action. A combination of arguments, a return type and a run function.
 
-    For calling this action, see the `Ash.Api` documentation.
+    For calling this action, see the `Ash.Domain` documentation.
     """,
     examples: [
       """
@@ -457,7 +457,7 @@ defmodule Ash.Resource.Dsl do
   @create %Spark.Dsl.Entity{
     name: :create,
     describe: """
-    Declares a `create` action. For calling this action, see the `Ash.Api` documentation.
+    Declares a `create` action. For calling this action, see the `Ash.Domain` documentation.
     """,
     examples: [
       """
@@ -521,7 +521,7 @@ defmodule Ash.Resource.Dsl do
   @read %Spark.Dsl.Entity{
     name: :read,
     describe: """
-    Declares a `read` action. For calling this action, see the `Ash.Api` documentation.
+    Declares a `read` action. For calling this action, see the `Ash.Domain` documentation.
     """,
     examples: [
       """
@@ -558,7 +558,7 @@ defmodule Ash.Resource.Dsl do
   @update %Spark.Dsl.Entity{
     name: :update,
     describe: """
-    Declares a `update` action. For calling this action, see the `Ash.Api` documentation.
+    Declares a `update` action. For calling this action, see the `Ash.Domain` documentation.
     """,
     imports: [
       Ash.Resource.Change.Builtins,
@@ -592,7 +592,7 @@ defmodule Ash.Resource.Dsl do
   @destroy %Spark.Dsl.Entity{
     name: :destroy,
     describe: """
-    Declares a `destroy` action. For calling this action, see the `Ash.Api` documentation.
+    Declares a `destroy` action. For calling this action, see the `Ash.Domain` documentation.
     """,
     examples: [
       """
@@ -820,7 +820,7 @@ defmodule Ash.Resource.Dsl do
   @code_interface %Spark.Dsl.Section{
     name: :code_interface,
     describe: """
-    Functions that will be defined on the Api module to interact with this resource. See the [code interface guide](/documentation/topics/code-interface.md) for more.
+    Functions that will be defined on the resource. See the [code interface guide](/documentation/topics/code-interface.md) for more.
     """,
     examples: [
       """
@@ -830,11 +830,12 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    no_depend_modules: [:api],
+    no_depend_modules: [:domain],
     schema: [
-      api: [
-        type: {:spark, Ash.Api},
-        doc: "Use the provided Api instead of the resources configured api when calling actions.",
+      domain: [
+        type: {:spark, Ash.Domain},
+        doc:
+          "Use the provided Domain instead of the resources configured domain when calling actions.",
         default: false
       ],
       define?: [
@@ -1405,7 +1406,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.ValidateManagedRelationshipOpts,
     Ash.Resource.Verifiers.ValidateMultitenancy,
     Ash.Resource.Verifiers.ValidatePrimaryKey,
-    Ash.Resource.Verifiers.VerifyAcceptedByApi,
+    Ash.Resource.Verifiers.VerifyAcceptedByDomain,
     Ash.Resource.Verifiers.VerifyActionsAtomic
   ]
 

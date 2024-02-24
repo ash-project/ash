@@ -4,12 +4,12 @@ defmodule Ash.Test.GeneratorTest do
   use ExUnitProperties
   import Ash.Seed
   require Ash.Query
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -44,7 +44,7 @@ defmodule Ash.Test.GeneratorTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -76,7 +76,7 @@ defmodule Ash.Test.GeneratorTest do
 
   defmodule PostCategory do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -97,14 +97,14 @@ defmodule Ash.Test.GeneratorTest do
 
   defmodule Category do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     identities do
-      identity :unique_name, [:name], pre_check_with: Api
+      identity :unique_name, [:name], pre_check_with: Domain
     end
 
     actions do
@@ -126,7 +126,7 @@ defmodule Ash.Test.GeneratorTest do
 
   defmodule Rating do
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -144,7 +144,7 @@ defmodule Ash.Test.GeneratorTest do
 
     relationships do
       belongs_to :post, Post do
-        api Ash.Test.GeneratorTest.Category
+        domain(Ash.Test.GeneratorTest.Category)
       end
     end
   end
@@ -154,7 +154,7 @@ defmodule Ash.Test.GeneratorTest do
       check all(input <- Ash.Generator.action_input(Post, :create)) do
         Post
         |> Ash.Changeset.for_create(:create, input)
-        |> Api.create!()
+        |> Domain.create!()
       end
     end
 
@@ -166,7 +166,7 @@ defmodule Ash.Test.GeneratorTest do
         post =
           Post
           |> Ash.Changeset.for_create(:create, input)
-          |> Api.create!()
+          |> Domain.create!()
 
         assert post.title == "text"
       end
@@ -183,14 +183,14 @@ defmodule Ash.Test.GeneratorTest do
     test "a directly usable changeset can be created" do
       Post
       |> Ash.Generator.changeset(:create)
-      |> Api.create!()
+      |> Domain.create!()
     end
 
     test "many changesets can be generated" do
       posts =
         Post
         |> Ash.Generator.many_changesets(:create, 5)
-        |> Enum.map(&Api.create!/1)
+        |> Enum.map(&Domain.create!/1)
 
       assert Enum.count(posts) == 5
     end

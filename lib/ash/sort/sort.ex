@@ -287,5 +287,5 @@ defmodule Ash.Sort do
   collation that affects their sorting, making it unpredictable from the perspective
   of a tool using the database: https://www.postgresql.org/docs/current/collation.html
   """
-  defdelegate runtime_sort(results, sort, api \\ nil), to: Ash.Actions.Sort
+  defdelegate runtime_sort(results, sort, domain \\ nil), to: Ash.Actions.Sort
 end

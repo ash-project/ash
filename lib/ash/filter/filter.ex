@@ -218,9 +218,9 @@ defmodule Ash.Filter do
   end
 
   # Used for fetching related data in filters, which will have already had authorization rules applied
-  defmodule ShadowApi do
+  defmodule ShadowDomain do
     @moduledoc false
-    use Ash.Api, validate_config_inclusion?: false
+    use Ash.Domain, validate_config_inclusion?: false
 
     resources do
       allow_unregistered?(true)
@@ -1116,15 +1116,7 @@ defmodule Ash.Filter do
   end
 
   @doc false
-  def relationship_filters(
-        api,
-        query,
-        actor,
-        tenant,
-        aggregates,
-        authorize?,
-        filters \\ %{}
-      ) do
+  def relationship_filters(domain, query, actor, tenant, aggregates, authorize?, filters \\ %{}) do
     if authorize? do
       paths_with_refs =
         query.filter
@@ -1142,10 +1134,10 @@ defmodule Ash.Filter do
       |> Enum.map(&elem(&1, 0))
       |> Enum.reduce_while({:ok, filters}, fn path, {:ok, filters} ->
         last_relationship = last_relationship(query.resource, path)
-        add_authorization_path_filter(filters, last_relationship, api, query, actor, tenant, refs)
+        add_authorization_path_filter(filters, last_relationship, domain, query, actor, tenant, refs)
       end)
       |> add_aggregate_path_authorization(
-        api,
+        domain,
         refs,
         aggregates,
         query,
@@ -1162,7 +1154,7 @@ defmodule Ash.Filter do
   defp add_authorization_path_filter(
          filters,
          last_relationship,
-         api,
+         domain,
          _query,
          actor,
          tenant,
@@ -1183,7 +1175,7 @@ defmodule Ash.Filter do
             }
           })
           |> Ash.Query.select([])
-          |> api.can(actor,
+          |> domain.can(actor,
             run_queries?: false,
             alter_source?: true,
             no_check?: true,
@@ -1221,7 +1213,7 @@ defmodule Ash.Filter do
 
   defp add_aggregate_path_authorization(
          {:ok, path_filters},
-         api,
+         domain,
          refs,
          aggregates,
          query,
@@ -1252,7 +1244,7 @@ defmodule Ash.Filter do
         add_authorization_path_filter(
           filters,
           last_relationship,
-          api,
+          domain,
           query,
           actor,
           tenant,
@@ -1269,7 +1261,7 @@ defmodule Ash.Filter do
           last_relationship = last_relationship(aggregate.resource, aggregate.relationship_path)
 
           case relationship_filters(
-                 api,
+                 domain,
                  aggregate.query,
                  actor,
                  tenant,
@@ -1281,7 +1273,7 @@ defmodule Ash.Filter do
               add_authorization_path_filter(
                 filters,
                 last_relationship,
-                api,
+                domain,
                 query,
                 actor,
                 tenant,
@@ -1510,8 +1502,8 @@ defmodule Ash.Filter do
     end
   end
 
-  def run_other_data_layer_filters(api, resource, %{expression: expression} = filter, tenant) do
-    case do_run_other_data_layer_filters(expression, api, resource, tenant) do
+  def run_other_data_layer_filters(domain, resource, %{expression: expression} = filter, tenant) do
+    case do_run_other_data_layer_filters(expression, domain, resource, tenant) do
       {:ok, new_expression} -> {:ok, %{filter | expression: new_expression}}
       {:error, error} -> {:error, error}
     end
@@ -1522,12 +1514,12 @@ defmodule Ash.Filter do
 
   defp do_run_other_data_layer_filters(
          %BooleanExpression{op: op, left: left, right: right},
-         api,
+         domain,
          resource,
          tenant
        ) do
-    left_result = do_run_other_data_layer_filters(left, api, resource, tenant)
-    right_result = do_run_other_data_layer_filters(right, api, resource, tenant)
+    left_result = do_run_other_data_layer_filters(left, domain, resource, tenant)
+    right_result = do_run_other_data_layer_filters(right, domain, resource, tenant)
 
     case {left_result, right_result} do
       {{:ok, left}, {:ok, right}} ->
@@ -1541,8 +1533,8 @@ defmodule Ash.Filter do
     end
   end
 
-  defp do_run_other_data_layer_filters(%Not{expression: expression}, api, resource, tenant) do
-    case do_run_other_data_layer_filters(expression, api, resource, tenant) do
+  defp do_run_other_data_layer_filters(%Not{expression: expression}, domain, resource, tenant) do
+    case do_run_other_data_layer_filters(expression, domain, resource, tenant) do
       {:ok, expr} -> {:ok, Not.new(expr)}
       {:error, error} -> {:error, error}
     end
@@ -1550,7 +1542,7 @@ defmodule Ash.Filter do
 
   defp do_run_other_data_layer_filters(
          %Ash.Query.Exists{path: path, expr: expr, at_path: at_path} = exists,
-         api,
+         domain,
          resource,
          tenant
        ) do
@@ -1569,7 +1561,7 @@ defmodule Ash.Filter do
           |> Ash.Query.do_filter(expr)
           |> Ash.Query.set_context(context)
           |> Ash.Query.set_tenant(tenant)
-          |> Map.put(:api, api)
+          |> Map.put(:domain, domain)
           |> Ash.Query.set_context(%{private: %{internal?: true}})
 
         case Ash.Actions.Read.unpaginated_read(query, relationship.read_action) do
@@ -1615,7 +1607,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp do_run_other_data_layer_filters(%{__predicate__?: _} = predicate, api, resource, tenant) do
+  defp do_run_other_data_layer_filters(%{__predicate__?: _} = predicate, domain, resource, tenant) do
     predicate
     |> relationship_paths()
     |> filter_paths_that_change_data_layers(resource)
@@ -1635,11 +1627,11 @@ defmodule Ash.Filter do
       {path, new_predicate} ->
         relationship = Ash.Resource.Info.relationship(resource, path)
 
-        fetch_related_data(resource, path, new_predicate, api, relationship, tenant)
+        fetch_related_data(resource, path, new_predicate, domain, relationship, tenant)
     end
   end
 
-  defp do_run_other_data_layer_filters(other, _api, _resource, _data), do: {:ok, other}
+  defp do_run_other_data_layer_filters(other, _domain, _resource, _data), do: {:ok, other}
 
   defp last_relationship_context_and_action(resource, [name]) do
     relationship = Ash.Resource.Info.relationship(resource, name)
@@ -1777,7 +1769,7 @@ defmodule Ash.Filter do
          resource,
          path,
          new_predicate,
-         api,
+         domain,
          %{type: :many_to_many, join_relationship: join_relationship, through: through} =
            relationship,
          tenant
@@ -1790,12 +1782,12 @@ defmodule Ash.Filter do
       }
 
       relationship.destination
-      |> Ash.Query.new(api)
+      |> Ash.Query.new(domain)
       |> Ash.Query.do_filter(filter)
       |> filter_related_in(
         relationship,
         :lists.droplast(path) ++ [join_relationship],
-        api,
+        domain,
         tenant
       )
     else
@@ -1805,7 +1797,7 @@ defmodule Ash.Filter do
       }
 
       relationship.destination
-      |> Ash.Query.new(ShadowApi)
+      |> Ash.Query.new(ShadowDomain)
       |> Ash.Query.do_filter(filter)
       |> Ash.Query.do_filter(relationship.filter, parent_stack: [relationship.source])
       |> Ash.Query.sort(relationship.sort, prepend?: true)
@@ -1814,7 +1806,7 @@ defmodule Ash.Filter do
       |> case do
         {:ok, results} ->
           relationship.through
-          |> Ash.Query.new(api)
+          |> Ash.Query.new(domain)
           |> Ash.Query.do_filter([
             {relationship.destination_attribute_on_join_resource,
              in: Enum.map(results, &Map.get(&1, relationship.destination_attribute))}
@@ -1822,7 +1814,7 @@ defmodule Ash.Filter do
           |> filter_related_in(
             Ash.Resource.Info.relationship(resource, join_relationship),
             :lists.droplast(path),
-            api,
+            domain,
             tenant
           )
 
@@ -1836,7 +1828,7 @@ defmodule Ash.Filter do
          _resource,
          path,
          new_predicate,
-         api,
+         domain,
          relationship,
          tenant
        ) do
@@ -1846,20 +1838,20 @@ defmodule Ash.Filter do
     }
 
     relationship.destination
-    |> Ash.Query.new(api)
+    |> Ash.Query.new(domain)
     |> Ash.Query.do_filter(filter)
     |> Ash.Query.do_filter(relationship.filter, parent_stack: [relationship.source])
     |> Ash.Query.sort(relationship.sort, prepend?: true)
     |> Ash.Query.set_context(relationship.context)
     |> Ash.Query.set_context(%{private: %{internal?: true}})
-    |> filter_related_in(relationship, :lists.droplast(path), api, tenant)
+    |> filter_related_in(relationship, :lists.droplast(path), domain, tenant)
   end
 
   defp filter_related_in(
          query,
          relationship,
          path,
-         _api,
+         _domain,
          tenant
        ) do
     query = Ash.Query.set_tenant(query, tenant)

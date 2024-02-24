@@ -4,12 +4,12 @@ defmodule Ash.Flow.RunFlowTest do
 
   require Ash.Query
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -29,7 +29,7 @@ defmodule Ash.Flow.RunFlowTest do
     use Ash.Flow
 
     flow do
-      api Api
+      domain(Domain)
 
       returns create_post: :post
     end
@@ -50,7 +50,7 @@ defmodule Ash.Flow.RunFlowTest do
       use Ash.Flow
 
       flow do
-        api Api
+        domain(Domain)
 
         returns create_two_posts: :posts
       end

@@ -1,6 +1,15 @@
 defmodule Ash.Flow.Step.Validate do
   @moduledoc false
-  use Ash.Flow.Step.BuiltinStep, [:resource, :record, :input, :action, :api, :tenant, :only_keys]
+  use Ash.Flow.Step.BuiltinStep, [
+    :resource,
+    :record,
+    :input,
+    :action,
+    :domain,
+    :tenant,
+    :only_keys
+  ]
+
   @shared_opts Ash.Flow.Step.shared_opts()
   @shared_action_opts Ash.Flow.Step.shared_action_opts()
 

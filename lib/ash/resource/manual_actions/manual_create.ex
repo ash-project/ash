@@ -8,7 +8,7 @@ defmodule Ash.Resource.ManualCreate do
           optional(:tenant) => term,
           optional(:tracer) => term,
           optional(:authorize?) => boolean,
-          optional(:api) => module,
+          optional(:domain) => module,
           optional(any) => any
         }
 

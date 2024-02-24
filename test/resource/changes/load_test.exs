@@ -2,12 +2,12 @@ defmodule Ash.Test.Resource.Changes.LoadTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     attributes do
@@ -30,7 +30,9 @@ defmodule Ash.Test.Resource.Changes.LoadTest do
   end
 
   test "you can use it to load on create" do
-    assert Api.create!(Ash.Changeset.for_create(Post, :create, text: "foo", second_text: "bar")).full_text ==
+    assert Domain.create!(
+             Ash.Changeset.for_create(Post, :create, text: "foo", second_text: "bar")
+           ).full_text ==
              "foobar"
   end
 end

@@ -1,7 +1,7 @@
 defmodule Ash.Test.Support.PolicyComplex.Post do
   @moduledoc false
   use Ash.Resource,
-    api: Ash.Test.Support.PolicyComplex.Api,
+    domain: Ash.Test.Support.PolicyComplex.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [
       Ash.Policy.Authorizer

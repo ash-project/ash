@@ -1,11 +1,11 @@
 defmodule Ash.Test.Policy.FieldPolicy.ExpressionConditionTest do
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule ResourceWithMultiplePoliciesForOneField do
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 

@@ -151,7 +151,7 @@ defmodule Ash.Actions.Read.Calculations do
   end
 
   defp run_calculation(calculation, ash_query, records) do
-    context = Map.put(calculation.context, :api, ash_query.api)
+    context = Map.put(calculation.context, :domain, ash_query.domain)
 
     records
     |> apply_transient_calculation_values(calculation, ash_query, [])
@@ -380,7 +380,7 @@ defmodule Ash.Actions.Read.Calculations do
     end)
   end
 
-  def split_and_load_calculations(api, ash_query, missing_pkeys?, initial_data, reuse_values?) do
+  def split_and_load_calculations(domain, ash_query, missing_pkeys?, initial_data, reuse_values?) do
     can_expression_calculation? =
       !missing_pkeys? &&
         Ash.DataLayer.data_layer_can?(ash_query.resource, :expression_calculation)
@@ -388,7 +388,7 @@ defmodule Ash.Actions.Read.Calculations do
     ash_query =
       Enum.reduce(ash_query.calculations, ash_query, fn {_name, calc}, ash_query ->
         load_calculation_requirements(
-          api,
+          domain,
           ash_query,
           calc,
           can_expression_calculation?,
@@ -569,7 +569,7 @@ defmodule Ash.Actions.Read.Calculations do
   end
 
   defp load_calculation_requirements(
-         api,
+         domain,
          query,
          calculation,
          can_expression_calculation?,
@@ -609,7 +609,7 @@ defmodule Ash.Actions.Read.Calculations do
         |> List.wrap()
         |> Enum.concat(List.wrap(calculation.select))
         |> do_load_calculation_requirements(
-          api,
+          domain,
           query,
           calculation.name,
           calculation.load,
@@ -625,7 +625,7 @@ defmodule Ash.Actions.Read.Calculations do
 
   defp do_load_calculation_requirements(
          requirements,
-         api,
+         domain,
          query,
          calc_name,
          calc_load,
@@ -651,7 +651,7 @@ defmodule Ash.Actions.Read.Calculations do
               query,
               load,
               further,
-              api,
+              domain,
               calc_name,
               calc_load,
               calc_path,
@@ -779,13 +779,14 @@ defmodule Ash.Actions.Read.Calculations do
                           further || [],
                           attr.type,
                           attr.constraints,
-                          api,
+                          wdomainpi,
                           calc_name,
                           calc_load,
                           calc_path,
                           relationship_path,
                           initial_data
                         )
+=
                       )
                     end)
 
@@ -865,7 +866,7 @@ defmodule Ash.Actions.Read.Calculations do
                 query,
                 calculation,
                 load_through || [],
-                api,
+                domain,
                 calc_name,
                 calc_load,
                 calc_path,
@@ -899,7 +900,7 @@ defmodule Ash.Actions.Read.Calculations do
                           merge_query_load(
                             current_load,
                             further,
-                            relationship.api || api,
+                            relationship.domain || domain,
                             calc_path,
                             calc_name,
                             calc_load,
@@ -934,7 +935,7 @@ defmodule Ash.Actions.Read.Calculations do
                         {Ash.Resource.Calculation.LoadRelationship,
                          relationship: relationship.name,
                          query: further,
-                         api: relationship.api || api},
+                         domain: relationship.domain || domain},
                         type,
                         %{},
                         constraints
@@ -952,7 +953,7 @@ defmodule Ash.Actions.Read.Calculations do
                             &merge_query_load(
                               &1,
                               further,
-                              relationship.api || api,
+                              relationship.domain || domain,
                               calc_path,
                               calc_name,
                               calc_load,
@@ -1030,7 +1031,7 @@ defmodule Ash.Actions.Read.Calculations do
          query,
          calculation,
          further,
-         api,
+         domain,
          calc_name,
          calc_load,
          calc_path,
@@ -1076,7 +1077,7 @@ defmodule Ash.Actions.Read.Calculations do
                         further || [],
                         calculation.type,
                         calculation.constraints,
-                        api,
+                        domain,
                         calc_name,
                         calc_load,
                         calc_path,
@@ -1133,7 +1134,7 @@ defmodule Ash.Actions.Read.Calculations do
         query =
           Ash.Query.load(query, new_calculation)
 
-        api
+        domain
         |> load_calculation_requirements(
           query,
           new_calculation,
@@ -1188,7 +1189,7 @@ defmodule Ash.Actions.Read.Calculations do
          new,
          type,
          constraints,
-         api,
+         domain,
          calc_name,
          calc_load,
          calc_path,
@@ -1196,7 +1197,7 @@ defmodule Ash.Actions.Read.Calculations do
          initial_data
        ) do
     case Ash.Type.merge_load(type, old, new, constraints, %{
-           api: api,
+           domain: domain,
            calc_name: calc_name,
            calc_load: calc_load,
            calc_path: calc_path,
@@ -1236,7 +1237,7 @@ defmodule Ash.Actions.Read.Calculations do
     do_load_calculation_requirements(
       right.load ++
         Map.values(right.calculations) ++ Map.values(right.aggregates) ++ query_select(right),
-      api,
+      domain,
       left,
       calc_name,
       calc_load,

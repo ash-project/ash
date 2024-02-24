@@ -2,11 +2,11 @@ defmodule Ash.Flow.HaltingTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
-  alias Ash.Test.Flow.Api
+  alias Ash.Test.Flow.Domain
 
   setup do
     ExUnit.CaptureLog.capture_log(fn ->
-      Ash.DataLayer.Mnesia.start(Api)
+      Ash.DataLayer.Mnesia.start(Domain)
     end)
 
     on_exit(fn ->

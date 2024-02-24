@@ -1,5 +1,5 @@
 defmodule Resource do
-  use Ash.Resource, api: Ash.Test.AnyApi
+  use Ash.Resource, domain: Ash.Test.Domain
 
   attributes do
     uuid_primary_key :id
@@ -15,7 +15,7 @@ changeset = Ash.Changeset.for_create(Resource, :create, %{})
 Benchee.run(
   %{
     create: fn ->
-      Api.create!(changeset)
+      Ash.Test.Domain.create!(changeset)
     end
 
   }

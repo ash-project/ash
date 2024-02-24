@@ -1,11 +1,11 @@
 defmodule Ash.Test.Policy.SelectingTest do
   use ExUnit.Case
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Parent do
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -40,7 +40,7 @@ defmodule Ash.Test.Policy.SelectingTest do
 
   defmodule OwnerOnlyResource do
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -100,19 +100,19 @@ defmodule Ash.Test.Policy.SelectingTest do
       Parent
       |> Ash.Changeset.new(%{owner_id: "owner", guest_id: "guest"})
       |> Ash.Changeset.for_create(:create)
-      |> Api.create!(authorize?: false)
+      |> Domain.create!(authorize?: false)
 
     OwnerOnlyResource
     |> Ash.Changeset.new(%{parent_id: parent.id, state: "active"})
     |> Ash.Changeset.for_create(:create)
-    |> Api.create!(authorize?: false)
+    |> Domain.create!(authorize?: false)
 
     assert {:ok, parent} =
              Parent
              |> Ash.Query.for_read(:read)
              |> Ash.Query.load(:owner_only_resource)
              |> Ash.Query.limit(1)
-             |> Api.read_one(actor: %{id: "owner"})
+             |> Domain.read_one(actor: %{id: "owner"})
 
     refute is_nil(parent.owner_only_resource)
   end
@@ -122,18 +122,18 @@ defmodule Ash.Test.Policy.SelectingTest do
       Parent
       |> Ash.Changeset.new(%{owner_id: "owner", guest_id: "guest"})
       |> Ash.Changeset.for_create(:create)
-      |> Api.create!(authorize?: false)
+      |> Domain.create!(authorize?: false)
 
     OwnerOnlyResource
     |> Ash.Changeset.new(%{parent_id: parent.id, state: "active"})
     |> Ash.Changeset.for_create(:create)
-    |> Api.create!(authorize?: false)
+    |> Domain.create!(authorize?: false)
 
     assert {:error, %Ash.Error.Forbidden{}} =
              Parent
              |> Ash.Query.for_read(:read)
              |> Ash.Query.load(:owner_only_resource)
              |> Ash.Query.limit(1)
-             |> Api.read_one(actor: %{id: "guest"})
+             |> Domain.read_one(actor: %{id: "guest"})
   end
 end
