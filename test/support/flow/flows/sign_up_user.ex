@@ -3,7 +3,7 @@ defmodule Ash.Test.Flow.Flows.SignUpUser do
   use Ash.Flow
 
   flow do
-    api Ash.Test.Flow.Api
+    domain(Ash.Test.Flow.Domain)
 
     argument :org_name, :string do
       allow_nil? false

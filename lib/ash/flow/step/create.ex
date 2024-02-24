@@ -3,7 +3,7 @@ defmodule Ash.Flow.Step.Create do
   use Ash.Flow.Step.BuiltinStep, [
     :resource,
     :action,
-    :api,
+    :domain,
     :tenant,
     :input,
     :upsert?,

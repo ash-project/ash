@@ -22,12 +22,12 @@ Using this, you might make requests like the following:
 
 ```elixir
 # Get the first ten records
-Api.read(Resource, page: [limit: 10])
+Ash.read(Resource, page: [limit: 10])
 # or by using an action named `read` directly
 Resource.read(page: [limit: 10])
 
 # Get the next ten records
-Api.read(Resource, page: [limit: 10, offset: 10])
+Ash.read(Resource, page: [limit: 10, offset: 10])
 # or by using an action named `read` directly
 Resource.read(page: [limit: 10, offset: 10])
 ```
@@ -40,8 +40,8 @@ Next/previous page requests can also be made in memory, using an existing page o
 
 # Use `:prev` and `:next` to go backwards and forwards.
 # `:first`, `:last`, `:self` and specifying a page number are also supported.
-{:ok, second_page} = Api.page(third_page, :prev)
-{:ok, fourth_page} = Api.page(third_page, :next)
+{:ok, second_page} = Ash.page(third_page, :prev)
+{:ok, fourth_page} = Ash.page(third_page, :next)
 ```
 
 ### Pros of offset pagination
@@ -72,7 +72,7 @@ Keyset pagination is done via providing an `after` or `before` option, as well a
 For example:
 
 ```elixir
-{:ok, page} = Api.read(Resource, page: [limit: 10])
+{:ok, page} = Ash.read(Resource, page: [limit: 10])
 # Returns `{:ok, %Ash.Page.Keyset{results: [...], before: nil, after: nil}}`
 # The `before`/`after` values are the keysets used for this request.
 
@@ -81,7 +81,7 @@ last_record = List.last(page.results)
 # Returns `%Resource{__metadata__: %{keyset: "g2wAAAABbQAAACQzOWNjNTcwNy00NjlmL..."}, ...}``
 
 # Use this keyset value to fetch the next page
-{:ok, next_page} = Api.read(Resource, page: [limit: 10, after: last_record.__metadata__.keyset])
+{:ok, next_page} = Ash.read(Resource, page: [limit: 10, after: last_record.__metadata__.keyset])
 ```
 
 Like offset pagination, next/previous page requests can also be made in memory, using an existing page of search results:
@@ -92,8 +92,8 @@ Like offset pagination, next/previous page requests can also be made in memory, 
 
 # Use `:prev` and `:next` to go backwards and forwards.
 # `:first` and `:self` can also be used, but `:last` and specifying a page number are not supported.
-{:ok, second_page} = Api.page(third_page, :prev)
-{:ok, fourth_page} = Api.page(third_page, :next)
+{:ok, second_page} = Ash.page(third_page, :prev)
+{:ok, fourth_page} = Ash.page(third_page, :next)
 ```
 
 ### Pros of keyset pagination
@@ -128,7 +128,7 @@ For all available pagination options, see `d:Ash.Resource.Dsl.actions.read|pagin
 
 ### Querying the paginated resource
 
-For all available querying options, see [`Ash.Api.read.pagination`](https://hexdocs.pm/ash/Ash.Api.html#c:read/2-pagination).
+For all available querying options, see [`Ash.Domain.read.pagination`](https://hexdocs.pm/ash/Ash.Domain.html#c:read/2-pagination).
 
 > #### Check the updated query return type! {: .info}
 > Pagination will modify the return type of calling the query action.

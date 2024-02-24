@@ -17,11 +17,10 @@ An example of a single error being raised, representing multiple underlying erro
 ```elixir
 AshExample.Representative
 |> Ash.Changeset.new(%{employee_id: "the best"})
-|> AshExample.Api.create!()
+|> AshExample.Domain.create!()
  ** (Ash.Error.Invalid) Input Invalid
  * employee_id: must be absent.
  * first_name, last_name: at least 1 must be present.
-    (ash 1.3.0) lib/ash/api/api.ex:534: Ash.Api.unwrap_or_raise!/1
 ```
 
 This allows easy rescuing of the major error classes, as well as inspection of the underlying cases
@@ -30,7 +29,7 @@ This allows easy rescuing of the major error classes, as well as inspection of t
 try do
   AshExample.Representative
   |> Ash.Changeset.new(%{employee_id: "dabes"})
-  |> AshExample.Api.create!()
+  |> AshExample.Domain.create!()
 rescue
   e in Ash.Error.Invalid ->
     "Encountered #{Enum.count(e.errors)} errors"
@@ -45,7 +44,7 @@ This pattern does add some additional overhead when you want to rescue specific 
 try do
   AshExample.Representative
   |> Ash.Changeset.new(%{employee_id: "dabes"})
-  |> AshExample.Api.create!()
+  |> AshExample.Domain.create!()
 rescue
   e in Ash.Error.Invalid ->
     case Enum.find(e.errors, &(&1.__struct__ == A.Specific.Error)) do

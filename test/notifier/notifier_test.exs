@@ -2,7 +2,7 @@ defmodule Ash.Test.NotifierTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Notifier do
     use Ash.Notifier
@@ -14,7 +14,7 @@ defmodule Ash.Test.NotifierTest do
 
   defmodule PostLink do
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       notifiers: [
         Notifier
@@ -41,7 +41,7 @@ defmodule Ash.Test.NotifierTest do
 
   defmodule Comment do
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       notifiers: [
         Notifier
@@ -71,7 +71,7 @@ defmodule Ash.Test.NotifierTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       notifiers: [
         Notifier
@@ -91,7 +91,7 @@ defmodule Ash.Test.NotifierTest do
           Ash.Changeset.after_action(changeset, fn _changeset, result ->
             Comment
             |> Ash.Changeset.for_create(:create, %{post_id: result.id, name: "auto"})
-            |> Api.create!()
+            |> Domain.create!()
 
             {:ok, result}
           end)
@@ -125,7 +125,7 @@ defmodule Ash.Test.NotifierTest do
     test "a create notification occurs" do
       Post
       |> Ash.Changeset.new(%{name: "foo"})
-      |> Api.create!()
+      |> Domain.create!()
 
       assert_receive {:notification, %{action: %{type: :create}}}
     end
@@ -133,9 +133,9 @@ defmodule Ash.Test.NotifierTest do
     test "an update notification occurs" do
       Post
       |> Ash.Changeset.new(%{name: "foo"})
-      |> Api.create!()
+      |> Domain.create!()
       |> Ash.Changeset.new(%{name: "bar"})
-      |> Api.update!()
+      |> Domain.update!()
 
       assert_receive {:notification, %{action: %{type: :update}}}
     end
@@ -143,8 +143,8 @@ defmodule Ash.Test.NotifierTest do
     test "a destroy notification occurs" do
       Post
       |> Ash.Changeset.new(%{name: "foo"})
-      |> Api.create!()
-      |> Api.destroy!()
+      |> Domain.create!()
+      |> Domain.destroy!()
 
       assert_receive {:notification, %{action: %{type: :destroy}}}
     end
@@ -165,7 +165,7 @@ defmodule Ash.Test.NotifierTest do
            ]
          }}
       end)
-      |> Api.create!()
+      |> Domain.create!()
 
       assert_receive {:notification, %Ash.Notifier.Notification{metadata: %{custom?: true}}}
     end
@@ -174,7 +174,7 @@ defmodule Ash.Test.NotifierTest do
   test "a nested notification is sent automatically" do
     Post
     |> Ash.Changeset.for_create(:create_with_comment, %{name: "foobar"})
-    |> Api.create!()
+    |> Domain.create!()
 
     assert_receive {:notification, %Ash.Notifier.Notification{data: %Comment{name: "auto"}}}
   end
@@ -182,7 +182,7 @@ defmodule Ash.Test.NotifierTest do
   test "the `load/1` change puts the loaded data into the notification" do
     Post
     |> Ash.Changeset.for_create(:create_with_comment, %{name: "foobar"})
-    |> Api.create!()
+    |> Domain.create!()
 
     assert_receive {:notification, %Ash.Notifier.Notification{data: %Post{comments: [_]}}}
   end
@@ -191,7 +191,7 @@ defmodule Ash.Test.NotifierTest do
     Comment
     |> Ash.Changeset.new(%{name: "foobar"})
     |> Ash.Changeset.select([:id])
-    |> Api.create!()
+    |> Domain.create!()
 
     assert_receive {:notification, %Ash.Notifier.Notification{data: %{name: "foobar"}}}
   end
@@ -203,7 +203,7 @@ defmodule Ash.Test.NotifierTest do
       Ash.Changeset.set_context(changeset, %{foobar: :baz})
     end)
     |> Ash.Changeset.select([:id])
-    |> Api.create!()
+    |> Domain.create!()
 
     assert_receive {:notification,
                     %Ash.Notifier.Notification{changeset: %{context: %{foobar: :baz}}}}
@@ -214,12 +214,12 @@ defmodule Ash.Test.NotifierTest do
       comment =
         Comment
         |> Ash.Changeset.new(%{})
-        |> Api.create!()
+        |> Domain.create!()
 
       Post
       |> Ash.Changeset.new(%{name: "foo"})
       |> Ash.Changeset.manage_relationship(:comments, comment, type: :append_and_remove)
-      |> Api.create!()
+      |> Domain.create!()
 
       assert_receive {:notification, %{action: %{type: :update}, resource: Comment}}
     end
@@ -228,12 +228,12 @@ defmodule Ash.Test.NotifierTest do
       post =
         Post
         |> Ash.Changeset.new(%{name: "foo"})
-        |> Api.create!()
+        |> Domain.create!()
 
       Post
       |> Ash.Changeset.new(%{name: "foo"})
       |> Ash.Changeset.manage_relationship(:related_posts, [post], type: :append_and_remove)
-      |> Api.create!()
+      |> Domain.create!()
 
       assert_receive {:notification, %{action: %{type: :create}, resource: PostLink}}
     end
@@ -242,7 +242,7 @@ defmodule Ash.Test.NotifierTest do
       post =
         Post
         |> Ash.Changeset.new(%{name: "foo"})
-        |> Api.create!()
+        |> Domain.create!()
 
       assert %{related_posts: [_]} =
                post =
@@ -251,14 +251,14 @@ defmodule Ash.Test.NotifierTest do
                |> Ash.Changeset.manage_relationship(:related_posts, [post],
                  type: :append_and_remove
                )
-               |> Api.create!()
-               |> Api.load!(:related_posts)
+               |> Domain.create!()
+               |> Domain.load!(:related_posts)
 
       assert %{related_posts: []} =
                post
                |> Ash.Changeset.new(%{})
                |> Ash.Changeset.manage_relationship(:related_posts, [], type: :append_and_remove)
-               |> Api.update!()
+               |> Domain.update!()
 
       assert_receive {:notification, %{action: %{type: :destroy}, resource: PostLink}}
     end

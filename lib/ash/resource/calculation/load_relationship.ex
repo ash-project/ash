@@ -30,13 +30,13 @@ defmodule Ash.Resource.Calculation.LoadRelationship do
 
     query = Ash.Query.to_query(query)
 
-    if !opts[:api] do
-      raise "Must provide the `api` option to load #{inspect(__MODULE__)}"
+    if !opts[:domain] do
+      raise "Must provide the `domain` option to load #{inspect(__MODULE__)}"
     end
 
     load_opts = Ash.context_to_opts(context, opts[:opts] || [])
 
-    opts[:api].load(results, [{relationship.name, query}], load_opts)
+    opts[:domain].load(results, [{relationship.name, query}], load_opts)
     |> case do
       {:ok, results} ->
         {:ok,

@@ -53,7 +53,7 @@ end
 
 ## Transactions
 
-API calls involving resources who's datalayer supports transactions (like Postgres), notifications are saved up and sent after the transaction is closed. For example, the api call below ultimately results in many many database calls.
+Domain calls involving resources who's datalayer supports transactions (like Postgres), notifications are saved up and sent after the transaction is closed. For example, the domain call below ultimately results in many many database calls.
 
 ```elixir
 Post
@@ -61,7 +61,7 @@ Post
 |> Ash.Changeset.manage_relationship(:related_posts, [1, 2, 3], type: :append)
 |> Ash.Changeset.manage_relationship(:related_posts, [4, 5], type: :remove)
 |> Ash.Changeset.manage_relationship(:comments, [10], type: :append)
-|> Api.update!()
+|> Domain.update!()
 ```
 
 `Ash.Changeset.manage_relationship` doesn't leverage bulk operations yet, so it performs the following operations:
@@ -77,7 +77,7 @@ Post
 
 If all three of these resources have notifiers configured, we need to send a notification for each operation (notifications are not sent for reads). For data consistency reasons, if a data layer supports transactions, all writes are done in a transaction. However, if you try to read the record from the database that you have just received a notification about before the transaction has been closed, in a different process, the information will be wrong. For this reason, Ash accumulates notifications until they can be sent.
 
-If you need to perform multiple operations against your resources in your own transaction, you will have to handle that case yourself. To support this, `c:Ash.Api.create/2`, `c:Ash.Api.update/2` and `c:Ash.Api.destroy/2` support a `return_notifications?: true` option. This causes the api call to return `{:ok, result, notifications}` in the successful case. Here is an example of how you might use it.
+If you need to perform multiple operations against your resources in your own transaction, you will have to handle that case yourself. To support this, `c:Ash.Domain.create/2`, `c:Ash.Domain.update/2` and `c:Ash.Domain.destroy/2` support a `return_notifications?: true` option. This causes the domain call to return `{:ok, result, notifications}` in the successful case. Here is an example of how you might use it.
 
 ```elixir
 result =

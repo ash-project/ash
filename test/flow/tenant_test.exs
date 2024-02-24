@@ -3,12 +3,12 @@ defmodule Ash.Flow.TenantTest do
   use ExUnit.Case, async: true
 
   require Ash.Query
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -43,7 +43,7 @@ defmodule Ash.Flow.TenantTest do
 
       Post
       |> Ash.Query.for_read(:get_by_id, %{id: post_id}, opts)
-      |> Api.read_one(not_found_error?: true)
+      |> Domain.read_one(not_found_error?: true)
     end
   end
 
@@ -51,7 +51,7 @@ defmodule Ash.Flow.TenantTest do
     use Ash.Flow
 
     flow do
-      api Api
+      domain(Domain)
 
       argument :post_id, :uuid do
         allow_nil? false
@@ -75,7 +75,7 @@ defmodule Ash.Flow.TenantTest do
     foo_post =
       Post
       |> Ash.Changeset.for_create(:create, %{tenant: "foo"})
-      |> Api.create!()
+      |> Domain.create!()
 
     Ash.set_tenant("bar")
 
@@ -90,7 +90,7 @@ defmodule Ash.Flow.TenantTest do
     foo_post =
       Post
       |> Ash.Changeset.for_create(:create, %{tenant: "foo"})
-      |> Api.create!()
+      |> Domain.create!()
 
     assert %Ash.Flow.Result{valid?: false} =
              DestroyPost.run(foo_post.id, tenant: "bar")

@@ -21,8 +21,8 @@ defmodule Ash.Flow.Info do
     Extension.get_opt(flow, [:flow], :trace_name, nil, false) || to_string(short_name(flow))
   end
 
-  def api(flow) do
-    Extension.get_opt(flow, [:flow], :api, nil, false)
+  def domain(flow) do
+    Extension.get_opt(flow, [:flow], :domain, nil, false)
   end
 
   def arguments(flow) do

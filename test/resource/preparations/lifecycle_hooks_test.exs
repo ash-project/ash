@@ -2,10 +2,10 @@ defmodule Ash.Test.Resource.Preparations.LifecycleHooksTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule TimeMachine do
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
@@ -65,7 +65,7 @@ defmodule Ash.Test.Resource.Preparations.LifecycleHooksTest do
     test "it is called before the action is run" do
       TimeMachine
       |> Ash.Query.for_read(:read_with_before_action, caller: self())
-      |> Api.read!()
+      |> Domain.read!()
 
       assert_received :before_action
     end
@@ -73,7 +73,7 @@ defmodule Ash.Test.Resource.Preparations.LifecycleHooksTest do
     test "multiple before actions have the same phase" do
       TimeMachine
       |> Ash.Query.for_read(:read_with_multiple_before_actions, caller: self())
-      |> Api.read!()
+      |> Domain.read!()
 
       assert_received {:before_action, 1}
       assert_received {:before_action, 2}
@@ -84,7 +84,7 @@ defmodule Ash.Test.Resource.Preparations.LifecycleHooksTest do
     test "it is called after the action is run" do
       TimeMachine
       |> Ash.Query.for_read(:read_with_after_action, caller: self())
-      |> Api.read!()
+      |> Domain.read!()
 
       assert_received :after_action
     end
@@ -92,7 +92,7 @@ defmodule Ash.Test.Resource.Preparations.LifecycleHooksTest do
     test "multiple after actions have the same phase" do
       TimeMachine
       |> Ash.Query.for_read(:read_with_multiple_after_actions, caller: self())
-      |> Api.read!()
+      |> Domain.read!()
 
       assert_received {:after_action, 1}
       assert_received {:after_action, 2}

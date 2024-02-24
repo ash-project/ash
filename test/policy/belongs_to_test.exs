@@ -2,11 +2,11 @@ defmodule Ash.Test.Policy.Actions.BelongsToTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -34,7 +34,7 @@ defmodule Ash.Test.Policy.Actions.BelongsToTest do
   defmodule Reviewer do
     @moduledoc false
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -62,21 +62,21 @@ defmodule Ash.Test.Policy.Actions.BelongsToTest do
     reviewer =
       Reviewer
       |> Ash.Changeset.for_create(:create, %{name: "Zach"})
-      |> Api.create!(authorize?: false)
+      |> Domain.create!(authorize?: false)
 
     post =
       Post
       |> Ash.Changeset.for_create(:create, %{
         title: "A Post"
       })
-      |> Api.create!()
+      |> Domain.create!()
 
     assert_raise Ash.Error.Forbidden, fn ->
       post
       |> Ash.Changeset.for_update(:update_with_reviewer, %{
         reviewer_id: reviewer.id
       })
-      |> Api.update!()
+      |> Domain.update!()
     end
   end
 
@@ -84,14 +84,14 @@ defmodule Ash.Test.Policy.Actions.BelongsToTest do
     reviewer =
       Reviewer
       |> Ash.Changeset.for_create(:create, %{name: "Zach"})
-      |> Api.create!(authorize?: false)
+      |> Domain.create!(authorize?: false)
 
     post =
       Post
       |> Ash.Changeset.for_create(:create, %{
         title: "A Post"
       })
-      |> Api.create!()
+      |> Domain.create!()
 
     post
     |> Ash.Changeset.for_update(
@@ -99,6 +99,6 @@ defmodule Ash.Test.Policy.Actions.BelongsToTest do
       %{reviewer_id: reviewer.id},
       authorize?: false
     )
-    |> Api.update!(authorize?: false)
+    |> Domain.update!(authorize?: false)
   end
 end

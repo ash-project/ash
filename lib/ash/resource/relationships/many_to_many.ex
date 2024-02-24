@@ -12,7 +12,7 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :join_relationship,
     :not_found_message,
     :violation_message,
-    :api,
+    :domain,
     :private?,
     :sort,
     :read_action,

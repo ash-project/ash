@@ -2,11 +2,11 @@ defmodule Ash.Test.Actions.IdentityTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -16,11 +16,11 @@ defmodule Ash.Test.Actions.IdentityTest do
 
     identities do
       identity :unique_title, [:title] do
-        eager_check_with(Api)
+        eager_check_with(Domain)
       end
 
       identity :unique_url, [:url] do
-        pre_check_with(Api)
+        pre_check_with(Domain)
       end
     end
 
@@ -42,8 +42,8 @@ defmodule Ash.Test.Actions.IdentityTest do
   describe "eager_check_with" do
     test "will check for an identity mismatch at validation" do
       Post
-      |> Ash.Changeset.for_create(:create, %{title: "fred"}, api: Api)
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{title: "fred"}, domain: Domain)
+      |> Domain.create!()
 
       assert %{
                valid?: false,
@@ -60,13 +60,13 @@ defmodule Ash.Test.Actions.IdentityTest do
   describe "pre_check?" do
     test "will check for an identity mismatch prior to submission" do
       Post
-      |> Ash.Changeset.for_create(:create, %{title: "fred", url: "google.com"}, api: Api)
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{title: "fred", url: "google.com"}, domain: Domain)
+      |> Domain.create!()
 
       assert_raise Ash.Error.Invalid, ~r/url: has already been taken/, fn ->
         Post
         |> Ash.Changeset.for_create(:create, %{title: "george", url: "google.com"})
-        |> Api.create!()
+        |> Domain.create!()
       end
     end
   end

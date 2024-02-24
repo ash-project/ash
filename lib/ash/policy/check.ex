@@ -25,7 +25,7 @@ defmodule Ash.Policy.Check do
   @type t :: %__MODULE__{}
 
   @doc """
-  Strict checks should be cheap, and should never result in external calls (like database or api)
+  Strict checks should be cheap, and should never result in external calls (like database or domain)
 
   It should return `{:ok, true}` if it can tell that the request is authorized, and `{:ok, false}` if
   it can tell that it is not. If unsure, it should return `{:ok, :unknown}`

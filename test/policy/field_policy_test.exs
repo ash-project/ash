@@ -4,26 +4,30 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
 
   require Ash.Query
 
-  alias Ash.Test.Support.PolicyField.{Api, Ticket, User}
+  alias Ash.Test.Support.PolicyField.{Domain, Ticket, User}
 
   setup do
     rep =
-      Api.create!(Ash.Changeset.new(User, %{role: :representative, points: 4}), authorize?: false)
+      Domain.create!(Ash.Changeset.new(User, %{role: :representative, points: 4}),
+        authorize?: false
+      )
 
-    user = Api.create!(Ash.Changeset.new(User, %{role: :user, points: 3}), authorize?: false)
-    admin = Api.create!(Ash.Changeset.new(User, %{role: :admin, points: 2}), authorize?: false)
+    user = Domain.create!(Ash.Changeset.new(User, %{role: :user, points: 3}), authorize?: false)
+    admin = Domain.create!(Ash.Changeset.new(User, %{role: :admin, points: 2}), authorize?: false)
 
     other_user =
-      Api.create!(Ash.Changeset.new(User, %{role: :user, points: 1}), authorize?: false)
+      Domain.create!(Ash.Changeset.new(User, %{role: :user, points: 1}), authorize?: false)
 
     [
       user: user,
       admin: admin,
       representative: rep,
       ticket:
-        Api.create!(Ash.Changeset.new(Ticket, %{representative_id: rep.id, reporter_id: user.id})),
+        Domain.create!(
+          Ash.Changeset.new(Ticket, %{representative_id: rep.id, reporter_id: user.id})
+        ),
       other_ticket:
-        Api.create!(
+        Domain.create!(
           Ash.Changeset.new(Ticket, %{representative_id: rep.id, reporter_id: other_user.id})
         )
     ]
@@ -55,7 +59,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                  authorize?: true,
                  actor: user
                )
-               |> Api.create!(authorize?: true, actor: user)
+               |> Domain.create!(authorize?: true, actor: user)
                |> Map.get(:internal_status)
     end
 
@@ -71,8 +75,8 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                  authorize?: true,
                  actor: user
                )
-               |> Api.create!(authorize?: false)
-               |> Api.destroy!(authorize?: true, actor: user, return_destroyed?: true)
+               |> Domain.create!(authorize?: false)
+               |> Domain.destroy!(authorize?: true, actor: user, return_destroyed?: true)
                |> Map.get(:internal_status)
     end
 
@@ -83,7 +87,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                User
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
                |> Ash.Query.filter(id == ^representative.id)
-               |> Api.read_one!(authorize?: true, actor: representative)
+               |> Domain.read_one!(authorize?: true, actor: representative)
                |> Map.get(:role)
     end
 
@@ -95,7 +99,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                User
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: admin)
                |> Ash.Query.filter(id == ^representative.id)
-               |> Api.read_one!(authorize?: true, actor: admin)
+               |> Domain.read_one!(authorize?: true, actor: admin)
                |> Map.get(:role)
     end
 
@@ -107,7 +111,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
                |> Ash.Query.filter(id == ^representative.id)
                |> Ash.Query.load([:ticket_count])
-               |> Api.read_one!(authorize?: true, actor: representative)
+               |> Domain.read_one!(authorize?: true, actor: representative)
                |> Map.get(:ticket_count)
     end
 
@@ -119,7 +123,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                User
                |> Ash.Query.for_read(:read, %{})
                |> Ash.Query.filter(id == ^representative.id)
-               |> Api.read_one!(authorize?: true, actor: user)
+               |> Domain.read_one!(authorize?: true, actor: user)
                |> Map.get(:role)
     end
 
@@ -132,8 +136,8 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.select([])
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
                |> Ash.Query.filter(id == ^representative.id)
-               |> Api.read_one!(authorize?: true, actor: user)
-               |> Api.load!(:role, authorize?: true)
+               |> Domain.read_one!(authorize?: true, actor: user)
+               |> Domain.load!(:role, authorize?: true)
                |> Map.get(:role)
     end
 
@@ -148,7 +152,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.select(:status)
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
                |> Ash.Query.filter(id == ^ticket.id)
-               |> Api.read_one!()
+               |> Domain.read_one!()
                |> Map.get(:status)
 
       assert %Ash.ForbiddenField{} =
@@ -156,7 +160,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.select(:status)
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
                |> Ash.Query.filter(id == ^other_ticket.id)
-               |> Api.read_one!()
+               |> Domain.read_one!()
                |> Map.get(:status)
     end
 
@@ -170,7 +174,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.filter(reporter.ticket_count > 0)
                |> Ash.Query.load(reporter: [:ticket_count])
                |> Ash.Query.limit(1)
-               |> Api.read!(authorize?: true)
+               |> Domain.read!(authorize?: true)
 
       assert is_number(ticket.reporter.ticket_count)
       assert ticket.reporter.ticket_count > 0
@@ -182,7 +186,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
                |> Ash.Query.load([:ticket_count])
                |> Ash.Query.limit(1)
-               |> Api.read!(authorize?: true)
+               |> Domain.read!(authorize?: true)
 
       assert user.ticket_count == %Ash.ForbiddenField{
                field: :ticket_count,
@@ -198,7 +202,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
                |> Ash.Query.filter(reporter_id == ^user.id)
                |> Ash.Query.load(reporter: [:tickets])
-               |> Api.read!(authorize?: true)
+               |> Domain.read!(authorize?: true)
 
       assert ticket.internal_status == %Ash.ForbiddenField{
                field: :internal_status,
@@ -221,14 +225,14 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.select([])
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
                |> Ash.Query.filter_input(role: :representative)
-               |> Api.read!(authorize?: true)
+               |> Domain.read!(authorize?: true)
 
       assert [_] =
                User
                |> Ash.Query.select([])
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: representative)
                |> Ash.Query.filter_input(role: :representative)
-               |> Api.read!(authorize?: true)
+               |> Domain.read!(authorize?: true)
     end
 
     test "it's possible to filter on values that are only allowed to be accessed from a parent",
@@ -245,7 +249,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.filter(reporter.ticket_count > 0)
                |> Ash.Query.load(reporter: [:ticket_count])
                |> Ash.Query.limit(1)
-               |> Api.read!()
+               |> Domain.read!()
 
       assert is_number(ticket.reporter.ticket_count)
       assert ticket.reporter.ticket_count > 0
@@ -258,7 +262,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.filter(reporter.ticket_count > 0)
                |> Ash.Query.load(reporter: [:ticket_count])
                |> Ash.Query.limit(1)
-               |> Api.read!(authorize?: true)
+               |> Domain.read!(authorize?: true)
 
       assert ticket.reporter.ticket_count == %Ash.ForbiddenField{
                field: :ticket_count,
@@ -276,21 +280,21 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.select([:points])
                |> Ash.Query.sort_input(points: :asc_nils_last)
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
-               |> Api.read!()
+               |> Domain.read!()
 
       assert [_, _, _, %{id: ^user_id}] =
                User
                |> Ash.Query.select([:points])
                |> Ash.Query.sort_input(points: :asc_nils_first)
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
-               |> Api.read!()
+               |> Domain.read!()
 
       assert [_, _, %{id: ^user_id}, _] =
                User
                |> Ash.Query.select([:points])
                |> Ash.Query.sort(points: :asc_nils_first)
                |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
-               |> Api.read!()
+               |> Domain.read!()
     end
   end
 end

@@ -5,7 +5,7 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
   require Ash.Query
   require Ash.Expr
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Atomic do
     use Ash.Resource.Change
@@ -25,7 +25,7 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -74,13 +74,13 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
     author =
       Author
       |> Ash.Changeset.new(%{name: "fred"})
-      |> Api.create!()
+      |> Domain.create!()
 
     author =
       author
       |> Ash.Changeset.for_update(:only_allow_name)
       |> Ash.Changeset.atomic_update(:name, Ash.Expr.expr(name <> " weasley"))
-      |> Api.update!()
+      |> Domain.update!()
 
     assert author.name == "fred weasley"
   end
@@ -106,7 +106,7 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
     author =
       Author
       |> Ash.Changeset.new(%{name: "fred", score: 0})
-      |> Api.create!()
+      |> Domain.create!()
 
     assert Author.increment_score!(author, authorize?: true).score == 1
   end
@@ -116,7 +116,7 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
   #   author =
   #     Author
   #     |> Ash.Changeset.new(%{name: "fred", score: 0})
-  #     |> Api.create!()
+  #     |> Domain.create!()
 
   #   assert_raise Ash.Error.Framework, ~r/must be performed atomically/, fn ->
   #     Author.sometimes_atomic!(author, %{atomic: false})
@@ -149,7 +149,7 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
       author =
         Author
         |> Ash.Changeset.new(%{name: "fred", score: 0})
-        |> Api.create!()
+        |> Domain.create!()
 
       assert Author.increment_score!(author).score == 1
       assert Author.increment_score!(author).score == 2

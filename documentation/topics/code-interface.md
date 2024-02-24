@@ -1,6 +1,6 @@
 # Code Interface
 
-One of the ways that we interact with our resources is via hand-written code. The general pattern for that looks like building a query or a changeset for a given action, and dispatching it to the api using things like `MyApi.read/3` and `MyApi.create/3`. This, however, is just one way to use Ash, and is designed to help you build tools that work with resources, and to power things like `AshPhoenix.Form`, `AshGraphql.Resource` and `AshJsonApi.Resource`. When working with your resources in code, we generally want something more idiomatic and simple. For example, on a resource called `Helpdesk.Support.Ticket`:
+One of the ways that we interact with our resources is via hand-written code. The general pattern for that looks like building a query or a changeset for a given action, and dispatching it to the domain using things like `MyDomain.read/3` and `MyDomain.create/3`. This, however, is just one way to use Ash, and is designed to help you build tools that work with resources, and to power things like `AshPhoenix.Form`, `AshGraphql.Resource` and `AshJsonApi.Resource`. When working with your resources in code, we generally want something more idiomatic and simple. For example, on a resource called `Helpdesk.Support.Ticket`:
 
 ```elixir
 code_interface do
@@ -12,18 +12,18 @@ This simple setup now allows you to open a ticket with `Helpdesk.Support.Ticket.
 
 ## define_interface
 
-The interface will be defined on the resource by default, as long as the `api` option was given to `use Ash.Resource`. If you would like to define it in a different module, you can use `define? false` in the `code_interface` block, and then use `Ash.CodeInterface` to define the interface elsewhere, as shown below.
+The interface will be defined on the resource by default, as long as the `domain` option was given to `use Ash.Resource`. If you would like to define it in a different module, you can use `define? false` in the `code_interface` block, and then use `Ash.CodeInterface` to define the interface elsewhere, as shown below.
 
 ```elixir
-defmodule MyApp.MyApi.Interface do
+defmodule MyApp.MyDomain.Interface do
   require Ash.CodeInterface
 
-  Ash.CodeInterface.define_interface(MyApp.MyApi, MyApp.Resource1)
-  Ash.CodeInterface.define_interface(MyApp.MyApi, MyApp.Resource2)
+  Ash.CodeInterface.define_interface(MyApp.MyDomain, MyApp.Resource1)
+  Ash.CodeInterface.define_interface(MyApp.MyDomain, MyApp.Resource2)
 end
 ```
 
-And then call functions on `MyApp.MyApi.Interface` instead.
+And then call functions on `MyApp.MyDomain.Interface` instead.
 
 ## Using the code interface
 
@@ -46,16 +46,16 @@ This allows for the following behaviour:
 
 ```elixir
 # Because the 3rd argument is a keyword list, we use it as options
-Api.register_user(username, password, [tenant: "organization_22"])
+Resource.register_user(username, password, [tenant: "organization_22"])
 # Because the 3rd argument is a map, we use it as action input
-Api.register_user(username, password, %{key: "val"})
+Resource.register_user(username, password, %{key: "val"})
 # When all arguments are provided it is unambiguous
-Api.register_user(username, password, %{key: "val"}, [tenant: "organization_22"])
+Resource.register_user(username, password, %{key: "val"}, [tenant: "organization_22"])
 ```
 
 ## Calculations
 
-Resource calculations can be run dynamically using `YourApi.calculate/3`, but
+Resource calculations can be run dynamically using `YourDomain.calculate/3`, but
 you can also expose them using the code_interface with `define_calculation`.
 
 For example:
@@ -85,7 +85,7 @@ User.full_name("Jessie", "James", "-")
 User.full_name(user)
 ```
 
-This allows for running calculations without an instance of a resource, i.e `Api.load(user, :full_name)`
+This allows for running calculations without an instance of a resource, i.e `Domain.load(user, :full_name)`
 
 
 By default, configured args will be provided for any matching named reference *or* argument. This is normally fine, but in the case that you have an argument and a reference with the same name, you can specify it by supplying `{:arg, :name}` and `{:ref, :name}`. For example:

@@ -3,11 +3,11 @@ defmodule Ash.Test.CalculationTest do
   use ExUnit.Case, async: true
 
   require Ash.Query
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule FriendLink do
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -251,7 +251,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule Role do
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
       defaults([:create, :read, :update, :destroy])
@@ -321,7 +321,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule Bio do
-    use Ash.Resource, api: Api, data_layer: :embedded
+    use Ash.Resource, domain: Domain, data_layer: :embedded
 
     attributes do
       attribute :greeting, :string
@@ -336,7 +336,7 @@ defmodule Ash.Test.CalculationTest do
 
   defmodule User do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -567,7 +567,7 @@ defmodule Ash.Test.CalculationTest do
 
   defmodule Actor do
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     actions do
@@ -601,34 +601,34 @@ defmodule Ash.Test.CalculationTest do
     user1 =
       User
       |> Ash.Changeset.new(%{first_name: "zach", last_name: "daniel", bio: %{greeting: "Yo! "}})
-      |> Api.create!()
+      |> Domain.create!()
 
     admin_role =
       Role
       |> Ash.Changeset.for_create(:create, %{name: "admin"})
-      |> Api.create!()
+      |> Domain.create!()
 
     normie_role =
       Role
       |> Ash.Changeset.for_create(:create, %{name: "normie"})
-      |> Api.create!()
+      |> Domain.create!()
 
     actor1 =
       Actor
       |> Ash.Changeset.for_create(:create, %{user_id: user1.id, role_id: admin_role.id})
-      |> Api.create!()
+      |> Domain.create!()
 
     user2 =
       User
       |> Ash.Changeset.new(%{first_name: "brian", last_name: "cranston"})
       |> Ash.Changeset.manage_relationship(:best_friend, user1, type: :append_and_remove)
       |> Ash.Changeset.manage_relationship(:friends, user1, type: :append_and_remove)
-      |> Api.create!()
+      |> Domain.create!()
 
     actor2 =
       Actor
       |> Ash.Changeset.for_create(:create, %{user_id: user2.id, role_id: normie_role.id})
-      |> Api.create!()
+      |> Domain.create!()
 
     %{
       user1: user1,
@@ -643,14 +643,14 @@ defmodule Ash.Test.CalculationTest do
   test "calculations can refer to `to_one` relationships in filters" do
     Role
     |> Ash.Query.filter(user_is_active_with_calc == true)
-    |> Api.read!()
+    |> Domain.read!()
   end
 
   test "it uses default arguments" do
     full_names =
       User
       |> Ash.Query.load(:full_name)
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.full_name)
       |> Enum.sort()
 
@@ -658,13 +658,13 @@ defmodule Ash.Test.CalculationTest do
   end
 
   test "loads dependencies", %{user1: user} do
-    assert %{slug: "zach daniel123"} = Api.load!(user, [:slug])
+    assert %{slug: "zach daniel123"} = Domain.load!(user, [:slug])
   end
 
   test "calculations can depend on relationships directly" do
     Role
     |> Ash.Query.load(:has_user)
-    |> Api.read!()
+    |> Domain.read!()
   end
 
   test "read actions can load calculations that use the actor", %{actor1: actor} do
@@ -691,11 +691,11 @@ defmodule Ash.Test.CalculationTest do
     role
     |> Ash.Changeset.for_update(:update)
     |> Ash.Changeset.manage_relationship(:user, user1, type: :append)
-    |> Api.update!()
+    |> Domain.update!()
 
     User
     |> Ash.Query.load(roles: :has_user)
-    |> Api.read!()
+    |> Domain.read!()
   end
 
   test "calculations can depend on calculations that depend on relationships directly", %{
@@ -705,11 +705,11 @@ defmodule Ash.Test.CalculationTest do
     role
     |> Ash.Changeset.for_update(:update, %{})
     |> Ash.Changeset.manage_relationship(:user, user1, type: :append)
-    |> Api.update!()
+    |> Domain.update!()
 
     User
     |> Ash.Query.load(:roles_have_user)
-    |> Api.read!()
+    |> Domain.read!()
   end
 
   test "calculations can access the actor", %{user1: user1, user2: user2} do
@@ -717,14 +717,14 @@ defmodule Ash.Test.CalculationTest do
              name_with_users_name: "zach daniel brian cranston"
            } =
              user1
-             |> Api.load!(:name_with_users_name, actor: user2)
+             |> Domain.load!(:name_with_users_name, actor: user2)
   end
 
   test "it loads anything specified by the load callback" do
     full_names =
       User
       |> Ash.Query.load(:full_name_plus_full_name)
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.full_name_plus_full_name)
       |> Enum.sort()
 
@@ -735,7 +735,7 @@ defmodule Ash.Test.CalculationTest do
     full_names =
       User
       |> Ash.Query.load(:full_name_plus_full_name_plus_full_name)
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.full_name_plus_full_name_plus_full_name)
       |> Enum.sort()
 
@@ -749,9 +749,9 @@ defmodule Ash.Test.CalculationTest do
     full_names =
       User
       |> Ash.Query.load([:full_name, :full_name_plus_full_name])
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(&%{&1 | full_name: &1.full_name <> " more"})
-      |> Api.load!(:full_name_plus_full_name)
+      |> Domain.load!(:full_name_plus_full_name)
       |> Enum.map(& &1.full_name_plus_full_name)
       |> Enum.sort()
 
@@ -765,7 +765,7 @@ defmodule Ash.Test.CalculationTest do
     best_friends_names =
       User
       |> Ash.Query.load([:best_friends_name])
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.best_friends_name)
       |> Enum.sort()
 
@@ -776,7 +776,7 @@ defmodule Ash.Test.CalculationTest do
     best_friends_first_names_plus_stuff =
       User
       |> Ash.Query.load([:best_friends_first_name_plus_stuff])
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.best_friends_first_name_plus_stuff)
       |> Enum.sort()
 
@@ -787,7 +787,7 @@ defmodule Ash.Test.CalculationTest do
     full_names =
       User
       |> Ash.Query.load(full_name: %{separator: " - "})
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.full_name)
       |> Enum.sort()
 
@@ -799,7 +799,7 @@ defmodule Ash.Test.CalculationTest do
       User
       |> Ash.Query.select(:first_name)
       |> Ash.Query.load(full_name: %{separator: " - "})
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.full_name)
       |> Enum.sort()
 
@@ -812,7 +812,7 @@ defmodule Ash.Test.CalculationTest do
       |> Ash.Query.calculate(:full_name, {Concat, keys: [:first_name, :last_name]}, :string, %{
         separator: " \o.o/ "
       })
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.calculations.full_name)
       |> Enum.sort()
 
@@ -823,7 +823,7 @@ defmodule Ash.Test.CalculationTest do
     full_names =
       User
       |> Ash.Query.load(:expr_full_name)
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.expr_full_name)
       |> Enum.sort()
 
@@ -835,7 +835,7 @@ defmodule Ash.Test.CalculationTest do
       User
       |> Ash.Query.load(:expr_full_name)
       |> Ash.Query.sort(:expr_full_name)
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.expr_full_name)
 
     assert full_names == ["brian cranston", "zach daniel"]
@@ -844,7 +844,7 @@ defmodule Ash.Test.CalculationTest do
       User
       |> Ash.Query.load(:expr_full_name)
       |> Ash.Query.sort(expr_full_name: :desc)
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.expr_full_name)
 
     assert full_names == ["zach daniel", "brian cranston"]
@@ -856,7 +856,7 @@ defmodule Ash.Test.CalculationTest do
       |> Ash.Query.for_read(:paginated)
       |> Ash.Query.load(full_name_with_salutation: [salutation: "Mr"])
       |> Ash.Query.sort(full_name_with_salutation: {:asc, %{salutation: "Mr"}})
-      |> Api.read!()
+      |> Domain.read!()
       |> Map.get(:results)
       |> Enum.map(& &1.full_name_with_salutation)
 
@@ -866,12 +866,12 @@ defmodule Ash.Test.CalculationTest do
   test "the `if` calculation resolves the first expr when true, and the second when false" do
     User
     |> Ash.Changeset.new(%{first_name: "bob"})
-    |> Api.create!()
+    |> Domain.create!()
 
     full_names =
       User
       |> Ash.Query.load(:conditional_full_name)
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.conditional_full_name)
       |> Enum.sort()
 
@@ -881,12 +881,12 @@ defmodule Ash.Test.CalculationTest do
   test "the `if` calculation can use the `do` style syntax" do
     User
     |> Ash.Changeset.new(%{first_name: "bob"})
-    |> Api.create!()
+    |> Domain.create!()
 
     full_names =
       User
       |> Ash.Query.load(:conditional_full_name_block)
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.conditional_full_name_block)
       |> Enum.sort()
 
@@ -896,12 +896,12 @@ defmodule Ash.Test.CalculationTest do
   test "the `if` calculation can use the `cond` style syntax" do
     User
     |> Ash.Changeset.new(%{first_name: "bob"})
-    |> Api.create!()
+    |> Domain.create!()
 
     full_names =
       User
       |> Ash.Query.load(:conditional_full_name_cond)
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.conditional_full_name_cond)
       |> Enum.sort()
 
@@ -911,12 +911,12 @@ defmodule Ash.Test.CalculationTest do
   test "expression based calculations can handle lists of fields" do
     User
     |> Ash.Changeset.new(%{first_name: "bob"})
-    |> Api.create!()
+    |> Domain.create!()
 
     full_names =
       User
       |> Ash.Query.load(:string_join_full_name)
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.string_join_full_name)
       |> Enum.sort()
 
@@ -925,7 +925,7 @@ defmodule Ash.Test.CalculationTest do
     ci_full_names =
       User
       |> Ash.Query.load(:string_join_full_name_ci)
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(&Ash.CiString.value(&1.string_join_full_name_ci))
       |> Enum.sort()
 
@@ -938,7 +938,7 @@ defmodule Ash.Test.CalculationTest do
     User
     |> Ash.Changeset.new(%{first_name: "chidi", last_name: "anagonye", special: true})
     |> Ash.Changeset.manage_relationship(:best_friend, user1, type: :append_and_remove)
-    |> Api.create!()
+    |> Domain.create!()
 
     assert %{
              calculations: %{
@@ -959,7 +959,7 @@ defmodule Ash.Test.CalculationTest do
                :names_of_best_friends_of_me,
                :names_of_best_friends_of_me
              )
-             |> Api.read_one!()
+             |> Domain.read_one!()
   end
 
   test "loading calculations with different relationship dependencies won't collide, when manually loading one of the deps",
@@ -969,7 +969,7 @@ defmodule Ash.Test.CalculationTest do
     User
     |> Ash.Changeset.new(%{first_name: "chidi", last_name: "anagonye", special: true})
     |> Ash.Changeset.manage_relationship(:best_friend, user1, type: :append_and_remove)
-    |> Api.create!()
+    |> Domain.create!()
 
     assert %{
              calculations: %{
@@ -991,7 +991,7 @@ defmodule Ash.Test.CalculationTest do
                :names_of_best_friends_of_me,
                :names_of_best_friends_of_me
              )
-             |> Api.read_one!()
+             |> Domain.read_one!()
   end
 
   test "calculations that depend on many to many relationships will load", %{user2: user2} do
@@ -1001,14 +1001,14 @@ defmodule Ash.Test.CalculationTest do
              User
              |> Ash.Query.filter(id == ^user2.id)
              |> Ash.Query.load(:friends_names)
-             |> Api.read_one!()
+             |> Domain.read_one!()
   end
 
   test "when already loading a calculation's dependency it is used" do
     full_names =
       User
       |> Ash.Query.load([:full_name, :full_name_plus_full_name])
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.full_name_plus_full_name)
       |> Enum.sort()
 
@@ -1019,7 +1019,7 @@ defmodule Ash.Test.CalculationTest do
     best_friends_names =
       User
       |> Ash.Query.load([:best_friends_name, best_friend: [:full_name]])
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.best_friends_name)
       |> Enum.sort()
 
@@ -1030,7 +1030,7 @@ defmodule Ash.Test.CalculationTest do
     best_friends_best_friends_first_names =
       User
       |> Ash.Query.load(:best_friends_best_friends_first_name)
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.best_friends_best_friends_first_name)
       |> Enum.sort()
 
@@ -1044,7 +1044,7 @@ defmodule Ash.Test.CalculationTest do
         :best_friends_best_friends_first_name,
         best_friend: [best_friend: [:first_name]]
       ])
-      |> Api.read!()
+      |> Domain.read!()
       |> Enum.map(& &1.best_friends_best_friends_first_name)
       |> Enum.sort()
 
@@ -1058,7 +1058,7 @@ defmodule Ash.Test.CalculationTest do
              |> Ash.Query.load([
                :full_name_plus_first_name
              ])
-             |> Api.read!()
+             |> Domain.read!()
              |> Enum.map(& &1.full_name_plus_first_name)
              |> Enum.sort()
   end
@@ -1067,7 +1067,7 @@ defmodule Ash.Test.CalculationTest do
     assert [false, false] =
              Actor
              |> Ash.Query.load(:active)
-             |> Api.read!(authorize?: true)
+             |> Domain.read!(authorize?: true)
              |> Enum.map(& &1.active)
   end
 
@@ -1081,9 +1081,9 @@ defmodule Ash.Test.CalculationTest do
     role
     |> Ash.Changeset.for_update(:update, %{}, actor: actor)
     |> Ash.Changeset.manage_relationship(:user, user1, type: :append)
-    |> Api.update!(actor: actor)
+    |> Domain.update!(actor: actor)
 
-    roles = Role |> Ash.Query.load(:user_name) |> Api.read!(actor: actor)
+    roles = Role |> Ash.Query.load(:user_name) |> Domain.read!(actor: actor)
 
     zach_role =
       Enum.find(roles, fn role ->
@@ -1096,7 +1096,7 @@ defmodule Ash.Test.CalculationTest do
       User
       |> Ash.Query.select([])
       |> Ash.Query.load([:role_user_name, :role_user_name_from_agg])
-      |> Api.read!(actor: actor)
+      |> Domain.read!(actor: actor)
 
     zach_user =
       Enum.find(users, fn user ->
@@ -1116,7 +1116,7 @@ defmodule Ash.Test.CalculationTest do
   test "calculation dependencies with conflicting load throughs still receive the appropriate values",
        %{user1: user1} do
     user1
-    |> Api.load!([:say_hello_to_fred, :say_hello_to_george])
+    |> Domain.load!([:say_hello_to_fred, :say_hello_to_george])
   end
 
   test "expression calculations that depend on runtime calculations work", %{user1: user1} do
@@ -1124,14 +1124,14 @@ defmodule Ash.Test.CalculationTest do
              User
              |> Ash.Query.filter(id == ^user1.id)
              |> Ash.Query.load(:full_name_with_select_plus_something)
-             |> Api.read!()
+             |> Domain.read!()
   end
 
   test "calculations that extract metadata will be loaded as a dependency of the concat calculation",
        %{user1: user1} do
     assert "example metadataexample metadata" ==
              user1
-             |> Api.load!(:metadata_plus_metadata)
+             |> Domain.load!(:metadata_plus_metadata)
              |> Map.get(:metadata_plus_metadata)
   end
 
@@ -1142,7 +1142,7 @@ defmodule Ash.Test.CalculationTest do
     assert %{example_metadata: "example metadata"} =
              user1
              |> Ash.Changeset.for_update(:update, %{first_name: "something new"})
-             |> Api.update!()
+             |> Domain.update!()
              |> Map.get(:__metadata__)
   end
 end

@@ -31,13 +31,13 @@ defmodule Ash.Resource.Identity do
       doc: "The names of the attributes that uniquely identify this resource."
     ],
     eager_check_with: [
-      type: {:behaviour, Ash.Api},
+      type: {:behaviour, Ash.Domain},
       doc: """
-      Validates that the unique identity provided is unique at validation time, outside of any transactions, using the api module provided.
+      Validates that the unique identity provided is unique at validation time, outside of any transactions, using the domain module provided.
       """
     ],
     pre_check_with: [
-      type: {:behaviour, Ash.Api},
+      type: {:behaviour, Ash.Domain},
       doc: """
       Validates that the unique identity provided is unique in a before_action hook.
       """

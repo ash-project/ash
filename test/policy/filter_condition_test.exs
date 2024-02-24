@@ -4,7 +4,7 @@ defmodule Ash.Test.Policy.FilterConditionTest do
   defmodule Resource do
     @moduledoc false
     use Ash.Resource,
-      api: Ash.Test.Policy.FilterConditionTest.Api,
+      domain: Ash.Test.Policy.FilterConditionTest.Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -30,9 +30,9 @@ defmodule Ash.Test.Policy.FilterConditionTest do
     end
   end
 
-  defmodule Api do
+  defmodule Domain do
     @moduledoc false
-    use Ash.Api
+    use Ash.Domain
 
     authorization do
       authorize :by_default
@@ -46,16 +46,16 @@ defmodule Ash.Test.Policy.FilterConditionTest do
   test "condition in filter policy is evaluated" do
     Resource
     |> Ash.Changeset.for_create(:create, %{visible: true}, authorize?: false)
-    |> Api.create!()
+    |> Domain.create!()
 
     Resource
     |> Ash.Changeset.for_create(:create, %{visible: false}, authorize?: false)
-    |> Api.create!()
+    |> Domain.create!()
 
     [visible_resource] =
       Resource
       |> Ash.Query.for_read(:read, %{}, actor: %{id: "foo"})
-      |> Api.read!()
+      |> Domain.read!()
 
     assert visible_resource.visible == true
   end

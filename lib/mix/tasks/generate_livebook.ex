@@ -1,6 +1,6 @@
 defmodule Mix.Tasks.Ash.GenerateLivebook do
   @moduledoc """
-  Generates a Livebook for each Ash API.
+  Generates a Livebook for each Ash domain.
 
   ## Command line options
 
@@ -9,7 +9,7 @@ defmodule Mix.Tasks.Ash.GenerateLivebook do
   """
   use Mix.Task
 
-  @shortdoc "Generates a Livebook for each Ash API"
+  @shortdoc "Generates a Livebook for each Ash domain"
   def run(argv) do
     Mix.Task.run("compile")
 
@@ -21,13 +21,13 @@ defmodule Mix.Tasks.Ash.GenerateLivebook do
 
     filename = Keyword.get(opts, :filename, "livebook.livemd")
 
-    File.write!(filename, Ash.Api.Info.Livebook.overview(apis()))
+    File.write!(filename, Ash.Domain.Info.Livebook.overview(domains()))
 
     Mix.shell().info("Generated Livebook")
   end
 
-  def apis do
+  def domains do
     Mix.Project.config()[:app]
-    |> Application.get_env(:ash_apis, [])
+    |> Application.get_env(:ash_domains, [])
   end
 end

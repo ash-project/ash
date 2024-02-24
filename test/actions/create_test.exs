@@ -10,7 +10,7 @@ defmodule Ash.Test.Actions.CreateTest do
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Test.Authorizer],
-      api: Ash.Test.AnyApi
+      domain: Ash.Test.Domain
 
     ets do
       private?(true)
@@ -30,7 +30,7 @@ defmodule Ash.Test.Actions.CreateTest do
     @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
-      api: Ash.Test.AnyApi
+      domain: Ash.Test.Domain
 
     ets do
       private?(true)
@@ -55,7 +55,7 @@ defmodule Ash.Test.Actions.CreateTest do
     @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
-      api: Ash.Test.AnyApi
+      domain: Ash.Test.Domain
 
     ets do
       private?(true)
@@ -119,7 +119,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, api: Ash.Test.AnyApi
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Ash.Test.Domain
 
     ets do
       private?(true)
@@ -161,7 +161,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
   defmodule AuthorWithRequiredId do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, api: Ash.Test.AnyApi
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Ash.Test.Domain
 
     ets do
       private?(true)
@@ -200,7 +200,7 @@ defmodule Ash.Test.Actions.CreateTest do
     @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
-      api: Ash.Test.AnyApi
+      domain: Ash.Test.Domain
 
     ets do
       private?(true)
@@ -225,7 +225,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, api: Ash.Test.AnyApi
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Ash.Test.Domain
 
     ets do
       private?(true)
@@ -294,7 +294,7 @@ defmodule Ash.Test.Actions.CreateTest do
     @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
-      api: Ash.Test.AnyApi
+      domain: Ash.Test.Domain
 
     ets do
       private?(true)
@@ -313,7 +313,7 @@ defmodule Ash.Test.Actions.CreateTest do
     @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
-      api: Ash.Test.AnyApi
+      domain: Ash.Test.Domain
 
     ets do
       private?(true)

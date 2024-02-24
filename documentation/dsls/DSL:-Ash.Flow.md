@@ -20,7 +20,7 @@ Details about the flow itself, like description and the successful return type.
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`api`](#flow-api){: #flow-api } | `module` |  | An api to use by default when calling actions |
+| [`domain`](#flow-domain){: #flow-domain } | `module` |  | An domain to use by default when calling actions |
 | [`description`](#flow-description){: #flow-description } | `String.t` |  | A description of the flow |
 | [`trace_name`](#flow-trace_name){: #flow-trace_name } | `String.t` |  | The name to use when creating traces. Defaults to the short name. |
 | [`short_name`](#flow-short_name){: #flow-short_name } | `atom` |  | A short name to use for the flow. Defaults to the last to parts of the module name, underscored. |
@@ -322,7 +322,7 @@ create :create_post, MyApp.Post, :create
 | [`halt_if`](#steps-create-halt_if){: #steps-create-halt_if } | `any` |  | Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more. |
 | [`halt_reason`](#steps-create-halt_reason){: #steps-create-halt_reason } | `any` | `:halted` | Configures the reason for the `halt_if` clause. |
 | [`description`](#steps-create-description){: #steps-create-description } | `String.t` |  | A description for the step. |
-| [`api`](#steps-create-api){: #steps-create-api } | `any` |  | The api to use when calling the action. Defaults to the api set in the `flow` section. |
+| [`domain`](#steps-create-domain){: #steps-create-domain } | `any` |  | The domain to use when calling the action. Defaults to the domain set in the `flow` section. |
 | [`tenant`](#steps-create-tenant){: #steps-create-tenant } | `any` |  | A tenant to use for the operation. May be a template or a literal value. |
 | [`input`](#steps-create-input){: #steps-create-input } | `any` |  | A template for the input. |
 
@@ -419,7 +419,7 @@ end
 | [`halt_if`](#steps-update-halt_if){: #steps-update-halt_if } | `any` |  | Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more. |
 | [`halt_reason`](#steps-update-halt_reason){: #steps-update-halt_reason } | `any` | `:halted` | Configures the reason for the `halt_if` clause. |
 | [`description`](#steps-update-description){: #steps-update-description } | `String.t` |  | A description for the step. |
-| [`api`](#steps-update-api){: #steps-update-api } | `any` |  | The api to use when calling the action. Defaults to the api set in the `flow` section. |
+| [`domain`](#steps-update-domain){: #steps-update-domain } | `any` |  | The domain to use when calling the action. Defaults to the domain set in the `flow` section. |
 | [`tenant`](#steps-update-tenant){: #steps-update-tenant } | `any` |  | A tenant to use for the operation. May be a template or a literal value. |
 | [`input`](#steps-update-input){: #steps-update-input } | `any` |  | A template for the input. |
 
@@ -468,7 +468,7 @@ destroy :destroy_post, MyApp.Post, :destroy
 | [`halt_if`](#steps-destroy-halt_if){: #steps-destroy-halt_if } | `any` |  | Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more. |
 | [`halt_reason`](#steps-destroy-halt_reason){: #steps-destroy-halt_reason } | `any` | `:halted` | Configures the reason for the `halt_if` clause. |
 | [`description`](#steps-destroy-description){: #steps-destroy-description } | `String.t` |  | A description for the step. |
-| [`api`](#steps-destroy-api){: #steps-destroy-api } | `any` |  | The api to use when calling the action. Defaults to the api set in the `flow` section. |
+| [`domain`](#steps-destroy-domain){: #steps-destroy-domain } | `any` |  | The domain to use when calling the action. Defaults to the domain set in the `flow` section. |
 | [`tenant`](#steps-destroy-tenant){: #steps-destroy-tenant } | `any` |  | A tenant to use for the operation. May be a template or a literal value. |
 | [`input`](#steps-destroy-input){: #steps-destroy-input } | `any` |  | A template for the input. |
 
@@ -521,7 +521,7 @@ end
 | [`halt_if`](#steps-validate-halt_if){: #steps-validate-halt_if } | `any` |  | Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more. |
 | [`halt_reason`](#steps-validate-halt_reason){: #steps-validate-halt_reason } | `any` | `:halted` | Configures the reason for the `halt_if` clause. |
 | [`description`](#steps-validate-description){: #steps-validate-description } | `String.t` |  | A description for the step. |
-| [`api`](#steps-validate-api){: #steps-validate-api } | `any` |  | The api to use when calling the action. Defaults to the api set in the `flow` section. |
+| [`domain`](#steps-validate-domain){: #steps-validate-domain } | `any` |  | The domain to use when calling the action. Defaults to the domain set in the `flow` section. |
 | [`tenant`](#steps-validate-tenant){: #steps-validate-tenant } | `any` |  | A tenant to use for the operation. May be a template or a literal value. |
 | [`input`](#steps-validate-input){: #steps-validate-input } | `any` |  | A template for the input. |
 
@@ -571,7 +571,7 @@ read :destroy_post, MyApp.Post, :destroy
 | [`halt_if`](#steps-read-halt_if){: #steps-read-halt_if } | `any` |  | Halts the step by emitting an error (with an `Ash.Error.Flow.Halted`). Can use template variables. See the section on Halting for more. |
 | [`halt_reason`](#steps-read-halt_reason){: #steps-read-halt_reason } | `any` | `:halted` | Configures the reason for the `halt_if` clause. |
 | [`description`](#steps-read-description){: #steps-read-description } | `String.t` |  | A description for the step. |
-| [`api`](#steps-read-api){: #steps-read-api } | `any` |  | The api to use when calling the action. Defaults to the api set in the `flow` section. |
+| [`domain`](#steps-read-domain){: #steps-read-domain } | `any` |  | The domain to use when calling the action. Defaults to the domain set in the `flow` section. |
 | [`tenant`](#steps-read-tenant){: #steps-read-tenant } | `any` |  | A tenant to use for the operation. May be a template or a literal value. |
 | [`input`](#steps-read-input){: #steps-read-input } | `any` |  | A template for the input. |
 

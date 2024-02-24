@@ -21,12 +21,12 @@ defmodule Ash.Filter.Runtime do
   that could only be determined by data layer), it is assumed that they
   are not matches.
   """
-  def filter_matches(api, records, filter, opts \\ [])
-  def filter_matches(_api, [], _filter, _opts), do: {:ok, []}
+  def filter_matches(domain, records, filter, opts \\ [])
+  def filter_matches(_domain, [], _filter, _opts), do: {:ok, []}
 
-  def filter_matches(_api, records, nil, _opts), do: {:ok, records}
+  def filter_matches(_domain, records, nil, _opts), do: {:ok, records}
 
-  def filter_matches(api, records, filter, opts) do
+  def filter_matches(domain, records, filter, opts) do
     resource =
       case records do
         %resource{} ->
@@ -71,7 +71,7 @@ defmodule Ash.Filter.Runtime do
             |> Ash.Query.load(refs_to_load)
             |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-          api.load!(records, load, authorize?: false)
+          domain.load!(records, load, authorize?: false)
       end
 
     filter
@@ -110,9 +110,9 @@ defmodule Ash.Filter.Runtime do
           |> Ash.Query.load(need_to_load)
           |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-        case api.load(records, query, authorize?: false) do
+        case domain.load(records, query, authorize?: false) do
           {:ok, loaded} ->
-            filter_matches(api, loaded, filter, opts)
+            filter_matches(domain, loaded, filter, opts)
 
           other ->
             other
@@ -124,8 +124,8 @@ defmodule Ash.Filter.Runtime do
 
   # This is bad, as parent requirements are loaded iteratively instead of up front.
   # we can improve this
-  # def load_parent_requirements(api, expression, [first | rest]) do
-  #   case load_parent_requirements(api, expression, first) do
+  # def load_parent_requirements(domain, expression, [first | rest]) do
+  #   case load_parent_requirements(domain, expression, first) do
   #     {:ok, first} ->
   #       {:ok, [first | rest]}
 
@@ -134,7 +134,7 @@ defmodule Ash.Filter.Runtime do
   #   end
   # end
 
-  # def load_parent_requirements(api, expression, %resource{} = parent) do
+  # def load_parent_requirements(domain, expression, %resource{} = parent) do
   #   expression
   #   |> Ash.Filter.flat_map(fn %Ash.Query.Parent{expr: expr} ->
   #     Ash.Filter.list_refs(expr)
@@ -157,7 +157,7 @@ defmodule Ash.Filter.Runtime do
   #         |> Ash.Query.load(to_load)
   #         |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-  #       api.load(parent, query)
+  #       domain.load(parent, query)
   #   end
   # end
 
@@ -242,10 +242,10 @@ defmodule Ash.Filter.Runtime do
         expression,
         parent \\ nil,
         resource \\ nil,
-        api \\ nil,
+        domain \\ nil,
         unknown_on_unknown_refs? \\ false
       ) do
-    if api && record do
+    if domain && record do
       {refs_to_load, refs} =
         expression
         |> Ash.Filter.list_refs()
@@ -283,7 +283,7 @@ defmodule Ash.Filter.Runtime do
               |> Ash.Query.load(refs)
               |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-            api.load!(record, load, authorize?: false)
+            domain.load!(record, load, authorize?: false)
         end
 
       expression
@@ -302,7 +302,7 @@ defmodule Ash.Filter.Runtime do
             |> Ash.Query.load(need_to_load)
             |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-          case api.load(record, query, authorize?: false) do
+          case domain.load(record, query, authorize?: false) do
             {:ok, loaded} ->
               do_match(loaded, expression, parent, resource, unknown_on_unknown_refs?)
 
@@ -1020,10 +1020,10 @@ defmodule Ash.Filter.Runtime do
         unknown_on_unknown_refs?,
         join_filters \\ %{},
         parent_stack \\ [],
-        api \\ nil
+        domain \\ nil
       )
 
-  def get_related(nil, _, unknown_on_unknown_refs?, _join_filters, _parent_stack, _api) do
+  def get_related(nil, _, unknown_on_unknown_refs?, _join_filters, _parent_stack, _domain) do
     if unknown_on_unknown_refs? do
       :unknown
     else
@@ -1037,7 +1037,7 @@ defmodule Ash.Filter.Runtime do
         unknown_on_unknown_refs?,
         _join_filters,
         _parent_stack,
-        _api
+        _domain
       ) do
     if unknown_on_unknown_refs? do
       :unknown
@@ -1046,7 +1046,7 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
-  def get_related(record, [], _, _, _parent_stack, _api) do
+  def get_related(record, [], _, _, _parent_stack, _domain) do
     List.wrap(record)
   end
 
@@ -1056,7 +1056,7 @@ defmodule Ash.Filter.Runtime do
         unknown_on_unknown_refs?,
         join_filters,
         parent_stack,
-        api
+        domain
       )
       when is_list(records) do
     {join_filter, rest_join_filters} = Map.pop(join_filters, [])
@@ -1072,7 +1072,7 @@ defmodule Ash.Filter.Runtime do
 
     filtered =
       if Map.has_key?(join_filters, []) do
-        filter_matches(api, records, join_filter,
+        filter_matches(domain, records, join_filter,
           parent: parent_stack,
           unknown_on_unknown_refs?: unknown_on_unknown_refs?
         )
@@ -1103,7 +1103,7 @@ defmodule Ash.Filter.Runtime do
                        unknown_on_unknown_refs?,
                        rest_join_filters,
                        [match | parent_stack],
-                       api
+                       domain
                      ) do
                   :unknown -> []
                   value -> value
@@ -1128,7 +1128,7 @@ defmodule Ash.Filter.Runtime do
         unknown_on_unknown_refs?,
         join_filters,
         parent_stack,
-        api
+        domain
       ) do
     case Map.get(record, key) do
       %Ash.NotLoaded{} when unknown_on_unknown_refs? ->
@@ -1144,7 +1144,7 @@ defmodule Ash.Filter.Runtime do
                unknown_on_unknown_refs?,
                join_filters,
                parent_stack,
-               api
+               domain
              ) do
           :unknown ->
             if unknown_on_unknown_refs? do

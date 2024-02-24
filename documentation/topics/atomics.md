@@ -23,7 +23,7 @@ end
 ```elixir
 changeset
 |> Ash.Changeset.atomic_update(:score, Ash.Expr.expr(score + 1))
-|> Api.update!()
+|> Ash.update!()
 ```
 
 ### Upsert example

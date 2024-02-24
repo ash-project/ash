@@ -2,10 +2,10 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
   @doc false
   use ExUnit.Case
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Actor do
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
       defaults [:create, :read, :update, :destroy]
@@ -38,7 +38,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
   end
 
   defmodule User do
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
       defaults [:create, :read, :update, :destroy]
@@ -55,7 +55,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
 
   defmodule Account do
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -88,7 +88,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
   end
 
   defmodule Role do
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
       defaults [:create, :read, :update, :destroy]
@@ -109,7 +109,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
 
   defmodule BadPolicyRelName do
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -134,7 +134,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
 
   defmodule BadPolicyRelPathName do
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -162,63 +162,63 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
       user =
         User
         |> Ash.Changeset.for_create(:create)
-        |> Api.create!()
+        |> Domain.create!()
 
       account =
         Account
         |> Ash.Changeset.for_create(:create)
         |> Ash.Changeset.manage_relationship(:user, user, type: :append)
-        |> Api.create!(authorize?: false)
+        |> Domain.create!(authorize?: false)
 
       actor =
         Actor
         |> Ash.Changeset.for_create(:create)
         |> Ash.Changeset.manage_relationship(:user, user, type: :append)
-        |> Api.create!(authorize?: false)
-        |> Api.load!(:type)
+        |> Domain.create!(authorize?: false)
+        |> Domain.load!(:type)
 
-      assert {:ok, _} = Api.get(Account, account.id, actor: actor)
+      assert {:ok, _} = Domain.get(Account, account.id, actor: actor)
     end
 
     test "relates_to_actor_via with has_many" do
       user =
         User
         |> Ash.Changeset.for_create(:create)
-        |> Api.create!()
+        |> Domain.create!()
 
       account =
         Account
         |> Ash.Changeset.for_create(:create)
         |> Ash.Changeset.manage_relationship(:user, user, type: :append)
-        |> Api.create!(authorize?: false)
+        |> Domain.create!(authorize?: false)
 
       role =
         Role
         |> Ash.Changeset.for_create(:create)
         |> Ash.Changeset.manage_relationship(:account, account, type: :append)
-        |> Api.create!(authorize?: false)
+        |> Domain.create!(authorize?: false)
 
       actor =
         Actor
         |> Ash.Changeset.for_create(:create)
         |> Ash.Changeset.manage_relationship(:role, role, type: :append)
-        |> Api.create!(authorize?: false)
-        |> Api.load!(:type)
+        |> Domain.create!(authorize?: false)
+        |> Domain.load!(:type)
 
-      assert {:ok, _} = Api.get(Account, account.id, actor: actor)
+      assert {:ok, _} = Domain.get(Account, account.id, actor: actor)
     end
 
     test "relates_to_actor_via raises if relationship does not exist" do
       assert_raise Ash.Error.Unknown, ~r/does_not_exist/, fn ->
         BadPolicyRelName
         |> Ash.Changeset.for_create(:create)
-        |> Api.create!(authorize?: true)
+        |> Domain.create!(authorize?: true)
       end
 
       assert_raise Ash.Error.Unknown, ~r/:does_not_exist/, fn ->
         BadPolicyRelPathName
         |> Ash.Changeset.for_create(:create)
-        |> Api.create!(authorize?: true)
+        |> Domain.create!(authorize?: true)
       end
     end
   end

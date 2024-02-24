@@ -128,17 +128,15 @@ To ensure that your code stays formatted like the examples here, you can add `:a
 
 And run `mix deps.get`, to install the dependency.
 
-### Building your first Ash API
+### Building your first Ash Domain
 
-The basic building blocks of an Ash application are Ash resources. They are tied together by an API module (not to be confused with a web API), which will allow you to interact with those resources.
-
-It might be helpful to think of an Ash API as a Bounded Context (in the Domain Driven Design sense), or as a Service (in the microservice sense).
+The basic building blocks of an Ash application are Ash resources. They are tied together by a domain module, which will allow you to interact with those resources.
 
 ### Creating our first resource
 
-Let's start by creating our first resource along with our first API. We will create the following files:
+Let's start by creating our first resource along with our first domain. We will create the following files:
 
-- The API [Helpdesk.Support] - `lib/helpdesk/support.ex`
+- The domain [Helpdesk.Support] - `lib/helpdesk/support.ex`
 - Our Ticket resource [Helpdesk.Support.Ticket] - `lib/helpdesk/support/ticket.ex`.
 
 To create the required folders and files, you can use the following command in your terminal:
@@ -161,11 +159,23 @@ lib/
 Add the following to the files we created
 
 ```elixir
+# lib/helpdesk/support.ex
+
+defmodule Helpdesk.Support do
+  use Ash.Domain
+
+  resources do
+    resource Helpdesk.Support.Ticket
+  end
+end
+```
+
+```elixir
 # lib/helpdesk/support/ticket.ex
 
 defmodule Helpdesk.Support.Ticket do
   # This turns this module into a resource
-  use Ash.Resource
+  use Ash.Resource, domain: Helpdesk.Support
 
   actions do
     # Add a set of simple actions. You'll customize these later.
@@ -183,19 +193,7 @@ defmodule Helpdesk.Support.Ticket do
 end
 ```
 
-```elixir
-# lib/helpdesk/support.ex
-
-defmodule Helpdesk.Support do
-  use Ash.Api
-
-  resources do
-    resource Helpdesk.Support.Ticket
-  end
-end
-```
-
-Next, add your api to your `config.exs`
+Next, add your domain to your `config.exs`
 
 Run the following to create your `config.exs` if it doesn't already exist
 
@@ -210,19 +208,19 @@ and add the following contents to it (if the file already exists, just make sure
 # in config/config.exs
 import Config
 
-config :helpdesk, :ash_apis, [Helpdesk.Support]
+config :helpdesk, :ash_domains, [Helpdesk.Support]
 ```
 
 ### Try our first resource out
 
 Run `iex -S mix` in your project and try it out.
 
-To create a ticket, we first make an `Ash.Changeset` for the `:create` action of the `Helpdesk.Support.Ticket` resource. Then we pass it to the `create!/1` function on our API module `Helpdesk.Support`.
+To create a ticket, we first make an `Ash.Changeset` for the `:create` action of the `Helpdesk.Support.Ticket` resource. Then we pass it to the `Ash.create!/1` function.
 
 ```elixir
 Helpdesk.Support.Ticket
 |> Ash.Changeset.for_create(:create)
-|> Helpdesk.Support.create!()
+|> Ash.create!()
 ```
 
 This returns what we call a `record` which is an instance of a resource.
@@ -522,7 +520,7 @@ relationships do
 end
 ```
 
-Finally, let's add our new Representative resource to our Api module
+Finally, let's add our new Representative resource to our domain module
 
 ```elixir
 # lib/helpdesk/support.ex
@@ -533,7 +531,7 @@ resources do
 end
 ```
 
-You may notice that if you don't add the resource to your api, or if you don't add the `belongs_to` relationship, that you'll get helpful errors at compile time. Helpful compile time validations are a core concept of Ash as we really want to ensure that your application is valid.
+You may notice that if you don't add the resource to your domain, or if you don't add the `belongs_to` relationship, that you'll get helpful errors at compile time. Helpful compile time validations are a core concept of Ash as we really want to ensure that your application is valid.
 
 ## Working with relationships
 
@@ -651,7 +649,7 @@ Check out the [Code Interface Guide](/documentation/topics/code-interface.md) to
 
 See [The AshPostgres getting started guide](https://hexdocs.pm/ash_postgres/get-started-with-postgres.html) to see how to back your resources with Postgres. This is highly recommended, as the Postgres data layer provides tons of advanced capabilities.
 
-#### Add an API
+#### Add a web API
 
 Check out the `AshJsonApi` and `AshGraphql` extensions to effortlessly build APIs around your resources
 

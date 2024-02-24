@@ -3,32 +3,32 @@ defmodule Ash.Actions.Action do
 
   require Ash.Tracer
 
-  def run(_api, %{valid?: false, errors: errors}, _opts) do
+  def run(_domain, %{valid?: false, errors: errors}, _opts) do
     {:error, Ash.Error.to_error_class(errors)}
   end
 
-  def run(api, input, opts) do
-    {input, opts} = Ash.Actions.Helpers.add_process_context(api, input, opts)
+  def run(domain, input, opts) do
+    {input, opts} = Ash.Actions.Helpers.add_process_context(domain, input, opts)
 
     context =
       Map.merge(input.context, %{
         actor: opts[:actor],
         tenant: opts[:tenant],
         authorize?: opts[:authorize?],
-        api: opts[:api]
+        domain: opts[:domain]
       })
 
     {module, run_opts} = input.action.run
 
     Ash.Tracer.span :action,
-                    Ash.Api.Info.span_name(
-                      api,
+                    Ash.Domain.Info.span_name(
+                      domain,
                       input.resource,
                       input.action.name
                     ),
                     opts[:tracer] do
       metadata = %{
-        api: api,
+        domain: domain,
         resource: input.resource,
         resource_short_name: Ash.Resource.Info.short_name(input.resource),
         actor: opts[:actor],
@@ -39,7 +39,7 @@ defmodule Ash.Actions.Action do
 
       Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
-      Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(api), :create],
+      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :create],
                                 metadata do
         if input.action.transaction? do
           resources =
@@ -62,7 +62,7 @@ defmodule Ash.Actions.Action do
             resources
             |> Ash.DataLayer.transaction(
               fn ->
-                case authorize(api, opts[:actor], input) do
+                case authorize(domain, opts[:actor], input) do
                   :ok ->
                     case module.run(input, run_opts, context) do
                       {:ok, result} ->
@@ -120,7 +120,7 @@ defmodule Ash.Actions.Action do
             end
           end
         else
-          case authorize(api, opts[:actor], input) do
+          case authorize(domain, opts[:actor], input) do
             :ok ->
               case module.run(input, run_opts, context) do
                 {:ok, result} ->
@@ -160,11 +160,11 @@ defmodule Ash.Actions.Action do
     """
   end
 
-  defp authorize(_api, _actor, %{context: %{private: %{authorize?: false}}}) do
+  defp authorize(_domain, _actor, %{context: %{private: %{authorize?: false}}}) do
     :ok
   end
 
-  defp authorize(api, actor, input) do
+  defp authorize(domain, actor, input) do
     input.resource
     |> Ash.Resource.Info.authorizers()
     |> Enum.reduce_while(
@@ -179,7 +179,7 @@ defmodule Ash.Actions.Action do
           )
 
         context = %{
-          api: api,
+          domain: domain,
           action_input: input,
           query: nil,
           changeset: nil

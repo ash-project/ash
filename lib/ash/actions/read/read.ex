@@ -25,15 +25,15 @@ defmodule Ash.Actions.Read do
   end
 
   def run(query, action, opts) do
-    {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
+    {query, opts} = Ash.Actions.Helpers.add_process_context(query.domain, query, opts)
 
     action = get_action(query.resource, action || query.action)
 
     Ash.Tracer.span :action,
-                    Ash.Api.Info.span_name(query.api, query.resource, action.name),
+                    Ash.Domain.Info.span_name(query.domain, query.resource, action.name),
                     opts[:tracer] do
       metadata = %{
-        api: query.api,
+        domain: query.domain,
         resource: query.resource,
         resource_short_name: Ash.Resource.Info.short_name(query.resource),
         actor: opts[:actor],
@@ -42,7 +42,8 @@ defmodule Ash.Actions.Read do
         authorize?: opts[:authorize?]
       }
 
-      Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(query.api), :read], metadata do
+      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(query.domain), :read],
+                                metadata do
         Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
         run_around_transaction_hooks(query, fn query ->
@@ -118,13 +119,13 @@ defmodule Ash.Actions.Read do
 
     initial_query = query
 
-    query = add_field_level_auth(query, query.api, opts)
+    query = add_field_level_auth(query, query.domain, opts)
 
     query = %{
       query
       | timeout:
           opts[:timeout] || query.timeout || query.action.timeout ||
-            Ash.Api.Info.timeout(query.api)
+            Ash.Domain.Info.timeout(query.domain)
     }
 
     query =
@@ -175,7 +176,11 @@ defmodule Ash.Actions.Read do
         end)
 
     {calculations_in_query, calculations_at_runtime, query} =
-      Ash.Actions.Read.Calculations.split_and_load_calculations(query.api, query, missing_pkeys?)
+      Ash.Actions.Read.Calculations.split_and_load_calculations(
+        query.domain,
+        query,
+        missing_pkeys?
+      )
 
     query =
       add_calc_context_to_query(
@@ -237,7 +242,7 @@ defmodule Ash.Actions.Read do
              load_through_attributes(
                data,
                %{query | calculations: Map.new(calculations_in_query, &{&1.name, &1})},
-               query.api,
+               query.domain,
                opts[:actor],
                opts[:tracer],
                opts[:authorize?]
@@ -263,7 +268,7 @@ defmodule Ash.Actions.Read do
                  | calculations: Map.new(calculations_at_runtime, &{&1.name, &1}),
                    load_through: Map.delete(query.load_through || %{}, :attribute)
                },
-               query.api,
+               query.domain,
                opts[:actor],
                opts[:tracer],
                opts[:authorize?],
@@ -335,7 +340,7 @@ defmodule Ash.Actions.Read do
            {:ok, data_layer_calculations} <- hydrate_calculations(query, calculations_in_query),
            {:ok, relationship_path_filters} <-
              Ash.Filter.relationship_filters(
-               query.api,
+               query.domain,
                pre_authorization_query,
                opts[:actor],
                query.tenant,
@@ -369,7 +374,7 @@ defmodule Ash.Actions.Read do
              ),
            {:ok, filter} <-
              Filter.run_other_data_layer_filters(
-               query.api,
+               query.domain,
                query.resource,
                filter,
                query.tenant
@@ -413,7 +418,7 @@ defmodule Ash.Actions.Read do
                  actor: opts[:actor],
                  tenant: query.tenant,
                  authorize?: opts[:authorize?],
-                 api: query.api
+                 domain: query.domain
                },
                !Keyword.has_key?(opts, :initial_data)
              )
@@ -677,7 +682,7 @@ defmodule Ash.Actions.Read do
            ),
          {:ok, relationship_path_filters} <-
            Ash.Filter.relationship_filters(
-             query.api,
+             query.domain,
              %{query | filter: nil},
              opts[:actor],
              query.tenant,
@@ -724,7 +729,7 @@ defmodule Ash.Actions.Read do
                actor: opts[:actor],
                tenant: query.tenant,
                authorize?: false,
-               api: query.api
+               domain: query.domain
              },
              true
            ) do
@@ -774,7 +779,7 @@ defmodule Ash.Actions.Read do
 
   defp authorize_query(query, opts) do
     if opts[:authorize?] do
-      case query.api.can(query, opts[:actor],
+      case query.domain.can(query, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,
              run_queries?: false,
@@ -832,7 +837,7 @@ defmodule Ash.Actions.Read do
   defp load_through_attributes(
          results,
          query,
-         api,
+         domain,
          actor,
          tracer,
          authorize?,
@@ -874,7 +879,7 @@ defmodule Ash.Actions.Read do
                        load_statement,
                        calculation.constraints,
                        %{
-                         api: api,
+                         domain: domain,
                          actor: actor,
                          tenant: query.tenant,
                          tracer: tracer,
@@ -919,7 +924,7 @@ defmodule Ash.Actions.Read do
                      load_statement,
                      calculation.constraints,
                      %{
-                       api: api,
+                       domain: domain,
                        actor: actor,
                        tenant: query.tenant,
                        tracer: tracer,
@@ -981,7 +986,7 @@ defmodule Ash.Actions.Read do
                        load_statement,
                        attribute.constraints,
                        %{
-                         api: api,
+                         domain: domain,
                          actor: actor,
                          tenant: query.tenant,
                          tracer: tracer,
@@ -1014,7 +1019,7 @@ defmodule Ash.Actions.Read do
                      load_statement,
                      attribute.constraints,
                      %{
-                       api: api,
+                       domain: domain,
                        actor: actor,
                        tenant: query.tenant,
                        tracer: tracer,
@@ -1147,7 +1152,7 @@ defmodule Ash.Actions.Read do
   end
 
   defp sanitize_opts(opts, query) do
-    Keyword.merge(opts, Map.get(query.context, :override_api_params) || [])
+    Keyword.merge(opts, Map.get(query.context, :override_domain_params) || [])
   end
 
   defp for_read(query, action, opts) do
@@ -1385,7 +1390,7 @@ defmodule Ash.Actions.Read do
                 load =
                   query.resource
                   |> Ash.Resource.Info.related(key)
-                  |> Ash.Query.new(query.api)
+                  |> Ash.Query.new(query.domain)
                   |> Ash.Query.load(other)
                   |> add_calc_context_to_query(actor, authorize?, tenant, tracer)
 
@@ -1631,19 +1636,19 @@ defmodule Ash.Actions.Read do
     |> elem(1)
   end
 
-  defp add_field_level_auth(query, api, opts) do
+  defp add_field_level_auth(query, domain, opts) do
     if opts[:authorize?] do
-      do_add_field_level_auth(query, api, opts)
+      do_add_field_level_auth(query, domain, opts)
     else
       query
     end
   end
 
-  defp do_add_field_level_auth(query, api, opts) do
+  defp do_add_field_level_auth(query, domain, opts) do
     data = %{
       query: query,
       changeset: nil,
-      api: api,
+      domain: domain,
       resource: query.resource,
       action_input: nil
     }
@@ -1943,7 +1948,7 @@ defmodule Ash.Actions.Read do
     |> Helpers.load_runtime_types(query, load_attributes?)
     |> case do
       {:ok, result} ->
-        query.api.load(result, query)
+        query.domain.load(result, query)
 
       other ->
         other

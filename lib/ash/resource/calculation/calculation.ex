@@ -81,7 +81,7 @@ defmodule Ash.Resource.Calculation do
       :tenant,
       :authorize?,
       :tracer,
-      :api,
+      :domain,
       :resource,
       :type,
       :constraints,
@@ -98,7 +98,7 @@ defmodule Ash.Resource.Calculation do
             resource: module(),
             type: Ash.Type.t(),
             constraints: Keyword.t(),
-            api: module(),
+            domain: module(),
             arguments: map()
           }
   end

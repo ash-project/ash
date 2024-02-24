@@ -1,5 +1,5 @@
 defmodule Ash.Error.Invalid.Timeout do
-  @moduledoc "Used when a request to the api times out."
+  @moduledoc "Used when a request to a domain times out."
   use Ash.Error.Exception
 
   def_ash_error([:name, :timeout], class: :invalid)
@@ -13,7 +13,7 @@ defmodule Ash.Error.Invalid.Timeout do
       """
       #{name} timed out after #{timeout}ms.
 
-      The default timeout can be configured on the api,
+      The default timeout can be configured on the domain,
 
           execution do
             timeout :timer.seconds(60)

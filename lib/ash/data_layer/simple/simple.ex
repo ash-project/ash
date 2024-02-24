@@ -26,7 +26,7 @@ defmodule Ash.DataLayer.Simple do
 
   defmodule Query do
     @moduledoc false
-    defstruct [:data, :resource, :filter, :api, :limit, sort: [], data_set?: false]
+    defstruct [:data, :resource, :filter, :domain, :limit, sort: [], data_set?: false]
   end
 
   @doc """
@@ -38,8 +38,8 @@ defmodule Ash.DataLayer.Simple do
   end
 
   @doc false
-  def resource_to_query(resource, api) do
-    %Query{data: [], resource: resource, api: api}
+  def resource_to_query(resource, domain) do
+    %Query{data: [], resource: resource, domain: domain}
   end
 
   @doc false
@@ -56,14 +56,17 @@ defmodule Ash.DataLayer.Simple do
      )}
   end
 
-  def run_query(%{data: data, sort: sort, api: api, filter: filter, limit: limit}, _resource) do
+  def run_query(
+        %{data: data, sort: sort, domain: domain, filter: filter, limit: limit},
+        _resource
+      ) do
     data
-    |> do_filter_matches(filter, api)
+    |> do_filter_matches(filter, domain)
     |> case do
       {:ok, results} ->
         {:ok,
          results
-         |> Ash.Actions.Sort.runtime_sort(sort, api: api)
+         |> Ash.Actions.Sort.runtime_sort(sort, domain: domain)
          |> then(fn data ->
            if limit do
              Enum.take(data, limit)
@@ -77,8 +80,8 @@ defmodule Ash.DataLayer.Simple do
     end
   end
 
-  defp do_filter_matches(data, filter, api) do
-    Ash.Filter.Runtime.filter_matches(api, data, filter)
+  defp do_filter_matches(data, filter, domain) do
+    Ash.Filter.Runtime.filter_matches(domain, data, filter)
   end
 
   @doc false

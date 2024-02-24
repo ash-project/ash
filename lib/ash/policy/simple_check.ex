@@ -8,7 +8,7 @@ defmodule Ash.Policy.SimpleCheck do
   @type context :: %{
           required(:action) => Ash.Resource.Actions.action(),
           required(:resource) => Ash.Resource.t(),
-          required(:api) => Ash.Api.t(),
+          required(:domain) => Ash.Domain.t(),
           optional(:query) => Ash.Query.t(),
           optional(:changeset) => Ash.Changeset.t(),
           optional(any) => any

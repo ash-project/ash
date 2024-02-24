@@ -4,12 +4,12 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
 
   import ExUnit.CaptureLog
   require Ash.Query
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Mnesia,
       authorizers: [
         Ash.Test.Authorizer
@@ -46,13 +46,13 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
 
     def select(_), do: [:category]
 
-    def load(posts, _, %{query: destination_query, api: api}) do
+    def load(posts, _, %{query: destination_query, domain: domain}) do
       categories = Enum.map(posts, & &1.category)
 
       other_posts =
         destination_query
         |> Ash.Query.filter(category in ^categories)
-        |> api.read!()
+        |> domain.read!()
         |> Enum.group_by(& &1.category)
 
       {:ok,
@@ -70,7 +70,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Mnesia,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -124,7 +124,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
 
   defmodule PostCategory do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Mnesia
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
 
     actions do
       defaults [:create, :read, :destroy]
@@ -141,7 +141,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
 
   defmodule Category do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Mnesia
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
 
     actions do
       defaults [:create, :read]
@@ -165,7 +165,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
   describe "context" do
     setup do
       capture_log(fn ->
-        Ash.DataLayer.Mnesia.start(Api, [Category, PostCategory, Post, Author])
+        Ash.DataLayer.Mnesia.start(Domain, [Category, PostCategory, Post, Author])
       end)
 
       on_exit(fn ->
@@ -189,7 +189,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       author =
         Author
         |> new(%{name: "zerg"})
-        |> Api.create!()
+        |> Domain.create!()
 
       Ash.set_actor(author)
 
@@ -197,16 +197,16 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
         Post
         |> new(%{title: "post1", actor_id: author.id})
         |> manage_relationship(:author, author, type: :append_and_remove)
-        |> Api.create!()
+        |> Domain.create!()
 
       Post
       |> new(%{title: "post2"})
       |> manage_relationship(:author, author, type: :append_and_remove)
-      |> Api.create!()
+      |> Domain.create!()
 
       authorized_posts =
         author
-        |> Api.load!(:authorized_actor_posts)
+        |> Domain.load!(:authorized_actor_posts)
         |> Map.get(:authorized_actor_posts)
 
       post1_id = post1.id
@@ -217,7 +217,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       author =
         Author
         |> new(%{name: "zerg"})
-        |> Api.create!()
+        |> Domain.create!()
 
       Ash.set_actor(nil)
       Ash.set_context(%{authorized?: false})
@@ -225,23 +225,23 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       Post
       |> new(%{title: "post1", actor_id: author.id})
       |> manage_relationship(:author, author, type: :append_and_remove)
-      |> Api.create!()
+      |> Domain.create!()
 
       Post
       |> new(%{title: "post2"})
       |> manage_relationship(:author, author, type: :append_and_remove)
-      |> Api.create!()
+      |> Domain.create!()
 
       assert {:error, %Ash.Error.Forbidden{}} =
                author
-               |> Api.load(:authorized_context_posts)
+               |> Domain.load(:authorized_context_posts)
     end
   end
 
   describe "loads" do
     setup do
       capture_log(fn ->
-        Ash.DataLayer.Mnesia.start(Api, [Category, PostCategory, Post, Author])
+        Ash.DataLayer.Mnesia.start(Domain, [Category, PostCategory, Post, Author])
       end)
 
       on_exit(fn ->
@@ -265,22 +265,22 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       post1 =
         Post
         |> new(%{title: "post1", category: "foo"})
-        |> Api.create!()
+        |> Domain.create!()
 
       Post
       |> new(%{title: "post2", category: "bar"})
-      |> Api.create!()
+      |> Domain.create!()
 
       post3 =
         Post
         |> new(%{title: "post2", category: "foo"})
-        |> Api.create!()
+        |> Domain.create!()
 
       post3_id = post3.id
 
       assert [%{id: ^post3_id}] =
                post1
-               |> Api.load!(:posts_in_same_category)
+               |> Domain.load!(:posts_in_same_category)
                |> Map.get(:posts_in_same_category)
     end
 
@@ -288,19 +288,19 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       post1 =
         Post
         |> new(%{title: "post1", category: "foo"})
-        |> Api.create!()
+        |> Domain.create!()
 
       Post
       |> new(%{title: "post2", category: "bar"})
-      |> Api.create!()
+      |> Domain.create!()
 
       Post
       |> new(%{title: "post2", category: "foo"})
-      |> Api.create!()
+      |> Domain.create!()
 
       assert [%Post{title: "post1"}] =
                post1
-               |> Api.load!(posts_in_same_category: :posts_in_same_category)
+               |> Domain.load!(posts_in_same_category: :posts_in_same_category)
                |> Map.get(:posts_in_same_category)
                |> Enum.flat_map(&Map.get(&1, :posts_in_same_category))
     end
@@ -309,15 +309,15 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       post1 =
         Post
         |> new(%{title: "post1", category: "foo"})
-        |> Api.create!()
+        |> Domain.create!()
 
       Post
       |> new(%{title: "post2", category: "bar"})
-      |> Api.create!()
+      |> Domain.create!()
 
       Post
       |> new(%{title: "post2", category: "foo"})
-      |> Api.create!()
+      |> Domain.create!()
 
       assert %Post{
                title: "post1",
@@ -333,7 +333,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
                ]
              } =
                post1
-               |> Api.load!([
+               |> Domain.load!([
                  :title_plus_title,
                  posts_in_same_category: [
                    :title_plus_title,
@@ -346,25 +346,25 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       author =
         Author
         |> new(%{name: "zerg"})
-        |> Api.create!()
+        |> Domain.create!()
 
       post1 =
         Post
         |> new(%{title: "post1"})
         |> manage_relationship(:author, author, type: :append_and_remove)
-        |> Api.create!()
+        |> Domain.create!()
 
       post2 =
         Post
         |> new(%{title: "post2"})
         |> manage_relationship(:author, author, type: :append_and_remove)
-        |> Api.create!()
+        |> Domain.create!()
 
       [author] =
         Author
         |> Ash.Query.load(posts: [:author])
         |> Ash.Query.filter(posts.id == ^post1.id)
-        |> Api.read!(authorize?: true)
+        |> Domain.read!(authorize?: true)
 
       assert Enum.sort(Enum.map(author.posts, &Map.get(&1, :id))) ==
                Enum.sort([post1.id, post2.id])
@@ -378,24 +378,24 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       category1 =
         Category
         |> new(%{name: "lame"})
-        |> Api.create!()
+        |> Domain.create!()
 
       category2 =
         Category
         |> new(%{name: "cool"})
-        |> Api.create!()
+        |> Domain.create!()
 
       post =
         Post
         |> new(%{title: "post1"})
         |> manage_relationship(:categories, [category1, category2], type: :append_and_remove)
-        |> Api.create!()
+        |> Domain.create!()
 
       [post] =
         Post
         |> Ash.Query.load(:categories)
         |> Ash.Query.filter(id == ^post.id)
-        |> Api.read!(authorize?: true)
+        |> Domain.read!(authorize?: true)
 
       assert [%{id: id1}, %{id: id2}] = post.categories
 
@@ -406,24 +406,24 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       category1 =
         Category
         |> new(%{name: "lame"})
-        |> Api.create!()
+        |> Domain.create!()
 
       category2 =
         Category
         |> new(%{name: "cool"})
-        |> Api.create!()
+        |> Domain.create!()
 
       post =
         Post
         |> new(%{title: "post1"})
         |> manage_relationship(:categories, [category1, category2], type: :append_and_remove)
-        |> Api.create!()
+        |> Domain.create!()
 
       [post] =
         Post
         |> Ash.Query.load(categories: :posts)
         |> Ash.Query.filter(id == ^post.id)
-        |> Api.read!(authorize?: true)
+        |> Domain.read!(authorize?: true)
 
       post_id = post.id
 
@@ -434,30 +434,30 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       category1 =
         Category
         |> new(%{name: "lame"})
-        |> Api.create!()
+        |> Domain.create!()
 
       category2 =
         Category
         |> new(%{name: "cool"})
-        |> Api.create!()
+        |> Domain.create!()
 
       author =
         Author
         |> new(%{name: "zerg"})
-        |> Api.create!()
+        |> Domain.create!()
 
       post =
         Post
         |> new(%{title: "post1"})
         |> manage_relationship(:categories, [category1, category2], type: :append_and_remove)
         |> manage_relationship(:author, author, type: :append_and_remove)
-        |> Api.create!()
+        |> Domain.create!()
 
       [post] =
         Post
         |> Ash.Query.load(categories: :posts, author: [])
         |> Ash.Query.filter(id == ^post.id)
-        |> Api.read!(authorize?: true)
+        |> Domain.read!(authorize?: true)
 
       post_id = post.id
 
@@ -468,13 +468,13 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       author =
         Author
         |> new(%{name: "zerg"})
-        |> Api.create!()
+        |> Domain.create!()
 
       _post1 =
         Post
         |> new(%{title: "post1"})
         |> manage_relationship(:author, author, type: :append_and_remove)
-        |> Api.create!()
+        |> Domain.create!()
 
       :timer.sleep(2)
 
@@ -482,12 +482,12 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
         Post
         |> new(%{title: "post2"})
         |> manage_relationship(:author, author, type: :append_and_remove)
-        |> Api.create!()
+        |> Domain.create!()
 
       [author] =
         Author
         |> Ash.Query.load(:latest_post)
-        |> Api.read!()
+        |> Domain.read!()
 
       assert author.latest_post.id == post2.id
     end

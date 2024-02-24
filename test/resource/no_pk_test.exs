@@ -2,11 +2,11 @@ defmodule Ash.Test.Resource.NoPkTest do
   @moduledoc false
   use ExUnit.Case, async: true
   alias Ash.Changeset
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Temperature do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     resource do
       require_primary_key? false
@@ -34,7 +34,7 @@ defmodule Ash.Test.Resource.NoPkTest do
 
   defmodule Location do
     @moduledoc false
-    use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
@@ -56,9 +56,9 @@ defmodule Ash.Test.Resource.NoPkTest do
              |> Changeset.for_action(:create, %{
                temperature: :rand.uniform()
              })
-             |> Api.create()
+             |> Domain.create()
 
-    assert {:ok, [actual]} = Api.read(Temperature)
+    assert {:ok, [actual]} = Domain.read(Temperature)
     assert expected.time == actual.time
     assert expected.temperature == actual.temperature
   end
@@ -70,7 +70,7 @@ defmodule Ash.Test.Resource.NoPkTest do
                location:
                  "Taumata­whakatangihanga­koauau­o­tamatea­turi­pukaka­piki­maunga­horo­nuku­pokai­whenua­ki­tana­tahu"
              })
-             |> Api.create()
+             |> Domain.create()
 
     assert {:ok, actual} =
              Temperature
@@ -78,7 +78,7 @@ defmodule Ash.Test.Resource.NoPkTest do
                temperature: :rand.uniform(),
                location_id: location.id
              })
-             |> Api.create()
+             |> Domain.create()
 
     assert actual.location_id == location.id
   end

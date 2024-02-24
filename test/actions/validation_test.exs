@@ -2,12 +2,12 @@ defmodule Ash.Test.Actions.ValidationTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Profile do
     @moduledoc false
     use Ash.Resource,
-      api: Api,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -46,29 +46,29 @@ defmodule Ash.Test.Actions.ValidationTest do
     assert_raise(Ash.Error.Invalid, ~r/bio, date: must be absent/, fn ->
       Profile
       |> Ash.Changeset.new(%{bio: "foobar"})
-      |> Api.create!()
+      |> Domain.create!()
     end)
   end
 
   test "validations only run when their when conditions validate properly" do
     Profile
     |> Ash.Changeset.new(%{foo: false, status: "bar"})
-    |> Api.create!()
+    |> Domain.create!()
 
     Profile
     |> Ash.Changeset.new(%{foo: true, status: "foo"})
-    |> Api.create!()
+    |> Domain.create!()
 
     assert_raise(Ash.Error.Invalid, ~r/status: must not equal foo/, fn ->
       Profile
       |> Ash.Changeset.new(%{foo: false, status: "foo"})
-      |> Api.create!()
+      |> Domain.create!()
     end)
 
     assert_raise(Ash.Error.Invalid, ~r/status: must equal foo/, fn ->
       Profile
       |> Ash.Changeset.new(%{foo: true, status: "bar"})
-      |> Api.create!()
+      |> Domain.create!()
     end)
   end
 
@@ -76,9 +76,9 @@ defmodule Ash.Test.Actions.ValidationTest do
     assert_raise(Ash.Error.Invalid, ~r/bio: must be present/, fn ->
       Profile
       |> Ash.Changeset.new(%{})
-      |> Api.create!()
+      |> Domain.create!()
       |> Ash.Changeset.new(%{})
-      |> Api.update!()
+      |> Domain.update!()
     end)
   end
 
@@ -86,10 +86,10 @@ defmodule Ash.Test.Actions.ValidationTest do
     assert_raise(Ash.Error.Invalid, ~r/date: must be absent/, fn ->
       Profile
       |> Ash.Changeset.new(%{})
-      |> Api.create!()
+      |> Domain.create!()
       |> Ash.Changeset.new(%{bio: "foo", date: Date.utc_today()})
-      |> Api.update!()
-      |> Api.destroy!()
+      |> Domain.update!()
+      |> Domain.destroy!()
     end)
   end
 
@@ -97,14 +97,14 @@ defmodule Ash.Test.Actions.ValidationTest do
     test "it succeeds if the value is in the list" do
       Profile
       |> Ash.Changeset.new(%{status: "foo"})
-      |> Api.create!()
+      |> Domain.create!()
     end
 
     test "it fails if the value is not in the list" do
       assert_raise(Ash.Error.Invalid, ~r/expected one of foo, bar/, fn ->
         Profile
         |> Ash.Changeset.new(%{status: "blart"})
-        |> Api.create!()
+        |> Domain.create!()
       end)
     end
   end

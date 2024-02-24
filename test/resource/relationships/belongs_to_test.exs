@@ -3,13 +3,13 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   use ExUnit.Case, async: true
 
   alias Ash.Resource.Relationships.BelongsTo
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
         @moduledoc false
-        use Ash.Resource, api: Api, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
         attributes do
           uuid_primary_key :id
@@ -220,7 +220,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     )
   end
 
-  test "fails in api initialization if the destination resource doesn't have the correct field" do
+  test "fails in domain initialization if the destination resource doesn't have the correct field" do
     assert_raise(
       Spark.Error.DslError,
       ~r/Relationship `post` expects source attribute `post_id` to be defined/,
@@ -231,8 +231,8 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
           end
         end
 
-        defmodule Api do
-          use Ash.Api
+        defmodule Domain do
+          use Ash.Domain
 
           resources do
             resource Post

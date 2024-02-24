@@ -4,7 +4,7 @@ defmodule Ash.Flow.BranchingTest do
 
   setup do
     ExUnit.CaptureLog.capture_log(fn ->
-      Ash.DataLayer.Mnesia.start(Ash.Test.Flow.Api)
+      Ash.DataLayer.Mnesia.start(Ash.Test.Flow.Domain)
     end)
 
     on_exit(fn ->

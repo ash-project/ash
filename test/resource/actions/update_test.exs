@@ -1,13 +1,13 @@
 defmodule Ash.Test.Dsl.Resource.Actions.UpdateTest do
   use ExUnit.Case, async: true
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
 
   defmacrop defposts(do: body) do
     quote do
       defmodule Post do
         use Ash.Resource,
-          api: Api,
+          domain: Domain,
           data_layer: Ash.DataLayer.Ets
 
         attributes do

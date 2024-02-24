@@ -21,8 +21,8 @@ defmodule Ash.Resource.Info do
   @deprecated "Use `Ash.Resource.selected?/2` instead"
   defdelegate selected?(record, field), to: Ash.Resource
 
-  def api(resource) do
-    Spark.Dsl.Extension.get_persisted(resource, :api)
+  def domain(resource) do
+    Spark.Dsl.Extension.get_persisted(resource, :domain)
   end
 
   @doc """
@@ -126,11 +126,11 @@ defmodule Ash.Resource.Info do
   end
 
   @doc """
-  The Api to define the interface for, when defining it in the resource
+  The domain to define the interface for, when defining it in the resource
   """
-  @spec code_interface_api(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
-  def code_interface_api(resource) do
-    Extension.get_opt(resource, [:code_interface], :api, nil)
+  @spec code_interface_domain(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
+  def code_interface_domain(resource) do
+    Extension.get_opt(resource, [:code_interface], :domain, nil)
   end
 
   @doc """
@@ -614,7 +614,7 @@ defmodule Ash.Resource.Info do
           raise ArgumentError, """
           Found an action of type #{found_type} while looking for an action of type #{type}
 
-          Perhaps you passed a changeset with the incorrect action type into your Api?
+          Perhaps you've passed a changeset with the incorrect action type?
           """
       end
     else

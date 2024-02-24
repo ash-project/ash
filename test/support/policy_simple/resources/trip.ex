@@ -1,7 +1,7 @@
 defmodule Ash.Test.Support.PolicySimple.Trip do
   @moduledoc false
   use Ash.Resource,
-    api: Ash.Test.Support.PolicySimple.Api,
+    domain: Ash.Test.Support.PolicySimple.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [
       Ash.Policy.Authorizer

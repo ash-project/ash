@@ -6,7 +6,7 @@ defmodule Ash.Test.Actions.HasManyTest do
 
   defmodule Comment do
     use Ash.Resource,
-      api: Ash.Test.Actions.HasManyTest.OtherApi,
+      domain: Ash.Test.Actions.HasManyTest.OtherDomain,
       data_layer: Ash.DataLayer.Ets
 
     actions do
@@ -24,8 +24,8 @@ defmodule Ash.Test.Actions.HasManyTest do
     end
   end
 
-  defmodule OtherApi do
-    use Ash.Api
+  defmodule OtherDomain do
+    use Ash.Domain
 
     resources do
       resource Comment
@@ -35,7 +35,7 @@ defmodule Ash.Test.Actions.HasManyTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
-      api: Ash.Test.Actions.HasManyTest.Api,
+      domain: Ash.Test.Actions.HasManyTest.Domain,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -66,14 +66,14 @@ defmodule Ash.Test.Actions.HasManyTest do
     relationships do
       has_many :comments, Comment do
         destination_attribute :post_id
-        api OtherApi
+        domain(OtherDomain)
       end
     end
   end
 
-  defmodule Api do
+  defmodule Domain do
     @moduledoc false
-    use Ash.Api
+    use Ash.Domain
 
     resources do
       resource Post
@@ -86,14 +86,14 @@ defmodule Ash.Test.Actions.HasManyTest do
       |> Ash.Changeset.for_create(:create, %{
         title: "buz"
       })
-      |> Api.create!()
+      |> Domain.create!()
 
     post =
       post
       |> Ash.Changeset.for_update(:add_comment, %{
         comment: %{content: "foo"}
       })
-      |> Api.update!()
+      |> Domain.update!()
 
     assert length(post.comments) == 1
 
@@ -102,7 +102,7 @@ defmodule Ash.Test.Actions.HasManyTest do
       |> Ash.Changeset.for_update(:add_comment, %{
         comment: %{content: "bar"}
       })
-      |> Api.update!()
+      |> Domain.update!()
 
     assert length(post.comments) == 2
 
@@ -111,7 +111,7 @@ defmodule Ash.Test.Actions.HasManyTest do
       |> Ash.Changeset.for_update(:delete_comment, %{
         comment: Enum.at(post.comments, 0)
       })
-      |> Api.update!()
+      |> Domain.update!()
 
     assert length(post.comments) == 1
   end
