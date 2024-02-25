@@ -384,17 +384,35 @@ defmodule Ash.Query.Aggregate do
   defp build_query(_resource, nil), do: {:ok, nil}
 
   defp build_query(resource, build_opts) when is_list(build_opts) do
-    case Ash.Query.build(resource, build_opts) do
-      %{valid?: true} = query ->
-        build_query(resource, query)
+    cond do
+      build_opts[:limit] ->
+        {:error, "Cannot set limit on aggregate query"}
 
-      %{valid?: false} = query ->
-        {:error, query.errors}
+      build_opts[:offset] && build_opts[:offset] != 0 ->
+        {:error, "Cannot set offset on aggregate query"}
+
+      true ->
+        case Ash.Query.build(resource, build_opts) do
+          %{valid?: true} = query ->
+            build_query(resource, query)
+
+          %{valid?: false} = query ->
+            {:error, query.errors}
+        end
     end
   end
 
   defp build_query(_resource, %Ash.Query{} = query) do
-    {:ok, Ash.Query.unset(query, [:load, :limit, :offset])}
+    cond do
+      query.limit ->
+        {:error, "Cannot set limit on aggregate query"}
+
+      query.offset && query.offset != 0 ->
+        {:error, "Cannot set offset on aggregate query"}
+
+      true ->
+        {:ok, Ash.Query.unset(query, [:load, :limit, :offset])}
+    end
   end
 
   @doc false

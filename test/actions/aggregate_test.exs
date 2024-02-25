@@ -195,6 +195,8 @@ defmodule Ash.Test.Actions.AggregateTest do
       assert %{count: 0} = Api.aggregate!(Post, {:count, :count}, authorize?: true)
       assert 0 = Api.count!(Post, authorize?: true)
 
+      Application.put_env(:foo, :bar, true)
+
       assert %{count: 1} =
                Post
                |> Ash.Query.for_read(:unpublic)
