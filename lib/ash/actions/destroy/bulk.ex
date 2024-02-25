@@ -427,14 +427,18 @@ defmodule Ash.Actions.Destroy.Bulk do
                 {Enum.reverse(errors), Enum.reverse(successes), notifications, error_count}
               end)
             else
-              {[], results, [], 0}
+              {[], results || [], [], 0}
             end
 
           notifications =
-            notifications ++
-              Enum.map(results, fn result ->
-                notification(atomic_changeset, result, opts)
-              end)
+            if opts[:notify?] do
+              notifications ++
+                Enum.map(results, fn result ->
+                  notification(atomic_changeset, result, opts)
+                end)
+            else
+              notifications
+            end
 
           status =
             case {error_count, results} do
