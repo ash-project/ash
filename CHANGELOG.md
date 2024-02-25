@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.19.8](https://github.com/ash-project/ash/compare/v2.19.7...v2.19.8) (2024-02-25)
+
+
+
+
+### Bug Fixes:
+
+* ensure actor context is set in filter
+
+* properly handle limit/offset for aggregates
+
+* don't use `Aggregate.new` for builtin aggregates
+
+* merge root query into aggregate queries, don't apply both
+
+### Improvements:
+
+* don't duplicate base filter in aggregates
+
 ## [v2.19.7](https://github.com/ash-project/ash/compare/v2.19.6...v2.19.7) (2024-02-24)
 
 
