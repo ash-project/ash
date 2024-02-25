@@ -65,7 +65,7 @@ defmodule Ash.Actions.Aggregate do
               with {:ok, query} <- authorize_query(query, opts, agg_authorize?),
                    {:ok, aggregates} <- validate_aggregates(query, aggregates, opts),
                    {:ok, data_layer_query} <-
-                     Ash.Query.data_layer_query(Ash.Query.new(query.resource)),
+                     Ash.Query.data_layer_query(%Ash.Query{resource: query.resource}),
                    {:ok, result} <-
                      Ash.DataLayer.run_aggregate_query(
                        data_layer_query,
@@ -157,6 +157,8 @@ defmodule Ash.Actions.Aggregate do
   defp set_opts(query, specified, others) do
     {agg_opts, _} = Ash.Query.Aggregate.split_aggregate_opts(others)
 
+    agg_opts = Keyword.merge(agg_opts, specified)
+
     query =
       case agg_opts[:query] do
         %Ash.Query{} = agg_query ->
@@ -169,8 +171,6 @@ defmodule Ash.Actions.Aggregate do
           Ash.Query.build(query, opts)
       end
 
-    agg_opts
-    |> Keyword.merge(specified)
-    |> Keyword.put(:query, query)
+    Keyword.put(agg_opts, :query, query)
   end
 end
