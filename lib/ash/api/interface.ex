@@ -81,15 +81,9 @@ defmodule Ash.Api.Interface do
 
         {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
 
-        case Ash.Query.Aggregate.new(query.resource, :count, :count, aggregate_opts) do
-          {:ok, aggregate} ->
-            case Api.aggregate(__MODULE__, query, aggregate, opts) do
-              {:ok, %{count: count}} ->
-                count
-
-              {:error, error} ->
-                raise Ash.Error.to_error_class(error)
-            end
+        case Api.aggregate(__MODULE__, query, {:count, :count, aggregate_opts}, opts) do
+          {:ok, %{count: count}} ->
+            count
 
           {:error, error} ->
             raise Ash.Error.to_error_class(error)
@@ -108,15 +102,9 @@ defmodule Ash.Api.Interface do
 
         {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
 
-        case Ash.Query.Aggregate.new(query.resource, :count, :count, aggregate_opts) do
-          {:ok, aggregate} ->
-            case Api.aggregate(__MODULE__, query, aggregate, opts) do
-              {:ok, %{count: count}} ->
-                {:ok, count}
-
-              {:error, error} ->
-                {:error, Ash.Error.to_error_class(error)}
-            end
+        case Api.aggregate(__MODULE__, query, {:count, :count, aggregate_opts}, opts) do
+          {:ok, %{count: count}} ->
+            {:ok, count}
 
           {:error, error} ->
             {:error, Ash.Error.to_error_class(error)}
@@ -135,15 +123,9 @@ defmodule Ash.Api.Interface do
 
         {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
 
-        case Ash.Query.Aggregate.new(query.resource, :exists, :exists, aggregate_opts) do
-          {:ok, aggregate} ->
-            case Api.aggregate(__MODULE__, query, aggregate, opts) do
-              {:ok, %{exists: exists}} ->
-                exists
-
-              {:error, error} ->
-                raise Ash.Error.to_error_class(error)
-            end
+        case Api.aggregate(__MODULE__, query, {:exists, :exists, aggregate_opts}, opts) do
+          {:ok, %{exists: exists}} ->
+            exists
 
           {:error, error} ->
             raise Ash.Error.to_error_class(error)
@@ -162,15 +144,9 @@ defmodule Ash.Api.Interface do
 
         {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
 
-        case Ash.Query.Aggregate.new(query.resource, :exists, :exists, aggregate_opts) do
-          {:ok, aggregate} ->
-            case Api.aggregate(__MODULE__, query, aggregate, opts) do
-              {:ok, %{exists: exists}} ->
-                {:ok, exists}
-
-              {:error, error} ->
-                {:error, Ash.Error.to_error_class(error)}
-            end
+        case Api.aggregate(__MODULE__, query, {:exists, :exists, aggregate_opts}, opts) do
+          {:ok, %{exists: exists}} ->
+            {:ok, exists}
 
           {:error, error} ->
             {:error, Ash.Error.to_error_class(error)}
@@ -190,20 +166,14 @@ defmodule Ash.Api.Interface do
 
           {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
 
-          case Ash.Query.Aggregate.new(
-                 query.resource,
-                 unquote(kind),
-                 unquote(kind),
-                 Keyword.put(aggregate_opts, :field, field)
+          case Api.aggregate(
+                 __MODULE__,
+                 query,
+                 {unquote(kind), unquote(kind), Keyword.put(aggregate_opts, :field, field)},
+                 opts
                ) do
-            {:ok, aggregate} ->
-              case Api.aggregate(__MODULE__, query, aggregate, opts) do
-                {:ok, %{unquote(kind) => value}} ->
-                  {:ok, value}
-
-                {:error, error} ->
-                  {:error, Ash.Error.to_error_class(error)}
-              end
+            {:ok, %{unquote(kind) => value}} ->
+              {:ok, value}
 
             {:error, error} ->
               {:error, Ash.Error.to_error_class(error)}
@@ -223,20 +193,14 @@ defmodule Ash.Api.Interface do
               opts
             end
 
-          case Ash.Query.Aggregate.new(
-                 query.resource,
-                 unquote(kind),
-                 unquote(kind),
-                 Keyword.put(aggregate_opts, :field, field)
+          case Api.aggregate(
+                 __MODULE__,
+                 query,
+                 {unquote(kind), unquote(kind), Keyword.put(aggregate_opts, :field, field)},
+                 opts
                ) do
-            {:ok, aggregate} ->
-              case Api.aggregate(__MODULE__, query, aggregate, opts) do
-                {:ok, %{unquote(kind) => value}} ->
-                  value
-
-                {:error, error} ->
-                  raise Ash.Error.to_error_class(error)
-              end
+            {:ok, %{unquote(kind) => value}} ->
+              value
 
             {:error, error} ->
               raise Ash.Error.to_error_class(error)

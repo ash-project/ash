@@ -8,84 +8,90 @@ defmodule Ash.Actions.Aggregate do
     action = query.action || Ash.Resource.Info.primary_action!(query.resource, :read)
     opts = Keyword.put_new(opts, :read_action, action.name)
 
-    with {:ok, aggregates} <- validate_aggregates(query, aggregates, opts),
-         %{valid?: true} = query <- Ash.Actions.Read.handle_attribute_multitenancy(query) do
+    with %{valid?: true} = query <- Ash.Actions.Read.handle_attribute_multitenancy(query) do
       aggregates
-      |> Enum.group_by(fn aggregate ->
-        agg_authorize? = aggregate.authorize? && opts[:authorize?]
+      |> Enum.group_by(fn
+        %Ash.Query.Aggregate{} = aggregate ->
+          agg_authorize? = aggregate.authorize? && opts[:authorize?]
 
-        read_action =
-          aggregate.read_action || query.action ||
-            Ash.Resource.Info.primary_action!(query.resource, :read).name
+          read_action =
+            aggregate.read_action || query.action ||
+              Ash.Resource.Info.primary_action!(query.resource, :read).name
 
-        {agg_authorize?, read_action}
+          {agg_authorize?, read_action}
+
+        {_name, _kind} ->
+          {!!opts[:authorize?], opts[:read_action]}
+
+        {_name, _kind, agg_opts} ->
+          authorize? =
+            Keyword.get(agg_opts, :authorize?, true) && opts[:authorize?]
+
+          {authorize?, agg_opts[:read_action] || opts[:read_action] || action.name}
       end)
-      |> Enum.reduce_while({:ok, %{}}, fn {{agg_authorize?, read_action}, aggregates},
-                                          {:ok, acc} ->
-        query =
-          if query.__validated_for_action__ == read_action do
-            query
-          else
-            Ash.Query.for_read(query, read_action, %{},
-              tenant: opts[:tenant],
-              actor: opts[:actor],
-              authorize?: opts[:authorize?]
-            )
-          end
-
-        query = %{query | api: api}
-
-        Ash.Tracer.span :action,
-                        Ash.Api.Info.span_name(query.api, query.resource, :aggregate),
-                        opts[:tracer] do
-          metadata = %{
-            api: query.api,
-            resource: query.resource,
-            resource_short_name: Ash.Resource.Info.short_name(query.resource),
-            aggregates: List.wrap(aggregates),
-            actor: opts[:actor],
-            tenant: opts[:tenant],
-            action: action.name,
-            authorize?: opts[:authorize?]
-          }
-
-          Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(query.api), :aggregate],
-                                    metadata do
-            Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
-            query = Map.put(query, :aggregates, Map.new(aggregates, &{&1.name, &1}))
-
-            with {:ok, query} <- authorize_query(query, opts, agg_authorize?),
-                 {:ok, data_layer_query} <-
-                   Ash.Query.data_layer_query(Ash.Query.new(query.resource)),
-                 aggregates <- merge_query_into_aggregates(query, aggregates),
-                 {:ok, result} <-
-                   Ash.DataLayer.run_aggregate_query(data_layer_query, aggregates, query.resource) do
-              {:cont, {:ok, Map.merge(acc, result)}}
+      |> Enum.reduce_while({:ok, %{}}, fn
+        {{agg_authorize?, read_action}, aggregates}, {:ok, acc} ->
+          query =
+            if query.__validated_for_action__ == read_action do
+              query
             else
-              {:error, error} ->
-                {:halt, {:error, error}}
+              Ash.Query.for_read(query, read_action, %{},
+                tenant: opts[:tenant],
+                actor: opts[:actor],
+                authorize?: opts[:authorize?]
+              )
+            end
+
+          query = %{query | api: api}
+
+          Ash.Tracer.span :action,
+                          Ash.Api.Info.span_name(query.api, query.resource, :aggregate),
+                          opts[:tracer] do
+            metadata = %{
+              api: query.api,
+              resource: query.resource,
+              resource_short_name: Ash.Resource.Info.short_name(query.resource),
+              aggregates: List.wrap(aggregates),
+              actor: opts[:actor],
+              tenant: opts[:tenant],
+              action: action.name,
+              authorize?: opts[:authorize?]
+            }
+
+            Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(query.api), :aggregate],
+                                      metadata do
+              Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
+
+              with {:ok, query} <- authorize_query(query, opts, agg_authorize?),
+                   {:ok, aggregates} <- validate_aggregates(query, aggregates, opts),
+                   {:ok, data_layer_query} <-
+                     Ash.Query.data_layer_query(Ash.Query.new(query.resource)),
+                   {:ok, result} <-
+                     Ash.DataLayer.run_aggregate_query(
+                       data_layer_query,
+                       aggregates,
+                       query.resource
+                     ) do
+                {:cont, {:ok, Map.merge(acc, result)}}
+              else
+                {:error, error} ->
+                  {:halt, {:error, error}}
+              end
             end
           end
-        end
       end)
     end
   end
 
-  defp merge_query_into_aggregates(query, aggregates) do
-    Enum.map(aggregates, fn aggregate ->
-      %{
-        aggregate
-        | query:
-            aggregate.query
-            |> Ash.Query.do_filter(query.filter)
-            |> Ash.Query.sort(query.sort, prepend?: true)
-            |> Ash.Query.distinct_sort(query.distinct_sort, prepend?: true)
-            |> Ash.Query.limit(query.limit)
-            |> Ash.Query.set_tenant(query.tenant)
-            |> merge_offset(query.offset)
-            |> Ash.Query.set_context(query.context)
-      }
-    end)
+  defp merge_query(left, right) do
+    left
+    |> Ash.Query.do_filter(right.filter)
+    |> Ash.Query.sort(right.sort, prepend?: true)
+    |> Ash.Query.distinct_sort(right.distinct_sort, prepend?: true)
+    |> Ash.Query.limit(right.limit)
+    |> Ash.Query.set_tenant(right.tenant)
+    |> merge_offset(right.offset)
+    |> Ash.Query.set_context(right.context)
   end
 
   defp merge_offset(query, offset) do
@@ -128,7 +134,7 @@ defmodule Ash.Actions.Aggregate do
                query.resource,
                name,
                kind,
-               set_opts([], opts)
+               set_opts(query, [], opts)
              ) do
           {:ok, aggregate} ->
             {:cont, {:ok, [aggregate | aggregates]}}
@@ -138,7 +144,7 @@ defmodule Ash.Actions.Aggregate do
         end
 
       {name, kind, agg_opts}, {:ok, aggregates} ->
-        case Ash.Query.Aggregate.new(query.resource, name, kind, set_opts(agg_opts, opts)) do
+        case Ash.Query.Aggregate.new(query.resource, name, kind, set_opts(query, agg_opts, opts)) do
           {:ok, aggregate} ->
             {:cont, {:ok, [aggregate | aggregates]}}
 
@@ -148,8 +154,23 @@ defmodule Ash.Actions.Aggregate do
     end)
   end
 
-  defp set_opts(specified, others) do
+  defp set_opts(query, specified, others) do
     {agg_opts, _} = Ash.Query.Aggregate.split_aggregate_opts(others)
-    Keyword.merge(agg_opts, specified)
+
+    query =
+      case agg_opts[:query] do
+        %Ash.Query{} = agg_query ->
+          merge_query(agg_query, query)
+
+        nil ->
+          query
+
+        opts ->
+          Ash.Query.build(query, opts)
+      end
+
+    agg_opts
+    |> Keyword.merge(specified)
+    |> Keyword.put(:query, query)
   end
 end

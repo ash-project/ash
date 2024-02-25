@@ -1623,16 +1623,36 @@ defmodule Ash.Api do
     end
   end
 
+  @doc """
+  Runs an aggregate or aggregates over a resource query
+
+  If you pass an `%Ash.Query.Aggregate{}`, gotten from `Ash.Query.Aggregate.new()`,
+  the query provided as the first argument to this function will not apply. For this
+  reason, it is preferred that you pass in the tuple format, i.e
+
+  Prefer this:
+  `Api.aggregate(query, {:count_of_things, :count})`
+
+  Over this:
+  `Api.aggregate(query, Ash.Query.Aggregate.new(...))`
+
+  #{Spark.OptionsHelpers.docs(@aggregate_opts)}
+  """
   @callback aggregate(
               Ash.Query.t(),
-              Ash.Api.aggregate() | list(Ash.Api.aggregate()),
+              aggregate() | list(aggregate()),
               opts :: Keyword.t()
             ) ::
               {:ok, any} | {:error, Ash.Error.t()}
 
+  @doc """
+  Runs an aggregate or aggregates over a resource query
+
+  See `c:aggregate/3` for more.
+  """
   @callback aggregate!(
               Ash.Query.t(),
-              Ash.Api.aggregate() | list(Ash.Api.aggregate()),
+              aggregate() | list(aggregate()),
               opts :: Keyword.t()
             ) ::
               any | no_return
