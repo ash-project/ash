@@ -1285,7 +1285,8 @@ defmodule Ash.Actions.Read do
         calculations:
           Map.new(query.calculations, fn {key, calc} ->
             {key, add_calc_context(calc, actor, authorize?, tenant, tracer)}
-          end)
+          end),
+        filter: add_calc_context_to_filter(query.filter, actor, authorize?, tenant, tracer)
     }
   end
 

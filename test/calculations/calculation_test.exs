@@ -261,6 +261,11 @@ defmodule Ash.Test.CalculationTest do
 
     actions do
       defaults([:create, :read, :update, :destroy])
+
+      read :by_user_name do
+        argument :user_name, :string, allow_nil?: false
+        filter expr(user_name == ^arg(:user_name))
+      end
     end
 
     ets do
@@ -315,7 +320,9 @@ defmodule Ash.Test.CalculationTest do
     end
 
     relationships do
-      belongs_to(:user, Ash.Test.CalculationTest.User)
+      belongs_to(:user, Ash.Test.CalculationTest.User) do
+        attribute_writable?(true)
+      end
     end
   end
 
@@ -671,6 +678,23 @@ defmodule Ash.Test.CalculationTest do
     Role
     |> Ash.Query.load(:has_user)
     |> Api.read!()
+  end
+
+  test "read actions can load calculations that use the actor", %{actor1: actor} do
+    user =
+      User
+      |> Ash.Changeset.for_create(:create, %{first_name: "zach"})
+      |> Api.create!()
+
+    Role
+    |> Ash.Changeset.for_create(:create, %{user_id: user.id})
+    |> Api.create!()
+
+    assert [%{user_name: "zach"}] =
+             Role
+             |> Ash.Query.for_read(:by_user_name, %{user_name: "zach"}, actor: actor)
+             |> Ash.Query.load(:user_name)
+             |> Api.read!()
   end
 
   test "calculations that depend on relationships directly can be loaded from elsewhere", %{

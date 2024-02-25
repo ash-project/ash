@@ -139,8 +139,6 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
            ticket: ticket,
            other_ticket: other_ticket
          } do
-      Application.put_env(:foo, :bar, true)
-
       assert nil ==
                Ticket
                |> Ash.Query.select(:status)
