@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.19.9](https://github.com/ash-project/ash/compare/v2.19.8...v2.19.9) (2024-02-26)
+
+
+
+
+### Bug Fixes:
+
+* ensure that policies are applied to aggregates referenced in calculations
+
+* ensure records are returned from bulk actions in atomic upgrades
+
+* handle small logic error in notification sending for bulk actions
+
 ## [v2.19.8](https://github.com/ash-project/ash/compare/v2.19.7...v2.19.8) (2024-02-25)
 
 
