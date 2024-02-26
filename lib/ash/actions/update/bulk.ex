@@ -384,7 +384,7 @@ defmodule Ash.Actions.Update.Bulk do
                 {Enum.reverse(errors), Enum.reverse(successes), notifications, error_count}
               end)
             else
-              {[], results || [], [], 0}
+              {[], results, [], 0}
             end
 
           {results, errors, error_count} =

@@ -409,6 +409,8 @@ defmodule Ash.Actions.Destroy.Bulk do
           }
 
         {:ok, results} ->
+          results = List.wrap(results)
+
           {errors, results, notifications, error_count} =
             if has_after_action_hooks? do
               results
@@ -427,7 +429,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                 {Enum.reverse(errors), Enum.reverse(successes), notifications, error_count}
               end)
             else
-              {[], results || [], [], 0}
+              {[], results, [], 0}
             end
 
           notifications =
