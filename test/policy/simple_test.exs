@@ -130,6 +130,24 @@ defmodule Ash.Test.Policy.SimpleTest do
     assert results == [car1.id]
   end
 
+  test "calculations that reference aggregates are properly authorized", %{user: user} do
+    Car
+    |> Ash.Changeset.for_create(:create, %{users: [user.id], active: false})
+    |> Api.create!()
+
+    :timer.sleep(2)
+
+    assert %{restricted_from_driving: false, has_car: true} =
+             user
+             |> Api.load!([:restricted_from_driving, :has_car], authorize?: false)
+             |> Map.take([:restricted_from_driving, :has_car])
+
+    assert %{restricted_from_driving: true, has_car: false} =
+             user
+             |> Api.load!([:restricted_from_driving, :has_car], authorize?: true)
+             |> Map.take([:restricted_from_driving, :has_car])
+  end
+
   test "filter checks work via deeply related data", %{user: user} do
     assert Api.read!(Trip, actor: user) == []
   end

@@ -30,6 +30,20 @@ defmodule Ash.Test.Support.PolicySimple.User do
     defaults [:create, :read, :update, :destroy]
   end
 
+  aggregates do
+    max :most_recent_car, :cars, :inserted_at
+  end
+
+  calculations do
+    calculate :restricted_from_driving,
+              :boolean,
+              expr(is_nil(most_recent_car) or most_recent_car >= ago(1, :microsecond))
+
+    calculate :has_car,
+              :boolean,
+              expr(not is_nil(most_recent_car))
+  end
+
   relationships do
     belongs_to(:organization, Ash.Test.Support.PolicySimple.Organization)
     has_many(:posts, Ash.Test.Support.PolicySimple.Post, destination_attribute: :author_id)

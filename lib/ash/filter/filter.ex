@@ -1214,7 +1214,8 @@ defmodule Ash.Filter do
          tenant,
          refs
        ) do
-    Enum.flat_map(refs, fn {path, refs} ->
+    refs
+    |> Enum.flat_map(fn {path, refs} ->
       refs
       |> Enum.filter(
         &match?(
@@ -1226,7 +1227,7 @@ defmodule Ash.Filter do
         {path, ref.attribute}
       end)
     end)
-    |> Enum.concat(Enum.map(aggregates, &{[], &1}))
+    |> Enum.concat(aggregates)
     |> Enum.reduce_while({:ok, path_filters}, fn {path, aggregate}, {:ok, filters} ->
       aggregate.relationship_path
       |> :lists.droplast()

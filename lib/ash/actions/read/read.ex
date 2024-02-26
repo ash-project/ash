@@ -311,7 +311,7 @@ defmodule Ash.Actions.Read do
                pre_authorization_query,
                opts[:actor],
                query.tenant,
-               Map.values(query.aggregates),
+               agg_refs(query, data_layer_calculations),
                opts[:authorize?]
              ),
            data_layer_calculations <-
@@ -392,6 +392,25 @@ defmodule Ash.Actions.Read do
           {:error, error}
       end
     end)
+  end
+
+  defp agg_refs(query, calculations_in_query) do
+    calculations_in_query
+    |> Enum.flat_map(fn {_, expr} ->
+      Ash.Filter.used_aggregates(expr, :all, true)
+    end)
+    |> Enum.concat(
+      Enum.map(query.aggregates, fn {_, aggregate} ->
+        %Ash.Query.Ref{
+          attribute: aggregate,
+          relationship_path: [],
+          resource: query.resource,
+          input?: false
+        }
+      end)
+    )
+    |> Enum.uniq_by(&{&1.relationship_path, &1.attribute, !!&1.input?})
+    |> Enum.map(&{&1.relationship_path, &1.attribute})
   end
 
   defp source_fields(query) do
@@ -604,14 +623,25 @@ defmodule Ash.Actions.Read do
            |> Ash.Query.load(calculations_in_query)
            |> Ash.Query.select(must_be_reselected)
            |> Ash.Query.do_filter(filter),
+         {:ok, data_layer_calculations} <-
+           hydrate_calculations(
+             query,
+             calculations_in_query
+           ),
          {:ok, relationship_path_filters} <-
            Ash.Filter.relationship_filters(
              query.api,
              %{query | filter: nil},
              opts[:actor],
              query.tenant,
-             Map.values(query.aggregates),
+             agg_refs(query, data_layer_calculations),
              opts[:authorize?]
+           ),
+         data_layer_calculations <-
+           authorize_calculation_expressions(
+             data_layer_calculations,
+             opts[:authorize?],
+             relationship_path_filters
            ),
          query <-
            authorize_loaded_aggregates(
@@ -628,11 +658,6 @@ defmodule Ash.Actions.Read do
              data_layer_query,
              Map.values(query.aggregates),
              query.resource
-           ),
-         {:ok, data_layer_calculations} <-
-           hydrate_calculations(
-             query,
-             calculations_in_query
            ),
          {:ok, data_layer_query} <-
            Ash.DataLayer.add_calculations(
