@@ -109,6 +109,7 @@ defmodule Ash.Actions.Update do
                  Keyword.merge(opts,
                    strategy: [:atomic],
                    authorize_query?: false,
+                   return_records?: true,
                    atomic_changeset: atomic_changeset,
                    authorize_changeset_with: :error
                  )

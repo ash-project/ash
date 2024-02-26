@@ -106,7 +106,8 @@ defmodule Ash.Actions.Destroy do
                  strategy: [:atomic],
                  authorize_query?: false,
                  atomic_changeset: atomic_changeset,
-                 authorize_changeset_with: :error
+                 authorize_changeset_with: :error,
+                 return_records?: true
                )
              ) do
           %Ash.BulkResult{status: :success, records: [record], notifications: notifications} ->
