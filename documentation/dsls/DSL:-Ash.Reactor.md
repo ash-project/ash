@@ -60,6 +60,8 @@ Declares a step that will call a generic action on a resource.
 | [`async?`](#reactor-action-async?){: #reactor-action-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
 | [`authorize?`](#reactor-action-authorize?){: #reactor-action-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
 | [`description`](#reactor-action-description){: #reactor-action-description } | `String.t` |  | A description for the step |
+| [`undo_action`](#reactor-action-undo_action){: #reactor-action-undo_action } | `atom` |  | The name of the action to call on the resource when the step is to be undone. |
+| [`undo`](#reactor-action-undo){: #reactor-action-undo } | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
 
 
 ## reactor.action.actor

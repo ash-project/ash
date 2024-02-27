@@ -1,35 +1,37 @@
 defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Action do
   @moduledoc false
 
-  alias Ash.Reactor.ActionStep
+  alias Ash.{Reactor.ActionStep, Resource.Info}
   alias Reactor.Builder
+  alias Spark.{Dsl.Transformer, Error.DslError}
+
   import Ash.Reactor.BuilderUtils
 
   @doc false
   @impl true
-  def build(create, reactor) do
+  def build(action, reactor) do
     with {:ok, reactor} <- ensure_hooked(reactor),
-         {:ok, reactor, arguments} <- build_input_arguments(reactor, create) do
+         {:ok, reactor, arguments} <- build_input_arguments(reactor, action) do
       arguments =
         arguments
-        |> maybe_append(create.actor)
-        |> maybe_append(create.tenant)
-        |> Enum.concat(create.wait_for)
+        |> maybe_append(action.actor)
+        |> maybe_append(action.tenant)
+        |> Enum.concat(action.wait_for)
 
       action_options =
-        create
-        |> Map.take([:action, :api, :authorize?, :resource])
+        action
+        |> Map.take([:action, :api, :authorize?, :resource, :undo_action, :undo])
         |> Enum.to_list()
 
       step_options =
-        create
+        action
         |> Map.take([:async?])
         |> Map.put(:ref, :step_name)
         |> Enum.to_list()
 
       Builder.add_step(
         reactor,
-        create.name,
+        action.name,
         {ActionStep, action_options},
         arguments,
         step_options
@@ -39,9 +41,33 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Action do
 
   @doc false
   @impl true
-  def transform(_create, dsl_state), do: {:ok, dsl_state}
+  def transform(_action, dsl_state), do: {:ok, dsl_state}
 
   @doc false
   @impl true
-  def verify(_create, _dsl_state), do: :ok
+  def verify(action, _dsl_state) when action.undo == :never, do: :ok
+
+  def verify(action, dsl_state) do
+    case Info.action(action.resource, action.undo_action) do
+      action when is_struct(action, Ash.Resource.Actions.Action) ->
+        :ok
+
+      nil ->
+        {:error,
+         DslError.exception(
+           module: Transformer.get_persisted(dsl_state, :module),
+           path: [:action, :undo_action],
+           message:
+             "No action found matching the name `#{action.undo_action}` on resource `#{inspect(action.resource)}`"
+         )}
+
+      _action ->
+        {:error,
+         DslError.exception(
+           module: Transformer.get_persisted(dsl_state, :module),
+           path: [:action, :undo_action],
+           message: "The undo action for a generic action step should also be a generic action."
+         )}
+    end
+  end
 end

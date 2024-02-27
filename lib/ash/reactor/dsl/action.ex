@@ -17,6 +17,8 @@ defmodule Ash.Reactor.Dsl.Action do
             tenant: [],
             transform: nil,
             type: :action,
+            undo_action: nil,
+            undo: :never,
             wait_for: []
 
   @type t :: %__MODULE__{
@@ -33,6 +35,8 @@ defmodule Ash.Reactor.Dsl.Action do
           resource: module,
           tenant: [Ash.Reactor.Dsl.Tenant.t()],
           type: :action,
+          undo_action: atom,
+          undo: :always | :never | :outside_transaction,
           wait_for: [Reactor.Dsl.WaitFor.t()]
         }
 
@@ -101,6 +105,25 @@ defmodule Ash.Reactor.Dsl.Action do
           required: true,
           doc: """
           The resource to call the action on.
+          """
+        ],
+        undo_action: [
+          type: :atom,
+          required: false,
+          doc: """
+          The name of the action to call on the resource when the step is to be undone.
+          """
+        ],
+        undo: [
+          type: {:in, [:always, :never, :outside_transaction]},
+          required: false,
+          default: :never,
+          doc: """
+          What to do when the reactor is undoing it's work?
+
+          * `always` - The undo action will always be run.
+          * `never` - The action will never be undone.
+          * `outside_transaction` - The action will only be undone if not running inside a transaction.
           """
         ]
       ]
