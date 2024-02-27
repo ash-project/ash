@@ -1,6 +1,6 @@
 defmodule Ash.Reactor.Notifications do
   @moduledoc """
-  Hook functions used to collect and emit notifications upon successful
+  Reactor middleware used to collect and emit notifications upon successful
   completion of the Reactor.
   """
 

@@ -3,6 +3,7 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
   Responsible for transforming actions.
   """
 
+  alias Reactor.Utils
   alias Spark.{Dsl, Dsl.Transformer, Error.DslError}
 
   use Transformer
@@ -19,18 +20,17 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
   def transform(dsl_state) do
     dsl_state
     |> Transformer.get_entities([:reactor])
-    |> Enum.reduce_while({:ok, dsl_state}, fn
-      entity, {:ok, dsl_state} ->
-        case transform_step(entity, dsl_state) do
-          {:ok, entity, dsl_state} ->
-            {:cont, {:ok, Transformer.replace_entity(dsl_state, [:reactor], entity)}}
+    |> Utils.reduce_while_ok(dsl_state, fn entity, dsl_state ->
+      case transform_step(entity, dsl_state) do
+        {:ok, entity, dsl_state} ->
+          {:ok, Transformer.replace_entity(dsl_state, [:reactor], entity)}
 
-          {:error, reason} ->
-            {:halt, {:error, reason}}
+        {:error, reason} ->
+          {:error, reason}
 
-          :ignore ->
-            {:cont, {:ok, dsl_state}}
-        end
+        :ignore ->
+          {:ok, dsl_state}
+      end
     end)
   end
 

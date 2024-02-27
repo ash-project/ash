@@ -23,7 +23,7 @@ defmodule Ash.Reactor do
 
   use Spark.Dsl.Extension,
     sections: [@ash],
-    transformers: [__MODULE__.Dsl.ActionTransformer],
+    transformers: [__MODULE__.Dsl.ActionTransformer, __MODULE__.Dsl.MiddlewareTransformer],
     dsl_patches:
       ~w[Action Create Destroy Get Read Transaction Update]
       |> Enum.map(&Module.concat(__MODULE__.Dsl, &1))
