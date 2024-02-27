@@ -92,7 +92,8 @@ defmodule Ash.MixProject do
         "documentation/dsls/DSL:-Ash.Flow.md",
         "documentation/dsls/DSL:-Ash.DataLayer.Ets.md",
         "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md",
-        "documentation/dsls/DSL:-Ash.Registry.md"
+        "documentation/dsls/DSL:-Ash.Registry.md",
+        "documentation/dsls/DSL:-Ash.Reactor.md"
       ],
       groups_for_extras: [
         Tutorials: ~r'documentation/tutorials',

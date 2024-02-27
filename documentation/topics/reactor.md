@@ -16,7 +16,7 @@ end
 
 or for your convenience you can use `use Ash.Reactor` which expands to exactly the same as above.
 
-## Examples
+## Example
 
 An example is worth 1000 words of prose:
 
@@ -65,8 +65,43 @@ to refer to the result of the step by other steps), a resource and optional
 action name (defaults to the primary action if one is not provided).
 
 Actions have several common options and some specific to their particular type.
-See the [DSL documentation](https://hexdocs.pm/ash/dsl-ash-reactor.md) for
+See the [DSL documentation](dsl-ash-reactor.html) for
 details.
+
+### Action inputs
+
+Ash actions take a map of input parameters which are usually a combination of
+resource attributes and action arguments. You can provide these values as a
+single map using the [`inputs` DSL entity](dsl-ash-reactor.html#reactor-action-inputs) with a map or keyword list which refers to Reactor inputs, results and hard-coded values via Reactor's [predefined template functions](https://hexdocs.pm/reactor/Reactor.Dsl.Argument.html#functions).
+
+For action types that act on a specific resource (ie `update` and `destroy`) you can provide the value using the [`initial` DSL option](dsl-ash-reactor.html#reactor-update-initial).
+
+#### Example
+
+```elixir
+input :blog_title
+input :blog_body
+input :author_email
+
+read :get_author, MyBlog.Author, :get_author_by_email do
+  inputs %{email: input(:author_email)}
+end
+
+create :create_post, MyBlog.Post, :create do
+  inputs %{
+    title: input(:blog, [:title]),
+    body: input(:blog, [:body]),
+    author_id: result(:get_author, [:email])
+  }
+end
+
+update :author_post_count, MyBlog.Author, :update_post_count do
+  wait_for :create_post
+  initial result(:get_author)
+end
+
+return :create_post
+```
 
 ## Handling failure.
 
@@ -100,3 +135,23 @@ You can use the `transaction` step type to wrap a group of steps inside a data l
 ## Notifications
 
 Because a reactor has transaction-like semantics notifications are automatically batched and only sent upon successful completion of the reactor.
+
+## Running Reactors as an action
+
+Currently the best way to expose a Reactor as an action is to use a [Generic Action](actions.html#generic-actions).
+
+### Example
+
+```elixir
+action :run_reactor, :struct do
+  constraints instance_of: MyBlog.Post
+
+  argument :blog_title, :string, allow_nil?: false
+  argument :blog_body, :string, allow_nil?: false
+  argument :author_email, :ci_string, allow_nil?: false
+
+  run fn input, _context ->
+    Reactor.run(MyBlog.CreatePostReactor, input.arguments)
+  end
+end
+```
