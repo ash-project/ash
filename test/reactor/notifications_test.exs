@@ -5,9 +5,9 @@ defmodule Ash.Test.Reactor.NotificationsTest do
   import ExUnit.CaptureLog
   alias Ash.Reactor.Notifications
 
-  describe "init_hook/1" do
+  describe "init/1" do
     test "it starts an agent" do
-      {:ok, context} = Notifications.init_hook(%{})
+      {:ok, context} = Notifications.init(%{})
 
       assert [] == agent_get(context.__ash_notification_agent__)
     end
@@ -16,7 +16,7 @@ defmodule Ash.Test.Reactor.NotificationsTest do
       notifications = build_notifications()
 
       {:ok, context} =
-        Notifications.init_hook(%{__unpublished_ash_notifications__: notifications})
+        Notifications.init(%{__unpublished_ash_notifications__: notifications})
 
       enqueued = agent_get(context.__ash_notification_agent__)
       assert enqueued == notifications
@@ -26,22 +26,22 @@ defmodule Ash.Test.Reactor.NotificationsTest do
       notifications = build_notifications()
 
       {:ok, context} =
-        Notifications.init_hook(%{__unpublished_ash_notifications__: notifications})
+        Notifications.init(%{__unpublished_ash_notifications__: notifications})
 
       refute is_map_key(context, :__unpublished_ash_notifications__)
     end
   end
 
-  describe "halt_hook/1" do
+  describe "halt/1" do
     setup do
-      {:ok, context} = Notifications.init_hook(%{})
+      {:ok, context} = Notifications.init(%{})
       {:ok, context: context}
     end
 
     test "it stops the agent", %{context: context} do
       agent = context.__ash_notification_agent__
 
-      {:ok, context} = Notifications.halt_hook(context)
+      {:ok, context} = Notifications.halt(context)
       refute is_map_key(context, :__ash_notification_agent__)
       refute Process.alive?(agent)
     end
@@ -49,15 +49,15 @@ defmodule Ash.Test.Reactor.NotificationsTest do
     test "it moves any queued notifications into the context", %{context: context} do
       notifications = build_notifications()
       :ok = Notifications.enqueue_notifications(context, notifications)
-      {:ok, context} = Notifications.halt_hook(context)
+      {:ok, context} = Notifications.halt(context)
 
       assert context.__unpublished_ash_notifications__ == notifications
     end
   end
 
-  describe "complete_hook/2" do
+  describe "complete/2" do
     setup do
-      {:ok, context} = Notifications.init_hook(%{})
+      {:ok, context} = Notifications.init(%{})
       {:ok, context: context}
     end
 
@@ -70,7 +70,7 @@ defmodule Ash.Test.Reactor.NotificationsTest do
         []
       end)
 
-      assert {:ok, :result} = Notifications.complete_hook(:result, context)
+      assert {:ok, :result} = Notifications.complete(:result, context)
     end
 
     test "it logs a warning when there are unpublished notifications", %{context: context} do
@@ -80,28 +80,28 @@ defmodule Ash.Test.Reactor.NotificationsTest do
       expect(Ash.Notifier, :notify, & &1)
 
       assert capture_log(fn ->
-               assert {:ok, :result} = Notifications.complete_hook(:result, context)
+               assert {:ok, :result} = Notifications.complete(:result, context)
              end) =~ "Missed 3 notifications"
     end
 
     test "it stops the agent", %{context: context} do
       agent = context.__ash_notification_agent__
 
-      {:ok, :result} = Notifications.complete_hook(:result, context)
+      {:ok, :result} = Notifications.complete(:result, context)
       refute Process.alive?(agent)
     end
   end
 
-  describe "error_hook/2" do
+  describe "error/2" do
     setup do
-      {:ok, context} = Notifications.init_hook(%{})
+      {:ok, context} = Notifications.init(%{})
       {:ok, context: context}
     end
 
     test "it stops the agent", %{context: context} do
       agent = context.__ash_notification_agent__
 
-      :ok = Notifications.error_hook([:errors], context)
+      :ok = Notifications.error([:errors], context)
       refute Process.alive?(agent)
     end
   end

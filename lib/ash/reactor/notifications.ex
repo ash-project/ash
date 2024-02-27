@@ -4,6 +4,8 @@ defmodule Ash.Reactor.Notifications do
   completion of the Reactor.
   """
 
+  use Reactor.Middleware
+
   require Logger
 
   @context_agent_key :__ash_notification_agent__
@@ -19,8 +21,8 @@ defmodule Ash.Reactor.Notifications do
   When starting a reactor, start an agent to act as a temporary store of
   notifications.
   """
-  @spec init_hook(Reactor.context()) :: {:ok, Reactor.context()} | {:error, any}
-  def init_hook(context) when has_notifications?(context) do
+  @impl true
+  def init(context) when has_notifications?(context) do
     with {:ok, notifications} <- Map.fetch(context, @context_notification_key),
          {:ok, context} <- agent_start(context),
          {:ok, context} <- agent_put(context, notifications) do
@@ -29,14 +31,14 @@ defmodule Ash.Reactor.Notifications do
     end
   end
 
-  def init_hook(context), do: agent_start(context)
+  def init(context), do: agent_start(context)
 
   @doc """
   When halting the reactor, store any queued notifications in the context for
   eventual resumption.
   """
-  @spec halt_hook(Reactor.context()) :: {:ok, Reactor.context()} | {:error, any}
-  def halt_hook(context) when has_agent?(context) do
+  @impl true
+  def halt(context) when has_agent?(context) do
     with {:ok, notifications} <- agent_get(context),
          {:ok, context} <- agent_stop(context) do
       if Enum.any?(notifications) do
@@ -56,8 +58,8 @@ defmodule Ash.Reactor.Notifications do
   @doc """
   When the reactor completes successfully, publish any queued notifications.
   """
-  @spec complete_hook(any, Reactor.context()) :: {:ok, any} | {:error, any}
-  def complete_hook(result, context) when has_agent?(context) do
+  @impl true
+  def complete(result, context) when has_agent?(context) do
     with {:ok, notifications} <- agent_get(context),
          {:ok, _context} <- agent_stop(context),
          [] <- Ash.Notifier.notify(notifications) do
@@ -82,13 +84,13 @@ defmodule Ash.Reactor.Notifications do
     end
   end
 
-  def complete_hook(result, _context), do: {:ok, result}
+  def complete(result, _context), do: {:ok, result}
 
   @doc """
   When the reactor fails, discard any queued notifications.
   """
-  @spec error_hook(Exception | [Exception], Reactor.context()) :: :ok | {:error, any}
-  def error_hook(_errors, context) do
+  @impl true
+  def error(_errors, context) do
     agent_stop(context)
 
     :ok

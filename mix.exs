@@ -324,8 +324,7 @@ defmodule Ash.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:spark, "~> 1.1 and >= 1.1.50"},
-      {:spark, path: "../spark", override: true},
+      {:spark, "~> 1.1 and >= 1.1.55"},
       {:ecto, "~> 3.7"},
       {:ets, "~> 0.8"},
       {:decimal, "~> 2.0"},
@@ -336,7 +335,7 @@ defmodule Ash.MixProject do
       {:telemetry, "~> 1.1"},
       {:plug, ">= 0.0.0", optional: true},
       {:earmark, "~> 1.4"},
-      {:reactor, "~> 0.5 and >= 0.5.2"},
+      {:reactor, "~> 0.6"},
 
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},

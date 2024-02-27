@@ -65,29 +65,8 @@ defmodule Ash.Reactor.BuilderUtils do
     do: {:ok, reactor}
 
   def ensure_hooked(reactor) do
-    with {:ok, reactor} <- ensure_hooked(reactor, :init, &Ash.Reactor.Notifications.init_hook/1),
-         {:ok, reactor} <- ensure_hooked(reactor, :halt, &Ash.Reactor.Notifications.halt_hook/1),
-         {:ok, reactor} <-
-           ensure_hooked(reactor, :error, &Ash.Reactor.Notifications.error_hook/2),
-         {:ok, reactor} <-
-           ensure_hooked(reactor, :complete, &Ash.Reactor.Notifications.complete_hook/2) do
+    with {:ok, reactor} <- Reactor.Builder.ensure_middleware(reactor, Ash.Reactor.Notifications) do
       {:ok, %{reactor | context: Map.put(reactor.context, :__ash_hooked__, true)}}
     end
   end
-
-  # Ensure that each hook is only added one time to the reactor.
-  defp ensure_hooked(reactor, hook_type, hook_fn) do
-    hooks = Map.get(reactor.hooks, hook_type, [])
-
-    if hook_fn in hooks do
-      {:ok, reactor}
-    else
-      really_hook(reactor, hook_type, hook_fn)
-    end
-  end
-
-  defp really_hook(reactor, :init, hook_fn), do: Builder.on_init(reactor, hook_fn)
-  defp really_hook(reactor, :halt, hook_fn), do: Builder.on_halt(reactor, hook_fn)
-  defp really_hook(reactor, :complete, hook_fn), do: Builder.on_complete(reactor, hook_fn)
-  defp really_hook(reactor, :error, hook_fn), do: Builder.on_error(reactor, hook_fn)
 end
