@@ -613,7 +613,7 @@ defmodule Ash.Changeset do
 
                   condition ->
                     condition_expr =
-                      Ash.Expr.expr(^condition and condition_expr)
+                      Ash.Expr.expr(^condition and ^condition_expr)
 
                     {:cont, validate_atomically(changeset, condition_expr, error_expr)}
                 end
@@ -1815,7 +1815,13 @@ defmodule Ash.Changeset do
       {:ok, hydrated_changeset} ->
         hydrated_changeset
         |> add_atomic_validations(actor, opts)
-        |> Map.put(:atomic_validations, [])
+        |> case do
+          %Ash.Changeset{} = changeset ->
+            %{changeset | atomic_validations: []}
+
+          other ->
+            other
+        end
 
       other ->
         other
