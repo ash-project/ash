@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.19.10](https://github.com/ash-project/ash/compare/v2.19.9...v2.19.10) (2024-02-29)
+
+
+
+
+### Bug Fixes:
+
+* bad reference in atomic validations
+
+* prevent leakage of stale async_limiter's pid (#916)
+
 ## [v2.19.9](https://github.com/ash-project/ash/compare/v2.19.8...v2.19.9) (2024-02-26)
 
 
