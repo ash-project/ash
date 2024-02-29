@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.19.12](https://github.com/ash-project/ash/compare/v2.19.11...v2.19.12) (2024-02-29)
+
+
+
+
+### Bug Fixes:
+
+* properly scope expanded calculations
+
+* properly scope expanded calculations
+
+### Improvements:
+
+* aggregate sort replaces query sort
+
 ## [v2.19.11](https://github.com/ash-project/ash/compare/v2.19.10...v2.19.11) (2024-02-29)
 
 
