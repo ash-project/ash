@@ -2632,7 +2632,10 @@ defmodule Ash.Filter do
 
         with %{valid?: true} = aggregate_query <- Ash.Query.for_read(related, read_action),
              %{valid?: true} = aggregate_query <-
-               Ash.Query.build(aggregate_query, filter: aggregate.filter, sort: aggregate.sort),
+               Ash.Query.Aggregate.build_query(aggregate_query,
+                 filter: aggregate.filter,
+                 sort: aggregate.sort
+               ),
              {:ok, query_aggregate} <-
                Aggregate.new(
                  context.resource,
@@ -3235,7 +3238,7 @@ defmodule Ash.Filter do
             with %{valid?: true} = aggregate_query <-
                    Ash.Query.for_read(agg_related, read_action),
                  %{valid?: true} = aggregate_query <-
-                   Ash.Query.build(aggregate_query,
+                   Ash.Query.Aggregate.build_query(aggregate_query,
                      filter: aggregate.filter,
                      sort: aggregate.sort
                    ),

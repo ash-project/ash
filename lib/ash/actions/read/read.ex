@@ -1687,7 +1687,7 @@ defmodule Ash.Actions.Read do
        ) do
     case Ash.Query.Aggregate.new(destination_resource, :count, :count,
            read_action: read_action,
-           query: query
+           query: Ash.Query.unset(query, :sort)
          ) do
       {:ok, aggregate} ->
         Ash.DataLayer.run_aggregate_query_with_lateral_join(

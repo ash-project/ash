@@ -1492,7 +1492,10 @@ defmodule Ash.Query do
              %{valid?: true} = aggregate_query <-
                for_read(related, read_action),
              %{valid?: true} = aggregate_query <-
-               build(aggregate_query, filter: aggregate.filter, sort: aggregate.sort),
+               Ash.Query.Aggregate.build_query(aggregate_query,
+                 filter: aggregate.filter,
+                 sort: aggregate.sort
+               ),
              {:ok, query_aggregate} <-
                Aggregate.new(
                  query.resource,
@@ -2136,7 +2139,7 @@ defmodule Ash.Query do
 
             related
             |> for_read(read_action)
-            |> build(options)
+            |> Ash.Query.Aggregate.build_query(options)
 
           %Ash.Query{} = query ->
             query
