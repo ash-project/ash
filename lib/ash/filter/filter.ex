@@ -1921,7 +1921,7 @@ defmodule Ash.Filter do
          include_exists?,
          with_references?
        ) do
-    if function_exported?(module, :expression, 2) do
+    if module.has_expression?() do
       expression = module.expression(opts, context)
 
       case hydrate_refs(expression, %{

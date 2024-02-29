@@ -300,6 +300,17 @@ defmodule Ash.Actions.Read do
              ),
            query <- Map.put(query, :sort, sort),
            query <- add_select_if_none_exists(query),
+           query <- %{
+             query
+             | filter:
+                 add_calc_context_to_filter(
+                   query.filter,
+                   opts[:actor],
+                   opts[:authorize?],
+                   query.tenant,
+                   opts[:tracer]
+                 )
+           },
            pre_authorization_query <- query,
            {:ok, query} <- authorize_query(query, opts),
            query_before_pagination <- query,
@@ -316,7 +327,7 @@ defmodule Ash.Actions.Read do
                pre_authorization_query,
                opts[:actor],
                query.tenant,
-               agg_refs(query, data_layer_calculations),
+               agg_refs(query, data_layer_calculations ++ [{nil, query.filter}]),
                opts[:authorize?]
              ),
            data_layer_calculations <-
@@ -347,6 +358,14 @@ defmodule Ash.Actions.Read do
                query.resource,
                filter,
                query.tenant
+             ),
+           filter <-
+             add_calc_context_to_filter(
+               filter,
+               opts[:actor],
+               opts[:authorize?],
+               query.tenant,
+               opts[:tracer]
              ),
            filter <-
              update_aggregate_filters(
@@ -1036,10 +1055,28 @@ defmodule Ash.Actions.Read do
           message: "unhandled calculation in filter statement #{inspect(ref)}"
 
       %Ash.Query.Ref{attribute: %Ash.Query.Calculation{} = calc} = ref ->
-        %{
-          ref
-          | attribute: add_calc_context(calc, actor, authorize?, tenant, tracer)
-        }
+        calc = add_calc_context(calc, actor, authorize?, tenant, tracer)
+
+        if calc.module.has_expression?() do
+          {:ok, expr} =
+            Ash.Filter.hydrate_refs(
+              calc.module.expression(calc.opts, calc.context),
+              %{
+                resource: ref.resource,
+                public?: false
+              }
+            )
+
+          add_calc_context_to_filter(
+            expr,
+            actor,
+            authorize?,
+            tenant,
+            tracer
+          )
+        else
+          %{ref | attribute: calc}
+        end
 
       %Ash.Query.Ref{attribute: %Ash.Query.Aggregate{} = agg} = ref ->
         %{
@@ -1415,7 +1452,18 @@ defmodule Ash.Actions.Read do
               }
 
             _ ->
-              aggregate
+              %{
+                aggregate
+                | join_filters:
+                    add_join_filters(
+                      aggregate.join_filters,
+                      aggregate.relationship_path,
+                      ref.resource ||
+                        Ash.Resource.Info.related(resource, ref.relationship_path),
+                      relationship_path_filters,
+                      ref.relationship_path
+                    )
+              }
           end
         else
           aggregate
@@ -2032,7 +2080,16 @@ defmodule Ash.Actions.Read do
               }
 
             :error ->
-              aggregate
+              %{
+                aggregate
+                | join_filters:
+                    add_join_filters(
+                      aggregate.join_filters,
+                      aggregate.relationship_path,
+                      query.resource,
+                      path_filters
+                    )
+              }
           end
         else
           aggregate
