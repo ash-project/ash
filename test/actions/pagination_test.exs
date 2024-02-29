@@ -97,7 +97,9 @@ defmodule Ash.Actions.PaginationTest do
 
     calculations do
       calculate :name_with_arg, :string, expr(name) do
-        argument :does_nothing, :boolean
+        argument :does_nothing, :boolean do
+          allow_nil? false
+        end
       end
     end
 
@@ -708,7 +710,7 @@ defmodule Ash.Actions.PaginationTest do
     test "pagination works with a sort applied that uses a calculation with arguments" do
       page =
         User
-        |> Ash.Query.filter(name_with_arg == "4")
+        |> Ash.Query.filter(name_with_arg(does_nothing: true) == "4")
         |> Ash.Query.sort(name_with_arg: %{does_nothing: true})
         |> Api.read!(page: [limit: 1])
 
@@ -724,10 +726,19 @@ defmodule Ash.Actions.PaginationTest do
       assert names == ["5", "6", "7", "8", "9"]
     end
 
+    test "pagination utilities work with a sort applied that uses a calculation with arguments" do
+      assert %{results: [%{name_with_arg: "5"}]} =
+               User
+               |> Ash.Query.sort(name_with_arg: %{does_nothing: true})
+               |> Ash.Query.load(name_with_arg: %{does_nothing: true})
+               |> Api.read!(page: [limit: 1, offset: 4])
+               |> Api.page!(:next)
+    end
+
     test "pagination works with a sort applied that uses a calculation desc" do
       page =
         User
-        |> Ash.Query.filter(name_with_arg == "4")
+        |> Ash.Query.filter(name_with_arg(does_nothing: true) == "4")
         |> Ash.Query.sort(name_with_arg: {:desc, %{does_nothing: true}})
         |> Api.read!(page: [limit: 1])
 

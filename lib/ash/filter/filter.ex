@@ -2475,7 +2475,16 @@ defmodule Ash.Filter do
           public?: context.public?
         }
 
-        add_expression_part({ref.attribute.name, nested_statement}, new_context, expression)
+        case ref.attribute do
+          %Ash.Query.Calculation{} = calc ->
+            add_expression_part({calc, nested_statement}, new_context, expression)
+
+          %Ash.Query.Aggregate{} = agg ->
+            add_expression_part({agg, nested_statement}, new_context, expression)
+
+          %{name: name} ->
+            add_expression_part({name, nested_statement}, new_context, expression)
+        end
     end
   end
 
