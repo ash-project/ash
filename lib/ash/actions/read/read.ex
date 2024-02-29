@@ -1054,7 +1054,10 @@ defmodule Ash.Actions.Read do
         raise Ash.Error.Framework.AssumptionFailed,
           message: "unhandled calculation in filter statement #{inspect(ref)}"
 
-      %Ash.Query.Ref{attribute: %Ash.Query.Calculation{} = calc} = ref ->
+      %Ash.Query.Ref{
+        attribute: %Ash.Query.Calculation{} = calc,
+        relationship_path: relationship_path
+      } = ref ->
         calc = add_calc_context(calc, actor, authorize?, tenant, tracer)
 
         if calc.module.has_expression?() do
@@ -1066,6 +1069,9 @@ defmodule Ash.Actions.Read do
                 public?: false
               }
             )
+
+          expr =
+            Ash.Filter.move_to_relationship_path(expr, relationship_path)
 
           add_calc_context_to_filter(
             expr,
