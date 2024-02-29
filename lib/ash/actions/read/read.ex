@@ -322,6 +322,7 @@ defmodule Ash.Actions.Read do
            data_layer_calculations <-
              authorize_calculation_expressions(
                data_layer_calculations,
+               query.resource,
                opts[:authorize?],
                relationship_path_filters
              ),
@@ -348,7 +349,12 @@ defmodule Ash.Actions.Read do
                query.tenant
              ),
            filter <-
-             update_aggregate_filters(filter, opts[:authorize?], relationship_path_filters),
+             update_aggregate_filters(
+               filter,
+               query.resource,
+               opts[:authorize?],
+               relationship_path_filters
+             ),
            query <- Map.put(query, :filter, filter),
            query <- Ash.Query.unset(query, :calculations),
            {:ok, count} <-
@@ -654,6 +660,7 @@ defmodule Ash.Actions.Read do
          data_layer_calculations <-
            authorize_calculation_expressions(
              data_layer_calculations,
+             query.resource,
              opts[:authorize?],
              relationship_path_filters
            ),
@@ -1383,7 +1390,7 @@ defmodule Ash.Actions.Read do
   end
 
   @doc false
-  def update_aggregate_filters(filter, authorize?, relationship_path_filters) do
+  def update_aggregate_filters(filter, resource, authorize?, relationship_path_filters) do
     if authorize? do
       Filter.update_aggregates(filter, fn aggregate, ref ->
         if aggregate.authorize? do
@@ -1400,7 +1407,8 @@ defmodule Ash.Actions.Read do
                     add_join_filters(
                       aggregate.join_filters,
                       aggregate.relationship_path,
-                      ref.resource,
+                      ref.resource ||
+                        Ash.Resource.Info.related(resource, ref.relationship_path),
                       relationship_path_filters,
                       ref.relationship_path
                     )
@@ -1993,11 +2001,13 @@ defmodule Ash.Actions.Read do
 
   defp authorize_calculation_expressions(
          hydrated_calculations,
+         resource,
          authorize?,
          relationship_path_filters
        ) do
     Enum.map(hydrated_calculations, fn {calculation, expression} ->
-      {calculation, update_aggregate_filters(expression, authorize?, relationship_path_filters)}
+      {calculation,
+       update_aggregate_filters(expression, resource, authorize?, relationship_path_filters)}
     end)
   end
 
