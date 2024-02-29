@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.19.11](https://github.com/ash-project/ash/compare/v2.19.10...v2.19.11) (2024-02-29)
+
+
+
+
+### Bug Fixes:
+
+* properly add aggregate authorization everywhere
+
+* ensure calculation arguments are not ignored when parsing filters
+
+* properly authorize aggregates
+
 ## [v2.19.10](https://github.com/ash-project/ash/compare/v2.19.9...v2.19.10) (2024-02-29)
 
 
