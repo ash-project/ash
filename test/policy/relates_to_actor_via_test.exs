@@ -28,12 +28,14 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
                   else
                     :role
                   end
-                )
+                ) do
+        public?(true)
+      end
     end
 
     relationships do
-      belongs_to :user, Ash.Test.Policy.RelatesToActorViaTest.User
-      belongs_to :role, Ash.Test.Policy.RelatesToActorViaTest.Role
+      belongs_to :user, Ash.Test.Policy.RelatesToActorViaTest.User, public?: true
+      belongs_to :role, Ash.Test.Policy.RelatesToActorViaTest.Role, public?: true
     end
   end
 
@@ -82,8 +84,13 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
     end
 
     relationships do
-      belongs_to :user, Ash.Test.Policy.RelatesToActorViaTest.User
-      has_many :roles, Ash.Test.Policy.RelatesToActorViaTest.Role
+      belongs_to :user, Ash.Test.Policy.RelatesToActorViaTest.User do
+        public?(true)
+      end
+
+      has_many :roles, Ash.Test.Policy.RelatesToActorViaTest.Role do
+        public?(true)
+      end
     end
   end
 
@@ -103,7 +110,9 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
     end
 
     relationships do
-      belongs_to :account, Ash.Test.Policy.RelatesToActorViaTest.Account
+      belongs_to :account, Ash.Test.Policy.RelatesToActorViaTest.Account do
+        public?(true)
+      end
     end
   end
 

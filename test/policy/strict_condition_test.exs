@@ -20,7 +20,7 @@ defmodule Ash.Test.Policy.StrictConditionTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :visible, :boolean, allow_nil?: false
+      attribute :visible, :boolean, allow_nil?: false, public?: true
     end
 
     policies do

@@ -19,11 +19,13 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:bio, :string)
+      attribute(:bio, :string, public?: true)
     end
 
     relationships do
-      belongs_to(:user, Ash.Test.Filter.FilterInteractionTest.User)
+      belongs_to :user, Ash.Test.Filter.FilterInteractionTest.User do
+        public?(true)
+      end
     end
   end
 
@@ -37,20 +39,22 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:name, :string)
-      attribute(:allow_second_author, :boolean)
+      attribute(:name, :string, public?: true)
+      attribute(:allow_second_author, :boolean, public?: true)
     end
 
     relationships do
       has_many(:posts, Ash.Test.Filter.FilterInteractionTest.Post,
+        public?: true,
         destination_attribute: :author_id
       )
 
       has_many(:second_posts, Ash.Test.Filter.FilterInteractionTest.Post,
+        public?: true,
         destination_attribute: :author_id
       )
 
-      has_one(:profile, Profile, destination_attribute: :user_id)
+      has_one(:profile, Profile, public?: true, destination_attribute: :user_id)
     end
   end
 
@@ -64,11 +68,13 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
     relationships do
       belongs_to(:source_post, Ash.Test.Filter.FilterInteractionTest.Post,
+        public?: true,
         primary_key?: true,
         allow_nil?: false
       )
 
       belongs_to(:destination_post, Ash.Test.Filter.FilterInteractionTest.Post,
+        public?: true,
         primary_key?: true,
         allow_nil?: false
       )
@@ -85,18 +91,20 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:title, :string)
-      attribute(:contents, :string)
-      attribute(:points, :integer)
+      attribute(:title, :string, public?: true)
+      attribute(:contents, :string, public?: true)
+      attribute(:points, :integer, public?: true)
     end
 
     relationships do
       belongs_to(:author, User,
+        public?: true,
         destination_attribute: :id,
         source_attribute: :author_id
       )
 
       many_to_many(:related_posts, __MODULE__,
+        public?: true,
         through: PostLink,
         source_attribute_on_join_resource: :source_post_id,
         destination_attribute_on_join_resource: :destination_post_id

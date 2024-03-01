@@ -18,7 +18,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:name, :string)
+      attribute(:name, :string, public?: true)
     end
 
     actions do
@@ -42,12 +42,14 @@ defmodule Ash.Test.Actions.CreateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:bio, :string)
-      attribute(:date, :date)
+      attribute(:bio, :string, public?: true)
+      attribute(:date, :date, public?: true)
     end
 
     relationships do
-      belongs_to(:author, Ash.Test.Actions.CreateTest.Author)
+      belongs_to :author, Ash.Test.Actions.CreateTest.Author do
+        public?(true)
+      end
     end
   end
 
@@ -67,12 +69,12 @@ defmodule Ash.Test.Actions.CreateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:bio, :string)
-      attribute(:date, :date)
+      attribute(:bio, :string, public?: true)
+      attribute(:date, :date, public?: true)
     end
 
     relationships do
-      belongs_to(:author, Ash.Test.Actions.CreateTest.Author, allow_nil?: false)
+      belongs_to :author, Ash.Test.Actions.CreateTest.Author, allow_nil?: false, public?: true
     end
   end
 
@@ -151,14 +153,16 @@ defmodule Ash.Test.Actions.CreateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:name, :string)
-      attribute(:bio, :string)
+      attribute(:name, :string, public?: true)
+      attribute(:bio, :string, public?: true)
     end
 
     relationships do
-      has_one(:profile, Profile, destination_attribute: :author_id)
+      has_one :profile, Profile, destination_attribute: :author_id, public?: true
 
-      has_many(:posts, Ash.Test.Actions.CreateTest.Post, destination_attribute: :author_id)
+      has_many :posts, Ash.Test.Actions.CreateTest.Post,
+        destination_attribute: :author_id,
+        public?: true
     end
   end
 
@@ -188,8 +192,8 @@ defmodule Ash.Test.Actions.CreateTest do
 
     attributes do
       uuid_primary_key :id, generated?: false, default: nil
-      attribute(:name, :string, allow_nil?: false)
-      attribute(:bio, :string)
+      attribute(:name, :string, allow_nil?: false, public?: true)
+      attribute(:bio, :string, public?: true)
     end
   end
 
@@ -216,12 +220,14 @@ defmodule Ash.Test.Actions.CreateTest do
     relationships do
       belongs_to(:source_post, Ash.Test.Actions.CreateTest.Post,
         primary_key?: true,
-        allow_nil?: false
+        allow_nil?: false,
+        public?: true
       )
 
       belongs_to(:destination_post, Ash.Test.Actions.CreateTest.Post,
         primary_key?: true,
-        allow_nil?: false
+        allow_nil?: false,
+        public?: true
       )
     end
   end
@@ -260,18 +266,29 @@ defmodule Ash.Test.Actions.CreateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:title, :string, allow_nil?: false)
-      attribute(:contents, :string)
-      attribute(:tag, :string, default: "garbage")
-      attribute(:tag2, :string, default: &PostDefaults.garbage2/0)
-      attribute(:tag3, :string, default: {PostDefaults, :garbage3, []})
-      attribute(:list_attribute, {:array, :integer})
-      attribute(:date, :date)
-      attribute(:binary, :binary)
-      attribute(:required_with_default, :string, allow_nil?: false, default: "string")
-      attribute(:required_boolean_with_default, :boolean, allow_nil?: false, default: false)
+      attribute(:title, :string, allow_nil?: false, public?: true)
+      attribute(:contents, :string, public?: true)
+      attribute(:tag, :string, default: "garbage", public?: true)
+      attribute(:tag2, :string, default: &PostDefaults.garbage2/0, public?: true)
+      attribute(:tag3, :string, default: {PostDefaults, :garbage3, []}, public?: true)
+      attribute(:list_attribute, {:array, :integer}, public?: true)
+      attribute(:date, :date, public?: true)
+      attribute(:binary, :binary, public?: true)
+
+      attribute(:required_with_default, :string,
+        allow_nil?: false,
+        default: "string",
+        public?: true
+      )
+
+      attribute(:required_boolean_with_default, :boolean,
+        allow_nil?: false,
+        default: false,
+        public?: true
+      )
 
       attribute(:list_attribute_with_constraints, {:array, :integer},
+        public?: true,
         constraints: [
           min_length: 2,
           max_length: 10,
@@ -283,12 +300,13 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     relationships do
-      belongs_to(:author, Author)
+      belongs_to(:author, Author, public?: true)
 
       many_to_many(:related_posts, __MODULE__,
         through: PostLink,
         source_attribute_on_join_resource: :source_post_id,
-        destination_attribute_on_join_resource: :destination_post_id
+        destination_attribute_on_join_resource: :destination_post_id,
+        public?: true
       )
     end
   end
@@ -342,6 +360,7 @@ defmodule Ash.Test.Actions.CreateTest do
       uuid_primary_key :id
 
       attribute :foo, :integer do
+        public?(true)
         allow_nil? false
       end
     end

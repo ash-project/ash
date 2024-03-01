@@ -75,7 +75,7 @@ You can further customize the `source_attribute` using options such as:
 
 - `d:Ash.Resource.Dsl.relationships.belongs_to|define_attribute?` to define it yourself
 - `d:Ash.Resource.Dsl.relationships.belongs_to|attribute_type` to modify the default type
-- `d:Ash.Resource.Dsl.relationships.belongs_to|attribute_writable?` to make the source attribute `private?: false, writable?: true` (both are not the default)
+- `d:Ash.Resource.Dsl.relationships.belongs_to|attribute_public?` to make the source attribute `public?: true`
 
 For example:
 

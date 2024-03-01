@@ -19,6 +19,8 @@ defmodule Type.KeywordTest do
       uuid_primary_key :id
 
       attribute :metadata, :keyword do
+        public?(true)
+
         constraints fields: [
                       foo: [type: :string, allow_nil?: false],
                       bar: [type: :integer, constraints: [min: 0]]

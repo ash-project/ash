@@ -22,15 +22,16 @@ defmodule Ash.Test.SeedTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string, default: "Fred"
+      attribute :name, :string, default: "Fred", public?: true
     end
 
     relationships do
-      has_many :posts, Ash.Test.SeedTest.Post, destination_attribute: :author_id
+      has_many :posts, Ash.Test.SeedTest.Post, destination_attribute: :author_id, public?: true
 
       has_one :latest_post, Ash.Test.SeedTest.Post,
         destination_attribute: :author_id,
-        sort: [inserted_at: :desc]
+        sort: [inserted_at: :desc],
+        public?: true
     end
   end
 
@@ -48,20 +49,32 @@ defmodule Ash.Test.SeedTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
-      attribute :contents, :string
-      attribute :category, :string
+
+      attribute :title, :string do
+        public?(true)
+      end
+
+      attribute :contents, :string do
+        public?(true)
+      end
+
+      attribute :category, :string do
+        public?(true)
+      end
+
       timestamps()
     end
 
     relationships do
-      belongs_to :author, Author
+      belongs_to :author, Author, public?: true
 
       has_many :ratings, Ash.Test.SeedTest.Rating do
+        public?(true)
         domain(Ash.Test.SeedTest.Domain2)
       end
 
       many_to_many :categories, Ash.Test.SeedTest.Category,
+        public?: true,
         through: Ash.Test.SeedTest.PostCategory,
         destination_attribute_on_join_resource: :category_id,
         source_attribute_on_join_resource: :post_id
@@ -81,11 +94,12 @@ defmodule Ash.Test.SeedTest do
     end
 
     relationships do
-      belongs_to :post, Post, primary_key?: true, allow_nil?: false
+      belongs_to :post, Post, primary_key?: true, allow_nil?: false, public?: true
 
       belongs_to :category, Ash.Test.SeedTest.Category,
         primary_key?: true,
-        allow_nil?: false
+        allow_nil?: false,
+        public?: true
     end
   end
 
@@ -103,11 +117,15 @@ defmodule Ash.Test.SeedTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
 
     relationships do
       many_to_many :posts, Post,
+        public?: true,
         through: PostCategory,
         destination_attribute_on_join_resource: :post_id,
         source_attribute_on_join_resource: :category_id
@@ -125,7 +143,10 @@ defmodule Ash.Test.SeedTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :rating, :integer
+
+      attribute :rating, :integer do
+        public?(true)
+      end
     end
 
     actions do
@@ -134,6 +155,7 @@ defmodule Ash.Test.SeedTest do
 
     relationships do
       belongs_to :post, Post do
+        public?(true)
         domain(Domain)
       end
     end

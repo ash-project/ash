@@ -201,11 +201,11 @@ defmodule Ash.ActionInput do
   end
 
   defp has_argument?(action, name) when is_atom(name) do
-    Enum.any?(action.arguments, &(&1.private? == false && &1.name == name))
+    Enum.any?(action.arguments, &(&1.public? && &1.name == name))
   end
 
   defp has_argument?(action, name) when is_binary(name) do
-    Enum.any?(action.arguments, &(&1.private? == false && to_string(&1.name) == name))
+    Enum.any?(action.arguments, &(&1.public? && to_string(&1.name) == name))
   end
 
   defp add_invalid_errors(value, input, attribute, message) do

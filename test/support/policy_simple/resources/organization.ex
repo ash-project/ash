@@ -23,8 +23,8 @@ defmodule Ash.Test.Support.PolicySimple.Organization do
   end
 
   relationships do
-    has_many(:users, Ash.Test.Support.PolicySimple.User)
-    has_many(:posts, Ash.Test.Support.PolicySimple.Post)
-    belongs_to(:owner, Ash.Test.Support.PolicySimple.User)
+    has_many(:users, Ash.Test.Support.PolicySimple.User, public?: true)
+    has_many(:posts, Ash.Test.Support.PolicySimple.Post, public?: true)
+    belongs_to(:owner, Ash.Test.Support.PolicySimple.User, public?: true)
   end
 end

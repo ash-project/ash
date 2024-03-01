@@ -22,23 +22,28 @@ defmodule Ash.Test.GeneratorTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string, default: "Fred"
+      attribute :name, :string, default: "Fred", public?: true
 
       attribute :metadata, :map do
+        public?(true)
         allow_nil? true
       end
 
       attribute :meta, :map do
+        public?(true)
         allow_nil? false
       end
     end
 
     relationships do
-      has_many :posts, Ash.Test.GeneratorTest.Post, destination_attribute: :author_id
+      has_many :posts, Ash.Test.GeneratorTest.Post,
+        destination_attribute: :author_id,
+        public?: true
 
       has_one :latest_post, Ash.Test.GeneratorTest.Post,
         destination_attribute: :author_id,
-        sort: [inserted_at: :desc]
+        sort: [inserted_at: :desc],
+        public?: true
     end
   end
 
@@ -56,21 +61,32 @@ defmodule Ash.Test.GeneratorTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
-      attribute :contents, :string
-      attribute :category, :string
+
+      attribute :title, :string do
+        public?(true)
+      end
+
+      attribute :contents, :string do
+        public?(true)
+      end
+
+      attribute :category, :string do
+        public?(true)
+      end
+
       timestamps()
     end
 
     relationships do
-      belongs_to :author, Author
+      belongs_to :author, Author, public?: true
 
-      has_many :ratings, Ash.Test.GeneratorTest.Rating
+      has_many :ratings, Ash.Test.GeneratorTest.Rating, public?: true
 
       many_to_many :categories, Ash.Test.GeneratorTest.Category,
         through: Ash.Test.GeneratorTest.PostCategory,
         destination_attribute_on_join_resource: :category_id,
-        source_attribute_on_join_resource: :post_id
+        source_attribute_on_join_resource: :post_id,
+        public?: true
     end
   end
 
@@ -87,11 +103,12 @@ defmodule Ash.Test.GeneratorTest do
     end
 
     relationships do
-      belongs_to :post, Post, primary_key?: true, allow_nil?: false
+      belongs_to :post, Post, primary_key?: true, allow_nil?: false, public?: true
 
       belongs_to :category, Ash.Test.GeneratorTest.Category,
         primary_key?: true,
-        allow_nil?: false
+        allow_nil?: false,
+        public?: true
     end
   end
 
@@ -113,11 +130,15 @@ defmodule Ash.Test.GeneratorTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
 
     relationships do
       many_to_many :posts, Post,
+        public?: true,
         through: PostCategory,
         destination_attribute_on_join_resource: :post_id,
         source_attribute_on_join_resource: :category_id
@@ -135,7 +156,10 @@ defmodule Ash.Test.GeneratorTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :rating, :integer
+
+      attribute :rating, :integer do
+        public?(true)
+      end
     end
 
     actions do
@@ -144,6 +168,7 @@ defmodule Ash.Test.GeneratorTest do
 
     relationships do
       belongs_to :post, Post do
+        public?(true)
         domain(Ash.Test.GeneratorTest.Category)
       end
     end

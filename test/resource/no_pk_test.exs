@@ -21,12 +21,18 @@ defmodule Ash.Test.Resource.NoPkTest do
     end
 
     attributes do
-      attribute :time, :utc_datetime_usec
-      attribute :temperature, :float
+      attribute :time, :utc_datetime_usec do
+        public?(true)
+      end
+
+      attribute :temperature, :float do
+        public?(true)
+      end
     end
 
     relationships do
       belongs_to :location, Ash.Test.Resource.NoPkTest.Location do
+        public?(true)
         attribute_writable? true
       end
     end
@@ -46,7 +52,10 @@ defmodule Ash.Test.Resource.NoPkTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :location, :string
+
+      attribute :location, :string do
+        public?(true)
+      end
     end
   end
 

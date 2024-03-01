@@ -120,9 +120,9 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string, allow_nil?: false
-      attribute :title2, :string
-      attribute :title3, :string
+      attribute :title, :string, allow_nil?: false, public?: true
+      attribute :title2, :string, public?: true
+      attribute :title3, :string, public?: true
 
       timestamps()
     end

@@ -26,8 +26,13 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
       resource =
         defposts do
           attributes do
-            attribute :first_name, :string
-            attribute :last_name, :string
+            attribute :first_name, :string do
+              public?(true)
+            end
+
+            attribute :last_name, :string do
+              public?(true)
+            end
           end
 
           actions do
@@ -50,8 +55,13 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
       resource =
         defposts do
           attributes do
-            attribute :first_name, :string
-            attribute :last_name, :string
+            attribute :first_name, :string do
+              public?(true)
+            end
+
+            attribute :last_name, :string do
+              public?(true)
+            end
           end
 
           actions do
@@ -72,8 +82,13 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
       resource =
         defposts do
           attributes do
-            attribute :first_name, :string
-            attribute :last_name, :string
+            attribute :first_name, :string do
+              public?(true)
+            end
+
+            attribute :last_name, :string do
+              public?(true)
+            end
           end
 
           actions do
@@ -114,7 +129,9 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
         fn ->
           defposts do
             attributes do
-              attribute :attr, :string
+              attribute :attr, :string do
+                public?(true)
+              end
             end
 
             actions do

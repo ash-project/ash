@@ -37,11 +37,11 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       Context to be set on any queries or changesets generated for managing or querying this relationship.
       """
     ],
-    private?: [
+    public?: [
       type: :boolean,
       default: false,
       doc: """
-      Whether or not the relationship will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql See the [security guide](/documentation/topics/security.md) for more.
+      Whether or not the relationship will appear in public interfaces
       """
     ],
     not_found_message: [

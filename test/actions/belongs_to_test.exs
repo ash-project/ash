@@ -50,13 +50,15 @@ defmodule Ash.Test.Actions.BelongsToTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string, allow_nil?: false
-      attribute :requires_review, :boolean, allow_nil?: false, default: false
-      attribute :review_by_date, :date, allow_nil?: true
+      attribute :title, :string, allow_nil?: false, public?: true
+      attribute :requires_review, :boolean, allow_nil?: false, default: false, public?: true
+      attribute :review_by_date, :date, allow_nil?: true, public?: true
     end
 
     relationships do
-      belongs_to :reviewer, Ash.Test.Actions.BelongsToTest.Reviewer, allow_nil?: true
+      belongs_to :reviewer, Ash.Test.Actions.BelongsToTest.Reviewer,
+        allow_nil?: true,
+        public?: true
     end
   end
 
@@ -74,7 +76,7 @@ defmodule Ash.Test.Actions.BelongsToTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string, allow_nil?: false
+      attribute :name, :string, allow_nil?: false, public?: true
     end
   end
 

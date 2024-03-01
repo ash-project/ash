@@ -21,9 +21,10 @@ defmodule Ash.Test.Support.PolicyRbac.User do
 
   relationships do
     has_many(:memberships, Ash.Test.Support.PolicyRbac.Membership,
-      destination_attribute: :user_id
+      destination_attribute: :user_id,
+      public?: true
     )
 
-    belongs_to(:organization, Ash.Test.Support.PolicyRbac.Organization)
+    belongs_to(:organization, Ash.Test.Support.PolicyRbac.Organization, public?: true)
   end
 end

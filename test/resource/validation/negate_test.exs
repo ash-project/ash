@@ -15,7 +15,10 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :status, :atom
+
+      attribute :status, :atom do
+        public?(true)
+      end
     end
   end
 

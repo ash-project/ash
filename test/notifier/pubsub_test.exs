@@ -44,7 +44,9 @@ defmodule Ash.Test.Notifier.PubSubTest do
     attributes do
       uuid_primary_key :id, writable?: true
 
-      attribute :name, :string
+      attribute :name, :string do
+        public?(true)
+      end
     end
   end
 
@@ -76,7 +78,9 @@ defmodule Ash.Test.Notifier.PubSubTest do
     attributes do
       uuid_primary_key :id
 
-      attribute :name, :string
+      attribute :name, :string do
+        public?(true)
+      end
     end
   end
 

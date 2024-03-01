@@ -11,8 +11,13 @@ defmodule Ash.Test.Resource.ValidationsTest do
         attributes do
           uuid_primary_key :id
 
-          attribute :name, :string
-          attribute :contents, :string
+          attribute :name, :string do
+            public?(true)
+          end
+
+          attribute :contents, :string do
+            public?(true)
+          end
         end
 
         unquote(body)

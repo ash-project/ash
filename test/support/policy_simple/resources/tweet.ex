@@ -53,12 +53,14 @@ defmodule Ash.Test.Support.PolicySimple.Tweet do
 
   calculations do
     calculate :is_foo, :boolean, expr(^arg(:foo) == "foo") do
+      public?(true)
       argument :foo, :string, allow_nil?: false
     end
   end
 
   relationships do
     belongs_to :user, Ash.Test.Support.PolicySimple.User do
+      public?(true)
       attribute_writable? true
     end
   end

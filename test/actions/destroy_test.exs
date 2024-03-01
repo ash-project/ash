@@ -20,11 +20,16 @@ defmodule Ash.Test.Actions.DestroyTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :bio, :string
+
+      attribute :bio, :string do
+        public?(true)
+      end
     end
 
     relationships do
-      belongs_to :author, Ash.Test.Actions.DestroyTest.Author
+      belongs_to :author, Ash.Test.Actions.DestroyTest.Author do
+        public?(true)
+      end
     end
   end
 
@@ -66,13 +71,15 @@ defmodule Ash.Test.Actions.DestroyTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+      attribute :name, :string, public?: true
     end
 
     relationships do
-      has_one :profile, Profile, destination_attribute: :author_id
+      has_one :profile, Profile, destination_attribute: :author_id, public?: true
 
-      has_many :posts, Ash.Test.Actions.DestroyTest.Post, destination_attribute: :author_id
+      has_many :posts, Ash.Test.Actions.DestroyTest.Post,
+        destination_attribute: :author_id,
+        public?: true
     end
   end
 
@@ -96,15 +103,17 @@ defmodule Ash.Test.Actions.DestroyTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
-      attribute :contents, :string
-      attribute :tag, :string, default: "garbage"
-      attribute :tag2, :string, default: &PostDefaults.garbage2/0
-      attribute :tag3, :string, default: {PostDefaults, :garbage3, []}
+      attribute :title, :string, public?: true
+      attribute :contents, :string, public?: true
+      attribute :tag, :string, default: "garbage", public?: true
+      attribute :tag2, :string, default: &PostDefaults.garbage2/0, public?: true
+      attribute :tag3, :string, default: {PostDefaults, :garbage3, []}, public?: true
     end
 
     relationships do
-      belongs_to :author, Author
+      belongs_to :author, Author do
+        public?(true)
+      end
     end
   end
 

@@ -24,8 +24,8 @@ defmodule Ash.Test.Resource.Relationships.HasManyTest do
     test "it creates a relationship" do
       defposts do
         relationships do
-          has_many :foo, Foo
-          has_many :bar, Bar, destination_attribute: :bazz, private?: true
+          has_many :foo, Foo, public?: true
+          has_many :bar, Bar, destination_attribute: :bazz
         end
       end
 
@@ -37,7 +37,7 @@ defmodule Ash.Test.Resource.Relationships.HasManyTest do
                  name: :foo,
                  source_attribute: :id,
                  type: :has_many,
-                 private?: false
+                 public?: true
                },
                %HasMany{
                  cardinality: :many,
@@ -46,7 +46,7 @@ defmodule Ash.Test.Resource.Relationships.HasManyTest do
                  name: :bar,
                  source_attribute: :id,
                  type: :has_many,
-                 private?: true
+                 public?: false
                }
              ] = Ash.Resource.Info.relationships(Post)
 
@@ -68,7 +68,7 @@ defmodule Ash.Test.Resource.Relationships.HasManyTest do
         fn ->
           defposts do
             relationships do
-              has_many :foobar, FooBar, destination_attribute: "foo"
+              has_many :foobar, FooBar, destination_attribute: "foo", public?: true
             end
           end
         end
@@ -82,7 +82,10 @@ defmodule Ash.Test.Resource.Relationships.HasManyTest do
         fn ->
           defposts do
             relationships do
-              has_many :foobar, FooBar, source_attribute: "foo", destination_attribute: :post_id
+              has_many :foobar, FooBar,
+                source_attribute: "foo",
+                destination_attribute: :post_id,
+                public?: true
             end
           end
         end
@@ -96,7 +99,9 @@ defmodule Ash.Test.Resource.Relationships.HasManyTest do
         fn ->
           defposts do
             relationships do
-              has_many :foobar, "foobar"
+              has_many :foobar, "foobar" do
+                public?(true)
+              end
             end
           end
         end
@@ -110,21 +115,25 @@ defmodule Ash.Test.Resource.Relationships.HasManyTest do
         fn ->
           defposts do
             relationships do
-              has_many "foobar", Foobar
+              has_many "foobar", Foobar do
+                public?(true)
+              end
             end
           end
         end
       )
     end
 
-    test "fails if private? is not an boolean" do
+    test "fails if public? is not an boolean" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.HasManyTest.Post]\n relationships -> has_many -> foobar:\n  invalid value for :private? option: expected boolean, got: \"foo\"",
+        "[Ash.Test.Resource.Relationships.HasManyTest.Post]\n relationships -> has_many -> foobar:\n  invalid value for :public? option: expected boolean, got: \"foo\"",
         fn ->
           defposts do
             relationships do
-              has_many :foobar, FooBar, private?: "foo", destination_attribute: :post_id
+              has_many :foobar, FooBar,
+                public?: "foo",
+                destination_attribute: :post_id
             end
           end
         end

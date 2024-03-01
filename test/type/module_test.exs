@@ -50,7 +50,9 @@ defmodule Ash.Test.Type.ModuleTest do
     attributes do
       uuid_primary_key :id
 
-      attribute :module, :module
+      attribute :module, :module do
+        public?(true)
+      end
     end
   end
 
@@ -70,6 +72,7 @@ defmodule Ash.Test.Type.ModuleTest do
       uuid_primary_key :id
 
       attribute :module, :module do
+        public?(true)
         constraints behaviour: StinkyBehaviour
       end
     end
@@ -91,6 +94,7 @@ defmodule Ash.Test.Type.ModuleTest do
       uuid_primary_key :id
 
       attribute :module, :module do
+        public?(true)
         constraints protocol: StinkyProtocol
       end
     end

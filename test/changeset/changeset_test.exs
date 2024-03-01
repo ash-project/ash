@@ -45,11 +45,15 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
 
     relationships do
       many_to_many :posts, Ash.Test.Changeset.ChangesetTest.Post,
+        public?: true,
         through: Ash.Test.Changeset.ChangesetTest.PostCategory,
         destination_attribute_on_join_resource: :post_id,
         source_attribute_on_join_resource: :category_id
@@ -75,17 +79,24 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
 
     relationships do
-      has_many :posts, Ash.Test.Changeset.ChangesetTest.Post, destination_attribute: :author_id
+      has_many :posts, Ash.Test.Changeset.ChangesetTest.Post,
+        destination_attribute: :author_id,
+        public?: true
 
       has_many :unique_posts, Ash.Test.Changeset.ChangesetTest.UniqueNamePerAuthor,
-        destination_attribute: :author_id
+        destination_attribute: :author_id,
+        public?: true
 
       has_many :composite_key_posts, Ash.Test.Changeset.ChangesetTest.CompositeKeyPost,
-        destination_attribute: :author_id
+        destination_attribute: :author_id,
+        public?: true
     end
   end
 
@@ -102,15 +113,17 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     attributes do
-      attribute :priority, :integer, default: 0
+      attribute :priority, :integer, default: 0, public?: true
     end
 
     relationships do
       belongs_to :post, Ash.Test.Changeset.ChangesetTest.Post,
+        public?: true,
         primary_key?: true,
         allow_nil?: false
 
       belongs_to :category, Ash.Test.Changeset.ChangesetTest.Category,
+        public?: true,
         primary_key?: true,
         allow_nil?: false
     end
@@ -130,14 +143,23 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
-      attribute :contents, :string
+
+      attribute :title, :string do
+        public?(true)
+      end
+
+      attribute :contents, :string do
+        public?(true)
+      end
     end
 
     relationships do
-      belongs_to :author, Author
+      belongs_to :author, Author do
+        public?(true)
+      end
 
       many_to_many :categories, Ash.Test.Changeset.ChangesetTest.Category,
+        public?: true,
         through: Ash.Test.Changeset.ChangesetTest.PostCategory,
         destination_attribute_on_join_resource: :category_id,
         source_attribute_on_join_resource: :post_id
@@ -163,9 +185,18 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
-      attribute :contents, :string
-      attribute :tenant, :string
+
+      attribute :title, :string do
+        public?(true)
+      end
+
+      attribute :contents, :string do
+        public?(true)
+      end
+
+      attribute :tenant, :string do
+        public?(true)
+      end
     end
 
     code_interface do
@@ -173,9 +204,12 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     relationships do
-      belongs_to :author, Author
+      belongs_to :author, Author do
+        public?(true)
+      end
 
       many_to_many :categories, Ash.Test.Changeset.ChangesetTest.Category,
+        public?: true,
         through: Ash.Test.Changeset.ChangesetTest.PostCategory,
         destination_attribute_on_join_resource: :category_id,
         source_attribute_on_join_resource: :post_id
@@ -195,16 +229,19 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     attributes do
-      attribute :serial, :integer, primary_key?: true, allow_nil?: false
       uuid_primary_key :id
-      attribute :title, :string
-      attribute :contents, :string
+      attribute :serial, :integer, primary_key?: true, allow_nil?: false, public?: true
+      attribute :title, :string, public?: true
+      attribute :contents, :string, public?: true
     end
 
     relationships do
-      belongs_to :author, Author
+      belongs_to :author, Author do
+        public?(true)
+      end
 
       many_to_many :categories, Ash.Test.Changeset.ChangesetTest.Category,
+        public?: true,
         through: Ash.Test.Changeset.ChangesetTest.PostCategory,
         destination_attribute_on_join_resource: :category_id,
         source_attribute_on_join_resource: :post_id
@@ -229,14 +266,23 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
-      attribute :contents, :string
+
+      attribute :title, :string do
+        public?(true)
+      end
+
+      attribute :contents, :string do
+        public?(true)
+      end
     end
 
     relationships do
-      belongs_to :author, Author
+      belongs_to :author, Author do
+        public?(true)
+      end
 
       many_to_many :categories, Ash.Test.Changeset.ChangesetTest.Category,
+        public?: true,
         through: Ash.Test.Changeset.ChangesetTest.PostCategory,
         destination_attribute_on_join_resource: :category_id,
         source_attribute_on_join_resource: :post_id

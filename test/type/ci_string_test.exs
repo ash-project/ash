@@ -28,13 +28,19 @@ defmodule Ash.Test.Type.CiString do
       # c. [allow_empty?: true, trim?: true]
       # d. [allow_empty?: true, trim?: false]
       #
-      attribute :string_a, :ci_string
-      attribute :string_b, :ci_string, constraints: [trim?: false]
-      attribute :string_c, :ci_string, constraints: [allow_empty?: true]
-      attribute :string_d, :ci_string, constraints: [allow_empty?: true, trim?: false]
+      attribute :string_a, :ci_string, public?: true
+      attribute :string_b, :ci_string, constraints: [trim?: false], public?: true
+      attribute :string_c, :ci_string, constraints: [allow_empty?: true], public?: true
 
-      attribute :string_e, :ci_string, constraints: [min_length: 3, max_length: 6]
-      attribute :string_f, :ci_string, constraints: [min_length: 3, max_length: 6, trim?: false]
+      attribute :string_d, :ci_string,
+        constraints: [allow_empty?: true, trim?: false],
+        public?: true
+
+      attribute :string_e, :ci_string, constraints: [min_length: 3, max_length: 6], public?: true
+
+      attribute :string_f, :ci_string,
+        constraints: [min_length: 3, max_length: 6, trim?: false],
+        public?: true
     end
   end
 

@@ -22,16 +22,24 @@ defmodule Ash.Test.PlugHelpersTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :email, :string
+
+      attribute :email, :string do
+        public?(true)
+      end
     end
 
     multitenancy do
       strategy :attribute
-      attribute :customer_id
+
+      attribute :customer_id do
+        public?(true)
+      end
     end
 
     relationships do
-      belongs_to :customer, Customer
+      belongs_to :customer, Customer do
+        public?(true)
+      end
     end
   end
 
@@ -50,11 +58,16 @@ defmodule Ash.Test.PlugHelpersTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
 
     relationships do
-      has_many :users, User
+      has_many :users, User do
+        public?(true)
+      end
     end
   end
 

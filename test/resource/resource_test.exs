@@ -56,7 +56,10 @@ defmodule Ash.Test.Resource.ResourceTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
   end
 
@@ -77,20 +80,25 @@ defmodule Ash.Test.Resource.ResourceTest do
       fn ->
         defposts do
           attributes do
-            attribute(:foobar, :string)
+            attribute(:foobar, :string, public?: true)
           end
 
           relationships do
-            belongs_to(:foobar, Foobar)
+            belongs_to :foobar, Foobar do
+              public?(true)
+            end
           end
 
           calculations do
             calculate :foobar, :integer, {Concat, keys: [:foo, :bar]} do
+              public?(true)
             end
           end
 
           aggregates do
-            count :foobar, :baz
+            count :foobar, :baz do
+              public? true
+            end
           end
         end
       end

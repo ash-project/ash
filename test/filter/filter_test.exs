@@ -15,8 +15,14 @@ defmodule Ash.Test.Filter.FilterTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :bio, :string
-      attribute :title, :string
+
+      attribute :bio, :string do
+        public?(true)
+      end
+
+      attribute :title, :string do
+        public?(true)
+      end
     end
   end
 
@@ -40,13 +46,15 @@ defmodule Ash.Test.Filter.FilterTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :bio, :string
-      attribute :embedded_bio, EmbeddedBio
-      attribute :private, :string, private?: true
+      attribute :bio, :string, public?: true
+      attribute :embedded_bio, EmbeddedBio, public?: true
+      attribute :private, :string
     end
 
     relationships do
-      belongs_to :user, Ash.Test.Filter.FilterTest.User
+      belongs_to :user, Ash.Test.Filter.FilterTest.User do
+        public?(true)
+      end
     end
   end
 
@@ -64,18 +72,22 @@ defmodule Ash.Test.Filter.FilterTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
-      attribute :allow_second_author, :boolean
-      attribute :special, :boolean
-      attribute :roles, {:array, :atom}
+      attribute :name, :string, public?: true
+      attribute :allow_second_author, :boolean, public?: true
+      attribute :special, :boolean, public?: true
+      attribute :roles, {:array, :atom}, public?: true
     end
 
     relationships do
-      has_many :posts, Ash.Test.Filter.FilterTest.Post, destination_attribute: :author1_id
+      has_many :posts, Ash.Test.Filter.FilterTest.Post,
+        destination_attribute: :author1_id,
+        public?: true
 
-      has_many :second_posts, Ash.Test.Filter.FilterTest.Post, destination_attribute: :author1_id
+      has_many :second_posts, Ash.Test.Filter.FilterTest.Post,
+        destination_attribute: :author1_id,
+        public?: true
 
-      has_one :profile, Profile, destination_attribute: :user_id
+      has_one :profile, Profile, destination_attribute: :user_id, public?: true
     end
   end
 
@@ -94,11 +106,13 @@ defmodule Ash.Test.Filter.FilterTest do
     relationships do
       belongs_to :source_post, Ash.Test.Filter.FilterTest.Post,
         primary_key?: true,
-        allow_nil?: false
+        allow_nil?: false,
+        public?: true
 
       belongs_to :destination_post, Ash.Test.Filter.FilterTest.Post,
         primary_key?: true,
-        allow_nil?: false
+        allow_nil?: false,
+        public?: true
     end
   end
 
@@ -116,36 +130,57 @@ defmodule Ash.Test.Filter.FilterTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
-      attribute :contents, :string
-      attribute :points, :integer
-      attribute :approved_at, :datetime
-      attribute :category, :ci_string
+
+      attribute :title, :string do
+        public?(true)
+      end
+
+      attribute :contents, :string do
+        public?(true)
+      end
+
+      attribute :points, :integer do
+        public?(true)
+      end
+
+      attribute :approved_at, :datetime do
+        public?(true)
+      end
+
+      attribute :category, :ci_string do
+        public?(true)
+      end
     end
 
     calculations do
-      calculate :cool_titles, {:array, :string}, expr(["yo", "dawg"])
+      calculate :cool_titles, {:array, :string}, expr(["yo", "dawg"]) do
+        public?(true)
+      end
     end
 
     relationships do
       belongs_to :author1, User,
         destination_attribute: :id,
-        source_attribute: :author1_id
+        source_attribute: :author1_id,
+        public?: true
 
       belongs_to :special_author1, User,
         destination_attribute: :id,
         source_attribute: :author1_id,
         define_attribute?: false,
-        filter: expr(special == true)
+        filter: expr(special == true),
+        public?: true
 
       belongs_to :author2, User,
         destination_attribute: :id,
-        source_attribute: :author2_id
+        source_attribute: :author2_id,
+        public?: true
 
       many_to_many :related_posts, __MODULE__,
         through: PostLink,
         source_attribute_on_join_resource: :source_post_id,
-        destination_attribute_on_join_resource: :destination_post_id
+        destination_attribute_on_join_resource: :destination_post_id,
+        public?: true
     end
   end
 
@@ -174,7 +209,10 @@ defmodule Ash.Test.Filter.FilterTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :deleted_at, :utc_datetime
+
+      attribute :deleted_at, :utc_datetime do
+        public?(true)
+      end
     end
   end
 

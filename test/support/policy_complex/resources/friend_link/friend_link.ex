@@ -34,12 +34,14 @@ defmodule Ash.Test.Support.PolicyComplex.FriendLink do
 
   relationships do
     belongs_to :source, Ash.Test.Support.PolicyComplex.User do
+      public?(true)
       allow_nil? false
       primary_key? true
       attribute_writable? true
     end
 
     belongs_to :destination, Ash.Test.Support.PolicyComplex.User do
+      public?(true)
       allow_nil? false
       primary_key? true
       attribute_writable? true
