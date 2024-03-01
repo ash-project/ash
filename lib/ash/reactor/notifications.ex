@@ -62,7 +62,7 @@ defmodule Ash.Reactor.Notifications do
   def complete(result, context) when has_agent?(context) do
     with {:ok, notifications} <- agent_get(context),
          {:ok, _context} <- agent_stop(context),
-         [] <- Ash.Notifier.notify(notifications) do
+         [] <- __MODULE__.publish(notifications) do
       {:ok, result}
     else
       {:error, reason} ->
@@ -106,6 +106,13 @@ defmodule Ash.Reactor.Notifications do
       :ok
     end
   end
+
+  @doc """
+  Dispatch notifications.
+  """
+  @spec publish(Ash.Notifier.Notification.t() | [Ash.Notifier.Notification.t()]) ::
+          [Ash.Notifier.Notification.t()]
+  def publish(notifications), do: Ash.Notifier.notify(notifications)
 
   defp agent_start(context) when has_agent?(context) do
     case agent_get(context) do

@@ -65,7 +65,7 @@ defmodule Ash.Test.Reactor.NotificationsTest do
       notifications = build_notifications()
       :ok = Notifications.enqueue_notifications(context, notifications)
 
-      expect(Ash.Notifier, :notify, fn actual ->
+      expect(Notifications, :publish, fn actual ->
         assert actual == notifications
         []
       end)
@@ -77,7 +77,7 @@ defmodule Ash.Test.Reactor.NotificationsTest do
       notifications = build_notifications()
       :ok = Notifications.enqueue_notifications(context, notifications)
 
-      expect(Ash.Notifier, :notify, & &1)
+      expect(Notifications, :publish, & &1)
 
       assert capture_log(fn ->
                assert {:ok, :result} = Notifications.complete(:result, context)
