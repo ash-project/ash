@@ -89,7 +89,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
   test "publishing a message with a change value" do
     post =
       Post
-      |> Ash.Changeset.new(%{})
+      |> Ash.Changeset.for_create(:create, %{})
       |> Domain.create!()
 
     Domain.destroy!(post)
@@ -101,7 +101,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
   test "from is the pid that sent the message" do
     post =
       Post
-      |> Ash.Changeset.new(%{})
+      |> Ash.Changeset.for_create(:create, %{})
       |> Domain.create!()
 
     Domain.destroy!(post)
@@ -114,7 +114,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
   test "notification_metadata is included" do
     post =
       Post
-      |> Ash.Changeset.new(%{})
+      |> Ash.Changeset.for_create(:create, %{})
       |> Domain.create!()
 
     Domain.destroy!(post, notification_metadata: %{foo: :bar})
@@ -128,11 +128,11 @@ defmodule Ash.Test.Notifier.PubSubTest do
   test "publishing a message with multiple matches/changes" do
     post =
       Post
-      |> Ash.Changeset.new(%{name: "ted"})
+      |> Ash.Changeset.for_create(:create, %{name: "ted"})
       |> Domain.create!()
 
     post
-    |> Ash.Changeset.new(%{name: "joe"})
+    |> Ash.Changeset.for_update(:update, %{name: "joe"})
     |> Domain.update!()
 
     message = "post:foo:#{post.id}"
@@ -147,13 +147,13 @@ defmodule Ash.Test.Notifier.PubSubTest do
   test "publishing a message with a pkey matcher" do
     post =
       Post
-      |> Ash.Changeset.new(%{name: "ted"})
+      |> Ash.Changeset.for_create(:create, %{name: "ted"})
       |> Domain.create!()
 
     new_id = Ash.UUID.generate()
 
     post
-    |> Ash.Changeset.new(%{id: new_id})
+    |> Ash.Changeset.for_update(:update, %{id: new_id})
     |> Domain.update!(action: :update_pkey)
 
     message = "post:foo:#{post.id}"
@@ -166,7 +166,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
   test "publishing a message with a different delimiter" do
     user =
       User
-      |> Ash.Changeset.new(%{name: "Dave"})
+      |> Ash.Changeset.for_create(:create, %{name: "Dave"})
       |> Domain.create!()
 
     message = "users.#{user.id}.created"

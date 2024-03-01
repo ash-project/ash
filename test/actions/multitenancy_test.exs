@@ -97,8 +97,7 @@ defmodule Ash.Actions.MultitenancyTest do
 
     test "a simple write works when a tenant is specified", %{tenant1: tenant1} do
       User
-      |> Ash.Changeset.new()
-      |> Ash.Changeset.set_tenant(tenant1)
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
       |> Domain.create!()
     end
 
@@ -107,8 +106,7 @@ defmodule Ash.Actions.MultitenancyTest do
       tenant2: tenant2
     } do
       User
-      |> Ash.Changeset.new()
-      |> Ash.Changeset.set_tenant(tenant1)
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
       |> Domain.create!()
 
       assert User |> Ash.Query.set_tenant(tenant2) |> Domain.read!() == []
@@ -128,10 +126,9 @@ defmodule Ash.Actions.MultitenancyTest do
 
     test "a record can be updated in a tenant", %{tenant1: tenant1, tenant2: tenant2} do
       User
-      |> Ash.Changeset.new()
-      |> Ash.Changeset.set_tenant(tenant1)
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
       |> Domain.create!()
-      |> Ash.Changeset.new()
+      |> Ash.Changeset.for_update(:update, %{}, tenant: tenant1)
       |> Domain.update!()
 
       assert User |> Ash.Query.set_tenant(tenant2) |> Domain.read!() == []
@@ -139,10 +136,9 @@ defmodule Ash.Actions.MultitenancyTest do
 
     test "a record can be destroyed in a tenant", %{tenant1: tenant1} do
       User
-      |> Ash.Changeset.new()
-      |> Ash.Changeset.set_tenant(tenant1)
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
       |> Domain.create!()
-      |> Ash.Changeset.new()
+      |> Ash.Changeset.for_update(:update, %{}, tenant: tenant1)
       |> Domain.destroy!()
     end
   end
@@ -154,8 +150,7 @@ defmodule Ash.Actions.MultitenancyTest do
 
     test "a simple write works when a tenant is specified", %{tenant1: tenant1} do
       Comment
-      |> Ash.Changeset.new()
-      |> Ash.Changeset.set_tenant(tenant1)
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
       |> Domain.create!()
     end
 
@@ -164,8 +159,7 @@ defmodule Ash.Actions.MultitenancyTest do
       tenant2: tenant2
     } do
       Comment
-      |> Ash.Changeset.new()
-      |> Ash.Changeset.set_tenant(tenant1)
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
       |> Domain.create!()
 
       assert Comment |> Ash.Query.set_tenant(tenant2) |> Domain.read!() == []
@@ -173,10 +167,10 @@ defmodule Ash.Actions.MultitenancyTest do
 
     test "a record can be updated in a tenant", %{tenant1: tenant1, tenant2: tenant2} do
       Comment
-      |> Ash.Changeset.new()
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
       |> Ash.Changeset.set_tenant(tenant1)
       |> Domain.create!()
-      |> Ash.Changeset.new()
+      |> Ash.Changeset.for_update(:update, %{}, tenant: tenant1)
       |> Domain.update!()
 
       assert Comment |> Ash.Query.set_tenant(tenant2) |> Domain.read!() == []
@@ -184,10 +178,9 @@ defmodule Ash.Actions.MultitenancyTest do
 
     test "a record can be destroyed in a tenant", %{tenant1: tenant1} do
       Comment
-      |> Ash.Changeset.new()
-      |> Ash.Changeset.set_tenant(tenant1)
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
       |> Domain.create!()
-      |> Ash.Changeset.new()
+      |> Ash.Changeset.for_update(:update, %{}, tenant: tenant1)
       |> Domain.destroy!()
     end
 
@@ -195,8 +188,7 @@ defmodule Ash.Actions.MultitenancyTest do
       tenant1: tenant1
     } do
       Comment
-      |> Ash.Changeset.new()
-      |> Ash.Changeset.set_tenant(tenant1)
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
       |> Domain.create!()
 
       result = Comment |> Domain.read()

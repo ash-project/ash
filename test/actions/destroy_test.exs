@@ -108,13 +108,11 @@ defmodule Ash.Test.Actions.DestroyTest do
     end
   end
 
-  import Ash.Changeset
-
   describe "simple destroy" do
     test "allows destroying a record" do
       post =
         Post
-        |> new(%{title: "foo", contents: "bar"})
+        |> Ash.Changeset.for_create(:create, %{title: "foo", contents: "bar"})
         |> Domain.create!()
 
       assert Domain.destroy!(post) == :ok
@@ -125,7 +123,7 @@ defmodule Ash.Test.Actions.DestroyTest do
     test "returns the record if requested" do
       post =
         Post
-        |> new(%{title: "foo", contents: "bar"})
+        |> Ash.Changeset.for_create(:create, %{title: "foo", contents: "bar"})
         |> Domain.create!()
 
       post_id = post.id
@@ -138,7 +136,7 @@ defmodule Ash.Test.Actions.DestroyTest do
     test "returns the record and notifications if requested" do
       post =
         Post
-        |> new(%{title: "foo", contents: "bar"})
+        |> Ash.Changeset.for_create(:create, %{title: "foo", contents: "bar"})
         |> Domain.create!()
 
       post_id = post.id
@@ -152,7 +150,7 @@ defmodule Ash.Test.Actions.DestroyTest do
     test "the destroy does not happen if it is unauthorized" do
       author =
         Author
-        |> new(%{name: "foobar"})
+        |> Ash.Changeset.for_create(:create, %{name: "foobar"})
         |> Domain.create!(authorize?: false)
 
       start_supervised({Ash.Test.Authorizer, strict_check: :continue, check: :forbidden})
@@ -169,7 +167,7 @@ defmodule Ash.Test.Actions.DestroyTest do
     test "allows destroying a record" do
       author =
         Author
-        |> new(%{name: "foo"})
+        |> Ash.Changeset.for_create(:create, %{name: "foo"})
         |> Domain.create!()
 
       assert Domain.destroy!(author, action: :manual) == :ok

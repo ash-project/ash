@@ -29,12 +29,10 @@ defmodule Type.MapTest do
     end
   end
 
-  import Ash.Changeset
-
   test "it handles valid maps" do
     changeset =
       Post
-      |> for_create(:create, %{
+      |> Ash.Changeset.for_create(:create, %{
         metadata: %{
           foo: "bar",
           bar: 1
@@ -47,7 +45,7 @@ defmodule Type.MapTest do
   test "allow_nil? is true by default" do
     changeset =
       Post
-      |> for_create(:create, %{
+      |> Ash.Changeset.for_create(:create, %{
         metadata: %{
           foo: "bar",
           bar: "2"
@@ -64,7 +62,7 @@ defmodule Type.MapTest do
   test "cast result has only atom keys" do
     changeset =
       Post
-      |> for_create(:create, %{
+      |> Ash.Changeset.for_create(:create, %{
         metadata: %{
           "bar" => nil,
           foo: "bar"
@@ -81,7 +79,7 @@ defmodule Type.MapTest do
   test "keys that can be nil don't need to be there" do
     changeset =
       Post
-      |> for_create(:create, %{
+      |> Ash.Changeset.for_create(:create, %{
         metadata: %{
           foo: "bar"
         }
@@ -93,7 +91,7 @@ defmodule Type.MapTest do
   test "keys that can not be nil need to be there" do
     changeset =
       Post
-      |> for_create(:create, %{
+      |> Ash.Changeset.for_create(:create, %{
         metadata: %{bar: 1}
       })
 
@@ -117,7 +115,7 @@ defmodule Type.MapTest do
   test "constraints of field types are checked" do
     changeset =
       Post
-      |> for_create(:create, %{
+      |> Ash.Changeset.for_create(:create, %{
         metadata: %{foo: "hello", bar: -1}
       })
 
@@ -141,7 +139,7 @@ defmodule Type.MapTest do
   test "extra fields are removed" do
     changeset =
       Post
-      |> for_create(
+      |> Ash.Changeset.for_create(
         :create,
         %{
           metadata: %{
@@ -161,7 +159,7 @@ defmodule Type.MapTest do
   test "values are casted before checked" do
     changeset =
       Post
-      |> for_create(
+      |> Ash.Changeset.for_create(
         :create,
         %{
           metadata: %{
@@ -191,7 +189,7 @@ defmodule Type.MapTest do
   test "maps without constraints are left as is" do
     changeset =
       Post
-      |> for_create(
+      |> Ash.Changeset.for_create(
         :create,
         %{
           otherdata: %{

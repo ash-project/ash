@@ -24,12 +24,10 @@ defmodule Ash.Test.Type.NaiveDateTimeTest do
     end
   end
 
-  import Ash.Changeset
-
   test "it handles non-empty values" do
     post =
       Post
-      |> new(%{
+      |> Ash.Changeset.for_create(:create, %{
         naive_datetime_a: ~N[2022-04-17 08:30:00],
         naive_datetime_b: ~N[2022-04-17 15:45:30]
       })

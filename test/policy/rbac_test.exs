@@ -8,8 +8,8 @@ defmodule Ash.Test.Policy.RbacTest do
 
   setup do
     [
-      user: Domain.create!(Ash.Changeset.new(User), authorize?: false),
-      org: Domain.create!(Ash.Changeset.new(Organization), authorize?: false)
+      user: Domain.create!(Ash.Changeset.for_create(User, :create), authorize?: false),
+      org: Domain.create!(Ash.Changeset.for_create(Organization, :create), authorize?: false)
     ]
   end
 
@@ -117,8 +117,7 @@ defmodule Ash.Test.Policy.RbacTest do
   } do
     changeset =
       File
-      |> Ash.Changeset.new(%{name: "bar"})
-      |> Ash.Changeset.for_create(:create)
+      |> Ash.Changeset.for_create(:create, %{name: "bar"})
       |> Ash.Changeset.manage_relationship(:organization, org, type: :append_and_remove)
 
     assert Domain.can?(changeset, user)
@@ -138,7 +137,11 @@ defmodule Ash.Test.Policy.RbacTest do
 
   defp give_role(user, org, role, resource, resource_id) do
     Membership
-    |> Ash.Changeset.new(%{role: role, resource: resource, resource_id: resource_id})
+    |> Ash.Changeset.for_create(:create, %{
+      role: role,
+      resource: resource,
+      resource_id: resource_id
+    })
     |> Ash.Changeset.manage_relationship(:user, user, type: :append_and_remove)
     |> Ash.Changeset.manage_relationship(:organization, org, type: :append_and_remove)
     |> Domain.create!(authorize?: false)
@@ -146,7 +149,7 @@ defmodule Ash.Test.Policy.RbacTest do
 
   defp create_file(org, name) do
     File
-    |> Ash.Changeset.new(%{name: name})
+    |> Ash.Changeset.for_create(:create, %{name: name})
     |> Ash.Changeset.manage_relationship(:organization, org, type: :append_and_remove)
     |> Domain.create!(authorize?: false)
   end

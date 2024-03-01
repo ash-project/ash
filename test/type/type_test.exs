@@ -65,12 +65,10 @@ defmodule Ash.Test.Type.TypeTest do
     end
   end
 
-  import Ash.Changeset
-
   test "it accepts valid data" do
     post =
       Post
-      |> new(%{title: "foobar", post_type: :text})
+      |> Ash.Changeset.for_create(:create, %{title: "foobar", post_type: :text})
       |> Domain.create!()
 
     assert post.title == "foobar"
@@ -79,7 +77,7 @@ defmodule Ash.Test.Type.TypeTest do
   test "it rejects invalid title data" do
     assert_raise(Ash.Error.Invalid, ~r/is too long, max_length is 10/, fn ->
       Post
-      |> new(%{title: "foobarbazbuzbiz", post_type: :text})
+      |> Ash.Changeset.for_create(:create, %{title: "foobarbazbuzbiz", post_type: :text})
       |> Domain.create!()
     end)
   end
@@ -87,7 +85,7 @@ defmodule Ash.Test.Type.TypeTest do
   test "it rejects invalid atom data" do
     assert_raise(Ash.Error.Invalid, ~r/atom must be one of/, fn ->
       Post
-      |> new(%{title: "foobar", post_type: :something_else})
+      |> Ash.Changeset.for_create(:create, %{title: "foobar", post_type: :something_else})
       |> Domain.create!()
     end)
   end

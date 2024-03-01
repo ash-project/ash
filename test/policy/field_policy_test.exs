@@ -8,15 +8,24 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
 
   setup do
     rep =
-      Domain.create!(Ash.Changeset.new(User, %{role: :representative, points: 4}),
+      Domain.create!(Ash.Changeset.for_create(User, :create, %{role: :representative, points: 4}),
         authorize?: false
       )
 
-    user = Domain.create!(Ash.Changeset.new(User, %{role: :user, points: 3}), authorize?: false)
-    admin = Domain.create!(Ash.Changeset.new(User, %{role: :admin, points: 2}), authorize?: false)
+    user =
+      Domain.create!(Ash.Changeset.for_create(User, :create, %{role: :user, points: 3}),
+        authorize?: false
+      )
+
+    admin =
+      Domain.create!(Ash.Changeset.for_create(User, :create, %{role: :admin, points: 2}),
+        authorize?: false
+      )
 
     other_user =
-      Domain.create!(Ash.Changeset.new(User, %{role: :user, points: 1}), authorize?: false)
+      Domain.create!(Ash.Changeset.for_create(User, :create, %{role: :user, points: 1}),
+        authorize?: false
+      )
 
     [
       user: user,
@@ -24,11 +33,17 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
       representative: rep,
       ticket:
         Domain.create!(
-          Ash.Changeset.new(Ticket, %{representative_id: rep.id, reporter_id: user.id})
+          Ash.Changeset.for_create(Ticket, :create, %{
+            representative_id: rep.id,
+            reporter_id: user.id
+          })
         ),
       other_ticket:
         Domain.create!(
-          Ash.Changeset.new(Ticket, %{representative_id: rep.id, reporter_id: other_user.id})
+          Ash.Changeset.for_create(Ticket, :create, %{
+            representative_id: rep.id,
+            reporter_id: other_user.id
+          })
         )
     ]
   end

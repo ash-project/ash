@@ -50,7 +50,7 @@ MyApp.Users
 
 # Automatically setting `organization_id` to `1`
 MyApp.Users
-|> Ash.Changeset.new(name: "fred")
+|> Ash.Changeset.for_create(:create, %{name: "fred"})
 |> Ash.Changeset.set_tenant(1)
 |> MyMyDomain.create!()
 
