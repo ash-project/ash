@@ -1067,7 +1067,8 @@ defmodule Ash.Actions.Read do
                 expr
 
               expr ->
-                Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
+                {:ok, expr} = Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
+                expr
             end
 
           {:ok, expr} =
