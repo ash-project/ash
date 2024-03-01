@@ -59,9 +59,18 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
-      attribute :bio, :string
-      attribute :score, :integer
+
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :bio, :string do
+        public?(true)
+      end
+
+      attribute :score, :integer do
+        public?(true)
+      end
     end
 
     code_interface do

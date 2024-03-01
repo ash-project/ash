@@ -47,17 +47,18 @@ defmodule Ash.Test.Flow.User do
 
   attributes do
     uuid_primary_key :id, description: "PK"
-    attribute :first_name, :string, description: "User's first name"
-    attribute :last_name, :string, description: "User's last name"
-    attribute :email, :string, description: "User's email address"
+    attribute :first_name, :string, description: "User's first name", public?: true
+    attribute :last_name, :string, description: "User's last name", public?: true
+    attribute :email, :string, description: "User's email address", public?: true
 
     attribute :approved, :boolean do
       description "Is the user approved?"
-      private? true
     end
   end
 
   relationships do
-    belongs_to :org, Ash.Test.Flow.Org
+    belongs_to :org, Ash.Test.Flow.Org do
+      public?(true)
+    end
   end
 end

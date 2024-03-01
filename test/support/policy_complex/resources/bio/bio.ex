@@ -21,6 +21,7 @@ defmodule Ash.Test.Support.PolicyComplex.Bio do
     uuid_primary_key(:id)
 
     attribute :text, :string do
+      public?(true)
       allow_nil?(false)
     end
   end
@@ -34,6 +35,8 @@ defmodule Ash.Test.Support.PolicyComplex.Bio do
   end
 
   relationships do
-    belongs_to :user, Ash.Test.Support.PolicyComplex.User
+    belongs_to :user, Ash.Test.Support.PolicyComplex.User do
+      public?(true)
+    end
   end
 end

@@ -10,7 +10,7 @@ defmodule Ash.Resource.Aggregate do
     :constraints,
     :type,
     :description,
-    :private?,
+    :public?,
     :field,
     :sort,
     :default,
@@ -75,11 +75,10 @@ defmodule Ash.Resource.Aggregate do
       type: :any,
       doc: "A default value to use in cases where nil would be used. Count defaults to `0`."
     ],
-    private?: [
+    public?: [
       type: :boolean,
       default: false,
-      doc:
-        "Whether or not the aggregate will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
+      doc: "Whether or not the aggregate will appear in public interfaces"
     ],
     filterable?: [
       type: {:or, [:boolean, {:in, [:simple_equality]}]},
@@ -102,7 +101,7 @@ defmodule Ash.Resource.Aggregate do
           field: atom,
           kind: Ash.Query.Aggregate.kind(),
           description: String.t() | nil,
-          private?: boolean,
+          public?: boolean,
           authorize?: boolean,
           read_action: atom | nil,
           default: term,

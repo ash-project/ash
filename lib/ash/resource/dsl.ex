@@ -26,7 +26,6 @@ defmodule Ash.Resource.Dsl do
     the following different defaults:
 
         writable? false
-        private? true
         default &DateTime.utc_now/0
         match_other_defaults? true
         type Ash.Type.UTCDatetimeUsec
@@ -50,7 +49,6 @@ defmodule Ash.Resource.Dsl do
     the following different defaults:
 
         writable? false
-        private? true
         default &DateTime.utc_now/0
         match_other_defaults? true
         update_default &DateTime.utc_now/0
@@ -76,6 +74,7 @@ defmodule Ash.Resource.Dsl do
     Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except for `allow_nil?`, but it sets
     the following different defaults:
 
+        public? true
         writable? false
         primary_key? true
         generated? true
@@ -100,6 +99,7 @@ defmodule Ash.Resource.Dsl do
     the following different defaults:
 
         writable? false
+        public? true
         default &Ash.UUID.generate/0
         primary_key? true
         type :uuid

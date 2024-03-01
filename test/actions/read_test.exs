@@ -34,11 +34,14 @@ defmodule Ash.Test.Actions.ReadTest do
 
     attributes do
       uuid_primary_key(:id)
-      attribute(:name, :string)
+      attribute(:name, :string, public?: true)
     end
 
     relationships do
-      has_many(:posts, Ash.Test.Actions.ReadTest.Post, destination_attribute: :author1_id)
+      has_many(:posts, Ash.Test.Actions.ReadTest.Post,
+        destination_attribute: :author1_id,
+        public?: true
+      )
     end
   end
 
@@ -76,14 +79,19 @@ defmodule Ash.Test.Actions.ReadTest do
 
     attributes do
       uuid_primary_key(:id)
-      attribute(:uuid, :uuid, default: &Ash.UUID.generate/0)
-      attribute(:title, :string)
-      attribute(:contents, :string)
+      attribute(:uuid, :uuid, default: &Ash.UUID.generate/0, public?: true)
+      attribute(:title, :string, public?: true)
+      attribute(:contents, :string, public?: true)
     end
 
     relationships do
-      belongs_to(:author1, Ash.Test.Actions.ReadTest.Author)
-      belongs_to(:author2, Ash.Test.Actions.ReadTest.Author)
+      belongs_to :author1, Ash.Test.Actions.ReadTest.Author do
+        public?(true)
+      end
+
+      belongs_to :author2, Ash.Test.Actions.ReadTest.Author do
+        public?(true)
+      end
     end
   end
 

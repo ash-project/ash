@@ -26,13 +26,16 @@ defmodule Ash.Test.Type.StringTest do
       # c. [allow_empty?: true, trim?: true]
       # d. [allow_empty?: true, trim?: false]
       #
-      attribute :string_a, :string
-      attribute :string_b, :string, constraints: [trim?: false]
-      attribute :string_c, :string, constraints: [allow_empty?: true]
-      attribute :string_d, :string, constraints: [allow_empty?: true, trim?: false]
+      attribute :string_a, :string, public?: true
+      attribute :string_b, :string, constraints: [trim?: false], public?: true
+      attribute :string_c, :string, constraints: [allow_empty?: true], public?: true
+      attribute :string_d, :string, constraints: [allow_empty?: true, trim?: false], public?: true
 
-      attribute :string_e, :string, constraints: [min_length: 3, max_length: 6]
-      attribute :string_f, :string, constraints: [min_length: 3, max_length: 6, trim?: false]
+      attribute :string_e, :string, constraints: [min_length: 3, max_length: 6], public?: true
+
+      attribute :string_f, :string,
+        constraints: [min_length: 3, max_length: 6, trim?: false],
+        public?: true
     end
   end
 

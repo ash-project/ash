@@ -132,7 +132,9 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
 
     calculations do
-      calculate :hidden_calc, :string, expr("something")
+      calculate :hidden_calc, :string, expr("something") do
+        public?(true)
+      end
     end
 
     field_policies do
@@ -157,10 +159,10 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string, allow_nil?: false
-      attribute :title2, :string
-      attribute :title3, :string
-      attribute :hidden_attribute, :string
+      attribute :title, :string, allow_nil?: false, public?: true
+      attribute :title2, :string, public?: true
+      attribute :title3, :string, public?: true
+      attribute :hidden_attribute, :string, public?: true
 
       attribute :before_batch_size, :integer
       attribute :after_batch_size, :integer

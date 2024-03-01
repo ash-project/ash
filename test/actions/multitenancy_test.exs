@@ -24,15 +24,24 @@ defmodule Ash.Actions.MultitenancyTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
-      attribute :org_id, :uuid
+
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :org_id, :uuid do
+        public?(true)
+      end
     end
 
     relationships do
-      has_many :posts, Ash.Actions.MultitenancyTest.Post, destination_attribute: :author_id
+      has_many :posts, Ash.Actions.MultitenancyTest.Post,
+        destination_attribute: :author_id,
+        public?: true
 
       has_many :comments, Ash.Actions.MultitenancyTest.Comment,
-        destination_attribute: :commenter_id
+        destination_attribute: :commenter_id,
+        public?: true
     end
   end
 
@@ -46,8 +55,14 @@ defmodule Ash.Actions.MultitenancyTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
-      attribute :org_id, :uuid
+
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :org_id, :uuid do
+        public?(true)
+      end
     end
 
     actions do
@@ -55,8 +70,13 @@ defmodule Ash.Actions.MultitenancyTest do
     end
 
     relationships do
-      has_many :comments, Ash.Actions.MultitenancyTest.Comment, destination_attribute: :post_id
-      belongs_to :author, User
+      has_many :comments, Ash.Actions.MultitenancyTest.Comment,
+        destination_attribute: :post_id,
+        public?: true
+
+      belongs_to :author, User do
+        public?(true)
+      end
     end
   end
 
@@ -80,13 +100,24 @@ defmodule Ash.Actions.MultitenancyTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
-      attribute :org_id, :uuid
+
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :org_id, :uuid do
+        public?(true)
+      end
     end
 
     relationships do
-      belongs_to :commenter, User
-      belongs_to :post, Post
+      belongs_to :commenter, User do
+        public?(true)
+      end
+
+      belongs_to :post, Post do
+        public?(true)
+      end
     end
   end
 

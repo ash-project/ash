@@ -20,11 +20,13 @@ defmodule Ash.Test.CalculationTest do
 
     relationships do
       belongs_to :source, Ash.Test.CalculationTest.User do
+        public?(true)
         allow_nil?(false)
         primary_key?(true)
       end
 
       belongs_to :target, Ash.Test.CalculationTest.User do
+        public?(true)
         allow_nil?(false)
         primary_key?(true)
       end
@@ -268,17 +270,21 @@ defmodule Ash.Test.CalculationTest do
 
     aggregates do
       first :user_is_active, :user, :is_active do
+        public? true
         default(false)
       end
 
-      list :names, :user, :first_name
+      list :names, :user, :first_name do
+        public? true
+      end
     end
 
     attributes do
       uuid_primary_key(:id)
-      attribute(:name, :string)
+      attribute(:name, :string, public?: true)
 
       attribute :is_active, :boolean do
+        public?(true)
         allow_nil?(false)
         default(false)
       end
@@ -286,6 +292,7 @@ defmodule Ash.Test.CalculationTest do
 
     calculations do
       calculate :active, :boolean do
+        public?(true)
         calculation(expr(is_active && user_is_active))
         load([:user_is_active])
       end
@@ -315,6 +322,7 @@ defmodule Ash.Test.CalculationTest do
 
     relationships do
       belongs_to(:user, Ash.Test.CalculationTest.User) do
+        public?(true)
         attribute_writable?(true)
       end
     end
@@ -324,11 +332,14 @@ defmodule Ash.Test.CalculationTest do
     use Ash.Resource, domain: Domain, data_layer: :embedded
 
     attributes do
-      attribute :greeting, :string
+      attribute :greeting, :string do
+        public?(true)
+      end
     end
 
     calculations do
       calculate :say_hello, :string, expr(greeting <> " " <> ^arg(:to)) do
+        public?(true)
         argument :to, :string, allow_nil?: false
       end
     end
@@ -355,12 +366,12 @@ defmodule Ash.Test.CalculationTest do
 
     attributes do
       uuid_primary_key(:id)
-      attribute(:first_name, :string)
-      attribute(:last_name, :string)
-      attribute(:prefix, :string)
-      attribute(:special, :boolean)
-      attribute(:is_active, :boolean)
-      attribute(:bio, Bio)
+      attribute(:first_name, :string, public?: true)
+      attribute(:last_name, :string, public?: true)
+      attribute(:prefix, :string, public?: true)
+      attribute(:special, :boolean, public?: true)
+      attribute(:is_active, :boolean, public?: true)
+      attribute(:bio, Bio, public?: true)
     end
 
     changes do
@@ -377,6 +388,8 @@ defmodule Ash.Test.CalculationTest do
 
     calculations do
       calculate :say_hello_to_fred, :string do
+        public?(true)
+
         calculation fn records, _ ->
           Enum.map(records, fn record ->
             record.bio.say_hello
@@ -387,6 +400,8 @@ defmodule Ash.Test.CalculationTest do
       end
 
       calculate :say_hello_to_george, :string do
+        public?(true)
+
         calculation fn records, _ ->
           Enum.map(records, fn record ->
             record.bio.say_hello
@@ -396,13 +411,22 @@ defmodule Ash.Test.CalculationTest do
         load bio: [say_hello: %{to: "George"}]
       end
 
-      calculate :example_metadata, :string, Metadata
+      calculate :example_metadata, :string, Metadata do
+        public?(true)
+      end
 
-      calculate :metadata_plus_metadata, :string, concat([:example_metadata, :example_metadata])
+      calculate :metadata_plus_metadata,
+                :string,
+                concat([:example_metadata, :example_metadata]) do
+        public?(true)
+      end
 
-      calculate(:active, :boolean, expr(is_active))
+      calculate :active, :boolean, expr(is_active) do
+        public?(true)
+      end
 
       calculate :full_name, :string, {Concat, keys: [:first_name, :last_name]} do
+        public?(true)
         load([:first_name, :last_name])
         # We currently need to use the [allow_empty?: true, trim?: false] constraints here.
         # As it's an empty string, the separator would otherwise be trimmed and set to `nil`.
@@ -413,6 +437,7 @@ defmodule Ash.Test.CalculationTest do
       end
 
       calculate :full_name_with_select, :string, FullNameWithSelect do
+        public?(true)
         # We currently need to use the [allow_empty?: true, trim?: false] constraints here.
         # As it's an empty string, the separator would otherwise be trimmed and set to `nil`.
         argument(:separator, :string,
@@ -423,123 +448,157 @@ defmodule Ash.Test.CalculationTest do
 
       calculate :full_name_with_select_plus_something,
                 :string,
-                expr(full_name_with_select <> "_something")
+                expr(full_name_with_select <> "_something") do
+        public?(true)
+      end
 
-      calculate(:best_friends_best_friends_first_name, :string, BestFriendsBestFriendsFirstName)
+      calculate :best_friends_best_friends_first_name, :string, BestFriendsBestFriendsFirstName do
+        public?(true)
+      end
 
-      calculate(
-        :best_friends_first_name_plus_stuff,
-        :string,
-        BestFriendsFirstNamePlusStuff
-      )
+      calculate :best_friends_first_name_plus_stuff,
+                :string,
+                BestFriendsFirstNamePlusStuff do
+        public?(true)
+      end
 
-      calculate(:full_name_plus_first_name, :string, FullNamePlusFirstName)
+      calculate :full_name_plus_first_name, :string, FullNamePlusFirstName do
+        public?(true)
+      end
 
-      calculate(
-        :full_name_plus_full_name,
-        :string,
-        {ConcatWithLoad, keys: [:full_name, :full_name]}
-      )
+      calculate :full_name_plus_full_name,
+                :string,
+                {ConcatWithLoad, keys: [:full_name, :full_name]} do
+        public?(true)
+      end
 
-      calculate(
-        :full_name_plus_full_name_plus_full_name,
-        :string,
-        {ConcatWithLoad, keys: [:full_name, :full_name_plus_full_name]}
-      )
+      calculate :full_name_plus_full_name_plus_full_name,
+                :string,
+                {ConcatWithLoad, keys: [:full_name, :full_name_plus_full_name]} do
+        public?(true)
+      end
 
-      calculate(:slug, :string, expr(full_name <> "123"))
-      calculate(:friends_names, :string, FriendsNames)
+      calculate :slug, :string, expr(full_name <> "123") do
+        public?(true)
+      end
 
-      calculate(:expr_full_name, :string, expr(first_name <> " " <> last_name))
+      calculate :friends_names, :string, FriendsNames do
+        public?(true)
+      end
 
-      calculate(
-        :string_join_full_name,
-        :string,
-        expr(string_join([first_name, last_name], " "))
-      )
+      calculate :expr_full_name, :string, expr(first_name <> " " <> last_name) do
+        public?(true)
+      end
 
-      calculate(
-        :string_join_full_name_ci,
-        :ci_string,
-        expr(string_join([first_name, last_name], ~i" "))
-      )
+      calculate :string_join_full_name,
+                :string,
+                expr(string_join([first_name, last_name], " ")) do
+        public?(true)
+      end
 
-      calculate(:best_friends_name, :string, BestFriendsName)
+      calculate :string_join_full_name_ci,
+                :ci_string,
+                expr(string_join([first_name, last_name], ~i" ")) do
+        public?(true)
+      end
+
+      calculate :best_friends_name, :string, BestFriendsName do
+        public?(true)
+      end
 
       calculate :names_of_best_friends_of_me, :string, NamesOfBestFriendsOfMe do
+        public?(true)
         argument(:only_special, :boolean, default: false)
       end
 
-      calculate(:name_with_users_name, :string, NameWithUsersName)
+      calculate :name_with_users_name, :string, NameWithUsersName do
+        public?(true)
+      end
 
       calculate :full_name_with_salutation,
                 :string,
                 expr(^arg(:salutation) <> " " <> conditional_full_name) do
         argument(:salutation, :string, allow_nil?: false)
         load([:conditional_full_name])
+        public?(true)
       end
 
-      calculate(
-        :conditional_full_name,
-        :string,
-        expr(
-          if(
-            not is_nil(first_name) and not is_nil(last_name),
-            first_name <> " " <> last_name,
-            "(none)"
-          )
-        )
-      )
+      calculate :conditional_full_name,
+                :string,
+                expr(
+                  if(
+                    not is_nil(first_name) and not is_nil(last_name),
+                    first_name <> " " <> last_name,
+                    "(none)"
+                  )
+                ) do
+        public?(true)
+      end
 
-      calculate(
-        :conditional_full_name_block,
-        :string,
-        expr(
-          if not is_nil(first_name) and not is_nil(last_name) do
-            first_name <> " " <> last_name
-          else
-            "(none)"
-          end
-        )
-      )
+      calculate :conditional_full_name_block,
+                :string,
+                expr(
+                  if not is_nil(first_name) and not is_nil(last_name) do
+                    first_name <> " " <> last_name
+                  else
+                    "(none)"
+                  end
+                ) do
+        public?(true)
+      end
 
-      calculate(
-        :conditional_full_name_cond,
-        :string,
-        expr(
-          cond do
-            not is_nil(first_name) and not is_nil(last_name) ->
-              first_name <> " " <> last_name
+      calculate :conditional_full_name_cond,
+                :string,
+                expr(
+                  cond do
+                    not is_nil(first_name) and not is_nil(last_name) ->
+                      first_name <> " " <> last_name
 
-            not is_nil(first_name) ->
-              first_name
+                    not is_nil(first_name) ->
+                      first_name
 
-            true ->
-              "(none)"
-          end
-        )
-      )
+                    true ->
+                      "(none)"
+                  end
+                ) do
+        public?(true)
+      end
 
-      calculate :role_user_name_from_agg, :string, expr(role_user_name)
-      calculate :roles_have_user, :boolean, RolesHaveUser
+      calculate :role_user_name_from_agg, :string, expr(role_user_name) do
+        public?(true)
+      end
+
+      calculate :roles_have_user, :boolean, RolesHaveUser do
+        public?(true)
+      end
     end
 
     aggregates do
-      first(:best_friends_first_name, :best_friend, :first_name)
+      first :best_friends_first_name, :best_friend, :first_name do
+        public? true
+      end
 
-      first(:role_user_name, :roles, :user_name)
+      first :role_user_name, :roles, :user_name do
+        public? true
+      end
     end
 
     relationships do
-      belongs_to(:best_friend, __MODULE__)
+      belongs_to :best_friend, __MODULE__ do
+        public?(true)
+      end
 
       has_many :best_friends_of_me, __MODULE__ do
+        public?(true)
         destination_attribute(:best_friend_id)
       end
 
-      has_many :roles, Ash.Test.CalculationTest.Role
+      has_many :roles, Ash.Test.CalculationTest.Role do
+        public?(true)
+      end
 
       many_to_many :friends, __MODULE__ do
+        public?(true)
         through(FriendLink)
         destination_attribute_on_join_resource(:target_id)
         source_attribute_on_join_resource(:source_id)
@@ -583,15 +642,19 @@ defmodule Ash.Test.CalculationTest do
     end
 
     calculations do
-      calculate(:active, :boolean, ActorActive)
+      calculate :active, :boolean, ActorActive do
+        public?(true)
+      end
     end
 
     relationships do
       belongs_to :user, User do
+        public?(true)
         attribute_writable?(true)
       end
 
       belongs_to :role, Role do
+        public?(true)
         attribute_writable?(true)
       end
     end

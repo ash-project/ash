@@ -20,12 +20,18 @@ defmodule Ash.Test.Policy.SelectingTest do
     attributes do
       uuid_primary_key :id
 
-      attribute :owner_id, :string
-      attribute :guest_id, :string
+      attribute :owner_id, :string do
+        public?(true)
+      end
+
+      attribute :guest_id, :string do
+        public?(true)
+      end
     end
 
     relationships do
       has_one :owner_only_resource, Ash.Test.Policy.SelectingTest.OwnerOnlyResource do
+        public?(true)
         source_attribute :id
         destination_attribute :parent_id
       end
@@ -54,17 +60,24 @@ defmodule Ash.Test.Policy.SelectingTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :parent_id, :uuid
 
-      attribute :state, :string
+      attribute :parent_id, :uuid do
+        public?(true)
+      end
+
+      attribute :state, :string do
+        public?(true)
+      end
 
       attribute :forbidden_field, :string do
+        public?(true)
         default "forbidden"
       end
     end
 
     relationships do
       belongs_to :owner_resource, Ash.Test.Policy.SelectingTest.Parent do
+        public?(true)
         source_attribute :parent_id
         destination_attribute :id
       end

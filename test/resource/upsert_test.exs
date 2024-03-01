@@ -70,12 +70,19 @@ defmodule Ash.Test.Resource.UpsertTest do
 
     attributes do
       uuid_primary_key(:id)
-      attribute :name, :string
-      attribute :other, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :other, :string do
+        public?(true)
+      end
     end
 
     relationships do
       has_many :variants, ProductCatalog.Variant do
+        public?(true)
         destination_attribute(:product_id)
       end
     end
@@ -102,18 +109,22 @@ defmodule Ash.Test.Resource.UpsertTest do
       uuid_primary_key(:id)
 
       attribute :product_id, :uuid do
+        public?(true)
         allow_nil?(false)
       end
 
       attribute :sku, :string do
+        public?(true)
         allow_nil?(false)
       end
 
-      attribute(:color, :string)
+      attribute(:color, :string, public?: true)
     end
 
     relationships do
-      belongs_to :product, ProductCatalog.Product
+      belongs_to :product, ProductCatalog.Product do
+        public?(true)
+      end
     end
   end
 

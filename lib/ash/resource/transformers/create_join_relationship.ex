@@ -39,7 +39,7 @@ defmodule Ash.Resource.Transformers.CreateJoinRelationship do
                 destination_attribute: relationship.source_attribute_on_join_resource,
                 domain: relationship.domain,
                 source_attribute: relationship.source_attribute,
-                private?: true
+                public?: false
               ]
               |> add_messages(relationship)
             )

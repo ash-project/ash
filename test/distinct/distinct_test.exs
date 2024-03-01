@@ -20,12 +20,20 @@ defmodule Ash.Test.Sort.DistinctTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
+
+      attribute :title, :string do
+        public?(true)
+      end
     end
 
     calculations do
-      calculate :first_title_word, :string, expr(at(string_split(title, " ", trim?: true), 0))
-      calculate :second_title_word, :string, expr(at(string_split(title, " ", trim?: true), 1))
+      calculate :first_title_word, :string, expr(at(string_split(title, " ", trim?: true), 0)) do
+        public?(true)
+      end
+
+      calculate :second_title_word, :string, expr(at(string_split(title, " ", trim?: true), 1)) do
+        public?(true)
+      end
     end
   end
 

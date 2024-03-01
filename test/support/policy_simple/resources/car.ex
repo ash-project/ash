@@ -23,7 +23,7 @@ defmodule Ash.Test.Support.PolicySimple.Car do
 
   attributes do
     uuid_primary_key(:id)
-    attribute :active, :boolean, default: true
+    attribute :active, :boolean, default: true, public?: true
     timestamps()
   end
 
@@ -45,6 +45,7 @@ defmodule Ash.Test.Support.PolicySimple.Car do
 
   relationships do
     many_to_many :users, Ash.Test.Support.PolicySimple.User do
+      public?(true)
       through(Ash.Test.Support.PolicySimple.CarUser)
       source_attribute_on_join_resource(:car_id)
       destination_attribute_on_join_resource(:user_id)

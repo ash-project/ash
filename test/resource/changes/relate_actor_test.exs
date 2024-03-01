@@ -23,7 +23,9 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     end
 
     relationships do
-      belongs_to :account, Ash.Test.Resource.Changes.RelateActorTest.Account
+      belongs_to :account, Ash.Test.Resource.Changes.RelateActorTest.Account do
+        public?(true)
+      end
     end
   end
 
@@ -48,15 +50,20 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :text, :string
+
+      attribute :text, :string do
+        public?(true)
+      end
     end
 
     relationships do
       belongs_to :author, Ash.Test.Resource.Changes.RelateActorTest.Author do
+        public?(true)
         allow_nil? true
       end
 
       belongs_to :account, Ash.Test.Resource.Changes.RelateActorTest.Account do
+        public?(true)
         allow_nil? true
       end
     end

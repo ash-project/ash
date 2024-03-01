@@ -68,7 +68,9 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
 
     calculations do
-      calculate :hidden_calc, :string, expr("something")
+      calculate :hidden_calc, :string, expr("something") do
+        public?(true)
+      end
     end
 
     actions do
@@ -137,16 +139,17 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string, allow_nil?: false
-      attribute :title2, :string
-      attribute :title3, :string
-      attribute :hidden_attribute, :string
+      attribute :title, :string, allow_nil?: false, public?: true
+      attribute :title2, :string, public?: true
+      attribute :title3, :string, public?: true
+      attribute :hidden_attribute, :string, public?: true
 
       timestamps()
     end
 
     relationships do
       belongs_to :org, Org do
+        public?(true)
         allow_nil? false
         attribute_writable? true
       end

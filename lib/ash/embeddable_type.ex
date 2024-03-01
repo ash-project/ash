@@ -355,7 +355,7 @@ defmodule Ash.EmbeddableType do
         pkey_fields = Ash.Resource.Info.primary_key(__MODULE__)
 
         if Enum.all?(pkey_fields, fn pkey_field ->
-             Ash.Resource.Info.attribute(__MODULE__, pkey_field).private?
+             !Ash.Resource.Info.attribute(__MODULE__, pkey_field).public?
            end) do
           {:ok, new_value}
         else
@@ -399,7 +399,7 @@ defmodule Ash.EmbeddableType do
         pkey_fields = Ash.Resource.Info.primary_key(__MODULE__)
 
         if Enum.all?(pkey_fields, fn pkey_field ->
-             Ash.Resource.Info.attribute(__MODULE__, pkey_field).private?
+             !Ash.Resource.Info.attribute(__MODULE__, pkey_field).public?
            end) do
           action =
             constraints[:update_action] ||
@@ -673,7 +673,7 @@ defmodule Ash.EmbeddableType do
         pkey_fields = Ash.Resource.Info.primary_key(__MODULE__)
 
         if Enum.all?(pkey_fields, fn pkey_field ->
-             Ash.Resource.Info.attribute(__MODULE__, pkey_field).private?
+             !Ash.Resource.Info.attribute(__MODULE__, pkey_field).public?
            end) do
           {:ok, new_uncasted_values}
         else

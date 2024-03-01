@@ -31,10 +31,13 @@ defmodule Ash.Test.Support.PolicyComplex.User do
     uuid_primary_key(:id)
 
     attribute :name, :string do
+      public?(true)
       allow_nil? false
     end
 
-    attribute :private_email, :string
+    attribute :private_email, :string do
+      public?(true)
+    end
   end
 
   actions do
@@ -75,20 +78,29 @@ defmodule Ash.Test.Support.PolicyComplex.User do
   end
 
   aggregates do
-    first :bio_text, :bio, :text
+    first :bio_text, :bio, :text do
+      public? true
+    end
   end
 
   relationships do
-    has_many(:posts, Ash.Test.Support.PolicyComplex.Post, destination_attribute: :author_id)
+    has_many(:posts, Ash.Test.Support.PolicyComplex.Post,
+      destination_attribute: :author_id,
+      public?: true
+    )
 
     has_many :friends, Ash.Test.Support.PolicyComplex.User do
+      public?(true)
       manual Ash.Test.Support.PolicyComplex.User.Relationships.Friends
     end
 
     has_one :best_friend, Ash.Test.Support.PolicyComplex.User do
+      public?(true)
       manual Ash.Test.Support.PolicyComplex.User.Relationships.BestFriend
     end
 
-    has_one :bio, Ash.Test.Support.PolicyComplex.Bio
+    has_one :bio, Ash.Test.Support.PolicyComplex.Bio do
+      public?(true)
+    end
   end
 end

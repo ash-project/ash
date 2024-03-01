@@ -21,10 +21,22 @@ defmodule Ash.Test.Filter.SimplificationTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
-      attribute :contents, :string
-      attribute :points, :integer
-      attribute :post_date, :date
+
+      attribute :title, :string do
+        public?(true)
+      end
+
+      attribute :contents, :string do
+        public?(true)
+      end
+
+      attribute :points, :integer do
+        public?(true)
+      end
+
+      attribute :post_date, :date do
+        public?(true)
+      end
     end
   end
 

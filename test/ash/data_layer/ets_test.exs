@@ -32,9 +32,9 @@ defmodule Ash.DataLayer.EtsTest do
 
     attributes do
       uuid_primary_key :id, writable?: true
-      attribute :name, :string
-      attribute :age, :integer
-      attribute :title, :string
+      attribute :name, :string, public?: true
+      attribute :age, :integer, public?: true
+      attribute :title, :string, public?: true
     end
   end
 
@@ -47,7 +47,7 @@ defmodule Ash.DataLayer.EtsTest do
 
         attributes do
           uuid_primary_key :id
-          attribute :name, :string
+          attribute :name, :string, public?: true
         end
 
         identities do

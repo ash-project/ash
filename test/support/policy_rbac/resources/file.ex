@@ -30,11 +30,11 @@ defmodule Ash.Test.Support.PolicyRbac.File do
 
   attributes do
     uuid_primary_key(:id)
-    attribute(:name, :string)
-    attribute(:forbidden, :string)
+    attribute(:name, :string, public?: true)
+    attribute(:forbidden, :string, public?: true)
   end
 
   relationships do
-    belongs_to(:organization, Ash.Test.Support.PolicyRbac.Organization)
+    belongs_to(:organization, Ash.Test.Support.PolicyRbac.Organization, public?: true)
   end
 end

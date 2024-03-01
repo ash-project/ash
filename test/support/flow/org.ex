@@ -23,10 +23,15 @@ defmodule Ash.Test.Flow.Org do
 
   attributes do
     uuid_primary_key :id
-    attribute :name, :string
+
+    attribute :name, :string do
+      public?(true)
+    end
   end
 
   relationships do
-    has_many :users, Ash.Test.Flow.User
+    has_many :users, Ash.Test.Flow.User do
+      public?(true)
+    end
   end
 end

@@ -21,7 +21,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+      attribute :name, :string, public?: true
     end
 
     actions do
@@ -52,13 +52,15 @@ defmodule Ash.Test.Actions.UpdateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :bio, :string, allow_nil?: false
-      attribute :non_nil_private, :string, allow_nil?: false, default: "non_nil"
-      attribute :private, :string, default: "non_nil"
+      attribute :bio, :string, allow_nil?: false, public?: true
+      attribute :non_nil_private, :string, allow_nil?: false, default: "non_nil", public?: true
+      attribute :private, :string, default: "non_nil", public?: true
     end
 
     relationships do
-      belongs_to :author, Ash.Test.Actions.UpdateTest.Author
+      belongs_to :author, Ash.Test.Actions.UpdateTest.Author do
+        public?(true)
+      end
     end
   end
 
@@ -130,15 +132,26 @@ defmodule Ash.Test.Actions.UpdateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
-      attribute :bio, :string
-      attribute :score, :integer
+
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :bio, :string do
+        public?(true)
+      end
+
+      attribute :score, :integer do
+        public?(true)
+      end
     end
 
     relationships do
-      has_one :profile, Profile, destination_attribute: :author_id
+      has_one :profile, Profile, destination_attribute: :author_id, public?: true
 
-      has_many :posts, Ash.Test.Actions.UpdateTest.Post, destination_attribute: :author_id
+      has_many :posts, Ash.Test.Actions.UpdateTest.Post,
+        destination_attribute: :author_id,
+        public?: true
     end
   end
 
@@ -151,7 +164,9 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     attributes do
-      attribute :type, :string
+      attribute :type, :string do
+        public?(true)
+      end
     end
 
     actions do
@@ -161,11 +176,13 @@ defmodule Ash.Test.Actions.UpdateTest do
     relationships do
       belongs_to :source_post, Ash.Test.Actions.UpdateTest.Post,
         primary_key?: true,
-        allow_nil?: false
+        allow_nil?: false,
+        public?: true
 
       belongs_to :destination_post, Ash.Test.Actions.UpdateTest.Post,
         primary_key?: true,
-        allow_nil?: false
+        allow_nil?: false,
+        public?: true
     end
   end
 
@@ -183,17 +200,24 @@ defmodule Ash.Test.Actions.UpdateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
-      attribute :contents, :string
+
+      attribute :title, :string do
+        public?(true)
+      end
+
+      attribute :contents, :string do
+        public?(true)
+      end
     end
 
     relationships do
-      belongs_to :author, Author
+      belongs_to :author, Author, public?: true
 
       many_to_many :related_posts, __MODULE__,
         through: PostLink,
         source_attribute_on_join_resource: :source_post_id,
-        destination_attribute_on_join_resource: :destination_post_id
+        destination_attribute_on_join_resource: :destination_post_id,
+        public?: true
     end
   end
 

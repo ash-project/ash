@@ -619,11 +619,11 @@ defmodule Ash.Query do
   end
 
   defp has_argument?(action, name) when is_atom(name) do
-    Enum.any?(action.arguments, &(&1.private? == false && &1.name == name))
+    Enum.any?(action.arguments, &(&1.public? && &1.name == name))
   end
 
   defp has_argument?(action, name) when is_binary(name) do
-    Enum.any?(action.arguments, &(&1.private? == false && to_string(&1.name) == name))
+    Enum.any?(action.arguments, &(&1.public? && to_string(&1.name) == name))
   end
 
   defp has_key?(map, key) when is_map(map), do: Map.has_key?(map, key)
@@ -983,7 +983,7 @@ defmodule Ash.Query do
   def accessing(query, types \\ [:attributes, :relationships, :calculations, :aggregates]) do
     query.resource
     |> Ash.Resource.Info.fields(types)
-    |> Stream.reject(& &1.private?)
+    |> Stream.filter(& &1.public?)
     |> Stream.map(& &1.name)
     |> Enum.filter(&loading?(query, &1))
   end
@@ -1021,7 +1021,7 @@ defmodule Ash.Query do
         else
           attribute = Ash.Resource.Info.attribute(query.resource, field)
 
-          attribute && (attribute.primary_key? || attribute.private?)
+          attribute && (attribute.primary_key? || !attribute.public?)
         end
     end || loading?(query, field)
   end

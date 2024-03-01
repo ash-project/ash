@@ -35,7 +35,10 @@ defmodule Ash.Test.Actions.ManualReadTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
   end
 

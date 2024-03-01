@@ -29,7 +29,9 @@ defmodule Ash.Test.CountTest do
     attributes do
       uuid_primary_key :id
 
-      attribute :owner_id, :string
+      attribute :owner_id, :string do
+        public?(true)
+      end
     end
 
     policies do

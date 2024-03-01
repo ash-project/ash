@@ -12,9 +12,17 @@ defmodule Ash.Test.Policy.FieldPolicy.ExpressionConditionTest do
     attributes do
       uuid_primary_key :id
 
-      attribute :name, :string
-      attribute :other_name, :string
-      attribute :other_other_name, :string
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :other_name, :string do
+        public?(true)
+      end
+
+      attribute :other_other_name, :string do
+        public?(true)
+      end
     end
 
     field_policies do
