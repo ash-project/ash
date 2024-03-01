@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.19.13](https://github.com/ash-project/ash/compare/v2.19.12...v2.19.13) (2024-03-01)
+
+
+
+
+### Improvements:
+
+* cast expression calculations if they don't do it
+
 ## [v2.19.12](https://github.com/ash-project/ash/compare/v2.19.11...v2.19.12) (2024-02-29)
 
 
