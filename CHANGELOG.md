@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.19.14](https://github.com/ash-project/ash/compare/v2.19.13...v2.19.14) (2024-03-01)
+
+
+
+
+### Bug Fixes:
+
+* properly match return type of `Type.new` in expr expansion
+
 ## [v2.19.13](https://github.com/ash-project/ash/compare/v2.19.12...v2.19.13) (2024-03-01)
 
 
