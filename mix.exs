@@ -323,14 +323,14 @@ defmodule Ash.MixProject do
       {:ets, "~> 0.8"},
       {:decimal, "~> 2.0"},
       {:picosat_elixir, "~> 0.2", optional: true},
-      {:simple_sat, path: "../simple_sat", optional: true},
+      {:simple_sat, "~> 0.1", optional: true},
       {:comparable, "~> 1.0"},
       {:jason, ">= 1.0.0"},
       {:stream_data, "~> 0.6"},
       {:telemetry, "~> 1.1"},
       {:plug, ">= 0.0.0", optional: true},
       {:earmark, "~> 1.4"},
-      {:reactor, "~> 0.6"},
+      {:reactor, github: "ash-project/reactor"},
 
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},

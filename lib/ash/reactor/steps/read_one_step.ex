@@ -20,7 +20,7 @@ defmodule Ash.Reactor.ReadOneStep do
 
     options[:resource]
     |> Query.for_read(options[:action], arguments[:input], query_options)
-    |> options[:api].read_one(action_options)
+    |> options[:domain].read_one(action_options)
     |> case do
       {:ok, nil} ->
         if options[:fail_on_not_found?] do

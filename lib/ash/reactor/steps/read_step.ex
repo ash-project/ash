@@ -20,7 +20,7 @@ defmodule Ash.Reactor.ReadStep do
 
     options[:resource]
     |> Query.for_read(options[:action], arguments[:input], query_options)
-    |> options[:api].read(action_options)
+    |> options[:domain].read(action_options)
     |> case do
       {:ok, records} -> {:ok, records}
       {:ok, records, _} -> {:ok, records}

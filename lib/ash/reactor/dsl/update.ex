@@ -7,7 +7,7 @@ defmodule Ash.Reactor.Dsl.Update do
             action_step?: true,
             action: nil,
             actor: [],
-            api: nil,
+            domain: nil,
             async?: true,
             authorize?: nil,
             description: nil,
@@ -27,7 +27,7 @@ defmodule Ash.Reactor.Dsl.Update do
           action_step?: true,
           action: atom,
           actor: [Ash.Reactor.Dsl.Actor.t()],
-          api: Ash.Api.t(),
+          domain: Ash.Domain.t(),
           async?: boolean,
           authorize?: boolean | nil,
           description: String.t() | nil,
@@ -59,7 +59,7 @@ defmodule Ash.Reactor.Dsl.Update do
         end
         """
       ],
-      no_depend_modules: [:api, :resource],
+      no_depend_modules: [:domain, :resource],
       target: __MODULE__,
       args: [:name, :resource, {:optional, :action}],
       identifier: :name,

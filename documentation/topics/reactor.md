@@ -25,7 +25,7 @@ defmodule ExampleReactor do
   use Ash.Reactor
 
   ash do
-    default_api ExampleApi
+    default_domain ExampleDomain
   end
 
   input :customer_name
