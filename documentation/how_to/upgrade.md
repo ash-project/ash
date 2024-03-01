@@ -104,6 +104,14 @@ def calculate(records, _opts, %{arguments: arguments}) do
 end
 ```
 
+### `private?: true` -> `public?: true`
+
+There is no longer a `private?` option for attributes, relationships, calculations and aggregates. Instead of attributes defaulting to `private?: false`, they now default to `public?: false`. It was too easy to add an attribute and not realize that you had exposed it over your api.
+
+#### What you'll need to change
+
+If you are using api extensions (i.e `AshGraphql` and `AshJsonApi`), you will need to go to your resources and "invert" the definitions. i.e *remove* `private?: true` and *add* `public?: true` to *every other* attribute.
+
 ### Anonymous calculations now operate on a list, just like module calculations
 
 Previously, anonymous function calculations were special cased to operate on a single record. For consistency, these anonymous functions now take the list of records.
