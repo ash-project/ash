@@ -19,13 +19,17 @@ defmodule Type.MapTest do
       uuid_primary_key :id
 
       attribute :metadata, :map do
+        public? true
+
         constraints fields: [
                       foo: [type: :string, allow_nil?: false],
                       bar: [type: :integer, constraints: [min: 0]]
                     ]
       end
 
-      attribute :otherdata, :map
+      attribute :otherdata, :map do
+        public? true
+      end
     end
   end
 

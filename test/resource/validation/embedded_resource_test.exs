@@ -38,7 +38,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string, allow_nil?: true
+      attribute :name, :string, allow_nil?: true, public?: true
     end
 
     validations do
@@ -63,8 +63,8 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string, allow_nil?: true
-      attribute :sub_sub_embedded_resource, SubSubEmbeddedResource
+      attribute :name, :string, allow_nil?: true, public?: true
+      attribute :sub_sub_embedded_resource, SubSubEmbeddedResource, public?: true
     end
 
     validations do
@@ -89,8 +89,11 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string, allow_nil?: true
-      attribute :sub_embedded_resources, {:array, SubEmbeddedResource}, allow_nil?: true
+      attribute :name, :string, allow_nil?: true, public?: true
+
+      attribute :sub_embedded_resources, {:array, SubEmbeddedResource},
+        allow_nil?: true,
+        public?: true
     end
 
     validations do
@@ -116,8 +119,13 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
     attributes do
       uuid_primary_key :id
 
-      attribute :embedded_resource, EmbeddedResource
-      attribute :name, :string
+      attribute :embedded_resource, EmbeddedResource do
+        public?(true)
+      end
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
 
     actions do

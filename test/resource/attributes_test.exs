@@ -24,8 +24,8 @@ defmodule Ash.Test.Resource.AttributesTest do
     test "attributes are persisted on the resource properly" do
       defposts do
         attributes do
-          attribute :foo, :string
-          attribute :bar, :boolean, private?: true
+          attribute :foo, :string, public?: true
+          attribute :bar, :boolean
         end
       end
 
@@ -35,8 +35,7 @@ defmodule Ash.Test.Resource.AttributesTest do
                %Attribute{
                  name: :bar,
                  type: Ash.Type.Boolean,
-                 primary_key?: false,
-                 private?: true
+                 primary_key?: false
                }
              ] = Ash.Resource.Info.attributes(Post)
 
@@ -72,21 +71,21 @@ defmodule Ash.Test.Resource.AttributesTest do
         fn ->
           defposts do
             attributes do
-              attribute :foo, :string, primary_key?: 10
+              attribute :foo, :string, primary_key?: 10, public?: true
             end
           end
         end
       )
     end
 
-    test "raises if you pass an invalid value for `private?`" do
+    test "raises if you pass an invalid value for `public?`" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.AttributesTest.Post]\n attributes -> attribute -> foo:\n  invalid value for :private? option: expected boolean, got: \"an_invalid_value\"",
+        "[Ash.Test.Resource.AttributesTest.Post]\n attributes -> attribute -> foo:\n  invalid value for :public? option: expected boolean, got: \"an_invalid_value\"",
         fn ->
           defposts do
             attributes do
-              attribute :foo, :string, private?: "an_invalid_value"
+              attribute :foo, :string, public?: "an_invalid_value"
             end
           end
         end

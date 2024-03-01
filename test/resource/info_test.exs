@@ -12,26 +12,42 @@ defmodule Ash.Test.Resource.InfoTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
-      attribute :contents, :string
-      attribute :metadata, :map
-      attribute :authors, {:array, :string}
-      attribute :points, :integer, private?: true
+
+      attribute :title, :string do
+        public?(true)
+      end
+
+      attribute :contents, :string do
+        public?(true)
+      end
+
+      attribute :metadata, :map do
+        public?(true)
+      end
+
+      attribute :authors, {:array, :string} do
+        public?(true)
+      end
+
+      attribute :points, :integer
     end
 
     aggregates do
-      count :count_of_comments, :comments
+      count :count_of_comments, :comments do
+        public? true
+      end
     end
 
     relationships do
       many_to_many :tags, Tag do
         through TagOnPost
+        public?(true)
         source_attribute_on_join_resource(:vendor_id)
         destination_attribute_on_join_resource(:shipping_method_id)
       end
 
-      has_many :comments, Comment, destination_attribute: :post_id
-      has_one :private, PostPrivate, destination_attribute: :post_id
+      has_many :comments, Comment, destination_attribute: :post_id, public?: true
+      has_one :private, PostPrivate, destination_attribute: :post_id, public?: true
     end
   end
 
@@ -41,7 +57,10 @@ defmodule Ash.Test.Resource.InfoTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :label, :string
+
+      attribute :label, :string do
+        public?(true)
+      end
     end
   end
 
@@ -54,8 +73,13 @@ defmodule Ash.Test.Resource.InfoTest do
     end
 
     relationships do
-      belongs_to :post, Post
-      belongs_to :tag, Tag
+      belongs_to :post, Post do
+        public?(true)
+      end
+
+      belongs_to :tag, Tag do
+        public?(true)
+      end
     end
   end
 
@@ -65,11 +89,16 @@ defmodule Ash.Test.Resource.InfoTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :notes, :string
+
+      attribute :notes, :string do
+        public?(true)
+      end
     end
 
     relationships do
-      belongs_to :post, Post
+      belongs_to :post, Post do
+        public?(true)
+      end
     end
   end
 
@@ -79,22 +108,36 @@ defmodule Ash.Test.Resource.InfoTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :subjects, {:array, :string}
-      attribute :post_id, :uuid
+
+      attribute :subjects, {:array, :string} do
+        public?(true)
+      end
+
+      attribute :post_id, :uuid do
+        public?(true)
+      end
     end
 
     aggregates do
-      first :post_title, :post, :title
-      first :post_authors, :post, :authors
+      first :post_title, :post, :title do
+        public? true
+      end
+
+      first :post_authors, :post, :authors do
+        public? true
+      end
     end
 
     calculations do
       calculate :formatted_post_title, :string, expr("Post title: " <> post_title),
+        public?: true,
         load: [:post_title]
     end
 
     relationships do
-      belongs_to :post, Post
+      belongs_to :post, Post do
+        public?(true)
+      end
     end
   end
 

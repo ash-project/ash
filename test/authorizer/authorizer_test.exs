@@ -31,7 +31,7 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
     attributes do
       uuid_primary_key :id
 
-      attribute :title, :string, allow_nil?: false
+      attribute :title, :string, allow_nil?: false, public?: true
     end
   end
 

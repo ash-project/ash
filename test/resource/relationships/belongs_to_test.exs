@@ -24,7 +24,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "it creates an attribute" do
       defposts do
         relationships do
-          belongs_to(:foobar, FooBar)
+          belongs_to :foobar, FooBar
         end
       end
 
@@ -34,25 +34,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  name: :foobar_id,
                  primary_key?: false,
                  type: Ash.Type.UUID,
-                 private?: true
-               }
-             ] = Ash.Resource.Info.attributes(Post)
-    end
-
-    test "it creates an attribute that honors private?" do
-      defposts do
-        relationships do
-          belongs_to(:foobar, FooBar, private?: true)
-        end
-      end
-
-      assert [
-               _,
-               %Ash.Resource.Attribute{
-                 name: :foobar_id,
-                 primary_key?: false,
-                 type: Ash.Type.UUID,
-                 private?: true
+                 public?: false
                }
              ] = Ash.Resource.Info.attributes(Post)
     end
@@ -60,7 +42,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "it creates an attribute that honors attribute_writable?" do
       defposts do
         relationships do
-          belongs_to(:foobar, FooBar, attribute_writable?: true)
+          belongs_to :foobar, FooBar, attribute_writable?: true, public?: true
         end
       end
 
@@ -70,6 +52,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  name: :foobar_id,
                  primary_key?: false,
                  type: Ash.Type.UUID,
+                 public?: true,
                  writable?: true
                }
              ] = Ash.Resource.Info.attributes(Post)
@@ -78,8 +61,8 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "it creates a relationship" do
       defposts do
         relationships do
-          belongs_to(:foo, Foo)
-          belongs_to(:bar, Bar, source_attribute: :bazz, private?: true)
+          belongs_to(:foo, Foo, public?: true)
+          belongs_to(:bar, Bar, source_attribute: :bazz)
         end
       end
 
@@ -94,7 +77,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  primary_key?: false,
                  source_attribute: :foo_id,
                  type: :belongs_to,
-                 private?: false
+                 public?: true
                },
                %BelongsTo{
                  cardinality: :one,
@@ -106,7 +89,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  primary_key?: false,
                  source_attribute: :bazz,
                  type: :belongs_to,
-                 private?: true
+                 public?: false
                }
              ] = Ash.Resource.Info.relationships(Post)
 
@@ -128,7 +111,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
         fn ->
           defposts do
             relationships do
-              belongs_to(:foobar, FooBar, destination_attribute: "foo")
+              belongs_to(:foobar, FooBar, destination_attribute: "foo", public?: true)
             end
           end
         end
@@ -142,7 +125,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
         fn ->
           defposts do
             relationships do
-              belongs_to(:foobar, FooBar, source_attribute: "foo")
+              belongs_to(:foobar, FooBar, source_attribute: "foo", public?: true)
             end
           end
         end
@@ -156,7 +139,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
         fn ->
           defposts do
             relationships do
-              belongs_to(:foobar, "foobar")
+              belongs_to(:foobar, "foobar", public?: true)
             end
           end
         end
@@ -170,7 +153,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
         fn ->
           defposts do
             relationships do
-              belongs_to("foobar", Foobar)
+              belongs_to("foobar", Foobar, public?: true)
             end
           end
         end
@@ -184,21 +167,21 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
         fn ->
           defposts do
             relationships do
-              belongs_to(:foobar, Foobar, primary_key?: "blah")
+              belongs_to(:foobar, Foobar, primary_key?: "blah", public?: true)
             end
           end
         end
       )
     end
 
-    test "fails if `private?` is not a boolean" do
+    test "fails if `public?` is not a boolean" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :private? option: expected boolean, got: \"blah\"",
+        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :public? option: expected boolean, got: \"blah\"",
         fn ->
           defposts do
             relationships do
-              belongs_to(:foobar, Foobar, private?: "blah")
+              belongs_to(:foobar, Foobar, public?: "blah")
             end
           end
         end
@@ -213,7 +196,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
       fn ->
         defposts do
           relationships do
-            belongs_to(:foobar, Foobar, define_attribute?: "blah")
+            belongs_to(:foobar, Foobar, define_attribute?: "blah", public?: true)
           end
         end
       end
@@ -227,7 +210,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
       fn ->
         defposts do
           relationships do
-            belongs_to(:post, __MODULE__, define_attribute?: false)
+            belongs_to(:post, __MODULE__, define_attribute?: false, public?: true)
           end
         end
 

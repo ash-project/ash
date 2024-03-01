@@ -17,7 +17,7 @@ defmodule Ash.Test.Support.PolicySimple.CarUser do
   end
 
   relationships do
-    belongs_to(:user, Ash.Test.Support.PolicySimple.User)
-    belongs_to(:car, Ash.Test.Support.PolicySimple.Car)
+    belongs_to(:user, Ash.Test.Support.PolicySimple.User, public?: true)
+    belongs_to(:car, Ash.Test.Support.PolicySimple.Car, public?: true)
   end
 end

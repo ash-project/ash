@@ -29,6 +29,7 @@ defmodule Ash.Test.Support.PolicyComplex.Comment do
     uuid_primary_key(:id)
 
     attribute :text, :string do
+      public?(true)
       allow_nil?(false)
     end
   end
@@ -55,7 +56,12 @@ defmodule Ash.Test.Support.PolicyComplex.Comment do
   end
 
   relationships do
-    belongs_to(:author, Ash.Test.Support.PolicyComplex.User)
-    belongs_to(:post, Ash.Test.Support.PolicyComplex.Post)
+    belongs_to :author, Ash.Test.Support.PolicyComplex.User do
+      public?(true)
+    end
+
+    belongs_to :post, Ash.Test.Support.PolicyComplex.Post do
+      public?(true)
+    end
   end
 end

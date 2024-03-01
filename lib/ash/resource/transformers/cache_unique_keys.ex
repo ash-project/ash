@@ -15,7 +15,7 @@ defmodule Ash.Resource.Transformers.CacheUniqueKeys do
     unique_keys =
       if !Enum.empty?(pkey) &&
            Enum.all?(pkey, fn pkey ->
-             !Ash.Resource.Info.attribute(dsl_state, pkey).private?
+             Ash.Resource.Info.attribute(dsl_state, pkey).public?
            end) do
         [%{keys: pkey, type: :primary_key} | unique_keys]
       else

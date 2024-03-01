@@ -13,7 +13,10 @@ defmodule Ash.Test.Resource.Validation.StringLengthTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :body, :string
+
+      attribute :body, :string do
+        public?(true)
+      end
     end
   end
 

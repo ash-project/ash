@@ -13,7 +13,7 @@ defmodule Ash.Policy.Authorizer.Transformers.AddMissingFieldPolicies do
       dsl
       |> Ash.Resource.Info.fields([:aggregates, :calculations, :attributes])
       |> Enum.reject(fn
-        %{private?: true} ->
+        %{public?: false} ->
           true
 
         %{primary_key?: true} ->

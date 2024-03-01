@@ -8,7 +8,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :define_attribute?,
     :attribute_type,
     :destination_attribute,
-    :private?,
+    :public?,
     :source_attribute,
     :source,
     :read_action,
@@ -44,7 +44,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           writable?: boolean,
           attribute_writable?: boolean,
           destination_attribute: atom,
-          private?: boolean,
+          public?: boolean,
           filterable?: boolean,
           source_attribute: atom | nil,
           description: String.t()

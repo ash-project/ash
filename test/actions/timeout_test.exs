@@ -32,8 +32,8 @@ defmodule Ash.Test.Actions.TimeoutTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:name, :string)
-      attribute(:bio, :string)
+      attribute(:name, :string, public?: true)
+      attribute(:bio, :string, public?: true)
     end
   end
 

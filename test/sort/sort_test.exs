@@ -24,9 +24,16 @@ defmodule Ash.Test.Sort.SortTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
-      attribute :contents, :string
-      attribute :points, :integer, private?: true
+
+      attribute :title, :string do
+        public?(true)
+      end
+
+      attribute :contents, :string do
+        public?(true)
+      end
+
+      attribute :points, :integer
     end
   end
 

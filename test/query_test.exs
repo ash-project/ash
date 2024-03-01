@@ -31,12 +31,18 @@ defmodule Ash.Test.QueryTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
-      attribute :email, :string, sensitive?: true
+
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :email, :string, sensitive?: true, public?: true
     end
 
     relationships do
-      belongs_to :best_friend, __MODULE__
+      belongs_to :best_friend, __MODULE__ do
+        public?(true)
+      end
     end
   end
 

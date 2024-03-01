@@ -353,7 +353,7 @@ defmodule Ash.Resource.Info do
   def public_relationships(resource) do
     resource
     |> relationships()
-    |> Enum.reject(& &1.private?)
+    |> Enum.filter(& &1.public?)
   end
 
   @doc "The required belongs_to relationships"
@@ -378,7 +378,7 @@ defmodule Ash.Resource.Info do
 
   def public_relationship(resource, relationship_name) do
     case relationship(resource, relationship_name) do
-      %{private?: false} = relationship -> relationship
+      %{public?: true} = relationship -> relationship
       _ -> nil
     end
   end
@@ -448,7 +448,7 @@ defmodule Ash.Resource.Info do
   def public_calculations(resource) do
     resource
     |> Extension.get_entities([:calculations])
-    |> Enum.reject(& &1.private?)
+    |> Enum.filter(& &1.public?)
   end
 
   @doc "Get a public calculation by name"
@@ -457,13 +457,13 @@ defmodule Ash.Resource.Info do
   def public_calculation(resource, name) when is_binary(name) do
     resource
     |> calculations()
-    |> Enum.find(&(to_string(&1.name) == name && !&1.private?))
+    |> Enum.find(&(to_string(&1.name) == name && &1.public?))
   end
 
   def public_calculation(resource, name) do
     resource
     |> calculations()
-    |> Enum.find(&(&1.name == name && !&1.private?))
+    |> Enum.find(&(&1.name == name && &1.public?))
   end
 
   @doc """
@@ -528,7 +528,7 @@ defmodule Ash.Resource.Info do
   def public_aggregates(resource) do
     resource
     |> Extension.get_entities([:aggregates])
-    |> Enum.reject(& &1.private?)
+    |> Enum.filter(& &1.public?)
   end
 
   @doc "Get an aggregate by name"
@@ -537,13 +537,13 @@ defmodule Ash.Resource.Info do
   def public_aggregate(resource, name) when is_binary(name) do
     resource
     |> aggregates()
-    |> Enum.find(&(to_string(&1.name) == name && !&1.private?))
+    |> Enum.find(&(to_string(&1.name) == name && &1.public?))
   end
 
   def public_aggregate(resource, name) do
     resource
     |> aggregates()
-    |> Enum.find(&(&1.name == name && !&1.private?))
+    |> Enum.find(&(&1.name == name && &1.public?))
   end
 
   @doc "Returns the primary action of the given type"
@@ -741,7 +741,7 @@ defmodule Ash.Resource.Info do
   def public_attributes(resource) do
     resource
     |> attributes()
-    |> Enum.reject(& &1.private?)
+    |> Enum.filter(& &1.public?)
   end
 
   @doc "Get a public attribute name from the resource"
@@ -749,7 +749,7 @@ defmodule Ash.Resource.Info do
           Ash.Resource.Attribute.t() | nil
   def public_attribute(resource, name) do
     case attribute(resource, name) do
-      %{private?: false} = attr -> attr
+      %{public?: true} = attr -> attr
       _ -> nil
     end
   end
@@ -807,7 +807,7 @@ defmodule Ash.Resource.Info do
   def public_fields(resource) do
     resource
     |> fields()
-    |> Enum.reject(& &1.private?)
+    |> Enum.filter(& &1.public?)
   end
 
   @doc "Get a public field from a resource by name"

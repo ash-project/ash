@@ -56,8 +56,12 @@ defmodule Ash.Test.Type.TypeTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, PostTitle, constraints: [max_length: 10]
-      attribute :post_type, :atom, allow_nil?: false, constraints: [one_of: [:text, :video]]
+      attribute :title, PostTitle, constraints: [max_length: 10], public?: true
+
+      attribute :post_type, :atom,
+        allow_nil?: false,
+        constraints: [one_of: [:text, :video]],
+        public?: true
     end
 
     actions do

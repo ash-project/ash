@@ -29,13 +29,13 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
           many_to_many :related_posts, Post,
             through: SomeResource,
             source_attribute_on_join_resource: :post_id,
-            destination_attribute_on_join_resource: :related_post_id
+            destination_attribute_on_join_resource: :related_post_id,
+            public?: true
 
           many_to_many :unrelated_posts, Post,
             through: Tabloid,
             source_attribute_on_join_resource: :post_id,
-            destination_attribute_on_join_resource: :unrelated_post_id,
-            private?: true
+            destination_attribute_on_join_resource: :unrelated_post_id
         end
       end
 
@@ -48,7 +48,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  source: ManyToManyTest.Post,
                  source_attribute: :id,
                  type: :has_many,
-                 private?: true
+                 public?: false
                },
                %HasMany{
                  cardinality: :many,
@@ -58,7 +58,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  source: ManyToManyTest.Post,
                  source_attribute: :id,
                  type: :has_many,
-                 private?: true
+                 public?: false
                },
                %ManyToMany{
                  cardinality: :many,
@@ -71,7 +71,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  source_attribute_on_join_resource: :post_id,
                  through: SomeResource,
                  type: :many_to_many,
-                 private?: false
+                 public?: true
                },
                %ManyToMany{
                  cardinality: :many,
@@ -84,7 +84,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  source_attribute_on_join_resource: :post_id,
                  through: Tabloid,
                  type: :many_to_many,
-                 private?: true
+                 public?: false
                }
              ] = Ash.Resource.Info.relationships(Post)
 
@@ -110,7 +110,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
               many_to_many :foobars, Foobar,
                 through: "some_table",
                 source_attribute_on_join_resource: :source_post_id,
-                destination_attribute_on_join_resource: :destination_post_id
+                destination_attribute_on_join_resource: :destination_post_id,
+                public?: true
             end
           end
         end
@@ -123,7 +124,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
           many_to_many :foobars, Foobar,
             through: FooBars,
             source_attribute_on_join_resource: :source_post_id,
-            destination_attribute_on_join_resource: :destination_post_id
+            destination_attribute_on_join_resource: :destination_post_id,
+            public?: true
         end
       end
     end
@@ -134,6 +136,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
           many_to_many :authors, Author do
             through PostsJoinArticlesAuthors
             destination_attribute_on_join_resource :manager_id
+            public?(true)
           end
         end
       end
@@ -155,6 +158,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
           many_to_many :authors, ArticleAuthor do
             through PostsJoinArticlesAuthors
             source_attribute_on_join_resource :article_id
+            public?(true)
           end
         end
       end
@@ -180,7 +184,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
               many_to_many :foobars, Foobar,
                 through: FooBars,
                 source_attribute_on_join_resource: "what",
-                destination_attribute_on_join_resource: :destination_post_id
+                destination_attribute_on_join_resource: :destination_post_id,
+                public?: true
             end
           end
         end
@@ -197,7 +202,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
               many_to_many :foobars, Foobar,
                 through: FooBar,
                 destination_attribute_on_join_resource: "what",
-                source_attribute_on_join_resource: :source_post_id
+                source_attribute_on_join_resource: :source_post_id,
+                public?: true
             end
           end
         end
@@ -215,7 +221,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                 through: FooBar,
                 source_attribute: "what",
                 source_attribute_on_join_resource: :source_post_id,
-                destination_attribute_on_join_resource: :destination_post_id
+                destination_attribute_on_join_resource: :destination_post_id,
+                public?: true
             end
           end
         end
@@ -233,17 +240,18 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                 through: FooBars,
                 destination_attribute: "what",
                 source_attribute_on_join_resource: :source_post_id,
-                destination_attribute_on_join_resource: :destination_post_id
+                destination_attribute_on_join_resource: :destination_post_id,
+                public?: true
             end
           end
         end
       )
     end
 
-    test "fails if private? is not an boolean" do
+    test "fails if public? is not an boolean" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  invalid value for :private? option: expected boolean, got: \"an_invalid_field\"",
+        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  invalid value for :public? option: expected boolean, got: \"an_invalid_field\"",
         fn ->
           defposts do
             relationships do
@@ -251,7 +259,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                 through: FooBars,
                 source_attribute_on_join_resource: :source_post_id,
                 destination_attribute_on_join_resource: :destination_post_id,
-                private?: "an_invalid_field"
+                public?: "an_invalid_field"
             end
           end
         end

@@ -18,11 +18,14 @@ defmodule Ash.Test.Filter.ParentTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:name, :string)
+      attribute(:name, :string, public?: true)
     end
 
     relationships do
-      has_many(:posts, Ash.Test.Filter.ParentTest.Post, destination_attribute: :author_id)
+      has_many(:posts, Ash.Test.Filter.ParentTest.Post,
+        destination_attribute: :author_id,
+        public?: true
+      )
     end
   end
 
@@ -40,13 +43,14 @@ defmodule Ash.Test.Filter.ParentTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:title, :string)
-      attribute(:contents, :string)
-      attribute(:points, :integer)
+      attribute(:title, :string, public?: true)
+      attribute(:contents, :string, public?: true)
+      attribute(:points, :integer, public?: true)
     end
 
     relationships do
       belongs_to(:author, User,
+        public?: true,
         destination_attribute: :id,
         source_attribute: :author_id
       )

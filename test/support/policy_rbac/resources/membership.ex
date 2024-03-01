@@ -13,16 +13,19 @@ defmodule Ash.Test.Support.PolicyRbac.Membership do
 
     attribute :role, :atom do
       allow_nil?(false)
+      public?(true)
       constraints(one_of: [:admin, :member, :viewer])
     end
 
     attribute :resource, :atom do
       allow_nil?(false)
+      public?(true)
       constraints(one_of: [:file])
     end
 
     attribute :resource_id, :uuid do
       allow_nil?(false)
+      public?(true)
     end
   end
 
@@ -31,7 +34,12 @@ defmodule Ash.Test.Support.PolicyRbac.Membership do
   end
 
   relationships do
-    belongs_to(:user, Ash.Test.Support.PolicyRbac.User)
-    belongs_to(:organization, Ash.Test.Support.PolicyRbac.Organization)
+    belongs_to :user, Ash.Test.Support.PolicyRbac.User do
+      public?(true)
+    end
+
+    belongs_to :organization, Ash.Test.Support.PolicyRbac.Organization do
+      public?(true)
+    end
   end
 end

@@ -13,8 +13,13 @@ defmodule Ash.Test.Resource.IdentitiesTest do
         attributes do
           uuid_primary_key :id
 
-          attribute :name, :string
-          attribute :contents, :string
+          attribute :name, :string do
+            public?(true)
+          end
+
+          attribute :contents, :string do
+            public?(true)
+          end
         end
 
         unquote(body)
@@ -84,7 +89,10 @@ defmodule Ash.Test.Resource.IdentitiesTest do
 
                        attributes do
                          uuid_primary_key :id
-                         attribute :url, :string
+
+                         attribute :url, :string do
+                           public?(true)
+                         end
                        end
                      end
 
@@ -100,7 +108,9 @@ defmodule Ash.Test.Resource.IdentitiesTest do
                        end
 
                        relationships do
-                         belongs_to :site, Site
+                         belongs_to :site, Site do
+                           public?(true)
+                         end
                        end
                      end
                    end
