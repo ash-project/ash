@@ -24,12 +24,10 @@ defmodule Ash.Test.Type.TimeTest do
     end
   end
 
-  import Ash.Changeset
-
   test "it handles non-empty values" do
     post =
       Post
-      |> new(%{
+      |> Ash.Changeset.for_create(:create, %{
         time_a: ~T[08:30:00],
         time_b: ~T[15:45:30]
       })

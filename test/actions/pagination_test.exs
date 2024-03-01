@@ -132,11 +132,13 @@ defmodule Ash.Actions.PaginationTest do
   describe "offset pagination" do
     setup do
       for i <- 0..9 do
-        user = Domain.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
+        user = Domain.create!(Ash.Changeset.for_create(User, :create, %{name: "#{i}"}))
 
         if i != 0 do
           for x <- 1..i do
-            Domain.create!(Ash.Changeset.new(Post, %{body: "#{i}-#{x}", user_id: user.id}))
+            Domain.create!(
+              Ash.Changeset.for_create(Post, :create, %{body: "#{i}-#{x}", user_id: user.id})
+            )
           end
         end
       end
@@ -285,9 +287,11 @@ defmodule Ash.Actions.PaginationTest do
       users =
         for i <- 0..9 do
           if rem(i, 2) == 0 do
-            Domain.create!(Ash.Changeset.new(User, %{name: "#{i}", subname: "#{i}"}))
+            Domain.create!(
+              Ash.Changeset.for_create(User, :create, %{name: "#{i}", subname: "#{i}"})
+            )
           else
-            Domain.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
+            Domain.create!(Ash.Changeset.for_create(User, :create, %{name: "#{i}"}))
           end
         end
 
@@ -415,11 +419,13 @@ defmodule Ash.Actions.PaginationTest do
     setup do
       users =
         for i <- 0..9 do
-          user = Domain.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
+          user = Domain.create!(Ash.Changeset.for_create(User, :create, %{name: "#{i}"}))
 
           if i != 0 do
             for x <- 1..i do
-              Domain.create!(Ash.Changeset.new(Post, %{body: "#{i}-#{x}", user_id: user.id}))
+              Domain.create!(
+                Ash.Changeset.for_create(Post, :create, %{body: "#{i}-#{x}", user_id: user.id})
+              )
             end
           end
         end
@@ -742,8 +748,8 @@ defmodule Ash.Actions.PaginationTest do
                User
                |> Ash.Query.sort(name_with_arg: %{does_nothing: true})
                |> Ash.Query.load(name_with_arg: %{does_nothing: true})
-               |> Api.read!(page: [limit: 1, offset: 4])
-               |> Api.page!(:next)
+               |> Domain.read!(page: [limit: 1, offset: 4])
+               |> Domain.page!(:next)
     end
 
     test "pagination works with a sort applied that uses a calculation desc" do
@@ -866,7 +872,7 @@ defmodule Ash.Actions.PaginationTest do
   describe "when both are supported" do
     setup do
       for i <- 0..9 do
-        Domain.create!(Ash.Changeset.new(User, %{name: "#{i}"}))
+        Domain.create!(Ash.Changeset.for_create(User, :create, %{name: "#{i}"}))
       end
 
       :ok
@@ -885,8 +891,8 @@ defmodule Ash.Actions.PaginationTest do
 
   describe "loading with pagination" do
     test "it does not paginate loads" do
-      user = Domain.create!(Ash.Changeset.new(User, %{name: "user"}))
-      Domain.create!(Ash.Changeset.new(Post, %{user_id: user.id}))
+      user = Domain.create!(Ash.Changeset.for_create(User, :create, %{name: "user"}))
+      Domain.create!(Ash.Changeset.for_create(Post, :create, %{user_id: user.id}))
 
       assert [_ | _] =
                user

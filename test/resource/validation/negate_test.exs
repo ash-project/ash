@@ -9,6 +9,10 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
   defmodule Post do
     use Ash.Resource, domain: Domain
 
+    actions do
+      defaults [:create, :update, :destroy, :read]
+    end
+
     attributes do
       uuid_primary_key :id
       attribute :status, :atom
@@ -37,7 +41,7 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
       {:ok, opts} =
         Negate.init(validation: Ash.Resource.Validation.Builtins.one_of(:status, [:canceled]))
 
-      changeset = Post |> Ash.Changeset.new(%{status: :valid})
+      changeset = Post |> Ash.Changeset.for_create(:create, %{status: :valid})
 
       assert :ok = Negate.validate(changeset, opts, %{})
     end
@@ -46,7 +50,7 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
       {:ok, opts} =
         Negate.init(validation: Ash.Resource.Validation.Builtins.one_of(:status, [:canceled]))
 
-      changeset = Post |> Ash.Changeset.new(%{status: :canceled})
+      changeset = Post |> Ash.Changeset.for_create(:create, %{status: :canceled})
 
       assert {:error, %Ash.Error.Changes.InvalidAttribute{}} =
                Negate.validate(changeset, opts, %{})
@@ -55,7 +59,7 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
     test "support custom validations" do
       {:ok, opts} = Negate.init(validation: CustomValidation)
 
-      changeset = Post |> Ash.Changeset.new(%{status: :valid})
+      changeset = Post |> Ash.Changeset.for_create(:create, %{status: :valid})
 
       assert :ok = Negate.validate(changeset, opts, %{})
     end

@@ -16,7 +16,7 @@ An example of a single error being raised, representing multiple underlying erro
 
 ```elixir
 AshExample.Representative
-|> Ash.Changeset.new(%{employee_id: "the best"})
+|> Ash.Changeset.for_create(:create, %{employee_id: "the best"})
 |> AshExample.Domain.create!()
  ** (Ash.Error.Invalid) Input Invalid
  * employee_id: must be absent.
@@ -28,7 +28,7 @@ This allows easy rescuing of the major error classes, as well as inspection of t
 ```elixir
 try do
   AshExample.Representative
-  |> Ash.Changeset.new(%{employee_id: "dabes"})
+  |> Ash.Changeset.for_create(:create, %{employee_id: "dabes"})
   |> AshExample.Domain.create!()
 rescue
   e in Ash.Error.Invalid ->
@@ -43,7 +43,7 @@ This pattern does add some additional overhead when you want to rescue specific 
 ```elixir
 try do
   AshExample.Representative
-  |> Ash.Changeset.new(%{employee_id: "dabes"})
+  |> Ash.Changeset.for_create(:create, %{employee_id: "dabes"})
   |> AshExample.Domain.create!()
 rescue
   e in Ash.Error.Invalid ->

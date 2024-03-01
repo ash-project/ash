@@ -304,7 +304,7 @@ defmodule Ash.Changeset do
 
   *Warning*: You almost always want to use `for_action` or `for_create`, etc. over this function if possible.
 
-  You can use this to start a changeset and make a few changes prior to calling `for_action`. For example:
+  You can use this to start a changeset and make changes prior to calling `for_action`. For example:
 
   ```elixir
   Resource
@@ -313,10 +313,15 @@ defmodule Ash.Changeset do
   |> Ash.Changeset.for_action(...)
   ```
   """
-  @spec new(Ash.Resource.t() | Ash.Resource.record(), params :: map) :: t
-  def new(resource, params \\ %{})
+  @spec new(Ash.Resource.t() | Ash.Resource.record()) :: t
 
-  def new(%resource{} = record, params) do
+  def new(record_or_resource) do
+    {resource, record, action_type} =
+      case record_or_resource do
+        %resource{} = record -> {resource, record, :update}
+        resource -> {resource, struct(resource), :create}
+      end
+
     tenant =
       record
       |> Map.get(:__metadata__, %{})
@@ -327,35 +332,19 @@ defmodule Ash.Changeset do
     domain = Ash.Resource.Info.domain(resource)
 
     if Ash.Resource.Info.resource?(resource) do
-      %__MODULE__{resource: resource, data: record, action_type: :update, domain: domain}
-      |> change_attributes(params)
+      %__MODULE__{resource: resource, data: record, action_type: action_type, domain: domain}
       |> set_context(context)
       |> set_tenant(tenant)
     else
       %__MODULE__{
         resource: resource,
-        action_type: :update,
+        action_type: action_type,
         data: struct(resource),
         domain: domain
       }
       |> add_error(NoSuchResource.exception(resource: resource))
       |> set_tenant(tenant)
       |> set_context(context)
-    end
-  end
-
-  def new(resource, params) do
-    if Ash.Resource.Info.resource?(resource) do
-      %__MODULE__{
-        resource: resource,
-        action_type: :create,
-        data: struct(resource),
-        domain: Ash.Resource.Info.domain(resource)
-      }
-      |> change_attributes(params)
-    else
-      %__MODULE__{resource: resource, action_type: :create, data: struct(resource)}
-      |> add_error(NoSuchResource.exception(resource: resource))
     end
   end
 
@@ -1443,7 +1432,18 @@ defmodule Ash.Changeset do
   defp get_action_entity(resource, name) when is_atom(name),
     do: Ash.Resource.Info.action(resource, name)
 
-  defp get_action_entity(_resource, action), do: action
+  defp get_action_entity(_resource, %struct{} = action)
+       when struct in [
+              Ash.Resource.Actions.Update,
+              Ash.Resource.Actions.Create,
+              Ash.Resource.Actions.Destroy
+            ] do
+    action
+  end
+
+  defp get_action_entity(_resource, action) do
+    raise ArgumentError, "Invalid value provided for action: #{inspect(action)}"
+  end
 
   defp eager_validate_identities(changeset) do
     identities =

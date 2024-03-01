@@ -2,7 +2,6 @@ defmodule Ash.Test.Changeset.ChangesetTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias Ash.Changeset
   alias Ash.Test.Domain, as: Domain
 
   require Ash.Query
@@ -19,7 +18,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     actions do
-      defaults [:read, :create, :destroy]
+      defaults [:read, :create, :update, :destroy]
 
       create :create_with_confirmation do
         argument :confirm_name, :string do
@@ -251,7 +250,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   describe "new" do
     test "it wraps a new resource in a `create` changeset" do
-      assert %Changeset{
+      assert %Ash.Changeset{
                action_type: :create,
                attributes: %{},
                data: %Category{},
@@ -259,26 +258,16 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                valid?: true
              } =
                Category
-               |> Changeset.new()
-    end
-
-    test "if an attribute does not exist in `new/2`, a corresponding error is added`" do
-      error =
-        Author
-        |> Changeset.new(%{"flarb" => 10})
-        |> Map.get(:errors)
-        |> Enum.at(0)
-
-      assert %Ash.Error.Changes.NoSuchAttribute{name: "flarb"} = error
+               |> Ash.Changeset.new()
     end
 
     test "it wraps a resource's record in an `update` changeset" do
       record =
         Category
-        |> Changeset.new(%{name: "foo"})
+        |> Ash.Changeset.for_create(:create, %{name: "foo"})
         |> Domain.create!()
 
-      assert %Changeset{
+      assert %Ash.Changeset{
                action_type: :update,
                attributes: %{},
                data: %Category{name: "foo"},
@@ -286,7 +275,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                valid?: true
              } =
                record
-               |> Changeset.new()
+               |> Ash.Changeset.new()
     end
 
     test "it raises an error for a non-resource record" do
@@ -294,14 +283,14 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                    ~r/`Ash.Test.Changeset.ChangesetTest.NonResource` is not a Spark DSL module/,
                    fn ->
                      %NonResource{name: "foo"}
-                     |> Changeset.new()
+                     |> Ash.Changeset.new()
                    end
     end
   end
 
   describe "with_hooks/2" do
     test "it applies a before_action function on a changeset" do
-      capitalize_name = fn changeset = %Changeset{attributes: %{name: name}} ->
+      capitalize_name = fn changeset = %Ash.Changeset{attributes: %{name: name}} ->
         %{
           changeset
           | attributes: Map.merge(changeset.attributes, %{name: String.capitalize(name)})
@@ -310,7 +299,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       changeset =
         Category
-        |> Changeset.new(%{name: "foo"})
+        |> Ash.Changeset.for_create(:create, %{name: "foo"})
 
       changeset = %{changeset | before_action: [capitalize_name]}
 
@@ -326,7 +315,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       changeset =
         Category
-        |> Changeset.new(%{name: "foo"})
+        |> Ash.Changeset.for_create(:create, %{name: "foo"})
 
       changeset = %{changeset | after_action: [capitalize_name]}
 
@@ -354,8 +343,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       changeset =
         Category
-        |> Changeset.new(%{name: "foo"})
-        |> Changeset.around_transaction(change_name)
+        |> Ash.Changeset.for_create(:create, %{name: "foo"})
+        |> Ash.Changeset.around_transaction(change_name)
 
       category = changeset |> Domain.create!()
 
@@ -367,7 +356,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     setup do
       category =
         Category
-        |> Changeset.new(%{name: "foo"})
+        |> Ash.Changeset.for_create(:create, %{name: "foo"})
         |> Domain.create!()
 
       {:ok, %{category: category}}
@@ -376,27 +365,27 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     test "it get an attribute of the changeset", %{category: category} do
       changeset =
         category
-        |> Changeset.new(%{name: "bar"})
+        |> Ash.Changeset.for_update(:update, %{name: "bar"})
 
-      assert "bar" == Changeset.get_attribute(changeset, :name)
+      assert "bar" == Ash.Changeset.get_attribute(changeset, :name)
     end
 
     test "it falls back to the original value of the attribute", %{category: category} do
       changeset =
         category
-        |> Changeset.new()
+        |> Ash.Changeset.new()
 
-      assert "foo" == Changeset.get_attribute(changeset, :name)
+      assert "foo" == Ash.Changeset.get_attribute(changeset, :name)
     end
 
     test "it returns nil if the attribute not found" do
       changeset =
         Category
-        |> Changeset.new()
+        |> Ash.Changeset.new()
 
       assert %{} == changeset.attributes
 
-      assert is_nil(Changeset.get_attribute(changeset, :not_there))
+      assert is_nil(Ash.Changeset.get_attribute(changeset, :not_there))
     end
   end
 
@@ -404,24 +393,24 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     test "it get a changed attribute of the changeset" do
       category =
         Category
-        |> Changeset.new(%{name: "foo"})
+        |> Ash.Changeset.for_create(:create, %{name: "foo"})
         |> Domain.create!()
 
       changeset =
         category
-        |> Changeset.new(%{name: "bar"})
+        |> Ash.Changeset.for_update(:update, %{name: "bar"})
 
-      assert {:ok, "bar"} == Changeset.fetch_change(changeset, :name)
+      assert {:ok, "bar"} == Ash.Changeset.fetch_change(changeset, :name)
     end
 
     test "it returns :error if the attribute not found" do
       changeset =
         Category
-        |> Changeset.new()
+        |> Ash.Changeset.new()
 
       assert %{} == changeset.attributes
 
-      assert :error == Changeset.fetch_change(changeset, :none)
+      assert :error == Ash.Changeset.fetch_change(changeset, :none)
     end
   end
 
@@ -429,8 +418,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     test "it sets context to a given map" do
       changeset =
         Category
-        |> Changeset.new()
-        |> Changeset.set_context(%{key: "value"})
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.set_context(%{key: "value"})
 
       assert "value" == changeset.context.key
     end
@@ -440,8 +429,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     test "it puts a value in a context key" do
       changeset =
         Category
-        |> Changeset.new()
-        |> Changeset.put_context(:key, "value")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.put_context(:key, "value")
 
       assert "value" == changeset.context.key
     end
@@ -453,8 +442,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       post =
         Post
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:author, author, on_no_match: :create)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:author, author, on_no_match: :create)
         |> Domain.create!()
 
       assert [%{name: "title"}] = Domain.read!(Author)
@@ -467,16 +456,16 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       post =
         Post
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:author, author, on_no_match: :create)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:author, author, on_no_match: :create)
         |> Domain.create!()
 
       new_author = %{name: "title2"}
 
       post =
         post
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:author, new_author,
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:author, new_author,
           on_no_match: :create,
           on_missing: :destroy
         )
@@ -489,13 +478,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     test "upsert with many_to_many relationships creates and relates records, and returns the created/related records" do
       Category
-      |> Changeset.new(name: "foo")
+      |> Ash.Changeset.for_create(:create, %{name: "foo"})
       |> Domain.create!()
 
       post =
         Post
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:categories, [%{name: "foo"}, %{name: "bar"}],
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:categories, [%{name: "foo"}, %{name: "bar"}],
           on_lookup: :relate,
           on_no_match: :create
         )
@@ -507,8 +496,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     test "value_is_key option determines what single values are keyed as" do
       changeset =
         Post
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:categories, ["foo", "bar"],
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:categories, ["foo", "bar"],
           on_lookup: :relate,
           on_no_match: :create
         )
@@ -519,8 +508,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       changeset =
         Post
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:categories, ["foo", "bar"],
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:categories, ["foo", "bar"],
           value_is_key: :name,
           on_lookup: :relate,
           on_no_match: :create
@@ -533,13 +522,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     test "upsert with many_to_many relationships can eager validate" do
       Category
-      |> Changeset.new(name: "foo")
+      |> Ash.Changeset.for_create(:create, %{name: "foo"})
       |> Domain.create!()
 
       assert %{valid?: false, errors: [%Ash.Error.Query.NotFound{}]} =
                Post
-               |> Changeset.new()
-               |> Changeset.manage_relationship(:categories, [%{name: "foo"}, %{name: "bar"}],
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.manage_relationship(:categories, [%{name: "foo"}, %{name: "bar"}],
                  on_lookup: :relate,
                  eager_validate_with: Domain,
                  use_identities: [:unique_name]
@@ -547,8 +536,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       assert %{valid?: true} =
                Post
-               |> Changeset.new()
-               |> Changeset.manage_relationship(:categories, [%{name: "foo"}],
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.manage_relationship(:categories, [%{name: "foo"}],
                  on_lookup: :relate,
                  eager_validate_with: Domain,
                  use_identities: [:unique_name]
@@ -561,8 +550,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       author =
         Author
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
         |> Domain.create!()
 
       assert [%{title: "title"}, %{title: "title"}] = Domain.read!(Post)
@@ -576,8 +565,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       author =
         Author
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :ignore)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :ignore)
         |> Domain.create!()
 
       assert [] = Domain.read!(Post)
@@ -593,8 +582,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                    ~r/Invalid value provided for posts: changes would create a new related record/,
                    fn ->
                      Author
-                     |> Changeset.new()
-                     |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :error)
+                     |> Ash.Changeset.new()
+                     |> Ash.Changeset.manage_relationship(:posts, [post1, post2],
+                       on_no_match: :error
+                     )
                      |> Domain.create!()
                    end
     end
@@ -605,15 +596,15 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       author =
         Author
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
         |> Domain.create!()
 
       assert [%{title: "title"}, %{title: "title"}] = Domain.read!(Post)
 
       author
-      |> Changeset.new()
-      |> Changeset.manage_relationship(:posts, [], on_missing: :destroy)
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.manage_relationship(:posts, [], on_missing: :destroy)
       |> Domain.update!()
 
       assert [] = Domain.read!(Post)
@@ -625,8 +616,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       author =
         Author
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:unique_posts, [post1, post2],
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:unique_posts, [post1, post2],
           on_no_match: :create,
           use_identities: [:unique_name_per_author]
         )
@@ -637,8 +628,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       author =
         author
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:unique_posts, [%{title: "title"}],
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:unique_posts, [%{title: "title"}],
           on_missing: :unrelate,
           use_identities: [:unique_name_per_author]
         )
@@ -656,16 +647,16 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       author =
         Author
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
         |> Domain.create!()
 
       assert [%{title: "title"}, %{title: "title"}] = Domain.read!(Post)
 
       author =
         author
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:posts, [], on_missing: :unrelate)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:posts, [], on_missing: :unrelate)
         |> Domain.update!()
 
       assert [%{title: "title"}, %{title: "title"}] = Domain.read!(Post)
@@ -679,8 +670,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       author =
         Author
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
         |> Domain.create!()
 
       assert posts = [%{title: "title"}, %{title: "title"}] = Domain.read!(Post)
@@ -689,8 +680,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       input = Enum.map(post_ids, &%{"id" => &1, title: "new_title"})
 
       author
-      |> Changeset.new()
-      |> Changeset.manage_relationship(:posts, input, on_match: :update)
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.manage_relationship(:posts, input, on_match: :update)
       |> Domain.update!()
 
       assert [%{title: "new_title"}, %{title: "new_title"}] = Domain.read!(Post)
@@ -699,8 +690,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     test "it updates only join records in many_to_many relationships with on_match: :update_join" do
       post =
         Post
-        |> Changeset.new()
-        |> Changeset.manage_relationship(
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(
           :categories,
           [%{name: "foo", priority: 0}, %{name: "bar", priority: 1}],
           on_no_match: :create,
@@ -715,8 +706,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                Domain.read!(PostCategory) |> Enum.sort_by(& &1.priority)
 
       post
-      |> Changeset.new()
-      |> Changeset.manage_relationship(
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.manage_relationship(
         :categories,
         [%{name: "foo", priority: 2}],
         on_match: :update_join,
@@ -735,13 +726,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   describe "manage_relationship/3 type: :append_and_remove" do
     test "it replaces entities to a resource's relationship" do
-      post1 = Post |> Changeset.new(%{title: "title1"}) |> Domain.create!()
-      post2 = Post |> Changeset.new(%{title: "title2"}) |> Domain.create!()
+      post1 = Post |> Ash.Changeset.for_create(:create, %{title: "title1"}) |> Domain.create!()
+      post2 = Post |> Ash.Changeset.for_create(:create, %{title: "title2"}) |> Domain.create!()
 
       author =
         Author
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:posts, [post1], type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:posts, [post1], type: :append_and_remove)
         |> Domain.create!()
 
       [author] =
@@ -756,8 +747,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       author =
         author
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:posts, [post2], type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:posts, [post2], type: :append_and_remove)
         |> Domain.update!()
 
       [author] =
@@ -774,13 +765,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     test "it accepts a map %{att1: value1, att2: value2} representing primary key as a second param" do
       post1 =
         CompositeKeyPost
-        |> Changeset.new(%{serial: 1})
+        |> Ash.Changeset.for_create(:create, %{serial: 1})
         |> Domain.create!()
 
       author =
         Author
-        |> Changeset.new()
-        |> Changeset.manage_relationship(
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(
           :composite_key_posts,
           [%{id: post1.id, serial: post1.serial}],
           type: :append_and_remove
@@ -799,18 +790,18 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     test "it accepts a list of maps representing primary_keys as a second param" do
       post1 =
         CompositeKeyPost
-        |> Changeset.new(%{serial: 1})
+        |> Ash.Changeset.for_create(:create, %{serial: 1})
         |> Domain.create!()
 
       post2 =
         CompositeKeyPost
-        |> Changeset.new(%{serial: 2})
+        |> Ash.Changeset.for_create(:create, %{serial: 2})
         |> Domain.create!()
 
       author =
         Author
-        |> Changeset.new()
-        |> Changeset.manage_relationship(
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(
           :composite_key_posts,
           [
             %{id: post1.id, serial: post1.serial},
@@ -832,18 +823,18 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     test "it accepts mix of entities and maps representing primary_keys as a second param" do
       post1 =
         CompositeKeyPost
-        |> Changeset.new(%{serial: 1})
+        |> Ash.Changeset.for_create(:create, %{serial: 1})
         |> Domain.create!()
 
       post2 =
         CompositeKeyPost
-        |> Changeset.new(%{serial: 2})
+        |> Ash.Changeset.for_create(:create, %{serial: 2})
         |> Domain.create!()
 
       author =
         Author
-        |> Changeset.new()
-        |> Changeset.manage_relationship(
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(
           :composite_key_posts,
           [
             %{id: post1.id, serial: post1.serial},
@@ -866,23 +857,23 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     test "it returns error if one of relationship entities is invalid" do
       post1 =
         CompositeKeyPost
-        |> Changeset.new(%{serial: 1})
+        |> Ash.Changeset.for_create(:create, %{serial: 1})
         |> Domain.create!()
 
       post2 =
         CompositeKeyPost
-        |> Changeset.new(%{serial: 2})
+        |> Ash.Changeset.for_create(:create, %{serial: 2})
         |> Domain.create!()
 
       invalid_post =
         Post
-        |> Changeset.new(%{title: "a title"})
+        |> Ash.Changeset.for_create(:create, %{title: "a title"})
         |> Domain.create!()
 
       changeset =
         Author
-        |> Changeset.new()
-        |> Changeset.manage_relationship(
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(
           :composite_key_posts,
           [
             %{id: post1.id, serial: post1.serial},
@@ -897,12 +888,12 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     test "it returns error if relationship does not exists" do
-      post1 = Post |> Changeset.new(%{title: "foo"}) |> Domain.create!()
+      post1 = Post |> Ash.Changeset.for_create(:create, %{title: "foo"}) |> Domain.create!()
 
       changeset =
         Author
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:na, post1, type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:na, post1, type: :append_and_remove)
 
       assert %{} == changeset.relationships
       assert [%Ash.Error.Changes.NoSuchRelationship{}] = changeset.errors
@@ -911,31 +902,31 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   describe "changing_attribute?/2" do
     test "it returns true if the attribute is being changed by the current changeset" do
-      changeset = Post |> Changeset.new(%{title: "title1"})
-      assert Changeset.changing_attribute?(changeset, :title)
+      changeset = Post |> Ash.Changeset.for_create(:create, %{title: "title1"})
+      assert Ash.Changeset.changing_attribute?(changeset, :title)
     end
 
     test "it returns false if the attribute is NOT being changed by the current changeset" do
-      changeset = Post |> Changeset.new(%{title: "title1"})
-      refute Changeset.changing_attribute?(changeset, :contents)
+      changeset = Post |> Ash.Changeset.for_create(:create, %{title: "title1"})
+      refute Ash.Changeset.changing_attribute?(changeset, :contents)
     end
   end
 
   describe "changing_relationship?/2" do
     test "it returns true if the attribute is being changed by the current changeset" do
-      post = Post |> Changeset.new(%{title: "title2"}) |> Domain.create!()
+      post = Post |> Ash.Changeset.for_create(:create, %{title: "title2"}) |> Domain.create!()
 
       changeset =
         Author
-        |> Changeset.new()
-        |> Changeset.manage_relationship(:posts, [post], type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.manage_relationship(:posts, [post], type: :append_and_remove)
 
-      assert Changeset.changing_relationship?(changeset, :posts)
+      assert Ash.Changeset.changing_relationship?(changeset, :posts)
     end
 
     test "it returns false if the attribute is NOT being changed by the current changeset" do
-      changeset = Post |> Changeset.new(%{title: "title1"})
-      refute Changeset.changing_relationship?(changeset, :posts)
+      changeset = Post |> Ash.Changeset.for_create(:create, %{title: "title1"})
+      refute Ash.Changeset.changing_relationship?(changeset, :posts)
     end
   end
 
@@ -943,19 +934,21 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     test "it changes attribute if it's not currently being changed" do
       changeset =
         Post
-        |> Changeset.new(%{title: "title1"})
-        |> Changeset.change_new_attribute(:contents, "some content")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_new_attribute(:contents, "some content")
+        |> Ash.Changeset.for_create(:create, %{title: "title1"})
 
-      assert %Changeset{attributes: %{title: "title1", contents: "some content"}} = changeset
+      assert %Ash.Changeset{attributes: %{title: "title1", contents: "some content"}} = changeset
     end
 
     test "it keeps the current value of attribute if it's currently being changed" do
       changeset =
         Post
-        |> Changeset.new(%{title: "title1"})
-        |> Changeset.change_new_attribute(:title, "another title")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_new_attribute(:title, "another title")
+        |> Ash.Changeset.for_create(:create, %{title: "title1"})
 
-      assert %Changeset{
+      assert %Ash.Changeset{
                attributes: %{
                  title: "title1"
                }
@@ -966,42 +959,45 @@ defmodule Ash.Test.Changeset.ChangesetTest do
   describe "arguments" do
     test "arguments can be used in valid changes" do
       Category
-      |> Changeset.new(%{"name" => "foo"})
-      |> Changeset.set_argument(:confirm_name, "foo")
-      |> Domain.create!(action: :create_with_confirmation)
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.set_argument(:confirm_name, "foo")
+      |> Ash.Changeset.for_create(:create_with_confirmation, %{"name" => "foo"})
+      |> Domain.create!()
     end
 
     test "arguments can be provided as strings" do
       Category
-      |> Changeset.new(%{"name" => "foo"})
-      |> Changeset.set_argument("confirm_name", "foo")
-      |> Domain.create!(action: :create_with_confirmation)
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.set_argument("confirm_name", "foo")
+      |> Ash.Changeset.for_create(:create_with_confirmation, %{"name" => "foo"})
+      |> Domain.create!()
     end
 
     test "arguments can be used in invalid changes" do
       assert_raise Ash.Error.Invalid, ~r/confirmation did not match value/, fn ->
         Category
-        |> Changeset.new(%{"name" => "foo"})
-        |> Changeset.set_argument(:confirm_name, "bar")
-        |> Domain.create!(action: :create_with_confirmation)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.set_argument(:confirm_name, "bar")
+        |> Ash.Changeset.for_create(:create_with_confirmation, %{"name" => "foo"})
+        |> Domain.create!()
       end
     end
 
     test "required arguments can't be nil" do
       assert_raise Ash.Error.Invalid, ~r/argument confirm_name is required/, fn ->
         Category
-        |> Changeset.new(%{"name" => "foo"})
-        |> Domain.create!(action: :create_with_confirmation)
+        |> Ash.Changeset.for_create(:create_with_confirmation, %{"name" => "foo"})
+        |> Domain.create!()
       end
     end
 
     test "optional arguments should use the default" do
       changeset =
         Category
-        |> Changeset.for_create(:create_with_confirmation)
+        |> Ash.Changeset.for_create(:create_with_confirmation)
 
-      assert Changeset.get_argument(changeset, :true_optional_argument) == true
-      assert Changeset.get_argument(changeset, :false_optional_argument) == false
+      assert Ash.Changeset.get_argument(changeset, :true_optional_argument) == true
+      assert Ash.Changeset.get_argument(changeset, :false_optional_argument) == false
     end
   end
 
@@ -1024,11 +1020,11 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     test "for_action works the same as calling for_<action>" do
       changeset_1 =
         Category
-        |> Changeset.for_create(:create)
+        |> Ash.Changeset.for_create(:create)
 
       changeset_2 =
         Category
-        |> Changeset.for_action(:create)
+        |> Ash.Changeset.for_action(:create)
 
       assert changeset_1 == changeset_2
     end
@@ -1041,7 +1037,8 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                  message: "this validates the name is present",
                  path: []
                }
-             ] = Ash.Changeset.for_create(Category, :with_name_validation, %{"name" => ""}).errors
+             ] =
+               Ash.Changeset.for_create(Category, :with_name_validation, %{"name" => ""}).errors
     end
   end
 end

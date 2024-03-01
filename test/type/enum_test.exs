@@ -2,7 +2,6 @@ defmodule Ash.Test.Type.EnumTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  import Ash.Changeset
   require Ash.Query
 
   alias Ash.Test.Domain, as: Domain
@@ -32,32 +31,32 @@ defmodule Ash.Test.Type.EnumTest do
 
   test "it handles exact matches" do
     Post
-    |> new(%{status: :open})
+    |> Ash.Changeset.for_create(:create, %{status: :open})
     |> Domain.create!()
   end
 
   test "it handles string matches" do
     Post
-    |> new(%{status: "open"})
+    |> Ash.Changeset.for_create(:create, %{status: "open"})
     |> Domain.create!()
   end
 
   test "it handles mixed case string matches" do
     Post
-    |> new(%{status: "OpEn"})
+    |> Ash.Changeset.for_create(:create, %{status: "OpEn"})
     |> Domain.create!()
   end
 
   test "it handles mixed case string matches against mixed case atoms" do
     Post
-    |> new(%{status: "nEveRHAppened"})
+    |> Ash.Changeset.for_create(:create, %{status: "nEveRHAppened"})
     |> Domain.create!()
   end
 
   test "it fails on mismatches" do
     assert_raise Ash.Error.Invalid, fn ->
       Post
-      |> new(%{status: "what"})
+      |> Ash.Changeset.for_create(:create, %{status: "what"})
       |> Domain.create!()
     end
   end

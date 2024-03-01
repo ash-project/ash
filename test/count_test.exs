@@ -42,8 +42,7 @@ defmodule Ash.Test.CountTest do
   test "counts all entries without authorization" do
     Enum.each(1..10, fn _ ->
       Countable
-      |> Ash.Changeset.new(%{owner_id: "foo"})
-      |> Ash.Changeset.for_create(:create)
+      |> Ash.Changeset.for_create(:create, %{owner_id: "foo"})
       |> Domain.create!(authorize?: false)
     end)
 
@@ -58,15 +57,13 @@ defmodule Ash.Test.CountTest do
   test "counts only visible entries with authorization" do
     Enum.each(1..10, fn _ ->
       Countable
-      |> Ash.Changeset.new(%{owner_id: "foo"})
-      |> Ash.Changeset.for_create(:create, %{}, authorize?: false)
+      |> Ash.Changeset.for_create(:create, %{owner_id: "foo"}, authorize?: false)
       |> Domain.create!()
     end)
 
     Enum.each(1..10, fn _ ->
       Countable
-      |> Ash.Changeset.new(%{owner_id: "bar"})
-      |> Ash.Changeset.for_create(:create, %{}, authorize?: false)
+      |> Ash.Changeset.for_create(:create, %{owner_id: "bar"}, authorize?: false)
       |> Domain.create!()
     end)
 

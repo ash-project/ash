@@ -9,6 +9,10 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
   defmodule Post do
     use Ash.Resource, domain: Domain
 
+    actions do
+      defaults [:create, :read, :update, :destroy]
+    end
+
     attributes do
       uuid_primary_key :id
       attribute :number_one, :integer
@@ -21,7 +25,7 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
   describe "greater than" do
     test "validate success against number" do
       {:ok, opts} = Compare.init(attribute: :number_one, greater_than: 1)
-      changeset = Post |> Ash.Changeset.new(%{number_one: 100})
+      changeset = Post |> Ash.Changeset.for_create(:create, %{number_one: 100})
 
       assert :ok = Compare.validate(changeset, opts, %{})
     end
@@ -31,8 +35,9 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
 
       changeset =
         Post
-        |> Ash.Changeset.new(%{number_one: 100})
+        |> Ash.Changeset.new()
         |> Ash.Changeset.set_argument(:foo, 1)
+        |> Ash.Changeset.for_create(:create, %{number_one: 100})
 
       assert :ok = Compare.validate(changeset, opts, %{})
     end
@@ -42,7 +47,7 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
 
       changeset =
         Post
-        |> Ash.Changeset.new(%{number_one: 100, number_two: 1})
+        |> Ash.Changeset.for_create(:create, %{number_one: 100, number_two: 1})
 
       assert :ok = Compare.validate(changeset, opts, %{})
     end
@@ -52,7 +57,7 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
 
       changeset =
         Post
-        |> Ash.Changeset.new(%{number_three: Decimal.new(1)})
+        |> Ash.Changeset.for_create(:create, %{number_three: Decimal.new(1)})
 
       assert :ok = Compare.validate(changeset, opts, %{})
     end
@@ -62,17 +67,18 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
 
       changeset =
         Post
-        |> Ash.Changeset.new(%{number_four: 1.0})
+        |> Ash.Changeset.for_create(:create, %{number_four: 1.0})
 
       assert :ok = Compare.validate(changeset, opts, %{})
     end
 
     test "decimals can be compared with" do
-      {:ok, opts} = Compare.init(attribute: :number_one, greater_than: Decimal.new(0))
+      {:ok, opts} =
+        Compare.init(attribute: :number_one, greater_than: Decimal.new(0))
 
       changeset =
         Post
-        |> Ash.Changeset.new(%{number_one: 1})
+        |> Ash.Changeset.for_create(:create, %{number_one: 1})
 
       assert :ok = Compare.validate(changeset, opts, %{})
     end
@@ -82,14 +88,14 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
 
       changeset =
         Post
-        |> Ash.Changeset.new(%{number_one: 1})
+        |> Ash.Changeset.for_create(:create, %{number_one: 1})
 
       assert :ok = Compare.validate(changeset, opts, %{})
     end
 
     test "validate failure against number" do
       {:ok, opts} = Compare.init(attribute: :number_one, greater_than: 100)
-      changeset = Post |> Ash.Changeset.new(%{number_one: 1})
+      changeset = Post |> Ash.Changeset.for_create(:create, %{number_one: 1})
 
       assert_error(changeset, opts, "must be greater than 100")
     end
@@ -99,8 +105,9 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
 
       changeset =
         Post
-        |> Ash.Changeset.new(%{number_one: 1})
+        |> Ash.Changeset.new()
         |> Ash.Changeset.set_argument(:foo, 100)
+        |> Ash.Changeset.for_create(:create, %{number_one: 1})
 
       assert_error(changeset, opts, "must be greater than foo")
     end
@@ -110,7 +117,7 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
 
       changeset =
         Post
-        |> Ash.Changeset.new(%{number_one: 1, number_two: 100})
+        |> Ash.Changeset.for_create(:create, %{number_one: 1, number_two: 100})
 
       assert_error(changeset, opts, "must be greater than number_two")
     end

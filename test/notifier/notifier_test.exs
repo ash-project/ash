@@ -124,7 +124,7 @@ defmodule Ash.Test.NotifierTest do
   describe "simple creates and updates" do
     test "a create notification occurs" do
       Post
-      |> Ash.Changeset.new(%{name: "foo"})
+      |> Ash.Changeset.for_create(:create, %{name: "foo"})
       |> Domain.create!()
 
       assert_receive {:notification, %{action: %{type: :create}}}
@@ -132,9 +132,9 @@ defmodule Ash.Test.NotifierTest do
 
     test "an update notification occurs" do
       Post
-      |> Ash.Changeset.new(%{name: "foo"})
+      |> Ash.Changeset.for_create(:create, %{name: "foo"})
       |> Domain.create!()
-      |> Ash.Changeset.new(%{name: "bar"})
+      |> Ash.Changeset.for_update(:update, %{name: "bar"})
       |> Domain.update!()
 
       assert_receive {:notification, %{action: %{type: :update}}}
@@ -142,7 +142,7 @@ defmodule Ash.Test.NotifierTest do
 
     test "a destroy notification occurs" do
       Post
-      |> Ash.Changeset.new(%{name: "foo"})
+      |> Ash.Changeset.for_create(:create, %{name: "foo"})
       |> Domain.create!()
       |> Domain.destroy!()
 
@@ -153,7 +153,7 @@ defmodule Ash.Test.NotifierTest do
   describe "custom notifications" do
     test "a custom notification can be returned in a before or after action hook" do
       Comment
-      |> Ash.Changeset.new(%{})
+      |> Ash.Changeset.for_create(:create, %{})
       |> Ash.Changeset.before_action(fn changeset ->
         {changeset,
          %{
@@ -189,7 +189,7 @@ defmodule Ash.Test.NotifierTest do
 
   test "notifications use the data before its limited by a select statement" do
     Comment
-    |> Ash.Changeset.new(%{name: "foobar"})
+    |> Ash.Changeset.for_create(:create, %{name: "foobar"})
     |> Ash.Changeset.select([:id])
     |> Domain.create!()
 
@@ -198,7 +198,7 @@ defmodule Ash.Test.NotifierTest do
 
   test "notifications use the changeset after before_action callbacks" do
     Comment
-    |> Ash.Changeset.new(%{name: "foobar"})
+    |> Ash.Changeset.for_create(:create, %{name: "foobar"})
     |> Ash.Changeset.before_action(fn changeset ->
       Ash.Changeset.set_context(changeset, %{foobar: :baz})
     end)
@@ -213,11 +213,11 @@ defmodule Ash.Test.NotifierTest do
     test "an update notification occurs when relating many to many" do
       comment =
         Comment
-        |> Ash.Changeset.new(%{})
+        |> Ash.Changeset.for_create(:create, %{})
         |> Domain.create!()
 
       Post
-      |> Ash.Changeset.new(%{name: "foo"})
+      |> Ash.Changeset.for_create(:create, %{name: "foo"})
       |> Ash.Changeset.manage_relationship(:comments, comment, type: :append_and_remove)
       |> Domain.create!()
 
@@ -227,11 +227,11 @@ defmodule Ash.Test.NotifierTest do
     test "a create notification occurs for the join through relationship" do
       post =
         Post
-        |> Ash.Changeset.new(%{name: "foo"})
+        |> Ash.Changeset.for_create(:create, %{name: "foo"})
         |> Domain.create!()
 
       Post
-      |> Ash.Changeset.new(%{name: "foo"})
+      |> Ash.Changeset.for_create(:create, %{name: "foo"})
       |> Ash.Changeset.manage_relationship(:related_posts, [post], type: :append_and_remove)
       |> Domain.create!()
 
@@ -241,13 +241,13 @@ defmodule Ash.Test.NotifierTest do
     test "a destroy notification occurs for the join through relationship" do
       post =
         Post
-        |> Ash.Changeset.new(%{name: "foo"})
+        |> Ash.Changeset.for_create(:create, %{name: "foo"})
         |> Domain.create!()
 
       assert %{related_posts: [_]} =
                post =
                Post
-               |> Ash.Changeset.new(%{name: "foo"})
+               |> Ash.Changeset.for_create(:create, %{name: "foo"})
                |> Ash.Changeset.manage_relationship(:related_posts, [post],
                  type: :append_and_remove
                )
@@ -256,7 +256,7 @@ defmodule Ash.Test.NotifierTest do
 
       assert %{related_posts: []} =
                post
-               |> Ash.Changeset.new(%{})
+               |> Ash.Changeset.for_update(:update, %{})
                |> Ash.Changeset.manage_relationship(:related_posts, [], type: :append_and_remove)
                |> Domain.update!()
 

@@ -2,7 +2,6 @@ defmodule Ash.Test.Actions.ReadTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  import Ash.Changeset
   import Ash.Test
 
   require Ash.Query
@@ -92,7 +91,7 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       post =
         Post
-        |> new(%{title: "test", contents: "yeet"})
+        |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
         |> Domain.create!()
         |> strip_metadata()
 
@@ -144,7 +143,7 @@ defmodule Ash.Test.Actions.ReadTest do
   describe "around_transaction/2" do
     test "it runs around the action" do
       Post
-      |> new(%{title: "test", contents: "yeet"})
+      |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
       |> Domain.create!()
       |> strip_metadata()
 
@@ -171,14 +170,14 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       author1 =
         Author
-        |> new(%{name: "bruh"})
+        |> Ash.Changeset.for_create(:create, %{name: "bruh"})
         |> Domain.create!()
         |> strip_metadata()
 
       post =
         Post
-        |> new(%{title: "test", contents: "yeet"})
-        |> manage_relationship(:author1, author1, type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
+        |> Ash.Changeset.manage_relationship(:author1, author1, type: :append_and_remove)
         |> Domain.create!()
 
       %{post: post, author1: author1}
@@ -194,7 +193,7 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       post =
         Post
-        |> new(%{title: "test", contents: "yeet"})
+        |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
         |> Domain.create!()
         |> strip_metadata()
 
@@ -334,12 +333,12 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       post1 =
         Post
-        |> new(%{title: "test", contents: "yeet"})
+        |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
         |> Domain.create!()
 
       post2 =
         Post
-        |> new(%{title: "test1", contents: "yeet2"})
+        |> Ash.Changeset.for_create(:create, %{title: "test1", contents: "yeet2"})
         |> Domain.create!()
 
       %{post1: post1, post2: post2}
@@ -377,12 +376,12 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       post1 =
         Post
-        |> new(%{title: "test", contents: "yeet"})
+        |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
         |> Domain.create!()
 
       post2 =
         Post
-        |> new(%{title: "test1", contents: "yeet2"})
+        |> Ash.Changeset.for_create(:create, %{title: "test1", contents: "yeet2"})
         |> Domain.create!()
 
       %{post1: post1, post2: post2}
@@ -464,13 +463,13 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       post1 =
         Post
-        |> new(%{title: "test", contents: "yeet"})
+        |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
         |> Domain.create!()
         |> strip_metadata()
 
       post2 =
         Post
-        |> new(%{title: "test1", contents: "yeet"})
+        |> Ash.Changeset.for_create(:create, %{title: "test1", contents: "yeet"})
         |> Domain.create!()
         |> strip_metadata()
 
@@ -508,7 +507,7 @@ defmodule Ash.Test.Actions.ReadTest do
     test "it automatically selects all fields" do
       author =
         Author
-        |> new(%{name: "bruh"})
+        |> Ash.Changeset.for_create(:create, %{name: "bruh"})
         |> Domain.create!()
 
       assert author.name
@@ -517,7 +516,7 @@ defmodule Ash.Test.Actions.ReadTest do
 
     test "you can deselect a field" do
       Author
-      |> new(%{name: "bruh"})
+      |> Ash.Changeset.for_create(:create, %{name: "bruh"})
       |> Domain.create!()
 
       assert [%{name: "bruh"}] = Domain.read!(Author)
@@ -527,7 +526,7 @@ defmodule Ash.Test.Actions.ReadTest do
 
     test "deselected fields don't return nil" do
       Author
-      |> new(%{name: "bruh"})
+      |> Ash.Changeset.for_create(:create, %{name: "bruh"})
       |> Domain.create!()
 
       assert [%{name: "bruh"}] = Domain.read!(Author)
@@ -538,7 +537,7 @@ defmodule Ash.Test.Actions.ReadTest do
 
     test "you can select fields, but the primary key is always present" do
       Author
-      |> new(%{name: "bruh"})
+      |> Ash.Changeset.for_create(:create, %{name: "bruh"})
       |> Domain.create!()
 
       assert [%{name: "bruh", id: id}] = Domain.read!(Ash.Query.select(Author, :name))
@@ -550,19 +549,19 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       author1 =
         Author
-        |> new(%{name: "bruh"})
+        |> Ash.Changeset.for_create(:create, %{name: "bruh"})
         |> Domain.create!()
 
       author2 =
         Author
-        |> new(%{name: "bruh"})
+        |> Ash.Changeset.for_create(:create, %{name: "bruh"})
         |> Domain.create!()
 
       post =
         Post
-        |> new(%{title: "test", contents: "yeet"})
-        |> manage_relationship(:author1, author1, type: :append_and_remove)
-        |> manage_relationship(:author2, author2, type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
+        |> Ash.Changeset.manage_relationship(:author1, author1, type: :append_and_remove)
+        |> Ash.Changeset.manage_relationship(:author2, author2, type: :append_and_remove)
         |> Domain.create!()
 
       %{post: post, author1: author1, author2: author2}
@@ -587,13 +586,13 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       post1 =
         Post
-        |> new(%{title: "abc", contents: "abc"})
+        |> Ash.Changeset.for_create(:create, %{title: "abc", contents: "abc"})
         |> Domain.create!()
         |> strip_metadata()
 
       post2 =
         Post
-        |> new(%{title: "xyz", contents: "abc"})
+        |> Ash.Changeset.for_create(:create, %{title: "xyz", contents: "abc"})
         |> Domain.create!()
         |> strip_metadata()
 
@@ -625,7 +624,7 @@ defmodule Ash.Test.Actions.ReadTest do
     test "a nested sort sorts accordingly", %{post1: post1, post2: post2} do
       middle_post =
         Post
-        |> new(%{title: "abc", contents: "xyz"})
+        |> Ash.Changeset.for_create(:create, %{title: "abc", contents: "xyz"})
         |> Domain.create!()
         |> strip_metadata()
 
@@ -650,7 +649,7 @@ defmodule Ash.Test.Actions.ReadTest do
       post =
         Enum.map(0..2, fn _ ->
           Post
-          |> new(%{title: "test", contents: "yeet"})
+          |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
           |> Domain.create!()
           |> strip_metadata()
         end)
@@ -677,7 +676,7 @@ defmodule Ash.Test.Actions.ReadTest do
       post =
         Enum.map(0..2, fn _ ->
           Post
-          |> new(%{title: "test", contents: "yeet"})
+          |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
           |> Domain.create!()
           |> strip_metadata()
         end)

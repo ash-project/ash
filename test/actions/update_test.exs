@@ -224,11 +224,13 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows updating a record with valid attributes" do
       post =
         Post
-        |> Ash.Changeset.new(%{title: "foo", contents: "bar"})
+        |> Ash.Changeset.for_create(:create, %{title: "foo", contents: "bar"})
         |> Domain.create!()
 
       assert %Post{title: "bar", contents: "foo"} =
-               post |> Ash.Changeset.new(%{title: "bar", contents: "foo"}) |> Domain.update!()
+               post
+               |> Ash.Changeset.for_update(:update, %{title: "bar", contents: "foo"})
+               |> Domain.update!()
     end
   end
 
@@ -236,11 +238,13 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "the update occurs properly" do
       author =
         Author
-        |> Ash.Changeset.new(%{name: "auto"})
+        |> Ash.Changeset.for_create(:create, %{name: "auto"})
         |> Domain.create!()
 
       assert %Author{name: "manual"} =
-               author |> Ash.Changeset.new() |> Domain.update!(action: :manual_update)
+               author
+               |> Ash.Changeset.for_update(:update)
+               |> Domain.update!(action: :manual_update)
     end
   end
 
@@ -248,23 +252,23 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it does not allow updating a value to `nil` when `allow_nil?: false`" do
       profile =
         Profile
-        |> Ash.Changeset.new(%{bio: "foobar"})
+        |> Ash.Changeset.for_create(:create, %{bio: "foobar"})
         |> Domain.create!()
 
       assert_raise Ash.Error.Invalid, ~r/attribute bio is required/, fn ->
-        profile |> Ash.Changeset.new(%{bio: ""}) |> Domain.update!()
+        profile |> Ash.Changeset.for_update(:update, %{bio: ""}) |> Domain.update!()
       end
     end
 
     test "it does not allow updating a private attribute's value to `nil` when `allow_nil?: false`" do
       profile =
         Profile
-        |> Ash.Changeset.new(%{bio: "foobar"})
+        |> Ash.Changeset.for_create(:create, %{bio: "foobar"})
         |> Domain.create!()
 
       assert_raise Ash.Error.Invalid, ~r/attribute non_nil_private is required/, fn ->
         profile
-        |> Ash.Changeset.new(%{bio: "foobar"})
+        |> Ash.Changeset.for_update(:update, %{bio: "foobar"})
         |> Domain.update!(action: :set_private_attribute_to_nil)
       end
     end
@@ -272,12 +276,11 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it passes through an argument's value" do
       profile =
         Profile
-        |> Ash.Changeset.new(%{bio: "foobar"})
+        |> Ash.Changeset.for_create(:create, %{bio: "foobar"})
         |> Domain.create!()
 
       profile =
         profile
-        |> Ash.Changeset.new(%{bio: "foobar"})
         |> Ash.Changeset.for_update(:set_private_attribute_from_arg, %{private: "blah"})
         |> Domain.update!()
 
@@ -289,12 +292,12 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows selecting fields on the changeset" do
       post =
         Post
-        |> Ash.Changeset.new(%{title: "foo", contents: "bar"})
+        |> Ash.Changeset.for_create(:create, %{title: "foo", contents: "bar"})
         |> Domain.create!()
 
       assert %Post{title: "bar", contents: %Ash.NotLoaded{}} =
                post
-               |> Ash.Changeset.new(%{title: "bar", contents: "foo"})
+               |> Ash.Changeset.for_update(:update, %{title: "bar", contents: "foo"})
                |> Ash.Changeset.select(:title)
                |> Domain.update!()
     end
@@ -304,23 +307,23 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows attributes in the list" do
       author =
         Author
-        |> Ash.Changeset.new(%{name: "fred"})
+        |> Ash.Changeset.for_create(:create, %{name: "fred"})
         |> Domain.create!()
 
       author
-      |> Ash.Changeset.new(%{name: "joe"})
+      |> Ash.Changeset.for_update(:update, %{name: "joe"})
       |> Domain.update!(action: :only_allow_name)
     end
 
     test "does not allow attributes in the list" do
       author =
         Author
-        |> Ash.Changeset.new(%{name: "fred"})
+        |> Ash.Changeset.for_create(:create, %{name: "fred"})
         |> Domain.create!()
 
       assert_raise Ash.Error.Invalid, ~r/Invalid value provided for bio: cannot be changed/, fn ->
         author
-        |> Ash.Changeset.new(%{bio: "bio"})
+        |> Ash.Changeset.for_update(:update, %{bio: "bio"})
         |> Domain.update!(action: :only_allow_name)
       end
     end
@@ -330,7 +333,7 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "atomics can be added to a changeset" do
       author =
         Author
-        |> Ash.Changeset.new(%{name: "fred"})
+        |> Ash.Changeset.for_create(:create, %{name: "fred"})
         |> Domain.create!()
 
       author =
@@ -357,13 +360,13 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "changes are run properly" do
       author =
         Author
-        |> Ash.Changeset.new(%{name: "fred"})
+        |> Ash.Changeset.for_create(:create, %{name: "fred"})
         |> Domain.create!()
 
       author =
         author
-        |> Ash.Changeset.new(%{name: "joe"})
-        |> Domain.update!(action: :duplicate_name)
+        |> Ash.Changeset.for_update(:duplicate_name, %{name: "joe"})
+        |> Domain.update!()
 
       assert author.name == "joejoe"
     end
@@ -373,17 +376,17 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows updating with a many_to_many relationship" do
       post =
         Post
-        |> Ash.Changeset.new(%{title: "title"})
+        |> Ash.Changeset.for_create(:create, %{title: "title"})
         |> Domain.create!()
 
       post2 =
         Post
-        |> Ash.Changeset.new(%{title: "title2"})
+        |> Ash.Changeset.for_create(:create, %{title: "title2"})
         |> Domain.create!()
 
       post3 =
         Post
-        |> Ash.Changeset.new(%{title: "title3"})
+        |> Ash.Changeset.for_create(:create, %{title: "title3"})
         |> Domain.create!()
 
       post
@@ -397,7 +400,7 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows directly managing a many_to_many relationship" do
       post =
         Post
-        |> Ash.Changeset.new(%{title: "title"})
+        |> Ash.Changeset.for_create(:create, %{title: "title"})
         |> Ash.Changeset.manage_relationship(:related_posts, [%{title: "title0"}],
           type: :direct_control
         )
@@ -421,17 +424,17 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it updates the join resource properly" do
       post =
         Post
-        |> Ash.Changeset.new(%{title: "title"})
+        |> Ash.Changeset.for_create(:create, %{title: "title"})
         |> Domain.create!()
 
       post2 =
         Post
-        |> Ash.Changeset.new(%{title: "title2"})
+        |> Ash.Changeset.for_create(:create, %{title: "title2"})
         |> Domain.create!()
 
       post3 =
         Post
-        |> Ash.Changeset.new(%{title: "title3"})
+        |> Ash.Changeset.for_create(:create, %{title: "title3"})
         |> Domain.create!()
 
       post
@@ -447,17 +450,17 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it responds with the relationship filled in" do
       post =
         Post
-        |> Ash.Changeset.new(%{title: "title"})
+        |> Ash.Changeset.for_create(:create, %{title: "title"})
         |> Domain.create!()
 
       post2 =
         Post
-        |> Ash.Changeset.new(%{title: "title2"})
+        |> Ash.Changeset.for_create(:create, %{title: "title2"})
         |> Domain.create!()
 
       post3 =
         Post
-        |> Ash.Changeset.new(%{title: "title3"})
+        |> Ash.Changeset.for_create(:create, %{title: "title3"})
         |> Domain.create!()
 
       new_post =
@@ -479,17 +482,17 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it updates any join fields" do
       post =
         Post
-        |> Ash.Changeset.new(%{title: "title"})
+        |> Ash.Changeset.for_create(:create, %{title: "title"})
         |> Domain.create!()
 
       post2 =
         Post
-        |> Ash.Changeset.new(%{title: "title2"})
+        |> Ash.Changeset.for_create(:create, %{title: "title2"})
         |> Domain.create!()
 
       post3 =
         Post
-        |> Ash.Changeset.new(%{title: "title3"})
+        |> Ash.Changeset.for_create(:create, %{title: "title3"})
         |> Domain.create!()
 
       new_post =
@@ -536,17 +539,17 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows updating with has_one relationship" do
       profile =
         Profile
-        |> Ash.Changeset.new(%{bio: "best dude"})
+        |> Ash.Changeset.for_create(:create, %{bio: "best dude"})
         |> Domain.create!()
 
       profile2 =
         Profile
-        |> Ash.Changeset.new(%{bio: "second best dude"})
+        |> Ash.Changeset.for_create(:create, %{bio: "second best dude"})
         |> Domain.create!()
 
       author =
         Author
-        |> Ash.Changeset.new(%{name: "fred"})
+        |> Ash.Changeset.for_create(:create, %{name: "fred"})
         |> Ash.Changeset.manage_relationship(:profile, profile, type: :append_and_remove)
         |> Domain.create!()
 
@@ -559,17 +562,17 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it sets the relationship on the destination record accordingly" do
       profile =
         Profile
-        |> Ash.Changeset.new(%{bio: "best dude"})
+        |> Ash.Changeset.for_create(:create, %{bio: "best dude"})
         |> Domain.create!()
 
       profile2 =
         Profile
-        |> Ash.Changeset.new(%{bio: "second best dude"})
+        |> Ash.Changeset.for_create(:create, %{bio: "second best dude"})
         |> Domain.create!()
 
       author =
         Author
-        |> Ash.Changeset.new(%{name: "fred"})
+        |> Ash.Changeset.for_create(:create, %{name: "fred"})
         |> Ash.Changeset.manage_relationship(:profile, profile, type: :append_and_remove)
         |> Domain.create!()
 
@@ -585,17 +588,17 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it responds with the relationship filled in" do
       profile =
         Profile
-        |> Ash.Changeset.new(%{bio: "best dude"})
+        |> Ash.Changeset.for_create(:create, %{bio: "best dude"})
         |> Domain.create!()
 
       profile2 =
         Profile
-        |> Ash.Changeset.new(%{bio: "second best dude"})
+        |> Ash.Changeset.for_create(:create, %{bio: "second best dude"})
         |> Domain.create!()
 
       author =
         Author
-        |> Ash.Changeset.new(%{name: "fred"})
+        |> Ash.Changeset.for_create(:create, %{name: "fred"})
         |> Ash.Changeset.manage_relationship(:profile, profile, type: :append_and_remove)
         |> Domain.create!()
 
@@ -617,17 +620,17 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows updating with a has_many relationship" do
       post =
         Post
-        |> Ash.Changeset.new(%{title: "sup"})
+        |> Ash.Changeset.for_create(:create, %{title: "sup"})
         |> Domain.create!()
 
       post2 =
         Post
-        |> Ash.Changeset.new(%{title: "sup2"})
+        |> Ash.Changeset.for_create(:create, %{title: "sup2"})
         |> Domain.create!()
 
       author =
         Author
-        |> Ash.Changeset.new(%{name: "foobar"})
+        |> Ash.Changeset.for_create(:create, %{name: "foobar"})
         |> Ash.Changeset.manage_relationship(:posts, [post], type: :append_and_remove)
         |> Domain.create!()
 
@@ -640,17 +643,17 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it sets the relationship on the destination records accordingly" do
       post =
         Post
-        |> Ash.Changeset.new(%{title: "sup"})
+        |> Ash.Changeset.for_create(:create, %{title: "sup"})
         |> Domain.create!()
 
       post2 =
         Post
-        |> Ash.Changeset.new(%{title: "sup2"})
+        |> Ash.Changeset.for_create(:create, %{title: "sup2"})
         |> Domain.create!()
 
       author =
         Author
-        |> Ash.Changeset.new(%{name: "foobar"})
+        |> Ash.Changeset.for_create(:create, %{name: "foobar"})
         |> Ash.Changeset.manage_relationship(:posts, [post], type: :append_and_remove)
         |> Domain.create!()
 
@@ -667,17 +670,17 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it responds with the relationship field filled in" do
       post =
         Post
-        |> Ash.Changeset.new(%{title: "sup"})
+        |> Ash.Changeset.for_create(:create, %{title: "sup"})
         |> Domain.create!()
 
       post2 =
         Post
-        |> Ash.Changeset.new(%{title: "sup2"})
+        |> Ash.Changeset.for_create(:create, %{title: "sup2"})
         |> Domain.create!()
 
       author =
         Author
-        |> Ash.Changeset.new(%{name: "foobar"})
+        |> Ash.Changeset.for_create(:create, %{name: "foobar"})
         |> Ash.Changeset.manage_relationship(:posts, [post], type: :append_and_remove)
         |> Domain.create!()
 
@@ -699,17 +702,17 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "allows updating with belongs_to relationship" do
       author =
         Author
-        |> Ash.Changeset.new(%{name: "best dude"})
+        |> Ash.Changeset.for_create(:create, %{name: "best dude"})
         |> Domain.create!()
 
       author2 =
         Author
-        |> Ash.Changeset.new(%{name: "best dude2"})
+        |> Ash.Changeset.for_create(:create, %{name: "best dude2"})
         |> Domain.create!()
 
       post =
         Post
-        |> Ash.Changeset.new(%{title: "foobar"})
+        |> Ash.Changeset.for_create(:create, %{title: "foobar"})
         |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Domain.create!()
 
@@ -722,17 +725,17 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "sets the relationship on the destination records accordingly" do
       author =
         Author
-        |> Ash.Changeset.new(%{name: "best dude"})
+        |> Ash.Changeset.for_create(:create, %{name: "best dude"})
         |> Domain.create!()
 
       author2 =
         Author
-        |> Ash.Changeset.new(%{name: "best dude2"})
+        |> Ash.Changeset.for_create(:create, %{name: "best dude2"})
         |> Domain.create!()
 
       post =
         Post
-        |> Ash.Changeset.new(%{title: "foobar"})
+        |> Ash.Changeset.for_create(:create, %{title: "foobar"})
         |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Domain.create!()
 
@@ -751,17 +754,17 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it responds with the relationship field filled in" do
       author =
         Author
-        |> Ash.Changeset.new(%{name: "best dude"})
+        |> Ash.Changeset.for_create(:create, %{name: "best dude"})
         |> Domain.create!()
 
       author2 =
         Author
-        |> Ash.Changeset.new(%{name: "best dude2"})
+        |> Ash.Changeset.for_create(:create, %{name: "best dude2"})
         |> Domain.create!()
 
       post =
         Post
-        |> Ash.Changeset.new(%{title: "foobar"})
+        |> Ash.Changeset.for_create(:create, %{title: "foobar"})
         |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Domain.create!()
 
@@ -780,14 +783,14 @@ defmodule Ash.Test.Actions.UpdateTest do
     test "it does not update the record" do
       record =
         Authorized
-        |> Ash.Changeset.new(%{name: "bar"})
+        |> Ash.Changeset.for_create(:create, %{name: "bar"})
         |> Domain.create!()
 
       start_supervised({Ash.Test.Authorizer, check: :forbidden, strict_check: :continue})
 
       assert_raise(Ash.Error.Forbidden, fn ->
         record
-        |> Ash.Changeset.new(%{name: "foo"})
+        |> Ash.Changeset.for_update(:update, %{name: "foo"})
         |> Domain.update!(authorize?: true)
       end)
 
