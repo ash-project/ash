@@ -37,6 +37,10 @@ The function signature of `Ash.Query.Calculation.new` has been changed.  We use 
 
 This module has been renamed to `Ash.Resource.Calculation`. You will need to rename your references to it.
 
+#### Ash.Changeset
+
+`Ash.Changeset.new/2` has been removed. `Ash.Changeset.new/1` is still available for creating a new changeset, but attributes and arguments should, with few exceptions, be passed to the relevant `Ash.Changeset.for_<action_type>` functions, *not* to `Ash.Changeset.new/2`. Removing the second argument helps clarify the purpose of `Ash.Changeset.new/1`.
+
 #### Builtin Changes
 
 The functions provided to `after_action/1`, `after_transaction/1`, `before_transaction/1` and `before_action/1` must all now take an additional argument, which is the change context.
