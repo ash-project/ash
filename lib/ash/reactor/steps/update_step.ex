@@ -25,7 +25,7 @@ defmodule Ash.Reactor.UpdateStep do
       |> Changeset.for_update(options[:action], arguments[:input], changeset_options)
 
     changeset
-    |> options[:api].update(action_options)
+    |> options[:domain].update(action_options)
     |> case do
       {:ok, record} ->
         {:ok, store_changeset_in_metadata(context.current_step.name, record, changeset)}
@@ -57,7 +57,7 @@ defmodule Ash.Reactor.UpdateStep do
 
     record
     |> Changeset.for_update(options[:undo_action], attributes, changeset_options)
-    |> options[:api].update(action_options)
+    |> options[:domain].update(action_options)
     |> case do
       {:ok, _record} -> :ok
       {:ok, _record, _notifications} -> :ok

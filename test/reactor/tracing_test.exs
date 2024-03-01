@@ -2,13 +2,15 @@ defmodule Ash.Test.ReactorTracingTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, api: Ash.Test.AnyApi
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Domain
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string, allow_nil?: false
+      attribute :title, :string, allow_nil?: false, public?: true
     end
 
     actions do
@@ -27,7 +29,7 @@ defmodule Ash.Test.ReactorTracingTest do
     use Ash.Reactor
 
     ash do
-      default_api(Ash.Test.AnyApi)
+      default_domain(Domain)
     end
 
     create :create_post, Post, :create do
@@ -67,13 +69,13 @@ defmodule Ash.Test.ReactorTracingTest do
 
       assert [
                "changeset:post:create",
-               "any_api:post.create",
+               "domain:post.create",
                "query:post:by_id",
-               "any_api:post.by_id",
+               "domain:post.by_id",
                "changeset:post:update",
-               "any_api:post.update",
+               "domain:post.update",
                "changeset:post:destroy",
-               "any_api:post.destroy"
+               "domain:post.destroy"
              ] = Ash.Tracer.Simple.gather_spans() |> Enum.map(& &1.name)
     end
 
@@ -82,13 +84,13 @@ defmodule Ash.Test.ReactorTracingTest do
 
       assert [
                "changeset:post:create",
-               "any_api:post.create",
+               "domain:post.create",
                "query:post:by_id",
-               "any_api:post.by_id",
+               "domain:post.by_id",
                "changeset:post:update",
-               "any_api:post.update",
+               "domain:post.update",
                "changeset:post:destroy",
-               "any_api:post.destroy"
+               "domain:post.destroy"
              ] = Ash.Tracer.Simple.gather_spans() |> Enum.map(& &1.name)
     end
   end

@@ -4,6 +4,8 @@ defmodule Ash.Test.ReactorTest do
   use Mimic
   setup :set_mimic_global
 
+  alias Ash.Test.Domain
+
   test "it can be used directly" do
     defmodule DirectReactor do
       @moduledoc false
@@ -23,7 +25,7 @@ defmodule Ash.Test.ReactorTest do
   test "notifications are published when the reactor is successful" do
     defmodule Post do
       @moduledoc false
-      use Ash.Resource, data_layer: Ash.DataLayer.Ets, api: Ash.Test.AnyApi
+      use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Domain
 
       ets do
         private? true
@@ -31,7 +33,7 @@ defmodule Ash.Test.ReactorTest do
 
       attributes do
         uuid_primary_key :id
-        attribute :title, :string, allow_nil?: false
+        attribute :title, :string, allow_nil?: false, public?: true
       end
 
       actions do
@@ -46,7 +48,7 @@ defmodule Ash.Test.ReactorTest do
       input :title
 
       ash do
-        default_api(Ash.Test.AnyApi)
+        default_domain(Domain)
       end
 
       create :create_post, Ash.Test.ReactorTest.Post do

@@ -3,13 +3,15 @@ defmodule Ash.Test.Reactor.TransactionTest do
   use ExUnit.Case, async: false
   use Mimic
 
+  alias Ash.Test.Domain
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Mnesia, api: Ash.Test.AnyApi
+    use Ash.Resource, data_layer: Ash.DataLayer.Mnesia, domain: Domain
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string, allow_nil?: false
+      attribute :title, :string, allow_nil?: false, public?: true
     end
 
     actions do
@@ -19,7 +21,7 @@ defmodule Ash.Test.Reactor.TransactionTest do
 
   setup do
     ExUnit.CaptureLog.capture_log(fn ->
-      Ash.DataLayer.Mnesia.start(Ash.Test.AnyApi, [Post])
+      Ash.DataLayer.Mnesia.start(Domain, [Post])
     end)
 
     on_exit(fn ->
@@ -36,7 +38,7 @@ defmodule Ash.Test.Reactor.TransactionTest do
       use Ash.Reactor
 
       ash do
-        default_api(Ash.Test.AnyApi)
+        default_domain(Domain)
       end
 
       transaction :create_posts, Post do
@@ -59,7 +61,7 @@ defmodule Ash.Test.Reactor.TransactionTest do
       use Ash.Reactor
 
       ash do
-        default_api(Ash.Test.AnyApi)
+        default_domain(Domain)
       end
 
       transaction :create_posts, Post do
@@ -85,7 +87,7 @@ defmodule Ash.Test.Reactor.TransactionTest do
       use Ash.Reactor
 
       ash do
-        default_api(Ash.Test.AnyApi)
+        default_domain(Domain)
       end
 
       transaction :create_posts, Post do

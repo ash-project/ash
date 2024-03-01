@@ -11,9 +11,9 @@ defmodule Ash.Reactor do
     name: :ash,
     describe: "Ash-related configuration for the `Ash.Reactor` extension",
     schema: [
-      default_api: [
-        type: {:behaviour, Ash.Api},
-        doc: "A api to use by default when calling actions",
+      default_domain: [
+        type: {:behaviour, Ash.Domain},
+        doc: "A domain to use by default when calling actions",
         required: false
       ]
     ]

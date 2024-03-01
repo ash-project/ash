@@ -22,7 +22,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Create do
         create
         |> Map.take([
           :action,
-          :api,
+          :domain,
           :authorize?,
           :resource,
           :undo_action,

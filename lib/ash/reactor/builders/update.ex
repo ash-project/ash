@@ -21,7 +21,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Update do
 
       action_options =
         update
-        |> Map.take([:action, :api, :authorize?, :resource, :undo, :undo_action])
+        |> Map.take([:action, :domain, :authorize?, :resource, :undo, :undo_action])
         |> Enum.to_list()
 
       step_options =
