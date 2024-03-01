@@ -62,7 +62,7 @@ defmodule Ash.Test.Resource.ResourceTest do
 
   test "it returns the correct error when doing a read with no data layer setup" do
     Post
-    |> Ash.Changeset.new(%{name: "foo"})
+    |> Ash.Changeset.for_create(:create, %{name: "foo"})
     |> Domain.create()
 
     {_, error} = Domain.read(Post)

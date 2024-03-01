@@ -53,17 +53,15 @@ defmodule Ash.Test.Filter.ParentTest do
     end
   end
 
-  import Ash.Changeset
-
   test "exists/2 can use `parent` to refer to the root record" do
     author =
       User
-      |> new(%{name: "best"})
+      |> Ash.Changeset.for_create(:create, %{name: "best"})
       |> Domain.create!()
 
     Post
-    |> new(%{title: "best"})
-    |> manage_relationship(:author, author, type: :append_and_remove)
+    |> Ash.Changeset.for_create(:create, %{title: "best"})
+    |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
     |> Domain.create!()
 
     assert [_] =

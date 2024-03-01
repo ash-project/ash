@@ -606,7 +606,11 @@ defmodule Ash.Test.CalculationTest do
   setup do
     user1 =
       User
-      |> Ash.Changeset.new(%{first_name: "zach", last_name: "daniel", bio: %{greeting: "Yo! "}})
+      |> Ash.Changeset.for_create(:create, %{
+        first_name: "zach",
+        last_name: "daniel",
+        bio: %{greeting: "Yo! "}
+      })
       |> Domain.create!()
 
     admin_role =
@@ -626,7 +630,7 @@ defmodule Ash.Test.CalculationTest do
 
     user2 =
       User
-      |> Ash.Changeset.new(%{first_name: "brian", last_name: "cranston"})
+      |> Ash.Changeset.for_create(:create, %{first_name: "brian", last_name: "cranston"})
       |> Ash.Changeset.manage_relationship(:best_friend, user1, type: :append_and_remove)
       |> Ash.Changeset.manage_relationship(:friends, user1, type: :append_and_remove)
       |> Domain.create!()
@@ -677,17 +681,17 @@ defmodule Ash.Test.CalculationTest do
     user =
       User
       |> Ash.Changeset.for_create(:create, %{first_name: "zach"})
-      |> Api.create!()
+      |> Domain.create!()
 
     Role
     |> Ash.Changeset.for_create(:create, %{user_id: user.id})
-    |> Api.create!()
+    |> Domain.create!()
 
     assert [%{user_name: "zach"}] =
              Role
              |> Ash.Query.for_read(:by_user_name, %{user_name: "zach"}, actor: actor)
              |> Ash.Query.load(:user_name)
-             |> Api.read!()
+             |> Domain.read!()
   end
 
   test "calculations that depend on relationships directly can be loaded from elsewhere", %{
@@ -871,7 +875,7 @@ defmodule Ash.Test.CalculationTest do
 
   test "the `if` calculation resolves the first expr when true, and the second when false" do
     User
-    |> Ash.Changeset.new(%{first_name: "bob"})
+    |> Ash.Changeset.for_create(:create, %{first_name: "bob"})
     |> Domain.create!()
 
     full_names =
@@ -886,7 +890,7 @@ defmodule Ash.Test.CalculationTest do
 
   test "the `if` calculation can use the `do` style syntax" do
     User
-    |> Ash.Changeset.new(%{first_name: "bob"})
+    |> Ash.Changeset.for_create(:create, %{first_name: "bob"})
     |> Domain.create!()
 
     full_names =
@@ -901,7 +905,7 @@ defmodule Ash.Test.CalculationTest do
 
   test "the `if` calculation can use the `cond` style syntax" do
     User
-    |> Ash.Changeset.new(%{first_name: "bob"})
+    |> Ash.Changeset.for_create(:create, %{first_name: "bob"})
     |> Domain.create!()
 
     full_names =
@@ -916,7 +920,7 @@ defmodule Ash.Test.CalculationTest do
 
   test "expression based calculations can handle lists of fields" do
     User
-    |> Ash.Changeset.new(%{first_name: "bob"})
+    |> Ash.Changeset.for_create(:create, %{first_name: "bob"})
     |> Domain.create!()
 
     full_names =
@@ -955,7 +959,11 @@ defmodule Ash.Test.CalculationTest do
     user1: %{id: user1_id} = user1
   } do
     User
-    |> Ash.Changeset.new(%{first_name: "chidi", last_name: "anagonye", special: true})
+    |> Ash.Changeset.for_create(:create, %{
+      first_name: "chidi",
+      last_name: "anagonye",
+      special: true
+    })
     |> Ash.Changeset.manage_relationship(:best_friend, user1, type: :append_and_remove)
     |> Domain.create!()
 
@@ -986,7 +994,11 @@ defmodule Ash.Test.CalculationTest do
          user1: %{id: user1_id} = user1
        } do
     User
-    |> Ash.Changeset.new(%{first_name: "chidi", last_name: "anagonye", special: true})
+    |> Ash.Changeset.for_create(:create, %{
+      first_name: "chidi",
+      last_name: "anagonye",
+      special: true
+    })
     |> Ash.Changeset.manage_relationship(:best_friend, user1, type: :append_and_remove)
     |> Domain.create!()
 

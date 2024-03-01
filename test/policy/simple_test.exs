@@ -7,13 +7,14 @@ defmodule Ash.Test.Policy.SimpleTest do
 
   setup do
     [
-      user: Domain.create!(Ash.Changeset.new(User), authorize?: false),
-      admin: Domain.create!(Ash.Changeset.new(User, %{admin: true}), authorize?: false)
+      user: Domain.create!(Ash.Changeset.for_create(User, :create), authorize?: false),
+      admin:
+        Domain.create!(Ash.Changeset.for_create(User, :create, %{admin: true}), authorize?: false)
     ]
   end
 
   test "bypass with condition does not apply subsequent filters", %{admin: admin, user: user} do
-    Domain.create!(Ash.Changeset.new(Tweet), authorize?: false)
+    Domain.create!(Ash.Changeset.for_create(Tweet, :create), authorize?: false)
 
     assert [_] = Domain.read!(Tweet, actor: admin)
     assert [] = Domain.read!(Tweet, actor: user)
@@ -48,10 +49,10 @@ defmodule Ash.Test.Policy.SimpleTest do
   end
 
   test "filter checks work on create/update/destroy actions", %{user: user} do
-    user2 = Domain.create!(Ash.Changeset.new(User), authorize?: false)
+    user2 = Domain.create!(Ash.Changeset.for_create(User, :create), authorize?: false)
 
     assert_raise Ash.Error.Forbidden, fn ->
-      Domain.update!(Ash.Changeset.new(user), actor: user2)
+      Domain.update!(Ash.Changeset.for_update(user, :update), actor: user2)
     end
   end
 
@@ -77,10 +78,10 @@ defmodule Ash.Test.Policy.SimpleTest do
   end
 
   test "non-filter checks work on create/update/destroy actions" do
-    user = Domain.create!(Ash.Changeset.new(User), authorize?: false)
+    user = Domain.create!(Ash.Changeset.for_create(User, :create), authorize?: false)
 
     assert_raise Ash.Error.Forbidden, fn ->
-      Domain.create!(Ash.Changeset.new(Post, %{text: "foo"}), actor: user)
+      Domain.create!(Ash.Changeset.for_create(Post, :create, %{text: "foo"}), actor: user)
     end
   end
 
@@ -148,19 +149,19 @@ defmodule Ash.Test.Policy.SimpleTest do
 
   test "calculations that reference aggregates are properly authorized", %{user: user} do
     Car
-    |> Ash.Changeset.for_create(:create, %{users: [user.id], active: false})
-    |> Api.create!()
+    |> Ash.Changeset.for_create(:create, %{users: [user.id], active: false}, authorize?: false)
+    |> Domain.create!()
 
     :timer.sleep(2)
 
     assert %{restricted_from_driving: false, has_car: true} =
              user
-             |> Api.load!([:restricted_from_driving, :has_car], authorize?: false)
+             |> Domain.load!([:restricted_from_driving, :has_car], authorize?: false)
              |> Map.take([:restricted_from_driving, :has_car])
 
     assert %{restricted_from_driving: true, has_car: false} =
              user
-             |> Api.load!([:restricted_from_driving, :has_car], authorize?: true)
+             |> Domain.load!([:restricted_from_driving, :has_car], authorize?: true)
              |> Map.take([:restricted_from_driving, :has_car])
   end
 

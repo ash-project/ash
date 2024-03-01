@@ -81,7 +81,7 @@ defmodule Ash.DataLayer.EtsTest do
     assert [{%{id: ^id}, %EtsTestUser{id: ^id, name: "Mike"}}] = user_table()
 
     user
-    |> Ash.Changeset.new(name: "Joe")
+    |> Ash.Changeset.for_update(:update, %{name: "Joe"})
     |> Domain.update!()
 
     assert [{%{id: ^id}, %EtsTestUser{name: "Joe", id: ^id}}] = user_table()
@@ -239,7 +239,7 @@ defmodule Ash.DataLayer.EtsTest do
 
   defp create_user(attrs, opts \\ []) do
     EtsTestUser
-    |> Ash.Changeset.new(attrs)
+    |> Ash.Changeset.for_create(:create, attrs)
     |> Domain.create!(opts)
     |> strip_metadata()
   end

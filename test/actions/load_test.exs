@@ -340,8 +340,6 @@ defmodule Ash.Test.Actions.LoadTest do
     end
   end
 
-  import Ash.Changeset
-
   setup do
     start_supervised(
       {Ash.Test.Authorizer,
@@ -357,16 +355,16 @@ defmodule Ash.Test.Actions.LoadTest do
     test "it allows loading manual relationships" do
       post1 =
         Post
-        |> new(%{title: "post1", category: "foo"})
+        |> Ash.Changeset.for_create(:create, %{title: "post1", category: "foo"})
         |> Domain.create!()
 
       Post
-      |> new(%{title: "post2", category: "bar"})
+      |> Ash.Changeset.for_create(:create, %{title: "post2", category: "bar"})
       |> Domain.create!()
 
       post3 =
         Post
-        |> new(%{title: "post2", category: "foo"})
+        |> Ash.Changeset.for_create(:create, %{title: "post2", category: "foo"})
         |> Domain.create!()
 
       post3_id = post3.id
@@ -380,16 +378,16 @@ defmodule Ash.Test.Actions.LoadTest do
     test "parent expressions can be used for complex constraints" do
       post1 =
         Post
-        |> new(%{title: "post1", category: "foo"})
+        |> Ash.Changeset.for_create(:create, %{title: "post1", category: "foo"})
         |> Domain.create!()
 
       post1_same =
         Post
-        |> new(%{title: "post1", category: "bar"})
+        |> Ash.Changeset.for_create(:create, %{title: "post1", category: "bar"})
         |> Domain.create!()
 
       Post
-      |> new(%{title: "post2", category: "baz"})
+      |> Ash.Changeset.for_create(:create, %{title: "post2", category: "baz"})
       |> Domain.create!()
 
       post1_same_id = post1_same.id
@@ -403,16 +401,16 @@ defmodule Ash.Test.Actions.LoadTest do
     test "it allows loading through manual relationships" do
       post1 =
         Post
-        |> new(%{title: "post1", category: "foo"})
+        |> Ash.Changeset.for_create(:create, %{title: "post1", category: "foo"})
         |> Domain.create!()
 
       Post
-      |> new(%{title: "post2", category: "bar"})
+      |> Ash.Changeset.for_create(:create, %{title: "post2", category: "bar"})
       |> Domain.create!()
 
       post3 =
         Post
-        |> new(%{title: "post2", category: "foo"})
+        |> Ash.Changeset.for_create(:create, %{title: "post2", category: "foo"})
         |> Domain.create!()
 
       post3_id = post3.id
@@ -426,11 +424,11 @@ defmodule Ash.Test.Actions.LoadTest do
     test "it uses `Comp.equal?/2` to support things like ci_string foreign keys" do
       author =
         Author
-        |> new(%{name: "zerg", campaign_name: "FrEd"})
+        |> Ash.Changeset.for_create(:create, %{name: "zerg", campaign_name: "FrEd"})
         |> Domain.create!()
 
       Campaign
-      |> new(%{name: "fReD"})
+      |> Ash.Changeset.for_create(:create, %{name: "fReD"})
       |> Domain.create!()
 
       assert %{
@@ -442,17 +440,17 @@ defmodule Ash.Test.Actions.LoadTest do
     test "it allows loading data" do
       author =
         Author
-        |> new(%{name: "zerg"})
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
         |> Domain.create!()
 
       post1 =
         Post
-        |> new(%{title: "post1", author_id: author.id})
+        |> Ash.Changeset.for_create(:create, %{title: "post1", author_id: author.id})
         |> Domain.create!()
 
       post2 =
         Post
-        |> new(%{title: "post2", author_id: author.id})
+        |> Ash.Changeset.for_create(:create, %{title: "post2", author_id: author.id})
         |> Domain.create!()
 
       assert [fetched_post1, fetched_post2] =
@@ -466,17 +464,17 @@ defmodule Ash.Test.Actions.LoadTest do
     test "it allows loading nested related data" do
       author =
         Author
-        |> new(%{name: "zerg"})
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
         |> Domain.create!()
 
       post1 =
         Post
-        |> new(%{title: "post1", author_id: author.id})
+        |> Ash.Changeset.for_create(:create, %{title: "post1", author_id: author.id})
         |> Domain.create!()
 
       post2 =
         Post
-        |> new(%{title: "post2", author_id: author.id})
+        |> Ash.Changeset.for_create(:create, %{title: "post2", author_id: author.id})
         |> Domain.create!()
 
       [author] =
@@ -496,18 +494,18 @@ defmodule Ash.Test.Actions.LoadTest do
     test "unloading related data sets it back to `%Ash.NotLoaded{}`" do
       author =
         Author
-        |> new(%{name: "zerg"})
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
         |> Domain.create!()
 
       post1 =
         Post
-        |> new(%{title: "post1"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "post1"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Domain.create!()
 
       Post
-      |> new(%{title: "post2"})
-      |> manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.Changeset.for_create(:create, %{title: "post2"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
       |> Domain.create!()
 
       [author] =
@@ -527,17 +525,17 @@ defmodule Ash.Test.Actions.LoadTest do
     test "loading something does not unload previously loaded things" do
       author =
         Author
-        |> new(%{name: "zerg"})
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
         |> Domain.create!()
 
       Post
-      |> new(%{title: "post1"})
-      |> manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.Changeset.for_create(:create, %{title: "post1"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
       |> Domain.create!()
 
       Post
-      |> new(%{title: "post2"})
-      |> manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.Changeset.for_create(:create, %{title: "post2"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
       |> Domain.create!()
 
       [author] =
@@ -553,19 +551,19 @@ defmodule Ash.Test.Actions.LoadTest do
     test "loading something already loaded still loads it unless lazy?: true" do
       author =
         Author
-        |> new(%{name: "zerg"})
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
         |> Domain.create!()
 
       post1 =
         Post
-        |> new(%{title: "post1"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "post1"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Domain.create!()
 
       post2 =
         Post
-        |> new(%{title: "post2"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "post2"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Domain.create!()
 
       [author] =
@@ -583,8 +581,8 @@ defmodule Ash.Test.Actions.LoadTest do
 
       post3 =
         Post
-        |> new(%{title: "post3"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "post3"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Domain.create!()
 
       author =
@@ -599,8 +597,8 @@ defmodule Ash.Test.Actions.LoadTest do
       end
 
       Post
-      |> new(%{title: "post4"})
-      |> manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.Changeset.for_create(:create, %{title: "post4"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
       |> Domain.create!()
 
       author =
@@ -618,18 +616,18 @@ defmodule Ash.Test.Actions.LoadTest do
     test "nested lazy loads work" do
       author =
         Author
-        |> new(%{name: "zerg"})
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
         |> Domain.create!()
 
       post1 =
         Post
-        |> new(%{title: "post1"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "post1"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Domain.create!()
 
       Post
-      |> new(%{title: "post2"})
-      |> manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.Changeset.for_create(:create, %{title: "post2"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
       |> Domain.create!()
 
       author =
@@ -656,19 +654,19 @@ defmodule Ash.Test.Actions.LoadTest do
     test "it allows loading across domains" do
       author =
         Author
-        |> new(%{name: "zerg"})
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
         |> Domain.create!()
 
       post =
         Post
-        |> new(%{title: "post1"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "post1"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Domain.create!()
 
       rating =
         Rating
-        |> new(%{rating: 10})
-        |> manage_relationship(:post, post, type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{rating: 10})
+        |> Ash.Changeset.manage_relationship(:post, post, type: :append_and_remove)
         |> Domain2.create!()
 
       assert [loaded_rating] =
@@ -684,18 +682,20 @@ defmodule Ash.Test.Actions.LoadTest do
     test "it allows loading many to many relationships" do
       category1 =
         Category
-        |> new(%{name: "lame"})
+        |> Ash.Changeset.for_create(:create, %{name: "lame"})
         |> Domain.create!()
 
       category2 =
         Category
-        |> new(%{name: "cool"})
+        |> Ash.Changeset.for_create(:create, %{name: "cool"})
         |> Domain.create!()
 
       post =
         Post
-        |> new(%{title: "post1"})
-        |> manage_relationship(:categories, [category1, category2], type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "post1"})
+        |> Ash.Changeset.manage_relationship(:categories, [category1, category2],
+          type: :append_and_remove
+        )
         |> Domain.create!()
 
       [post] =
@@ -712,18 +712,20 @@ defmodule Ash.Test.Actions.LoadTest do
     test "it allows loading nested many to many relationships lazily" do
       category1 =
         Category
-        |> new(%{name: "lame"})
+        |> Ash.Changeset.for_create(:create, %{name: "lame"})
         |> Domain.create!()
 
       category2 =
         Category
-        |> new(%{name: "cool"})
+        |> Ash.Changeset.for_create(:create, %{name: "cool"})
         |> Domain.create!()
 
       post =
         Post
-        |> new(%{title: "post1"})
-        |> manage_relationship(:categories, [category1, category2], type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "post1"})
+        |> Ash.Changeset.manage_relationship(:categories, [category1, category2],
+          type: :append_and_remove
+        )
         |> Domain.create!()
 
       assert [_] =
@@ -743,18 +745,20 @@ defmodule Ash.Test.Actions.LoadTest do
     test "it allows loading many to many relationships after the fact" do
       category1 =
         Category
-        |> new(%{name: "lame"})
+        |> Ash.Changeset.for_create(:create, %{name: "lame"})
         |> Domain.create!()
 
       category2 =
         Category
-        |> new(%{name: "cool"})
+        |> Ash.Changeset.for_create(:create, %{name: "cool"})
         |> Domain.create!()
 
       post =
         Post
-        |> new(%{title: "post1"})
-        |> manage_relationship(:categories, [category1, category2], type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "post1"})
+        |> Ash.Changeset.manage_relationship(:categories, [category1, category2],
+          type: :append_and_remove
+        )
         |> Domain.create!()
 
       post = Post.get_by_id!(post.id, load: [:categories])
@@ -775,18 +779,20 @@ defmodule Ash.Test.Actions.LoadTest do
     test "it allows loading nested many to many relationships" do
       category1 =
         Category
-        |> new(%{name: "lame"})
+        |> Ash.Changeset.for_create(:create, %{name: "lame"})
         |> Domain.create!()
 
       category2 =
         Category
-        |> new(%{name: "cool"})
+        |> Ash.Changeset.for_create(:create, %{name: "cool"})
         |> Domain.create!()
 
       post =
         Post
-        |> new(%{title: "post1"})
-        |> manage_relationship(:categories, [category1, category2], type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "post1"})
+        |> Ash.Changeset.manage_relationship(:categories, [category1, category2],
+          type: :append_and_remove
+        )
         |> Domain.create!()
 
       [post] =
@@ -803,18 +809,18 @@ defmodule Ash.Test.Actions.LoadTest do
     test "it loads sorted relationships in the proper order" do
       author =
         Author
-        |> new(%{name: "zerg"})
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
         |> Domain.create!()
 
       Post
-      |> new(%{title: "post1"})
-      |> manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.Changeset.for_create(:create, %{title: "post1"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
       |> Domain.create!()
 
       post2 =
         Post
-        |> new(%{title: "post2"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "post2"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Domain.create!()
 
       [author] =
@@ -844,7 +850,7 @@ defmodule Ash.Test.Actions.LoadTest do
 
     test "can load calculations through nil attributes" do
       Author
-      |> new(%{name: "zerg"})
+      |> Ash.Changeset.for_create(:create, %{name: "zerg"})
       |> Domain.create!()
 
       assert [%{bio: nil}] =

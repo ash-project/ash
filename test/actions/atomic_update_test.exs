@@ -73,7 +73,7 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
   test "atomics can be added to a changeset" do
     author =
       Author
-      |> Ash.Changeset.new(%{name: "fred"})
+      |> Ash.Changeset.for_create(:create, %{name: "fred"})
       |> Domain.create!()
 
     author =
@@ -105,50 +105,17 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
   test "policies that require original data" do
     author =
       Author
-      |> Ash.Changeset.new(%{name: "fred", score: 0})
+      |> Ash.Changeset.for_create(:create, %{name: "fred", score: 0})
       |> Domain.create!()
 
     assert Author.increment_score!(author, authorize?: true).score == 1
   end
 
-  # ets doesn't support atomics, so we can't do this here
-  # test "an action that cannot be done fully atomically raises an error at runtime" do
-  #   author =
-  #     Author
-  #     |> Ash.Changeset.new(%{name: "fred", score: 0})
-  #     |> Domain.create!()
-
-  #   assert_raise Ash.Error.Framework, ~r/must be performed atomically/, fn ->
-  #     Author.sometimes_atomic!(author, %{atomic: false})
-  #   end
-  # end
-
-  # See the note in `Ash.Resource.Verifiers.VerifyActionsAtomic` for why we can't introduce
-  # this yet.
-  # test "resource compilation fails if an action is known to not be able to be made atomic" do
-  #   assert_raise Spark.Error.DslError, ~r/can never be done atomically/, fn ->
-  #     defmodule ExampleNonAtomic do
-  #       use Ash.Resource
-
-  #       attributes do
-  #         uuid_primary_key :id
-  #       end
-
-  #       actions do
-  #         update :update do
-  #           require_atomic? true
-  #           change NotAtomic
-  #         end
-  #       end
-  #     end
-  #   end
-  # end
-
   describe "increment/1" do
     test "it increments the value, honoring overflow" do
       author =
         Author
-        |> Ash.Changeset.new(%{name: "fred", score: 0})
+        |> Ash.Changeset.for_create(:create, %{name: "fred", score: 0})
         |> Domain.create!()
 
       assert Author.increment_score!(author).score == 1

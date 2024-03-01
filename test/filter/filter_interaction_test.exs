@@ -104,8 +104,6 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     end
   end
 
-  import Ash.Changeset
-
   setup do
     capture_log(fn ->
       Mnesia.start(Domain, [Post, PostLink])
@@ -122,13 +120,13 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
   test "mnesia data layer sanity test" do
     post =
       Post
-      |> new(%{title: "best"})
+      |> Ash.Changeset.for_create(:create, %{title: "best"})
       |> Domain.create!()
       |> strip_metadata()
 
     assert [^post] = strip_metadata(Domain.read!(Post))
 
-    post |> new(%{title: "worst"}) |> Domain.update!()
+    post |> Ash.Changeset.for_update(:update, %{title: "worst"}) |> Domain.update!()
 
     new_post = %{post | title: "worst"}
 
@@ -143,19 +141,19 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     test "it properly filters with a simple filter" do
       author =
         User
-        |> new(%{name: "best author"})
+        |> Ash.Changeset.for_create(:create, %{name: "best author"})
         |> Domain.create!()
 
       post1 =
         Post
-        |> new(%{title: "best"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "best"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Domain.create!()
 
       post1_id = post1.id
 
       Post
-      |> new(%{title: "worst"})
+      |> Ash.Changeset.for_create(:create, %{title: "worst"})
       |> Domain.create!()
 
       query =
@@ -168,17 +166,17 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     test "parallelizable filtering of related resources with a data layer that cannot join" do
       post2 =
         Post
-        |> new(%{title: "two"})
+        |> Ash.Changeset.for_create(:create, %{title: "two"})
         |> Domain.create!()
 
       Post
-      |> new(%{title: "three"})
+      |> Ash.Changeset.for_create(:create, %{title: "three"})
       |> Domain.create!()
 
       post1 =
         Post
-        |> new(%{title: "one"})
-        |> manage_relationship(:related_posts, [post2], type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "one"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [post2], type: :append_and_remove)
         |> Domain.create!()
 
       query =
@@ -193,18 +191,20 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     test "parallelizable filter with filtered loads" do
       post2 =
         Post
-        |> new(%{title: "two"})
+        |> Ash.Changeset.for_create(:create, %{title: "two"})
         |> Domain.create!()
 
       post3 =
         Post
-        |> new(%{title: "three"})
+        |> Ash.Changeset.for_create(:create, %{title: "three"})
         |> Domain.create!()
 
       post1 =
         Post
-        |> new(%{title: "one"})
-        |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "one"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [post2, post3],
+          type: :append_and_remove
+        )
         |> Domain.create!()
 
       post2
@@ -229,23 +229,25 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     test "exists/2 in the same data layer" do
       post2 =
         Post
-        |> new(%{title: "two"})
+        |> Ash.Changeset.for_create(:create, %{title: "two"})
         |> Domain.create!()
 
       post3 =
         Post
-        |> new(%{title: "three"})
+        |> Ash.Changeset.for_create(:create, %{title: "three"})
         |> Domain.create!()
 
       post1 =
         Post
-        |> new(%{title: "one"})
-        |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "one"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [post2, post3],
+          type: :append_and_remove
+        )
         |> Domain.create!()
 
       Post
-      |> new(%{title: "four"})
-      |> manage_relationship(:related_posts, [post3], type: :append_and_remove)
+      |> Ash.Changeset.for_create(:create, %{title: "four"})
+      |> Ash.Changeset.manage_relationship(:related_posts, [post3], type: :append_and_remove)
       |> Domain.create!()
 
       post2
@@ -263,25 +265,25 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     test "exists/2 across data layers" do
       author =
         User
-        |> new(%{name: "best author"})
+        |> Ash.Changeset.for_create(:create, %{name: "best author"})
         |> Domain.create!()
 
       author2 =
         User
-        |> new(%{name: "worst author"})
+        |> Ash.Changeset.for_create(:create, %{name: "worst author"})
         |> Domain.create!()
 
       post1 =
         Post
-        |> new(%{title: "best"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.for_create(:create, %{title: "best"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Domain.create!()
 
       post1_id = post1.id
 
       Post
-      |> new(%{title: "worst"})
-      |> manage_relationship(:author, author2, type: :append_and_remove)
+      |> Ash.Changeset.for_create(:create, %{title: "worst"})
+      |> Ash.Changeset.manage_relationship(:author, author2, type: :append_and_remove)
       |> Domain.create!()
 
       query = Ash.Query.filter(Post, exists(author, contains(name, "best")))
