@@ -106,7 +106,7 @@ end
 
 ### `private?: true` -> `public?: true`
 
-There is no longer a `private?` option for attributes, relationships, calculations and aggregates. Instead of attributes defaulting to `private?: false`, they now default to `public?: false`. It was too easy to add an attribute and not realize that you had exposed it over your api.
+There is no longer a `private?` option for attributes, relationships, calculations and aggregates. Instead of attributes defaulting to `private?: false`, they now default to `public?: false`. It was too easy to add an attribute and not realize that you had exposed it over your api. One 
 
 #### What you'll need to change
 

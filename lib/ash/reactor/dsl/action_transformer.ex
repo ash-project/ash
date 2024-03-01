@@ -35,8 +35,8 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
   end
 
   defp transform_step(entity, dsl_state) when entity.action_step? do
-    with {:ok, entity} <- transform_entity_api(entity, dsl_state),
-         :ok <- validate_entity_api(entity, dsl_state),
+    with {:ok, entity} <- transform_entity_domain(entity, dsl_state),
+         :ok <- validate_entity_domain(entity, dsl_state),
          :ok <- validate_entity_resource(entity, dsl_state),
          {:ok, action} <- get_entity_resource_action(entity, dsl_state),
          entity <- %{entity | action: action.name},
@@ -77,19 +77,17 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
     end
   end
 
-  defp transform_nested_steps(entity, dsl_state), do: {:ok, entity, dsl_state}
+  defp transform_nested_steps(entity, dsl_state),
+    do:
+      {:ok, entity, dsl_state} <
+        defp(transform_entity_domain(entity, dsl_state)) do
+    default_domain = Transformer.get_option(dsl_state, [:ash], :default_domain)
 
-  defp transform_entity_api(entity, dsl_state) do
-    default_api = Transformer.get_option(dsl_state, [:ash], :default_api)
-    resource_api = Ash.Resource.Info.api(entity.resource)
-
-    api = entity.api || resource_api || default_api
-
-    {:ok, %{entity | api: api}}
+    {:ok, %{entity | domain: entity.domain || default_domain}}
   end
 
-  defp validate_entity_api(entity, dsl_state) do
-    if entity.api.spark_is() == Ash.Api do
+  defp validate_entity_domain(entity, dsl_state) do
+    if entity.domain.spark_is() == Ash.Domain do
       :ok
     else
       {:error,
@@ -97,7 +95,7 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
          module: Transformer.get_entities(dsl_state, :module),
          path: [:reactor, entity.type, entity.name],
          message:
-           "The #{entity.type} step `#{inspect(entity.name)}` has its api set to `#{inspect(entity.api)}` but it is not a valid `Ash.Api`."
+           "The #{entity.type} step `#{inspect(entity.name)}` has its domain set to `#{inspect(entity.domain)}` but it is not a valid `Ash.Domain`."
        )}
     end
   end

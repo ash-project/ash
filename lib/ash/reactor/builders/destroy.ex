@@ -23,7 +23,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Destroy do
         destroy
         |> Map.take([
           :action,
-          :api,
+          :domain,
           :authorize?,
           :resource,
           :return_destroyed?,
