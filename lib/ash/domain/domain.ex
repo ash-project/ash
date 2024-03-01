@@ -1630,7 +1630,7 @@ defmodule Ash.Domain do
   Over this:
   `Api.aggregate(query, Ash.Query.Aggregate.new(...))`
 
-  #{Spark.OptionsHelpers.docs(@aggregate_opts)}
+  #{Spark.Options.docs(@aggregate_opts)}
   """
   @callback aggregate(
               Ash.Query.t(),

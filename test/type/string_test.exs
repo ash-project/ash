@@ -36,12 +36,10 @@ defmodule Ash.Test.Type.StringTest do
     end
   end
 
-  import Ash.Changeset
-
   test "it handles non-empty values" do
     post =
       Post
-      |> new(%{
+      |> Ash.Changeset.for_create(:create, %{
         string_a: "  foo  ",
         string_b: "  foo  ",
         string_c: "  bar  ",
@@ -58,7 +56,7 @@ defmodule Ash.Test.Type.StringTest do
   test "it handles empty values" do
     post =
       Post
-      |> new(%{
+      |> Ash.Changeset.for_create(:create, %{
         string_a: " ",
         string_b: " ",
         string_c: " ",
@@ -80,7 +78,7 @@ defmodule Ash.Test.Type.StringTest do
 
     Enum.each(allowed_values, fn {e_val, f_val} ->
       Post
-      |> new(%{string_e: e_val, string_f: f_val})
+      |> Ash.Changeset.for_create(:create, %{string_e: e_val, string_f: f_val})
       |> Domain.create!()
     end)
   end
@@ -88,13 +86,13 @@ defmodule Ash.Test.Type.StringTest do
   test "it handles too short values with length constraints" do
     assert_raise(Ash.Error.Invalid, ~r/string_e: length must be greater/, fn ->
       Post
-      |> new(%{string_e: "   45   "})
+      |> Ash.Changeset.for_create(:create, %{string_e: "   45   "})
       |> Domain.create!()
     end)
 
     assert_raise(Ash.Error.Invalid, ~r/string_f: length must be greater/, fn ->
       Post
-      |> new(%{string_f: "12"})
+      |> Ash.Changeset.for_create(:create, %{string_f: "12"})
       |> Domain.create!()
     end)
   end
@@ -102,13 +100,13 @@ defmodule Ash.Test.Type.StringTest do
   test "it handles too long values with length constraints" do
     assert_raise(Ash.Error.Invalid, ~r/string_e: length must be less/, fn ->
       Post
-      |> new(%{string_e: "1234567"})
+      |> Ash.Changeset.for_create(:create, %{string_e: "1234567"})
       |> Domain.create!()
     end)
 
     assert_raise(Ash.Error.Invalid, ~r/string_f: length must be less/, fn ->
       Post
-      |> new(%{string_f: "   45   "})
+      |> Ash.Changeset.for_create(:create, %{string_f: "   45   "})
       |> Domain.create!()
     end)
   end

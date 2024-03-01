@@ -98,12 +98,12 @@ defmodule Ash.Test.Policy.SelectingTest do
   test "owner can can select forbidden field on related resource" do
     parent =
       Parent
-      |> Ash.Changeset.new(%{owner_id: "owner", guest_id: "guest"})
+      |> Ash.Changeset.for_create(:create, %{owner_id: "owner", guest_id: "guest"})
       |> Ash.Changeset.for_create(:create)
       |> Domain.create!(authorize?: false)
 
     OwnerOnlyResource
-    |> Ash.Changeset.new(%{parent_id: parent.id, state: "active"})
+    |> Ash.Changeset.for_create(:create, %{parent_id: parent.id, state: "active"})
     |> Ash.Changeset.for_create(:create)
     |> Domain.create!(authorize?: false)
 
@@ -120,12 +120,12 @@ defmodule Ash.Test.Policy.SelectingTest do
   test "guest is forbidden from querying if selecting a forbidden field on the rel" do
     parent =
       Parent
-      |> Ash.Changeset.new(%{owner_id: "owner", guest_id: "guest"})
+      |> Ash.Changeset.for_create(:create, %{owner_id: "owner", guest_id: "guest"})
       |> Ash.Changeset.for_create(:create)
       |> Domain.create!(authorize?: false)
 
     OwnerOnlyResource
-    |> Ash.Changeset.new(%{parent_id: parent.id, state: "active"})
+    |> Ash.Changeset.for_create(:create, %{parent_id: parent.id, state: "active"})
     |> Ash.Changeset.for_create(:create)
     |> Domain.create!(authorize?: false)
 

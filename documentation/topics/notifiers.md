@@ -57,7 +57,7 @@ Domain calls involving resources who's datalayer supports transactions (like Pos
 
 ```elixir
 Post
-|> Ash.Changeset.new(%{})
+|> Ash.Changeset.for_update(:update, %{})
 |> Ash.Changeset.manage_relationship(:related_posts, [1, 2, 3], type: :append)
 |> Ash.Changeset.manage_relationship(:related_posts, [4, 5], type: :remove)
 |> Ash.Changeset.manage_relationship(:comments, [10], type: :append)
