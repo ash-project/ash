@@ -8,9 +8,10 @@ defmodule Ash.Test.Type.UnionTest do
     use Ash.Resource, data_layer: :embedded
 
     attributes do
-      attribute :foo, :string, constraints: [match: ~r/foo/]
+      attribute :foo, :string, constraints: [match: ~r/foo/], public?: true
 
       attribute :type, :string do
+        public?(true)
         writable? false
         default "foo"
       end
@@ -21,9 +22,10 @@ defmodule Ash.Test.Type.UnionTest do
     use Ash.Resource, data_layer: :embedded
 
     attributes do
-      attribute :bar, :string, constraints: [match: ~r/bar/]
+      attribute :bar, :string, constraints: [match: ~r/bar/], public?: true
 
       attribute :type, :string do
+        public?(true)
         writable? false
         default "bar"
       end
@@ -83,6 +85,8 @@ defmodule Ash.Test.Type.UnionTest do
       uuid_primary_key :id
 
       attribute :things, {:array, :union} do
+        public?(true)
+
         constraints items: [
                       types: [
                         foo: [
@@ -102,6 +106,7 @@ defmodule Ash.Test.Type.UnionTest do
       end
 
       attribute :thing, :union,
+        public?: true,
         constraints: [
           types: [
             foo: [

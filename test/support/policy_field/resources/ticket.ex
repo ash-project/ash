@@ -15,18 +15,29 @@ defmodule Ash.Test.Support.PolicyField.Ticket do
 
   attributes do
     uuid_primary_key :id
-    attribute :internal_status, :string
-    attribute :status, :string
-    attribute :name, :string
+
+    attribute :internal_status, :string do
+      public?(true)
+    end
+
+    attribute :status, :string do
+      public?(true)
+    end
+
+    attribute :name, :string do
+      public?(true)
+    end
   end
 
   relationships do
     belongs_to :representative, Ash.Test.Support.PolicyField.User do
+      public?(true)
       allow_nil? false
       attribute_writable? true
     end
 
     belongs_to :reporter, Ash.Test.Support.PolicyField.User do
+      public?(true)
       allow_nil? false
       attribute_writable? true
     end

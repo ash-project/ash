@@ -11,11 +11,14 @@ defmodule Ash.Test.Resource.AggregatesTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :post_id, :uuid
+
+      attribute :post_id, :uuid do
+        public?(true)
+      end
     end
 
     relationships do
-      has_many :likes, Like, destination_attribute: :comment_id
+      has_many :likes, Like, destination_attribute: :comment_id, public?: true
     end
   end
 
@@ -25,7 +28,10 @@ defmodule Ash.Test.Resource.AggregatesTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :comment_id, :uuid
+
+      attribute :comment_id, :uuid do
+        public?(true)
+      end
     end
   end
 
@@ -48,12 +54,12 @@ defmodule Ash.Test.Resource.AggregatesTest do
     test "aggregates are persisted on the resource properly" do
       defposts do
         aggregates do
-          count :count_of_comments, :comments
-          count :another_count_but_private, :comments, private?: true
+          count :count_of_comments, :comments, public?: true
+          count :another_count_but_private, :comments
         end
 
         relationships do
-          has_many :comments, Comment, destination_attribute: :post_id
+          has_many :comments, Comment, destination_attribute: :post_id, public?: true
         end
       end
 
@@ -62,13 +68,13 @@ defmodule Ash.Test.Resource.AggregatesTest do
                  name: :count_of_comments,
                  kind: :count,
                  relationship_path: [:comments],
-                 private?: false
+                 public?: true
                },
                %Aggregate{
                  name: :another_count_but_private,
                  kind: :count,
                  relationship_path: [:comments],
-                 private?: true
+                 public?: false
                }
              ] = Ash.Resource.Info.aggregates(Post)
 
@@ -87,11 +93,13 @@ defmodule Ash.Test.Resource.AggregatesTest do
     test "Aggregate descriptions are allowed" do
       defposts do
         aggregates do
-          count :count_of_comments, :comments, description: "require one of name/contents"
+          count :count_of_comments, :comments,
+            description: "require one of name/contents",
+            public?: true
         end
 
         relationships do
-          has_many :comments, Comment, destination_attribute: :post_id
+          has_many :comments, Comment, destination_attribute: :post_id, public?: true
         end
       end
 
@@ -104,11 +112,13 @@ defmodule Ash.Test.Resource.AggregatesTest do
       assert_raise Spark.Error.DslError, fn ->
         defposts do
           aggregates do
-            sum :sum_of_comment_likes, :comments, :likes
+            sum :sum_of_comment_likes, :comments, :likes do
+              public? true
+            end
           end
 
           relationships do
-            has_many :comments, Comment, destination_attribute: :post_id
+            has_many :comments, Comment, destination_attribute: :post_id, public?: true
           end
         end
       end

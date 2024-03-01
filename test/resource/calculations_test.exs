@@ -17,8 +17,13 @@ defmodule Ash.Test.Resource.CalculationsTest do
         attributes do
           uuid_primary_key :id
 
-          attribute :name, :string
-          attribute :contents, :string
+          attribute :name, :string do
+            public?(true)
+          end
+
+          attribute :contents, :string do
+            public?(true)
+          end
         end
 
         unquote(body)
@@ -30,8 +35,11 @@ defmodule Ash.Test.Resource.CalculationsTest do
     test "calculations are persisted on the resource properly" do
       defposts do
         calculations do
-          calculate :name_and_contents, :string, concat([:name, :context])
-          calculate(:another_cal_but_private, :string, concat([:name, :context]), private?: true)
+          calculate :name_and_contents, :string, concat([:name, :context]) do
+            public?(true)
+          end
+
+          calculate :another_cal_but_private, :string, concat([:name, :context])
         end
       end
 
@@ -39,12 +47,12 @@ defmodule Ash.Test.Resource.CalculationsTest do
                %Calculation{
                  name: :name_and_contents,
                  calculation: {Calculation.Concat, [keys: [:name, :context], separator: ""]},
-                 private?: false
+                 public?: true
                },
                %Calculation{
                  name: :another_cal_but_private,
                  calculation: {Calculation.Concat, [keys: [:name, :context], separator: ""]},
-                 private?: true
+                 public?: false
                }
              ] = Ash.Resource.Info.calculations(Post)
 
@@ -62,9 +70,9 @@ defmodule Ash.Test.Resource.CalculationsTest do
     test "Calculation descriptions are allowed" do
       defposts do
         calculations do
-          calculate(:name_and_contents, :string, concat([:name, :context]),
+          calculate :name_and_contents, :string, concat([:name, :context]),
+            public?: true,
             description: "require one of name/contents"
-          )
         end
       end
 
@@ -83,8 +91,13 @@ defmodule Ash.Test.Resource.CalculationsTest do
         attributes do
           uuid_primary_key :id
 
-          attribute :name, :string
-          attribute :contents, :string
+          attribute :name, :string do
+            public?(true)
+          end
+
+          attribute :contents, :string do
+            public?(true)
+          end
         end
 
         actions do
@@ -119,6 +132,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
 
           attribute :post_id, :uuid do
             allow_nil?(false)
+            public? true
           end
         end
 
@@ -127,11 +141,15 @@ defmodule Ash.Test.Resource.CalculationsTest do
         end
 
         relationships do
-          belongs_to :post, Post
+          belongs_to :post, Post do
+            public?(true)
+          end
         end
 
         calculations do
-          calculate(:post_name, :string, PostName)
+          calculate :post_name, :string, PostName do
+            public?(true)
+          end
         end
       end
 
@@ -162,8 +180,13 @@ defmodule Ash.Test.Resource.CalculationsTest do
         attributes do
           uuid_primary_key :id
 
-          attribute :name, :string
-          attribute :contents, :string
+          attribute :name, :string do
+            public?(true)
+          end
+
+          attribute :contents, :string do
+            public?(true)
+          end
         end
 
         actions do
@@ -201,7 +224,8 @@ defmodule Ash.Test.Resource.CalculationsTest do
           uuid_primary_key :id
 
           attribute :post_id, :uuid do
-            allow_nil?(false)
+            public?(true)
+            allow_nil?(true)
           end
         end
 
@@ -210,11 +234,15 @@ defmodule Ash.Test.Resource.CalculationsTest do
         end
 
         relationships do
-          belongs_to :post, Post
+          belongs_to :post, Post do
+            public?(true)
+          end
         end
 
         calculations do
-          calculate(:post_name, :string, PostName)
+          calculate :post_name, :string, PostName do
+            public?(true)
+          end
         end
       end
 

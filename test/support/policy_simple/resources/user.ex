@@ -23,8 +23,8 @@ defmodule Ash.Test.Support.PolicySimple.User do
 
   attributes do
     uuid_primary_key(:id)
-    attribute(:admin, :boolean)
-    attribute(:manager, :boolean)
+    attribute(:admin, :boolean, public?: true)
+    attribute(:manager, :boolean, public?: true)
   end
 
   actions do
@@ -32,24 +32,35 @@ defmodule Ash.Test.Support.PolicySimple.User do
   end
 
   aggregates do
-    max :most_recent_car, :cars, :inserted_at
+    max :most_recent_car, :cars, :inserted_at do
+      public? true
+    end
   end
 
   calculations do
     calculate :restricted_from_driving,
               :boolean,
-              expr(is_nil(most_recent_car) or most_recent_car >= ago(1, :microsecond))
+              expr(is_nil(most_recent_car) or most_recent_car >= ago(1, :microsecond)) do
+      public?(true)
+    end
 
     calculate :has_car,
               :boolean,
-              expr(not is_nil(most_recent_car))
+              expr(not is_nil(most_recent_car)) do
+      public?(true)
+    end
   end
 
   relationships do
-    belongs_to(:organization, Ash.Test.Support.PolicySimple.Organization)
-    has_many(:posts, Ash.Test.Support.PolicySimple.Post, destination_attribute: :author_id)
+    belongs_to(:organization, Ash.Test.Support.PolicySimple.Organization, public?: true)
+
+    has_many(:posts, Ash.Test.Support.PolicySimple.Post,
+      destination_attribute: :author_id,
+      public?: true
+    )
 
     many_to_many :cars, Ash.Test.Support.PolicySimple.Car do
+      public?(true)
       through(Ash.Test.Support.PolicySimple.CarUser)
       source_attribute_on_join_resource(:user_id)
       destination_attribute_on_join_resource(:car_id)

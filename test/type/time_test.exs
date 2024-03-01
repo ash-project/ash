@@ -19,8 +19,11 @@ defmodule Ash.Test.Type.TimeTest do
     attributes do
       uuid_primary_key :id
 
-      attribute :time_a, :time
-      attribute :time_b, :time, allow_nil?: false
+      attribute :time_a, :time do
+        public?(true)
+      end
+
+      attribute :time_b, :time, allow_nil?: false, public?: true
     end
   end
 

@@ -58,20 +58,23 @@ defmodule Ash.Test.Flow.ParentResource do
     uuid_primary_key :id
 
     attribute :status, :atom do
+      public?(true)
       allow_nil? false
     end
 
     create_timestamp :created_at do
-      private? false
+      public?(true)
     end
 
     update_timestamp :updated_at do
-      private? false
+      public?(true)
     end
   end
 
   relationships do
-    has_many :child_resources, Ash.Test.Flow.ChildResource
+    has_many :child_resources, Ash.Test.Flow.ChildResource do
+      public?(true)
+    end
   end
 
   policies do

@@ -16,8 +16,13 @@ defmodule Ash.Actions.PaginationTest do
     attributes do
       uuid_primary_key :id
 
-      attribute :user_id, :uuid
-      attribute :body, :string
+      attribute :user_id, :uuid do
+        public?(true)
+      end
+
+      attribute :body, :string do
+        public?(true)
+      end
     end
 
     actions do
@@ -30,7 +35,7 @@ defmodule Ash.Actions.PaginationTest do
     end
 
     relationships do
-      belongs_to :user, Ash.Actions.PaginationTest.User, define_attribute?: false
+      belongs_to :user, Ash.Actions.PaginationTest.User, define_attribute?: false, public?: true
     end
   end
 
@@ -94,16 +99,26 @@ defmodule Ash.Actions.PaginationTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
-      attribute :subname, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :subname, :string do
+        public?(true)
+      end
     end
 
     aggregates do
-      count :count_of_posts, :posts
+      count :count_of_posts, :posts do
+        public? true
+      end
     end
 
     calculations do
       calculate :name_with_arg, :string, expr(name) do
+        public?(true)
+
         argument :does_nothing, :boolean do
           allow_nil? false
         end
@@ -111,7 +126,9 @@ defmodule Ash.Actions.PaginationTest do
     end
 
     relationships do
-      has_many :posts, Post
+      has_many :posts, Post do
+        public?(true)
+      end
     end
   end
 

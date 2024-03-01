@@ -21,11 +21,16 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
 
     relationships do
-      has_many :posts, Ash.Test.TracerTest.AsyncLoadTest.Post, destination_attribute: :author_id
+      has_many :posts, Ash.Test.TracerTest.AsyncLoadTest.Post,
+        destination_attribute: :author_id,
+        public?: true
     end
   end
 
@@ -41,16 +46,20 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
+
+      attribute :title, :string do
+        public?(true)
+      end
     end
 
     relationships do
-      belongs_to :author, Author
+      belongs_to :author, Author, public?: true
 
       many_to_many :categories, Ash.Test.TracerTest.AsyncLoadTest.Category,
         through: Ash.Test.TracerTest.AsyncLoadTest.PostCategory,
         destination_attribute_on_join_resource: :category_id,
-        source_attribute_on_join_resource: :post_id
+        source_attribute_on_join_resource: :post_id,
+        public?: true
     end
   end
 
@@ -63,11 +72,12 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
     end
 
     relationships do
-      belongs_to :post, Post, primary_key?: true, allow_nil?: false
+      belongs_to :post, Post, primary_key?: true, allow_nil?: false, public?: true
 
       belongs_to :category, Ash.Test.TracerTest.AsyncLoadTest.Category,
         primary_key?: true,
-        allow_nil?: false
+        allow_nil?: false,
+        public?: true
     end
   end
 
@@ -81,14 +91,18 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
 
     relationships do
       many_to_many :posts, Post,
         through: PostCategory,
         destination_attribute_on_join_resource: :post_id,
-        source_attribute_on_join_resource: :category_id
+        source_attribute_on_join_resource: :category_id,
+        public?: true
     end
   end
 

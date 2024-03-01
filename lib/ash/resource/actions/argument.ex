@@ -5,7 +5,7 @@ defmodule Ash.Resource.Actions.Argument do
     :type,
     :name,
     :default,
-    :private?,
+    :public?,
     :sensitive?,
     :description,
     constraints: []
@@ -43,11 +43,11 @@ defmodule Ash.Resource.Actions.Argument do
         Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised.
         """
       ],
-      private?: [
+      public?: [
         type: :boolean,
-        default: false,
+        default: true,
         doc: """
-        Whether or not the argument should be suppliable by the client.
+        Whether or not the argument should appear in public interfaces
         """
       ],
       sensitive?: [

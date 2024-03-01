@@ -41,7 +41,6 @@ You may recognise this if you have used Ecto before. This attribute will record 
 ```elixir
 attribute :inserted_at, :utc_datetime_usec do
   writable? false
-  private? true
   default &DateTime.utc_now/0
   match_other_defaults? true
   allow_nil? false
@@ -57,7 +56,6 @@ This is also similar in Ecto. This attribute records the last time a row was upd
 ```elixir
 attribute :updated_at, :utc_datetime_usec do
   writable? false
-  private? true
   default &DateTime.utc_now/0
   update_default &DateTime.utc_now/0
   match_other_defaults? true

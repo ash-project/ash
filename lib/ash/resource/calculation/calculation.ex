@@ -11,7 +11,7 @@ defmodule Ash.Resource.Calculation do
             filterable?: true,
             load: [],
             name: nil,
-            private?: false,
+            public?: false,
             type: nil
 
   @schema [
@@ -47,11 +47,11 @@ defmodule Ash.Resource.Calculation do
       type: :string,
       doc: "An optional description for the calculation"
     ],
-    private?: [
+    public?: [
       type: :boolean,
       default: false,
       doc: """
-      Whether or not the calculation will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql See the [security guide](/documentation/topics/security.md) for more.
+      Whether or not the calculation will appear in public interfaces.
       """
     ],
     load: [
@@ -112,7 +112,7 @@ defmodule Ash.Resource.Calculation do
           filterable?: boolean,
           load: keyword,
           name: atom(),
-          private?: boolean,
+          public?: boolean,
           type: nil | Ash.Type.t()
         }
 

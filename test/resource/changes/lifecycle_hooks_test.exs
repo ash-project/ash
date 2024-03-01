@@ -10,7 +10,10 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
 
     actions do

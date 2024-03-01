@@ -19,8 +19,14 @@ defmodule Ash.Test.Actions.HasManyTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :post_id, :uuid
-      attribute :content, :string
+
+      attribute :post_id, :uuid do
+        public?(true)
+      end
+
+      attribute :content, :string do
+        public?(true)
+      end
     end
   end
 
@@ -60,12 +66,16 @@ defmodule Ash.Test.Actions.HasManyTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
+
+      attribute :title, :string do
+        public?(true)
+      end
     end
 
     relationships do
       has_many :comments, Comment do
         destination_attribute :post_id
+        public?(true)
         domain(OtherDomain)
       end
     end

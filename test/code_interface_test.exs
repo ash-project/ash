@@ -58,6 +58,7 @@ defmodule Ash.Test.CodeInterfaceTest do
 
     calculations do
       calculate :full_name, :string, expr(first_name <> ^arg(:separator) <> last_name) do
+        public?(true)
         argument :separator, :string, default: " ", allow_nil?: false
       end
     end
@@ -66,10 +67,13 @@ defmodule Ash.Test.CodeInterfaceTest do
       uuid_primary_key :id
 
       attribute :first_name, :string do
+        public?(true)
         default "fred"
       end
 
-      attribute :last_name, :string
+      attribute :last_name, :string do
+        public?(true)
+      end
     end
   end
 

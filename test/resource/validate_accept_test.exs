@@ -19,7 +19,7 @@ defmodule Ash.Test.Resource.ValidateAcceptTest do
     assert_raise DslError, ~r/\[:secret\] are private attributes/, fn ->
       defposts do
         attributes do
-          attribute :secret, :string, private?: true
+          attribute :secret, :string
         end
 
         actions do
@@ -43,7 +43,7 @@ defmodule Ash.Test.Resource.ValidateAcceptTest do
     assert_raise DslError, ~r/\[:secret\] are private attributes/, fn ->
       defposts do
         attributes do
-          attribute :secret, :string, private?: true
+          attribute :secret, :string
         end
 
         actions do

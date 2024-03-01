@@ -35,10 +35,22 @@ defmodule Ash.Test.Actions.ValidationTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :bio, :string
-      attribute :date, :date
-      attribute :status, :string
-      attribute :foo, :boolean
+
+      attribute :bio, :string do
+        public?(true)
+      end
+
+      attribute :date, :date do
+        public?(true)
+      end
+
+      attribute :status, :string do
+        public?(true)
+      end
+
+      attribute :foo, :boolean do
+        public?(true)
+      end
     end
   end
 

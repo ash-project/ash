@@ -26,6 +26,6 @@ defmodule Ash.Test.Support.PolicySimple.Trip do
   end
 
   relationships do
-    belongs_to(:car, Ash.Test.Support.PolicySimple.Car)
+    belongs_to(:car, Ash.Test.Support.PolicySimple.Car, public?: true)
   end
 end

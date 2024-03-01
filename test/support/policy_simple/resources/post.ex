@@ -29,6 +29,7 @@ defmodule Ash.Test.Support.PolicySimple.Post do
     uuid_primary_key(:id)
 
     attribute :text, :string do
+      public?(true)
       allow_nil?(false)
     end
   end
@@ -47,7 +48,12 @@ defmodule Ash.Test.Support.PolicySimple.Post do
   end
 
   relationships do
-    belongs_to :organization, Ash.Test.Support.PolicySimple.Organization
-    belongs_to :author, Ash.Test.Support.PolicySimple.User
+    belongs_to :organization, Ash.Test.Support.PolicySimple.Organization do
+      public?(true)
+    end
+
+    belongs_to :author, Ash.Test.Support.PolicySimple.User do
+      public?(true)
+    end
   end
 end

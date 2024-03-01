@@ -15,10 +15,22 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :number_one, :integer
-      attribute :number_two, :integer
-      attribute :number_three, :decimal
-      attribute :number_four, :float
+
+      attribute :number_one, :integer do
+        public?(true)
+      end
+
+      attribute :number_two, :integer do
+        public?(true)
+      end
+
+      attribute :number_three, :decimal do
+        public?(true)
+      end
+
+      attribute :number_four, :float do
+        public?(true)
+      end
     end
   end
 

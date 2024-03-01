@@ -12,8 +12,14 @@ defmodule Ash.Test.Resource.Changes.LoadTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :text, :string
-      attribute :second_text, :string
+
+      attribute :text, :string do
+        public?(true)
+      end
+
+      attribute :second_text, :string do
+        public?(true)
+      end
     end
 
     actions do
@@ -25,7 +31,9 @@ defmodule Ash.Test.Resource.Changes.LoadTest do
     end
 
     calculations do
-      calculate :full_text, :string, concat([:text, :second_text])
+      calculate :full_text, :string, concat([:text, :second_text]) do
+        public?(true)
+      end
     end
   end
 

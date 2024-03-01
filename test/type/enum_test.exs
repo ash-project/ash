@@ -25,7 +25,9 @@ defmodule Ash.Test.Type.EnumTest do
     attributes do
       uuid_primary_key :id
 
-      attribute :status, Status
+      attribute :status, Status do
+        public?(true)
+      end
     end
   end
 

@@ -31,11 +31,13 @@ defmodule Ash.Test.NotifierTest do
     relationships do
       belongs_to :source_post, Ash.Test.NotifierTest.Post,
         primary_key?: true,
-        allow_nil?: false
+        allow_nil?: false,
+        public?: true
 
       belongs_to :destination_post, Ash.Test.NotifierTest.Post,
         primary_key?: true,
-        allow_nil?: false
+        allow_nil?: false,
+        public?: true
     end
   end
 
@@ -58,11 +60,14 @@ defmodule Ash.Test.NotifierTest do
     attributes do
       uuid_primary_key :id
 
-      attribute :name, :string
+      attribute :name, :string do
+        public?(true)
+      end
     end
 
     relationships do
       belongs_to :post, Ash.Test.NotifierTest.Post do
+        public?(true)
         attribute_writable? true
       end
     end
@@ -102,16 +107,19 @@ defmodule Ash.Test.NotifierTest do
     attributes do
       uuid_primary_key :id
 
-      attribute :name, :string
+      attribute :name, :string do
+        public?(true)
+      end
     end
 
     relationships do
       many_to_many :related_posts, __MODULE__,
+        public?: true,
         through: PostLink,
         source_attribute_on_join_resource: :source_post_id,
         destination_attribute_on_join_resource: :destination_post_id
 
-      has_many :comments, Comment, destination_attribute: :post_id
+      has_many :comments, Comment, destination_attribute: :post_id, public?: true
     end
   end
 

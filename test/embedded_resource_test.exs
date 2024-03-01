@@ -47,9 +47,16 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
 
     attributes do
       uuid_primary_key :id, writable?: true
-      attribute :first_name, :string
-      attribute :last_name, :string
-      attribute :counter, :integer, default: 0, allow_nil?: false
+
+      attribute :first_name, :string do
+        public?(true)
+      end
+
+      attribute :last_name, :string do
+        public?(true)
+      end
+
+      attribute :counter, :integer, default: 0, allow_nil?: false, public?: true
     end
 
     validations do
@@ -59,7 +66,9 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
     end
 
     calculations do
-      calculate :full_name, :string, concat([:first_name, :last_name], " ")
+      calculate :full_name, :string, concat([:first_name, :last_name], " ") do
+        public? true
+      end
     end
   end
 
@@ -67,9 +76,15 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
     use Ash.Resource, data_layer: :embedded
 
     attributes do
-      attribute :first_name, :string
-      attribute :last_name, :string
-      attribute :counter, :integer, default: 0, allow_nil?: false
+      attribute :first_name, :string do
+        public?(true)
+      end
+
+      attribute :last_name, :string do
+        public?(true)
+      end
+
+      attribute :counter, :integer, default: 0, allow_nil?: false, public?: true
     end
 
     validations do
@@ -79,7 +94,9 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
     end
 
     calculations do
-      calculate :full_name, :string, concat([:first_name, :last_name], " ")
+      calculate :full_name, :string, concat([:first_name, :last_name], " ") do
+        public? true
+      end
     end
   end
 
@@ -87,8 +104,13 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
     use Ash.Resource, data_layer: :embedded
 
     attributes do
-      attribute :name, :string
-      attribute :score, :integer
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :score, :integer do
+        public?(true)
+      end
     end
 
     validations do
@@ -103,8 +125,13 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
     use Ash.Resource, data_layer: :embedded, embed_nil_values?: false
 
     attributes do
-      attribute :name, :string
-      attribute :score, :integer
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :score, :integer do
+        public?(true)
+      end
     end
 
     validations do
@@ -120,9 +147,18 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
 
     attributes do
       uuid_primary_key :id, writable?: true
-      attribute :type, :string
-      attribute :name, :string
-      attribute :score, :integer
+
+      attribute :type, :string do
+        public?(true)
+      end
+
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :score, :integer do
+        public?(true)
+      end
     end
 
     validations do
@@ -167,21 +203,31 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
       attribute :profile, Profile,
         constraints: [
           load: [:full_name]
-        ]
+        ],
+        public?: true
 
       attribute :profile_with_id, ProfileWithId,
         constraints: [
           load: [:full_name]
-        ]
+        ],
+        public?: true
 
-      attribute :tags, {:array, Tag}
+      attribute :tags, {:array, Tag} do
+        public?(true)
+      end
 
       attribute :tags_max_length, {:array, Tag} do
+        public?(true)
         constraints max_length: 2, min_length: 1
       end
 
-      attribute :tags_with_id, {:array, TagWithId}
-      attribute :union_tags_with_id, {:array, UnionTagWithId}
+      attribute :tags_with_id, {:array, TagWithId} do
+        public?(true)
+      end
+
+      attribute :union_tags_with_id, {:array, UnionTagWithId} do
+        public?(true)
+      end
     end
   end
 

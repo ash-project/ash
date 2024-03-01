@@ -20,19 +20,27 @@ defmodule Ash.Test.Actions.AggregateTest do
       uuid_primary_key :id
 
       attribute :public, :boolean do
+        public?(true)
         default false
       end
 
-      attribute :thing, :string
+      attribute :thing, :string do
+        public?(true)
+      end
 
-      attribute :thing2, :decimal
+      attribute :thing2, :decimal do
+        public?(true)
+      end
 
-      attribute :thing3, :integer
+      attribute :thing3, :integer do
+        public?(true)
+      end
     end
 
     relationships do
       belongs_to :post, Ash.Test.Actions.AggregateTest.Post do
         attribute_writable? true
+        public?(true)
       end
     end
 
@@ -61,14 +69,23 @@ defmodule Ash.Test.Actions.AggregateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
+
+      attribute :title, :string do
+        public?(true)
+      end
 
       attribute :public, :boolean do
+        public?(true)
         default false
       end
 
-      attribute :tenant, :string
-      attribute :thing, :string
+      attribute :tenant, :string do
+        public?(true)
+      end
+
+      attribute :thing, :string do
+        public?(true)
+      end
     end
 
     multitenancy do
@@ -78,45 +95,59 @@ defmodule Ash.Test.Actions.AggregateTest do
     end
 
     aggregates do
-      count :count_of_comments, :comments
+      count :count_of_comments, :comments do
+        public? false
+      end
 
-      count :count_of_posts, [:comments, :post]
+      count :count_of_posts, [:comments, :post] do
+        public? false
+      end
 
       count :count_of_comment_posts_with_matching_things, [:comments, :post] do
+        public? false
         join_filter(:comments, expr(parent(thing) == thing))
       end
 
       count :count_of_comments_unauthorized, :comments do
+        public? true
         authorize? false
       end
 
       min :min_of_thing2, :comments, :thing2 do
+        public? true
         authorize? false
       end
 
       max :max_of_thing2, :comments, :thing2 do
+        public? true
         authorize? false
       end
 
       avg :average_of_thing2, :comments, :thing2 do
+        public? true
         authorize? false
       end
 
       min :min_of_thing3, :comments, :thing3 do
+        public? true
         authorize? false
       end
 
       max :max_of_thing3, :comments, :thing3 do
+        public? true
         authorize? false
       end
 
       avg :average_of_thing3, :comments, :thing3 do
+        public? true
         authorize? false
       end
     end
 
     relationships do
-      has_many :comments, Comment
+      has_many :comments, Comment do
+        public?(true)
+      end
     end
 
     policies do

@@ -34,8 +34,8 @@ defmodule Ash.Test.Actions.IdentityTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:title, :string, allow_nil?: false)
-      attribute(:url, :string)
+      attribute(:title, :string, allow_nil?: false, public?: true)
+      attribute(:url, :string, public?: true)
     end
   end
 

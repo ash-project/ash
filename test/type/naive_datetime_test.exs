@@ -19,8 +19,11 @@ defmodule Ash.Test.Type.NaiveDateTimeTest do
     attributes do
       uuid_primary_key :id
 
-      attribute :naive_datetime_a, :naive_datetime
-      attribute :naive_datetime_b, :naive_datetime, allow_nil?: false
+      attribute :naive_datetime_a, :naive_datetime do
+        public?(true)
+      end
+
+      attribute :naive_datetime_b, :naive_datetime, allow_nil?: false, public?: true
     end
   end
 

@@ -22,7 +22,7 @@ defmodule Ash.Test.Actions.LoadTest do
 
     attributes do
       uuid_primary_key(:id)
-      attribute(:name, :ci_string)
+      attribute(:name, :ci_string, public?: true)
     end
   end
 
@@ -32,16 +32,17 @@ defmodule Ash.Test.Actions.LoadTest do
       data_layer: :embedded
 
     attributes do
-      attribute(:first_name, :string)
-      attribute(:last_name, :string)
+      attribute(:first_name, :string, public?: true)
+      attribute(:last_name, :string, public?: true)
 
       attribute :type, :string do
         allow_nil?(false)
         default("bio")
-        private?(true)
       end
 
-      attribute :forbidden_field, :string
+      attribute :forbidden_field, :string do
+        public?(true)
+      end
     end
 
     field_policies do
@@ -65,8 +66,13 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     calculations do
-      calculate(:full_name, :string, expr(first_name <> " " <> last_name))
-      calculate(:forbidden_name, :string, expr(first_name <> " " <> last_name))
+      calculate :full_name, :string, expr(first_name <> " " <> last_name) do
+        public?(true)
+      end
+
+      calculate :forbidden_name, :string, expr(first_name <> " " <> last_name) do
+        public?(true)
+      end
     end
   end
 
@@ -76,16 +82,17 @@ defmodule Ash.Test.Actions.LoadTest do
       data_layer: :embedded
 
     attributes do
-      attribute(:first_name, :string)
-      attribute(:last_name, :string)
+      attribute(:first_name, :string, public?: true)
+      attribute(:last_name, :string, public?: true)
 
       attribute :type, :string do
         allow_nil?(false)
         default("other_kind_of_bio")
-        private?(true)
       end
 
-      attribute :forbidden_field, :string
+      attribute :forbidden_field, :string do
+        public?(true)
+      end
     end
 
     field_policies do
@@ -109,9 +116,13 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     calculations do
-      calculate(:full_name, :string, expr(first_name <> " " <> last_name))
+      calculate :full_name, :string, expr(first_name <> " " <> last_name) do
+        public?(true)
+      end
 
-      calculate(:forbidden_name, :string, expr(first_name <> " " <> last_name))
+      calculate :forbidden_name, :string, expr(first_name <> " " <> last_name) do
+        public?(true)
+      end
     end
   end
 
@@ -155,21 +166,27 @@ defmodule Ash.Test.Actions.LoadTest do
 
     attributes do
       uuid_primary_key(:id)
-      attribute(:name, :string)
-      attribute(:bio, Bio)
-      attribute(:bio_union, BioUnion)
+      attribute(:name, :string, public?: true)
+      attribute(:bio, Bio, public?: true)
+      attribute(:bio_union, BioUnion, public?: true)
     end
 
     calculations do
-      calculate(:bio_union_calc, BioUnion, expr(bio_union))
+      calculate :bio_union_calc, BioUnion, expr(bio_union) do
+        public?(true)
+      end
     end
 
     relationships do
-      has_many(:posts, Ash.Test.Actions.LoadTest.Post, destination_attribute: :author_id)
+      has_many(:posts, Ash.Test.Actions.LoadTest.Post,
+        destination_attribute: :author_id,
+        public?: true
+      )
 
       has_one(:latest_post, Ash.Test.Actions.LoadTest.Post,
         destination_attribute: :author_id,
-        sort: [inserted_at: :desc]
+        sort: [inserted_at: :desc],
+        public?: true
       )
 
       belongs_to :campaign, Ash.Test.Actions.LoadTest.Campaign do
@@ -177,6 +194,7 @@ defmodule Ash.Test.Actions.LoadTest do
         source_attribute(:campaign_name)
         destination_attribute(:name)
         attribute_writable?(true)
+        public?(true)
       end
     end
   end
@@ -219,9 +237,9 @@ defmodule Ash.Test.Actions.LoadTest do
 
     attributes do
       uuid_primary_key(:id)
-      attribute(:title, :string)
-      attribute(:contents, :string)
-      attribute(:category, :string)
+      attribute(:title, :string, public?: true)
+      attribute(:contents, :string, public?: true)
+      attribute(:category, :string, public?: true)
       timestamps()
     end
 
@@ -234,23 +252,28 @@ defmodule Ash.Test.Actions.LoadTest do
 
     relationships do
       belongs_to :author, Author do
+        public?(true)
         attribute_writable? true
       end
 
       has_many :posts_in_same_category, __MODULE__ do
+        public?(true)
         manual(PostsInSameCategory)
       end
 
       has_many :ratings, Ash.Test.Actions.LoadTest.Rating do
+        public?(true)
         domain(Ash.Test.Actions.LoadTest.Domain2)
       end
 
       has_many :posts_with_same_title, __MODULE__ do
+        public?(true)
         no_attributes? true
         filter expr(parent(title) == title and parent(id) != id)
       end
 
       many_to_many(:categories, Ash.Test.Actions.LoadTest.Category,
+        public?: true,
         through: Ash.Test.Actions.LoadTest.PostCategory,
         destination_attribute_on_join_resource: :category_id,
         source_attribute_on_join_resource: :post_id
@@ -271,11 +294,12 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     relationships do
-      belongs_to(:post, Post, primary_key?: true, allow_nil?: false)
+      belongs_to(:post, Post, primary_key?: true, allow_nil?: false, public?: true)
 
       belongs_to(:category, Ash.Test.Actions.LoadTest.Category,
         primary_key?: true,
-        allow_nil?: false
+        allow_nil?: false,
+        public?: true
       )
     end
   end
@@ -294,11 +318,12 @@ defmodule Ash.Test.Actions.LoadTest do
 
     attributes do
       uuid_primary_key(:id)
-      attribute(:name, :string)
+      attribute(:name, :string, public?: true)
     end
 
     relationships do
       many_to_many(:posts, Post,
+        public?: true,
         through: PostCategory,
         destination_attribute_on_join_resource: :post_id,
         source_attribute_on_join_resource: :category_id
@@ -317,7 +342,7 @@ defmodule Ash.Test.Actions.LoadTest do
 
     attributes do
       uuid_primary_key(:id)
-      attribute(:rating, :integer)
+      attribute(:rating, :integer, public?: true)
     end
 
     actions do
@@ -326,6 +351,7 @@ defmodule Ash.Test.Actions.LoadTest do
 
     relationships do
       belongs_to :post, Post do
+        public?(true)
         domain(Domain)
       end
     end

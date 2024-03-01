@@ -7,10 +7,10 @@ defmodule Ash.Resource.Verifiers.ValidateAccept do
 
   @impl true
   def verify(dsl_state) do
-    {private_attributes, public_attributes} =
+    {public_attributes, private_attributes} =
       dsl_state
       |> Verifier.get_entities([:attributes])
-      |> Enum.split_with(& &1.private?)
+      |> Enum.split_with(& &1.public?)
 
     public_attribute_names = MapSet.new(public_attributes, & &1.name)
     private_attribute_names = MapSet.new(private_attributes, & &1.name)

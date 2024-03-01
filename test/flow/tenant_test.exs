@@ -25,7 +25,10 @@ defmodule Ash.Flow.TenantTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :tenant, :string
+
+      attribute :tenant, :string do
+        public?(true)
+      end
     end
 
     multitenancy do
