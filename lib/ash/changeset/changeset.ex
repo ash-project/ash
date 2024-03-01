@@ -304,7 +304,8 @@ defmodule Ash.Changeset do
 
   *Warning*: You almost always want to use `for_action` or `for_create`, etc. over this function if possible.
 
-  You can use this to start a changeset and make changes prior to calling `for_action`. For example:
+  You can use this to start a changeset and make changes prior to calling `for_action`. This is not typically
+  necessary, but can be useful as an escape hatch. For example:
 
   ```elixir
   Resource
