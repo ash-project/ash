@@ -1061,9 +1061,18 @@ defmodule Ash.Actions.Read do
         calc = add_calc_context(calc, actor, authorize?, tenant, tracer)
 
         if calc.module.has_expression?() do
+          expr =
+            case calc.module.expression(calc.opts, calc.context) do
+              %Ash.Query.Function.Type{} = expr ->
+                expr
+
+              expr ->
+                Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
+            end
+
           {:ok, expr} =
             Ash.Filter.hydrate_refs(
-              calc.module.expression(calc.opts, calc.context),
+              expr,
               %{
                 resource: ref.resource,
                 public?: false
