@@ -2,9 +2,11 @@ defmodule Ash.Test.ReactorCreateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain
+
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, api: Ash.Test.AnyApi
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Domain
 
     ets do
       private? true
@@ -18,8 +20,8 @@ defmodule Ash.Test.ReactorCreateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string, allow_nil?: false
-      attribute :organisation, :string, allow_nil?: true
+      attribute :name, :string, allow_nil?: false, public?: true
+      attribute :organisation, :string, allow_nil?: true, public?: true
     end
 
     actions do
@@ -33,13 +35,15 @@ defmodule Ash.Test.ReactorCreateTest do
     end
 
     relationships do
-      has_many :posts, Ash.Test.ReactorCreateTest.Post
+      has_many :posts, Ash.Test.ReactorCreateTest.Post do
+        public? true
+      end
     end
   end
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, api: Ash.Test.AnyApi
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Domain
 
     ets do
       private? true
@@ -47,8 +51,8 @@ defmodule Ash.Test.ReactorCreateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string, allow_nil?: false
-      attribute :sub_title, :string
+      attribute :title, :string, allow_nil?: false, public?: true
+      attribute :sub_title, :string, public?: true
     end
 
     actions do
@@ -62,6 +66,7 @@ defmodule Ash.Test.ReactorCreateTest do
     relationships do
       belongs_to :author, Ash.Test.ReactorCreateTest.Author do
         attribute_writable? true
+        public? true
         allow_nil? true
       end
     end
@@ -73,7 +78,7 @@ defmodule Ash.Test.ReactorCreateTest do
       use Reactor, extensions: [Ash.Reactor]
 
       ash do
-        default_api(Ash.Test.AnyApi)
+        default_domain(Domain)
       end
 
       input :title
@@ -98,7 +103,7 @@ defmodule Ash.Test.ReactorCreateTest do
       use Reactor, extensions: [Ash.Reactor]
 
       ash do
-        default_api(Ash.Test.AnyApi)
+        default_domain(Domain)
       end
 
       input :title
@@ -122,7 +127,7 @@ defmodule Ash.Test.ReactorCreateTest do
       use Reactor, extensions: [Ash.Reactor]
 
       ash do
-        default_api(Ash.Test.AnyApi)
+        default_domain(Domain)
       end
 
       input :title
@@ -150,7 +155,7 @@ defmodule Ash.Test.ReactorCreateTest do
       use Reactor, extensions: [Ash.Reactor]
 
       ash do
-        default_api(Ash.Test.AnyApi)
+        default_domain(Domain)
       end
 
       input :title
@@ -178,7 +183,7 @@ defmodule Ash.Test.ReactorCreateTest do
       use Reactor, extensions: [Ash.Reactor]
 
       ash do
-        default_api(Ash.Test.AnyApi)
+        default_domain(Domain)
       end
 
       input :author_name
@@ -212,7 +217,7 @@ defmodule Ash.Test.ReactorCreateTest do
       use Reactor, extensions: [Ash.Reactor]
 
       ash do
-        default_api(Ash.Test.AnyApi)
+        default_domain(Domain)
       end
 
       input :author_name
@@ -240,7 +245,7 @@ defmodule Ash.Test.ReactorCreateTest do
       use Ash.Reactor
 
       ash do
-        default_api(Ash.Test.AnyApi)
+        default_domain(Domain)
       end
 
       input :author_name
@@ -256,7 +261,7 @@ defmodule Ash.Test.ReactorCreateTest do
         argument :author, result(:create_author)
 
         run fn _, _ ->
-          assert [_] = Ash.Test.AnyApi.read!(Author)
+          assert [_] = Domain.read!(Author)
 
           raise "hell"
         end
@@ -268,6 +273,6 @@ defmodule Ash.Test.ReactorCreateTest do
                async?: false
              )
 
-    assert [] = Ash.Test.AnyApi.read!(Author)
+    assert [] = Domain.read!(Author)
   end
 end
