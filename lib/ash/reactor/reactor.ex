@@ -18,15 +18,21 @@ defmodule Ash.Reactor do
       ]
     ]
   }
-
-  @type action :: __MODULE__.Dsl.Create.t() | __MODULE__.Dsl.Update.t()
+  @type action :: Ash.Reactor.Dsl.Create.t() | Ash.Reactor.Dsl.Update.t()
 
   use Spark.Dsl.Extension,
     sections: [@ash],
-    transformers: [__MODULE__.Dsl.ActionTransformer, __MODULE__.Dsl.MiddlewareTransformer],
+    transformers: [Ash.Reactor.Dsl.ActionTransformer, Ash.Reactor.Dsl.MiddlewareTransformer],
     dsl_patches:
-      ~w[Action Create Destroy Get Read Transaction Update]
-      |> Enum.map(&Module.concat(__MODULE__.Dsl, &1))
+      [
+        Ash.Reactor.Dsl.Action,
+        Ash.Reactor.Dsl.Create,
+        Ash.Reactor.Dsl.Destroy,
+        Ash.Reactor.Dsl.ReadOne,
+        Ash.Reactor.Dsl.Read,
+        Ash.Reactor.Dsl.Transaction,
+        Ash.Reactor.Dsl.Update
+      ]
       |> Enum.map(&%Spark.Dsl.Patch.AddEntity{section_path: [:reactor], entity: &1.__entity__()})
 
   @doc false

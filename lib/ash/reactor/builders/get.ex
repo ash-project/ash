@@ -1,5 +1,5 @@
-defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Get do
-  alias Ash.Reactor.GetStep
+defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.ReadOne do
+  alias Ash.Reactor.ReadOneStep
   alias Reactor.Builder
   import Ash.Reactor.BuilderUtils
 
@@ -27,7 +27,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Get do
       Builder.add_step(
         reactor,
         get.name,
-        {GetStep, action_options},
+        {ReadOneStep, action_options},
         arguments,
         step_options
       )

@@ -1,4 +1,4 @@
-defmodule Ash.Test.ReactorGetTest do
+defmodule Ash.Test.ReactorReadOneTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
@@ -20,7 +20,7 @@ defmodule Ash.Test.ReactorGetTest do
     end
 
     code_interface do
-      define_for Ash.Test.ReactorGetTest.Api
+      define_for Ash.Test.ReactorReadOneTest.Api
       define :create
     end
   end
@@ -30,11 +30,11 @@ defmodule Ash.Test.ReactorGetTest do
     use Ash.Api
 
     resources do
-      resource Ash.Test.ReactorGetTest.Post
+      resource Ash.Test.ReactorReadOneTest.Post
     end
   end
 
-  defmodule SimpleGetReactor do
+  defmodule SimpleReadOneReactor do
     @moduledoc false
     use Reactor, extensions: [Ash.Reactor]
 
@@ -42,19 +42,19 @@ defmodule Ash.Test.ReactorGetTest do
       default_api Api
     end
 
-    get(:get_post, Ash.Test.ReactorGetTest.Post, :read)
+    read_one(:read_one_post, Ash.Test.ReactorReadOneTest.Post, :read)
   end
 
   test "when more than one record is returned it returns an error" do
     ~w[Marty Doc Einstein]
     |> Enum.each(&Post.create!(%{title: &1}))
 
-    assert {:error, [error]} = Reactor.run(SimpleGetReactor, %{}, %{}, async?: false)
+    assert {:error, [error]} = Reactor.run(SimpleReadOneReactor, %{}, %{}, async?: false)
     assert Exception.message(error) =~ "expected at most one result"
   end
 
   test "when no records are returned it returns nil" do
-    assert {:ok, nil} = Reactor.run(SimpleGetReactor, %{}, %{}, async?: false)
+    assert {:ok, nil} = Reactor.run(SimpleReadOneReactor, %{}, %{}, async?: false)
   end
 
   test "when no records are returned it can return an error" do
@@ -66,7 +66,7 @@ defmodule Ash.Test.ReactorGetTest do
         default_api Api
       end
 
-      get :get_post, Ash.Test.ReactorGetTest.Post, :read do
+      read_one :read_one_post, Ash.Test.ReactorReadOneTest.Post, :read do
         fail_on_not_found?(true)
       end
     end
@@ -78,7 +78,7 @@ defmodule Ash.Test.ReactorGetTest do
   test "when exactly one record is returned it returns it" do
     expected = Post.create!(%{title: "Marty"})
 
-    assert {:ok, actual} = Reactor.run(SimpleGetReactor, %{}, %{}, async?: false)
+    assert {:ok, actual} = Reactor.run(SimpleReadOneReactor, %{}, %{}, async?: false)
     assert expected.id == actual.id
   end
 end

@@ -1,6 +1,6 @@
-defmodule Ash.Reactor.Dsl.Get do
+defmodule Ash.Reactor.Dsl.ReadOne do
   @moduledoc """
-  The `get` entity for the `Ash.Reactor` reactor extension.
+  The `read_one` entity for the `Ash.Reactor` reactor extension.
   """
 
   defstruct __identifier__: nil,
@@ -41,12 +41,12 @@ defmodule Ash.Reactor.Dsl.Get do
   @doc false
   def __entity__,
     do: %Spark.Dsl.Entity{
-      name: :get,
+      name: :read_one,
       describe:
-        "Declares a step that will call a read action on a resource retuning a single record.",
+        "Declares a step that will call a read action on a resource returning a single record.",
       examples: [
         """
-        get :post_by_id, MyApp.Post, :read do
+        read_one :post_by_id, MyApp.Post, :read do
           inputs %{id: input(:post_id)}
         end
         """

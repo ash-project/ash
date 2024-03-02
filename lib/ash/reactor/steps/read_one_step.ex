@@ -1,4 +1,4 @@
-defmodule Ash.Reactor.GetStep do
+defmodule Ash.Reactor.ReadOneStep do
   @moduledoc """
   The Reactor step which is used to execute get actions.
   """

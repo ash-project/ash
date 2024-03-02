@@ -13,6 +13,12 @@ defmodule Ash.Test.ReactorTracingTest do
 
     actions do
       defaults [:create, :read, :update, :destroy]
+
+      read :by_id do
+        argument :id, :uuid, allow_nil?: false
+
+        filter expr(id == ^arg(:id))
+      end
     end
   end
 
@@ -37,7 +43,7 @@ defmodule Ash.Test.ReactorTracingTest do
       inputs(%{title: value("A wonderful post about Back To The Future")})
     end
 
-    get :reload_post, Post, :read do
+    read_one :reload_post, Post, :by_id do
       inputs(%{id: result(:create_post, [:id])})
     end
 
@@ -71,8 +77,8 @@ defmodule Ash.Test.ReactorTracingTest do
       assert [
                "changeset:post:create",
                "api:post.create",
-               "query:post:read",
-               "api:post.read",
+               "query:post:by_id",
+               "api:post.by_id",
                "changeset:post:update",
                "api:post.update",
                "changeset:post:destroy",
@@ -86,8 +92,8 @@ defmodule Ash.Test.ReactorTracingTest do
       assert [
                "changeset:post:create",
                "api:post.create",
-               "query:post:read",
-               "api:post.read",
+               "query:post:by_id",
+               "api:post.by_id",
                "changeset:post:update",
                "api:post.update",
                "changeset:post:destroy",

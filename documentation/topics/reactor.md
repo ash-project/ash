@@ -37,7 +37,7 @@ defmodule ExampleReactor do
     inputs %{name: input(:customer_name), email: input(:customer_email)}
   end
 
-  get :get_plan, Plan, :get_plan_by_name do
+  read_one :get_plan, Plan, :get_plan_by_name do
     inputs %{name: input(:plan_name)}
     fail_on_not_found? true
   end
