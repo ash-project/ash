@@ -87,7 +87,7 @@ defmodule Ash.Type.String do
                 error(
                   Ash.Error.Changes.InvalidChanges,
                   message: "length must be less than or equal to %{max}",
-                  vars: [max: max]
+                  vars: %{max: max}
                 )
               else
                 ^expr
