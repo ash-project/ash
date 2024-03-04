@@ -5,28 +5,28 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.ReadOne do
 
   @doc false
   @impl true
-  def build(get, reactor) do
-    with {:ok, reactor, arguments} <- build_input_arguments(reactor, get) do
+  def build(read_one, reactor) do
+    with {:ok, reactor, arguments} <- build_input_arguments(reactor, read_one) do
       arguments =
         arguments
-        |> maybe_append(get.actor)
-        |> maybe_append(get.tenant)
-        |> Enum.concat(get.wait_for)
+        |> maybe_append(read_one.actor)
+        |> maybe_append(read_one.tenant)
+        |> Enum.concat(read_one.wait_for)
 
       action_options =
-        get
+        read_one
         |> Map.take([:action, :api, :authorize?, :resource, :fail_on_not_found?])
         |> Enum.to_list()
 
       step_options =
-        get
+        read_one
         |> Map.take([:async?])
         |> Map.put(:ref, :step_name)
         |> Enum.to_list()
 
       Builder.add_step(
         reactor,
-        get.name,
+        read_one.name,
         {ReadOneStep, action_options},
         arguments,
         step_options
