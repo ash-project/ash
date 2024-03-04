@@ -100,7 +100,7 @@ defmodule Ash.Type.String do
                 error(
                   Ash.Error.Changes.InvalidChanges,
                   message: "length must be greater than or equal to %{min}",
-                  vars: [min: min]
+                  vars: %{min: min}
                 )
               else
                 ^expr
@@ -114,14 +114,14 @@ defmodule Ash.Type.String do
                   error(
                     Ash.Error.Changes.InvalidChanges,
                     message: "length must be greater than or equal to %{min}",
-                    vars: [min: min]
+                    vars: %{min: min}
                   )
 
                 string_length(^expr) > ^max ->
                   error(
                     Ash.Error.Changes.InvalidChanges,
                     message: "length must be less than or equal to %{max}",
-                    vars: [max: max]
+                    vars: %{max: max}
                   )
 
                 true ->
