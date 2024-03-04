@@ -54,51 +54,53 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Destroy do
 
   @doc false
   @impl true
+  def verify(destroy, _dsl_state) when destroy.undo == :never, do: :ok
+
   def verify(destroy, dsl_state) do
-    verify_undo(destroy, dsl_state)
-  end
-
-  def verify_undo(destroy, _dsl_state) when destroy.undo == :never, do: :ok
-
-  def verify_undo(destroy, dsl_state) do
-    with :ok <- verify_returning_destroyed?(destroy, dsl_state) do
-      verify_undo_action(destroy, dsl_state)
+    with {:ok, action} <- get_action(dsl_state, destroy.resource, destroy.undo_action),
+         :ok <- verify_is_create_action(dsl_state, destroy.resource, action) do
+      verify_action_takes_record(dsl_state, destroy.resource, action)
     end
   end
 
-  defp verify_returning_destroyed?(destroy, _dsl_state) when destroy.return_destroyed? == true,
-    do: :ok
-
-  defp verify_returning_destroyed?(_destroy, dsl_state) do
-    {:error,
-     DslError.exception(
-       module: Transformer.get_persisted(dsl_state, :module),
-       path: [:destroy, :return_destroyed?],
-       message: "`return_destroyed?` must be true when undo is enabled."
-     )}
-  end
-
-  defp verify_undo_action(destroy, dsl_state) do
-    case Info.action(destroy.resource, destroy.undo_action) do
-      action when is_struct(action, Ash.Resource.Actions.Create) ->
-        :ok
-
+  defp get_action(dsl_state, resource, action_name) do
+    case Info.action(resource, action_name) do
       nil ->
         {:error,
          DslError.exception(
            module: Transformer.get_persisted(dsl_state, :module),
            path: [:destroy, :undo_action],
            message:
-             "No action found matching the name `#{destroy.undo_action}` on resource `#{inspect(destroy.resource)}`."
+             "No action found matching the name `#{action_name}` on resource `#{inspect(resource)}`."
          )}
 
-      _action ->
-        {:error,
-         DslError.exception(
-           module: Transformer.get_persisted(dsl_state, :module),
-           path: [:destroy, :undo_action],
-           message: "The undo action for a destroy step should be a create."
-         )}
+      action when is_struct(action) ->
+        {:ok, action}
     end
+  end
+
+  defp verify_is_create_action(_dsl_state, _resource, action)
+       when is_struct(action, Ash.Resource.Actions.Create),
+       do: :ok
+
+  defp verify_is_create_action(dsl_state, _resource, _action) do
+    {:error,
+     DslError.exception(
+       module: Transformer.get_persisted(dsl_state, :module),
+       path: [:destroy, :undo_action],
+       message: "The undo action for an destroy step should be a create action."
+     )}
+  end
+
+  defp verify_action_takes_record(_dsl_state, _resource, %{arguments: [%{name: :record}]}),
+    do: :ok
+
+  defp verify_action_takes_record(dsl_state, _resource, _action) do
+    {:error,
+     DslError.exception(
+       module: Transformer.get_persisted(dsl_state, :module),
+       path: [:destroy, :undo_action],
+       message: "The undo action for an destroy step should take a single `record` argument."
+     )}
   end
 end

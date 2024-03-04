@@ -619,24 +619,24 @@ Target: `Ash.Reactor.Dsl.Destroy`
 
 
 
-## reactor.get
+## reactor.read_one
 ```elixir
-get name, resource, action \\ nil
+read_one name, resource, action \\ nil
 ```
 
 
-Declares a step that will call a read action on a resource retuning a single record.
+Declares a step that will call a read action on a resource returning a single record.
 
 ### Nested DSLs
- * [actor](#reactor-get-actor)
- * [inputs](#reactor-get-inputs)
- * [tenant](#reactor-get-tenant)
- * [wait_for](#reactor-get-wait_for)
+ * [actor](#reactor-read_one-actor)
+ * [inputs](#reactor-read_one-inputs)
+ * [tenant](#reactor-read_one-tenant)
+ * [wait_for](#reactor-read_one-wait_for)
 
 
 ### Examples
 ```
-get :post_by_id, MyApp.Post, :read do
+read_one :post_by_id, MyApp.Post, :read do
   inputs %{id: input(:post_id)}
 end
 
@@ -648,21 +648,21 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`name`](#reactor-get-name){: #reactor-get-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
-| [`resource`](#reactor-get-resource){: #reactor-get-resource .spark-required} | `module` |  | The resource to call the action on. |
-| [`action`](#reactor-get-action){: #reactor-get-action } | `atom` |  | The name of the action to call on the resource. |
+| [`name`](#reactor-read_one-name){: #reactor-read_one-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`resource`](#reactor-read_one-resource){: #reactor-read_one-resource .spark-required} | `module` |  | The resource to call the action on. |
+| [`action`](#reactor-read_one-action){: #reactor-read_one-action } | `atom` |  | The name of the action to call on the resource. |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`api`](#reactor-get-api){: #reactor-get-api } | `module` |  | The API to use when calling the action.  Defaults to the API set in the `ash` section. |
-| [`async?`](#reactor-get-async?){: #reactor-get-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
-| [`authorize?`](#reactor-get-authorize?){: #reactor-get-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
-| [`description`](#reactor-get-description){: #reactor-get-description } | `String.t` |  | A description for the step |
-| [`fail_on_not_found?`](#reactor-get-fail_on_not_found?){: #reactor-get-fail_on_not_found? } | `boolean` | `false` | When set to true the step will fail if the resource is not found. |
+| [`api`](#reactor-read_one-api){: #reactor-read_one-api } | `module` |  | The API to use when calling the action.  Defaults to the API set in the `ash` section. |
+| [`async?`](#reactor-read_one-async?){: #reactor-read_one-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
+| [`authorize?`](#reactor-read_one-authorize?){: #reactor-read_one-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
+| [`description`](#reactor-read_one-description){: #reactor-read_one-description } | `String.t` |  | A description for the step |
+| [`fail_on_not_found?`](#reactor-read_one-fail_on_not_found?){: #reactor-read_one-fail_on_not_found? } | `boolean` | `false` | When set to true the step will fail if the resource is not found. |
 
 
-## reactor.get.actor
+## reactor.read_one.actor
 ```elixir
 actor source
 ```
@@ -678,12 +678,12 @@ Specifies the action actor
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-get-actor-source){: #reactor-get-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+| [`source`](#reactor-read_one-actor-source){: #reactor-read_one-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`transform`](#reactor-get-actor-transform){: #reactor-get-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+| [`transform`](#reactor-read_one-actor-transform){: #reactor-read_one-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
 
 
 
@@ -693,7 +693,7 @@ Specifies the action actor
 
 Target: `Ash.Reactor.Dsl.Actor`
 
-## reactor.get.inputs
+## reactor.read_one.inputs
 ```elixir
 inputs template
 ```
@@ -724,12 +724,12 @@ inputs(author: result(:get_user))
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`template`](#reactor-get-inputs-template){: #reactor-get-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+| [`template`](#reactor-read_one-inputs-template){: #reactor-read_one-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`transform`](#reactor-get-inputs-transform){: #reactor-get-inputs-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which will transform the inputs before executing the action. |
+| [`transform`](#reactor-read_one-inputs-transform){: #reactor-read_one-inputs-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which will transform the inputs before executing the action. |
 
 
 
@@ -739,7 +739,7 @@ inputs(author: result(:get_user))
 
 Target: `Ash.Reactor.Dsl.Inputs`
 
-## reactor.get.tenant
+## reactor.read_one.tenant
 ```elixir
 tenant source
 ```
@@ -755,12 +755,12 @@ Specifies the action tenant
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-get-tenant-source){: #reactor-get-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+| [`source`](#reactor-read_one-tenant-source){: #reactor-read_one-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`transform`](#reactor-get-tenant-transform){: #reactor-get-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
+| [`transform`](#reactor-read_one-tenant-transform){: #reactor-read_one-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
 
 
 
@@ -770,7 +770,7 @@ Specifies the action tenant
 
 Target: `Ash.Reactor.Dsl.Tenant`
 
-## reactor.get.wait_for
+## reactor.read_one.wait_for
 ```elixir
 wait_for names
 ```
@@ -794,7 +794,7 @@ wait_for :create_user
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`names`](#reactor-get-wait_for-names){: #reactor-get-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+| [`names`](#reactor-read_one-wait_for-names){: #reactor-read_one-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
 
 
 
@@ -810,7 +810,7 @@ Target: `Reactor.Dsl.WaitFor`
 
 ### Introspection
 
-Target: `Ash.Reactor.Dsl.Get`
+Target: `Ash.Reactor.Dsl.ReadOne`
 
 
 

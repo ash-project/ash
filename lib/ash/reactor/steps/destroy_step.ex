@@ -10,17 +10,19 @@ defmodule Ash.Reactor.DestroyStep do
   @doc false
   @impl true
   def run(arguments, context, options) do
+    return_destroyed? = can?(context.current_step, :undo) || options[:return_destroyed?]
+
     changeset_options =
       options
       |> maybe_set_kw(:authorize?, options[:authorize?])
       |> maybe_set_kw(:actor, arguments[:actor])
       |> maybe_set_kw(:tenant, arguments[:tenant])
-      |> maybe_set_kw(:return_destroyed?, options[:return_destroyed?])
+      |> maybe_set_kw(:return_destroyed?, return_destroyed?)
 
     action_options =
       [return_notifications?: true]
       |> maybe_set_kw(:authorize?, options[:authorize?])
-      |> maybe_set_kw(:return_destroyed?, options[:return_destroyed?])
+      |> maybe_set_kw(:return_destroyed?, return_destroyed?)
 
     arguments[:initial]
     |> Changeset.for_destroy(options[:action], arguments[:input], changeset_options)
@@ -30,7 +32,7 @@ defmodule Ash.Reactor.DestroyStep do
         {:ok, :ok}
 
       {:ok, record} when is_struct(record) ->
-        {:ok, record}
+        maybe_return_destroyed?(record, return_destroyed?)
 
       {:ok, notifications} when is_list(notifications) ->
         with :ok <- Ash.Reactor.Notifications.enqueue_notifications(context, notifications),
@@ -38,7 +40,7 @@ defmodule Ash.Reactor.DestroyStep do
 
       {:ok, record, notifications} ->
         with :ok <- Ash.Reactor.Notifications.enqueue_notifications(context, notifications),
-             do: {:ok, record}
+             do: maybe_return_destroyed?(record, return_destroyed?)
 
       {:error, reason} ->
         {:error, reason}
@@ -58,18 +60,12 @@ defmodule Ash.Reactor.DestroyStep do
       [return_notifications?: false]
       |> maybe_set_kw(:authorize?, options[:authorize?])
 
-    attributes =
-      options[:resource]
-      |> Ash.Resource.Info.attributes()
-      |> Map.new(&{&1.name, record[&1]})
-      |> then(&Map.merge(arguments[:input], &1))
-
     options[:resource]
-    |> Changeset.for_create(options[:undo_action], attributes, changeset_options)
+    |> Changeset.for_create(options[:undo_action], %{record: record}, changeset_options)
     |> options[:api].create(action_options)
     |> case do
-      {:ok, record} -> {:ok, record}
-      {:ok, record, _notifications} -> {:ok, record}
+      {:ok, _record} -> :ok
+      {:ok, _record, _notifications} -> :ok
       {:error, reason} -> {:error, reason}
     end
   end
@@ -100,4 +96,7 @@ defmodule Ash.Reactor.DestroyStep do
         async
     end
   end
+
+  defp maybe_return_destroyed?(record, true), do: {:ok, record}
+  defp maybe_return_destroyed?(_record, false), do: {:ok, :ok}
 end

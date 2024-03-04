@@ -124,6 +124,19 @@ semantics.
   will rollback.
 - `:always` - this forces the step to always undo it's work on failure.
 
+### The `undo_action` option.
+
+The behaviour of the `undo_action` is action specific:
+
+- For `create` actions, the `undo_action` should be the name of a `destroy`
+  action with no specific requirements.
+- For `update` actions, the `undo_action` should also be an `update` action
+  which takes a `changeset` argument, which will contain the `Ash.Changeset`
+  which was used to execute the original update.
+- For `destroy` actions, the `undo_action` should be the name of a `create`
+  action which takes a `record` argument, which will contain the
+  resource record which was used destroyed.
+
 ### Transactions
 
 You can use the `transaction` step type to wrap a group of steps inside a data layer transaction, however the following caveats apply:
