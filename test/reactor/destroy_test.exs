@@ -19,6 +19,23 @@ defmodule Ash.Test.ReactorDestroyTest do
 
     actions do
       defaults [:create, :read, :update, :destroy]
+
+      create :undo_destroy do
+        argument :record, :struct do
+          allow_nil? false
+          constraints instance_of: Post
+        end
+
+        change fn changeset, _ ->
+          record = Ash.Changeset.get_argument(changeset, :record)
+
+          [:id, :title, :sub_title, :published]
+          |> Enum.reduce(changeset, fn key, changeset ->
+            value = Map.get(record, key)
+            Ash.Changeset.change_attribute(changeset, key, value)
+          end)
+        end
+      end
     end
 
     code_interface do
@@ -103,16 +120,13 @@ defmodule Ash.Test.ReactorDestroyTest do
         initial(input(:post))
 
         undo :always
-        undo_action(:create)
-        return_destroyed?(true)
+        undo_action(:undo_destroy)
       end
 
       step :fail do
         wait_for :delete_post
 
         run fn _, _ ->
-          assert [] = Api.read!(Post)
-
           raise "hell"
         end
       end

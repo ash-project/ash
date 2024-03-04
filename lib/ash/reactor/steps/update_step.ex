@@ -20,16 +20,19 @@ defmodule Ash.Reactor.UpdateStep do
       [return_notifications?: true]
       |> maybe_set_kw(:authorize?, options[:authorize?])
 
-    arguments[:initial]
-    |> Changeset.for_update(options[:action], arguments[:input], changeset_options)
+    changeset =
+      arguments[:initial]
+      |> Changeset.for_update(options[:action], arguments[:input], changeset_options)
+
+    changeset
     |> options[:api].update(action_options)
     |> case do
       {:ok, record} ->
-        {:ok, record}
+        {:ok, set_metadata(record, context.current_step.name, :changeset, changeset)}
 
       {:ok, record, notifications} ->
         with :ok <- Ash.Reactor.Notifications.enqueue_notifications(context, notifications),
-             do: {:ok, record}
+             do: {:ok, set_metadata(record, context.current_step.name, :changeset, changeset)}
 
       {:error, reason} ->
         {:error, reason}
@@ -38,7 +41,7 @@ defmodule Ash.Reactor.UpdateStep do
 
   @doc false
   @impl true
-  def undo(record, arguments, _context, options) do
+  def undo(record, arguments, context, options) do
     changeset_options =
       options
       |> maybe_set_kw(:authorize?, options[:authorize?])
@@ -50,17 +53,14 @@ defmodule Ash.Reactor.UpdateStep do
       |> maybe_set_kw(:authorize?, options[:authorize?])
 
     attributes =
-      options[:resource]
-      |> Ash.Resource.Info.attributes()
-      |> Map.new(&{&1.name, record[&1]})
-      |> then(&Map.merge(arguments[:input], &1))
+      %{changeset: get_metadata(record, context.current_step.name, :changeset)}
 
     record
     |> Changeset.for_update(options[:undo_action], attributes, changeset_options)
     |> options[:api].update(action_options)
     |> case do
-      {:ok, record} -> {:ok, record}
-      {:ok, record, _notifications} -> {:ok, record}
+      {:ok, _record} -> :ok
+      {:ok, _record, _notifications} -> :ok
       {:error, reason} -> {:error, reason}
     end
   end
@@ -90,5 +90,13 @@ defmodule Ash.Reactor.UpdateStep do
       true ->
         async
     end
+  end
+
+  defp set_metadata(record, step_name, key, value) do
+    Ash.Resource.set_metadata(record, %{__reactor__: %{step_name => %{key => value}}})
+  end
+
+  defp get_metadata(record, step_name, key) do
+    Ash.Resource.get_metadata(record, [:__reactor__, step_name, key])
   end
 end

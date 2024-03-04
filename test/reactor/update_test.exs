@@ -19,6 +19,22 @@ defmodule Ash.Test.ReactorUpdateTest do
 
     actions do
       defaults [:create, :read, :update, :destroy]
+
+      update :undo_update_post do
+        argument :changeset, :struct do
+          constraints instance_of: Ash.Changeset
+        end
+
+        change fn changeset, _ ->
+          original_changeset = Ash.Changeset.get_argument(changeset, :changeset)
+
+          [:title, :sub_title, :published]
+          |> Enum.reduce(changeset, fn key, changeset ->
+            original_value = Ash.Changeset.get_data(original_changeset, key)
+            Ash.Changeset.change_attribute(changeset, key, original_value)
+          end)
+        end
+      end
     end
 
     code_interface do
@@ -146,15 +162,13 @@ defmodule Ash.Test.ReactorUpdateTest do
         initial(input(:post))
         inputs(%{title: input(:new_title)})
         undo :always
-        undo_action(:update)
+        undo_action(:undo_update_post)
       end
 
       step :fail do
         wait_for :update_post
 
         run fn _, _ ->
-          assert [] = Api.read!(Post)
-
           raise "hell"
         end
       end
@@ -174,6 +188,6 @@ defmodule Ash.Test.ReactorUpdateTest do
              )
 
     post_run_post = Post.get!(post.id)
-    assert post_run_post.title == "New title"
+    assert post_run_post.title == "Title"
   end
 end
