@@ -5,6 +5,59 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.20.0](https://github.com/ash-project/ash/compare/v2.19.14...v2.20.0) (2024-03-05)
+
+
+
+
+### Features:
+
+* Ash.Reactor: Add a Reactor extension that makes working with resources easy. (#683)
+
+* Add `Ash.Reactor` with create support.
+
+### Bug Fixes:
+
+* correct atomic implementation of `present` validation
+
+* track keys that are set to `nil` in changesets, for use in atomic upgrade
+
+* properly cast atomic constraints for integer
+
+* more fixes for atomic length validations
+
+* fix atomic error for string length type validation
+
+* Mimic copying `Ash.Notifier` seems to break the compiler for some reason.
+
+### Improvements:
+
+* do not perform atomic upgrade on destroy actions
+
+* Make undo actions for `update` and `destroy` actions more explicit. (#920)
+
+* Ash.Reactor: Make undo actions for `update` and `destroy` more explicit.
+
+* rename `get` to `read_one` in `Ash.Reactor`
+
+* Add `Ash.Reactor` update support.
+
+* Add `Ash.Reactor` destroy support.
+
+* Ash.Reactor: Support for transactional handling of notifications.
+
+* Ash.Reactor: Add `read` and `get` steps.
+
+* Ash.Reactor: add support for generic actions.
+
+* Add `undo` capability to `create` step.
+
+* transaction and undo working.
+
+* Automatically thread Ash tracers through Reactor.
+
+* Ash.Reactor: Add undo to generic actions.
+
 ## [v2.19.14](https://github.com/ash-project/ash/compare/v2.19.13...v2.19.14) (2024-03-01)
 
 
