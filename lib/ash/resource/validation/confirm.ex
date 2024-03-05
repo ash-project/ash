@@ -48,6 +48,7 @@ defmodule Ash.Resource.Validation.Confirm do
     end
   end
 
+  @impl true
   def atomic(changeset, opts) do
     confirmation =
       case Changeset.fetch_argument_or_change(changeset, opts[:confirmation]) do

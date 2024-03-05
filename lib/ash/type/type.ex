@@ -554,8 +554,7 @@ defmodule Ash.Type do
   end
 
   def cast_input(type, term, nil) do
-    with {:ok, constraints} <-
-           Spark.OptionsHelpers.validate([], Ash.Type.constraints(type)),
+    with {:ok, constraints} <- Spark.OptionsHelpers.validate([], Ash.Type.constraints(type)),
          {:ok, constraints} <- Ash.Type.init(type, constraints) do
       cast_input(type, term, constraints)
     end
@@ -726,7 +725,7 @@ defmodule Ash.Type do
         |> case do
           {terms, []} ->
             if type.custom_apply_constraints_array?() do
-              case type.apply_constraints_array(Enum.reverse(term), constraints) do
+              case type.apply_constraints_array(Enum.reverse(terms), constraints) do
                 :ok -> {:ok, term}
                 other -> other
               end
@@ -1194,6 +1193,8 @@ defmodule Ash.Type do
       end
 
       @impl true
+      def cast_input_array(nil, _), do: {:ok, nil}
+
       def cast_input_array(term, single_constraints) do
         term
         |> Stream.with_index()
@@ -1319,9 +1320,9 @@ defmodule Ash.Type do
       def cast_atomic_update_array(new_value, constraints) do
         new_value
         |> Enum.reduce_while({:atomic, []}, fn val, {:atomic, vals} ->
-          case cast_atomic_update(constraints, val) do
+          case cast_atomic_update(val, constraints) do
             {:atomic, atomic} ->
-              {:atomic, [atomic | vals]}
+              {:cont, {:atomic, [atomic | vals]}}
 
             {:not_atomic, reason} ->
               {:halt, {:not_atomic, reason}}

@@ -143,7 +143,7 @@ defmodule Ash.EmbeddableType do
 
       def storage_type(_), do: :map
 
-      def atomic_update(_, _) do
+      def cast_atomic_update(_, _) do
         {:not_atomic, "Embedded attributes do not support atomic updates"}
       end
 
@@ -195,6 +195,7 @@ defmodule Ash.EmbeddableType do
           action,
           Keyword.merge(opts,
             context: context,
+            sorted?: true,
             return_records?: true,
             return_errors?: true,
             batch_size: 1_000_000_000
@@ -227,8 +228,7 @@ defmodule Ash.EmbeddableType do
         |> Ash.Resource.Info.attributes()
         |> Enum.reduce_while({:ok, struct(__MODULE__)}, fn attr, {:ok, struct} ->
           with {:fetch, {:ok, value}} <- {:fetch, fetch_key(value, attr.name)},
-               {:ok, casted} <-
-                 Ash.Type.cast_stored(attr.type, value, attr.constraints) do
+               {:ok, casted} <- Ash.Type.cast_stored(attr.type, value, attr.constraints) do
             {:cont, {:ok, Map.put(struct, attr.name, casted)}}
           else
             {:fetch, :error} ->
@@ -454,7 +454,7 @@ defmodule Ash.EmbeddableType do
     quote location: :keep do
       alias Ash.EmbeddableType.ShadowApi
 
-      def atomic_update_array(_, _) do
+      def cast_atomic_update_array(_, _) do
         {:not_atomic, "Embedded attributes do not support atomic updates"}
       end
 
@@ -488,6 +488,7 @@ defmodule Ash.EmbeddableType do
       end
 
       def get_rewrites(merged_load, calculation, path, _) do
+        merged_load = Ash.Query.load(__MODULE__, merged_load)
         Ash.Actions.Read.Calculations.get_all_rewrites(merged_load, calculation, path)
       end
 
@@ -510,7 +511,12 @@ defmodule Ash.EmbeddableType do
                 |> Ash.EmbeddableType.copy_source(constraints[:__source__])
                 |> Ash.Query.load(constraints[:load] || [])
 
-              query = Ash.Query.sort(query, constraints[:sort])
+              query =
+                if constraints[:sort] do
+                  Ash.Query.sort(query, constraints[:sort])
+                else
+                  query
+                end
 
               case ShadowApi.read(query) do
                 {:ok, result} ->

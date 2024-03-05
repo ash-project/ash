@@ -6,6 +6,7 @@ defmodule Ash.Resource.Change.Increment do
   require Ash.Expr
   import Ash.Filter.TemplateHelpers
 
+  @impl true
   def change(changeset, opts, _context) do
     Ash.Changeset.before_action(changeset, fn changeset ->
       value =
@@ -18,6 +19,7 @@ defmodule Ash.Resource.Change.Increment do
     end)
   end
 
+  @impl true
   def atomic(_changeset, opts, _context) do
     if opts[:overflow_limit] do
       {:atomic,

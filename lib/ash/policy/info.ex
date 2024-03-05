@@ -150,7 +150,7 @@ defmodule Ash.Policy.Info do
   end
 
   def default_access_type(resource) do
-    Extension.get_opt(resource, [:policies], :default_access_type, :strict, false)
+    Extension.get_opt(resource, [:policies], :default_access_type, :filter, false)
   end
 
   # This should be done at compile time

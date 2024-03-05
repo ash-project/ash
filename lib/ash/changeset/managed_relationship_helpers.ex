@@ -9,6 +9,9 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
   """
 
   def sanitize_opts(relationship, opts) do
+    is_many_to_many = relationship.type == :many_to_many
+    join_keys = opts[:join_keys] || []
+
     [
       on_no_match: :ignore,
       on_missing: :ignore,
@@ -17,110 +20,128 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
     ]
     |> Keyword.merge(opts)
     |> Keyword.update!(:on_no_match, fn
-      :create when relationship.type == :many_to_many ->
-        action = Ash.Resource.Info.primary_action!(relationship.destination, :create)
-        join_action = Ash.Resource.Info.primary_action!(relationship.through, :create)
-        {:create, action.name, join_action.name, []}
+      :create when is_many_to_many ->
+        create = primary_action_name!(relationship.destination, :create)
+        join_create = primary_action_name!(relationship.through, :create)
+        {:create, create, join_create, join_keys}
 
-      {:create, action_name} when relationship.type == :many_to_many ->
-        join_action = Ash.Resource.Info.primary_action!(relationship.through, :create)
-        {:create, action_name, join_action.name, []}
+      {:create, create} when is_many_to_many ->
+        join_create = primary_action_name!(relationship.through, :create)
+        {:create, create, join_create, join_keys}
+
+      {:create, create, join_create} when is_many_to_many ->
+        {:create, create, join_create, join_keys}
 
       :create ->
-        action = Ash.Resource.Info.primary_action!(relationship.destination, :create)
-        {:create, action.name}
+        create = primary_action_name!(relationship.destination, :create)
+        {:create, create}
 
       other ->
         other
     end)
     |> Keyword.update!(:on_missing, fn
-      :destroy when relationship.type == :many_to_many ->
-        action = Ash.Resource.Info.primary_action!(relationship.destination, :destroy)
+      :unrelate when is_many_to_many ->
+        join_destroy = primary_action_name!(relationship.through, :destroy)
+        {:unrelate, join_destroy}
 
-        join_action = Ash.Resource.Info.primary_action!(relationship.through, :destroy)
-
-        {:destroy, action.name, join_action.name}
-
-      {:destroy, action_name} when relationship.type == :many_to_many ->
-        join_action = Ash.Resource.Info.primary_action!(relationship.through, :destroy)
-
-        {:destroy, action_name, join_action.name}
-
-      :destroy ->
-        action = Ash.Resource.Info.primary_action!(relationship.destination, :destroy)
-
-        {:destroy, action.name}
+      :unrelate when relationship.type in [:has_many, :has_one] ->
+        update = primary_action_name!(relationship.destination, :update)
+        {:unrelate, update}
 
       :unrelate ->
         {:unrelate, nil}
+
+      :destroy when is_many_to_many ->
+        destroy = primary_action_name!(relationship.destination, :destroy)
+        join_destroy = primary_action_name!(relationship.through, :destroy)
+        {:destroy, destroy, join_destroy}
+
+      {:destroy, destroy} when is_many_to_many ->
+        join_destroy = primary_action_name!(relationship.through, :destroy)
+        {:destroy, destroy, join_destroy}
+
+      :destroy ->
+        destroy = primary_action_name!(relationship.destination, :destroy)
+        {:destroy, destroy}
 
       other ->
         other
     end)
     |> Keyword.update!(:on_match, fn
-      :update when relationship.type == :many_to_many ->
-        update = Ash.Resource.Info.primary_action!(relationship.destination, :update)
-        join_update = Ash.Resource.Info.primary_action!(relationship.through, :update)
+      :update when is_many_to_many ->
+        update = primary_action_name!(relationship.destination, :update)
+        join_update = primary_action_name!(relationship.through, :update)
+        {:update, update, join_update, join_keys}
 
-        {:update, update.name, join_update.name, []}
+      {:update, update} when is_many_to_many ->
+        join_update = primary_action_name!(relationship.through, :update)
+        {:update, update, join_update, join_keys}
 
-      {:update, update} when relationship.type == :many_to_many ->
-        join_update = Ash.Resource.Info.primary_action!(relationship.through, :update)
-
-        {:update, update, join_update.name, []}
-
-      {:update, update, join_update} when relationship.type == :many_to_many ->
-        {:update, update, join_update, []}
+      {:update, update, join_update} when is_many_to_many ->
+        {:update, update, join_update, join_keys}
 
       :update ->
-        action = Ash.Resource.Info.primary_action!(relationship.destination, :update)
+        update = primary_action_name!(relationship.destination, :update)
+        {:update, update}
 
-        {:update, action.name}
+      :update_join ->
+        join_update = primary_action_name!(relationship.through, :update)
+        {:update, nil, join_update, join_keys}
+
+      {:update_join, join_update} ->
+        {:update, nil, join_update, join_keys}
+
+      {:update_join, join_update, join_keys} ->
+        {:update, nil, join_update, join_keys}
+
+      :unrelate when is_many_to_many ->
+        join_destroy = primary_action_name!(relationship.through, :destroy)
+        {:unrelate, join_destroy}
+
+      :unrelate when relationship.type in [:has_many, :has_one] ->
+        update = primary_action_name!(relationship.destination, :update)
+        {:unrelate, update}
 
       :unrelate ->
         {:unrelate, nil}
 
-      :destroy when relationship.type == :many_to_many ->
-        action = Ash.Resource.Info.primary_action!(relationship.through, :destroy)
-        {:destroy, action.name}
+      :destroy when is_many_to_many ->
+        join_destroy = primary_action_name!(relationship.through, :destroy)
+        {:destroy, join_destroy}
 
       :destroy ->
-        action = Ash.Resource.Info.primary_action!(relationship.destination, :destroy)
-        {:destroy, action.name}
+        destroy = primary_action_name!(relationship.destination, :destroy)
+        {:destroy, destroy}
 
       other ->
         other
     end)
     |> Keyword.update!(:on_lookup, fn
-      key when relationship.type == :many_to_many and key in [:relate, :relate_and_update] ->
-        {key, primary_action_name(relationship.through, :create),
-         primary_action_name(relationship.destination, :read)}
+      key when is_many_to_many and key in [:relate, :relate_and_update] ->
+        join_create = primary_action_name!(relationship.through, :create)
+        read = primary_action_name!(relationship.destination, :read)
+        {key, join_create, read, join_keys}
 
-      {key, action}
-      when relationship.type == :many_to_many and
-             key in [:relate, :relate_and_update] ->
-        {key, action, primary_action_name(relationship.destination, :read)}
+      {key, join_create} when is_many_to_many and key in [:relate, :relate_and_update] ->
+        read = primary_action_name!(relationship.destination, :read)
+        {key, join_create, read, join_keys}
 
-      {key, action, read}
-      when relationship.type == :many_to_many and
-             key in [:relate, :relate_and_update] ->
-        {key, action, read}
+      {key, join_create, read} when is_many_to_many and key in [:relate, :relate_and_update] ->
+        {key, join_create, read, join_keys}
 
       key
       when relationship.type in [:has_many, :has_one] and key in [:relate, :relate_and_update] ->
-        {key, primary_action_name(relationship.destination, :update),
-         primary_action_name(relationship.destination, :read)}
-
-      {key, update}
-      when relationship.type in [:has_many, :has_one] and key in [:relate, :relate_and_update] ->
-        {key, update, primary_action_name(relationship.destination, :read)}
+        update = primary_action_name!(relationship.destination, :update)
+        read = primary_action_name!(relationship.destination, :read)
+        {key, update, read}
 
       key when key in [:relate, :relate_and_update] ->
-        {key, primary_action_name(relationship.source, :update),
-         primary_action_name(relationship.destination, :read)}
+        read = primary_action_name!(relationship.destination, :read)
+        {key, nil, read}
 
       {key, update} when key in [:relate, :relate_and_update] ->
-        {key, update, primary_action_name(relationship.destination, :read)}
+        read = primary_action_name!(relationship.destination, :read)
+        {key, update, read}
 
       other ->
         other
@@ -130,48 +151,36 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
   def on_match_destination_actions(opts, relationship) do
     opts = sanitize_opts(relationship, opts)
 
-    cond do
-      opts[:on_match] in [:ignore, :error] ->
+    case opts[:on_match] do
+      key when key in [:ignore, :error] ->
         nil
 
-      unwrap(opts[:on_match]) == :unrelate ->
-        nil
-
-      opts[:on_match] == :no_match ->
+      :no_match ->
         on_no_match_destination_actions(opts, relationship)
 
-      opts[:on_match] == :missing ->
+      :missing ->
         on_missing_destination_actions(opts, relationship)
 
-      unwrap(opts[:on_match]) == :destroy && relationship.type == :many_to_many ->
-        case opts[:on_match] do
-          :destroy ->
-            all(join(primary_action_name(relationship.through, :destroy), :all))
+      {:update, update, join_update, join_keys} ->
+        all([destination(update), join(join_update, join_keys)])
 
-          {:destroy, action_name} ->
-            all(join(action_name, :all))
-        end
+      {:update, update} ->
+        all(destination(update))
 
-      unwrap(opts[:on_match]) == :destroy ->
-        case opts[:on_match] do
-          :destroy ->
-            all(destination(primary_action_name(relationship.destination, :destroy)))
+      {:unrelate, join_destroy} when relationship.type == :many_to_many ->
+        all(join(join_destroy, :all))
 
-          {:destroy, action_name} ->
-            all(destination(action_name))
-        end
+      {:unrelate, update} when relationship.type in [:has_one, :has_many] ->
+        all(destination(update))
 
-      unwrap(opts[:on_match]) == :update ->
-        case opts[:on_match] do
-          :update ->
-            all(destination(primary_action_name(relationship.destination, :update)))
+      {:unrelate, _nil} ->
+        nil
 
-          {:update, action_name} ->
-            all(destination(action_name))
+      {:destroy, join_destroy} when relationship.type == :many_to_many ->
+        all(join(join_destroy, :all))
 
-          {:update, action_name, join_table_action_name, keys} ->
-            all([destination(action_name), join(join_table_action_name, keys)])
-        end
+      {:destroy, destroy} ->
+        all(destination(destroy))
     end
   end
 
@@ -179,23 +188,17 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
     opts = sanitize_opts(relationship, opts)
 
     case opts[:on_no_match] do
-      value when value in [:ignore, :error] ->
+      key when key in [:ignore, :error] ->
         nil
 
       :match ->
         on_match_destination_actions(opts, relationship)
 
-      :create ->
-        all(destination(primary_action_name(relationship.destination, :create)))
+      {:create, create, join_create, join_keys} ->
+        all([destination(create), join(join_create, join_keys)])
 
-      {:create, action_name} ->
-        all(destination(action_name))
-
-      {:create, _action_name, join_table_action_name, :all} ->
-        all([join(join_table_action_name, :all)])
-
-      {:create, action_name, join_table_action_name, keys} ->
-        all([destination(action_name), join(join_table_action_name, keys)])
+      {:create, create} ->
+        all(destination(create))
     end
   end
 
@@ -203,84 +206,57 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
     opts = sanitize_opts(relationship, opts)
 
     case opts[:on_missing] do
-      :destroy ->
-        all(destination(primary_action_name(relationship.destination, :destroy)))
-
-      {:destroy, action_name} ->
-        all(destination(action_name))
-
-      {:destroy, action_name, join_resource_action_name} ->
-        all([destination(action_name), join(join_resource_action_name, [])])
-
-      _ ->
+      key when key in [:ignore, :error] ->
         nil
+
+      {:unrelate, join_destroy} when relationship.type == :many_to_many ->
+        all(join(join_destroy, []))
+
+      {:unrelate, update} when relationship.type in [:has_one, :has_many] ->
+        all(destination(update))
+
+      {:unrelate, _nil} ->
+        nil
+
+      {:destroy, destroy, join_destroy} ->
+        all([destination(destroy), join(join_destroy, [])])
+
+      {:destroy, destroy} ->
+        all(destination(destroy))
     end
   end
 
   def on_lookup_update_action(opts, relationship) do
     opts = sanitize_opts(relationship, opts)
 
-    if unwrap(opts[:on_lookup]) not in [:relate, :ignore] do
-      case opts[:on_lookup] do
-        :relate_and_update when relationship.type == :many_to_many ->
-          join(primary_action_name(relationship.through, :create), [])
+    case opts[:on_lookup] do
+      :ignore ->
+        nil
 
-        {:relate_and_update, action_name} when relationship.type == :many_to_many ->
-          join(action_name, action_name)
+      {key, join_create, _read, join_keys} when key in [:relate, :relate_and_update] ->
+        join(join_create, join_keys)
 
-        {:relate_and_update, action_name, _} when relationship.type == :many_to_many ->
-          join(action_name, [])
+      {key, update, _read}
+      when key in [:relate, :relate_and_update] and relationship.type in [:has_one, :has_many] ->
+        destination(update)
 
-        {:relate_and_update, action_name, _, keys} when relationship.type == :many_to_many ->
-          join(action_name, keys)
-
-        :relate_and_update when relationship.type in [:has_one, :has_many] ->
-          destination(primary_action_name(relationship.destination, :update))
-
-        :relate_and_update when relationship.type in [:belongs_to] ->
-          source(primary_action_name(relationship.source, :update))
-
-        {:relate_and_update, action_name} ->
-          destination(action_name)
-
-        {:relate_and_update, action_name, _} ->
-          destination(action_name)
-
-        _ ->
-          nil
-      end
+      {key, _nil, _read} when key in [:relate, :relate_and_update] ->
+        nil
     end
   end
 
   def on_lookup_read_action(opts, relationship) do
     opts = sanitize_opts(relationship, opts)
 
-    if unwrap(opts[:on_lookup]) not in [:ignore] do
-      case opts[:on_lookup] do
-        :relate ->
-          destination(primary_action_name(relationship.destination, :read))
+    case opts[:on_lookup] do
+      :ignore ->
+        nil
 
-        {:relate, _} ->
-          destination(primary_action_name(relationship.destination, :read))
+      {key, _join_create, read, _join_keys} when key in [:relate, :relate_and_update] ->
+        destination(read)
 
-        {:relate, _, read} ->
-          destination(read)
-
-        :relate_and_update when relationship.type in [:has_one, :has_many] ->
-          destination(primary_action_name(relationship.destination, :read))
-
-        :relate_and_update when relationship.type in [:belongs_to] ->
-          source(primary_action_name(relationship.source, :read))
-
-        {:relate_and_update, _} ->
-          destination(:read)
-
-        {:relate_and_update, _action_name, read} ->
-          destination(read)
-
-        {:relate_and_update, _action_name, read, _} ->
-          destination(read)
-      end
+      {key, _update, read} when key in [:relate, :relate_and_update] ->
+        destination(read)
     end
   end
 
@@ -291,14 +267,11 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
     end
   end
 
-  defp source(nil), do: nil
-  defp source(action), do: {:source, action}
-
   defp destination(nil), do: nil
   defp destination(action), do: {:destination, action}
 
   defp join(nil, _), do: nil
-  defp join(action_name, keys), do: {:join, action_name, keys}
+  defp join(action, keys), do: {:join, action, keys}
 
   def could_handle_missing?(opts) do
     opts[:on_missing] not in [:ignore, :error]
@@ -309,11 +282,11 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
   end
 
   def could_create?(opts) do
-    unwrap(opts[:on_no_match]) == :create || unwrap(opts[:on_match]) == :no_match
+    unwrap(opts[:on_no_match]) == :create || opts[:on_match] == :no_match
   end
 
   def could_update?(opts) do
-    unwrap(opts[:on_match]) not in [:ignore, :no_match, :missing]
+    opts[:on_match] not in [:ignore, :no_match, :missing]
   end
 
   def must_load?(opts, must_load_opts \\ []) do
@@ -330,7 +303,7 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
 
     only_creates_or_ignores? =
       creating_and_cant_have_related? ||
-        (unwrap(opts[:on_match]) in [:no_match, :ignore] &&
+        (opts[:on_match] in [:no_match, :ignore] &&
            unwrap(opts[:on_no_match]) in allowed_on_no_match_values)
 
     on_missing_can_skip_load? =
@@ -346,14 +319,8 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
     not can_skip_load?
   end
 
-  defp primary_action_name(resource, type) do
-    primary_action = Ash.Resource.Info.primary_action(resource, type)
-
-    if primary_action do
-      primary_action.name
-    else
-      primary_action
-    end
+  defp primary_action_name!(resource, type) do
+    Ash.Resource.Info.primary_action!(resource, type).name
   end
 
   defp unwrap(value) when is_atom(value), do: value

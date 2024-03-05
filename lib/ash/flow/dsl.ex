@@ -122,7 +122,7 @@ defmodule Ash.Flow.Dsl do
         }
       """
     ],
-    recursive_as: :run_flow,
+    recursive_as: :steps,
     no_depend_modules: [:resource, :touches_resources],
     target: Ash.Flow.Step.RunFlow,
     args: [:name, :flow],

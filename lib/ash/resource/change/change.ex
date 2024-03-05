@@ -131,13 +131,18 @@ defmodule Ash.Resource.Change do
               )
 
   @callback atomic(Ash.Changeset.t(), Keyword.t(), context()) ::
-              {:atomic, %{atom() => Ash.Expr.t()}}
+              {:ok, Ash.Changeset.t()}
+              | {:atomic, %{optional(atom()) => Ash.Expr.t()}}
+              | {:atomic, Ash.Changeset.t(), %{optional(atom()) => Ash.Expr.t()}}
               | {:not_atomic, String.t()}
               | :ok
               | {:error, term()}
 
+  @callback atomic?() :: boolean
+
   @callback after_atomic(Ash.Changeset.t(), Keyword.t(), Ash.Resource.record(), context()) ::
               {:ok, Ash.Resource.record()} | {:error, term()}
+  @callback has_change?() :: boolean
 
   @optional_callbacks before_batch: 3,
                       after_batch: 3,
@@ -149,25 +154,40 @@ defmodule Ash.Resource.Change do
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.Change
+      @before_compile Ash.Resource.Change
       require Ash.Expr
 
+      @impl true
       def init(opts), do: {:ok, opts}
 
-      def atomic(_opts, _context),
-        do: {:not_atomic, "#{inspect(__MODULE__)} does not implement `atomic/2`"}
-
-      defoverridable init: 1, atomic: 2
+      defoverridable init: 1
     end
   end
 
-  defmacro __before_compile__(_env) do
-    quote generated: true do
-      unless Module.defines?(__MODULE__, {:atomic?, 0}, :def) do
-        @impl Ash.Resource.Validation
-        if Module.defines?(__MODULE__, {:atomic, 3}, :def) do
+  defmacro __before_compile__(_) do
+    quote do
+      if Module.defines?(__MODULE__, {:change, 3}, :def) do
+        @impl true
+        def has_change?, do: true
+      else
+        @impl true
+        def has_change?, do: false
+      end
+
+      if Module.defines?(__MODULE__, {:atomic, 3}, :def) do
+        unless Module.defines?(__MODULE__, {:atomic?, 0}, :def) do
+          @impl true
           def atomic?, do: true
-        else
+        end
+      else
+        unless Module.defines?(__MODULE__, {:atomic?, 0}, :def) do
+          @impl true
           def atomic?, do: false
+        end
+
+        @impl true
+        def atomic(_changeset, _opts, _context) do
+          {:not_atomic, "#{inspect(__MODULE__)} does not implement `atomic/3`"}
         end
       end
     end

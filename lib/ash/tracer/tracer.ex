@@ -82,22 +82,28 @@ defmodule Ash.Tracer do
 
       start = System.monotonic_time()
 
-      :telemetry.execute(
-        telemetry_name ++ [:start],
-        %{system_time: System.system_time()},
-        metadata
-      )
+      compiling? = Code.can_await_module_compilation?()
+
+      unless compiling? do
+        :telemetry.execute(
+          telemetry_name ++ [:start],
+          %{system_time: System.system_time()},
+          metadata
+        )
+      end
 
       try do
         unquote(opts[:do])
       after
         duration = System.monotonic_time() - start
 
-        :telemetry.execute(
-          telemetry_name ++ [:stop],
-          %{system_time: System.system_time(), duration: duration},
-          metadata
-        )
+        unless compiling? do
+          :telemetry.execute(
+            telemetry_name ++ [:stop],
+            %{system_time: System.system_time(), duration: duration},
+            metadata
+          )
+        end
       end
     end
   end

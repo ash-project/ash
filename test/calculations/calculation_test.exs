@@ -43,6 +43,14 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule Metadata do
+    use Ash.Calculation
+
+    def calculate(records, _opts, _context) do
+      Enum.map(records, &Ash.Resource.get_metadata(&1, :example_metadata))
+    end
+  end
+
   defmodule Concat do
     # An example concatenation calculation, that accepts the delimiter as an argument
     use Ash.Calculation
@@ -253,6 +261,11 @@ defmodule Ash.Test.CalculationTest do
 
     actions do
       defaults([:create, :read, :update, :destroy])
+
+      read :by_user_name do
+        argument :user_name, :string, allow_nil?: false
+        filter expr(user_name == ^arg(:user_name))
+      end
     end
 
     ets do
@@ -307,7 +320,9 @@ defmodule Ash.Test.CalculationTest do
     end
 
     relationships do
-      belongs_to(:user, Ash.Test.CalculationTest.User)
+      belongs_to(:user, Ash.Test.CalculationTest.User) do
+        attribute_writable?(true)
+      end
     end
   end
 
@@ -354,6 +369,18 @@ defmodule Ash.Test.CalculationTest do
       attribute(:bio, Bio)
     end
 
+    changes do
+      change fn changeset, _ ->
+        if changeset.action_type == :create do
+          Ash.Changeset.after_action(changeset, fn changeset, result ->
+            {:ok, Ash.Resource.put_metadata(result, :example_metadata, "example metadata")}
+          end)
+        else
+          changeset
+        end
+      end
+    end
+
     calculations do
       calculate :say_hello_to_fred, :string do
         calculation fn record, _ ->
@@ -370,6 +397,10 @@ defmodule Ash.Test.CalculationTest do
 
         load bio: [say_hello: %{to: "George"}]
       end
+
+      calculate :example_metadata, :string, Metadata
+
+      calculate :metadata_plus_metadata, :string, concat([:example_metadata, :example_metadata])
 
       calculate(:active, :boolean, expr(is_active))
 
@@ -391,6 +422,10 @@ defmodule Ash.Test.CalculationTest do
           constraints: [allow_empty?: true, trim?: false]
         )
       end
+
+      calculate :full_name_with_select_plus_something,
+                :string,
+                expr(full_name_with_select <> "_something")
 
       calculate(:best_friends_best_friends_first_name, :string, BestFriendsBestFriendsFirstName)
 
@@ -643,6 +678,23 @@ defmodule Ash.Test.CalculationTest do
     Role
     |> Ash.Query.load(:has_user)
     |> Api.read!()
+  end
+
+  test "read actions can load calculations that use the actor", %{actor1: actor} do
+    user =
+      User
+      |> Ash.Changeset.for_create(:create, %{first_name: "zach"})
+      |> Api.create!()
+
+    Role
+    |> Ash.Changeset.for_create(:create, %{user_id: user.id})
+    |> Api.create!()
+
+    assert [%{user_name: "zach"}] =
+             Role
+             |> Ash.Query.for_read(:by_user_name, %{user_name: "zach"}, actor: actor)
+             |> Ash.Query.load(:user_name)
+             |> Api.read!()
   end
 
   test "calculations that depend on relationships directly can be loaded from elsewhere", %{
@@ -1078,5 +1130,32 @@ defmodule Ash.Test.CalculationTest do
        %{user1: user1} do
     user1
     |> Api.load!([:say_hello_to_fred, :say_hello_to_george])
+  end
+
+  test "expression calculations that depend on runtime calculations work", %{user1: user1} do
+    assert [%{full_name_with_select_plus_something: "zach daniel_something"}] =
+             User
+             |> Ash.Query.filter(id == ^user1.id)
+             |> Ash.Query.load(:full_name_with_select_plus_something)
+             |> Api.read!()
+  end
+
+  test "calculations that extract metadata will be loaded as a dependency of the concat calculation",
+       %{user1: user1} do
+    assert "example metadataexample metadata" ==
+             user1
+             |> Api.load!(:metadata_plus_metadata)
+             |> Map.get(:metadata_plus_metadata)
+  end
+
+  test "metadata is persisted after an update", %{user1: user1} do
+    assert %{example_metadata: "example metadata"} =
+             user1.__metadata__
+
+    assert %{example_metadata: "example metadata"} =
+             user1
+             |> Ash.Changeset.for_update(:update, %{first_name: "something new"})
+             |> Api.update!()
+             |> Map.get(:__metadata__)
   end
 end

@@ -68,6 +68,18 @@ Would produce the following messages, given a `team_id` of 1, a `tenant` of `org
 "org_1:updated"
 ```
 
+## Custom Delimiters
+
+It's possible to change the default delimiter used when generating topics. This is useful when working with message brokers
+like RabbitMQ, which rely on a different set of delimiters for routing.
+
+
+```elixir
+pub_sub do
+  delimiter "."
+end
+```
+
 ## Named Pubsub modules
 
 If you are using a phoenix `Endpoint` module for pubsub then this is unnecessary. If you want to use a custom pub sub started with something like `{Phoenix.PubSub, name: MyName}`, then you can provide `MyName` to

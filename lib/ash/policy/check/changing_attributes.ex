@@ -1,6 +1,9 @@
 defmodule Ash.Policy.Check.ChangingAttributes do
   @moduledoc "This check is true when attribute changes correspond to the provided options."
-  use Ash.Policy.SimpleCheck
+  use Ash.Policy.FilterCheckWithContext
+
+  import Ash.Filter.TemplateHelpers
+  require Ash.Expr
 
   @impl true
   def describe(opts) do
@@ -26,32 +29,47 @@ defmodule Ash.Policy.Check.ChangingAttributes do
   end
 
   @impl true
-  def match?(_actor, %{changeset: %Ash.Changeset{} = changeset}, opts) do
-    Enum.all?(opts[:changing], fn
-      {attribute, opts} ->
-        if Keyword.has_key?(opts, :from) && changeset.action_type == :create do
-          false
-        else
-          case Ash.Changeset.fetch_change(changeset, attribute) do
-            {:ok, new_value} ->
-              opts == [] ||
-                Enum.all?(opts, fn
-                  {:to, value} ->
-                    new_value == value
+  def filter(_actor, %{changeset: %Ash.Changeset{} = changeset}, options) do
+    Enum.reduce_while(options[:changing], true, fn {attribute, opts}, expr ->
+      if Keyword.has_key?(opts, :from) && changeset.action_type == :create do
+        {:halt, false}
+      else
+        if Ash.Changeset.changing_attribute?(changeset, attribute) do
+          case {Keyword.fetch(opts, :from), Keyword.fetch(opts, :to)} do
+            {:error, :error} ->
+              {:cont, expr}
 
-                  {:from, value} ->
-                    Map.get(changeset.data, attribute) == value
-                end)
+            {{:ok, from}, {:ok, to}} ->
+              if expr == true do
+                {:cont,
+                 Ash.Expr.expr(not (^ref(attribute) == ^from and ^atomic_ref(attribute) == ^to))}
+              else
+                {:cont,
+                 Ash.Expr.expr(
+                   ^expr and not (^ref(attribute) == ^from and ^atomic_ref(attribute) == ^to)
+                 )}
+              end
 
-            _ ->
-              false
+            {{:ok, from}, :error} ->
+              if expr == true do
+                {:cont, Ash.Expr.expr(^ref(attribute) != ^from)}
+              else
+                {:cont, Ash.Expr.expr(^expr and ref(attribute) != ^from)}
+              end
+
+            {:error, {:ok, to}} ->
+              if expr == true do
+                {:cont, Ash.Expr.expr(^atomic_ref(attribute) != ^to)}
+              else
+                {:cont, Ash.Expr.expr(^expr and ^atomic_ref(attribute) != ^to)}
+              end
           end
+        else
+          {:cont, expr}
         end
-
-      attribute ->
-        match?({:ok, _}, Ash.Changeset.fetch_change(changeset, attribute))
+      end
     end)
   end
 
-  def match?(_, _, _), do: false
+  def filter(_, _, _), do: false
 end

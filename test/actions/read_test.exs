@@ -419,6 +419,13 @@ defmodule Ash.Test.Actions.ReadTest do
       assert res.message =~ ~r/Ash.Test.AnyApi.read_one\/2/
       assert res.message =~ ~r/expected a keyword list, but instead got \[1\]/
     end
+
+    test "it applies a limit" do
+      Api.create!(Ash.Changeset.for_create(Post, :create, %{}, authorize?: false))
+      Api.create!(Ash.Changeset.for_create(Post, :create, %{}, authorize?: false))
+      Api.create!(Ash.Changeset.for_create(Post, :create, %{}, authorize?: false))
+      assert %Post{} = Api.read_one!(Post |> Ash.Query.limit(1))
+    end
   end
 
   describe "Api.read_one!/2" do
@@ -512,7 +519,12 @@ defmodule Ash.Test.Actions.ReadTest do
       |> Api.create!()
 
       assert [%{name: "bruh"}] = Api.read!(Author)
-      assert [%{name: nil}] = Api.read!(Ash.Query.deselect(Author, :name))
+
+      if Ash.Flags.ash_three?() do
+        assert [%{name: %Ash.NotSelected{}}] = Api.read!(Ash.Query.deselect(Author, :name))
+      else
+        assert [%{name: nil}] = Api.read!(Ash.Query.deselect(Author, :name))
+      end
     end
 
     @tag :ash_three

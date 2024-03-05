@@ -3,6 +3,7 @@ defmodule Ash.Resource.Change.SetContext do
 
   use Ash.Resource.Change
 
+  @impl true
   def change(changeset, opts, _context) do
     context =
       case opts[:context] do
@@ -20,5 +21,10 @@ defmodule Ash.Resource.Change.SetContext do
       {:error, error} ->
         Ash.Changeset.add_error(changeset, error)
     end
+  end
+
+  @impl true
+  def atomic(changeset, opts, context) do
+    {:atomic, change(changeset, opts, context), %{}}
   end
 end

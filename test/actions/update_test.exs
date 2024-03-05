@@ -1,5 +1,6 @@
 defmodule Ash.Test.Actions.UpdateTest do
   @moduledoc false
+  require Ash.Flags
   use ExUnit.Case, async: true
 
   import Ash.Test
@@ -311,11 +312,19 @@ defmodule Ash.Test.Actions.UpdateTest do
         |> Ash.Changeset.new(%{title: "foo", contents: "bar"})
         |> Api.create!()
 
-      assert %Post{title: "bar", contents: nil} =
-               post
-               |> Ash.Changeset.new(%{title: "bar", contents: "foo"})
-               |> Ash.Changeset.select(:title)
-               |> Api.update!()
+      if Ash.Flags.ash_three?() do
+        assert %Post{title: "bar", contents: %Ash.NotSelected{}} =
+                 post
+                 |> Ash.Changeset.new(%{title: "bar", contents: "foo"})
+                 |> Ash.Changeset.select(:title)
+                 |> Api.update!()
+      else
+        assert %Post{title: "bar", contents: nil} =
+                 post
+                 |> Ash.Changeset.new(%{title: "bar", contents: "foo"})
+                 |> Ash.Changeset.select(:title)
+                 |> Api.update!()
+      end
     end
   end
 

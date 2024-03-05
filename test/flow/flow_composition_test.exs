@@ -1,4 +1,4 @@
-defmodule Ash.FlowTest.FlowCompositionTest do
+defmodule Ash.Flow.FlowCompositionTest do
   @moduledoc false
   use ExUnit.Case, async: false
 

@@ -4,6 +4,7 @@ defmodule Ash.Resource.Change.GetAndLockForUpdate do
   """
   use Ash.Resource.Change
 
+  @impl true
   def change(changeset, _, context) do
     Ash.Changeset.before_action(changeset, fn changeset ->
       primary_key = Ash.Resource.Info.primary_key(changeset.resource)
@@ -24,5 +25,10 @@ defmodule Ash.Resource.Change.GetAndLockForUpdate do
           Ash.Changeset.add_error(changeset, error)
       end
     end)
+  end
+
+  @impl true
+  def atomic(_changeset, _, _) do
+    :ok
   end
 end

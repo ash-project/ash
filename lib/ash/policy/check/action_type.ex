@@ -20,6 +20,9 @@ defmodule Ash.Policy.Check.ActionType do
   end
 
   @impl true
+  def requires_original_data?(_, _), do: false
+
+  @impl true
   def match?(_actor, %{action: %{type: type}}, options) do
     case List.wrap(options[:type]) do
       [configured_type] ->

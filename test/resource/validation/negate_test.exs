@@ -37,7 +37,7 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
 
       changeset = Post |> Ash.Changeset.new(%{status: :valid})
 
-      assert :ok = Negate.validate(changeset, opts)
+      assert :ok = Negate.validate(changeset, opts, %{})
     end
 
     test "fails when inner validation passes" do
@@ -46,7 +46,8 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
 
       changeset = Post |> Ash.Changeset.new(%{status: :canceled})
 
-      assert {:error, %Ash.Error.Changes.InvalidAttribute{}} = Negate.validate(changeset, opts)
+      assert {:error, %Ash.Error.Changes.InvalidAttribute{}} =
+               Negate.validate(changeset, opts, %{})
     end
 
     test "support custom validations" do
@@ -54,7 +55,7 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
 
       changeset = Post |> Ash.Changeset.new(%{status: :valid})
 
-      assert :ok = Negate.validate(changeset, opts)
+      assert :ok = Negate.validate(changeset, opts, %{})
     end
 
     test "returns error on init if validation do not export `describe/1`" do

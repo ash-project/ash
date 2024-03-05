@@ -124,7 +124,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
     use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
 
     actions do
-      defaults [:create, :read]
+      defaults [:create, :read, :destroy]
     end
 
     relationships do

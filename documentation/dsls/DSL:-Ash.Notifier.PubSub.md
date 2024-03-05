@@ -39,6 +39,7 @@ end
 |------|------|---------|------|
 | [`module`](#pub_sub-module){: #pub_sub-module .spark-required} | `atom` |  | The module to call `broadcast/3` on e.g module.broadcast(topic, event, message). |
 | [`prefix`](#pub_sub-prefix){: #pub_sub-prefix } | `String.t` |  | A prefix for all pubsub messages, e.g `users`. A message with `created` would be published as `users:created` |
+| [`delimiter`](#pub_sub-delimiter){: #pub_sub-delimiter } | `String.t` |  | A delimiter for building topics. Default is a colon (:) |
 | [`broadcast_type`](#pub_sub-broadcast_type){: #pub_sub-broadcast_type } | `:notification \| :phoenix_broadcast \| :broadcast` | `:notification` | What shape the event payloads will be in. See |
 | [`name`](#pub_sub-name){: #pub_sub-name } | `atom` |  | A named pub sub to pass as the first argument to broadcast. |
 
@@ -74,11 +75,12 @@ publish :assign, "assigned"
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`action`](#pub_sub-publish-action){: #pub_sub-publish-action .spark-required} | `atom` |  | The name of the action that should be published |
-| [`topic`](#pub_sub-publish-topic){: #pub_sub-publish-topic .spark-required} | ``any`` |  | The topic to publish |
+| [`topic`](#pub_sub-publish-topic){: #pub_sub-publish-topic .spark-required} | `any` |  | The topic to publish |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`previous_values?`](#pub_sub-publish-previous_values?){: #pub_sub-publish-previous_values? } | `boolean` | `true` | Whether or not to publish messages with both the new values and the old values for referencing changed attributes |
 | [`event`](#pub_sub-publish-event){: #pub_sub-publish-event } | `String.t` |  | The name of the event to publish. Defaults to the action name |
 | [`dispatcher`](#pub_sub-publish-dispatcher){: #pub_sub-publish-dispatcher } | `atom` |  | The module to use as a dispatcher. If none is set, the pubsub module provided is used. |
 
@@ -116,12 +118,13 @@ publish_all :create, "created"
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`type`](#pub_sub-publish_all-type){: #pub_sub-publish_all-type } | `:create \| :update \| :destroy` |  | Publish on all actions of a given type |
-| [`topic`](#pub_sub-publish_all-topic){: #pub_sub-publish_all-topic .spark-required} | ``any`` |  | The topic to publish |
+| [`topic`](#pub_sub-publish_all-topic){: #pub_sub-publish_all-topic .spark-required} | `any` |  | The topic to publish |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`action`](#pub_sub-publish_all-action){: #pub_sub-publish_all-action } | `atom` |  | The name of the action that should be published |
+| [`previous_values?`](#pub_sub-publish_all-previous_values?){: #pub_sub-publish_all-previous_values? } | `boolean` | `true` | Whether or not to publish messages with both the new values and the old values for referencing changed attributes |
 | [`event`](#pub_sub-publish_all-event){: #pub_sub-publish_all-event } | `String.t` |  | The name of the event to publish. Defaults to the action name |
 | [`dispatcher`](#pub_sub-publish_all-dispatcher){: #pub_sub-publish_all-dispatcher } | `atom` |  | The module to use as a dispatcher. If none is set, the pubsub module provided is used. |
 

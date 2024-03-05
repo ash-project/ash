@@ -40,10 +40,10 @@ defmodule Ash.Resource.Validation.Negate do
   end
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, context) do
     {validation, validation_opts} = opts[:validation]
 
-    case validation.validate(changeset, validation_opts) do
+    case validation.validate(changeset, validation_opts, context) do
       {:error, _} ->
         :ok
 
@@ -55,6 +55,7 @@ defmodule Ash.Resource.Validation.Negate do
     end
   end
 
+  @impl true
   def atomic(changeset, opts) do
     {validation, validation_opts} = opts[:validation]
 

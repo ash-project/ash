@@ -85,27 +85,32 @@ defmodule Ash.Policy.Checker do
         {:ok, value, authorizer}
 
       {:ok, scenarios, authorizer} ->
-        {:ok,
-         scenarios
-         |> Ash.Policy.SatSolver.simplify_clauses()
-         |> remove_scenarios_with_impossible_facts(authorizer), authorizer}
+        scenarios
+        |> remove_scenarios_with_impossible_facts(authorizer)
+        |> Ash.Policy.SatSolver.simplify_clauses()
+        |> case do
+          [] -> {:ok, false, authorizer}
+          scenarios -> {:ok, scenarios, authorizer}
+        end
 
-      {:error, authorizer, :unsatisfiable} ->
-        {:error, authorizer, :unsatisfiable}
+      {:error, authorizer, error} ->
+        {:error, authorizer, error}
     end
   end
 
   defp remove_scenarios_with_impossible_facts(scenarios, authorizer) do
-    # Remove any scenarios with a fact that must be a certain value, but are not, at strict check time
-    # They aren't true, so that scenario isn't possible
-
     Enum.reject(scenarios, fn scenario ->
       Enum.any?(scenario, fn {{mod, opts}, required_value} ->
-        opts[:access_type] == :strict &&
-          not match?(
-            {:ok, ^required_value},
-            Policy.fetch_fact(authorizer.facts, {mod, opts})
-          )
+        case Policy.fetch_fact(authorizer.facts, {mod, opts}) do
+          {:ok, :unknown} ->
+            opts[:access_type] == :strict
+
+          {:ok, value} ->
+            value != required_value
+
+          :error ->
+            opts[:access_type] == :strict
+        end
       end)
     end)
   end

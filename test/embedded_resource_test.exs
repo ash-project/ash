@@ -7,6 +7,8 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
   require Ash.Query
 
   defmodule Increasing do
+    use Ash.Resource.Validation
+
     def init(opts), do: {:ok, opts}
 
     def validate(changeset, opts) do
@@ -26,6 +28,8 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
   end
 
   defmodule DestroyMe do
+    use Ash.Resource.Validation
+
     def init(opts), do: {:ok, opts}
 
     def validate(changeset, _opts) do
@@ -198,7 +202,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
   end
 
   test "embedded resources can be created" do
-    assert %{profile: %Profile{}, tags: [%Tag{}, %Tag{}]} =
+    assert %{profile: %Profile{}, tags: [%Tag{name: "trainer"}, %Tag{name: "human"}]} =
              Changeset.for_create(
                Author,
                :create,

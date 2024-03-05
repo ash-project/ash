@@ -1,7 +1,7 @@
 defmodule Ash.Test.Support.PolicyRbac.Checks.RoleChecks do
   @moduledoc false
 
-  @behaviour Ash.Policy.Check
+  use Ash.Policy.Check
   require Ash.Query
 
   # Description of role hierarchy/permissions granted

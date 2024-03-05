@@ -64,6 +64,7 @@ spark_locals_without_parens = [
   default: 1,
   default_accept: 1,
   default_access_type: 1,
+  default_api: 1,
   default_context: 1,
   default_limit: 1,
   defaults: 1,
@@ -74,6 +75,7 @@ spark_locals_without_parens = [
   define_calculation: 2,
   define_for: 1,
   delay_global_validations?: 1,
+  delimiter: 1,
   description: 1,
   destination_attribute: 1,
   destination_attribute_on_join_resource: 1,
@@ -166,6 +168,7 @@ spark_locals_without_parens = [
   prefix: 1,
   prepare: 1,
   prepare: 2,
+  previous_values?: 1,
   primary?: 1,
   primary_key?: 1,
   private?: 1,
@@ -183,6 +186,7 @@ spark_locals_without_parens = [
   reject: 1,
   relationship_context: 1,
   require_actor?: 1,
+  require_atomic?: 1,
   require_attributes: 1,
   require_primary_key?: 1,
   required?: 1,
@@ -241,7 +245,9 @@ spark_locals_without_parens = [
 ]
 
 [
+  import_deps: [:spark, :reactor],
   inputs: ["{mix,.formatter}.exs", "{config,lib,test}/**/*.{ex,exs}"],
+  plugins: [Spark.Formatter],
   locals_without_parens: spark_locals_without_parens,
   export: [
     locals_without_parens: spark_locals_without_parens

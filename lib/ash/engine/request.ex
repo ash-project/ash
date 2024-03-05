@@ -1080,8 +1080,7 @@ defmodule Ash.Engine.Request do
   defp do_try_resolve_local(request, field, unresolved, internal?) do
     %{deps: deps, resolver: resolver} = unresolved
 
-    with {:ok, new_request, notifications, []} <-
-           try_resolve(request, deps, internal?) do
+    with {:ok, new_request, notifications, []} <- try_resolve(request, deps, internal?) do
       resolver_context = resolver_context(new_request, deps)
 
       log(request, fn -> "resolving #{field}" end)

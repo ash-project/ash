@@ -1,5 +1,6 @@
 defmodule Ash.Test.Actions.CreateTest do
   @moduledoc false
+  require Ash.Flags
   use ExUnit.Case, async: true
 
   import Ash.Test
@@ -239,6 +240,18 @@ defmodule Ash.Test.Actions.CreateTest do
 
       create :create_with_nested_array_argument do
         argument :array_of_names, {:array, {:array, :string}}
+      end
+    end
+
+    changes do
+      change fn changeset, _ ->
+        Ash.Changeset.after_transaction(changeset, fn
+          _, {:error, error} ->
+            send(self(), {:error, error})
+
+          _, result ->
+            result
+        end)
       end
     end
 
@@ -561,7 +574,11 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Ash.Changeset.select(:bio)
         |> Ash.create!(action: :duplicate_name)
 
-      assert is_nil(author.name)
+      if Ash.Flags.ash_three?() do
+        assert %Ash.NotSelected{field: :name} = author.name
+      else
+        assert is_nil(author.name)
+      end
     end
   end
 
@@ -902,5 +919,14 @@ defmodule Ash.Test.Actions.CreateTest do
                GlobalValidation
                |> Ash.Changeset.for_create(:manual, %{foo: 5})
     end
+  end
+
+  test "after action hooks are run even on invalid input changesets" do
+    assert {:error, _error} =
+             Post
+             |> Ash.Changeset.for_create(:create, %{title: %{}})
+             |> Ash.create()
+
+    assert_receive {:error, _error}
   end
 end

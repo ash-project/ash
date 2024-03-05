@@ -36,6 +36,8 @@ defmodule Ash.Api do
   Additionally, you can define a `code_interface` on each resource. See the code interface guide for more.
   """
 
+  require Ash.Flags
+
   use Spark.Dsl,
     default_extensions: [extensions: [Ash.Api.Dsl]],
     opt_schema: [
@@ -197,6 +199,9 @@ defmodule Ash.Api do
                  @read_opts_schema,
                  "Read Options"
                )
+
+  @doc false
+  def stream_opt_keys, do: Keyword.keys(@stream_opts)
 
   @doc """
   Streams the results of a query.
@@ -445,6 +450,18 @@ defmodule Ash.Api do
       doc:
         "Whether or not to cast attributes and arguments as input. This is an optimization for cases where the input is already casted and/or not in need of casting"
     ],
+    authorize_query_with: [
+      type: {:one_of, [:filter, :error]},
+      default: :filter,
+      doc:
+        "If set to `:error`, instead of filtering unauthorized query results, unauthorized query results will raise an appropriate forbidden error"
+    ],
+    authorize_changeset_with: [
+      type: {:one_of, [:filter, :error]},
+      default: :filter,
+      doc:
+        "If set to `:error`, instead of filtering unauthorized changes, unauthorized changes will raise an appropriate forbidden error"
+    ],
     context: [
       type: :map,
       doc: "Context to set on each changeset"
@@ -523,6 +540,10 @@ defmodule Ash.Api do
     ]
   ]
 
+  @bulk_strategy_default if Ash.Flags.ash_three?(),
+                           do: :atomic,
+                           else: [:atomic, :atomic_batches, :stream]
+
   @bulk_update_opts_schema [
                              resource: [
                                type: {:spark, Ash.Resource},
@@ -538,6 +559,34 @@ defmodule Ash.Api do
                                type: :integer,
                                doc:
                                  "Batch size to use if provided a query and the query must be streamed"
+                             ],
+                             allow_stream_with: [
+                               type: {:one_of, [:keyset, :offset, :full_read]},
+                               doc:
+                                 "The 'worst' strategy allowed to be used to fetch records if the `:stream` strategy is chosen. See `Ash.Api.stream!/2` docs for more.",
+                               default: :keyset
+                             ],
+                             authorize_query?: [
+                               type: :boolean,
+                               default: true,
+                               doc:
+                                 "If a query is given, determines whether or not authorization is run on that query."
+                             ],
+                             load: [
+                               type: :any,
+                               doc:
+                                 "A load statement to apply to records. Ignored if `return_records?` is not true."
+                             ],
+                             select: [
+                               type: {:list, :atom},
+                               doc:
+                                 "A select statement to apply to records. Ignored if `return_records?` is not true."
+                             ],
+                             strategy: [
+                               type: {:wrap_list, {:one_of, [:atomic, :atomic_batches, :stream]}},
+                               default: @bulk_strategy_default,
+                               doc:
+                                 "The strategy or strategies to enable. :stream is used in all cases if the data layer does not support atomics."
                              ]
                            ]
                            |> merge_schemas(
@@ -567,6 +616,25 @@ defmodule Ash.Api do
                                 type: :integer,
                                 doc:
                                   "Batch size to use if provided a query and the query must be streamed"
+                              ],
+                              allow_stream_with: [
+                                type: {:one_of, [:keyset, :offset, :full_read]},
+                                doc:
+                                  "The 'worst' strategy allowed to be used to fetch records if the `:stream` strategy is chosen. See `Ash.Api.stream!/2` docs for more.",
+                                default: :keyset
+                              ],
+                              authorize_query?: [
+                                type: :boolean,
+                                default: true,
+                                doc:
+                                  "If a query is given, determines whether or not authorization is run on that query."
+                              ],
+                              strategy: [
+                                type:
+                                  {:wrap_list, {:one_of, [:atomic, :atomic_batches, :stream]}},
+                                default: @bulk_strategy_default,
+                                doc:
+                                  "The strategy or strategies to enable. :stream is used in all cases if the data layer does not support atomics."
                               ]
                             ]
                             |> merge_schemas(
@@ -598,6 +666,16 @@ defmodule Ash.Api do
                                doc:
                                  "The identity to use when detecting conflicts for `upsert?`, e.g. `upsert_identity: :full_name`. By default, the primary key is used. Has no effect if `upsert?: true` is not provided"
                              ],
+                             load: [
+                               type: :any,
+                               doc:
+                                 "A load statement to apply to records. Ignored if `return_records?` is not true."
+                             ],
+                             select: [
+                               type: {:list, :atom},
+                               doc:
+                                 "A select statement to apply to records. Ignored if `return_records?` is not true."
+                             ],
                              upsert_fields: [
                                type:
                                  {:or,
@@ -628,7 +706,13 @@ defmodule Ash.Api do
   @doc false
   def create_opts_schema, do: @create_opts_schema
 
-  @update_opts_schema []
+  @update_opts_schema [
+                        params: [
+                          type: :map,
+                          doc:
+                            "Parameters to supply, ignored if the input is a changeset, only used when an identifier is given."
+                        ]
+                      ]
                       |> merge_schemas(@global_opts, "Global Options")
                       |> merge_schemas(
                         @create_update_opts_schema,
@@ -699,7 +783,10 @@ defmodule Ash.Api do
         ) ::
           boolean | no_return
   def can?(api, action_or_query_or_changeset, actor, opts \\ []) do
-    opts = Keyword.put_new(opts, :maybe_is, true)
+    opts =
+      opts
+      |> Keyword.put_new(:maybe_is, true)
+      |> Keyword.put_new(:filter_with, :filter)
 
     case can(api, action_or_query_or_changeset, actor, opts) do
       {:ok, :maybe} -> opts[:maybe_is]
@@ -728,6 +815,7 @@ defmodule Ash.Api do
   def can(api, action_or_query_or_changeset, actor, opts \\ []) do
     opts = Keyword.put_new(opts, :maybe_is, :maybe)
     opts = Keyword.put_new(opts, :run_queries?, true)
+    opts = Keyword.put_new(opts, :filter_with, :filter)
 
     {resource, action_or_query_or_changeset, input} =
       case action_or_query_or_changeset do
@@ -832,7 +920,7 @@ defmodule Ash.Api do
   end
 
   defp alter_source({:ok, true, query}, api, actor, %Ash.Changeset{} = subject, opts) do
-    case alter_source({:ok, true}, api, actor, subject, opts) do
+    case alter_source({:ok, true}, api, actor, subject, Keyword.put(opts, :base_query, query)) do
       {:ok, true, new_subject} -> {:ok, true, new_subject, query}
       other -> other
     end
@@ -867,48 +955,29 @@ defmodule Ash.Api do
 
               case subject do
                 %Ash.Query{} = query ->
-                  context = Map.put(context, :query, query)
-
-                  with {:ok, query, _} <-
-                         Ash.Authorizer.add_calculations(
-                           authorizer,
-                           query,
-                           authorizer_state,
-                           context
-                         ),
-                       {:ok, new_filter} <-
-                         Ash.Authorizer.alter_filter(
-                           authorizer,
-                           authorizer_state,
-                           query.filter,
-                           context
-                         ),
-                       {:ok, hydrated} <-
-                         Ash.Filter.hydrate_refs(new_filter, %{
-                           resource: query.resource,
-                           public?: false
-                         }),
-                       {:ok, new_sort} <-
-                         Ash.Authorizer.alter_sort(
-                           authorizer,
-                           authorizer_state,
-                           query.sort,
-                           context
-                         ) do
-                    {:ok, true, %{query | filter: hydrated, sort: new_sort}}
-                  end
+                  alter_query(query, authorizer, authorizer_state, context)
 
                 %Ash.Changeset{} = changeset ->
                   context = Map.put(context, :changeset, changeset)
 
-                  with {:ok, changeset, _} <-
+                  with {:ok, changeset, authorizer_state} <-
                          Ash.Authorizer.add_calculations(
                            authorizer,
                            changeset,
                            authorizer_state,
                            context
                          ) do
-                    {:ok, true, changeset}
+                    if opts[:base_query] do
+                      case alter_query(opts[:base_query], authorizer, authorizer_state, context) do
+                        {:ok, true, query} ->
+                          {:ok, true, changeset, query}
+
+                        other ->
+                          other
+                      end
+                    else
+                      {:ok, true, changeset}
+                    end
                   end
 
                 %Ash.ActionInput{} = subject ->
@@ -923,6 +992,39 @@ defmodule Ash.Api do
   end
 
   defp alter_source(other, _, _, _, _), do: other
+
+  defp alter_query(query, authorizer, authorizer_state, context) do
+    context = Map.put(context, :query, query)
+
+    with {:ok, query, _} <-
+           Ash.Authorizer.add_calculations(
+             authorizer,
+             query,
+             authorizer_state,
+             context
+           ),
+         {:ok, new_filter} <-
+           Ash.Authorizer.alter_filter(
+             authorizer,
+             authorizer_state,
+             query.filter,
+             context
+           ),
+         {:ok, hydrated} <-
+           Ash.Filter.hydrate_refs(new_filter, %{
+             resource: query.resource,
+             public?: false
+           }),
+         {:ok, new_sort} <-
+           Ash.Authorizer.alter_sort(
+             authorizer,
+             authorizer_state,
+             query.sort,
+             context
+           ) do
+      {:ok, true, %{query | filter: hydrated, sort: new_sort}}
+    end
+  end
 
   defp run_check(api, actor, subject, opts) do
     authorizers =
@@ -988,58 +1090,134 @@ defmodule Ash.Api do
                 """
 
               {:filter, _authorizer, filter} ->
-                {:cont, {true, Ash.Query.filter(or_query(query, subject.resource, api), ^filter)}}
+                filter =
+                  if opts[:atomic_changeset] do
+                    Ash.Filter.build_filter_from_template(
+                      filter,
+                      actor,
+                      %{},
+                      %{},
+                      opts[:atomic_changeset]
+                    )
+                  else
+                    filter
+                  end
+
+                {:cont,
+                 {true,
+                  apply_filter(
+                    query,
+                    subject.resource,
+                    api,
+                    filter,
+                    authorizer,
+                    authorizer_state,
+                    opts
+                  )}}
 
               {:filter, filter} ->
-                {:cont, {true, Ash.Query.filter(or_query(query, subject.resource, api), ^filter)}}
+                filter =
+                  if opts[:atomic_changeset] do
+                    Ash.Filter.build_filter_from_template(
+                      filter,
+                      actor,
+                      %{},
+                      %{},
+                      opts[:atomic_changeset]
+                    )
+                  else
+                    filter
+                  end
+
+                {:cont,
+                 {true,
+                  apply_filter(
+                    query,
+                    subject.resource,
+                    api,
+                    filter,
+                    authorizer,
+                    authorizer_state,
+                    opts
+                  )}}
 
               {:continue, authorizer_state} ->
-                if opts[:alter_source?] do
-                  query_with_hook =
-                    Ash.Query.authorize_results(or_query(query, subject.resource, api), fn query,
-                                                                                           results ->
-                      context = Map.merge(context, %{data: results, query: query})
-
-                      case authorizer.check(authorizer_state, context) do
-                        :authorized -> {:ok, results}
-                        {:error, error} -> {:error, error}
-                        {:data, data} -> {:ok, data}
-                      end
-                    end)
-
-                  {:cont, {true, query_with_hook}}
+                if opts[:no_check?] do
+                  Ash.Authorizer.exception(authorizer, :must_pass_strict_check, authorizer_state)
                 else
-                  if opts[:maybe_is] == false do
-                    {:halt,
-                     {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                  if opts[:alter_source?] || !match?(%Ash.Query{}, subject) do
+                    query_with_hook =
+                      Ash.Query.authorize_results(
+                        or_query(query, subject.resource, api),
+                        fn query, results ->
+                          context = Map.merge(context, %{data: results, query: query})
+
+                          case authorizer.check(authorizer_state, context) do
+                            :authorized -> {:ok, results}
+                            {:error, :forbidden, error} -> {:error, error}
+                            {:error, error} -> {:error, error}
+                            {:data, data} -> {:ok, data}
+                          end
+                        end
+                      )
+
+                    {:cont, {true, query_with_hook}}
                   else
-                    {:halt, {:maybe, nil}}
+                    if opts[:maybe_is] == false do
+                      {:halt,
+                       {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                    else
+                      {:halt, {:maybe, nil}}
+                    end
                   end
                 end
 
               {:filter_and_continue, filter, authorizer_state} ->
-                if opts[:alter_source?] do
-                  query_with_hook =
-                    query
-                    |> or_query(subject.resource, api)
-                    |> Ash.Query.filter(^filter)
-                    |> Ash.Query.authorize_results(fn query, results ->
-                      context = Map.merge(context, %{data: results, query: query})
-
-                      case authorizer.check(authorizer_state, context) do
-                        :authorized -> {:ok, results}
-                        {:error, error} -> {:error, error}
-                        {:data, data} -> {:ok, data}
-                      end
-                    end)
-
-                  {:cont, {true, query_with_hook}}
-                else
-                  if opts[:maybe_is] == false do
-                    {:halt,
-                     {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                filter =
+                  if opts[:atomic_changeset] do
+                    Ash.Filter.build_filter_from_template(
+                      filter,
+                      actor,
+                      %{},
+                      %{},
+                      opts[:atomic_changeset]
+                    )
                   else
-                    {:halt, {:maybe, nil}}
+                    filter
+                  end
+
+                if opts[:no_check?] || !match?(%Ash.Query{}, subject) do
+                  Ash.Authorizer.exception(authorizer, :must_pass_strict_check, authorizer_state)
+                else
+                  if opts[:alter_source?] do
+                    query_with_hook =
+                      query
+                      |> apply_filter(
+                        subject.resource,
+                        api,
+                        filter,
+                        authorizer,
+                        authorizer_state,
+                        opts
+                      )
+                      |> Ash.Query.authorize_results(fn query, results ->
+                        context = Map.merge(context, %{data: results, query: query})
+
+                        case authorizer.check(authorizer_state, context) do
+                          :authorized -> {:ok, results}
+                          {:error, error} -> {:error, error}
+                          {:data, data} -> {:ok, data}
+                        end
+                      end)
+
+                    {:cont, {true, query_with_hook}}
+                  else
+                    if opts[:maybe_is] == false do
+                      {:halt,
+                       {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                    else
+                      {:halt, {:maybe, nil}}
+                    end
                   end
                 end
             end
@@ -1081,6 +1259,28 @@ defmodule Ash.Api do
           other ->
             other
         end
+    end
+  end
+
+  defp apply_filter(query, resource, api, filter, authorizer, authorizer_state, opts) do
+    case opts[:filter_with] || :filter do
+      :filter ->
+        Ash.Query.filter(or_query(query, resource, api), ^filter)
+
+      :error ->
+        Ash.Query.filter(
+          or_query(query, resource, api),
+          if ^filter do
+            true
+          else
+            error(Ash.Error.Forbidden.Placeholder, %{
+              authorizer: ^inspect(authorizer)
+            })
+          end
+        )
+        |> Ash.Query.set_context(%{
+          private: %{authorizer_state: %{authorizer => authorizer_state}}
+        })
     end
   end
 
@@ -1335,8 +1535,7 @@ defmodule Ash.Api do
             calculation: {module, calc_opts},
             type: type,
             constraints: constraints
-          }} <-
-           {:calc, Ash.Resource.Info.calculation(resource, calculation)},
+          }} <- {:calc, Ash.Resource.Info.calculation(resource, calculation)},
          record <- struct(record || resource, opts[:refs] || %{}) do
       calc_context =
         opts[:context]
@@ -1424,16 +1623,36 @@ defmodule Ash.Api do
     end
   end
 
+  @doc """
+  Runs an aggregate or aggregates over a resource query
+
+  If you pass an `%Ash.Query.Aggregate{}`, gotten from `Ash.Query.Aggregate.new()`,
+  the query provided as the first argument to this function will not apply. For this
+  reason, it is preferred that you pass in the tuple format, i.e
+
+  Prefer this:
+  `Api.aggregate(query, {:count_of_things, :count})`
+
+  Over this:
+  `Api.aggregate(query, Ash.Query.Aggregate.new(...))`
+
+  #{Spark.OptionsHelpers.docs(@aggregate_opts)}
+  """
   @callback aggregate(
               Ash.Query.t(),
-              Ash.Api.aggregate() | list(Ash.Api.aggregate()),
+              aggregate() | list(aggregate()),
               opts :: Keyword.t()
             ) ::
               {:ok, any} | {:error, Ash.Error.t()}
 
+  @doc """
+  Runs an aggregate or aggregates over a resource query
+
+  See `c:aggregate/3` for more.
+  """
   @callback aggregate!(
               Ash.Query.t(),
-              Ash.Api.aggregate() | list(Ash.Api.aggregate()),
+              aggregate() | list(aggregate()),
               opts :: Keyword.t()
             ) ::
               any | no_return
@@ -1518,6 +1737,10 @@ defmodule Ash.Api do
     - `base_query` - If authorizing an update, some cases can return both a new changeset and a query filtered for only things
       that will be authorized to update. Providing the `base_query` will cause that query to be altered instead of a new one to be
       generated.
+    - `no_check?` - If set to `true`, the query will not run the checks for runtime policies, and will instead consider the policy to have
+      failed. This is used for things like atomic updates, where the policies must check with strict check or filter checks.
+    - `atomic_changeset` - A changeset to use to fill any `atomic_ref` templates.
+    - `filter_with` - If set to `:error`, any filter authorization will produce an error on matches, otherwise matches will be filtered out.
   """
 
   @callback can(
@@ -2379,6 +2602,17 @@ defmodule Ash.Api do
       query
       |> Ash.Actions.Read.unpaginated_read(action, opts)
       |> unwrap_one()
+      |> case do
+        {:ok, nil} ->
+          if opts[:not_found_error?] do
+            {:error, Ash.Error.to_error_class(NotFound.exception(resource: query.resource))}
+          else
+            {:ok, nil}
+          end
+
+        other ->
+          other
+      end
     else
       {:error, error} ->
         {:error, error}
@@ -2623,7 +2857,7 @@ defmodule Ash.Api do
       %Ash.BulkResult{status: :error, errors: errors} ->
         raise Ash.Error.to_error_class(errors)
 
-      bulk_result ->
+      %Ash.BulkResult{} = bulk_result ->
         bulk_result
     end
   end
@@ -2658,7 +2892,10 @@ defmodule Ash.Api do
       query_or_stream ->
         case Spark.OptionsHelpers.validate(opts, @bulk_destroy_opts_schema) do
           {:ok, opts} ->
-            Destroy.Bulk.run(api, query_or_stream, action, input, opts)
+            %Ash.BulkResult{} =
+              result = Destroy.Bulk.run(api, query_or_stream, action, input, opts)
+
+            result
 
           {:error, error} ->
             %Ash.BulkResult{status: :error, errors: [Ash.Error.to_ash_error(error)]}
@@ -2676,7 +2913,7 @@ defmodule Ash.Api do
   end
 
   @doc false
-  @spec update(Ash.Api.t(), Ash.Resource.record(), Keyword.t()) ::
+  @spec update(Ash.Api.t(), Ash.Changeset.t(), Keyword.t()) ::
           {:ok, Ash.Resource.record()}
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
@@ -2774,6 +3011,7 @@ defmodule Ash.Api do
   end
 
   defp unwrap_or_raise!(first, destroy? \\ false)
+  defp unwrap_or_raise!(%Ash.BulkResult{} = bulk_result, _), do: bulk_result
   defp unwrap_or_raise!(:ok, _), do: :ok
   defp unwrap_or_raise!({:ok, result}, false), do: result
   defp unwrap_or_raise!({:ok, _result}, true), do: :ok

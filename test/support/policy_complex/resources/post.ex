@@ -11,13 +11,13 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
       authorize_if always()
     end
 
-    policy action_type(:read) do
+    policy [action_type(:read)] do
       authorize_if relates_to_actor_via(:author)
       authorize_if relates_to_actor_via([:author, :friends])
     end
 
     policy action_type(:create) do
-      authorize_if relating_to_actor(:author)
+      authorize_if always()
     end
   end
 

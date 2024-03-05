@@ -39,12 +39,6 @@ Resource
 |> Ash.Changeset.for_create(:create, %{embeds: embeds_input, maps: embeds_input})
 |> Api.create!()
 
-# :eflame.apply(fn ->
-#   Resource
-#   |> Ash.Changeset.for_create(:create, %{embeds: embeds_input})
-#   |> Api.create!()
-# end, [])
-
 Benchee.run(
   %{
     embeds: fn ->

@@ -413,6 +413,15 @@ defmodule Ash.Filter.Runtime do
     end
   end
 
+  defp resolve_expr({:_actor, _}, _, _, _, _), do: :unknown
+  defp resolve_expr({:_arg, _}, _, _, _, _), do: :unknown
+  defp resolve_expr({:_ref, _}, _, _, _, _), do: :unknown
+  defp resolve_expr({:_ref, _, _}, _, _, _, _), do: :unknown
+  defp resolve_expr({:_parent, _}, _, _, _, _), do: :unknown
+  defp resolve_expr({:_parent, _, _}, _, _, _, _), do: :unknown
+  defp resolve_expr({:_atomic_ref, _}, _, _, _, _), do: :unknown
+  defp resolve_expr({:_context, _}, _, _, _, _), do: :unknown
+
   defp resolve_expr(
          %Ash.Filter{expression: expression},
          record,
@@ -666,8 +675,7 @@ defmodule Ash.Filter.Runtime do
          unknown_on_unknown_refs?
        ) do
     with {:ok, args} <- resolve_exprs(args, record, parent, resource, unknown_on_unknown_refs?),
-         {:args, args} when not is_nil(args) <-
-           {:args, try_cast_arguments(mod.args(), args)},
+         {:args, args} when not is_nil(args) <- {:args, try_cast_arguments(mod.args(), args)},
          {:known, val} <-
            evaluate(%{pred | arguments: args}, record, parent, resource, unknown_on_unknown_refs?) do
       {:ok, val}

@@ -139,7 +139,15 @@ defmodule Ash.Actions.Create.Bulk do
               )
             )
             |> reject_and_maybe_store_errors(ref, opts)
-            |> handle_batch(api, resource, action, all_changes, data_layer_can_bulk?, opts, ref)
+            |> handle_batch(
+              api,
+              resource,
+              action,
+              all_changes,
+              data_layer_can_bulk?,
+              opts,
+              ref
+            )
           after
             if opts[:notify?] && !opts[:return_notifications?] do
               Ash.Notifier.notify(Process.delete({:bulk_create_notifications, ref}))
@@ -319,7 +327,16 @@ defmodule Ash.Actions.Create.Bulk do
     )
   end
 
-  defp handle_batch(batch, api, resource, action, all_changes, data_layer_can_bulk?, opts, ref) do
+  defp handle_batch(
+         batch,
+         api,
+         resource,
+         action,
+         all_changes,
+         data_layer_can_bulk?,
+         opts,
+         ref
+       ) do
     if opts[:transaction] == :batch &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
       context = batch |> Enum.at(0) |> Kernel.||(%{}) |> Map.get(:context)
@@ -388,11 +405,29 @@ defmodule Ash.Actions.Create.Bulk do
         end
       end
     else
-      do_handle_batch(batch, api, resource, action, opts, all_changes, data_layer_can_bulk?, ref)
+      do_handle_batch(
+        batch,
+        api,
+        resource,
+        action,
+        opts,
+        all_changes,
+        data_layer_can_bulk?,
+        ref
+      )
     end
   end
 
-  defp do_handle_batch(batch, api, resource, action, opts, all_changes, data_layer_can_bulk?, ref) do
+  defp do_handle_batch(
+         batch,
+         api,
+         resource,
+         action,
+         opts,
+         all_changes,
+         data_layer_can_bulk?,
+         ref
+       ) do
     must_return_records? =
       opts[:notify?] ||
         Enum.any?(batch, fn item ->
@@ -440,7 +475,7 @@ defmodule Ash.Actions.Create.Bulk do
       ref
     )
     |> run_after_action_hooks(opts, api, ref, changesets_by_index)
-    |> process_results(changes, all_changes, opts, ref, changesets_by_index)
+    |> process_results(changes, all_changes, opts, ref, changesets_by_index, api, resource)
     |> then(fn stream ->
       if opts[:return_stream?] do
         stream
@@ -750,8 +785,16 @@ defmodule Ash.Actions.Create.Bulk do
     if opts[:authorize?] do
       Enum.map(batch, fn changeset ->
         if changeset.valid? do
-          case api.can(changeset, opts[:actor], return_forbidden_error?: true, maybe_is: false) do
+          case api.can(changeset, opts[:actor],
+                 return_forbidden_error?: true,
+                 run_queries?: false,
+                 maybe_is: false,
+                 alter_source?: true
+               ) do
             {:ok, true} ->
+              changeset
+
+            {:ok, true, changeset} ->
               changeset
 
             {:ok, false, error} ->
@@ -1081,7 +1124,9 @@ defmodule Ash.Actions.Create.Bulk do
          all_changes,
          opts,
          ref,
-         changesets_by_index
+         changesets_by_index,
+         api,
+         resource
        ) do
     results =
       Enum.flat_map(batch, fn result ->
@@ -1114,7 +1159,43 @@ defmodule Ash.Actions.Create.Bulk do
         end
       end)
 
-    run_bulk_after_changes(changes, all_changes, results, changesets_by_index, opts, ref)
+    changes
+    |> run_bulk_after_changes(all_changes, results, changesets_by_index, opts, ref)
+    |> then(fn records ->
+      if opts[:select] || opts[:load] do
+        select =
+          if opts[:select] do
+            List.wrap(opts[:select])
+          else
+            resource |> Ash.Resource.Info.public_attributes() |> Enum.map(& &1.name)
+          end
+
+        api.load(
+          records,
+          List.wrap(opts[:load]) ++ select,
+          actor: opts[:actor],
+          authorize?: opts[:authorize?],
+          tracer: opts[:tracer]
+        )
+        |> case do
+          {:ok, records} ->
+            {:ok, Enum.reject(records, & &1.__metadata__[:private][:missing_from_data_layer])}
+
+          {:error, error} ->
+            {:error, error}
+        end
+      else
+        {:ok, records}
+      end
+    end)
+    |> case do
+      {:ok, records} ->
+        records
+
+      {:error, error} ->
+        store_error(ref, error, opts)
+        []
+    end
   end
 
   defp run_bulk_after_changes(changes, all_changes, results, changesets_by_index, opts, ref) do
@@ -1210,6 +1291,13 @@ defmodule Ash.Actions.Create.Bulk do
   end
 
   defp run_action_changes(batch, all_changes, _action, actor, authorize?, tracer, tenant) do
+    context = %{
+      actor: actor,
+      authorize?: authorize? || false,
+      tracer: tracer,
+      tenant: tenant
+    }
+
     Enum.reduce(
       all_changes,
       %{must_return_records?: false, batch: batch, changes: %{}},
@@ -1219,12 +1307,15 @@ defmodule Ash.Actions.Create.Bulk do
             Enum.map(batch, fn changeset ->
               if Enum.all?(validation.where || [], fn {module, opts} ->
                    opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
+                   {:ok, opts} = module.init(opts)
 
-                   module.validate(changeset, opts) == :ok
+                   module.validate(changeset, opts, context) == :ok
                  end) do
                 opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
 
-                case module.validate(changeset, opts) do
+                {:ok, opts} = module.init(opts)
+
+                case module.validate(changeset, opts, context) do
                   :ok ->
                     changeset
 
@@ -1246,13 +1337,6 @@ defmodule Ash.Actions.Create.Bulk do
         {%{change: {module, change_opts}} = change, change_index}, %{batch: batch} = state ->
           # could track if any element in the batch is invalid, and if not use the fast version
           if Enum.empty?(change.where) && !change.only_when_valid? do
-            context = %{
-              actor: actor,
-              authorize?: authorize? || false,
-              tracer: tracer,
-              tenant: tenant
-            }
-
             batch = batch_change(module, batch, change_opts, context, actor)
 
             must_return_records? =
@@ -1275,7 +1359,9 @@ defmodule Ash.Actions.Create.Bulk do
                   Enum.all?(change.where || [], fn {module, opts} ->
                     opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
 
-                    module.validate(changeset, opts) == :ok
+                    {:ok, opts} = module.init(opts)
+
+                    module.validate(changeset, opts, context) == :ok
                   end)
 
                 applies_from_only_when_valid? =

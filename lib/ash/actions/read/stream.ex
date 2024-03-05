@@ -15,7 +15,7 @@ defmodule Ash.Actions.Read.Stream do
       end
 
     query
-    |> stream_strategy(opts[:stream_with], opts[:allow_stream_with])
+    |> stream_strategy!(opts[:stream_with], opts[:allow_stream_with])
     |> do_stream(query, api, Keyword.drop(opts, [:stream_with, :allow_stream_with]))
   end
 
@@ -150,26 +150,40 @@ defmodule Ash.Actions.Read.Stream do
   end
 
   @doc false
+  def stream_strategy!(query, chosen_strategy, allowed_strategy) do
+    case stream_strategy(query, chosen_strategy, allowed_strategy) do
+      {:error, error} ->
+        raise error
+
+      strategy ->
+        strategy
+    end
+  end
+
   def stream_strategy(query, chosen_strategy, _) when not is_nil(chosen_strategy) do
     case chosen_strategy do
       :keyset ->
         if can_keyset?(query) do
           :keyset
         else
-          raise Ash.Error.Invalid.NonStreamableAction,
-            resource: query.resource,
-            action: query.action,
-            types: [:keyset]
+          {:error,
+           Ash.Error.Invalid.NonStreamableAction.exception(
+             resource: query.resource,
+             action: query.action,
+             types: [:keyset]
+           )}
         end
 
       :offset ->
         if can_offset?(query) do
           :offset
         else
-          raise Ash.Error.Invalid.NonStreamableAction,
-            resource: query.resource,
-            action: query.action,
-            types: [:offset]
+          {:error,
+           Ash.Error.Invalid.NonStreamableAction.exception(
+             resource: query.resource,
+             action: query.action,
+             types: [:offset]
+           )}
         end
 
       :full_read ->
@@ -189,16 +203,19 @@ defmodule Ash.Actions.Read.Stream do
         :full_read
 
       allowed_strategy == :keyset ->
-        raise Ash.Error.Invalid.NonStreamableAction,
-          resource: query.resource,
-          action: query.action,
-          types: [:keyset]
+        {:error,
+         Ash.Error.Invalid.NonStreamableAction.exception(
+           resource: query.resource,
+           action: query.action,
+           types: [:keyset]
+         )}
 
       allowed_strategy == :offset ->
-        raise Ash.Error.Invalid.NonStreamableAction,
+        Ash.Error.Invalid.NonStreamableAction.exception(
           resource: query.resource,
           action: query.action,
           types: [:keyset, :offset]
+        )
     end
   end
 
@@ -207,10 +224,12 @@ defmodule Ash.Actions.Read.Stream do
          Ash.DataLayer.data_layer_can?(query.resource, :offset) do
       :full_read
     else
-      raise Ash.Error.Invalid.NonStreamableAction,
-        resource: query.resource,
-        action: query.action,
-        type: :keyset
+      {:error,
+       Ash.Error.Invalid.NonStreamableAction.exception(
+         resource: query.resource,
+         action: query.action,
+         type: :keyset
+       )}
     end
   end
 

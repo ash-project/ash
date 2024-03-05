@@ -83,12 +83,26 @@ defmodule Ash.Api.GlobalInterface do
     end
   end
 
+  def resource_from_args!(fun, _arity, [changeset_or_record | _])
+      when fun in [:destroy, :update, :destroy!, :update!] do
+    case changeset_or_record do
+      %struct{resource: resource} when struct in [Ash.Changeset] ->
+        resource
+
+      %resource{} ->
+        resource
+
+      other ->
+        raise """
+        Could not determine resource. Expected a changeset, query, action input, or resource.
+
+        Got: #{inspect(other)}
+        """
+    end
+  end
+
   def resource_from_args!(fun, _arity, [changeset_or_query | _])
       when fun in [
-             :destroy,
-             :update,
-             :destroy!,
-             :update!,
              :read,
              :read!,
              :stream,

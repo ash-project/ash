@@ -209,10 +209,8 @@ defmodule Ash.Query.BooleanExpression do
         end
 
       %Eq{} = eq_op ->
-        with {:left, nil} <-
-               {:left, Ash.Filter.find(left, &simplify?(&1, eq_op), true, false)},
-             {:right, nil} <-
-               {:right, Ash.Filter.find(right, &simplify?(&1, eq_op), true, false)} do
+        with {:left, nil} <- {:left, Ash.Filter.find(left, &simplify?(&1, eq_op), true, false)},
+             {:right, nil} <- {:right, Ash.Filter.find(right, &simplify?(&1, eq_op), true, false)} do
           do_new(:or, left_expr, eq_op)
         else
           {:left, _} ->
@@ -246,10 +244,8 @@ defmodule Ash.Query.BooleanExpression do
         end
 
       %Eq{} = eq_op ->
-        with {:left, nil} <-
-               {:left, Ash.Filter.find(left, &simplify?(&1, eq_op), false, true)},
-             {:right, nil} <-
-               {:right, Ash.Filter.find(right, &simplify?(&1, eq_op), false, true)} do
+        with {:left, nil} <- {:left, Ash.Filter.find(left, &simplify?(&1, eq_op), false, true)},
+             {:right, nil} <- {:right, Ash.Filter.find(right, &simplify?(&1, eq_op), false, true)} do
           do_new(:and, left_expr, eq_op)
         else
           {:left, _} ->

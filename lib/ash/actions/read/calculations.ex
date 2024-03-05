@@ -77,20 +77,20 @@ defmodule Ash.Actions.Read.Calculations do
     end
   end
 
-  defp attach_calculation_results(calculation, records, values) when is_list(values) do
+  defp attach_calculation_results(calculation, records, nil) do
     if calculation.load do
-      Enum.zip_with([records, values], fn [record, value] ->
-        Map.put(record, calculation.load, value)
+      Enum.map(records, fn record ->
+        Map.put(record, calculation.load, nil)
       end)
     else
-      Enum.zip_with([records, values], fn [record, value] ->
-        Map.update!(record, :calculations, &Map.put(&1, calculation.name, value))
+      Enum.zip_with(records, fn record ->
+        Map.update!(record, :calculations, &Map.put(&1, calculation.name, nil))
       end)
     end
   end
 
   defp attach_calculation_results(calculation, [%resource{} | _] = records, values)
-       when is_map(values) do
+       when is_map(values) and not is_struct(values) do
     case Ash.Resource.Info.primary_key(resource) do
       [key] ->
         if calculation.load do
@@ -138,10 +138,24 @@ defmodule Ash.Actions.Read.Calculations do
     end
   end
 
+  defp attach_calculation_results(calculation, records, values) do
+    if calculation.load do
+      Enum.zip_with([records, values], fn [record, value] ->
+        Map.put(record, calculation.load, value)
+      end)
+    else
+      Enum.zip_with([records, values], fn [record, value] ->
+        Map.update!(record, :calculations, &Map.put(&1, calculation.name, value))
+      end)
+    end
+  end
+
   defp run_calculation(calculation, ash_query, records) do
+    context = Map.put(calculation.context, :api, ash_query.api)
+
     records
     |> apply_transient_calculation_values(calculation, ash_query, [])
-    |> calculation.module.calculate(calculation.opts, calculation.context)
+    |> calculation.module.calculate(calculation.opts, context)
     |> case do
       :unknown ->
         Enum.map(records, fn _ ->
@@ -366,9 +380,10 @@ defmodule Ash.Actions.Read.Calculations do
     end)
   end
 
-  def split_and_load_calculations(api, ash_query) do
+  def split_and_load_calculations(api, ash_query, missing_pkeys?) do
     can_expression_calculation? =
-      Ash.DataLayer.data_layer_can?(ash_query.resource, :expression_calculation)
+      !missing_pkeys? &&
+        Ash.DataLayer.data_layer_can?(ash_query.resource, :expression_calculation)
 
     ash_query =
       Enum.reduce(ash_query.calculations, ash_query, fn {_name, calc}, ash_query ->
@@ -378,7 +393,7 @@ defmodule Ash.Actions.Read.Calculations do
     ash_query.calculations
     |> Map.values()
     |> Enum.reduce({[], [], ash_query}, fn calculation, {in_query, at_runtime, ash_query} ->
-      if :erlang.function_exported(calculation.module, :expression, 2) do
+      if calculation.module.has_expression?() do
         expression =
           calculation.opts
           |> calculation.module.expression(calculation.context)
@@ -413,25 +428,71 @@ defmodule Ash.Actions.Read.Calculations do
 
           _ ->
             if can_expression_calculation? do
-              {[calculation | in_query], at_runtime, ash_query}
+              if all_referenced_calcs_support_expressions?(calculation, expression, ash_query) do
+                {[calculation | in_query], at_runtime, ash_query}
+              else
+                {in_query, [calculation | at_runtime], ash_query}
+              end
             else
-              {in_query,
-               [
-                 %{
-                   calculation
-                   | module: Ash.Resource.Calculation.RuntimeExpression,
-                     opts: [expr: expression],
-                     required_loads: [],
-                     select: []
-                 }
-                 | at_runtime
-               ], ash_query}
+              if calculation.module.has_calculate?() do
+                {in_query, [calculation | at_runtime], ash_query}
+              else
+                {in_query,
+                 [
+                   %{
+                     calculation
+                     | module: Ash.Resource.Calculation.RuntimeExpression,
+                       opts: [expr: expression],
+                       required_loads: [],
+                       select: []
+                   }
+                   | at_runtime
+                 ], ash_query}
+              end
             end
         end
       else
         {in_query, [calculation | at_runtime], ash_query}
       end
     end)
+  end
+
+  defp all_referenced_calcs_support_expressions?(calculation, expression \\ nil, ash_query) do
+    expression =
+      expression ||
+        calculation.opts
+        |> calculation.module.expression(calculation.context)
+        |> Ash.Filter.build_filter_from_template(
+          calculation.context[:actor],
+          calculation.context,
+          calculation.context
+        )
+        |> Ash.Actions.Read.add_calc_context_to_filter(
+          calculation.context[:actor],
+          calculation.context[:authorize?],
+          calculation.context[:tenant],
+          calculation.context[:tracer]
+        )
+
+    case Map.fetch(calculation.context, :all_referenced_calcs_support_expressions?) do
+      {:ok, value} ->
+        value
+
+      :error ->
+        expression
+        |> Ash.Filter.hydrate_refs(%{resource: ash_query.resource, public?: false})
+        |> case do
+          {:ok, expression} ->
+            expression
+            |> Ash.Filter.used_calculations(ash_query.resource, :*)
+            |> Enum.all?(fn %{module: module} ->
+              module.has_expression?()
+            end)
+
+          :error ->
+            true
+        end
+    end
   end
 
   defp load_calculation_requirements(
@@ -446,10 +507,30 @@ defmodule Ash.Actions.Read.Calculations do
     if {calculation.module, calculation.opts} in checked_calculations do
       query
     else
-      if can_expression_calculation? &&
-           :erlang.function_exported(calculation.module, :expression, 2) do
-        query
+      has_expression? = calculation.module.has_expression?()
+
+      if has_expression? && all_referenced_calcs_support_expressions?(calculation, query) do
+        Map.update!(query, :calculations, fn calculations ->
+          Map.update!(calculations, calculation.name, fn calc ->
+            Map.update!(calc, :context, fn context ->
+              Map.put(context, :all_referenced_calcs_support_expressions?, true)
+            end)
+          end)
+        end)
       else
+        query =
+          if has_expression? do
+            Map.update!(query, :calculations, fn calculations ->
+              Map.update!(calculations, calculation.name, fn calc ->
+                Map.update!(calc, :context, fn context ->
+                  Map.put(context, :all_referenced_calcs_support_expressions?, false)
+                end)
+              end)
+            end)
+          else
+            query
+          end
+
         calculation.required_loads
         |> List.wrap()
         |> Enum.concat(List.wrap(calculation.select))
@@ -909,6 +990,9 @@ defmodule Ash.Actions.Read.Calculations do
             calculation
           end
 
+        query =
+          Ash.Query.load(query, new_calculation)
+
         api
         |> load_calculation_requirements(
           query,
@@ -918,7 +1002,6 @@ defmodule Ash.Actions.Read.Calculations do
           relationship_path,
           checked_calculations
         )
-        |> Ash.Query.load(new_calculation)
         |> add_calculation_dependency(calc_name, new_calculation.name)
     end
   end

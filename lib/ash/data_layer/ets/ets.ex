@@ -361,17 +361,14 @@ defmodule Ash.DataLayer.Ets do
         parent \\ nil
       ) do
     with {:ok, records} <- get_records(resource, tenant),
-         {:ok, records} <-
-           filter_matches(records, filter, api, parent),
+         {:ok, records} <- filter_matches(records, filter, api, parent),
          records <- Sort.runtime_sort(records, distinct_sort || sort, api: api),
          records <- Sort.runtime_distinct(records, distinct, api: api),
          records <- Sort.runtime_sort(records, sort, api: api),
          records <- Enum.drop(records, offset || []),
          records <- do_limit(records, limit),
-         {:ok, records} <-
-           do_add_aggregates(records, api, resource, aggregates),
-         {:ok, records} <-
-           do_add_calculations(records, resource, calculations, api) do
+         {:ok, records} <- do_add_aggregates(records, api, resource, aggregates),
+         {:ok, records} <- do_add_calculations(records, resource, calculations, api) do
       {:ok, records}
     else
       {:error, error} ->
@@ -390,7 +387,9 @@ defmodule Ash.DataLayer.Ets do
         query,
         root_data,
         _destination_resource,
-        [{source_query, source_attribute, destination_attribute, relationship}]
+        [
+          {source_query, source_attribute, destination_attribute, relationship}
+        ]
       ) do
     source_attributes = Enum.map(root_data, &Map.get(&1, source_attribute))
 
@@ -405,6 +404,12 @@ defmodule Ash.DataLayer.Ets do
         {:error, error}
 
       {:ok, root_data} ->
+        parent_pkey =
+          case root_data do
+            [%resource{} | _] -> Ash.Resource.Info.primary_key(resource)
+            [] -> []
+          end
+
         root_data
         |> Enum.reduce_while({:ok, []}, fn parent, {:ok, results} ->
           new_filter =
@@ -434,7 +439,7 @@ defmodule Ash.DataLayer.Ets do
               new_results =
                 Enum.map(
                   new_results,
-                  &Map.put(&1, :__lateral_join_source__, Map.get(parent, source_attribute))
+                  &Map.put(&1, :__lateral_join_source__, Map.take(parent, parent_pkey))
                 )
 
               {:cont, {:ok, new_results ++ results}}
@@ -443,13 +448,6 @@ defmodule Ash.DataLayer.Ets do
               {:halt, {:error, error}}
           end
         end)
-        |> case do
-          {:ok, results} ->
-            {:ok, results}
-
-          {:error, error} ->
-            {:error, error}
-        end
     end
   end
 
@@ -470,6 +468,12 @@ defmodule Ash.DataLayer.Ets do
         {:error, error}
 
       {:ok, root_data} ->
+        parent_pkey =
+          case root_data do
+            [%resource{} | _] -> Ash.Resource.Info.primary_key(resource)
+            [] -> []
+          end
+
         root_data
         |> Enum.reduce_while({:ok, []}, fn parent, {:ok, results} ->
           through_query
@@ -509,7 +513,7 @@ defmodule Ash.DataLayer.Ets do
                             Map.put(
                               result,
                               :__lateral_join_source__,
-                              Map.get(join_row, source_attribute_on_join_resource)
+                              Map.take(parent, parent_pkey)
                             )
                           ]
                         else
@@ -528,13 +532,6 @@ defmodule Ash.DataLayer.Ets do
               {:halt, {:error, error}}
           end
         end)
-        |> case do
-          {:ok, results} ->
-            {:ok, results}
-
-          {:error, error} ->
-            {:error, error}
-        end
     end
   end
 
@@ -651,10 +648,8 @@ defmodule Ash.DataLayer.Ets do
                      [record],
                      api
                    ),
-                 {:ok, filtered} <-
-                   filter_matches(related, query.filter, api),
-                 sorted <-
-                   Sort.runtime_sort(filtered, query.sort, api: api) do
+                 {:ok, filtered} <- filter_matches(related, query.filter, api),
+                 sorted <- Sort.runtime_sort(filtered, query.sort, api: api) do
               field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
 
               value =
@@ -1023,8 +1018,7 @@ defmodule Ash.DataLayer.Ets do
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          record <- unload_relationships(resource, record),
-         {:ok, record} <-
-           put_or_insert_new(table, {pkey, record}, resource) do
+         {:ok, record} <- put_or_insert_new(table, {pkey, record}, resource) do
       {:ok, set_loaded(record)}
     else
       {:error, error} -> {:error, Ash.Error.to_ash_error(error)}

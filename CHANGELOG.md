@@ -5,6 +5,478 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.20.0](https://github.com/ash-project/ash/compare/v2.19.14...v2.20.0) (2024-03-05)
+
+
+
+
+### Features:
+
+* Ash.Reactor: Add a Reactor extension that makes working with resources easy. (#683)
+
+* Add `Ash.Reactor` with create support.
+
+### Bug Fixes:
+
+* correct atomic implementation of `present` validation
+
+* track keys that are set to `nil` in changesets, for use in atomic upgrade
+
+* properly cast atomic constraints for integer
+
+* more fixes for atomic length validations
+
+* fix atomic error for string length type validation
+
+* Mimic copying `Ash.Notifier` seems to break the compiler for some reason.
+
+### Improvements:
+
+* do not perform atomic upgrade on destroy actions
+
+* Make undo actions for `update` and `destroy` actions more explicit. (#920)
+
+* Ash.Reactor: Make undo actions for `update` and `destroy` more explicit.
+
+* rename `get` to `read_one` in `Ash.Reactor`
+
+* Add `Ash.Reactor` update support.
+
+* Add `Ash.Reactor` destroy support.
+
+* Ash.Reactor: Support for transactional handling of notifications.
+
+* Ash.Reactor: Add `read` and `get` steps.
+
+* Ash.Reactor: add support for generic actions.
+
+* Add `undo` capability to `create` step.
+
+* transaction and undo working.
+
+* Automatically thread Ash tracers through Reactor.
+
+* Ash.Reactor: Add undo to generic actions.
+
+## [v2.19.14](https://github.com/ash-project/ash/compare/v2.19.13...v2.19.14) (2024-03-01)
+
+
+
+
+### Bug Fixes:
+
+* properly match return type of `Type.new` in expr expansion
+
+## [v2.19.13](https://github.com/ash-project/ash/compare/v2.19.12...v2.19.13) (2024-03-01)
+
+
+
+
+### Improvements:
+
+* cast expression calculations if they don't do it
+
+## [v2.19.12](https://github.com/ash-project/ash/compare/v2.19.11...v2.19.12) (2024-02-29)
+
+
+
+
+### Bug Fixes:
+
+* properly scope expanded calculations
+
+* properly scope expanded calculations
+
+### Improvements:
+
+* aggregate sort replaces query sort
+
+## [v2.19.11](https://github.com/ash-project/ash/compare/v2.19.10...v2.19.11) (2024-02-29)
+
+
+
+
+### Bug Fixes:
+
+* properly add aggregate authorization everywhere
+
+* ensure calculation arguments are not ignored when parsing filters
+
+* properly authorize aggregates
+
+## [v2.19.10](https://github.com/ash-project/ash/compare/v2.19.9...v2.19.10) (2024-02-29)
+
+
+
+
+### Bug Fixes:
+
+* bad reference in atomic validations
+
+* prevent leakage of stale async_limiter's pid (#916)
+
+## [v2.19.9](https://github.com/ash-project/ash/compare/v2.19.8...v2.19.9) (2024-02-26)
+
+
+
+
+### Bug Fixes:
+
+* ensure that policies are applied to aggregates referenced in calculations
+
+* ensure records are returned from bulk actions in atomic upgrades
+
+* handle small logic error in notification sending for bulk actions
+
+## [v2.19.8](https://github.com/ash-project/ash/compare/v2.19.7...v2.19.8) (2024-02-25)
+
+
+
+
+### Bug Fixes:
+
+* ensure actor context is set in filter
+
+* properly handle limit/offset for aggregates
+
+* don't use `Aggregate.new` for builtin aggregates
+
+* merge root query into aggregate queries, don't apply both
+
+### Improvements:
+
+* don't duplicate base filter in aggregates
+
+## [v2.19.7](https://github.com/ash-project/ash/compare/v2.19.6...v2.19.7) (2024-02-24)
+
+
+
+
+### Bug Fixes:
+
+* return proper pattern from select builtin change
+
+## [v2.19.6](https://github.com/ash-project/ash/compare/v2.19.5...v2.19.6) (2024-02-24)
+
+
+
+
+### Bug Fixes:
+
+* properly catch errors in atomic changeset casting
+
+* use `Ash.Changeset.set_context` on changesets
+
+## [v2.19.5](https://github.com/ash-project/ash/compare/v2.19.4...v2.19.5) (2024-02-22)
+
+
+
+
+### Bug Fixes:
+
+* properly fail early on missing actor in policies
+
+* handle `:continue` case in authorizer
+
+* validations run regardless of if the relevant fields are changing
+
+## [v2.19.4](https://github.com/ash-project/ash/compare/v2.19.3...v2.19.4) (2024-02-22)
+
+
+
+
+### Bug Fixes:
+
+* honor soft destroys for atomic bulk destroys
+
+* properly set context on query and changeset
+
+* pass correct options into `Api.stream!` for bulk_destroy
+
+* check attributes after arguments for `present?`
+
+* correct `for_read` calls in update and destroy actions (#907)
+
+## [v2.19.3](https://github.com/ash-project/ash/compare/v2.19.2...v2.19.3) (2024-02-17)
+
+
+
+
+### Bug Fixes:
+
+* properly annotate `run_flow`'s recursive DSL tag
+
+## [v2.19.2](https://github.com/ash-project/ash/compare/v2.19.1...v2.19.2) (2024-02-17)
+
+
+
+
+### Bug Fixes:
+
+* ensure that to-many relationships are loaded as lists
+
+## [v2.19.1](https://github.com/ash-project/ash/compare/v2.19.0...v2.19.1) (2024-02-16)
+
+
+
+
+### Bug Fixes:
+
+* honor `not_found_error?` in `read_one`
+
+### Improvements:
+
+* pass `tenant` to context in custom changes
+
+* `Ash.context_to_opts` now checks for a `tenant`
+
+## [v2.19.0](https://github.com/ash-project/ash/compare/v2.18.1...v2.19.0) (2024-02-16)
+
+
+
+
+### Features:
+
+* allow using custom delimiters for pubsub topics
+
+* support functions in parse predicates (#874)
+
+* support returning streams from mod calc (#864)
+
+### Bug Fixes:
+
+* remove unneeded code for calculations in a filter (#904)
+
+* restore `not_found_error?` behavior in `Ash.Flow`
+
+* handle cases where no primary keys are present better
+
+* ensure that filters are parsed from policy authorizer ahead of time
+
+* check if query is a query before calling `.__validated_for_action__`
+
+* properly authorize actions in flow
+
+* handle warning about incompatible types (#892)
+
+* properly refer to attributes in `changing_attributes/1`
+
+* remove unneeded code for calculations in a filter (#891)
+
+* evaluate templates to unknown at ref
+
+* handle atomic_ref templates and `changing_attributes/1`
+
+* replace refs for relationships use correct action (#888)
+
+* handle not found case in destroy (#890)
+
+* handle not found case in destroy
+
+* add case where authoriztion did not change query
+
+* properly map sort input and non-input refs in keyset filters
+
+* properly match on invalid query from before_action
+
+* ensure proper context set on atomic upgrade
+
+* fix nil ++ list error in bulk destroy
+
+* ensure we retain the sort order of embedded resources
+
+* retain sort on inputs on casting embedded inputs
+
+* properly get rewrites for embedded types
+
+* ensure after_transaction hooks are always run
+
+* handle records in `Ash.destroy` and `Ash.update`
+
+* pre-template change/validation option in bulk update/destroy
+
+* fix query match error in bulk destroy/update
+
+* don't consider primary key matches with `nil` values
+
+* continue cleanup in `ManagedRelationshipHelpers` (#873)
+
+* fix pattern match error on certain policy conditions
+
+* use primary key for lateral join source in ets
+
+* set right `accessing_from` name in many to many managed create (#868)
+
+* set_tenant on fully atomic changesets
+
+* handle api.can case in authorize_changeset
+
+* properly bypass authorization in atomic update switch-over
+
+* properly set action_type on atomic changesets
+
+* extract relationship filters from pre-authorization query
+
+* retain metadata on updates, atomic and otherwise
+
+* properly load expression -> runtime calculation deps
+
+* ignore `input?` when considering refs equal in filter subset checking
+
+* change names of code interface methods for calculations (#863)
+
+* properly mark manuall created input refs with `input?: true`
+
+* clean vars should handle map vars
+
+* properly merge union loads
+
+* support expression calculations referencing runtime calculations
+
+* set default access type properly
+
+* properly handle the case where all valid scenarios are pruned
+
+* properly prevent the atomic handling of manual update actions
+
+* fix passing extra opts to stream
+
+* properly check if data layer can update_query
+
+* Ash.Type.Float to support min/max constraints(#856)
+
+* add calculations before distinct is applied in data layer query
+
+* properly set index on embedded type array errors
+
+* use correct option for relationship in atomic `relate_actor` (#855)
+
+* only count resources the actor is allowed to see (#853)
+
+* only count resources the actor is allowed to see
+
+* deselect known forbidden fields *after* query authorization is complete
+
+* `soft?` in destroy action options is a boolean, not an atom (#851)
+
+* load fails because of empty list instead of query (#847)
+
+* don't attempt to derive `destination_attribute_on_join_resource`
+
+* `join_relationship` in many to many can make `through` optional (#846)
+
+* make sure query has action (#844)
+
+* pass in actor to api.can call (#843)
+
+* pass in actor to api.can call
+
+* do not check primary key fields in filter (#839)
+
+* add page opts to context again (#838)
+
+* return errors with query from read action
+
+* properly set defaults on upsert in mnesia
+
+* don't load through attributes twice, but also don't miss any
+
+* handle errors properly from invalid loads
+
+* handle data layer calculations for missing records
+
+* only load through calculations in the correct order
+
+* properly detect cyclic dependencies in calculation runner
+
+* properly annotate in-query calculations as complete for dependency calculation
+
+* fix `present?` and `load_through` bugs
+
+* don't require pagination in incorrect cases
+
+* get tests passing for bulk creates again
+
+### Improvements:
+
+* handle stale update/destroys
+
+* support `authorize_query_with` for bulk updates/destroys
+
+* support `authorize_changeset_with` for bulk updates/destroys
+
+* don't authorize query on synthesized atomic update/destroys
+
+* show field name in NotLoaded inspect
+
+* implement `requires_original_data?` for `Ash.Notifier.PubSub`
+
+* support policies requiring original data
+
+* change atomicity requirements when datalayers don't support it
+
+* add `on_match: :update_join` to `manage_relationship` (#875)
+
+* don't call telemetry when compiling
+
+* various policy behavior cleanups
+
+* add `join_keys` option to `manage_relationship` (#866)
+
+* don't run `check` in cases that require strict checks
+
+* atomic_batches behavior for bulk destroys
+
+* allow strategy selection for bulk actions
+
+* change nested field filtering to be done with `at_path`
+
+* support referencing non-array embeds in input filters
+
+* bulk update in batches if not given a query
+
+* update action should respect load and select
+
+* introduce `require_atomic?`, which defaults to `false` in 2.0, `true` in 3.0
+
+* better support around the mixing of atomic and non atomic changes/validations
+
+* more atomic implementations
+
+* support loading and selecting in bulk operations
+
+* use atomic create actions where possible
+
+* always define `merge_load/4`
+
+* derive `source_attribute_on_join_resource` for many to many
+
+* atomic implementation for `relate_actor`
+
+* include a message along with the non-atomic signifier
+
+* support transactions on bulk destroys
+
+* support transactions in bulk updates
+
+* `count_nils/1` function
+
+* `present/absent` atomic implementation
+
+* add `atomic_ref/1` template helper
+
+* Change typespec of tenant from String.t() to term() (#845)
+
+* handle pkey-less resources when attaching fields
+
+* set lazy defaults when applying changeset attributes
+
+* add `prepend?: true` option to add_change
+
+* optimize embedded resource creation
+
+* rewrite read actions to not use `Ash.Engine` (#836)
+
 ## [v2.18.1](https://github.com/ash-project/ash/compare/v2.18.0...v2.18.1) (2024-01-12)
 
 

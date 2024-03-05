@@ -750,6 +750,7 @@ defmodule Ash.Flow.Executor.AshEngine do
       %Step{
         step: %Ash.Flow.Step.Custom{
           name: name,
+          tenant: tenant,
           input: custom_input,
           custom: {mod, opts},
           async?: async?,
@@ -790,7 +791,10 @@ defmodule Ash.Flow.Executor.AshEngine do
                     })
                     |> Ash.Flow.handle_modifiers()
 
-                  context_arg = Map.take(context, [:actor, :authorize?, :async?, :verbose?])
+                  context_arg =
+                    context
+                    |> Map.take([:actor, :authorize?, :async?, :verbose?])
+                    |> Map.put(:tenant, tenant)
 
                   Ash.Tracer.span :custom_flow_step,
                                   "custom step #{inspect(mod)}",
@@ -969,15 +973,25 @@ defmodule Ash.Flow.Executor.AshEngine do
                         |> Ash.Query.for_read(action.name, action_input,
                           actor: data[:actor],
                           tenant: tenant,
-                          authorize?: data[:authorize?],
+                          authorize?: opts[:authorize?],
                           tracer: data[:tracer]
                         )
-                        |> Ash.Query.set_context(%{
-                          private: %{get?: get?, not_found_error?: not_found_error?}
-                        })
                         |> then(fn query ->
                           if get? do
-                            api.read_one(query, not_found_error?: not_found_error?)
+                            case api.read_one(query) do
+                              {:ok, nil} ->
+                                if not_found_error? do
+                                  {:error, Ash.Error.Query.NotFound.exception(resource: resource)}
+                                else
+                                  {:ok, nil}
+                                end
+
+                              {:ok, result} ->
+                                {:ok, result}
+
+                              other ->
+                                other
+                            end
                           else
                             api.read(query)
                           end
@@ -1074,7 +1088,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                         |> Ash.Changeset.for_create(action.name, action_input,
                           actor: data[:actor],
                           tenant: tenant,
-                          authorize?: data[:authorize?],
+                          authorize?: opts[:authorize?],
                           tracer: data[:tracer],
                           upsert?: upsert?,
                           upsert_identity: upsert_identity
@@ -1320,7 +1334,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                               |> Ash.Changeset.for_update(action.name, action_input,
                                 actor: data[:actor],
                                 tenant: tenant,
-                                authorize?: data[:authorize?],
+                                authorize?: opts[:authorize?],
                                 tracer: data[:tracer]
                               )
                               |> api.update()
@@ -1435,10 +1449,12 @@ defmodule Ash.Flow.Executor.AshEngine do
 
                               changeset
                               |> Ash.Changeset.set_tenant(tenant)
-                              |> Ash.Changeset.for_destroy(action.name, action_input,
+                              |> Ash.Changeset.for_destroy(
+                                action.name,
+                                action_input,
                                 actor: data[:actor],
                                 tenant: tenant,
-                                authorize?: data[:authorize?],
+                                authorize?: opts[:authorize?],
                                 tracer: data[:tracer]
                               )
                               |> api.destroy()

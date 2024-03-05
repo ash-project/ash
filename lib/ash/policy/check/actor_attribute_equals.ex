@@ -8,6 +8,9 @@ defmodule Ash.Policy.Check.ActorAttributeEquals do
   end
 
   @impl true
+  def requires_original_data?(_, _), do: false
+
+  @impl true
   def match?(nil, _, _), do: false
 
   def match?(actor, _context, opts) do

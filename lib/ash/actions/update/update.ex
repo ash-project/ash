@@ -11,6 +11,10 @@ defmodule Ash.Actions.Update do
           | {:ok, Ash.Resource.record()}
           | {:error, Ash.Changeset.t()}
           | {:error, term}
+  def run(api, %{valid?: false} = changeset, _action, _opts) do
+    {:error, Ash.Error.to_error_class(changeset.errors, changeset: %{changeset | api: api})}
+  end
+
   def run(api, changeset, action, opts) do
     if changeset.atomics != [] &&
          !Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :update}) do
@@ -20,54 +24,198 @@ defmodule Ash.Actions.Update do
          action_type: :update
        )}
     else
-      {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
+      primary_read = Ash.Resource.Info.primary_action(changeset.resource, :read)
 
-      Ash.Tracer.span :action,
-                      Ash.Api.Info.span_name(
-                        api,
-                        changeset.resource,
-                        action.name
-                      ),
-                      opts[:tracer] do
-        metadata = %{
-          api: api,
-          resource: changeset.resource,
-          resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-          actor: opts[:actor],
-          tenant: opts[:tenant],
-          action: action.name,
-          authorize?: opts[:authorize?]
-        }
+      {fully_atomic_changeset, params} =
+        cond do
+          !Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) && opts[:authorize?] ->
+            {{:not_atomic, "data layer does not support adding errors to a query"}, nil}
 
-        Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
+          !Ash.DataLayer.data_layer_can?(changeset.resource, :update_query) ->
+            {{:not_atomic, "data layer does not support updating a query"}, nil}
 
-        Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(api), :update], metadata do
-          case do_run(api, changeset, action, opts) do
-            {:error, error} ->
-              if opts[:tracer] do
-                stacktrace =
-                  case error do
-                    %{stacktrace: %{stacktrace: stacktrace}} ->
-                      stacktrace || []
+          !Enum.empty?(changeset.relationships) ->
+            {{:not_atomic, "cannot atomically manage relationships"}, nil}
 
-                    _ ->
-                      {:current_stacktrace, stacktrace} =
-                        Process.info(self(), :current_stacktrace)
+          !Enum.empty?(changeset.before_action) ->
+            {{:not_atomic, "cannot atomically run a changeset with a before_action hook"}, nil}
 
-                      stacktrace
-                  end
+          !Enum.empty?(changeset.before_transaction) ->
+            {{:not_atomic, "cannot atomically run a changeset with a before_transaction hook"},
+             nil}
 
-                Ash.Tracer.set_handled_error(opts[:tracer], Ash.Error.to_error_class(error),
-                  stacktrace: stacktrace
+          !Enum.empty?(changeset.around_action) ->
+            {{:not_atomic, "cannot atomically run a changeset with an around_action hook"}, nil}
+
+          !Enum.empty?(changeset.around_transaction) ->
+            {{:not_atomic, "cannot atomically run a changeset with an around_transaction hook"},
+             nil}
+
+          !primary_read ->
+            {{:not_atomic, "cannot atomically update a record without a primary read action"},
+             nil}
+
+          true ->
+            params =
+              changeset.attributes
+              |> Map.merge(changeset.casted_attributes)
+              |> Map.merge(changeset.arguments)
+              |> Map.merge(changeset.casted_arguments)
+
+            params =
+              Enum.reduce(changeset.nil_inputs, params, &Map.put(&2, &1, nil))
+
+            res =
+              Ash.Changeset.fully_atomic_changeset(
+                changeset.resource,
+                action,
+                params,
+                opts
+                |> Keyword.merge(
+                  assume_casted?: true,
+                  notify?: true,
+                  atomics: changeset.atomics || [],
+                  tenant: changeset.tenant
                 )
+              )
+
+            {res, params}
+        end
+
+      case fully_atomic_changeset do
+        %Ash.Changeset{} = atomic_changeset ->
+          atomic_changeset =
+            %{atomic_changeset | data: changeset.data}
+            |> Ash.Changeset.set_context(%{data_layer: %{use_atomic_update_data?: true}})
+            |> Map.put(:load, changeset.load)
+            |> Map.put(:select, changeset.select)
+            |> Ash.Changeset.set_context(changeset.context)
+
+          {atomic_changeset, opts} =
+            Ash.Actions.Helpers.add_process_context(api, atomic_changeset, opts)
+
+          opts =
+            Keyword.merge(opts,
+              atomic_changeset: atomic_changeset,
+              return_records?: true,
+              notify?: true,
+              return_notifications?: opts[:return_notifications?],
+              return_errors?: true
+            )
+
+          primary_key = Ash.Resource.Info.primary_key(atomic_changeset.resource)
+          primary_key_filter = changeset.data |> Map.take(primary_key) |> Map.to_list()
+
+          query =
+            atomic_changeset.resource
+            |> Ash.Query.for_read(primary_read.name, %{},
+              actor: opts[:actor],
+              authorize?: false,
+              context: atomic_changeset.context,
+              tenant: atomic_changeset.tenant,
+              tracer: opts[:tracer]
+            )
+            |> Ash.Query.set_context(%{private: %{internal?: true}})
+            |> Ash.Query.do_filter(primary_key_filter)
+
+          case Ash.Actions.Update.Bulk.run(
+                 api,
+                 query,
+                 fully_atomic_changeset.action,
+                 params,
+                 Keyword.merge(opts,
+                   strategy: [:atomic],
+                   authorize_query?: false,
+                   return_records?: true,
+                   atomic_changeset: atomic_changeset,
+                   authorize_changeset_with: :error
+                 )
+               ) do
+            %Ash.BulkResult{status: :success, records: [record], notifications: notifications} ->
+              if opts[:return_notifications?] do
+                {:ok, record, List.wrap(notifications)}
+              else
+                {:ok, record}
               end
 
-              {:error, error}
+            %Ash.BulkResult{status: :success, records: []} ->
+              primary_key = Ash.Resource.Info.primary_key(atomic_changeset.resource)
 
-            other ->
-              other
+              {:error,
+               Ash.Error.to_error_class(
+                 Ash.Error.Changes.StaleRecord.exception(
+                   resource: fully_atomic_changeset.resource,
+                   filters: Map.take(changeset.data, primary_key)
+                 )
+               )}
+
+            %Ash.BulkResult{status: :error, errors: errors} ->
+              {:error, Ash.Error.to_error_class(errors)}
           end
-        end
+
+        other ->
+          if Ash.DataLayer.data_layer_can?(changeset.resource, :update_query) &&
+               action.require_atomic? &&
+               match?({:not_atomic, _reason}, other) do
+            {:not_atomic, reason} = other
+
+            {:error,
+             Ash.Error.Framework.MustBeAtomic.exception(
+               resource: changeset.resource,
+               action: action.name,
+               reason: reason
+             )}
+          else
+            {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
+
+            Ash.Tracer.span :action,
+                            Ash.Api.Info.span_name(
+                              api,
+                              changeset.resource,
+                              action.name
+                            ),
+                            opts[:tracer] do
+              metadata = %{
+                api: api,
+                resource: changeset.resource,
+                resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+                actor: opts[:actor],
+                tenant: opts[:tenant],
+                action: action.name,
+                authorize?: opts[:authorize?]
+              }
+
+              Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
+
+              Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(api), :update], metadata do
+                case do_run(api, changeset, action, opts) do
+                  {:error, error} ->
+                    if opts[:tracer] do
+                      stacktrace =
+                        case error do
+                          %{stacktrace: %{stacktrace: stacktrace}} ->
+                            stacktrace || []
+
+                          _ ->
+                            {:current_stacktrace, stacktrace} =
+                              Process.info(self(), :current_stacktrace)
+
+                            stacktrace
+                        end
+
+                      Ash.Tracer.set_handled_error(opts[:tracer], Ash.Error.to_error_class(error),
+                        stacktrace: stacktrace
+                      )
+                    end
+
+                    {:error, error}
+
+                  other ->
+                    other
+                end
+              end
+            end
+          end
       end
     end
   rescue
@@ -81,7 +229,7 @@ defmodule Ash.Actions.Update do
     with %{valid?: true} = changeset <- Ash.Changeset.validate_multitenancy(changeset),
          %{valid?: true} = changeset <- changeset(changeset, api, action, opts),
          %{valid?: true} = changeset <- authorize(changeset, api, opts),
-         {:ok, result, instructions} <- commit(changeset, api, opts) do
+         {:commit, {:ok, result, instructions}} <- {:commit, commit(changeset, api, opts)} do
       add_notifications(
         changeset.resource,
         result,
@@ -103,9 +251,21 @@ defmodule Ash.Actions.Update do
 
       %Ash.Changeset{errors: errors} = changeset ->
         errors = Helpers.process_errors(changeset, errors)
-        {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
+
+        Ash.Changeset.run_after_transactions(
+          {:error, Ash.Error.to_error_class(errors, changeset: changeset)},
+          changeset
+        )
 
       {:error, error} ->
+        errors = Helpers.process_errors(changeset, List.wrap(error))
+
+        Ash.Changeset.run_after_transactions(
+          {:error, Ash.Error.to_error_class(errors, changeset: changeset)},
+          changeset
+        )
+
+      {:commit, {:error, error}} ->
         errors = Helpers.process_errors(changeset, List.wrap(error))
         {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
     end
@@ -272,6 +432,13 @@ defmodule Ash.Actions.Update do
 
                         changeset.resource
                         |> Ash.DataLayer.update(changeset)
+                        |> case do
+                          {:ok, data} ->
+                            {:ok, %{data | __metadata__: changeset.data.__metadata__}}
+
+                          {:error, error} ->
+                            {:error, error}
+                        end
                         |> Ash.Actions.Helpers.rollback_if_in_transaction(
                           changeset.resource,
                           changeset
@@ -338,11 +505,8 @@ defmodule Ash.Actions.Update do
         |> Helpers.select(changeset)
         |> Helpers.restrict_field_access(changeset)
 
-      {:error, %Ash.Changeset{} = changeset} ->
+      {:error, changeset} ->
         {:error, changeset}
-
-      other ->
-        other
     end
   end
 

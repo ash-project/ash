@@ -109,6 +109,8 @@ defmodule Ash.Error.Forbidden.Policy do
     must_pass_strict_check? =
       if opts[:must_pass_strict_check?] do
         """
+        Breakdown
+
         Scenario must pass strict check only, meaning `runtime` policies cannot be checked.
 
         This requirement is generally used for filtering on related resources, when we can't fetch those
@@ -144,6 +146,7 @@ defmodule Ash.Error.Forbidden.Policy do
 
     policy_explanation =
       policies
+      |> Kernel.||([])
       |> Enum.filter(&relevant?(&1, facts))
       |> Enum.map(&explain_policy(&1, facts, opts[:success?] || false))
       |> Enum.intersperse("\n")

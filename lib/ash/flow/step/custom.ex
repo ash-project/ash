@@ -1,6 +1,6 @@
 defmodule Ash.Flow.Step.Custom do
   @moduledoc "Represents a custom step in an Ash.Flow"
-  use Ash.Flow.Step.BuiltinStep, [:input, :custom, :async?]
+  use Ash.Flow.Step.BuiltinStep, [:input, :custom, :tenant, :async?]
   @shared_opts Ash.Flow.Step.shared_opts()
 
   def schema do

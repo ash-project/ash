@@ -47,8 +47,10 @@ defmodule Ash.Policy.FilterCheck do
         []
       end
 
+      def requires_original_data?(_, _), do: false
+
       def strict_check(nil, authorizer, opts) do
-        if Ash.Filter.template_references_actor?(opts[:filter]) do
+        if Ash.Filter.template_references_actor?(filter(opts)) do
           {:ok, false}
         else
           try_strict_check(nil, authorizer, opts)

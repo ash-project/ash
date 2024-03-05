@@ -52,6 +52,7 @@ defmodule Ash.Resource.Validation.StringLength do
     end
   end
 
+  @impl true
   def atomic(_changeset, opts) do
     opts
     |> Keyword.delete(:attribute)

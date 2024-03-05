@@ -222,7 +222,7 @@ defmodule Ash.Type.Union do
         |> Enum.reject(&is_nil/1)
         |> case do
           [] ->
-            {:ok, acc}
+            {:ok, []}
 
           load_statements ->
             Enum.reduce_while(load_statements, {:ok, []}, fn load_statement, {:ok, merged} ->
@@ -244,6 +244,9 @@ defmodule Ash.Type.Union do
         end
 
       case merged do
+        {:ok, empty} when empty in [nil, []] ->
+          {:cont, {:ok, acc}}
+
         {:ok, merged} ->
           {:cont, {:ok, Keyword.put(acc, name, merged)}}
 
@@ -257,16 +260,23 @@ defmodule Ash.Type.Union do
   def get_rewrites(merged_load, calculation, path, constraints) do
     merged_load
     |> Enum.flat_map(fn {key, type_load} ->
-      constraints[:types][key][:type]
-      |> Ash.Type.get_rewrites(
-        type_load,
-        calculation,
-        path,
-        constraints[:types][key][:constraints]
-      )
-      |> Enum.map(fn {{rewrite_path, data, name, load}, source} ->
-        {{[key | rewrite_path], data, name, load}, source}
-      end)
+      if Ash.Type.can_load?(
+           constraints[:types][key][:type],
+           constraints[:types][key][:constraints] || []
+         ) do
+        constraints[:types][key][:type]
+        |> Ash.Type.get_rewrites(
+          type_load,
+          calculation,
+          path,
+          constraints[:types][key][:constraints] || []
+        )
+        |> Enum.map(fn {{rewrite_path, data, name, load}, source} ->
+          {{[key | rewrite_path], data, name, load}, source}
+        end)
+      else
+        []
+      end
     end)
   end
 
@@ -295,6 +305,16 @@ defmodule Ash.Type.Union do
         constraints[:types][value.type][:type]
       )
     )
+  end
+
+  @impl true
+  def cast_atomic_update(_new_value, _constraints) do
+    {:not_atomic, "Unions do not support atomic updates"}
+  end
+
+  @impl true
+  def cast_atomic_update_array(_new_value, _constraints) do
+    {:not_atomic, "Unions do not support atomic updates"}
   end
 
   @impl true

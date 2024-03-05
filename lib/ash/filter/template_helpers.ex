@@ -2,12 +2,21 @@ defmodule Ash.Filter.TemplateHelpers do
   @moduledoc "Helpers for building filter templates"
 
   @deprecated "Use `expr?/1` instead, which is not a guard"
+
   defguard is_expr(value)
            when is_struct(value, Ash.Query.Not) or is_struct(value, Ash.Query.BooleanExpression) or
                   is_struct(value, Ash.Query.Call) or is_struct(value, Ash.Query.Ref) or
                   is_struct(value, Ash.Query.Exists) or
                   is_struct(value, Ash.Query.Parent) or
                   (is_struct(value) and is_map_key(value, :__predicate__?))
+
+  def expr?({:_actor, _}), do: true
+  def expr?({:_arg, _}), do: true
+  def expr?({:_ref, _, _}), do: true
+  def expr?({:_parent, _, _}), do: true
+  def expr?({:_parent, _}), do: true
+  def expr?({:_atomic_ref, _}), do: true
+  def expr?({:_context, _}), do: true
 
   def expr?(value)
       when is_struct(value, Ash.Query.Not) or is_struct(value, Ash.Query.BooleanExpression) or

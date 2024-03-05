@@ -21,6 +21,7 @@ jobs:
             { org: "ash-project", name: "ash_admin" },
             { org: "ash-project", name: "ash_archival" },
             { org: "ash-project", name: "ash_state_machine" },
+            { org: "ash-project", name: "ash_oban" },
             # { org: "ash-project", name: "ash_sqlite" },
             { org: "ash-project", name: "ash_paper_trail" },
             { org: "team-alembic", name: "ash_authentication" },

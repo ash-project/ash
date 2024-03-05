@@ -56,8 +56,4 @@ defmodule Ash.Query.Function.If do
       when_true
     end
   end
-
-  def partial_evaluate(other) do
-    raise inspect(other)
-  end
 end

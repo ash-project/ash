@@ -3,10 +3,15 @@ defmodule Ash.Notifier do
   A notifier is an extension that receives various events
   """
   @callback notify(Ash.Notifier.Notification.t()) :: :ok
+  @callback requires_original_data?(Ash.Resource.t(), Ash.Resource.Actions.action()) :: boolean
 
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Notifier
+
+      def requires_original_data?(_, _), do: true
+
+      defoverridable requires_original_data?: 2
     end
   end
 

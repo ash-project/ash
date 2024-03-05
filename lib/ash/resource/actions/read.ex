@@ -52,7 +52,7 @@ defmodule Ash.Resource.Actions.Read do
                       {:spark_function_behaviour, Ash.Resource.ManualRead,
                        {Ash.Resource.ManualRead.Function, 3}},
                     doc: """
-                    Delegates running of the query to the provided module. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
+                    Delegates running of the query to the provided module. Accepts a module or module and opts, or a function that takes the ash query, the data layer query, and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more.
                     """
                   ],
                   get?: [

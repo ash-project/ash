@@ -26,6 +26,8 @@ defmodule Ash.Policy.FilterCheckWithContext do
 
       def type, do: :filter
 
+      def requires_original_data?(_, _), do: true
+
       def strict_check_context(opts) do
         []
       end
@@ -87,6 +89,7 @@ defmodule Ash.Policy.FilterCheckWithContext do
            }) do
         case Ash.Filter.hydrate_refs(expression, %{
                resource: resource,
+               unknown_on_unknown_refs?: true,
                aggregates: %{},
                calculations: %{},
                public?: false
@@ -204,7 +207,7 @@ defmodule Ash.Policy.FilterCheckWithContext do
         end
       end
 
-      defoverridable reject: 3
+      defoverridable reject: 3, requires_original_data?: 2
     end
   end
 

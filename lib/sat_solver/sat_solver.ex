@@ -74,6 +74,24 @@ defmodule Ash.SatSolver do
   end
 
   defp do_strict_filter_subset(filter, candidate) do
+    filter =
+      Filter.map(filter, fn
+        %Ref{} = ref ->
+          %{ref | input?: false}
+
+        other ->
+          other
+      end)
+
+    candidate =
+      Filter.map(candidate, fn
+        %Ref{} = ref ->
+          %{ref | input?: false}
+
+        other ->
+          other
+      end)
+
     expr = BooleanExpression.new(:and, filter.expression, candidate.expression)
 
     case transform_and_solve(
@@ -704,11 +722,11 @@ defmodule Ash.SatSolver do
   end
 
   defp refs(%{__operator__?: true, left: left, right: right}) do
-    Enum.filter([left, right], &match?(%Ref{}, &1))
+    Enum.filter([left, right], &match?(%Ref{}, &1)) |> Enum.map(&Map.put(&1, :input?, false))
   end
 
   defp refs(%{__function__?: true, arguments: arguments}) do
-    Enum.filter(arguments, &match?(%Ref{}, &1))
+    Enum.filter(arguments, &match?(%Ref{}, &1)) |> Enum.map(&Map.put(&1, :input?, false))
   end
 
   defp refs(_), do: []

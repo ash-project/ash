@@ -8,6 +8,9 @@ defmodule Ash.Policy.Check.AccessingFrom do
   end
 
   @impl true
+  def requires_original_data?(_, _), do: false
+
+  @impl true
   def match?(_actor, %{changeset: %Ash.Changeset{} = changeset}, options) do
     accessing_from = changeset.context[:accessing_from]
 

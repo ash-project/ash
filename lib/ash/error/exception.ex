@@ -20,6 +20,15 @@ defmodule Ash.Error.Exception do
                        class: unquote(opts)[:class]
                      ]
 
+      def from_json(json) do
+        keyword =
+          json
+          |> Map.to_list()
+          |> Enum.map(fn {key, value} -> {Ash.Error.atomize_safely(key), value} end)
+
+        exception(keyword)
+      end
+
       def new(opts), do: exception(opts)
 
       @impl Exception
@@ -63,11 +72,15 @@ defmodule Ash.Error.Exception do
         super(opts) |> Map.update(:vars, [], &clean_vars/1)
       end
 
+      defp clean_vars(vars) when is_map(vars) do
+        clean_vars(Map.to_list(vars))
+      end
+
       defp clean_vars(vars) do
         vars |> Kernel.||([]) |> Keyword.drop([:field, :message, :path])
       end
 
-      defoverridable exception: 1, message: 1
+      defoverridable exception: 1, message: 1, from_json: 1
     end
   end
 end

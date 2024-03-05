@@ -904,4 +904,23 @@ defmodule Ash.Test.Filter.FilterTest do
     |> Ash.Query.filter(id: {:in, [Ash.UUID.generate()]})
     |> Api.read!()
   end
+
+  test "parsing input with embedded references works" do
+    Profile
+    |> Ash.Changeset.new(%{
+      embedded_bio: %{title: "Mr."}
+    })
+    |> Api.create!()
+
+    Profile
+    |> Ash.Changeset.new(%{
+      embedded_bio: %{title: "Dr."}
+    })
+    |> Api.create!()
+
+    assert [%{embedded_bio: %{title: "Dr."}}] =
+             Profile
+             |> Ash.Query.filter_input(%{embedded_bio: %{at_path: [:title], eq: "Dr."}})
+             |> Api.read!()
+  end
 end

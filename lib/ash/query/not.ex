@@ -6,6 +6,9 @@ defmodule Ash.Query.Not do
 
   def new(%__MODULE__{expression: expression}), do: expression
 
+  def new(true), do: false
+  def new(false), do: true
+
   def new(expression) do
     %__MODULE__{expression: expression}
   end

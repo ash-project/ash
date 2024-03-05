@@ -489,8 +489,15 @@ defmodule Ash.Policy.Authorizer do
         log_successful_policy_breakdown(authorizer, filter)
         {:filter, strict_check_all_facts(authorizer), filter}
 
+      {:filter_and_continue, filter, authorizer} ->
+        log_successful_policy_breakdown(authorizer, filter)
+        {:filter, strict_check_all_facts(authorizer), filter}
+
       {:error, error} ->
         {:error, error}
+
+      {:continue, authorizer} ->
+        {:continue, authorizer}
 
       {other, _authorizer} ->
         other
@@ -709,13 +716,27 @@ defmodule Ash.Policy.Authorizer do
   end
 
   defp do_replace_ref(
+         %{
+           attribute: %struct{name: name},
+           relationship_path: relationship_path,
+           resource: resource
+         } = ref,
+         %{stack: [{parent, _path, _action} | _]} = acc
+       )
+       when struct in [Ash.Resource.Attribute, Ash.Resource.Aggregate, Ash.Resource.Calculation] do
+    action =
+      Map.get(Ash.Resource.Info.relationship(parent, relationship_path) || %{}, :relationship) ||
+        Ash.Resource.Info.primary_action!(resource, :read)
+
+    expression_for_ref(resource, name, action, ref, acc)
+  end
+
+  defp do_replace_ref(
          %{attribute: %struct{name: name}} = ref,
          %{stack: [{resource, _path, action} | _]} = acc
        )
        when struct in [Ash.Resource.Attribute, Ash.Resource.Aggregate, Ash.Resource.Calculation] do
-    {expr, acc} = expression_for_ref(resource, name, action, ref, acc)
-
-    {expr, acc}
+    expression_for_ref(resource, name, action, ref, acc)
   end
 
   defp do_replace_ref(ref, acc) do
@@ -760,67 +781,71 @@ defmodule Ash.Policy.Authorizer do
   end
 
   defp field_condition(resource, field, action, acc) do
-    {authorizer, acc} =
-      case Map.fetch(acc.authorizers, {resource, action}) do
-        {:ok, authorizer} ->
-          {authorizer, acc}
+    if Ash.Policy.Authorizer in Ash.Resource.Info.authorizers(resource) do
+      {authorizer, acc} =
+        case Map.fetch(acc.authorizers, {resource, action}) do
+          {:ok, authorizer} ->
+            {authorizer, acc}
 
-        :error ->
-          authorizer = initial_state(acc.actor, resource, action, acc.verbose?)
+          :error ->
+            authorizer = initial_state(acc.actor, resource, action, acc.verbose?)
 
-          {authorizer,
-           %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
-      end
-
-    {expr, authorizer} =
-      if field in Ash.Resource.Info.primary_key(resource) do
-        # primary keys are always accessible
-        {true, authorizer}
-      else
-        policies = Ash.Policy.Info.field_policies_for_field(resource, field)
-
-        case strict_check_result(
-               %{
-                 authorizer
-                 | policies: policies
-               },
-               for_fields: [field],
-               context_description: "accessing field in filter"
-             ) do
-          {:authorized, authorizer} ->
-            {true, authorizer}
-
-          {:error, _} ->
-            {false, authorizer}
-
-          {:filter, authorizer, filter} ->
-            {filter, authorizer}
-
-          {:filter_and_continue, filter, _authorizer} ->
-            raise """
-            Was given a partial filter for a field policy for field #{inspect(field)}.
-
-            Filter: #{inspect(filter)}
-
-            Field policies must currently use only filter checks or simple checks.
-            """
-
-          {:continue, _} ->
-            raise """
-            Detected necessity for a runtime check for a field policy for field #{inspect(field)}.
-
-            Field policies must currently use only filter checks or simple checks.
-            """
+            {authorizer,
+             %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
         end
+
+      {expr, authorizer} =
+        if field in Ash.Resource.Info.primary_key(resource) do
+          # primary keys are always accessible
+          {true, authorizer}
+        else
+          policies = Ash.Policy.Info.field_policies_for_field(resource, field)
+
+          case strict_check_result(
+                 %{
+                   authorizer
+                   | policies: policies
+                 },
+                 for_fields: [field],
+                 context_description: "accessing field in filter"
+               ) do
+            {:authorized, authorizer} ->
+              {true, authorizer}
+
+            {:error, _} ->
+              {false, authorizer}
+
+            {:filter, authorizer, filter} ->
+              {filter, authorizer}
+
+            {:filter_and_continue, filter, _authorizer} ->
+              raise """
+              Was given a partial filter for a field policy for field #{inspect(field)}.
+
+              Filter: #{inspect(filter)}
+
+              Field policies must currently use only filter checks or simple checks.
+              """
+
+            {:continue, _} ->
+              raise """
+              Detected necessity for a runtime check for a field policy for field #{inspect(field)}.
+
+              Field policies must currently use only filter checks or simple checks.
+              """
+          end
+        end
+
+      new_acc = %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}
+
+      if expr == true do
+        {:none, new_acc}
+      else
+        {:expr, expr,
+         %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
       end
-
-    new_acc = %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}
-
-    if expr == true do
-      {:none, new_acc}
     else
-      {:expr, expr,
-       %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
+      {:none, acc}
     end
   end
 
@@ -959,7 +984,7 @@ defmodule Ash.Policy.Authorizer do
             match?(
               {:ok, _},
               Ash.Policy.Policy.fetch_fact(authorizer.facts, {check_module, opts})
-            ) || check_module.type() == :filter
+            )
         end)
       end)
 
@@ -976,11 +1001,19 @@ defmodule Ash.Policy.Authorizer do
           case filter do
             [filter] ->
               log(authorizer, "filtering with: #{inspect(filter)}, authorization complete")
-              {:filter, authorizer, filter}
+
+              with {:ok, %Ash.Filter{expression: filter}} <-
+                     Ash.Filter.parse(authorizer.resource, filter) do
+                {:filter, authorizer, filter}
+              end
 
             filters ->
               log(authorizer, "filtering with: #{inspect(or: filter)}, authorization complete")
-              {:filter, authorizer, [or: filters]}
+
+              with {:ok, %Ash.Filter{expression: filter}} <-
+                     Ash.Filter.parse(authorizer.resource, or: filters) do
+                {:filter, authorizer, filter}
+              end
           end
         end
 
@@ -989,23 +1022,17 @@ defmodule Ash.Policy.Authorizer do
           nil ->
             maybe_forbid_strict(authorizer)
 
-          {[single_filter], scenarios_without_global} ->
-            log(
-              authorizer,
-              "filtering with: #{inspect(single_filter)}, continuing authorization process"
-            )
-
-            {:filter_and_continue, single_filter,
-             %{authorizer | check_scenarios: scenarios_without_global}}
-
           {filters, scenarios_without_global} ->
             log(
               authorizer,
               "filtering with: #{inspect(and: filters)}, continuing authorization process"
             )
 
-            {:filter_and_continue, [and: filters],
-             %{authorizer | check_scenarios: scenarios_without_global}}
+            with {:ok, %Ash.Filter{expression: filter}} <-
+                   Ash.Filter.parse(authorizer.resource, and: filters) do
+              {:filter_and_continue, filter,
+               %{authorizer | check_scenarios: scenarios_without_global}}
+            end
         end
     end
   end
@@ -1029,7 +1056,7 @@ defmodule Ash.Policy.Authorizer do
         {{check_module, check_opts}, true} ->
           result =
             try do
-              check_module.auto_filter(authorizer.actor, authorizer, check_opts)
+              nil_to_false(check_module.auto_filter(authorizer.actor, authorizer, check_opts))
             rescue
               e ->
                 reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
@@ -1049,9 +1076,16 @@ defmodule Ash.Policy.Authorizer do
           result =
             try do
               if :erlang.function_exported(check_module, :auto_filter_not, 3) do
-                check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
+                nil_to_false(
+                  check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
+                )
               else
-                [not: check_module.auto_filter(authorizer.actor, authorizer, check_opts)]
+                [
+                  not:
+                    nil_to_false(
+                      check_module.auto_filter(authorizer.actor, authorizer, check_opts)
+                    )
+                ]
               end
             rescue
               e ->
@@ -1080,6 +1114,9 @@ defmodule Ash.Policy.Authorizer do
       end
     end)
   end
+
+  defp nil_to_false(nil), do: false
+  defp nil_to_false(v), do: v
 
   def print_tuple_boolean({op, l, r}) when op in [:and, :or] do
     "(#{print_tuple_boolean(l)} #{op} #{print_tuple_boolean(r)})"
@@ -1126,12 +1163,15 @@ defmodule Ash.Policy.Authorizer do
       {{check_module, check_opts}, required_status} ->
         additional_filter =
           if required_status do
-            check_module.auto_filter(authorizer.actor, authorizer, check_opts)
+            nil_to_false(check_module.auto_filter(authorizer.actor, authorizer, check_opts))
           else
             if :erlang.function_exported(check_module, :auto_filter_not, 3) do
-              check_module.auto_filter_not(authorizer.actor, authorizer, check_opts)
+              nil_to_false(check_module.auto_filter_not(authorizer.actor, authorizer, check_opts))
             else
-              [not: check_module.auto_filter(authorizer.actor, authorizer, check_opts)]
+              [
+                not:
+                  nil_to_false(check_module.auto_filter(authorizer.actor, authorizer, check_opts))
+              ]
             end
           end
 
@@ -1320,7 +1360,7 @@ defmodule Ash.Policy.Authorizer do
       {:ok, true, authorizer} ->
         {:authorized, authorizer}
 
-      {:ok, false, authorizer} ->
+      {:ok, none, authorizer} when none in [false, []] ->
         {:error,
          Ash.Error.Forbidden.Policy.exception(
            facts: authorizer.facts,
@@ -1355,6 +1395,9 @@ defmodule Ash.Policy.Authorizer do
            action: Map.get(authorizer, :action),
            scenarios: []
          )}
+
+      {:error, _authorizer, exception} ->
+        {:error, Ash.Error.to_ash_error(exception)}
     end
   end
 

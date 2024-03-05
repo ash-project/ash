@@ -22,6 +22,8 @@ defmodule Ash.Test.Support.PolicySimple.Car do
 
   attributes do
     uuid_primary_key(:id)
+    attribute :active, :boolean, default: true
+    timestamps()
   end
 
   policies do
@@ -32,7 +34,11 @@ defmodule Ash.Test.Support.PolicySimple.Car do
     end
 
     policy action_type([:read, :update, :destroy]) do
-      authorize_if expr(users.id == ^actor(:id))
+      authorize_if expr(exists(users, id == ^actor(:id)))
+    end
+
+    policy [action_type(:read), expr(active != true)] do
+      forbid_if always()
     end
   end
 

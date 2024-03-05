@@ -10,6 +10,19 @@ defmodule Ash.Actions.Destroy do
           | :ok
           | {:error, Ash.Changeset.t()}
           | {:error, term}
+  def run(api, changeset, %{soft?: true} = action, opts) do
+    changeset =
+      if changeset.__validated_for_action__ == action.name do
+        %{changeset | action_type: :destroy}
+      else
+        Ash.Changeset.for_destroy(%{changeset | action_type: :destroy}, action.name, %{},
+          actor: opts[:actor]
+        )
+      end
+
+    Ash.Actions.Update.run(api, changeset, action, opts)
+  end
+
   def run(api, changeset, action, opts) do
     {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
 
@@ -66,19 +79,6 @@ defmodule Ash.Actions.Destroy do
               __STACKTRACE__
   end
 
-  def do_run(api, changeset, %{soft?: true} = action, opts) do
-    changeset =
-      if changeset.__validated_for_action__ == action.name do
-        %{changeset | action_type: :destroy}
-      else
-        Ash.Changeset.for_destroy(%{changeset | action_type: :destroy}, action.name, %{},
-          actor: opts[:actor]
-        )
-      end
-
-    Ash.Actions.Update.do_run(api, changeset, action, opts)
-  end
-
   def do_run(api, changeset, action, opts) do
     {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
 
@@ -95,7 +95,7 @@ defmodule Ash.Actions.Destroy do
     with %{valid?: true} = changeset <- Ash.Changeset.validate_multitenancy(changeset),
          %{valid?: true} = changeset <- changeset(changeset, api, action, opts),
          %{valid?: true} = changeset <- authorize(changeset, api, opts),
-         {:ok, result, instructions} <- commit(changeset, api, opts) do
+         {:commit, {:ok, result, instructions}} <- {:commit, commit(changeset, api, opts)} do
       changeset.resource
       |> add_notifications(
         changeset.action,
@@ -116,9 +116,21 @@ defmodule Ash.Actions.Destroy do
 
       %Ash.Changeset{errors: errors} = changeset ->
         errors = Helpers.process_errors(changeset, errors)
-        {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
+
+        Ash.Changeset.run_after_transactions(
+          {:error, Ash.Error.to_error_class(errors, changeset: changeset)},
+          changeset
+        )
 
       {:error, error} ->
+        errors = Helpers.process_errors(changeset, List.wrap(error))
+
+        Ash.Changeset.run_after_transactions(
+          {:error, Ash.Error.to_error_class(errors, changeset: changeset)},
+          changeset
+        )
+
+      {:commit, {:error, error}} ->
         errors = Helpers.process_errors(changeset, List.wrap(error))
         {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
     end
@@ -248,9 +260,6 @@ defmodule Ash.Actions.Destroy do
           )
 
         {:ok, Helpers.select(result, changeset), instructions}
-
-      {:error, %Ash.Changeset{} = changeset} ->
-        {:error, changeset}
 
       {:error, error} ->
         {:error, error}
