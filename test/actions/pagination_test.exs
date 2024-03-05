@@ -61,6 +61,11 @@ defmodule Ash.Actions.PaginationTest do
         pagination keyset?: true, countable: true
       end
 
+      read :keyset_before_action do
+        prepare(before_action(&Ash.Query.filter(&1, name in ["0", "1", "2"])))
+        pagination keyset?: true, countable: true
+      end
+
       read :optional_keyset do
         pagination keyset?: true, countable: true, required?: false
       end
@@ -481,6 +486,17 @@ defmodule Ash.Actions.PaginationTest do
 
       assert %{count: 10} =
                Api.read!(User, action: :keyset, page: [count: true, limit: 1, after: keyset])
+    end
+
+    test "can get the full count when asking for records after a specific keyset use the query after applying `before_action` hooks" do
+      %{results: [%{__metadata__: %{keyset: keyset}}], count: 3} =
+        Api.read!(User, action: :keyset_before_action, page: [count: true, limit: 1])
+
+      assert %{count: 3} =
+               Api.read!(User,
+                 action: :keyset_before_action,
+                 page: [count: true, limit: 1, after: keyset]
+               )
     end
 
     test "an invalid keyset returns an appropriate error" do

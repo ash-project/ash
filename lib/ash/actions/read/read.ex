@@ -314,7 +314,6 @@ defmodule Ash.Actions.Read do
            pre_authorization_query <- query,
            {:ok, query} <- authorize_query(query, opts),
            query_before_pagination <- query,
-           {:ok, query} <- paginate(query, action, opts[:page], opts[:skip_pagination?]),
            query <-
              Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
                query,
@@ -376,6 +375,7 @@ defmodule Ash.Actions.Read do
              ),
            query <- Map.put(query, :filter, filter),
            query <- Ash.Query.unset(query, :calculations),
+           {%{valid?: true} = query, before_notifications} <- run_before_action(query),
            {:ok, count} <-
              fetch_count(
                query,
@@ -383,7 +383,7 @@ defmodule Ash.Actions.Read do
                relationship_path_filters,
                opts
              ),
-           {%{valid?: true} = query, before_notifications} <- run_before_action(query),
+           {:ok, query} <- paginate(query, action, opts[:page], opts[:skip_pagination?]),
            {:ok, data_layer_query} <-
              Ash.Query.data_layer_query(query, data_layer_calculations: data_layer_calculations),
            {:ok, results} <-
@@ -1543,7 +1543,7 @@ defmodule Ash.Actions.Read do
             (opts[:page][:count] != false and action.pagination.countable == :by_default)) do
       with {:ok, filter} <-
              filter_with_related(
-               query_before_pagination,
+               query,
                opts[:authorize?],
                relationship_path_filters
              ),
