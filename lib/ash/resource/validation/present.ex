@@ -92,42 +92,69 @@ defmodule Ash.Resource.Validation.Present do
     |> Keyword.delete(:attributes)
     |> Enum.map(fn
       {:exactly, exactly} ->
+        attribute_count = length(opts[:attributes])
+
         message =
           cond do
             exactly == 0 -> "must be absent"
-            length(opts[:attributes]) == 1 -> "must be present"
+            attribute_count == 1 -> "must be present"
             true -> "exactly %{exactly} of %{keys} must be present"
           end
 
-        {:atomic, [opts[:attribute]], expr(^nil_count == ^exactly),
-         expr(
-           error(^InvalidAttribute, %{
-             field: ^opts[:attribute],
-             value: ^atomic_ref(opts[:attribute]),
-             message: ^message,
-             vars: %{exactly: ^exactly, keys: ^values}
-           })
-         )}
+        if attribute_count == 1 do
+          attribute = Enum.at(opts[:attributes], 0)
+
+          condition =
+            if exactly == 0 do
+              expr(not is_nil(^atomic_ref(attribute)))
+            else
+              expr(is_nil(^atomic_ref(attribute)))
+            end
+
+          {:atomic, opts[:attributes], condition,
+           expr(
+             error(^InvalidAttribute, %{
+               field: ^Enum.at(opts[:attributes], 0),
+               value: ^atomic_ref(Enum.at(opts[:attributes], 0)),
+               message: ^message,
+               vars: %{exactly: ^exactly, keys: ^Enum.join(opts[:attributes], ", ")}
+             })
+           )}
+        else
+          {:atomic, opts[:attributes], expr(^nil_count == ^exactly),
+           expr(
+             error(^InvalidAttribute, %{
+               field: ^Enum.at(opts[:attributes], 0),
+               value: ^atomic_ref(Enum.at(opts[:attributes], 0)),
+               message: ^message,
+               vars: %{exactly: ^exactly, keys: ^Enum.join(opts[:attributes], ", ")}
+             })
+           )}
+        end
 
       {:at_least, at_least} ->
-        {:atomic, [opts[:attribute]], expr(count_nils(^atomic_ref(opts[:attribute])) < ^at_least),
+        attributes = Enum.map(opts[:attributes], fn attr -> expr(^atomic_ref(attr)) end)
+
+        {:atomic, opts[:attributes], expr(count_nils(^attributes) < ^at_least),
          expr(
            error(^InvalidAttribute, %{
-             field: ^opts[:attribute],
-             value: ^atomic_ref(opts[:attribute]),
+             field: ^Enum.at(opts[:attributes], 0),
+             value: ^atomic_ref(Enum.at(opts[:attributes], 0)),
              message: "at least %{at_least} of %{keys} must be present",
-             vars: %{at_least: ^at_least, keys: ^values}
+             vars: %{at_least: ^at_least, keys: ^Enum.join(opts[:attributes], ", ")}
            })
          )}
 
       {:at_most, at_most} ->
-        {:atomic, [opts[:attribute]], expr(count_nils(^atomic_ref(opts[:attribute])) > ^at_most),
+        attributes = Enum.map(opts[:attributes], fn attr -> expr(^atomic_ref(attr)) end)
+
+        {:atomic, opts[:attributes], expr(count_nils(^attributes) > ^at_most),
          expr(
            error(^InvalidAttribute, %{
-             field: ^opts[:attribute],
-             value: ^atomic_ref(opts[:attribute]),
+             field: ^Enum.at(opts[:attributes], 0),
+             value: ^atomic_ref(Enum.at(opts[:attributes], 0)),
              message: "at most %{at_most} of %{keys} must be present",
-             vars: %{at_most: ^at_most, keys: ^values}
+             vars: %{at_most: ^at_most, keys: ^Enum.join(opts[:attributes], ", ")}
            })
          )}
     end)

@@ -42,6 +42,7 @@ defmodule Ash.Changeset do
     phase: :validate,
     relationships: %{},
     select: nil,
+    nil_inputs: [],
     load: [],
     valid?: true
   ]
@@ -4217,15 +4218,25 @@ defmodule Ash.Changeset do
               %{
                 changeset
                 | attributes: Map.delete(changeset.attributes, attribute.name),
+                  nil_inputs: [attribute.name | changeset.nil_inputs],
                   defaults: changeset.defaults -- [attribute.name]
               }
 
             Ash.Type.equal?(attribute.type, casted, data_value) ->
-              %{
-                changeset
-                | attributes: Map.delete(changeset.attributes, attribute.name),
-                  defaults: changeset.defaults -- [attribute.name]
-              }
+              if is_nil(casted) do
+                %{
+                  changeset
+                  | attributes: Map.delete(changeset.attributes, attribute.name),
+                    defaults: changeset.defaults -- [attribute.name],
+                    nil_inputs: [attribute.name | changeset.nil_inputs]
+                }
+              else
+                %{
+                  changeset
+                  | attributes: Map.delete(changeset.attributes, attribute.name),
+                    defaults: changeset.defaults -- [attribute.name]
+                }
+              end
 
             true ->
               %{

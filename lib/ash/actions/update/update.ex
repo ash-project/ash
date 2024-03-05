@@ -37,6 +37,20 @@ defmodule Ash.Actions.Update do
           !Enum.empty?(changeset.relationships) ->
             {{:not_atomic, "cannot atomically manage relationships"}, nil}
 
+          !Enum.empty?(changeset.before_action) ->
+            {{:not_atomic, "cannot atomically run a changeset with a before_action hook"}, nil}
+
+          !Enum.empty?(changeset.before_transaction) ->
+            {{:not_atomic, "cannot atomically run a changeset with a before_transaction hook"},
+             nil}
+
+          !Enum.empty?(changeset.around_action) ->
+            {{:not_atomic, "cannot atomically run a changeset with an around_action hook"}, nil}
+
+          !Enum.empty?(changeset.around_transaction) ->
+            {{:not_atomic, "cannot atomically run a changeset with an around_transaction hook"},
+             nil}
+
           !primary_read ->
             {{:not_atomic, "cannot atomically update a record without a primary read action"},
              nil}
@@ -47,6 +61,9 @@ defmodule Ash.Actions.Update do
               |> Map.merge(changeset.casted_attributes)
               |> Map.merge(changeset.arguments)
               |> Map.merge(changeset.casted_arguments)
+
+            params =
+              Enum.reduce(changeset.nil_inputs, params, &Map.put(&2, &1, nil))
 
             res =
               Ash.Changeset.fully_atomic_changeset(
