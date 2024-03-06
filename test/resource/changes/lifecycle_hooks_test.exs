@@ -17,6 +17,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
     end
 
     actions do
+      default_accept :*
       defaults [:read, :update, :destroy]
 
       create :create_with_before_action do

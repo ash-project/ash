@@ -6,8 +6,10 @@ defmodule Ash.Test.Resource.AttributesTest do
   alias Ash.Test.Domain, as: Domain
 
   defmacrop defposts(do: body) do
+    module = Module.concat(["rand#{System.unique_integer([:positive])}", Post])
+
     quote do
-      defmodule Post do
+      defmodule unquote(module) do
         @moduledoc false
         use Ash.Resource, domain: Domain
 
@@ -17,6 +19,8 @@ defmodule Ash.Test.Resource.AttributesTest do
 
         unquote(body)
       end
+
+      alias unquote(module), as: Post
     end
   end
 
@@ -53,7 +57,7 @@ defmodule Ash.Test.Resource.AttributesTest do
     test "raises if the attribute name is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.AttributesTest.Post]\n attributes -> attribute -> 10:\n  invalid value for :name option: expected atom, got: 10",
+        ~r/expected atom, got: 10/,
         fn ->
           defposts do
             attributes do
@@ -67,7 +71,7 @@ defmodule Ash.Test.Resource.AttributesTest do
     test "raises if you pass an invalid value for `primary_key?`" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.AttributesTest.Post]\n attributes -> attribute -> foo:\n  invalid value for :primary_key? option: expected boolean, got: 10",
+        ~r/expected boolean, got: 10/,
         fn ->
           defposts do
             attributes do
@@ -81,7 +85,7 @@ defmodule Ash.Test.Resource.AttributesTest do
     test "raises if you pass an invalid value for `public?`" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.AttributesTest.Post]\n attributes -> attribute -> foo:\n  invalid value for :public? option: expected boolean, got: \"an_invalid_value\"",
+        ~r/expected boolean, got: "an_invalid_value"/,
         fn ->
           defposts do
             attributes do

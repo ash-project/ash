@@ -5,8 +5,10 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
   alias Ash.Resource.Relationships.HasOne
 
   defmacrop defposts(do: body) do
+    module = Module.concat(["rand#{System.unique_integer([:positive])}", Post])
+
     quote do
-      defmodule Post do
+      defmodule unquote(module) do
         @moduledoc false
         use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
 
@@ -16,6 +18,8 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
 
         unquote(body)
       end
+
+      alias unquote(module), as: Post
     end
   end
 
@@ -63,7 +67,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
     test "fails if destination_attribute is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  invalid value for :destination_attribute option: expected atom, got: \"foo\"",
+        ~r/invalid value for :destination_attribute option: expected atom, got: "foo"/,
         fn ->
           defposts do
             relationships do
@@ -77,7 +81,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
     test "fails if source_attribute is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  invalid value for :source_attribute option: expected atom, got: \"foo\"",
+        ~r/invalid value for :source_attribute option: expected atom, got: "foo"/,
         fn ->
           defposts do
             relationships do
@@ -94,7 +98,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
     test "fails if the destination is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  expected module in :destination option, got: \"foobar\"",
+        ~r/expected module in :destination option, got: "foobar"/,
         fn ->
           defposts do
             relationships do
@@ -110,7 +114,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
     test "fails if the relationship name is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  invalid value for :name option: expected atom, got: \"foobar\"",
+        ~r/invalid value for :name option: expected atom, got: "foobar"/,
         fn ->
           defposts do
             relationships do
@@ -126,7 +130,7 @@ defmodule Ash.Test.Resource.Relationships.HasOneTest do
     test "fails if public? is not an boolean" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.HasOneTest.Post]\n relationships -> has_one -> foobar:\n  invalid value for :public? option: expected boolean, got: \"foo\"",
+        ~r/invalid value for :public\? option: expected boolean, got: "foo"/,
         fn ->
           defposts do
             relationships do

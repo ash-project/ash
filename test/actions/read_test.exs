@@ -29,6 +29,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     actions do
+      default_accept :*
       defaults([:read, :create, :update, :destroy])
     end
 
@@ -58,6 +59,7 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     actions do
+      default_accept :*
       defaults([:read, :create, :update, :destroy])
 
       read :read_with_after_action do

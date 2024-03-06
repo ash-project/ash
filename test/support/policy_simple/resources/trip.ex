@@ -18,6 +18,7 @@ defmodule Ash.Test.Support.PolicySimple.Trip do
   end
 
   actions do
+    default_accept :*
     defaults [:create, :read, :update, :destroy]
   end
 

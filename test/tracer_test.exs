@@ -16,6 +16,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
       ]
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -41,6 +42,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
       data_layer: Ash.DataLayer.Mnesia
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -68,6 +70,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -86,6 +89,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

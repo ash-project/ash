@@ -168,7 +168,7 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
         all(destination(update))
 
       {:unrelate, join_destroy} when relationship.type == :many_to_many ->
-        all(join(join_destroy, :all))
+        all(join(join_destroy, :*))
 
       {:unrelate, update} when relationship.type in [:has_one, :has_many] ->
         all(destination(update))
@@ -177,7 +177,7 @@ defmodule Ash.Changeset.ManagedRelationshipHelpers do
         nil
 
       {:destroy, join_destroy} when relationship.type == :many_to_many ->
-        all(join(join_destroy, :all))
+        all(join(join_destroy, :*))
 
       {:destroy, destroy} ->
         all(destination(destroy))

@@ -26,6 +26,7 @@ defmodule Ash.Test.Actions.GenericActionsTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
 
       action :hello, :string do

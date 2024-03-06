@@ -10,6 +10,8 @@ defmodule Ash.Test.Flow.ChildResource do
   end
 
   actions do
+    default_accept :*
+
     create :create do
       primary? true
 
@@ -19,9 +21,8 @@ defmodule Ash.Test.Flow.ChildResource do
     end
 
     update :system_cancel do
+      accept []
       change set_attribute(:status, :canceled)
-
-      reject :all
     end
 
     read :read do

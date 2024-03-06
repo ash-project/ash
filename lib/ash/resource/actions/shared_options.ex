@@ -32,8 +32,8 @@ defmodule Ash.Resource.Actions.SharedOptions do
 
   @create_update_opts [
     accept: [
-      type: {:or, [in: [:all], list: :atom]},
-      doc: "The list of attributes to accept. Defaults to all attributes on the resource"
+      type: {:or, [{:wrap_list, :atom}, {:literal, :*}]},
+      doc: "The list of attributes to accept. Use `:*` to accept all public attributes."
     ],
     delay_global_validations?: [
       type: :boolean,
@@ -47,12 +47,6 @@ defmodule Ash.Resource.Actions.SharedOptions do
       default: false,
       doc: """
       If true, global validations will be skipped. Useful for manual actions.
-      """
-    ],
-    reject: [
-      type: {:or, [in: [:all], list: :atom]},
-      doc: """
-      A list of attributes not to accept. If this is specified along with `accept`, these are removed from the `accept` list.
       """
     ],
     require_attributes: [

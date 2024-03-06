@@ -193,6 +193,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
     end
 
     actions do
+      default_accept :*
       create :create
       update :update
     end

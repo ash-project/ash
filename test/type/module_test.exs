@@ -44,6 +44,7 @@ defmodule Ash.Test.Type.ModuleTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -65,6 +66,7 @@ defmodule Ash.Test.Type.ModuleTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -87,6 +89,7 @@ defmodule Ash.Test.Type.ModuleTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

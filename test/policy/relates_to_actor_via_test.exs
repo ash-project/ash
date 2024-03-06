@@ -8,6 +8,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -43,6 +44,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -62,6 +64,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
       authorizers: [Ash.Policy.Authorizer]
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -98,6 +101,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -123,6 +127,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
       authorizers: [Ash.Policy.Authorizer]
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -148,6 +153,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
       authorizers: [Ash.Policy.Authorizer]
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

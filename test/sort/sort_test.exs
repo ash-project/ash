@@ -15,6 +15,7 @@ defmodule Ash.Test.Sort.SortTest do
     end
 
     actions do
+      default_accept :*
       read :read
 
       create :create

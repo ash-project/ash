@@ -16,6 +16,7 @@ defmodule Ash.Flow.TenantTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
 
       read :get_by_id do

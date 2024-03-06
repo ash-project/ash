@@ -16,6 +16,7 @@ defmodule Ash.Test.Filter.SimplificationTest do
     end
 
     actions do
+      default_accept :*
       read :read
     end
 

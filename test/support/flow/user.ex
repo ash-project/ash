@@ -7,6 +7,7 @@ defmodule Ash.Test.Flow.User do
   end
 
   actions do
+    default_accept :*
     defaults [:read, :destroy]
 
     read :for_org do
