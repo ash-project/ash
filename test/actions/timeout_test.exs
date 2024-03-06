@@ -22,6 +22,7 @@ defmodule Ash.Test.Actions.TimeoutTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
+      default_accept :*
       defaults [:read, :update, :destroy]
 
       create :create do

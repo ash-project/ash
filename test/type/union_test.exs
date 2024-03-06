@@ -61,6 +61,7 @@ defmodule Ash.Test.Type.UnionTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
 
       update :add_thing do

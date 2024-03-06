@@ -10,6 +10,7 @@ defmodule Ash.Test.Support.PolicyField.User do
   end
 
   actions do
+    default_accept :*
     defaults [:create, :read, :update, :destroy]
   end
 

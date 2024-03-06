@@ -647,9 +647,9 @@ defmodule Ash.Resource.Dsl do
         """
       ],
       default_accept: [
-        type: {:list, :atom},
+        type: {:or, [{:list, :atom}, {:literal, :*}]},
         doc:
-          "A default value for the `accept` option for each action. Defaults to all public attributes."
+          "A default value for the `accept` option for each action. Use `:*` to accept all public attributes."
       ]
     ],
     examples: [

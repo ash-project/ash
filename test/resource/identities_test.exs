@@ -5,8 +5,10 @@ defmodule Ash.Test.Resource.IdentitiesTest do
   alias Ash.Test.Domain, as: Domain
 
   defmacrop defposts(do: body) do
+    module = Module.concat(["rand#{System.unique_integer([:positive])}", Post])
+
     quote do
-      defmodule Post do
+      defmodule unquote(module) do
         @moduledoc false
         use Ash.Resource, domain: Domain
 
@@ -24,6 +26,8 @@ defmodule Ash.Test.Resource.IdentitiesTest do
 
         unquote(body)
       end
+
+      alias unquote(module), as: Post
     end
   end
 
@@ -31,6 +35,8 @@ defmodule Ash.Test.Resource.IdentitiesTest do
     test "identities are persisted on the resource properly" do
       defposts do
         actions do
+          default_accept :*
+
           read :read do
             primary? true
           end
@@ -62,6 +68,8 @@ defmodule Ash.Test.Resource.IdentitiesTest do
     test "Identity descriptions are allowed" do
       defposts do
         actions do
+          default_accept :*
+
           read :read do
             primary? true
           end
@@ -98,6 +106,8 @@ defmodule Ash.Test.Resource.IdentitiesTest do
 
                      defposts do
                        actions do
+                         default_accept :*
+
                          read :read do
                            primary? true
                          end

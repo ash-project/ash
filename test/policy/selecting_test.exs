@@ -10,6 +10,7 @@ defmodule Ash.Test.Policy.SelectingTest do
       authorizers: [Ash.Policy.Authorizer]
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -51,6 +52,7 @@ defmodule Ash.Test.Policy.SelectingTest do
       authorizers: [Ash.Policy.Authorizer]
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

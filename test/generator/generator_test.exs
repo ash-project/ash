@@ -17,6 +17,7 @@ defmodule Ash.Test.GeneratorTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -56,6 +57,7 @@ defmodule Ash.Test.GeneratorTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -99,6 +101,7 @@ defmodule Ash.Test.GeneratorTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -125,6 +128,7 @@ defmodule Ash.Test.GeneratorTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -163,6 +167,7 @@ defmodule Ash.Test.GeneratorTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

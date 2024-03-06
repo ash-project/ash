@@ -42,6 +42,7 @@ defmodule Ash.Test.Resource.UpsertTest do
     end
 
     actions do
+      default_accept :*
       defaults([:create, :update, :read, :destroy])
 
       update :upsert_variants do
@@ -102,6 +103,7 @@ defmodule Ash.Test.Resource.UpsertTest do
     end
 
     actions do
+      default_accept :*
       defaults([:create, :read, :update, :destroy])
     end
 

@@ -8,6 +8,8 @@ This section contains each breaking change, and the steps required to address it
 
 * `code_interface.define_for` is now `code_interface.domain`. Additionally, it is set automatically if the `domain` option is specified on `use Ash.Resource`.
 
+* `actions.create.reject`, `actions.update.reject` and `actions.destroy.reject` have been removed. Blacklisting inputs makes it too easy to make mistakes. Instead, specify an explicit `accept` list.
+
 ### `Ash.Registry` has been removed
 
 `Ash.Registry` is no longer needed. Place each resource in the domain instead.
@@ -25,6 +27,8 @@ end
 
 Ash.Filter.parse/5 is now `Ash.Filter.parse/3`. Ash.Filter.parse_input/5 is now `Ash.Filter.parse_input/2` The third and fourth optional arguments are unnecessary and were previously ignored, and the fifth argument is not necessary for `parse_input`.
 
+`Ash.Filter.used_aggregates/3` no longer accepts `:all` as a relationship path, instead using `:*`. Its very unlikely that this is used in your application.
+
 #### Ash.Resource.Validation
 
 `validate/2` is now `validate/3`, with the third argument being the context of the validation.
@@ -40,6 +44,8 @@ This module has been renamed to `Ash.Resource.Calculation`. You will need to ren
 #### Ash.Changeset
 
 `Ash.Changeset.new/2` has been removed. `Ash.Changeset.new/1` is still available for creating a new changeset, but attributes and arguments should, with few exceptions, be passed to the relevant `Ash.Changeset.for_<action_type>` functions, *not* to `Ash.Changeset.new/2`. Removing the second argument helps clarify the purpose of `Ash.Changeset.new/1`.
+
+`Ash.Changeset.manage_relationship/4` no longer uses `:all` to signal that all changes will be sent to the join relationship. Instead, use `:*`.
 
 #### Builtin Changes
 
@@ -68,6 +74,27 @@ To make this change you will need to do two things:
 
 1. replace `Ash.Api` with `Ash.Domain` in your application
 2. replace places where an `:api` option is passed to a function with the `:domain` option. For example, `AshPhoenix.Form.for_create(..., api: MyApp.SomeApi)` should now be `AshPhoenix.Form.for_create(..., domain: MyApp.SomeDomain)`
+
+### Actions no longer default to accepting all public writable attributes
+
+For more context, see the original discussion: https://github.com/ash-project/ash/issues/512
+
+In 2.0, all public, writable attributes were accepted by each action by default. This made it very easy to accidentally expose writing to an attribute in an action where that was not the intent. Additionally, new attributes added were automatically writable across a wide array of actions, which was error prone for the same reason.
+
+In 2.0, as well as 3.0, there is an option called `default_accept`, which modifies all actions that do not have an `accept` list. In 2.0, the default value for `default_accept` was "all public, writable attributes". In 3.0, the default value for `default_accept` is `[]`. This encourages a pattern of explicitly listing inputs to actions, and is safer and less error prone.
+
+#### What you'll need to change
+
+For those who want to upgrade, you would use the new `:*` option to `default_accept` (also usable in an action's `accept` option) that was added that explicitly opts into the old behavior. Go to each resource and, inside the actions block, add:
+
+```elixir
+actions do
+  default_accept :*
+  ...
+end
+```
+
+For those who want to be more explicit, or after your upgrade has complete if you wish to refactor existing resources and actions, the general best path forward is to copy the `default_accept` into each action (or put it in a module attribute and reference it) as the `accept` option. This way when a new action is added, it does not "inherit" some list of accepted attributes.
 
 ### Context in changes, preparations, validations, calculations are now structs
 

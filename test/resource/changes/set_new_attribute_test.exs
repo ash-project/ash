@@ -17,6 +17,7 @@ defmodule Ash.Test.Resource.Changes.SetNewAttributeTest do
     end
 
     actions do
+      default_accept :*
       defaults [:read]
 
       create :create do

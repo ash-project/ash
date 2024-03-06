@@ -19,6 +19,7 @@ defmodule Ash.Test.Type.EnumTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

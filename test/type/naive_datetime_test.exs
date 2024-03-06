@@ -13,6 +13,7 @@ defmodule Ash.Test.Type.NaiveDateTimeTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

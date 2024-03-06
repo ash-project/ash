@@ -3378,7 +3378,7 @@ defmodule Ash.Changeset do
           * `belongs_to` - an update action on the source resource
       * `{:relate_and_update, :action_name, :read_action_name}` - Same as the above, but customizes the read action called to search for matches.
       * `{:relate_and_update, :action_name, :read_action_name, [:list, :of, :join_table, :params]}` - Same as the above, but uses the provided list of parameters when creating
-          the join row (only relevant for many to many relationships). Use `:all` to *only* update the join record, and pass all parameters to its action
+          the join row (only relevant for many to many relationships). Use `:*` to *only* update the join record, and pass all parameters to its action
       """
     ],
     on_match: [

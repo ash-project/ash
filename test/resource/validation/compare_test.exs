@@ -10,6 +10,7 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
     use Ash.Resource, domain: Domain
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

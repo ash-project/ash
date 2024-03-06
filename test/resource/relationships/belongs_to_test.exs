@@ -6,10 +6,12 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   alias Ash.Test.Domain, as: Domain
 
   defmacrop defposts(do: body) do
+    module = Module.concat(["rand#{System.unique_integer([:positive])}", Post])
+
     quote do
-      defmodule Post do
+      defmodule unquote(module) do
         @moduledoc false
-        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, domain: Domain
 
         attributes do
           uuid_primary_key :id
@@ -17,6 +19,8 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
 
         unquote(body)
       end
+
+      alias unquote(module), as: Post
     end
   end
 
@@ -107,7 +111,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if destination_attribute is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :destination_attribute option: expected atom, got: \"foo\"",
+        ~r/invalid value for :destination_attribute option: expected atom, got: \"foo\"/,
         fn ->
           defposts do
             relationships do
@@ -121,7 +125,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if source_attribute is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :source_attribute option: expected atom, got: \"foo\"",
+        ~r/invalid value for :source_attribute option: expected atom, got: \"foo\"/,
         fn ->
           defposts do
             relationships do
@@ -135,7 +139,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if the destination is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  expected module in :destination option, got: \"foobar\"",
+        ~r/expected module in :destination option, got: \"foobar\"/,
         fn ->
           defposts do
             relationships do
@@ -149,7 +153,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if the relationship name is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :name option: expected atom, got: \"foobar\"",
+        ~r/invalid value for :name option: expected atom, got: \"foobar\"/,
         fn ->
           defposts do
             relationships do
@@ -163,7 +167,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if `primary_key?` is not a boolean" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :primary_key? option: expected boolean, got: \"blah\"",
+        ~r/invalid value for :primary_key\? option: expected boolean, got: \"blah\"/,
         fn ->
           defposts do
             relationships do
@@ -177,7 +181,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if `public?` is not a boolean" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :public? option: expected boolean, got: \"blah\"",
+        ~r/invalid value for :public\? option: expected boolean, got: "blah"/,
         fn ->
           defposts do
             relationships do
@@ -192,7 +196,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   test "fails if `define_attribute?` is not a boolean" do
     assert_raise(
       Spark.Error.DslError,
-      "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :define_attribute? option: expected boolean, got: \"blah\"",
+      ~r/invalid value for :define_attribute\? option: expected boolean, got: \"blah\"/,
       fn ->
         defposts do
           relationships do

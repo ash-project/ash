@@ -14,6 +14,7 @@ defmodule Ash.Test.Resource.DomainTest do
     use Ash.Resource, domain: Domain
 
     actions do
+      default_accept :*
       defaults [:create, :read]
     end
 

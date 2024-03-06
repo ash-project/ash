@@ -15,6 +15,8 @@ defmodule Ash.Test.SimpleDataLayerTest do
     end
 
     actions do
+      default_accept :*
+
       read :read do
         primary? true
 

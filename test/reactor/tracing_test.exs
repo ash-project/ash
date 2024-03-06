@@ -14,6 +14,7 @@ defmodule Ash.Test.ReactorTracingTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
 
       read :by_id do

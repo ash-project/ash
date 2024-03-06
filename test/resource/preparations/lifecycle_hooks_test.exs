@@ -16,6 +16,8 @@ defmodule Ash.Test.Resource.Preparations.LifecycleHooksTest do
     end
 
     actions do
+      default_accept :*
+
       read :read_with_before_action do
         argument :caller, :term
 

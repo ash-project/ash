@@ -11,6 +11,7 @@ defmodule Ash.Test.Resource.RequireUniqueActionNamesTest do
       fn ->
         defposts do
           actions do
+            default_accept :*
             defaults [:read]
             read :read
           end
@@ -22,6 +23,7 @@ defmodule Ash.Test.Resource.RequireUniqueActionNamesTest do
   test "passes if there is one default read action" do
     defposts do
       actions do
+        default_accept :*
         defaults [:read]
       end
     end
@@ -30,6 +32,7 @@ defmodule Ash.Test.Resource.RequireUniqueActionNamesTest do
   test "passes if there is only one defined action" do
     defposts do
       actions do
+        default_accept :*
         read :read
       end
     end

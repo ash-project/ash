@@ -20,6 +20,7 @@ defmodule Ash.Test.Actions.ManyToManyTest do
       data_layer: Ash.DataLayer.Ets
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -51,6 +52,7 @@ defmodule Ash.Test.Actions.ManyToManyTest do
     end
 
     actions do
+      default_accept :*
       defaults [:read, :update, :destroy]
 
       create :create do
