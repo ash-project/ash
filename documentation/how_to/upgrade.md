@@ -29,6 +29,10 @@ Ash.Filter.parse/5 is now `Ash.Filter.parse/3`. Ash.Filter.parse_input/5 is now 
 
 `Ash.Filter.used_aggregates/3` no longer accepts `:all` as a relationship path, instead using `:*`. Its very unlikely that this is used in your application.
 
+#### Ash.CiString
+
+* `Ash.CiString.new(nil)` now returns `nil` instead of `%Ash.CiString{value: nil}`
+
 #### Ash.Resource.Validation
 
 `validate/2` is now `validate/3`, with the third argument being the context of the validation.

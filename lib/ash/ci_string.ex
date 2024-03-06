@@ -55,6 +55,8 @@ defmodule Ash.CiString do
 
   def new(value, casing \\ nil)
 
+  def new(nil, _), do: nil
+
   def new(%__MODULE__{string: value}, casing) do
     new(value, casing)
   end
