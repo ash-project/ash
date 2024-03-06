@@ -16,6 +16,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       ]
 
     actions do
+      default_accept :*
       defaults [:create, :read]
     end
 
@@ -83,6 +84,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       authorizers: [Ash.Policy.Authorizer]
 
     actions do
+      default_accept :*
       defaults [:create, :read]
 
       read :authorized_actor
@@ -152,6 +154,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
 
     actions do
+      default_accept :*
       defaults [:create, :read, :destroy]
     end
 
@@ -170,6 +173,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
 
     actions do
+      default_accept :*
       defaults [:create, :read]
     end
 

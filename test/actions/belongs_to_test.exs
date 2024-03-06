@@ -34,6 +34,7 @@ defmodule Ash.Test.Actions.BelongsToTest do
     end
 
     actions do
+      default_accept :*
       defaults([:create, :read, :update, :destroy])
 
       create :create_with_reviewer do
@@ -71,6 +72,7 @@ defmodule Ash.Test.Actions.BelongsToTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

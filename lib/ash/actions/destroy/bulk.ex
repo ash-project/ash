@@ -7,7 +7,8 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   def run(domain, resource, action, input, opts, not_atomic_reason \\ nil)
 
-  def run(domain, stream, action, input, opts, not_atomic_reason) when is_atom(action) do
+  def run(domain, stream, action, input, opts, not_atomic_reason)
+      when is_atom(action) and not is_nil(action) do
     resource =
       opts[:resource] ||
         case stream do

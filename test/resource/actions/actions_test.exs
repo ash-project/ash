@@ -10,6 +10,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
       resource =
         defposts do
           actions do
+            default_accept :*
             defaults [:create, :read, :update, :destroy]
           end
         end
@@ -36,11 +37,10 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
           end
 
           actions do
-            create :all_params
+            create :all_params, accept: :*
             create :no_params, accept: []
             create :one_param, accept: [:first_name]
             destroy :destroy
-            destroy :destroy_one_param, accept: [:first_name]
           end
         end
 
@@ -48,7 +48,6 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
       assert Info.action(resource, :no_params).accept == []
       assert Info.action(resource, :one_param).accept == [:first_name]
       assert Info.action(resource, :destroy).accept == []
-      assert Info.action(resource, :destroy_one_param).accept == [:first_name]
     end
 
     test "some params" do
@@ -68,8 +67,8 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
             default_accept [:last_name]
 
             create :some_params
-            create :no_params, reject: :all
-            create :all_params, accept: :all
+            create :no_params, accept: []
+            create :all_params, accept: :*
           end
         end
 
@@ -96,7 +95,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
 
             create :default_params
             create :one_param, accept: [:first_name]
-            create :all_params, accept: :all
+            create :all_params, accept: :*
           end
         end
 
@@ -114,31 +113,9 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
         fn ->
           defposts do
             actions do
+              default_accept :*
               create :create, primary?: true
               create :special, primary?: true
-            end
-          end
-        end
-      )
-    end
-
-    test "raise if accept and reject keys overlap" do
-      assert_raise(
-        Spark.Error.DslError,
-        ~r/accept and reject keys cannot overlap/,
-        fn ->
-          defposts do
-            attributes do
-              attribute :attr, :string do
-                public?(true)
-              end
-            end
-
-            actions do
-              create :create_2 do
-                accept [:attr, :id]
-                reject [:attr]
-              end
             end
           end
         end

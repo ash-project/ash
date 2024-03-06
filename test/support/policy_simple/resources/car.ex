@@ -10,6 +10,7 @@ defmodule Ash.Test.Support.PolicySimple.Car do
   end
 
   actions do
+    default_accept :*
     defaults [:read, :update, :destroy]
 
     create :create do

@@ -33,6 +33,8 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
 
     actions do
+      default_accept :*
+
       read :read do
         primary? true
       end

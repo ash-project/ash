@@ -18,6 +18,7 @@ defmodule Ash.Test.ReactorReadTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read]
     end
 

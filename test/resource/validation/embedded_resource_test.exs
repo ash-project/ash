@@ -129,6 +129,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
     end
 
     actions do
+      default_accept :*
       defaults [:read, :create]
       default_accept [:embedded_resource]
 

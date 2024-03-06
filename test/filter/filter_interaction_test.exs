@@ -14,6 +14,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -34,6 +35,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -63,6 +65,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -86,6 +89,7 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

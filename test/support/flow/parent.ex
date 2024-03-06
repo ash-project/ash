@@ -10,6 +10,8 @@ defmodule Ash.Test.Flow.ParentResource do
   end
 
   actions do
+    default_accept :*
+
     create :create do
       primary? true
     end
@@ -23,6 +25,8 @@ defmodule Ash.Test.Flow.ParentResource do
     end
 
     update :disable do
+      accept []
+
       argument :status, :atom do
         constraints one_of: [:canceled, :removed]
         default :canceled
@@ -31,8 +35,6 @@ defmodule Ash.Test.Flow.ParentResource do
       change set_attribute(:status, :removed) do
         where [attribute_equals(:status, :canceled)]
       end
-
-      accept [:status]
 
       manual Ash.Test.Actions.CancelParentResource
     end
@@ -45,8 +47,6 @@ defmodule Ash.Test.Flow.ParentResource do
       change set_attribute(:status, :canceled) do
         where [absent([:status])]
       end
-
-      accept [:status]
     end
   end
 

@@ -11,6 +11,7 @@ defmodule Ash.Test.Flow.Org do
   end
 
   actions do
+    default_accept :*
     defaults [:create, :read, :update, :destroy]
 
     read :by_name do

@@ -19,6 +19,7 @@ defmodule Ash.Actions.MultitenancyTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -66,6 +67,7 @@ defmodule Ash.Actions.MultitenancyTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -95,6 +97,7 @@ defmodule Ash.Actions.MultitenancyTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

@@ -23,6 +23,8 @@ defmodule Ash.Test.Support.PolicyComplex.FriendLink do
   end
 
   actions do
+    default_accept :*
+
     read :read do
       primary? true
     end

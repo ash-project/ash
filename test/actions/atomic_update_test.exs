@@ -32,6 +32,7 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
 
       update :only_allow_name do

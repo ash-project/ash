@@ -15,6 +15,8 @@ defmodule Ash.Test.QueryTest do
     end
 
     actions do
+      default_accept :*
+
       read :read do
         primary? true
       end

@@ -17,6 +17,7 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
 
       create :title_is_authorization do

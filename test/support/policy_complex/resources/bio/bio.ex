@@ -27,6 +27,7 @@ defmodule Ash.Test.Support.PolicyComplex.Bio do
   end
 
   actions do
+    default_accept :*
     defaults [:create, :read, :update, :destroy]
   end
 

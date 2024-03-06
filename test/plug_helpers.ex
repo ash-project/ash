@@ -16,6 +16,7 @@ defmodule Ash.Test.PlugHelpersTest do
     end
 
     actions do
+      default_accept :*
       read :read
       create :create
     end
@@ -52,6 +53,7 @@ defmodule Ash.Test.PlugHelpersTest do
     end
 
     actions do
+      default_accept :*
       read :read
       create :create
     end

@@ -22,6 +22,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
   end
@@ -37,6 +38,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -64,6 +66,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -131,6 +134,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
 
       create :only_allow_name do
@@ -175,6 +179,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
 
       create :manual_create do
@@ -214,6 +219,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -241,6 +247,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
 
       create :create_with_required do
@@ -322,6 +329,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -341,6 +349,7 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
 
       create :manual do

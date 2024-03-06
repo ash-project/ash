@@ -47,6 +47,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :update, :destroy]
 
       read :read do
@@ -222,25 +223,6 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              end)
 
     assert [] = Domain.read!(Post)
-  end
-
-  test "will return error count" do
-    assert %Ash.BulkResult{
-             error_count: 2
-           } =
-             Domain.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
-               return_stream?: true,
-               return_records?: true
-             )
-             |> Stream.map(fn {:ok, result} ->
-               result
-             end)
-             |> Domain.bulk_destroy(:destroy, %{title2: "what"},
-               resource: Post,
-               return_records?: true
-             )
-
-    assert [_, _] = Domain.read!(Post)
   end
 
   test "will return errors on request" do

@@ -1002,7 +1002,7 @@ defmodule Ash.Filter do
       |> list_refs(false, false, true)
       |> Enum.filter(fn
         %Ref{attribute: %Aggregate{}, relationship_path: ref_relationship_path} ->
-          relationship_path == :all ||
+          relationship_path == :* ||
             (relationship_path in [nil, []] and ref_relationship_path in [nil, []]) ||
             relationship_path == ref_relationship_path
 

@@ -13,6 +13,7 @@ defmodule Ash.Test.Actions.AggregateTest do
       authorizers: [Ash.Policy.Authorizer]
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -63,6 +64,7 @@ defmodule Ash.Test.Actions.AggregateTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
       read :unpublic
 

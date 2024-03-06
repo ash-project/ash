@@ -15,6 +15,7 @@ defmodule Ash.Test.Policy.StrictConditionTest do
     end
 
     actions do
+      default_accept :*
       defaults([:create, :read, :update, :destroy])
     end
 
