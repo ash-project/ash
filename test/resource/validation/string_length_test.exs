@@ -8,6 +8,7 @@ defmodule Ash.Test.Resource.Validation.StringLengthTest do
     use Ash.Resource, domain: Ash.Test.Domain
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

@@ -451,7 +451,7 @@ defmodule Ash.Actions.Read do
   defp agg_refs(query, calculations_in_query) do
     calculations_in_query
     |> Enum.flat_map(fn {_, expr} ->
-      Ash.Filter.used_aggregates(expr, :all)
+      Ash.Filter.used_aggregates(expr, :*)
     end)
     |> Enum.concat(Map.values(query.aggregates))
   end

@@ -9,8 +9,10 @@ defmodule Ash.Test.Resource.CalculationsTest do
   alias Ash.Test.Domain, as: Domain
 
   defmacrop defposts(do: body) do
+    module = Module.concat(["rand#{System.unique_integer([:positive])}", Post])
+
     quote do
-      defmodule Post do
+      defmodule unquote(module) do
         @moduledoc false
         use Ash.Resource, domain: Domain
 
@@ -28,6 +30,8 @@ defmodule Ash.Test.Resource.CalculationsTest do
 
         unquote(body)
       end
+
+      alias unquote(module), as: Post
     end
   end
 
@@ -84,7 +88,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
 
   describe "relationships" do
     test "calculations can access attributes of parent" do
-      defmodule Post do
+      defmodule Post1 do
         @moduledoc false
         use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
@@ -101,11 +105,12 @@ defmodule Ash.Test.Resource.CalculationsTest do
         end
 
         actions do
+          default_accept :*
           defaults [:read, :update, :destroy, :create]
         end
       end
 
-      defmodule PostName do
+      defmodule PostName1 do
         @moduledoc """
         Calculates the name of the post, from the child comment.
         """
@@ -123,7 +128,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
         end
       end
 
-      defmodule Comment do
+      defmodule Comment1 do
         @moduledoc false
         use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
@@ -137,29 +142,30 @@ defmodule Ash.Test.Resource.CalculationsTest do
         end
 
         actions do
+          default_accept :*
           defaults [:read, :update, :destroy, :create]
         end
 
         relationships do
-          belongs_to :post, Post do
+          belongs_to :post, Post1 do
             public?(true)
           end
         end
 
         calculations do
-          calculate :post_name, :string, PostName do
+          calculate :post_name, :string, PostName1 do
             public?(true)
           end
         end
       end
 
       post =
-        Post
+        Post1
         |> Ash.Changeset.for_create(:create, %{name: "Post 1", contents: "Contents 1"})
         |> Domain.create!()
 
       comment =
-        Comment
+        Comment1
         |> Ash.Changeset.for_create(:create, %{post_id: post.id})
         |> Domain.create!()
 
@@ -169,7 +175,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
     end
 
     test "calculations can access attributes of parent in multitenant context" do
-      defmodule Post do
+      defmodule Post2 do
         @moduledoc false
         use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
@@ -190,11 +196,12 @@ defmodule Ash.Test.Resource.CalculationsTest do
         end
 
         actions do
+          default_accept :*
           defaults [:read, :update, :destroy, :create]
         end
       end
 
-      defmodule PostName do
+      defmodule PostName2 do
         @moduledoc """
         Calculates the name of the post, from the child comment.
         """
@@ -212,7 +219,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
         end
       end
 
-      defmodule Comment do
+      defmodule Comment2 do
         @moduledoc false
         use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
@@ -230,17 +237,18 @@ defmodule Ash.Test.Resource.CalculationsTest do
         end
 
         actions do
+          default_accept :*
           defaults [:read, :update, :destroy, :create]
         end
 
         relationships do
-          belongs_to :post, Post do
+          belongs_to :post, Post2 do
             public?(true)
           end
         end
 
         calculations do
-          calculate :post_name, :string, PostName do
+          calculate :post_name, :string, PostName2 do
             public?(true)
           end
         end
@@ -249,14 +257,14 @@ defmodule Ash.Test.Resource.CalculationsTest do
       tenant_id = "tenant1"
 
       post =
-        Post
+        Post2
         |> Ash.Changeset.for_create(:create, %{name: "Post 1", contents: "Contents 1"},
           tenant: tenant_id
         )
         |> Domain.create!()
 
       comment =
-        Comment
+        Comment2
         |> Ash.Changeset.for_create(:create, %{post_id: post.id}, tenant: tenant_id)
         |> Domain.create!()
 

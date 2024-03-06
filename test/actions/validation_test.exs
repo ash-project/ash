@@ -15,6 +15,7 @@ defmodule Ash.Test.Actions.ValidationTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

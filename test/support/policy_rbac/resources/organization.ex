@@ -9,6 +9,7 @@ defmodule Ash.Test.Support.PolicyRbac.Organization do
   end
 
   actions do
+    default_accept :*
     defaults [:create, :read, :update, :destroy]
   end
 

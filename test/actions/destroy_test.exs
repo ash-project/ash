@@ -15,6 +15,7 @@ defmodule Ash.Test.Actions.DestroyTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -58,6 +59,7 @@ defmodule Ash.Test.Actions.DestroyTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
 
       destroy :manual do
@@ -98,6 +100,7 @@ defmodule Ash.Test.Actions.DestroyTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

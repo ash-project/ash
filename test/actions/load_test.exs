@@ -17,6 +17,7 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     actions do
+      default_accept :*
       defaults([:create, :read, :update, :destroy])
     end
 
@@ -161,6 +162,7 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     actions do
+      default_accept :*
       defaults([:create, :read, :update, :destroy])
     end
 
@@ -232,6 +234,7 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     actions do
+      default_accept :*
       defaults([:create, :read, :update, :destroy])
     end
 
@@ -290,6 +293,7 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     actions do
+      default_accept :*
       defaults([:create, :read, :update, :destroy])
     end
 
@@ -313,6 +317,7 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     actions do
+      default_accept :*
       defaults([:create, :read, :update, :destroy])
     end
 
@@ -346,6 +351,7 @@ defmodule Ash.Test.Actions.LoadTest do
     end
 
     actions do
+      default_accept :*
       defaults([:create, :read, :update, :destroy])
     end
 

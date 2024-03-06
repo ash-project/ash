@@ -10,6 +10,7 @@ defmodule Ash.Test.CountTest do
       authorizers: [Ash.Policy.Authorizer]
 
     actions do
+      default_accept :*
       defaults [:create, :update, :destroy]
 
       read :read do

@@ -11,6 +11,8 @@ defmodule Ash.Test.ReactorActionTest do
     end
 
     actions do
+      default_accept :*
+
       action :celebrate, :string do
         argument :excitement_level, :integer, default: 3, allow_nil?: false
 

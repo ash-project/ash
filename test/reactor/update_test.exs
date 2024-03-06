@@ -20,6 +20,7 @@ defmodule Ash.Test.ReactorUpdateTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
 
       update :undo_update_post do

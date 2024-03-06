@@ -5,12 +5,15 @@ defmodule Ash.Test.Resource.ResourceTest do
   alias Ash.Test.Domain, as: Domain
 
   defmacrop defposts(do: body) do
+    module = Module.concat(["rand#{System.unique_integer([:positive])}", Post])
+
     quote do
-      defmodule Post do
+      defmodule unquote(module) do
         @moduledoc false
         use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
         actions do
+          default_accept :*
           defaults [:create, :read, :update, :destroy]
         end
 
@@ -20,6 +23,8 @@ defmodule Ash.Test.Resource.ResourceTest do
 
         unquote(body)
       end
+
+      alias unquote(module), as: Post
     end
   end
 
@@ -51,6 +56,7 @@ defmodule Ash.Test.Resource.ResourceTest do
     use Ash.Resource, domain: Domain
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

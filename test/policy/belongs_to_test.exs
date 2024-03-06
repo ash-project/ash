@@ -13,6 +13,7 @@ defmodule Ash.Test.Policy.Actions.BelongsToTest do
     end
 
     actions do
+      default_accept :*
       defaults([:create, :read, :update, :destroy])
 
       update :update_with_reviewer do
@@ -45,6 +46,7 @@ defmodule Ash.Test.Policy.Actions.BelongsToTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

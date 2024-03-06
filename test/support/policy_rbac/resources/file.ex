@@ -25,6 +25,7 @@ defmodule Ash.Test.Support.PolicyRbac.File do
   end
 
   actions do
+    default_accept :*
     defaults [:create, :read, :update, :destroy]
   end
 

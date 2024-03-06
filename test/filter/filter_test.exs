@@ -35,6 +35,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
 
       read :get_path_search do
@@ -67,6 +68,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -100,6 +102,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -125,6 +128,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
@@ -197,6 +201,7 @@ defmodule Ash.Test.Filter.FilterTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update]
 
       destroy :destroy do

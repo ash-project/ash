@@ -64,6 +64,7 @@ defmodule Ash.Test.Policy.FieldPolicy.ExpressionConditionTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read]
     end
   end

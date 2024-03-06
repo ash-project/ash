@@ -27,14 +27,14 @@ defmodule Ash.Actions.Destroy do
     {changeset, opts} = Ash.Actions.Helpers.add_process_context(domain, changeset, opts)
 
     Ash.Tracer.span :action,
-                    Ash.Api.Info.span_name(
-                      api,
+                    Ash.Domain.Info.span_name(
+                      domain,
                       changeset.resource,
                       action.name
                     ),
                     opts[:tracer] do
       metadata = %{
-        api: api,
+        domain: domain,
         resource: changeset.resource,
         resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
         actor: opts[:actor],
@@ -45,8 +45,8 @@ defmodule Ash.Actions.Destroy do
 
       Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
-      Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(api), :destroy], metadata do
-        case do_run(api, changeset, action, opts) do
+      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :destroy], metadata do
+        case do_run(domain, changeset, action, opts) do
           {:error, error} ->
             if opts[:tracer] do
               stacktrace =

@@ -26,6 +26,7 @@ defmodule Ash.Actions.PaginationTest do
     end
 
     actions do
+      default_accept :*
       defaults [:create, :update, :destroy]
 
       read :read do
@@ -48,6 +49,8 @@ defmodule Ash.Actions.PaginationTest do
     end
 
     actions do
+      default_accept :*
+
       read :offset do
         pagination offset?: true, countable: true, required?: true
       end

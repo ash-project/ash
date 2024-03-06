@@ -13,6 +13,7 @@ defmodule Ash.Test.ErrorTest do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 

@@ -15,6 +15,7 @@ defmodule Ash.Test.Sort.DistinctTest do
     end
 
     actions do
+      default_accept :*
       defaults [:read, :create, :update]
     end
 

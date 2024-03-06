@@ -36,6 +36,7 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
   end
 
   actions do
+    default_accept :*
     defaults [:update, :destroy]
 
     read :read do

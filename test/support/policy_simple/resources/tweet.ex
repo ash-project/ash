@@ -10,6 +10,7 @@ defmodule Ash.Test.Support.PolicySimple.Tweet do
   end
 
   actions do
+    default_accept :*
     defaults [:create, :read, :update, :destroy]
 
     create :create_foo do
