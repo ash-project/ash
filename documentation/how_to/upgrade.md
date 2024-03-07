@@ -51,7 +51,7 @@ Ash.Query.to_query has been removed. Use `Ash.Query.new` instead.
 
 #### Ash.Changeset
 
-`Ash.Changeset.new/2` has been removed. `Ash.Changeset.new/1` is still available for creating a new changeset, but attributes and arguments should, with few exceptions, be passed to the relevant `Ash.Changeset.for_<action_type>` functions, *not* to `Ash.Changeset.new/2`. Removing the second argument helps clarify the purpose of `Ash.Changeset.new/1`.
+Ash.Changeset.new/2 has been removed. `Ash.Changeset.new/1` is still available for creating a new changeset, but attributes and arguments should, with few exceptions, be passed to the relevant `Ash.Changeset.for_<action_type>` functions, *not* to Ash.Changeset.new/2. Removing the second argument helps clarify the purpose of `Ash.Changeset.new/1`.
 
 `Ash.Changeset.manage_relationship/4` no longer uses `:all` to signal that all changes will be sent to the join relationship. Instead, use `:*`.
 

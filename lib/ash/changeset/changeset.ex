@@ -4,8 +4,8 @@ defmodule Ash.Changeset do
 
   Create a changeset with `new/1` or `new/2`, and alter the attributes
   and relationships using the functions provided in this module.  Nothing in this module
-  actually incurs changes in a data layer. To commit a changeset, see `c:Ash.Domain.create/2`
-  and `c:Ash.Domain.update/2`.
+  actually incurs changes in a data layer. To commit a changeset, see `Ash.create/2`
+  and `Ash.update/2`.
 
   See the action DSL documentation for more.
   """
