@@ -80,7 +80,7 @@ end
 See the documentation for the calculations section in [Resource DSL docs](dsl-ash-resource.html#calculations) and the `Ash.Resource.Calculation` docs for more information.
 
 The calculations declared on a resource allow for declaring a set of named calculations that can be used by extensions.
-They can also be loaded in the query using `Ash.Query.load/2`, or after the fact using `c:Ash.Domain.load/3`. Calculations declared on the resource will be keys in the resource's struct.
+They can also be loaded in the query using `Ash.Query.load/2`, or after the fact using `Ash.load/3`. Calculations declared on the resource will be keys in the resource's struct.
 
 ## Custom calculations in the query
 

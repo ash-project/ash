@@ -225,7 +225,7 @@ end
 There are two ways to load relationships:
 
 - in the query using `Ash.Query.load/2`
-- directly on records using `c:Ash.Domain.load/3`
+- directly on records using `Ash.load/3`
 
 ### On records
 
@@ -252,7 +252,7 @@ This will fetch the tweets for each user, and set them in the corresponding `twe
 }
 ```
 
-See `c:Ash.Domain.load/3` for more information.
+See `Ash.load/3` for more information.
 
 ### In the query
 
