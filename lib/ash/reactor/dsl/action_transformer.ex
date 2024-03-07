@@ -78,15 +78,12 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
   end
 
   defp transform_nested_steps(entity, dsl_state),
-    do:
-      {:ok, entity, dsl_state} <
-        defp(transform_entity_domain(entity, dsl_state)) do
+    do: {:ok, entity, dsl_state}
+
+  defp transform_entity_domain(entity, dsl_state) do
     default_domain = Transformer.get_option(dsl_state, [:ash], :default_domain)
-    resource_domain = Ash.Resource.Info.domain(entity.resource)
 
-    domain = entity.domain || resource_domain || default_domain
-
-    {:ok, %{entity | domain: domain}}
+    {:ok, %{entity | domain: entity.domain || default_domain}}
   end
 
   defp validate_entity_domain(entity, dsl_state) do
