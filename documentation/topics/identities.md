@@ -4,7 +4,7 @@ Identities are a way to declare that a record (an instance of a resource) can be
 
 ## Using Domain.get
 
-This will allow these fields to be passed to `c:Ash.Domain.get/3`, e.g `get(Resource, [email: "foo"])`.
+This will allow these fields to be passed to `Ash.get/3`, e.g `Ash.get(Resource, [email: "foo"])`.
 
 ## Using upserts
 

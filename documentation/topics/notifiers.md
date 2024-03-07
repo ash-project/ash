@@ -77,7 +77,7 @@ Post
 
 If all three of these resources have notifiers configured, we need to send a notification for each operation (notifications are not sent for reads). For data consistency reasons, if a data layer supports transactions, all writes are done in a transaction. However, if you try to read the record from the database that you have just received a notification about before the transaction has been closed, in a different process, the information will be wrong. For this reason, Ash accumulates notifications until they can be sent.
 
-If you need to perform multiple operations against your resources in your own transaction, you will have to handle that case yourself. To support this, `c:Ash.Domain.create/2`, `c:Ash.Domain.update/2` and `c:Ash.Domain.destroy/2` support a `return_notifications?: true` option. This causes the domain call to return `{:ok, result, notifications}` in the successful case. Here is an example of how you might use it.
+If you need to perform multiple operations against your resources in your own transaction, you will have to handle that case yourself. To support this, `Ash.create/2`, `Ash.update/2` and `Ash.destroy/2` support a `return_notifications?: true` option. This causes the domain call to return `{:ok, result, notifications}` in the successful case. Here is an example of how you might use it.
 
 ```elixir
 result =
