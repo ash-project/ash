@@ -71,18 +71,4 @@ Resource
 |> Ash.read(actor: current_user)
 ```
 
-The second option "works" in most cases, but not all, because some `change`s might need to know the actor
-
-### Context
-
-Ash can store the actor, query context, or tenant in the process dictionary. This can help simplify things like live views, controllers, or channels where all actions performed share these pieces of context.
-
-This can be useful, but the general recommendation is to be explicit by passing options.
-
-```elixir
-# in socket connect, liveview mount, or a plug
-Ash.set_actor(current_user)
-
-# This will now use the actor set in the context.
-Ash.read!(User)
-```
+The second option "works" in most cases, but not all, because some `change`s might need to know the actor and will instead get `nil`.

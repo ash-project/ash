@@ -267,7 +267,7 @@ defmodule Ash.Actions.Read.Relationships do
        ) do
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
-      Ash.context_to_opts(related_query.context),
+      Ash.Context.to_opts(related_query.context),
       fn ->
         result =
           module.load(records, opts, %{
@@ -322,7 +322,7 @@ defmodule Ash.Actions.Read.Relationships do
        ) do
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
-      Ash.context_to_opts(related_query.context),
+      Ash.Context.to_opts(related_query.context),
       fn ->
         result =
           related_query
@@ -344,7 +344,7 @@ defmodule Ash.Actions.Read.Relationships do
        ) do
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
-      Ash.context_to_opts(related_query.context),
+      Ash.Context.to_opts(related_query.context),
       fn ->
         result =
           related_query
@@ -382,7 +382,7 @@ defmodule Ash.Actions.Read.Relationships do
 
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
-      Ash.context_to_opts(related_query.context),
+      Ash.Context.to_opts(related_query.context),
       fn ->
         case Ash.Actions.Read.unpaginated_read(join_query, nil,
                authorize?: related_query.context[:private][:authorize?],
@@ -454,7 +454,7 @@ defmodule Ash.Actions.Read.Relationships do
 
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
-      Ash.context_to_opts(related_query.context),
+      Ash.Context.to_opts(related_query.context),
       fn ->
         result =
           related_query

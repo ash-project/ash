@@ -88,7 +88,6 @@ Example:
 
 ```elixir
 User
-|> Ash.Query.new()
 |> Ash.Query.calculate(:full_name, {Concat, keys: [:first_name, :last_name]}, :string, %{separator: ","})
 ```
 

@@ -157,7 +157,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                 end
               end)
               |> Keyword.put(:authorize?, opts[:authorize?] && opts[:authorize_query?])
-              |> Keyword.take(Ash.Domain.stream_opt_keys())
+              |> Keyword.take(Ash.stream_opt_keys())
 
             run(
               domain,

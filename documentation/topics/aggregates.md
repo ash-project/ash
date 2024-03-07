@@ -35,7 +35,6 @@ Example:
 
 ```elixir
 User
-|> Ash.Query.new()
 |> Ash.Query.aggregate(
   :count_of_posts, 
   :count, 

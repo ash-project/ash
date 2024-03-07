@@ -2,7 +2,7 @@ defmodule Ash.Actions.Read.Stream do
   @moduledoc false
 
   def run!(domain, query, opts) do
-    query = Ash.Query.to_query(query)
+    query = Ash.Query.new(query)
 
     query =
       if query.action do

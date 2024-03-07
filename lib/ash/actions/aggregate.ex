@@ -3,6 +3,7 @@ defmodule Ash.Actions.Aggregate do
   require Ash.Tracer
 
   def run(domain, query, aggregates, opts) do
+    query = Ash.Query.new(query)
     query = %{query | domain: domain}
     {query, opts} = Ash.Actions.Helpers.add_process_context(query.domain, query, opts)
 

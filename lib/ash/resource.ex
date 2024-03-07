@@ -132,7 +132,7 @@ defmodule Ash.Resource do
 
         @impl Ash.Type
         def load(records, load, _constraints, %{domain: domain} = context) do
-          opts = Ash.context_to_opts(context)
+          opts = Ash.Context.to_opts(context)
           attribute_loads = __MODULE__ |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
 
           domain.load(records, List.wrap(load), opts)

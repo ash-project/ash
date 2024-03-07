@@ -504,12 +504,12 @@ defmodule Ash.Engine do
 
   @doc false
   def async(func, opts) do
-    ash_context = Ash.get_context_for_transfer(opts)
+    ash_context = Ash.ProcessHelpers.get_context_for_transfer(opts)
     {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
 
     Task.async(fn ->
       try do
-        Ash.transfer_context(ash_context, opts)
+        Ash.ProcessHelpers.transfer_context(ash_context, opts)
 
         func.()
       rescue
