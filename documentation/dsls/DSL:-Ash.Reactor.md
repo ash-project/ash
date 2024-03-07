@@ -20,9 +20,9 @@ Ash-related configuration for the `Ash.Reactor` extension
 
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`default_api`](#ash-default_api){: #ash-default_api } | `module` |  | A api to use by default when calling actions |
+| Name                                                            | Type     | Default | Docs                                            |
+| --------------------------------------------------------------- | -------- | ------- | ----------------------------------------------- |
+| [`default_domain`](#ash-default_domain){: #ash-default_domain } | `module` |         | A domain to use by default when calling actions |
 
 
 
@@ -47,21 +47,21 @@ Declares a step that will call a generic action on a resource.
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`name`](#reactor-action-name){: #reactor-action-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
-| [`resource`](#reactor-action-resource){: #reactor-action-resource .spark-required} | `module` |  | The resource to call the action on. |
-| [`action`](#reactor-action-action){: #reactor-action-action } | `atom` |  | The name of the action to call on the resource. |
+| Name                                                                               | Type     | Default | Docs                                                                                                                       |
+| ---------------------------------------------------------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| [`name`](#reactor-action-name){: #reactor-action-name .spark-required}             | `atom`   |         | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`resource`](#reactor-action-resource){: #reactor-action-resource .spark-required} | `module` |         | The resource to call the action on.                                                                                        |
+| [`action`](#reactor-action-action){: #reactor-action-action }                      | `atom`   |         | The name of the action to call on the resource.                                                                            |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`api`](#reactor-action-api){: #reactor-action-api } | `module` |  | The API to use when calling the action.  Defaults to the API set on the resource or in the `ash` section. |
-| [`async?`](#reactor-action-async?){: #reactor-action-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
-| [`authorize?`](#reactor-action-authorize?){: #reactor-action-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
-| [`description`](#reactor-action-description){: #reactor-action-description } | `String.t` |  | A description for the step |
-| [`undo_action`](#reactor-action-undo_action){: #reactor-action-undo_action } | `atom` |  | The name of the action to call on the resource when the step is to be undone. |
-| [`undo`](#reactor-action-undo){: #reactor-action-undo } | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
+| Name                                                                         | Type                                        | Default  | Docs                                                                                                                                                                                                                                          |
+| ---------------------------------------------------------------------------- | ------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`domain`](#reactor-action-domain){: #reactor-action-domain }                | `module`                                    |          | The domain to use when calling the action.  Defaults to the domain set on the resource or in the `ash` section.                                                                                                                               |
+| [`async?`](#reactor-action-async?){: #reactor-action-async? }                | `boolean`                                   | `true`   | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`.                                                                                                                                                     |
+| [`authorize?`](#reactor-action-authorize?){: #reactor-action-authorize? }    | `boolean \| nil`                            |          | Explicitly enable or disable authorization for the action.                                                                                                                                                                                    |
+| [`description`](#reactor-action-description){: #reactor-action-description } | `String.t`                                  |          | A description for the step                                                                                                                                                                                                                    |
+| [`undo_action`](#reactor-action-undo_action){: #reactor-action-undo_action } | `atom`                                      |          | The name of the action to call on the resource when the step is to be undone.                                                                                                                                                                 |
+| [`undo`](#reactor-action-undo){: #reactor-action-undo }                      | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
 
 
 ## reactor.action.actor
@@ -78,14 +78,14 @@ Specifies the action actor
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`source`](#reactor-action-actor-source){: #reactor-action-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+| Name                                                                                     | Type                                                                          | Default | Docs                                                                                     |
+| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------- |
+| [`source`](#reactor-action-actor-source){: #reactor-action-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |         | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-action-actor-transform){: #reactor-action-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+| Name                                                                               | Type                            | Default | Docs                                                                                                         |
+| ---------------------------------------------------------------------------------- | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------ |
+| [`transform`](#reactor-action-actor-transform){: #reactor-action-actor-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which can be used to modify the actor before it is passed to the action. |
 
 
 
@@ -124,14 +124,14 @@ inputs(author: result(:get_user))
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`template`](#reactor-action-inputs-template){: #reactor-action-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+| Name                                                                                             | Type                                                                                                                                                                                       | Default | Docs |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | ---- |
+| [`template`](#reactor-action-inputs-template){: #reactor-action-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |         |      |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-action-inputs-transform){: #reactor-action-inputs-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which will transform the inputs before executing the action. |
+| Name                                                                                 | Type                            | Default | Docs                                                                                             |
+| ------------------------------------------------------------------------------------ | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------ |
+| [`transform`](#reactor-action-inputs-transform){: #reactor-action-inputs-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which will transform the inputs before executing the action. |
 
 
 
@@ -155,14 +155,14 @@ Specifies the action tenant
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`source`](#reactor-action-tenant-source){: #reactor-action-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+| Name                                                                                       | Type                                                                          | Default | Docs                                                                                      |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| [`source`](#reactor-action-tenant-source){: #reactor-action-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |         | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-action-tenant-transform){: #reactor-action-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
+| Name                                                                                 | Type                            | Default | Docs                                                                                                          |
+| ------------------------------------------------------------------------------------ | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------- |
+| [`transform`](#reactor-action-tenant-transform){: #reactor-action-tenant-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
 
 
 
@@ -194,9 +194,9 @@ wait_for :create_user
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`names`](#reactor-action-wait_for-names){: #reactor-action-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+| Name                                                                                        | Type                 | Default | Docs                              |
+| ------------------------------------------------------------------------------------------- | -------------------- | ------- | --------------------------------- |
+| [`names`](#reactor-action-wait_for-names){: #reactor-action-wait_for-names .spark-required} | `atom \| list(atom)` |         | The name of the step to wait for. |
 
 
 
@@ -248,23 +248,23 @@ end
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`name`](#reactor-create-name){: #reactor-create-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
-| [`resource`](#reactor-create-resource){: #reactor-create-resource .spark-required} | `module` |  | The resource to call the action on. |
-| [`action`](#reactor-create-action){: #reactor-create-action } | `atom` |  | The name of the action to call on the resource. |
+| Name                                                                               | Type     | Default | Docs                                                                                                                       |
+| ---------------------------------------------------------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| [`name`](#reactor-create-name){: #reactor-create-name .spark-required}             | `atom`   |         | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`resource`](#reactor-create-resource){: #reactor-create-resource .spark-required} | `module` |         | The resource to call the action on.                                                                                        |
+| [`action`](#reactor-create-action){: #reactor-create-action }                      | `atom`   |         | The name of the action to call on the resource.                                                                            |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`upsert_identity`](#reactor-create-upsert_identity){: #reactor-create-upsert_identity } | `atom` |  | The identity to use for the upsert |
-| [`upsert?`](#reactor-create-upsert?){: #reactor-create-upsert? } | `boolean` | `false` | Whether or not this action should be executed as an upsert. |
-| [`api`](#reactor-create-api){: #reactor-create-api } | `module` |  | The API to use when calling the action.  Defaults to the API set on the resource or in the `ash` section. |
-| [`async?`](#reactor-create-async?){: #reactor-create-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
-| [`authorize?`](#reactor-create-authorize?){: #reactor-create-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
-| [`description`](#reactor-create-description){: #reactor-create-description } | `String.t` |  | A description for the step |
-| [`undo_action`](#reactor-create-undo_action){: #reactor-create-undo_action } | `atom` |  | The name of the action to call on the resource when the step is to be undone. |
-| [`undo`](#reactor-create-undo){: #reactor-create-undo } | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
+| Name                                                                                     | Type                                        | Default  | Docs                                                                                                                                                                                                                                          |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`upsert_identity`](#reactor-create-upsert_identity){: #reactor-create-upsert_identity } | `atom`                                      |          | The identity to use for the upsert                                                                                                                                                                                                            |
+| [`upsert?`](#reactor-create-upsert?){: #reactor-create-upsert? }                         | `boolean`                                   | `false`  | Whether or not this action should be executed as an upsert.                                                                                                                                                                                   |
+| [`domain`](#reactor-create-domain){: #reactor-create-domain }                            | `module`                                    |          | The domain to use when calling the action.  Defaults to the domain set on the resource or in the `ash` section.                                                                                                                               |
+| [`async?`](#reactor-create-async?){: #reactor-create-async? }                            | `boolean`                                   | `true`   | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`.                                                                                                                                                     |
+| [`authorize?`](#reactor-create-authorize?){: #reactor-create-authorize? }                | `boolean \| nil`                            |          | Explicitly enable or disable authorization for the action.                                                                                                                                                                                    |
+| [`description`](#reactor-create-description){: #reactor-create-description }             | `String.t`                                  |          | A description for the step                                                                                                                                                                                                                    |
+| [`undo_action`](#reactor-create-undo_action){: #reactor-create-undo_action }             | `atom`                                      |          | The name of the action to call on the resource when the step is to be undone.                                                                                                                                                                 |
+| [`undo`](#reactor-create-undo){: #reactor-create-undo }                                  | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
 
 
 ## reactor.create.actor
@@ -281,14 +281,14 @@ Specifies the action actor
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`source`](#reactor-create-actor-source){: #reactor-create-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+| Name                                                                                     | Type                                                                          | Default | Docs                                                                                     |
+| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------- |
+| [`source`](#reactor-create-actor-source){: #reactor-create-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |         | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-create-actor-transform){: #reactor-create-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+| Name                                                                               | Type                            | Default | Docs                                                                                                         |
+| ---------------------------------------------------------------------------------- | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------ |
+| [`transform`](#reactor-create-actor-transform){: #reactor-create-actor-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which can be used to modify the actor before it is passed to the action. |
 
 
 
@@ -327,14 +327,14 @@ inputs(author: result(:get_user))
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`template`](#reactor-create-inputs-template){: #reactor-create-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+| Name                                                                                             | Type                                                                                                                                                                                       | Default | Docs |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | ---- |
+| [`template`](#reactor-create-inputs-template){: #reactor-create-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |         |      |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-create-inputs-transform){: #reactor-create-inputs-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which will transform the inputs before executing the action. |
+| Name                                                                                 | Type                            | Default | Docs                                                                                             |
+| ------------------------------------------------------------------------------------ | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------ |
+| [`transform`](#reactor-create-inputs-transform){: #reactor-create-inputs-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which will transform the inputs before executing the action. |
 
 
 
@@ -358,14 +358,14 @@ Specifies the action tenant
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`source`](#reactor-create-tenant-source){: #reactor-create-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+| Name                                                                                       | Type                                                                          | Default | Docs                                                                                      |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| [`source`](#reactor-create-tenant-source){: #reactor-create-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |         | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-create-tenant-transform){: #reactor-create-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
+| Name                                                                                 | Type                            | Default | Docs                                                                                                          |
+| ------------------------------------------------------------------------------------ | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------- |
+| [`transform`](#reactor-create-tenant-transform){: #reactor-create-tenant-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
 
 
 
@@ -397,9 +397,9 @@ wait_for :create_user
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`names`](#reactor-create-wait_for-names){: #reactor-create-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+| Name                                                                                        | Type                 | Default | Docs                              |
+| ------------------------------------------------------------------------------------------- | -------------------- | ------- | --------------------------------- |
+| [`names`](#reactor-create-wait_for-names){: #reactor-create-wait_for-names .spark-required} | `atom \| list(atom)` |         | The name of the step to wait for. |
 
 
 
@@ -448,23 +448,23 @@ end
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`name`](#reactor-destroy-name){: #reactor-destroy-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
-| [`resource`](#reactor-destroy-resource){: #reactor-destroy-resource .spark-required} | `module` |  | The resource to call the action on. |
-| [`action`](#reactor-destroy-action){: #reactor-destroy-action } | `atom` |  | The name of the action to call on the resource. |
+| Name                                                                                 | Type     | Default | Docs                                                                                                                       |
+| ------------------------------------------------------------------------------------ | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| [`name`](#reactor-destroy-name){: #reactor-destroy-name .spark-required}             | `atom`   |         | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`resource`](#reactor-destroy-resource){: #reactor-destroy-resource .spark-required} | `module` |         | The resource to call the action on.                                                                                        |
+| [`action`](#reactor-destroy-action){: #reactor-destroy-action }                      | `atom`   |         | The name of the action to call on the resource.                                                                            |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`initial`](#reactor-destroy-initial){: #reactor-destroy-initial .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The record to update. |
-| [`return_destroyed?`](#reactor-destroy-return_destroyed?){: #reactor-destroy-return_destroyed? } | `boolean` | `false` | Whether or not the step should return the destroyed record upon completion. |
-| [`api`](#reactor-destroy-api){: #reactor-destroy-api } | `module` |  | The API to use when calling the action.  Defaults to the API set on the resource or in the `ash` section. |
-| [`async?`](#reactor-destroy-async?){: #reactor-destroy-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
-| [`authorize?`](#reactor-destroy-authorize?){: #reactor-destroy-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
-| [`description`](#reactor-destroy-description){: #reactor-destroy-description } | `String.t` |  | A description for the step |
-| [`undo_action`](#reactor-destroy-undo_action){: #reactor-destroy-undo_action } | `atom` |  | The name of the action to call on the resource when the step is to be undone. |
-| [`undo`](#reactor-destroy-undo){: #reactor-destroy-undo } | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
+| Name                                                                                             | Type                                                                          | Default  | Docs                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`initial`](#reactor-destroy-initial){: #reactor-destroy-initial .spark-required}                | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |          | The record to update.                                                                                                                                                                                                                         |
+| [`return_destroyed?`](#reactor-destroy-return_destroyed?){: #reactor-destroy-return_destroyed? } | `boolean`                                                                     | `false`  | Whether or not the step should return the destroyed record upon completion.                                                                                                                                                                   |
+| [`domain`](#reactor-destroy-domain){: #reactor-destroy-domain }                                  | `module`                                                                      |          | The domain to use when calling the action.  Defaults to the domain set on the resource or in the `ash` section.                                                                                                                               |
+| [`async?`](#reactor-destroy-async?){: #reactor-destroy-async? }                                  | `boolean`                                                                     | `true`   | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`.                                                                                                                                                     |
+| [`authorize?`](#reactor-destroy-authorize?){: #reactor-destroy-authorize? }                      | `boolean \| nil`                                                              |          | Explicitly enable or disable authorization for the action.                                                                                                                                                                                    |
+| [`description`](#reactor-destroy-description){: #reactor-destroy-description }                   | `String.t`                                                                    |          | A description for the step                                                                                                                                                                                                                    |
+| [`undo_action`](#reactor-destroy-undo_action){: #reactor-destroy-undo_action }                   | `atom`                                                                        |          | The name of the action to call on the resource when the step is to be undone.                                                                                                                                                                 |
+| [`undo`](#reactor-destroy-undo){: #reactor-destroy-undo }                                        | `:always \| :never \| :outside_transaction`                                   | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
 
 
 ## reactor.destroy.actor
@@ -481,14 +481,14 @@ Specifies the action actor
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`source`](#reactor-destroy-actor-source){: #reactor-destroy-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+| Name                                                                                       | Type                                                                          | Default | Docs                                                                                     |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------- |
+| [`source`](#reactor-destroy-actor-source){: #reactor-destroy-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |         | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-destroy-actor-transform){: #reactor-destroy-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+| Name                                                                                 | Type                            | Default | Docs                                                                                                         |
+| ------------------------------------------------------------------------------------ | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------ |
+| [`transform`](#reactor-destroy-actor-transform){: #reactor-destroy-actor-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which can be used to modify the actor before it is passed to the action. |
 
 
 
@@ -527,14 +527,14 @@ inputs(author: result(:get_user))
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`template`](#reactor-destroy-inputs-template){: #reactor-destroy-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+| Name                                                                                               | Type                                                                                                                                                                                       | Default | Docs |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | ---- |
+| [`template`](#reactor-destroy-inputs-template){: #reactor-destroy-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |         |      |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-destroy-inputs-transform){: #reactor-destroy-inputs-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which will transform the inputs before executing the action. |
+| Name                                                                                   | Type                            | Default | Docs                                                                                             |
+| -------------------------------------------------------------------------------------- | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------ |
+| [`transform`](#reactor-destroy-inputs-transform){: #reactor-destroy-inputs-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which will transform the inputs before executing the action. |
 
 
 
@@ -558,14 +558,14 @@ Specifies the action tenant
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`source`](#reactor-destroy-tenant-source){: #reactor-destroy-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+| Name                                                                                         | Type                                                                          | Default | Docs                                                                                      |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| [`source`](#reactor-destroy-tenant-source){: #reactor-destroy-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |         | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-destroy-tenant-transform){: #reactor-destroy-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
+| Name                                                                                   | Type                            | Default | Docs                                                                                                          |
+| -------------------------------------------------------------------------------------- | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------- |
+| [`transform`](#reactor-destroy-tenant-transform){: #reactor-destroy-tenant-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
 
 
 
@@ -597,9 +597,9 @@ wait_for :create_user
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`names`](#reactor-destroy-wait_for-names){: #reactor-destroy-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+| Name                                                                                          | Type                 | Default | Docs                              |
+| --------------------------------------------------------------------------------------------- | -------------------- | ------- | --------------------------------- |
+| [`names`](#reactor-destroy-wait_for-names){: #reactor-destroy-wait_for-names .spark-required} | `atom \| list(atom)` |         | The name of the step to wait for. |
 
 
 
@@ -646,20 +646,20 @@ end
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`name`](#reactor-read_one-name){: #reactor-read_one-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
-| [`resource`](#reactor-read_one-resource){: #reactor-read_one-resource .spark-required} | `module` |  | The resource to call the action on. |
-| [`action`](#reactor-read_one-action){: #reactor-read_one-action } | `atom` |  | The name of the action to call on the resource. |
+| Name                                                                                   | Type     | Default | Docs                                                                                                                       |
+| -------------------------------------------------------------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| [`name`](#reactor-read_one-name){: #reactor-read_one-name .spark-required}             | `atom`   |         | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`resource`](#reactor-read_one-resource){: #reactor-read_one-resource .spark-required} | `module` |         | The resource to call the action on.                                                                                        |
+| [`action`](#reactor-read_one-action){: #reactor-read_one-action }                      | `atom`   |         | The name of the action to call on the resource.                                                                            |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`fail_on_not_found?`](#reactor-read_one-fail_on_not_found?){: #reactor-read_one-fail_on_not_found? } | `boolean` | `false` | When set to true the step will fail if the resource is not found. |
-| [`api`](#reactor-read_one-api){: #reactor-read_one-api } | `module` |  | The API to use when calling the action.  Defaults to the API set on the resource or in the `ash` section. |
-| [`async?`](#reactor-read_one-async?){: #reactor-read_one-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
-| [`authorize?`](#reactor-read_one-authorize?){: #reactor-read_one-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
-| [`description`](#reactor-read_one-description){: #reactor-read_one-description } | `String.t` |  | A description for the step |
+| Name                                                                                                  | Type             | Default | Docs                                                                                                            |
+| ----------------------------------------------------------------------------------------------------- | ---------------- | ------- | --------------------------------------------------------------------------------------------------------------- |
+| [`fail_on_not_found?`](#reactor-read_one-fail_on_not_found?){: #reactor-read_one-fail_on_not_found? } | `boolean`        | `false` | When set to true the step will fail if the resource is not found.                                               |
+| [`domain`](#reactor-read_one-domain){: #reactor-read_one-domain }                                     | `module`         |         | The domain to use when calling the action.  Defaults to the domain set on the resource or in the `ash` section. |
+| [`async?`](#reactor-read_one-async?){: #reactor-read_one-async? }                                     | `boolean`        | `true`  | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`.                       |
+| [`authorize?`](#reactor-read_one-authorize?){: #reactor-read_one-authorize? }                         | `boolean \| nil` |         | Explicitly enable or disable authorization for the action.                                                      |
+| [`description`](#reactor-read_one-description){: #reactor-read_one-description }                      | `String.t`       |         | A description for the step                                                                                      |
 
 
 ## reactor.read_one.actor
@@ -676,14 +676,14 @@ Specifies the action actor
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`source`](#reactor-read_one-actor-source){: #reactor-read_one-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+| Name                                                                                         | Type                                                                          | Default | Docs                                                                                     |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------- |
+| [`source`](#reactor-read_one-actor-source){: #reactor-read_one-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |         | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-read_one-actor-transform){: #reactor-read_one-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+| Name                                                                                   | Type                            | Default | Docs                                                                                                         |
+| -------------------------------------------------------------------------------------- | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------ |
+| [`transform`](#reactor-read_one-actor-transform){: #reactor-read_one-actor-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which can be used to modify the actor before it is passed to the action. |
 
 
 
@@ -722,14 +722,14 @@ inputs(author: result(:get_user))
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`template`](#reactor-read_one-inputs-template){: #reactor-read_one-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+| Name                                                                                                 | Type                                                                                                                                                                                       | Default | Docs |
+| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | ---- |
+| [`template`](#reactor-read_one-inputs-template){: #reactor-read_one-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |         |      |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-read_one-inputs-transform){: #reactor-read_one-inputs-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which will transform the inputs before executing the action. |
+| Name                                                                                     | Type                            | Default | Docs                                                                                             |
+| ---------------------------------------------------------------------------------------- | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------ |
+| [`transform`](#reactor-read_one-inputs-transform){: #reactor-read_one-inputs-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which will transform the inputs before executing the action. |
 
 
 
@@ -753,14 +753,14 @@ Specifies the action tenant
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`source`](#reactor-read_one-tenant-source){: #reactor-read_one-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+| Name                                                                                           | Type                                                                          | Default | Docs                                                                                      |
+| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| [`source`](#reactor-read_one-tenant-source){: #reactor-read_one-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |         | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-read_one-tenant-transform){: #reactor-read_one-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
+| Name                                                                                     | Type                            | Default | Docs                                                                                                          |
+| ---------------------------------------------------------------------------------------- | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------- |
+| [`transform`](#reactor-read_one-tenant-transform){: #reactor-read_one-tenant-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
 
 
 
@@ -792,9 +792,9 @@ wait_for :create_user
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`names`](#reactor-read_one-wait_for-names){: #reactor-read_one-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+| Name                                                                                            | Type                 | Default | Docs                              |
+| ----------------------------------------------------------------------------------------------- | -------------------- | ------- | --------------------------------- |
+| [`names`](#reactor-read_one-wait_for-names){: #reactor-read_one-wait_for-names .spark-required} | `atom \| list(atom)` |         | The name of the step to wait for. |
 
 
 
@@ -846,19 +846,19 @@ end
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`name`](#reactor-read-name){: #reactor-read-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
-| [`resource`](#reactor-read-resource){: #reactor-read-resource .spark-required} | `module` |  | The resource to call the action on. |
-| [`action`](#reactor-read-action){: #reactor-read-action } | `atom` |  | The name of the action to call on the resource. |
+| Name                                                                           | Type     | Default | Docs                                                                                                                       |
+| ------------------------------------------------------------------------------ | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| [`name`](#reactor-read-name){: #reactor-read-name .spark-required}             | `atom`   |         | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`resource`](#reactor-read-resource){: #reactor-read-resource .spark-required} | `module` |         | The resource to call the action on.                                                                                        |
+| [`action`](#reactor-read-action){: #reactor-read-action }                      | `atom`   |         | The name of the action to call on the resource.                                                                            |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`api`](#reactor-read-api){: #reactor-read-api } | `module` |  | The API to use when calling the action.  Defaults to the API set on the resource or in the `ash` section. |
-| [`async?`](#reactor-read-async?){: #reactor-read-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
-| [`authorize?`](#reactor-read-authorize?){: #reactor-read-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
-| [`description`](#reactor-read-description){: #reactor-read-description } | `String.t` |  | A description for the step |
+| Name                                                                     | Type             | Default | Docs                                                                                                            |
+| ------------------------------------------------------------------------ | ---------------- | ------- | --------------------------------------------------------------------------------------------------------------- |
+| [`domain`](#reactor-read-domain){: #reactor-read-domain }                | `module`         |         | The domain to use when calling the action.  Defaults to the domain set on the resource or in the `ash` section. |
+| [`async?`](#reactor-read-async?){: #reactor-read-async? }                | `boolean`        | `true`  | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`.                       |
+| [`authorize?`](#reactor-read-authorize?){: #reactor-read-authorize? }    | `boolean \| nil` |         | Explicitly enable or disable authorization for the action.                                                      |
+| [`description`](#reactor-read-description){: #reactor-read-description } | `String.t`       |         | A description for the step                                                                                      |
 
 
 ## reactor.read.actor
@@ -875,14 +875,14 @@ Specifies the action actor
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`source`](#reactor-read-actor-source){: #reactor-read-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+| Name                                                                                 | Type                                                                          | Default | Docs                                                                                     |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------- |
+| [`source`](#reactor-read-actor-source){: #reactor-read-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |         | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-read-actor-transform){: #reactor-read-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+| Name                                                                           | Type                            | Default | Docs                                                                                                         |
+| ------------------------------------------------------------------------------ | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------ |
+| [`transform`](#reactor-read-actor-transform){: #reactor-read-actor-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which can be used to modify the actor before it is passed to the action. |
 
 
 
@@ -921,14 +921,14 @@ inputs(author: result(:get_user))
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`template`](#reactor-read-inputs-template){: #reactor-read-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+| Name                                                                                         | Type                                                                                                                                                                                       | Default | Docs |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | ---- |
+| [`template`](#reactor-read-inputs-template){: #reactor-read-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |         |      |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-read-inputs-transform){: #reactor-read-inputs-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which will transform the inputs before executing the action. |
+| Name                                                                             | Type                            | Default | Docs                                                                                             |
+| -------------------------------------------------------------------------------- | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------ |
+| [`transform`](#reactor-read-inputs-transform){: #reactor-read-inputs-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which will transform the inputs before executing the action. |
 
 
 
@@ -952,14 +952,14 @@ Specifies the action tenant
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`source`](#reactor-read-tenant-source){: #reactor-read-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+| Name                                                                                   | Type                                                                          | Default | Docs                                                                                      |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| [`source`](#reactor-read-tenant-source){: #reactor-read-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |         | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-read-tenant-transform){: #reactor-read-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
+| Name                                                                             | Type                            | Default | Docs                                                                                                          |
+| -------------------------------------------------------------------------------- | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------- |
+| [`transform`](#reactor-read-tenant-transform){: #reactor-read-tenant-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
 
 
 
@@ -991,9 +991,9 @@ wait_for :create_user
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`names`](#reactor-read-wait_for-names){: #reactor-read-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+| Name                                                                                    | Type                 | Default | Docs                              |
+| --------------------------------------------------------------------------------------- | -------------------- | ------- | --------------------------------- |
+| [`names`](#reactor-read-wait_for-names){: #reactor-read-wait_for-names .spark-required} | `atom \| list(atom)` |         | The name of the step to wait for. |
 
 
 
@@ -1029,16 +1029,16 @@ Creates a group of steps which will be executed inside a data layer transaction.
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`name`](#reactor-transaction-name){: #reactor-transaction-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
-| [`resources`](#reactor-transaction-resources){: #reactor-transaction-resources .spark-required} | `module \| list(module)` |  | A resource or list of resources to consider in the transaction. |
+| Name                                                                                            | Type                     | Default | Docs                                                                                                                       |
+| ----------------------------------------------------------------------------------------------- | ------------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| [`name`](#reactor-transaction-name){: #reactor-transaction-name .spark-required}                | `atom`                   |         | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`resources`](#reactor-transaction-resources){: #reactor-transaction-resources .spark-required} | `module \| list(module)` |         | A resource or list of resources to consider in the transaction.                                                            |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`return`](#reactor-transaction-return){: #reactor-transaction-return } | `atom` |  | The name of the step whose result will be returned as the return value of the transaction. |
-| [`timeout`](#reactor-transaction-timeout){: #reactor-transaction-timeout } | `pos_integer \| :infinity` | `15000` | How long to allow the transaction to run before timing out. |
+| Name                                                                       | Type                       | Default | Docs                                                                                       |
+| -------------------------------------------------------------------------- | -------------------------- | ------- | ------------------------------------------------------------------------------------------ |
+| [`return`](#reactor-transaction-return){: #reactor-transaction-return }    | `atom`                     |         | The name of the step whose result will be returned as the return value of the transaction. |
+| [`timeout`](#reactor-transaction-timeout){: #reactor-transaction-timeout } | `pos_integer \| :infinity` | `15000` | How long to allow the transaction to run before timing out.                                |
 
 
 ## reactor.transaction.wait_for
@@ -1063,9 +1063,9 @@ wait_for :create_user
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`names`](#reactor-transaction-wait_for-names){: #reactor-transaction-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+| Name                                                                                                  | Type                 | Default | Docs                              |
+| ----------------------------------------------------------------------------------------------------- | -------------------- | ------- | --------------------------------- |
+| [`names`](#reactor-transaction-wait_for-names){: #reactor-transaction-wait_for-names .spark-required} | `atom \| list(atom)` |         | The name of the step to wait for. |
 
 
 
@@ -1117,22 +1117,22 @@ end
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`name`](#reactor-update-name){: #reactor-update-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
-| [`resource`](#reactor-update-resource){: #reactor-update-resource .spark-required} | `module` |  | The resource to call the action on. |
-| [`action`](#reactor-update-action){: #reactor-update-action } | `atom` |  | The name of the action to call on the resource. |
+| Name                                                                               | Type     | Default | Docs                                                                                                                       |
+| ---------------------------------------------------------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| [`name`](#reactor-update-name){: #reactor-update-name .spark-required}             | `atom`   |         | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`resource`](#reactor-update-resource){: #reactor-update-resource .spark-required} | `module` |         | The resource to call the action on.                                                                                        |
+| [`action`](#reactor-update-action){: #reactor-update-action }                      | `atom`   |         | The name of the action to call on the resource.                                                                            |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`initial`](#reactor-update-initial){: #reactor-update-initial .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The record to update. |
-| [`api`](#reactor-update-api){: #reactor-update-api } | `module` |  | The API to use when calling the action.  Defaults to the API set on the resource or in the `ash` section. |
-| [`async?`](#reactor-update-async?){: #reactor-update-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
-| [`authorize?`](#reactor-update-authorize?){: #reactor-update-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
-| [`description`](#reactor-update-description){: #reactor-update-description } | `String.t` |  | A description for the step |
-| [`undo_action`](#reactor-update-undo_action){: #reactor-update-undo_action } | `atom` |  | The name of the action to call on the resource when the step is to be undone. |
-| [`undo`](#reactor-update-undo){: #reactor-update-undo } | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
+| Name                                                                            | Type                                                                          | Default  | Docs                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`initial`](#reactor-update-initial){: #reactor-update-initial .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |          | The record to update.                                                                                                                                                                                                                         |
+| [`domain`](#reactor-update-domain){: #reactor-update-domain }                   | `module`                                                                      |          | The domain to use when calling the action.  Defaults to the domain set on the resource or in the `ash` section.                                                                                                                               |
+| [`async?`](#reactor-update-async?){: #reactor-update-async? }                   | `boolean`                                                                     | `true`   | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`.                                                                                                                                                     |
+| [`authorize?`](#reactor-update-authorize?){: #reactor-update-authorize? }       | `boolean \| nil`                                                              |          | Explicitly enable or disable authorization for the action.                                                                                                                                                                                    |
+| [`description`](#reactor-update-description){: #reactor-update-description }    | `String.t`                                                                    |          | A description for the step                                                                                                                                                                                                                    |
+| [`undo_action`](#reactor-update-undo_action){: #reactor-update-undo_action }    | `atom`                                                                        |          | The name of the action to call on the resource when the step is to be undone.                                                                                                                                                                 |
+| [`undo`](#reactor-update-undo){: #reactor-update-undo }                         | `:always \| :never \| :outside_transaction`                                   | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
 
 
 ## reactor.update.actor
@@ -1149,14 +1149,14 @@ Specifies the action actor
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`source`](#reactor-update-actor-source){: #reactor-update-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+| Name                                                                                     | Type                                                                          | Default | Docs                                                                                     |
+| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------- |
+| [`source`](#reactor-update-actor-source){: #reactor-update-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |         | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-update-actor-transform){: #reactor-update-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+| Name                                                                               | Type                            | Default | Docs                                                                                                         |
+| ---------------------------------------------------------------------------------- | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------ |
+| [`transform`](#reactor-update-actor-transform){: #reactor-update-actor-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which can be used to modify the actor before it is passed to the action. |
 
 
 
@@ -1195,14 +1195,14 @@ inputs(author: result(:get_user))
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`template`](#reactor-update-inputs-template){: #reactor-update-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+| Name                                                                                             | Type                                                                                                                                                                                       | Default | Docs |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | ---- |
+| [`template`](#reactor-update-inputs-template){: #reactor-update-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |         |      |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-update-inputs-transform){: #reactor-update-inputs-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which will transform the inputs before executing the action. |
+| Name                                                                                 | Type                            | Default | Docs                                                                                             |
+| ------------------------------------------------------------------------------------ | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------ |
+| [`transform`](#reactor-update-inputs-transform){: #reactor-update-inputs-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which will transform the inputs before executing the action. |
 
 
 
@@ -1226,14 +1226,14 @@ Specifies the action tenant
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`source`](#reactor-update-tenant-source){: #reactor-update-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+| Name                                                                                       | Type                                                                          | Default | Docs                                                                                      |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| [`source`](#reactor-update-tenant-source){: #reactor-update-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |         | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
 ### Options
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`transform`](#reactor-update-tenant-transform){: #reactor-update-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
+| Name                                                                                 | Type                            | Default | Docs                                                                                                          |
+| ------------------------------------------------------------------------------------ | ------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------- |
+| [`transform`](#reactor-update-tenant-transform){: #reactor-update-tenant-transform } | `(any -> any) \| module \| nil` |         | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
 
 
 
@@ -1265,9 +1265,9 @@ wait_for :create_user
 
 ### Arguments
 
-| Name | Type | Default | Docs |
-|------|------|---------|------|
-| [`names`](#reactor-update-wait_for-names){: #reactor-update-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+| Name                                                                                        | Type                 | Default | Docs                              |
+| ------------------------------------------------------------------------------------------- | -------------------- | ------- | --------------------------------- |
+| [`names`](#reactor-update-wait_for-names){: #reactor-update-wait_for-names .spark-required} | `atom \| list(atom)` |         | The name of the step to wait for. |
 
 
 

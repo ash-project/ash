@@ -82,8 +82,11 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
       {:ok, entity, dsl_state} <
         defp(transform_entity_domain(entity, dsl_state)) do
     default_domain = Transformer.get_option(dsl_state, [:ash], :default_domain)
+    resource_domain = Ash.Resource.Info.domain(entity.resource)
 
-    {:ok, %{entity | domain: entity.domain || default_domain}}
+    domain = entity.domain || resource_domain || default_domain
+
+    {:ok, %{entity | domain: domain}}
   end
 
   defp validate_entity_domain(entity, dsl_state) do
