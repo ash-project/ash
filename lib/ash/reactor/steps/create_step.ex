@@ -22,8 +22,11 @@ defmodule Ash.Reactor.CreateStep do
       [return_notifications?: true]
       |> maybe_set_kw(:authorize?, options[:authorize?])
 
-    options[:resource]
-    |> Changeset.for_create(options[:action], arguments[:input], changeset_options)
+    changeset =
+      options[:resource]
+      |> Changeset.for_create(options[:action], arguments[:input], changeset_options)
+
+    changeset
     |> options[:domain].create(action_options)
     |> case do
       {:ok, record} ->
@@ -55,7 +58,7 @@ defmodule Ash.Reactor.CreateStep do
       %{changeset: get_changeset_from_metadata(context.current_step.name, record)}
 
     record
-    |> Changeset.for_destroy(options[:undo_action], arguments[:input], changeset_options)
+    |> Changeset.for_destroy(options[:undo_action], attributes, changeset_options)
     |> options[:domain].destroy(action_options)
     # We always want to discard the notifications.
     |> case do

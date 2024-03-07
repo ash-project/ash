@@ -751,7 +751,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`defaults`](#actions-defaults){: #actions-defaults } | `list(:create \| :read \| :update \| :destroy)` |  | Creates a simple action of each specified type, with the same name as the type. These will be `primary?` unless one already exists for that type. Embedded resources, however, have a default of all resource types. |
-| [`default_accept`](#actions-default_accept){: #actions-default_accept } | `list(atom)` |  | A default value for the `accept` option for each action. Defaults to all public attributes. |
+| [`default_accept`](#actions-default_accept){: #actions-default_accept } | `list(atom) \| :*` |  | A default value for the `accept` option for each action. Use `:*` to accept all public attributes. |
 
 
 
@@ -898,10 +898,9 @@ end
 | [`description`](#actions-create-description){: #actions-create-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-create-transaction?){: #actions-create-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-create-touches_resources){: #actions-create-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
-| [`accept`](#actions-create-accept){: #actions-create-accept } | `:all \| list(atom)` |  | The list of attributes to accept. Defaults to all attributes on the resource |
+| [`accept`](#actions-create-accept){: #actions-create-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`delay_global_validations?`](#actions-create-delay_global_validations?){: #actions-create-delay_global_validations? } | `boolean` | `false` | If true, global validations will be done in a `before_action` hook, regardless of their configuration on the resource. |
 | [`skip_global_validations?`](#actions-create-skip_global_validations?){: #actions-create-skip_global_validations? } | `boolean` | `false` | If true, global validations will be skipped. Useful for manual actions. |
-| [`reject`](#actions-create-reject){: #actions-create-reject } | `:all \| list(atom)` |  | A list of attributes not to accept. If this is specified along with `accept`, these are removed from the `accept` list. |
 | [`require_attributes`](#actions-create-require_attributes){: #actions-create-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
 | [`error_handler`](#actions-create-error_handler){: #actions-create-error_handler } | `mfa` |  | Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more |
 | [`manual?`](#actions-create-manual?){: #actions-create-manual? } | `boolean` |  | Instructs Ash to *skip* the actual update/create/destroy step at the data layer. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
@@ -1342,10 +1341,9 @@ update :flag_for_review, primary?: true
 | [`description`](#actions-update-description){: #actions-update-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-update-transaction?){: #actions-update-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-update-touches_resources){: #actions-update-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
-| [`accept`](#actions-update-accept){: #actions-update-accept } | `:all \| list(atom)` |  | The list of attributes to accept. Defaults to all attributes on the resource |
+| [`accept`](#actions-update-accept){: #actions-update-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`delay_global_validations?`](#actions-update-delay_global_validations?){: #actions-update-delay_global_validations? } | `boolean` | `false` | If true, global validations will be done in a `before_action` hook, regardless of their configuration on the resource. |
 | [`skip_global_validations?`](#actions-update-skip_global_validations?){: #actions-update-skip_global_validations? } | `boolean` | `false` | If true, global validations will be skipped. Useful for manual actions. |
-| [`reject`](#actions-update-reject){: #actions-update-reject } | `:all \| list(atom)` |  | A list of attributes not to accept. If this is specified along with `accept`, these are removed from the `accept` list. |
 | [`require_attributes`](#actions-update-require_attributes){: #actions-update-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
 | [`error_handler`](#actions-update-error_handler){: #actions-update-error_handler } | `mfa` |  | Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more |
 | [`manual?`](#actions-update-manual?){: #actions-update-manual? } | `boolean` |  | Instructs Ash to *skip* the actual update/create/destroy step at the data layer. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
@@ -1581,10 +1579,9 @@ end
 | [`description`](#actions-destroy-description){: #actions-destroy-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-destroy-transaction?){: #actions-destroy-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-destroy-touches_resources){: #actions-destroy-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
-| [`accept`](#actions-destroy-accept){: #actions-destroy-accept } | `:all \| list(atom)` |  | The list of attributes to accept. Defaults to all attributes on the resource |
+| [`accept`](#actions-destroy-accept){: #actions-destroy-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`delay_global_validations?`](#actions-destroy-delay_global_validations?){: #actions-destroy-delay_global_validations? } | `boolean` | `false` | If true, global validations will be done in a `before_action` hook, regardless of their configuration on the resource. |
 | [`skip_global_validations?`](#actions-destroy-skip_global_validations?){: #actions-destroy-skip_global_validations? } | `boolean` | `false` | If true, global validations will be skipped. Useful for manual actions. |
-| [`reject`](#actions-destroy-reject){: #actions-destroy-reject } | `:all \| list(atom)` |  | A list of attributes not to accept. If this is specified along with `accept`, these are removed from the `accept` list. |
 | [`require_attributes`](#actions-destroy-require_attributes){: #actions-destroy-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
 | [`error_handler`](#actions-destroy-error_handler){: #actions-destroy-error_handler } | `mfa` |  | Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more |
 | [`manual?`](#actions-destroy-manual?){: #actions-destroy-manual? } | `boolean` |  | Instructs Ash to *skip* the actual update/create/destroy step at the data layer. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
