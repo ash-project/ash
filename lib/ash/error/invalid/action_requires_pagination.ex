@@ -1,4 +1,4 @@
-defmodule Ash.Error.Invalid.PageRequiresPagination do
+defmodule Ash.Error.Invalid.ActionRequiresPagination do
   @moduledoc "Used when page option is passed but pagination is not enabled."
   use Ash.Error.Exception
 
@@ -7,7 +7,7 @@ defmodule Ash.Error.Invalid.PageRequiresPagination do
   defimpl Ash.ErrorKind do
     def id(_), do: Ash.UUID.generate()
 
-    def code(_), do: "page_requires_pagination"
+    def code(_), do: "action_requires_pagination"
 
     def message(%{resource: resource, action: action}) do
       """

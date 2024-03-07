@@ -3,8 +3,6 @@ defmodule Ash.Domain.Interface do
 
   defmacro __using__(_) do
     quote bind_quoted: [], generated: true do
-      alias Ash.Domain
-
       @spec can?(
               query_or_changeset_or_action ::
                 Ash.Query.t()
@@ -15,7 +13,8 @@ defmodule Ash.Domain.Interface do
             ) ::
               boolean | no_return
       def can?(query_or_changeset_or_action, actor, opts \\ []) do
-        Domain.can?(__MODULE__, query_or_changeset_or_action, actor, opts)
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.can?(query_or_changeset_or_action, actor, opts)
       end
 
       @spec can(
@@ -28,214 +27,92 @@ defmodule Ash.Domain.Interface do
             ) ::
               {:ok, boolean | :maybe} | {:error, term}
       def can(action_or_query_or_changeset, actor, opts \\ []) do
-        Domain.can(__MODULE__, action_or_query_or_changeset, actor, opts)
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.can(action_or_query_or_changeset, actor, opts)
       end
 
       def run_action!(input, opts \\ []) do
-        Domain.run_action!(__MODULE__, input, opts)
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.run_action!(input, opts)
       end
 
       def run_action(input, opts \\ []) do
-        Domain.run_action(__MODULE__, input, opts)
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.run_action(input, opts)
       end
 
       def calculate!(resource, calculation, opts \\ []) do
-        case calculate(resource, calculation, opts) do
-          {:ok, result} ->
-            result
-
-          {:error, error} ->
-            raise error
-        end
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.calculate!(resource, calculation, opts)
       end
 
       def calculate(resource, calculation, opts \\ []) do
-        case Domain.calculate(resource, calculation, opts) do
-          {:ok, result} ->
-            {:ok, result}
-
-          {:error, error} ->
-            {:error, Ash.Error.to_ash_error(error)}
-        end
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.calculate(resource, calculation, opts)
       end
 
       def aggregate!(query, aggregate_or_aggregates, opts \\ []) do
-        case aggregate(query, aggregate_or_aggregates, opts) do
-          {:ok, result} ->
-            result
-
-          {:error, error} ->
-            raise error
-        end
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.aggregate!(query, aggregate_or_aggregates, opts)
       end
 
       def count!(query, opts \\ []) do
-        query = Ash.Query.to_query(query)
-
-        opts =
-          if query.action do
-            Keyword.put(opts, :read_action, query.action.name)
-          else
-            opts
-          end
-
-        {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
-
-        case Domain.aggregate(__MODULE__, query, {:count, :count, aggregate_opts}, opts) do
-          {:ok, %{count: count}} ->
-            count
-
-          {:error, error} ->
-            raise Ash.Error.to_error_class(error)
-        end
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.count!(query, opts)
       end
 
       def count(query, opts \\ []) do
-        query = Ash.Query.to_query(query)
-
-        opts =
-          if query.action do
-            Keyword.put(opts, :read_action, query.action.name)
-          else
-            opts
-          end
-
-        {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
-
-        case Domain.aggregate(__MODULE__, query, {:count, :count, aggregate_opts}, opts) do
-          {:ok, %{count: count}} ->
-            {:ok, count}
-
-          {:error, error} ->
-            {:error, Ash.Error.to_error_class(error)}
-        end
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.count(query, opts)
       end
 
       def exists?(query, opts \\ []) do
-        query = Ash.Query.to_query(query)
-
-        opts =
-          if query.action do
-            Keyword.put(opts, :read_action, query.action.name)
-          else
-            opts
-          end
-
-        {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
-
-        case Domain.aggregate(__MODULE__, query, {:exists, :exists, aggregate_opts}, opts) do
-          {:ok, %{exists: exists}} ->
-            exists
-
-          {:error, error} ->
-            raise Ash.Error.to_error_class(error)
-        end
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.exists?(query, opts)
       end
 
       def exists(query, opts \\ []) do
-        query = Ash.Query.to_query(query)
-
-        opts =
-          if query.action do
-            Keyword.put(opts, :read_action, query.action.name)
-          else
-            opts
-          end
-
-        {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
-
-        case Domain.aggregate(__MODULE__, query, {:exists, :exists, aggregate_opts}, opts) do
-          {:ok, %{exists: exists}} ->
-            {:ok, exists}
-
-          {:error, error} ->
-            {:error, Ash.Error.to_error_class(error)}
-        end
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.exists(query, opts)
       end
 
       for kind <- [:first, :sum, :list, :max, :min, :avg] do
         def unquote(kind)(query, field, opts \\ []) do
-          query = Ash.Query.to_query(query)
-
-          opts =
-            if query.action do
-              Keyword.put(opts, :read_action, query.action.name)
-            else
-              opts
-            end
-
-          {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
-
-          case Domain.aggregate(
-                 __MODULE__,
-                 query,
-                 {unquote(kind), unquote(kind), Keyword.put(aggregate_opts, :field, field)},
-                 opts
-               ) do
-            {:ok, %{unquote(kind) => value}} ->
-              {:ok, value}
-
-            {:error, error} ->
-              {:error, Ash.Error.to_error_class(error)}
-          end
+          opts = Keyword.put(opts, :domain, __MODULE__)
+          apply(Ash, unquote(kind), [query, field, opts])
         end
 
+        bang = :"#{kind}!"
         # sobelow_skip ["DOS.BinToAtom"]
-        def unquote(:"#{kind}!")(query, field, opts \\ []) do
-          query = Ash.Query.to_query(query)
-
-          {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
-
-          opts =
-            if query.action do
-              Keyword.put(opts, :read_action, query.action.name)
-            else
-              opts
-            end
-
-          case Domain.aggregate(
-                 __MODULE__,
-                 query,
-                 {unquote(kind), unquote(kind), Keyword.put(aggregate_opts, :field, field)},
-                 opts
-               ) do
-            {:ok, %{unquote(kind) => value}} ->
-              value
-
-            {:error, error} ->
-              raise Ash.Error.to_error_class(error)
-          end
+        def unquote(bang)(query, field, opts \\ []) do
+          opts = Keyword.put(opts, :domain, __MODULE__)
+          apply(Ash, unquote(bang), [query, field, opts])
         end
       end
 
       def aggregate(query, aggregate_or_aggregates, opts \\ []) do
-        case Domain.aggregate(__MODULE__, query, aggregate_or_aggregates, opts) do
-          {:ok, result} ->
-            {:ok, result}
-
-          {:error, error} ->
-            {:error, Ash.Error.to_ash_error(error)}
-        end
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.aggregate(query, aggregate_or_aggregates, opts)
       end
 
-      def get!(resource, id_or_filter, params \\ []) do
+      def get!(resource, id_or_filter, opts \\ []) do
         Ash.Domain.Interface.enforce_resource!(resource)
+        opts = Keyword.put(opts, :domain, __MODULE__)
 
-        Domain.get!(__MODULE__, resource, id_or_filter, params)
+        Ash.get!(resource, id_or_filter, opts)
       end
 
-      def get(resource, id_or_filter, params \\ []) do
+      def get(resource, id_or_filter, opts \\ []) do
         Ash.Domain.Interface.enforce_resource!(resource)
-        Ash.Domain.Interface.enforce_keyword_list!(params)
+        Ash.Domain.Interface.enforce_keyword_list!(opts)
+        opts = Keyword.put(opts, :domain, __MODULE__)
 
-        case Domain.get(__MODULE__, resource, id_or_filter, params) do
-          {:ok, instance} -> {:ok, instance}
-          {:error, error} -> {:error, Ash.Error.to_error_class(error)}
-        end
+        Ash.get(resource, id_or_filter, opts)
       end
 
       def stream!(query, opts \\ []) do
-        Ash.Domain.stream!(__MODULE__, query, opts)
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.stream!(query, opts)
       end
 
       def read!(query, opts \\ [])
@@ -243,8 +120,9 @@ defmodule Ash.Domain.Interface do
       def read!(query, opts) do
         Ash.Domain.Interface.enforce_query_or_resource!(query)
         Ash.Domain.Interface.enforce_keyword_list!(opts)
+        opts = Keyword.put(opts, :domain, __MODULE__)
 
-        Domain.read!(__MODULE__, query, opts)
+        Ash.read!(query, opts)
       end
 
       def read(query, opts \\ [])
@@ -252,17 +130,9 @@ defmodule Ash.Domain.Interface do
       def read(query, opts) do
         Ash.Domain.Interface.enforce_query_or_resource!(query)
         Ash.Domain.Interface.enforce_keyword_list!(opts)
+        opts = Keyword.put(opts, :domain, __MODULE__)
 
-        case Domain.read(__MODULE__, query, opts) do
-          {:ok, results, query} ->
-            {:ok, results, query}
-
-          {:ok, results} ->
-            {:ok, results}
-
-          {:error, error} ->
-            {:error, Ash.Error.to_error_class(error)}
-        end
+        Ash.read(query, opts)
       end
 
       def read_one!(query, opts \\ [])
@@ -270,8 +140,9 @@ defmodule Ash.Domain.Interface do
       def read_one!(query, opts) do
         Ash.Domain.Interface.enforce_query_or_resource!(query)
         Ash.Domain.Interface.enforce_keyword_list!(opts)
+        opts = Keyword.put(opts, :domain, __MODULE__)
 
-        Domain.read_one!(__MODULE__, query, opts)
+        Ash.read_one!(query, opts)
       end
 
       def read_one(query, opts \\ [])
@@ -279,125 +150,97 @@ defmodule Ash.Domain.Interface do
       def read_one(query, opts) do
         Ash.Domain.Interface.enforce_query_or_resource!(query)
         Ash.Domain.Interface.enforce_keyword_list!(opts)
+        opts = Keyword.put(opts, :domain, __MODULE__)
 
-        case Domain.read_one(__MODULE__, query, opts) do
-          {:ok, result} -> {:ok, result}
-          {:ok, result, query} -> {:ok, result, query}
-          {:error, error} -> {:error, Ash.Error.to_error_class(error)}
-        end
+        Ash.read_one(query, opts)
       end
 
       def page!(page, request) do
-        Domain.page!(__MODULE__, page, request)
+        Ash.page!(page, request)
       end
 
       def page(page, request) do
-        case Domain.page(__MODULE__, page, request) do
-          {:ok, page} -> {:ok, page}
-          {:error, error} -> {:error, Ash.Error.to_error_class(error)}
-        end
+        Ash.page(page, request)
       end
 
       def load!(data, query, opts \\ []) do
-        Domain.load!(__MODULE__, data, query, opts)
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.load!(data, query, opts)
       end
 
       def load(data, query, opts \\ []) do
-        case Domain.load(__MODULE__, data, query, opts) do
-          {:ok, results} -> {:ok, results}
-          {:error, error} -> {:error, Ash.Error.to_error_class(error)}
-        end
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.load(data, query, opts)
       end
 
       def bulk_create!(inputs, resource, action, opts \\ []) do
-        Domain.bulk_create!(__MODULE__, inputs, resource, action, opts)
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.bulk_create!(inputs, resource, action, opts)
       end
 
       def bulk_create(inputs, resource, action, opts \\ []) do
-        case Domain.bulk_create(__MODULE__, inputs, resource, action, opts) do
-          {:error, error} ->
-            {:error, Ash.Error.to_error_class(error)}
-
-          other ->
-            other
-        end
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.bulk_create(inputs, resource, action, opts)
       end
 
       def bulk_update!(stream_or_query, action, input, opts \\ []) do
-        Domain.bulk_update!(__MODULE__, stream_or_query, action, input, opts)
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.bulk_update!(stream_or_query, action, input, opts)
       end
 
       def bulk_update(stream_or_query, action, input, opts \\ []) do
-        case Domain.bulk_update(__MODULE__, stream_or_query, action, input, opts) do
-          {:error, error} ->
-            {:error, Ash.Error.to_error_class(error)}
-
-          other ->
-            other
-        end
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.bulk_update(stream_or_query, action, input, opts)
       end
 
       def bulk_destroy!(stream_or_query, action, input, opts \\ []) do
-        Domain.bulk_destroy!(__MODULE__, stream_or_query, action, input, opts)
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.bulk_destroy!(stream_or_query, action, input, opts)
       end
 
       def bulk_destroy(stream_or_query, action, input, opts \\ []) do
-        case Domain.bulk_destroy(__MODULE__, stream_or_query, action, input, opts) do
-          {:error, error} ->
-            {:error, Ash.Error.to_error_class(error)}
-
-          other ->
-            other
-        end
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.bulk_destroy(stream_or_query, action, input, opts)
       end
 
-      def create!(changeset, params \\ []) do
-        Domain.create!(__MODULE__, changeset, params)
+      def create!(changeset, opts \\ []) do
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.create!(changeset, opts)
       end
 
-      def create(changeset, params \\ []) do
-        case Domain.create(__MODULE__, changeset, params) do
-          {:ok, instance} -> {:ok, instance}
-          {:ok, instance, notifications} -> {:ok, instance, notifications}
-          {:error, error} -> {:error, Ash.Error.to_error_class(error)}
-        end
+      def create(changeset, opts \\ []) do
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.create(changeset, opts)
       end
 
-      def update!(changeset, params \\ []) do
-        Domain.update!(__MODULE__, changeset, params)
+      def update!(changeset, opts \\ []) do
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.update!(changeset, opts)
       end
 
-      def update(changeset, params \\ []) do
-        case Domain.update(__MODULE__, changeset, params) do
-          {:ok, instance} -> {:ok, instance}
-          {:ok, instance, notifications} -> {:ok, instance, notifications}
-          {:error, error} -> {:error, Ash.Error.to_error_class(error)}
-        end
+      def update(changeset, opts \\ []) do
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.update(changeset, opts)
       end
 
-      def destroy!(record, params \\ []) do
-        Domain.destroy!(__MODULE__, record, params)
+      def destroy!(record, opts \\ []) do
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.destroy!(record, opts)
       end
 
-      def destroy(record, params \\ []) do
-        case Domain.destroy(__MODULE__, record, params) do
-          :ok -> :ok
-          {:ok, result, notifications} -> {:ok, result, notifications}
-          {:ok, notifications} -> {:ok, notifications}
-          {:error, error} -> {:error, Ash.Error.to_error_class(error)}
-        end
+      def destroy(record, opts \\ []) do
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.destroy(record, opts)
       end
 
-      def reload!(%resource{} = record, params \\ []) do
-        id = record |> Map.take(Ash.Resource.Info.primary_key(resource)) |> Enum.to_list()
-        params = Keyword.put_new(params, :tenant, Map.get(record.__metadata__, :tenant))
-        get!(resource, id, params)
+      def reload!(record, opts \\ []) do
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.reload!(record, opts)
       end
 
-      def reload(%resource{} = record, params \\ []) do
-        id = record |> Map.take(Ash.Resource.Info.primary_key(resource)) |> Enum.to_list()
-        params = Keyword.put_new(params, :tenant, Map.get(record.__metadata__, :tenant))
-        get(resource, id, params)
+      def reload(%resource{} = record, opts \\ []) do
+        opts = Keyword.put(opts, :domain, __MODULE__)
+        Ash.reload(record, opts)
       end
     end
   end

@@ -266,7 +266,7 @@ defmodule Ash.Query do
   See `Ash.Filter` for more.
   """
   def filter_input(query, filter) do
-    query = to_query(query)
+    query = new(query)
 
     case Ash.Filter.parse_input(query.resource, filter) do
       {:ok, filter} ->
@@ -285,7 +285,7 @@ defmodule Ash.Query do
   with `nil` in cases where the actor should not be able to see the given field.
   """
   def sort_input(query, sorts, opts \\ []) do
-    query = to_query(query)
+    query = new(query)
 
     if sorts == [] || sorts == nil do
       query
@@ -375,12 +375,13 @@ defmodule Ash.Query do
   end
 
   @doc "Create a new query"
-  def new(resource, domain \\ nil, opts \\ [])
-  def new(%__MODULE__{} = query, _, _opts), do: query
+  @spec new(Ash.Resource.t() | Ash.Query.t(), opts :: Keyword.t()) :: Ash.Query.t()
+  def new(resource, opts \\ [])
+  def new(%__MODULE__{} = query, _opts), do: query
 
-  def new(resource, domain, opts) when is_atom(resource) do
+  def new(resource, opts) when is_atom(resource) do
     query = %__MODULE__{
-      domain: domain,
+      domain: opts[:domain] || Ash.Resource.Info.domain(resource),
       filter: nil,
       resource: resource
     }
@@ -413,7 +414,9 @@ defmodule Ash.Query do
 
     context = Process.get(:ash_context, %{}) || %{}
 
-    set_context(query, context)
+    query
+    |> set_context(context)
+    |> Ash.DataLayer.transform_query()
   end
 
   @for_read_opts [
@@ -456,7 +459,7 @@ defmodule Ash.Query do
 
   """
   def for_read(query, action_name, args \\ %{}, opts \\ []) do
-    query = to_query(query)
+    query = new(query)
 
     domain =
       query.domain || opts[:domain] || Ash.Resource.Info.domain(query.resource) ||
@@ -519,7 +522,7 @@ defmodule Ash.Query do
   end
 
   def timeout(query, timeout) do
-    query = to_query(query)
+    query = new(query)
 
     if Ash.DataLayer.data_layer_can?(query.resource, :timeout) || is_nil(timeout) do
       %{query | timeout: timeout}
@@ -695,7 +698,7 @@ defmodule Ash.Query do
 
   @spec around_transaction(t(), around_transaction_fun()) :: t()
   def around_transaction(query, func) do
-    query = to_query(query)
+    query = new(query)
     %{query | around_transaction: query.around_transaction ++ [func]}
   end
 
@@ -705,7 +708,7 @@ defmodule Ash.Query do
         ) ::
           t()
   def before_action(query, func) do
-    query = to_query(query)
+    query = new(query)
     %{query | before_action: [func | query.before_action]}
   end
 
@@ -717,7 +720,7 @@ defmodule Ash.Query do
              | {:error, term})
         ) :: t()
   def authorize_results(query, func) do
-    query = to_query(query)
+    query = new(query)
     %{query | authorize_results: [func | query.authorize_results]}
   end
 
@@ -729,7 +732,7 @@ defmodule Ash.Query do
              | {:error, term})
         ) :: t()
   def after_action(query, func) do
-    query = to_query(query)
+    query = new(query)
     %{query | after_action: [func | query.after_action]}
   end
 
@@ -784,7 +787,7 @@ defmodule Ash.Query do
   Use `ensure_selected/2` if you wish to make sure a field has been selected, without deselecting any other fields.
   """
   def select(query, fields, opts \\ []) do
-    query = to_query(query)
+    query = new(query)
     fields = List.wrap(fields)
 
     {fields, non_existent} =
@@ -961,7 +964,7 @@ defmodule Ash.Query do
   See `select/2` for more.
   """
   def ensure_selected(query, fields) do
-    query = to_query(query)
+    query = new(query)
 
     if query.select do
       Ash.Query.select(query, List.wrap(fields))
@@ -991,10 +994,10 @@ defmodule Ash.Query do
   @doc """
   Ensure the the specified attributes are `nil` in the query results.
   """
-  def deselect(query, []), do: to_query(query)
+  def deselect(query, []), do: new(query)
 
   def deselect(query, fields) do
-    query = to_query(query)
+    query = new(query)
 
     select =
       if query.select do
@@ -1187,8 +1190,8 @@ defmodule Ash.Query do
           t() | Ash.Resource.t(),
           atom
           | Ash.Query.Calculation.t()
-          | list(atom | Ash.Query.Calculation.t())
-          | list({atom | Ash.Query.Calculation.t(), term})
+          | list(atom | Ash.Query.Calculation.t() | Ash.Query.Aggregate.t())
+          | list({atom | Ash.Query.Calculation.t() | Ash.Query.Aggregate.t(), term})
         ) ::
           t()
 
@@ -1201,7 +1204,7 @@ defmodule Ash.Query do
   end
 
   def load(query, fields) do
-    query = to_query(query)
+    query = new(query)
 
     Enum.reduce(fields, query, fn
       %Ash.Query{} = new, query ->
@@ -1666,7 +1669,7 @@ defmodule Ash.Query do
   """
   @spec put_context(t() | Ash.Resource.t(), atom, term) :: t()
   def put_context(query, key, value) do
-    query = to_query(query)
+    query = new(query)
     set_context(query, %{key => value})
   end
 
@@ -1693,10 +1696,10 @@ defmodule Ash.Query do
   Merge a map of values into the query context
   """
   @spec set_context(t() | Ash.Resource.t(), map | nil) :: t()
-  def set_context(query, nil), do: to_query(query)
+  def set_context(query, nil), do: new(query)
 
   def set_context(query, map) do
-    query = to_query(query)
+    query = new(query)
 
     %{query | context: Ash.Helpers.deep_merge_maps(query.context, map)}
   end
@@ -1727,7 +1730,7 @@ defmodule Ash.Query do
   """
   def set_argument(query, argument, value) do
     maybe_already_validated_error!(query)
-    query = to_query(query)
+    query = new(query)
 
     if query.action do
       argument =
@@ -1799,7 +1802,7 @@ defmodule Ash.Query do
   Remove an argument from the query
   """
   def delete_argument(query, argument_or_arguments) do
-    query = to_query(query)
+    query = new(query)
 
     argument_or_arguments
     |> List.wrap()
@@ -1812,7 +1815,7 @@ defmodule Ash.Query do
   Merge a map of arguments to the arguments list
   """
   def set_arguments(query, map) do
-    query = to_query(query)
+    query = new(query)
     %{query | arguments: Map.merge(query.arguments, map)}
   end
 
@@ -1824,14 +1827,14 @@ defmodule Ash.Query do
 
   @spec set_tenant(t() | Ash.Resource.t(), term()) :: t()
   def set_tenant(query, tenant) do
-    query = to_query(query)
+    query = new(query)
     %{query | tenant: tenant}
   end
 
   @doc "Removes a field from the list of fields to load"
   @spec unload(t(), list(atom)) :: t()
   def unload(query, fields) do
-    query = to_query(query)
+    query = new(query)
 
     Enum.reduce(fields, query, fn field, query ->
       case field do
@@ -2031,7 +2034,7 @@ defmodule Ash.Query do
 
   @doc "Set the query's domain, and any loaded query's domain"
   def set_domain(query, domain) do
-    query = to_query(query)
+    query = new(query)
     %{query | domain: domain, load: set_load_domain(query.load, domain)}
   end
 
@@ -2118,7 +2121,7 @@ defmodule Ash.Query do
           Keyword.pop(agg_query || [], :field)
       end
 
-    query = to_query(query)
+    query = new(query)
     relationship = List.wrap(relationship)
 
     if Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, kind}) do
@@ -2194,7 +2197,7 @@ defmodule Ash.Query do
         constraints \\ [],
         extra_context \\ %{}
       ) do
-    query = to_query(query)
+    query = new(query)
 
     {module, opts} =
       case module_and_opts do
@@ -2254,7 +2257,7 @@ defmodule Ash.Query do
       Ash.Query.load_calculation_as(query, :calculation, :some_name, args: %{}, load_through: [:foo])
   """
   def load_calculation_as(query, calc_name, as_name, opts_or_args \\ %{}, opts \\ []) do
-    query = to_query(query)
+    query = new(query)
 
     {args, opts} =
       if Keyword.keyword?(opts_or_args) do
@@ -2278,10 +2281,10 @@ defmodule Ash.Query do
 
   @doc "Limit the results returned from the query"
   @spec limit(t() | Ash.Resource.t(), nil | integer()) :: t()
-  def limit(query, nil), do: to_query(query)
+  def limit(query, nil), do: new(query)
 
   def limit(query, limit) when is_integer(limit) do
-    query = to_query(query)
+    query = new(query)
 
     if Ash.DataLayer.data_layer_can?(query.resource, :limit) do
       query
@@ -2297,10 +2300,10 @@ defmodule Ash.Query do
 
   @doc "Skip the first n records"
   @spec offset(t() | Ash.Resource.t(), nil | integer()) :: t()
-  def offset(query, nil), do: to_query(query)
+  def offset(query, nil), do: new(query)
 
   def offset(query, offset) when is_integer(offset) do
-    query = to_query(query)
+    query = new(query)
 
     if Ash.DataLayer.data_layer_can?(query.resource, :offset) do
       query
@@ -2312,12 +2315,12 @@ defmodule Ash.Query do
 
   def offset(query, offset) do
     query
-    |> to_query()
+    |> new()
     |> add_error(:offset, InvalidOffset.exception(offset: offset))
   end
 
   defp load_relationship(query, statement) do
-    query = to_query(query)
+    query = new(query)
 
     with sanitized_statement <- List.wrap(sanitize_loads(statement)),
          :ok <- validate_load(query, sanitized_statement),
@@ -2352,7 +2355,7 @@ defmodule Ash.Query do
   end
 
   defp do_validate_load(query, loads, path) when is_list(loads) do
-    query = to_query(query)
+    query = new(query)
 
     loads
     |> List.wrap()
@@ -2404,7 +2407,7 @@ defmodule Ash.Query do
   def do_filter(query, filter, opts \\ [])
 
   def do_filter(query, %Ash.Filter{} = filter, opts) do
-    query = to_query(query)
+    query = new(query)
 
     if Ash.DataLayer.data_layer_can?(query.resource, :filter) do
       new_filter =
@@ -2452,11 +2455,11 @@ defmodule Ash.Query do
     end
   end
 
-  def do_filter(query, nil, _opts), do: to_query(query)
-  def do_filter(query, [], _opts), do: to_query(query)
+  def do_filter(query, nil, _opts), do: new(query)
+  def do_filter(query, [], _opts), do: new(query)
 
   def do_filter(query, statement, opts) do
-    query = to_query(query)
+    query = new(query)
 
     if Ash.DataLayer.data_layer_can?(query.resource, :filter) do
       filter =
@@ -2521,7 +2524,7 @@ defmodule Ash.Query do
   def lock(query, nil), do: %{query | lock: nil}
 
   def lock(query, lock_type) do
-    query = to_query(query)
+    query = new(query)
 
     if Ash.DataLayer.data_layer_can?(query.resource, {:lock, lock_type}) do
       %{query | lock: lock_type}
@@ -2562,7 +2565,7 @@ defmodule Ash.Query do
   """
   @spec sort(t() | Ash.Resource.t(), Ash.Sort.t(), opts :: Keyword.t()) :: t()
   def sort(query, sorts, opts \\ []) do
-    query = to_query(query)
+    query = new(query)
 
     if sorts == [] || sorts == nil do
       query
@@ -2613,7 +2616,7 @@ defmodule Ash.Query do
   """
   @spec distinct(t() | Ash.Resource.t(), Ash.Sort.t()) :: t()
   def distinct(query, distincts) do
-    query = to_query(query)
+    query = new(query)
     distincts = List.wrap(distincts)
 
     if Ash.DataLayer.data_layer_can?(query.resource, :distinct) do
@@ -2640,7 +2643,7 @@ defmodule Ash.Query do
   """
   @spec distinct_sort(t() | Ash.Resource.t(), Ash.Sort.t()) :: t()
   def distinct_sort(query, sorts, opts \\ []) do
-    query = to_query(query)
+    query = new(query)
 
     if sorts == [] || sorts == nil do
       query
@@ -2673,7 +2676,7 @@ defmodule Ash.Query do
 
   @spec unset(Ash.Resource.t() | t(), atom | [atom]) :: t()
   def unset(query, keys) when is_list(keys) do
-    query = to_query(query)
+    query = new(query)
 
     new = new(query.resource)
 
@@ -2688,7 +2691,7 @@ defmodule Ash.Query do
     do_unset(query, key, new)
 
     query
-    |> to_query()
+    |> new()
     |> struct([{key, Map.get(new, key)}])
   end
 
@@ -2792,7 +2795,7 @@ defmodule Ash.Query do
 
   def add_error(query, keys \\ [], message) do
     keys = List.wrap(keys)
-    query = to_query(query)
+    query = new(query)
 
     message =
       if is_binary(message) do
@@ -2889,18 +2892,6 @@ defmodule Ash.Query do
     Enum.map(loads, fn {key, further} ->
       {key, set_load_domain(further, domain)}
     end)
-  end
-
-  @doc """
-  Takes a resource or a query and returns a query.
-  """
-  @spec to_query(t() | Ash.Resource.t()) :: t()
-  def to_query(%__MODULE__{} = query), do: query
-
-  def to_query(resource) do
-    resource
-    |> new()
-    |> Ash.DataLayer.transform_query()
   end
 
   defp merge_load([], right), do: sanitize_loads(right)
