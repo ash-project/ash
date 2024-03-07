@@ -4,8 +4,8 @@ defmodule Ash.Reactor.Dsl.Read do
   """
 
   defstruct __identifier__: nil,
-            action: nil,
             action_step?: true,
+            action: nil,
             actor: [],
             api: nil,
             async?: true,
@@ -21,15 +21,15 @@ defmodule Ash.Reactor.Dsl.Read do
 
   @type t :: %__MODULE__{
           __identifier__: any,
-          action: atom,
           action_step?: true,
+          action: atom,
           actor: [Ash.Reactor.Dsl.Actor.t()],
           api: Ash.Api.t(),
           async?: boolean,
           authorize?: boolean | nil,
           description: String.t() | nil,
-          name: atom,
           inputs: [Ash.Reactor.Dsl.Inputs.t()],
+          name: atom,
           resource: module,
           tenant: [Ash.Reactor.Dsl.Tenant.t()],
           type: :create,
@@ -64,55 +64,6 @@ defmodule Ash.Reactor.Dsl.Read do
       ],
       singleton_entity_keys: [:actor, :tenant],
       recursive_as: :steps,
-      schema: [
-        action: [
-          type: :atom,
-          required: false,
-          doc: """
-          The name of the action to call on the resource.
-          """
-        ],
-        api: [
-          type: {:spark, Ash.Api},
-          required: false,
-          doc:
-            "The API to use when calling the action.  Defaults to the API set in the `ash` section."
-        ],
-        async?: [
-          type: :boolean,
-          required: false,
-          default: true,
-          doc:
-            "When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`."
-        ],
-        authorize?: [
-          type: {:or, [:boolean, nil]},
-          required: false,
-          default: nil,
-          doc: "Explicitly enable or disable authorization for the action."
-        ],
-        description: [
-          type: :string,
-          required: false,
-          doc: "A description for the step"
-        ],
-        name: [
-          type: :atom,
-          required: true,
-          doc: """
-          A unique name for the step.
-
-          This is used when choosing the return value of the Reactor and for
-          arguments into other steps.
-          """
-        ],
-        resource: [
-          type: {:spark, Ash.Resource},
-          required: true,
-          doc: """
-          The resource to call the action on.
-          """
-        ]
-      ]
+      schema: Ash.Reactor.Dsl.Action.__shared_action_option_schema__(false)
     }
 end

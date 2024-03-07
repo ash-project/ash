@@ -4,7 +4,7 @@ defmodule Ash.Test.ReactorCreateTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, api: Ash.Test.AnyApi
 
     ets do
       private? true
@@ -24,6 +24,12 @@ defmodule Ash.Test.ReactorCreateTest do
 
     actions do
       defaults [:create, :read, :update, :destroy]
+
+      destroy :undo_create do
+        argument :changeset, :struct do
+          constraints instance_of: Ash.Changeset
+        end
+      end
     end
 
     relationships do
@@ -33,7 +39,7 @@ defmodule Ash.Test.ReactorCreateTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, api: Ash.Test.AnyApi
 
     ets do
       private? true
@@ -61,23 +67,13 @@ defmodule Ash.Test.ReactorCreateTest do
     end
   end
 
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      resource Ash.Test.ReactorCreateTest.Author
-      resource Ash.Test.ReactorCreateTest.Post
-    end
-  end
-
   test "it can create a post" do
     defmodule SimpleCreatePostReactor do
       @moduledoc false
       use Reactor, extensions: [Ash.Reactor]
 
       ash do
-        default_api Api
+        default_api(Ash.Test.AnyApi)
       end
 
       input :title
@@ -102,7 +98,7 @@ defmodule Ash.Test.ReactorCreateTest do
       use Reactor, extensions: [Ash.Reactor]
 
       ash do
-        default_api Api
+        default_api(Ash.Test.AnyApi)
       end
 
       input :title
@@ -126,7 +122,7 @@ defmodule Ash.Test.ReactorCreateTest do
       use Reactor, extensions: [Ash.Reactor]
 
       ash do
-        default_api Api
+        default_api(Ash.Test.AnyApi)
       end
 
       input :title
@@ -154,7 +150,7 @@ defmodule Ash.Test.ReactorCreateTest do
       use Reactor, extensions: [Ash.Reactor]
 
       ash do
-        default_api Api
+        default_api(Ash.Test.AnyApi)
       end
 
       input :title
@@ -182,7 +178,7 @@ defmodule Ash.Test.ReactorCreateTest do
       use Reactor, extensions: [Ash.Reactor]
 
       ash do
-        default_api Api
+        default_api(Ash.Test.AnyApi)
       end
 
       input :author_name
@@ -216,7 +212,7 @@ defmodule Ash.Test.ReactorCreateTest do
       use Reactor, extensions: [Ash.Reactor]
 
       ash do
-        default_api Api
+        default_api(Ash.Test.AnyApi)
       end
 
       input :author_name
@@ -244,7 +240,7 @@ defmodule Ash.Test.ReactorCreateTest do
       use Ash.Reactor
 
       ash do
-        default_api Api
+        default_api(Ash.Test.AnyApi)
       end
 
       input :author_name
@@ -253,25 +249,25 @@ defmodule Ash.Test.ReactorCreateTest do
         inputs(%{name: input(:author_name)})
 
         undo :always
-        undo_action(:destroy)
+        undo_action(:undo_create)
       end
 
       step :fail do
         argument :author, result(:create_author)
 
         run fn _, _ ->
-          assert [_] = Api.read!(Author)
+          assert [_] = Ash.Test.AnyApi.read!(Author)
 
           raise "hell"
         end
       end
     end
 
-    assert {:error, _} =
+    assert {:error, [%RuntimeError{message: "hell"}]} =
              Reactor.run(UndoingCreateAuthorReactor, %{author_name: "Marty McFly"}, %{},
                async?: false
              )
 
-    assert [] = Api.read!(Author)
+    assert [] = Ash.Test.AnyApi.read!(Author)
   end
 end

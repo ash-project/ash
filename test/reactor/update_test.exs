@@ -4,7 +4,7 @@ defmodule Ash.Test.ReactorUpdateTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, api: Ash.Test.AnyApi
 
     ets do
       private? true
@@ -38,18 +38,8 @@ defmodule Ash.Test.ReactorUpdateTest do
     end
 
     code_interface do
-      define_for Ash.Test.ReactorUpdateTest.Api
       define :create
       define :get, action: :read, get_by: :id
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      resource Post
     end
   end
 
@@ -59,7 +49,7 @@ defmodule Ash.Test.ReactorUpdateTest do
       use Reactor, extensions: [Ash.Reactor]
 
       ash do
-        default_api Api
+        default_api(Ash.Test.AnyApi)
       end
 
       input :post
@@ -85,7 +75,7 @@ defmodule Ash.Test.ReactorUpdateTest do
       use Reactor, extensions: [Ash.Reactor]
 
       ash do
-        default_api Api
+        default_api(Ash.Test.AnyApi)
       end
 
       input :post
@@ -117,7 +107,7 @@ defmodule Ash.Test.ReactorUpdateTest do
       use Ash.Reactor, extensions: [Ash.Reactor]
 
       ash do
-        default_api Api
+        default_api(Ash.Test.AnyApi)
       end
 
       input :post
@@ -152,7 +142,7 @@ defmodule Ash.Test.ReactorUpdateTest do
       use Ash.Reactor
 
       ash do
-        default_api Api
+        default_api(Ash.Test.AnyApi)
       end
 
       input :post

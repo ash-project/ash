@@ -22,16 +22,19 @@ defmodule Ash.Reactor.CreateStep do
       [return_notifications?: true]
       |> maybe_set_kw(:authorize?, options[:authorize?])
 
-    options[:resource]
-    |> Changeset.for_create(options[:action], arguments[:input], changeset_options)
+    changeset =
+      options[:resource]
+      |> Changeset.for_create(options[:action], arguments[:input], changeset_options)
+
+    changeset
     |> options[:api].create(action_options)
     |> case do
       {:ok, record} ->
-        {:ok, record}
+        {:ok, store_changeset_in_metadata(context.current_step.name, record, changeset)}
 
       {:ok, record, notifications} ->
         with :ok <- Ash.Reactor.Notifications.enqueue_notifications(context, notifications),
-             do: {:ok, record}
+             do: {:ok, store_changeset_in_metadata(context.current_step.name, record, changeset)}
 
       {:error, reason} ->
         {:error, reason}
@@ -40,7 +43,7 @@ defmodule Ash.Reactor.CreateStep do
 
   @doc false
   @impl true
-  def undo(record, arguments, _context, options) do
+  def undo(record, arguments, context, options) do
     changeset_options =
       []
       |> maybe_set_kw(:authorize?, options[:authorize?])
@@ -51,8 +54,11 @@ defmodule Ash.Reactor.CreateStep do
       [return_notifications?: true, return_destroyed?: false]
       |> maybe_set_kw(:authorize?, options[:authorize?])
 
+    attributes =
+      %{changeset: get_changeset_from_metadata(context.current_step.name, record)}
+
     record
-    |> Changeset.for_destroy(options[:undo_action], arguments[:input], changeset_options)
+    |> Changeset.for_destroy(options[:undo_action], attributes, changeset_options)
     |> options[:api].destroy(action_options)
     # We always want to discard the notifications.
     |> case do

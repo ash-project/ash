@@ -9,7 +9,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Transaction do
   @impl true
   def build(transaction, reactor) do
     sub_reactor = Builder.new({Ash.Reactor.TransactionStep, transaction.name})
-    # force the sub-reactor to hot be hooked.
+    # force the sub-reactor to not be hooked.
     sub_reactor = %{sub_reactor | context: Map.put(sub_reactor.context, :__ash_hooked__, true)}
 
     with {:ok, reactor} <- ensure_hooked(reactor),

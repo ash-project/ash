@@ -5,7 +5,7 @@ defmodule Ash.Test.Reactor.TransactionTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
+    use Ash.Resource, data_layer: Ash.DataLayer.Mnesia, api: Ash.Test.AnyApi
 
     attributes do
       uuid_primary_key :id
@@ -17,18 +17,9 @@ defmodule Ash.Test.Reactor.TransactionTest do
     end
   end
 
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      resource Ash.Test.Reactor.TransactionTest.Post
-    end
-  end
-
   setup do
     ExUnit.CaptureLog.capture_log(fn ->
-      Ash.DataLayer.Mnesia.start(__MODULE__.Api)
+      Ash.DataLayer.Mnesia.start(Ash.Test.AnyApi, [Post])
     end)
 
     on_exit(fn ->
@@ -45,7 +36,7 @@ defmodule Ash.Test.Reactor.TransactionTest do
       use Ash.Reactor
 
       ash do
-        default_api Api
+        default_api(Ash.Test.AnyApi)
       end
 
       transaction :create_posts, Post do
@@ -68,7 +59,7 @@ defmodule Ash.Test.Reactor.TransactionTest do
       use Ash.Reactor
 
       ash do
-        default_api Api
+        default_api(Ash.Test.AnyApi)
       end
 
       transaction :create_posts, Post do
@@ -94,7 +85,7 @@ defmodule Ash.Test.Reactor.TransactionTest do
       use Ash.Reactor
 
       ash do
-        default_api Api
+        default_api(Ash.Test.AnyApi)
       end
 
       transaction :create_posts, Post do

@@ -13,7 +13,7 @@ defmodule Ash.Reactor do
     schema: [
       default_api: [
         type: {:behaviour, Ash.Api},
-        doc: "An API to use by default when calling actions",
+        doc: "A api to use by default when calling actions",
         required: false
       ]
     ]

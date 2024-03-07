@@ -4,8 +4,8 @@ defmodule Ash.Reactor.Dsl.Create do
   """
 
   defstruct __identifier__: nil,
-            action: nil,
             action_step?: true,
+            action: nil,
             actor: [],
             api: nil,
             async?: true,
@@ -17,31 +17,31 @@ defmodule Ash.Reactor.Dsl.Create do
             tenant: [],
             transform: nil,
             type: :create,
-            wait_for: [],
             undo_action: nil,
             undo: :never,
             upsert_identity: nil,
-            upsert?: false
+            upsert?: false,
+            wait_for: []
 
   @type t :: %__MODULE__{
           __identifier__: any,
-          action: atom,
           action_step?: true,
+          action: atom,
           actor: [Ash.Reactor.Dsl.Actor.t()],
           api: Ash.Api.t(),
           async?: boolean,
           authorize?: boolean | nil,
           description: String.t() | nil,
-          name: atom,
           inputs: [Ash.Reactor.Dsl.Inputs.t()],
+          name: atom,
           resource: module,
           tenant: [Ash.Reactor.Dsl.Tenant.t()],
           type: :create,
-          wait_for: [Reactor.Dsl.WaitFor.t()],
           undo_action: atom,
           undo: :always | :never | :outside_transaction,
           upsert_identity: nil | atom,
-          upsert?: boolean
+          upsert?: boolean,
+          wait_for: [Reactor.Dsl.WaitFor.t()]
         }
 
   @doc false
@@ -74,85 +74,23 @@ defmodule Ash.Reactor.Dsl.Create do
       ],
       singleton_entity_keys: [:actor, :tenant],
       recursive_as: :steps,
-      schema: [
-        action: [
-          type: :atom,
-          required: false,
-          doc: """
-          The name of the action to call on the resource.
-          """
-        ],
-        api: [
-          type: {:spark, Ash.Api},
-          required: false,
-          doc:
-            "The API to use when calling the action.  Defaults to the API set in the `ash` section."
-        ],
-        async?: [
-          type: :boolean,
-          required: false,
-          default: true,
-          doc:
-            "When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`."
-        ],
-        authorize?: [
-          type: {:or, [:boolean, nil]},
-          required: false,
-          default: nil,
-          doc: "Explicitly enable or disable authorization for the action."
-        ],
-        description: [
-          type: :string,
-          required: false,
-          doc: "A description for the step"
-        ],
-        name: [
-          type: :atom,
-          required: true,
-          doc: """
-          A unique name for the step.
-
-          This is used when choosing the return value of the Reactor and for
-          arguments into other steps.
-          """
-        ],
-        resource: [
-          type: {:spark, Ash.Resource},
-          required: true,
-          doc: """
-          The resource to call the action on.
-          """
-        ],
-        undo_action: [
-          type: :atom,
-          required: false,
-          doc: """
-          The name of the action to call on the resource when the step is to be undone.
-          """
-        ],
-        undo: [
-          type: {:in, [:always, :never, :outside_transaction]},
-          required: false,
-          default: :never,
-          doc: """
-          What to do when the reactor is undoing it's work?
-
-          * `always` - The undo action will always be run.
-          * `never` - The action will never be undone.
-          * `outside_transaction` - The action will only be undone if not running inside a transaction.
-          """
-        ],
-        upsert_identity: [
-          type: :atom,
-          required: false,
-          doc: "The identity to use for the upsert"
-        ],
-        upsert?: [
-          type: :boolean,
-          required: false,
-          default: false,
-          doc: "Whether or not this action should be executed as an upsert."
+      schema:
+        [
+          upsert_identity: [
+            type: :atom,
+            required: false,
+            doc: "The identity to use for the upsert"
+          ],
+          upsert?: [
+            type: :boolean,
+            required: false,
+            default: false,
+            doc: "Whether or not this action should be executed as an upsert."
+          ]
         ]
-      ]
+        |> Spark.OptionsHelpers.merge_schemas(
+          Ash.Reactor.Dsl.Action.__shared_action_option_schema__(),
+          "Shared action options"
+        )
     }
 end

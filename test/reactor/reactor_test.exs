@@ -23,7 +23,7 @@ defmodule Ash.Test.ReactorTest do
   test "notifications are published when the reactor is successful" do
     defmodule Post do
       @moduledoc false
-      use Ash.Resource, data_layer: Ash.DataLayer.Ets
+      use Ash.Resource, data_layer: Ash.DataLayer.Ets, api: Ash.Test.AnyApi
 
       ets do
         private? true
@@ -39,15 +39,6 @@ defmodule Ash.Test.ReactorTest do
       end
     end
 
-    defmodule Api do
-      @moduledoc false
-      use Ash.Api
-
-      resources do
-        resource Ash.Test.ReactorTest.Post
-      end
-    end
-
     defmodule NotifyingReactor do
       @moduledoc false
       use Ash.Reactor
@@ -55,7 +46,7 @@ defmodule Ash.Test.ReactorTest do
       input :title
 
       ash do
-        default_api Ash.Test.ReactorTest.Api
+        default_api(Ash.Test.AnyApi)
       end
 
       create :create_post, Ash.Test.ReactorTest.Post do

@@ -81,8 +81,11 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
 
   defp transform_entity_api(entity, dsl_state) do
     default_api = Transformer.get_option(dsl_state, [:ash], :default_api)
+    resource_api = Ash.Resource.Info.api(entity.resource)
 
-    {:ok, %{entity | api: entity.api || default_api}}
+    api = entity.api || resource_api || default_api
+
+    {:ok, %{entity | api: api}}
   end
 
   defp validate_entity_api(entity, dsl_state) do
@@ -92,9 +95,9 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
       {:error,
        DslError.exception(
          module: Transformer.get_entities(dsl_state, :module),
-         path: [:ash, :default_api],
+         path: [:reactor, entity.type, entity.name],
          message:
-           "The #{entity.type} step `#{inspect(entity.name)}` has its API set to `#{inspect(entity.api)}` but it is not a valid Ash API."
+           "The #{entity.type} step `#{inspect(entity.name)}` has its api set to `#{inspect(entity.api)}` but it is not a valid `Ash.Api`."
        )}
     end
   end

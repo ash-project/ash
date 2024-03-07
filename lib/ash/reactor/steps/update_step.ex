@@ -28,11 +28,11 @@ defmodule Ash.Reactor.UpdateStep do
     |> options[:api].update(action_options)
     |> case do
       {:ok, record} ->
-        {:ok, set_metadata(record, context.current_step.name, :changeset, changeset)}
+        {:ok, store_changeset_in_metadata(context.current_step.name, record, changeset)}
 
       {:ok, record, notifications} ->
         with :ok <- Ash.Reactor.Notifications.enqueue_notifications(context, notifications),
-             do: {:ok, set_metadata(record, context.current_step.name, :changeset, changeset)}
+             do: {:ok, store_changeset_in_metadata(context.current_step.name, record, changeset)}
 
       {:error, reason} ->
         {:error, reason}
@@ -53,7 +53,7 @@ defmodule Ash.Reactor.UpdateStep do
       |> maybe_set_kw(:authorize?, options[:authorize?])
 
     attributes =
-      %{changeset: get_metadata(record, context.current_step.name, :changeset)}
+      %{changeset: get_changeset_from_metadata(context.current_step.name, record)}
 
     record
     |> Changeset.for_update(options[:undo_action], attributes, changeset_options)
@@ -90,13 +90,5 @@ defmodule Ash.Reactor.UpdateStep do
       true ->
         async
     end
-  end
-
-  defp set_metadata(record, step_name, key, value) do
-    Ash.Resource.set_metadata(record, %{__reactor__: %{step_name => %{key => value}}})
-  end
-
-  defp get_metadata(record, step_name, key) do
-    Ash.Resource.get_metadata(record, [:__reactor__, step_name, key])
   end
 end

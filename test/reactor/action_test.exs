@@ -4,7 +4,7 @@ defmodule Ash.Test.ReactorActionTest do
 
   defmodule Wooter do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Simple
+    use Ash.Resource, data_layer: Ash.DataLayer.Simple, api: Ash.Test.AnyApi
 
     attributes do
       uuid_primary_key :id
@@ -23,21 +23,12 @@ defmodule Ash.Test.ReactorActionTest do
     end
   end
 
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      resource Ash.Test.ReactorActionTest.Wooter
-    end
-  end
-
   defmodule SimpleActionReactor do
     @moduledoc false
     use Reactor, extensions: [Ash.Reactor]
 
     ash do
-      default_api Api
+      default_api(Ash.Test.AnyApi)
     end
 
     input :excitement_level

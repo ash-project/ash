@@ -22,7 +22,7 @@ Ash-related configuration for the `Ash.Reactor` extension
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`default_api`](#ash-default_api){: #ash-default_api } | `module` |  | An API to use by default when calling actions |
+| [`default_api`](#ash-default_api){: #ash-default_api } | `module` |  | A api to use by default when calling actions |
 
 
 
@@ -56,7 +56,7 @@ Declares a step that will call a generic action on a resource.
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`api`](#reactor-action-api){: #reactor-action-api } | `module` |  | The API to use when calling the action.  Defaults to the API set in the `ash` section. |
+| [`api`](#reactor-action-api){: #reactor-action-api } | `module` |  | The API to use when calling the action.  Defaults to the API set on the resource or in the `ash` section. |
 | [`async?`](#reactor-action-async?){: #reactor-action-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
 | [`authorize?`](#reactor-action-authorize?){: #reactor-action-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
 | [`description`](#reactor-action-description){: #reactor-action-description } | `String.t` |  | A description for the step |
@@ -257,14 +257,14 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`api`](#reactor-create-api){: #reactor-create-api } | `module` |  | The API to use when calling the action.  Defaults to the API set in the `ash` section. |
+| [`upsert_identity`](#reactor-create-upsert_identity){: #reactor-create-upsert_identity } | `atom` |  | The identity to use for the upsert |
+| [`upsert?`](#reactor-create-upsert?){: #reactor-create-upsert? } | `boolean` | `false` | Whether or not this action should be executed as an upsert. |
+| [`api`](#reactor-create-api){: #reactor-create-api } | `module` |  | The API to use when calling the action.  Defaults to the API set on the resource or in the `ash` section. |
 | [`async?`](#reactor-create-async?){: #reactor-create-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
 | [`authorize?`](#reactor-create-authorize?){: #reactor-create-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
 | [`description`](#reactor-create-description){: #reactor-create-description } | `String.t` |  | A description for the step |
 | [`undo_action`](#reactor-create-undo_action){: #reactor-create-undo_action } | `atom` |  | The name of the action to call on the resource when the step is to be undone. |
 | [`undo`](#reactor-create-undo){: #reactor-create-undo } | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
-| [`upsert_identity`](#reactor-create-upsert_identity){: #reactor-create-upsert_identity } | `atom` |  | The identity to use for the upsert |
-| [`upsert?`](#reactor-create-upsert?){: #reactor-create-upsert? } | `boolean` | `false` | Whether or not this action should be executed as an upsert. |
 
 
 ## reactor.create.actor
@@ -458,12 +458,12 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`initial`](#reactor-destroy-initial){: #reactor-destroy-initial .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The record to update. |
-| [`api`](#reactor-destroy-api){: #reactor-destroy-api } | `module` |  | The API to use when calling the action.  Defaults to the API set in the `ash` section. |
+| [`return_destroyed?`](#reactor-destroy-return_destroyed?){: #reactor-destroy-return_destroyed? } | `boolean` | `false` | Whether or not the step should return the destroyed record upon completion. |
+| [`api`](#reactor-destroy-api){: #reactor-destroy-api } | `module` |  | The API to use when calling the action.  Defaults to the API set on the resource or in the `ash` section. |
 | [`async?`](#reactor-destroy-async?){: #reactor-destroy-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
 | [`authorize?`](#reactor-destroy-authorize?){: #reactor-destroy-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
 | [`description`](#reactor-destroy-description){: #reactor-destroy-description } | `String.t` |  | A description for the step |
-| [`return_destroyed?`](#reactor-destroy-return_destroyed?){: #reactor-destroy-return_destroyed? } | `boolean` | `false` | Whether or not the step should return the destroyed record upon completion. |
-| [`undo_action`](#reactor-destroy-undo_action){: #reactor-destroy-undo_action } | `atom` |  | The name of the action to call on the resource when the step is undone. |
+| [`undo_action`](#reactor-destroy-undo_action){: #reactor-destroy-undo_action } | `atom` |  | The name of the action to call on the resource when the step is to be undone. |
 | [`undo`](#reactor-destroy-undo){: #reactor-destroy-undo } | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
 
 
@@ -655,11 +655,11 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`api`](#reactor-read_one-api){: #reactor-read_one-api } | `module` |  | The API to use when calling the action.  Defaults to the API set in the `ash` section. |
+| [`fail_on_not_found?`](#reactor-read_one-fail_on_not_found?){: #reactor-read_one-fail_on_not_found? } | `boolean` | `false` | When set to true the step will fail if the resource is not found. |
+| [`api`](#reactor-read_one-api){: #reactor-read_one-api } | `module` |  | The API to use when calling the action.  Defaults to the API set on the resource or in the `ash` section. |
 | [`async?`](#reactor-read_one-async?){: #reactor-read_one-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
 | [`authorize?`](#reactor-read_one-authorize?){: #reactor-read_one-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
 | [`description`](#reactor-read_one-description){: #reactor-read_one-description } | `String.t` |  | A description for the step |
-| [`fail_on_not_found?`](#reactor-read_one-fail_on_not_found?){: #reactor-read_one-fail_on_not_found? } | `boolean` | `false` | When set to true the step will fail if the resource is not found. |
 
 
 ## reactor.read_one.actor
@@ -855,7 +855,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`api`](#reactor-read-api){: #reactor-read-api } | `module` |  | The API to use when calling the action.  Defaults to the API set in the `ash` section. |
+| [`api`](#reactor-read-api){: #reactor-read-api } | `module` |  | The API to use when calling the action.  Defaults to the API set on the resource or in the `ash` section. |
 | [`async?`](#reactor-read-async?){: #reactor-read-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
 | [`authorize?`](#reactor-read-authorize?){: #reactor-read-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
 | [`description`](#reactor-read-description){: #reactor-read-description } | `String.t` |  | A description for the step |
@@ -1127,11 +1127,11 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`initial`](#reactor-update-initial){: #reactor-update-initial .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The record to update. |
-| [`api`](#reactor-update-api){: #reactor-update-api } | `module` |  | The API to use when calling the action.  Defaults to the API set in the `ash` section. |
+| [`api`](#reactor-update-api){: #reactor-update-api } | `module` |  | The API to use when calling the action.  Defaults to the API set on the resource or in the `ash` section. |
 | [`async?`](#reactor-update-async?){: #reactor-update-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
 | [`authorize?`](#reactor-update-authorize?){: #reactor-update-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
 | [`description`](#reactor-update-description){: #reactor-update-description } | `String.t` |  | A description for the step |
-| [`undo_action`](#reactor-update-undo_action){: #reactor-update-undo_action } | `atom` |  | The name of the action to call on the resource when the step is undone. |
+| [`undo_action`](#reactor-update-undo_action){: #reactor-update-undo_action } | `atom` |  | The name of the action to call on the resource when the step is to be undone. |
 | [`undo`](#reactor-update-undo){: #reactor-update-undo } | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
 
 

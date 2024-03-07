@@ -57,26 +57,50 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Create do
   def verify(create, _dsl_state) when create.undo == :never, do: :ok
 
   def verify(create, dsl_state) do
-    case Info.action(create.resource, create.undo_action) do
-      action when is_struct(action, Ash.Resource.Actions.Destroy) ->
-        :ok
+    with {:ok, action} <- get_action(dsl_state, create.resource, create.undo_action),
+         :ok <- verify_is_destroy_action(dsl_state, create.resource, action) do
+      verify_action_takes_changeset(dsl_state, create.resource, action)
+    end
+  end
 
+  defp get_action(dsl_state, resource, action_name) do
+    case Info.action(resource, action_name) do
       nil ->
         {:error,
          DslError.exception(
            module: Transformer.get_persisted(dsl_state, :module),
            path: [:create, :undo_action],
            message:
-             "No action found matching the name `#{create.undo_action}` on resource `#{inspect(create.resource)}`."
+             "No action found matching the name `#{action_name}` on resource `#{inspect(resource)}`."
          )}
 
-      _action ->
-        {:error,
-         DslError.exception(
-           module: Transformer.get_persisted(dsl_state, :module),
-           path: [:create, :undo_action],
-           message: "The undo action for a create step should be a destroy."
-         )}
+      action when is_struct(action) ->
+        {:ok, action}
     end
+  end
+
+  defp verify_is_destroy_action(_dsl_state, _resource, action)
+       when is_struct(action, Ash.Resource.Actions.Destroy),
+       do: :ok
+
+  defp verify_is_destroy_action(dsl_state, _resource, _action) do
+    {:error,
+     DslError.exception(
+       module: Transformer.get_persisted(dsl_state, :module),
+       path: [:create, :undo_action],
+       message: "The undo action for a create step should also be a destroy."
+     )}
+  end
+
+  defp verify_action_takes_changeset(_dsl_state, _resource, %{arguments: [%{name: :changeset}]}),
+    do: :ok
+
+  defp verify_action_takes_changeset(dsl_state, _resource, _action) do
+    {:error,
+     DslError.exception(
+       module: Transformer.get_persisted(dsl_state, :module),
+       path: [:create, :undo_action],
+       message: "The undo action for an create step should take a single `changeset` argument."
+     )}
   end
 end
