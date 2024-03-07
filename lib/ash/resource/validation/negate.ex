@@ -60,8 +60,8 @@ defmodule Ash.Resource.Validation.Negate do
     {validation, validation_opts} = opts[:validation]
 
     {message, vars} =
-      if context[:message] do
-        {context[:message], []}
+      if context.message do
+        {context.message, []}
       else
         case validation.describe(validation_opts) do
           message when is_binary(message) ->

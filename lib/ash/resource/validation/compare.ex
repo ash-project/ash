@@ -88,7 +88,7 @@ defmodule Ash.Resource.Validation.Compare do
                error(^InvalidAttribute, %{
                  field: ^opts[:attribute],
                  value: ^atomic_ref(opts[:attribute]),
-                 message: ^(context[:message] || "must be greater than %{greater_than}"),
+                 message: ^(context.message || "must be greater than %{greater_than}"),
                  vars: %{field: ^opts[:attribute], greater_than: ^atomic_value(value)}
                })
              )}
@@ -100,7 +100,7 @@ defmodule Ash.Resource.Validation.Compare do
                error(^InvalidAttribute, %{
                  field: ^opts[:attribute],
                  value: ^atomic_ref(opts[:attribute]),
-                 message: ^(context[:message] || "must be less than %{less_than}"),
+                 message: ^(context.message || "must be less than %{less_than}"),
                  vars: %{field: ^opts[:attribute], less_than: ^atomic_value(value)}
                })
              )}
@@ -113,7 +113,7 @@ defmodule Ash.Resource.Validation.Compare do
                  field: ^opts[:attribute],
                  value: ^atomic_ref(opts[:attribute]),
                  message:
-                   ^(context[:message] ||
+                   ^(context.message ||
                        "must be greater than or equal to %{greater_than_or_equal_to}"),
                  vars: %{field: ^opts[:attribute], greater_than_or_equal_to: ^atomic_value(value)}
                })
@@ -127,7 +127,7 @@ defmodule Ash.Resource.Validation.Compare do
                  field: ^opts[:attribute],
                  value: ^atomic_ref(opts[:attribute]),
                  message:
-                   ^(context[:message] || "must be less than or equal to %{less_than_or_equal_to}"),
+                   ^(context.message || "must be less than or equal to %{less_than_or_equal_to}"),
                  vars: %{field: ^opts[:attribute], less_than_or_equal_to: ^atomic_value(value)}
                })
              )}

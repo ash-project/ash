@@ -51,7 +51,7 @@ defmodule Ash.Resource.Validation.AttributeIn do
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
          value: ^atomic_ref(opts[:attribute]),
-         message: ^(context[:message] || "must be in %{list}"),
+         message: ^(context.message || "must be in %{list}"),
          vars: %{field: ^opts[:attribute], list: ^opts[:list]}
        })
      )}
