@@ -65,7 +65,7 @@ defmodule Ash.Resource.Validation.StringLength do
              %{
                field: ^opts[:attribute],
                value: ^atomic_ref(opts[:attribute]),
-               message: ^(context[:message] || "must have length of at least %{min}"),
+               message: ^(context.message || "must have length of at least %{min}"),
                vars: %{min: ^min}
              }
            )
@@ -79,7 +79,7 @@ defmodule Ash.Resource.Validation.StringLength do
              %{
                field: ^opts[:attribute],
                value: ^atomic_ref(opts[:attribute]),
-               message: ^(context[:message] || "must have length of at most %{max}"),
+               message: ^(context.message || "must have length of at most %{max}"),
                vars: %{max: ^max}
              }
            )
@@ -94,7 +94,7 @@ defmodule Ash.Resource.Validation.StringLength do
              %{
                field: ^opts[:attribute],
                value: ^atomic_ref(opts[:attribute]),
-               message: ^(context[:message] || "must have length of at most %{exact}"),
+               message: ^(context.message || "must have length of at most %{exact}"),
                vars: %{exact: ^exact}
              }
            )

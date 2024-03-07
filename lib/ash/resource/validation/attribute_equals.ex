@@ -26,7 +26,7 @@ defmodule Ash.Resource.Validation.AttributeEquals do
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
          value: ^atomic_ref(opts[:attribute]),
-         message: ^(context[:message] || "must equal %{value}"),
+         message: ^(context.message || "must equal %{value}"),
          vars: %{field: ^opts[:attribute], value: ^opts[:value]}
        })
      )}

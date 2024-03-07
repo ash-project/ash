@@ -61,7 +61,7 @@ defmodule Ash.Resource.Validation.Changing do
        error(^InvalidAttribute, %{
          field: ^opts[:field],
          value: ^atomic_ref(opts[:attribute]),
-         message: ^(context[:message] || "must be changing"),
+         message: ^(context.message || "must be changing"),
          vars: %{field: ^opts[:field]}
        })
      )}

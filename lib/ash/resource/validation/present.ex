@@ -96,8 +96,8 @@ defmodule Ash.Resource.Validation.Present do
 
         message =
           cond do
-            context[:message] ->
-              context[:message]
+            context.message ->
+              context.message
 
             exactly == 0 ->
               "must be absent"
