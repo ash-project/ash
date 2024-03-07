@@ -56,16 +56,20 @@ defmodule Ash.Resource.Validation.Negate do
   end
 
   @impl true
-  def atomic(changeset, opts) do
+  def atomic(changeset, opts, context) do
     {validation, validation_opts} = opts[:validation]
 
     {message, vars} =
-      case validation.describe(validation_opts) do
-        message when is_binary(message) ->
-          {message, []}
+      if context[:message] do
+        {context[:message], []}
+      else
+        case validation.describe(validation_opts) do
+          message when is_binary(message) ->
+            {message, []}
 
-        options ->
-          {"must not pass validation: #{options[:message]}", options[:vars] || []}
+          options ->
+            {"must not pass validation: #{options[:message]}", options[:vars] || []}
+        end
       end
 
     case validation.atomic(changeset, validation_opts) do

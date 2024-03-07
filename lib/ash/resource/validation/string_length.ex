@@ -23,7 +23,7 @@ defmodule Ash.Resource.Validation.StringLength do
   end
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, _context) do
     case Ash.Changeset.get_argument_or_attribute(changeset, opts[:attribute]) do
       nil ->
         :ok
@@ -53,7 +53,7 @@ defmodule Ash.Resource.Validation.StringLength do
   end
 
   @impl true
-  def atomic(_changeset, opts) do
+  def atomic(_changeset, opts, context) do
     opts
     |> Keyword.delete(:attribute)
     |> Enum.map(fn
@@ -65,7 +65,7 @@ defmodule Ash.Resource.Validation.StringLength do
              %{
                field: ^opts[:attribute],
                value: ^atomic_ref(opts[:attribute]),
-               message: "must have length of at least %{min}",
+               message: ^(context[:message] || "must have length of at least %{min}"),
                vars: %{min: ^min}
              }
            )
@@ -79,7 +79,7 @@ defmodule Ash.Resource.Validation.StringLength do
              %{
                field: ^opts[:attribute],
                value: ^atomic_ref(opts[:attribute]),
-               message: "must have length of at most %{max}",
+               message: ^(context[:message] || "must have length of at most %{max}"),
                vars: %{max: ^max}
              }
            )
@@ -94,7 +94,7 @@ defmodule Ash.Resource.Validation.StringLength do
              %{
                field: ^opts[:attribute],
                value: ^atomic_ref(opts[:attribute]),
-               message: "must have length of at most %{exact}",
+               message: ^(context[:message] || "must have length of at most %{exact}"),
                vars: %{exact: ^exact}
              }
            )

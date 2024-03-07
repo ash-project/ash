@@ -1481,28 +1481,16 @@ defmodule Ash.Query do
         load_relationship(query, field)
 
       aggregate = Ash.Resource.Info.aggregate(query.resource, field) ->
-        related = Ash.Resource.Info.related(query.resource, aggregate.relationship_path)
-
-        read_action =
-          aggregate.read_action || Ash.Resource.Info.primary_action!(related, :read).name
-
         with {:can?, true} <-
                {:can?,
                 Ash.DataLayer.data_layer_can?(query.resource, {:aggregate, aggregate.kind})},
-             %{valid?: true} = aggregate_query <-
-               for_read(related, read_action),
-             %{valid?: true} = aggregate_query <-
-               Ash.Query.Aggregate.build_query(aggregate_query,
-                 filter: aggregate.filter,
-                 sort: aggregate.sort
-               ),
              {:ok, query_aggregate} <-
                Aggregate.new(
                  query.resource,
                  aggregate.name,
                  aggregate.kind,
                  path: aggregate.relationship_path,
-                 query: aggregate_query,
+                 query: [filter: aggregate.filter, sort: aggregate.sort],
                  field: aggregate.field,
                  default: aggregate.default,
                  filterable?: aggregate.filterable?,

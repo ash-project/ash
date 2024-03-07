@@ -154,7 +154,8 @@ defmodule Ash.Actions.Helpers do
       end
 
     if api do
-      if !internal?(query_or_changeset) && !Keyword.has_key?(opts, :actor) &&
+      if !skip_requiring_actor?(query_or_changeset) && !internal?(query_or_changeset) &&
+           !Keyword.has_key?(opts, :actor) &&
            Ash.Api.Info.require_actor?(api) do
         raise Ash.Error.to_error_class(Ash.Error.Forbidden.ApiRequiresActor.exception(api: api))
       end
@@ -169,6 +170,9 @@ defmodule Ash.Actions.Helpers do
 
   defp internal?(%{context: %{private: %{internal?: true}}}), do: true
   defp internal?(_), do: false
+
+  defp skip_requiring_actor?(%{context: %{private: %{require_actor?: false}}}), do: true
+  defp skip_requiring_actor?(_), do: false
 
   defp add_authorize?(opts, query_or_changeset, api) do
     opts =

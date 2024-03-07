@@ -34,7 +34,7 @@ defmodule Ash.Resource.Validation.OneOf do
   end
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, _context) do
     case Ash.Changeset.fetch_argument_or_change(changeset, opts[:attribute]) do
       {:ok, nil} ->
         :ok
@@ -55,7 +55,7 @@ defmodule Ash.Resource.Validation.OneOf do
   end
 
   @impl true
-  def atomic(changeset, opts) do
+  def atomic(changeset, opts, context) do
     value =
       case Ash.Changeset.fetch_argument_or_change(changeset, opts[:attribute]) do
         {:ok, value} ->
@@ -72,7 +72,7 @@ defmodule Ash.Resource.Validation.OneOf do
          %{
            field: ^opts[:attribute],
            value: ^value,
-           message: "expected one of %{values}",
+           message: ^(context[:message] || "expected one of %{values}"),
            vars: %{values: Enum.map_join(opts[:values], ", ", &to_string/1)}
          }
        )

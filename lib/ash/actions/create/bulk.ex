@@ -1315,7 +1315,11 @@ defmodule Ash.Actions.Create.Bulk do
 
                 {:ok, opts} = module.init(opts)
 
-                case module.validate(changeset, opts, context) do
+                case module.validate(
+                       changeset,
+                       opts,
+                       Map.put(context, :message, validation.message)
+                     ) do
                   :ok ->
                     changeset
 

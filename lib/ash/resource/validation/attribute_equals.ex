@@ -20,13 +20,13 @@ defmodule Ash.Resource.Validation.AttributeEquals do
   import Ash.Filter.TemplateHelpers
 
   @impl true
-  def atomic(_changeset, opts) do
+  def atomic(_changeset, opts, context) do
     {:atomic, [opts[:attribute]], Ash.Expr.expr(^atomic_ref(opts[:attribute]) != ^opts[:value]),
      Ash.Expr.expr(
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
          value: ^atomic_ref(opts[:attribute]),
-         message: "must equal %{value}",
+         message: ^(context[:message] || "must equal %{value}"),
          vars: %{field: ^opts[:attribute], value: ^opts[:value]}
        })
      )}

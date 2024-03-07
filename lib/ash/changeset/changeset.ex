@@ -588,8 +588,20 @@ defmodule Ash.Changeset do
     end)
   end
 
-  defp run_atomic_validation(changeset, %{validation: {module, validation_opts}, where: where}) do
-    case List.wrap(module.atomic(changeset, validation_opts)) do
+  defp run_atomic_validation(changeset, %{
+         validation: {module, validation_opts},
+         where: where,
+         message: message
+       }) do
+    context = %{
+      actor: changeset.context[:private][:actor],
+      tenant: changeset.tenant,
+      authorize?: changeset.context[:private][:authorize?],
+      tracer: changeset.context[:private][:tracer],
+      message: message
+    }
+
+    case List.wrap(module.atomic(changeset, validation_opts, context)) do
       [{:atomic, _, _, _} | _] = atomics ->
         Enum.reduce_while(atomics, changeset, fn
           {:atomic, _fields, condition_expr, error_expr}, changeset ->
@@ -632,7 +644,12 @@ defmodule Ash.Changeset do
         changeset
 
       [{:error, error}] ->
-        Ash.Changeset.add_error(changeset, error)
+        if message do
+          error = override_validation_message(error, message)
+          Ash.Changeset.add_error(changeset, error)
+        else
+          Ash.Changeset.add_error(changeset, error)
+        end
 
       [{:not_atomic, error}] ->
         {:not_atomic, error}
@@ -742,9 +759,17 @@ defmodule Ash.Changeset do
   end
 
   defp atomic_condition(where, changeset) do
+    context = %{
+      actor: changeset.context[:private][:actor],
+      tenant: changeset.tenant,
+      authorize?: changeset.context[:private][:authorize?] || false,
+      tracer: changeset.context[:private][:tracer],
+      message: nil
+    }
+
     Enum.reduce_while(where, {:atomic, true}, fn {module, validation_opts},
                                                  {:atomic, condition} ->
-      case module.atomic(changeset, validation_opts) do
+      case module.atomic(changeset, validation_opts, context) do
         {:atomic, _, expr, _as_error} ->
           new_expr =
             if condition == true do
@@ -2141,7 +2166,12 @@ defmodule Ash.Changeset do
             )
 
           with {:ok, opts} <- validation.module.init(opts),
-               :ok <- validation.module.validate(changeset, opts, context) do
+               :ok <-
+                 validation.module.validate(
+                   changeset,
+                   opts,
+                   Map.put(context, :message, validation.message)
+                 ) do
             changeset
           else
             :ok ->

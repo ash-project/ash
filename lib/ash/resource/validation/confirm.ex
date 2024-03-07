@@ -29,7 +29,7 @@ defmodule Ash.Resource.Validation.Confirm do
   end
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, _context) do
     confirmation_value =
       Changeset.get_argument(changeset, opts[:confirmation]) ||
         Changeset.get_attribute(changeset, opts[:confirmation])
@@ -49,7 +49,7 @@ defmodule Ash.Resource.Validation.Confirm do
   end
 
   @impl true
-  def atomic(changeset, opts) do
+  def atomic(changeset, opts, context) do
     confirmation =
       case Changeset.fetch_argument_or_change(changeset, opts[:confirmation]) do
         {:ok, value} ->
@@ -73,7 +73,7 @@ defmodule Ash.Resource.Validation.Confirm do
        error(^InvalidAttribute, %{
          field: ^opts[:confirmation],
          value: ^value,
-         message: "confirmation did not match value"
+         message: ^(context[:message] || "confirmation did not match value")
        })
      )}
   end

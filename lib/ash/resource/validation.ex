@@ -46,6 +46,7 @@ defmodule Ash.Resource.Validation do
           optional(:tenant) => term(),
           optional(:authorize?) => boolean() | nil,
           optional(:tracer) => Ash.Tracer.t() | [Ash.Tracer.t()] | nil,
+          optional(:message) => String.t(),
           optional(any) => any
         }
 
@@ -55,7 +56,7 @@ defmodule Ash.Resource.Validation do
               :ok | {:error, term}
   @callback describe(opts :: Keyword.t()) ::
               String.t() | [{:message, String.t()} | {:vars, Keyword.t()}]
-  @callback atomic(changeset :: Ash.Changeset.t(), opts :: Keyword.t()) ::
+  @callback atomic(changeset :: Ash.Changeset.t(), opts :: Keyword.t(), context :: context()) ::
               :ok
               | {:atomic, involved_fields :: list(atom) | :*, condition_expr :: Ash.Expr.t(),
                  error_expr :: Ash.Expr.t()}
@@ -69,7 +70,7 @@ defmodule Ash.Resource.Validation do
   @callback atomic?() :: boolean
   @callback has_validate?() :: boolean
 
-  @optional_callbacks describe: 1, validate: 2, validate: 3, atomic: 2
+  @optional_callbacks describe: 1, validate: 2, validate: 3, atomic: 3
 
   @validation_type {:spark_function_behaviour, Ash.Resource.Validation,
                     Ash.Resource.Validation.Builtins, {Ash.Resource.Validation.Function, 1}}
@@ -176,7 +177,7 @@ defmodule Ash.Resource.Validation do
         end
 
         @impl true
-        def atomic(_changeset, _opts),
+        def atomic(_changeset, _opts, _context),
           do: {:not_atomic, "#{inspect(__MODULE__)} does not implement `atomic/2`"}
       end
     end

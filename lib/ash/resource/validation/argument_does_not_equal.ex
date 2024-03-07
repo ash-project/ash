@@ -30,7 +30,7 @@ defmodule Ash.Resource.Validation.ArgumentDoesNotEqual do
   end
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, _context) do
     value = Ash.Changeset.get_argument(changeset, opts[:argument])
 
     if value == opts[:value] do
@@ -44,8 +44,8 @@ defmodule Ash.Resource.Validation.ArgumentDoesNotEqual do
   end
 
   @impl true
-  def atomic(changeset, opts) do
-    validate(changeset, opts)
+  def atomic(changeset, opts, context) do
+    validate(changeset, opts, context)
   end
 
   @impl true

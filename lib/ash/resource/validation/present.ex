@@ -23,7 +23,7 @@ defmodule Ash.Resource.Validation.Present do
   end
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, _context) do
     {present, count} =
       Enum.reduce(opts[:attributes], {0, 0}, fn attribute, {present, count} ->
         if Ash.Changeset.present?(changeset, attribute) do
@@ -74,7 +74,7 @@ defmodule Ash.Resource.Validation.Present do
   end
 
   @impl true
-  def atomic(changeset, opts) do
+  def atomic(changeset, opts, context) do
     values =
       Enum.map(opts[:attributes], fn attr ->
         case Ash.Changeset.fetch_argument(changeset, attr) do
@@ -96,9 +96,17 @@ defmodule Ash.Resource.Validation.Present do
 
         message =
           cond do
-            exactly == 0 -> "must be absent"
-            attribute_count == 1 -> "must be present"
-            true -> "exactly %{exactly} of %{keys} must be present"
+            context[:message] ->
+              context[:message]
+
+            exactly == 0 ->
+              "must be absent"
+
+            attribute_count == 1 ->
+              "must be present"
+
+            true ->
+              "exactly %{exactly} of %{keys} must be present"
           end
 
         if attribute_count == 1 do

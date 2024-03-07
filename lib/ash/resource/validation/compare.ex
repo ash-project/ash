@@ -70,7 +70,7 @@ defmodule Ash.Resource.Validation.Compare do
   end
 
   @impl true
-  def atomic(changeset, opts) do
+  def atomic(changeset, opts, context) do
     case Ash.Changeset.fetch_argument(changeset, opts[:attribute]) do
       :error ->
         opts
@@ -82,46 +82,53 @@ defmodule Ash.Resource.Validation.Compare do
         ])
         |> Enum.map(fn
           {:greater_than, value} ->
-            {:atomic, [opts[:attribute]], Ash.Expr.expr(^atomic_ref(opts[:attribute]) <= ^value),
+            {:atomic, [opts[:attribute]],
+             Ash.Expr.expr(^atomic_ref(opts[:attribute]) <= ^atomic_value(value)),
              Ash.Expr.expr(
                error(^InvalidAttribute, %{
                  field: ^opts[:attribute],
                  value: ^atomic_ref(opts[:attribute]),
-                 message: "must be greater than %{greater_than}",
-                 vars: %{field: ^opts[:attribute], greater_than: ^value}
+                 message: ^(context[:message] || "must be greater than %{greater_than}"),
+                 vars: %{field: ^opts[:attribute], greater_than: ^atomic_value(value)}
                })
              )}
 
           {:less_than, value} ->
-            {:atomic, [opts[:attribute]], Ash.Expr.expr(^atomic_ref(opts[:attribute]) >= ^value),
+            {:atomic, [opts[:attribute]],
+             Ash.Expr.expr(^atomic_ref(opts[:attribute]) >= ^atomic_value(value)),
              Ash.Expr.expr(
                error(^InvalidAttribute, %{
                  field: ^opts[:attribute],
                  value: ^atomic_ref(opts[:attribute]),
-                 message: "must be less than %{less_than}",
-                 vars: %{field: ^opts[:attribute], less_than: ^value}
+                 message: ^(context[:message] || "must be less than %{less_than}"),
+                 vars: %{field: ^opts[:attribute], less_than: ^atomic_value(value)}
                })
              )}
 
           {:greater_than_or_equal_to, value} ->
-            {:atomic, [opts[:attribute]], Ash.Expr.expr(^atomic_ref(opts[:attribute]) < ^value),
+            {:atomic, [opts[:attribute]],
+             Ash.Expr.expr(^atomic_ref(opts[:attribute]) < ^atomic_value(value)),
              Ash.Expr.expr(
                error(^InvalidAttribute, %{
                  field: ^opts[:attribute],
                  value: ^atomic_ref(opts[:attribute]),
-                 message: "must be greater than or equal to %{greater_than_or_equal_to}",
-                 vars: %{field: ^opts[:attribute], greater_than_or_equal_to: ^value}
+                 message:
+                   ^(context[:message] ||
+                       "must be greater than or equal to %{greater_than_or_equal_to}"),
+                 vars: %{field: ^opts[:attribute], greater_than_or_equal_to: ^atomic_value(value)}
                })
              )}
 
           {:less_than_or_equal_to, value} ->
-            {:atomic, [opts[:attribute]], Ash.Expr.expr(^atomic_ref(opts[:attribute]) > ^value),
+            {:atomic, [opts[:attribute]],
+             Ash.Expr.expr(^atomic_ref(opts[:attribute]) > ^atomic_value(value)),
              Ash.Expr.expr(
                error(^InvalidAttribute, %{
                  field: ^opts[:attribute],
                  value: ^atomic_ref(opts[:attribute]),
-                 message: "must be less than or equal to %{less_than_or_equal_to}",
-                 vars: %{field: ^opts[:attribute], less_than_or_equal_to: ^value}
+                 message:
+                   ^(context[:message] || "must be less than or equal to %{less_than_or_equal_to}"),
+                 vars: %{field: ^opts[:attribute], less_than_or_equal_to: ^atomic_value(value)}
                })
              )}
         end)
@@ -157,6 +164,16 @@ defmodule Ash.Resource.Validation.Compare do
     do: Ash.Changeset.get_argument_or_attribute(changeset, attribute)
 
   defp attribute_value(_, attribute), do: attribute
+
+  defp atomic_value(attribute) when is_function(attribute, 0) do
+    attribute.()
+  end
+
+  defp atomic_value(attribute) when is_atom(attribute) do
+    atomic_ref(attribute)
+  end
+
+  defp atomic_value(attribute), do: attribute
 
   defp invalid_attribute_error(opts, attribute_value) do
     {:error,

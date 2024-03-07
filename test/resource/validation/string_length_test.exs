@@ -18,7 +18,7 @@ defmodule Ash.Test.Resource.Validation.StringLengthTest do
       {:ok, opts} = StringLength.init(attribute: :body, min: 3)
       changeset = Post |> Ash.Changeset.new(%{body: "yes"})
 
-      assert :ok = StringLength.validate(changeset, opts)
+      assert :ok = StringLength.validate(changeset, opts, %{})
     end
 
     test "validate failure" do
@@ -34,7 +34,7 @@ defmodule Ash.Test.Resource.Validation.StringLengthTest do
       {:ok, opts} = StringLength.init(attribute: :body, max: 3)
       changeset = Post |> Ash.Changeset.new(%{body: "yes"})
 
-      assert :ok = StringLength.validate(changeset, opts)
+      assert :ok = StringLength.validate(changeset, opts, %{})
     end
 
     test "validate failure" do
@@ -50,7 +50,7 @@ defmodule Ash.Test.Resource.Validation.StringLengthTest do
       {:ok, opts} = StringLength.init(attribute: :body, exact: 3)
       changeset = Post |> Ash.Changeset.new(%{body: "yes"})
 
-      assert :ok = StringLength.validate(changeset, opts)
+      assert :ok = StringLength.validate(changeset, opts, %{})
     end
 
     test "validate failure" do
@@ -69,7 +69,7 @@ defmodule Ash.Test.Resource.Validation.StringLengthTest do
       {:ok, opts} = StringLength.init(attribute: :body, min: 2, max: 4)
       changeset = Post |> Ash.Changeset.new(%{body: "yes"})
 
-      assert :ok = StringLength.validate(changeset, opts)
+      assert :ok = StringLength.validate(changeset, opts, %{})
     end
 
     test "validate failure" do
@@ -84,7 +84,7 @@ defmodule Ash.Test.Resource.Validation.StringLengthTest do
   end
 
   defp assert_error(changeset, opts, expected_message) do
-    {:error, %{message: message, vars: vars}} = StringLength.validate(changeset, opts)
+    {:error, %{message: message, vars: vars}} = StringLength.validate(changeset, opts, %{})
     assert expected_message == translate_message(message, vars)
   end
 

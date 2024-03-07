@@ -3,7 +3,7 @@ defmodule Ash.Resource.Validation.ActionIs do
   use Ash.Resource.Validation
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, _context) do
     if changeset.action.name == opts[:action] do
       :ok
     else
@@ -16,8 +16,8 @@ defmodule Ash.Resource.Validation.ActionIs do
   end
 
   @impl true
-  def atomic(changeset, opts) do
-    validate(changeset, opts)
+  def atomic(changeset, opts, context) do
+    validate(changeset, opts, context)
   end
 
   @impl true

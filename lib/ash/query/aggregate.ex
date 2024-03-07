@@ -149,7 +149,9 @@ defmodule Ash.Query.Aggregate do
 
       query =
         if query.__validated_for_action__ != read_action do
-          Ash.Query.for_read(query, read_action, %{})
+          query
+          |> Ash.Query.set_context(%{private: %{require_actor?: false}})
+          |> Ash.Query.for_read(read_action, %{})
         else
           query
         end

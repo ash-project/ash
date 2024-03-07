@@ -33,7 +33,7 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
   end
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, _context) do
     value = Ash.Changeset.get_attribute(changeset, opts[:attribute])
 
     if value == opts[:value] do
@@ -47,13 +47,13 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
   end
 
   @impl true
-  def atomic(_changeset, opts) do
+  def atomic(_changeset, opts, context) do
     {:atomic, [opts[:attribute]], Ash.Expr.expr(^atomic_ref(opts[:attribute]) == ^opts[:value]),
      Ash.Expr.expr(
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
          value: ^atomic_ref(opts[:attribute]),
-         message: "must not equal %{value}",
+         message: ^(context[:message] || "must not equal %{value}"),
          vars: %{field: ^opts[:attribute], value: ^opts[:value]}
        })
      )}

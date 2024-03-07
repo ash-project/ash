@@ -29,7 +29,7 @@ defmodule Ash.Resource.Validation.ArgumentIn do
   end
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, _context) do
     value = Ash.Changeset.get_argument(changeset, opts[:argument])
 
     if value in opts[:list] do
@@ -43,8 +43,8 @@ defmodule Ash.Resource.Validation.ArgumentIn do
   end
 
   @impl true
-  def atomic(changeset, opts) do
-    validate(changeset, opts)
+  def atomic(changeset, opts, context) do
+    validate(changeset, opts, context)
   end
 
   @impl true
