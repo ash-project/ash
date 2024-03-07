@@ -7,10 +7,10 @@ defmodule Ash.Reactor.Dsl.Destroy do
             action_step?: true,
             action: nil,
             actor: [],
-            domain: nil,
             async?: true,
             authorize?: nil,
             description: nil,
+            domain: nil,
             initial: nil,
             inputs: [],
             name: nil,
@@ -28,10 +28,10 @@ defmodule Ash.Reactor.Dsl.Destroy do
           action_step?: true,
           action: atom,
           actor: [Ash.Reactor.Dsl.Actor.t()],
-          domain: Ash.Domain.t(),
           async?: boolean,
           authorize?: boolean | nil,
           description: String.t() | nil,
+          domain: Ash.Domain.t(),
           initial: Reactor.Template.t(),
           inputs: [Ash.Reactor.Dsl.Inputs.t()],
           name: atom,
@@ -85,7 +85,7 @@ defmodule Ash.Reactor.Dsl.Destroy do
             doc: "Whether or not the step should return the destroyed record upon completion."
           ]
         ]
-        |> Spark.OptionsHelpers.merge_schemas(
+        |> Spark.Options.merge(
           Ash.Reactor.Dsl.Action.__shared_action_option_schema__(),
           "Shared action options"
         )
