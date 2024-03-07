@@ -73,7 +73,7 @@ defmodule Ash.Resource.Validation.Confirm do
        error(^InvalidAttribute, %{
          field: ^opts[:confirmation],
          value: ^value,
-         message: ^(context[:message] || "confirmation did not match value")
+         message: ^(context.message || "confirmation did not match value")
        })
      )}
   end

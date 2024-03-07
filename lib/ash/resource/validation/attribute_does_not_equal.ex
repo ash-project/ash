@@ -53,7 +53,7 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
          value: ^atomic_ref(opts[:attribute]),
-         message: ^(context[:message] || "must not equal %{value}"),
+         message: ^(context.message || "must not equal %{value}"),
          vars: %{field: ^opts[:attribute], value: ^opts[:value]}
        })
      )}
