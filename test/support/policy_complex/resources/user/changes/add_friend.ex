@@ -8,7 +8,7 @@ defmodule Ash.Test.Support.PolicyComplex.User.Changes.AddFriend do
 
       Ash.Test.Support.PolicyComplex.FriendLink
       |> Ash.Changeset.for_create(:create, %{source_id: result.id, destination_id: destination_id})
-      |> changeset.domain.create!(Ash.context_to_opts(context))
+      |> changeset.domain.create!(Ash.Context.to_opts(context))
 
       {:ok, result}
     end)

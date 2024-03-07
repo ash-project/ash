@@ -188,7 +188,7 @@ defmodule Ash.EmbeddableType do
           case constraints[:__source__] do
             %Ash.Changeset{context: context} = source ->
               {Map.put(context, :__source__, source),
-               Ash.context_to_opts(context[:private] || %{})}
+               Ash.Context.to_opts(context[:private] || %{})}
 
             _ ->
               {%{}, []}
@@ -465,7 +465,7 @@ defmodule Ash.EmbeddableType do
       end
 
       def load(record, load, _constraints, %{domain: domain} = context) do
-        opts = Ash.context_to_opts(context)
+        opts = Ash.Context.to_opts(context)
 
         attribute_loads = __MODULE__ |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
 

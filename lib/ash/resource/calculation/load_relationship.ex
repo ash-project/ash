@@ -28,13 +28,13 @@ defmodule Ash.Resource.Calculation.LoadRelationship do
         |> Map.get(:destination)
         |> Ash.Query.new()
 
-    query = Ash.Query.to_query(query)
+    query = Ash.Query.new(query)
 
     if !opts[:domain] do
       raise "Must provide the `domain` option to load #{inspect(__MODULE__)}"
     end
 
-    load_opts = Ash.context_to_opts(context, opts[:opts] || [])
+    load_opts = Ash.Context.to_opts(context, opts[:opts] || [])
 
     opts[:domain].load(results, [{relationship.name, query}], load_opts)
     |> case do

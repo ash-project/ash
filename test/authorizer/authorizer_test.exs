@@ -107,10 +107,8 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       end
 
       assert_raise Ash.Error.Forbidden, fn ->
-        Ash.set_actor(nil)
-
         Post
-        |> Ash.Changeset.for_create(:create, %{title: "test"})
+        |> Ash.Changeset.for_create(:create, %{title: "test"}, actor: nil)
         |> Domain.create!()
       end
     end

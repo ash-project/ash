@@ -45,6 +45,10 @@ The function signature of `Ash.Query.Calculation.new` has been changed.  We use 
 
 This module has been renamed to `Ash.Resource.Calculation`. You will need to rename your references to it.
 
+#### Ash.Query
+
+Ash.Query.to_query has been removed. Use `Ash.Query.new` instead.
+
 #### Ash.Changeset
 
 `Ash.Changeset.new/2` has been removed. `Ash.Changeset.new/1` is still available for creating a new changeset, but attributes and arguments should, with few exceptions, be passed to the relevant `Ash.Changeset.for_<action_type>` functions, *not* to `Ash.Changeset.new/2`. Removing the second argument helps clarify the purpose of `Ash.Changeset.new/1`.
@@ -107,7 +111,7 @@ acts as documentation.
 
 #### What you'll need to change
 
-If you are using something like `Keyword.new(context)` to generate options to pass into an action, change that to `Ash.context_to_opts(context)`.
+If you are using something like `Keyword.new(context)` to generate options to pass into an action, change that to `Ash.Context.to_opts(context)`.
 
 ### Calculation arguments are now in `context.arguments`
 

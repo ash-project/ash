@@ -1,5 +1,105 @@
 defmodule Ash.Actions.Read.Calculations do
   @moduledoc false
+
+  def calculate(resource_or_record, calculation, opts) do
+    {resource, record} =
+      case resource_or_record do
+        %resource{} = record -> {resource, record}
+        resource -> {resource, opts[:record]}
+      end
+
+    with {:calc,
+          %{
+            arguments: calc_arguments,
+            calculation: {module, calc_opts},
+            type: type,
+            constraints: constraints
+          }} <- {:calc, Ash.Resource.Info.calculation(resource, calculation)},
+         record <- struct(record || resource, opts[:refs] || %{}) do
+      args = opts[:args] || %{}
+
+      arguments =
+        Enum.reduce(calc_arguments, %{}, fn arg, arguments ->
+          if Map.has_key?(args, arg.name) do
+            Map.put(arguments, arg.name, args[arg.name])
+          else
+            if is_nil(arg.default) do
+              arguments
+            else
+              Map.put(arguments, arg.name, arg.default)
+            end
+          end
+        end)
+
+      calc_context =
+        %Ash.Resource.Calculation.Context{
+          actor: opts[:actor],
+          domain: opts[:domain],
+          tenant: opts[:tenant],
+          authorize?: opts[:authorize?],
+          tracer: opts[:tracer],
+          resource: opts[:resource],
+          arguments: arguments,
+          type: type,
+          constraints: constraints
+        }
+
+      if module.has_expression?() do
+        expr =
+          case module.expression(calc_opts, calc_context) do
+            {:ok, result} -> {:ok, result}
+            {:error, error} -> {:error, error}
+            result -> {:ok, result}
+          end
+
+        with {:ok, expr} <- expr do
+          case Ash.Expr.eval(expr, record: record, resource: resource) do
+            {:ok, result} ->
+              {:ok, result}
+
+            :unknown ->
+              case module.calculate([record], calc_opts, calc_context) do
+                [result] ->
+                  result
+
+                {:ok, [result]} ->
+                  {:ok, result}
+
+                {:ok, _} ->
+                  {:error, "Invalid calculation return"}
+
+                {:error, error} ->
+                  {:error, error}
+              end
+
+            {:error, error} ->
+              {:error, error}
+          end
+        end
+      else
+        case module.calculate([record], calc_opts, calc_context) do
+          [result] ->
+            {:ok, result}
+
+          {:ok, [result]} ->
+            {:ok, result}
+
+          {:ok, _} ->
+            {:error, "Invalid calculation return"}
+
+          {:error, error} ->
+            {:error, error}
+        end
+      end
+    else
+      {:calc, nil} ->
+        {:error, "No such calculation"}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
   def run([], _, _, _calculations_in_query), do: {:ok, []}
 
   def run(records, ash_query, calculations_at_runtime, calculations_in_query) do
@@ -35,7 +135,7 @@ defmodule Ash.Actions.Read.Calculations do
       |> Enum.map(fn calculation ->
         Ash.Actions.Read.AsyncLimiter.async_or_inline(
           ash_query,
-          Ash.context_to_opts(calculation.context),
+          Ash.Context.to_opts(calculation.context),
           fn ->
             {calculation.name, calculation, run_calculation(calculation, ash_query, records)}
           end

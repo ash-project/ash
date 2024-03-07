@@ -33,7 +33,7 @@ defmodule Ash.DataLayer.Simple do
   Sets the data for a query against a data-layer-less resource
   """
   def set_data(query, data) do
-    query = Ash.Query.to_query(query)
+    query = Ash.Query.new(query)
     Ash.Query.set_context(query, %{data_layer: %{data: %{query.resource => data}}})
   end
 

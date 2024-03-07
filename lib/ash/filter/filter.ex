@@ -1782,7 +1782,7 @@ defmodule Ash.Filter do
       }
 
       relationship.destination
-      |> Ash.Query.new(domain)
+      |> Ash.Query.new(domain: domain)
       |> Ash.Query.do_filter(filter)
       |> filter_related_in(
         relationship,
@@ -1797,7 +1797,7 @@ defmodule Ash.Filter do
       }
 
       relationship.destination
-      |> Ash.Query.new(ShadowDomain)
+      |> Ash.Query.new(domain: ShadowDomain)
       |> Ash.Query.do_filter(filter)
       |> Ash.Query.do_filter(relationship.filter, parent_stack: [relationship.source])
       |> Ash.Query.sort(relationship.sort, prepend?: true)
@@ -1806,7 +1806,7 @@ defmodule Ash.Filter do
       |> case do
         {:ok, results} ->
           relationship.through
-          |> Ash.Query.new(domain)
+          |> Ash.Query.new(domain: domain)
           |> Ash.Query.do_filter([
             {relationship.destination_attribute_on_join_resource,
              in: Enum.map(results, &Map.get(&1, relationship.destination_attribute))}
@@ -1838,7 +1838,7 @@ defmodule Ash.Filter do
     }
 
     relationship.destination
-    |> Ash.Query.new(domain)
+    |> Ash.Query.new(domain: domain)
     |> Ash.Query.do_filter(filter)
     |> Ash.Query.do_filter(relationship.filter, parent_stack: [relationship.source])
     |> Ash.Query.sort(relationship.sort, prepend?: true)

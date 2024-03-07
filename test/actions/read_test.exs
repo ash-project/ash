@@ -335,7 +335,8 @@ defmodule Ash.Test.Actions.ReadTest do
           Domain.read!(Post, page: [limit: 10])
         end
 
-      assert %Ash.Error.Invalid.PageRequiresPagination{resource: Post, action: _} = hd(res.errors)
+      assert %Ash.Error.Invalid.ActionRequiresPagination{resource: Post, action: _} =
+               hd(res.errors)
     end
   end
 
