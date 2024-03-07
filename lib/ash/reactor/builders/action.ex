@@ -20,7 +20,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Action do
 
       action_options =
         action
-        |> Map.take([:action, :domain, :authorize?, :resource, :undo_action, :undo])
+        |> Map.take([:action, :authorize?, :domain, :resource, :undo, :undo_action])
         |> Enum.to_list()
 
       step_options =
