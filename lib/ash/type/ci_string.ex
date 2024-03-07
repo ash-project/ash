@@ -193,7 +193,6 @@ defmodule Ash.Type.CiString do
   end
 
   @impl true
-
   def dump_to_native(nil, _), do: {:ok, nil}
 
   def dump_to_native(%Ash.CiString{} = ci_string, _) do

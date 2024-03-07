@@ -43,7 +43,7 @@ defmodule Ash.Flow.TenantTest do
     use Ash.Flow.Step
 
     def run(%{id: post_id}, _opts, context) do
-      opts = context |> Ash.context_to_opts()
+      opts = context |> Ash.Context.to_opts()
 
       Post
       |> Ash.Query.for_read(:get_by_id, %{id: post_id}, opts)
@@ -73,21 +73,6 @@ defmodule Ash.Flow.TenantTest do
         record result(:get_post)
       end
     end
-  end
-
-  test "honors Ash.set_tenant" do
-    foo_post =
-      Post
-      |> Ash.Changeset.for_create(:create, %{tenant: "foo"})
-      |> Domain.create!()
-
-    Ash.set_tenant("bar")
-
-    assert %Ash.Flow.Result{valid?: false} =
-             DestroyPost.run(foo_post.id)
-
-    Ash.set_tenant("foo")
-    assert %Ash.Flow.Result{valid?: true} = DestroyPost.run(foo_post.id)
   end
 
   test "honors tenant in opts" do

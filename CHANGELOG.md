@@ -247,7 +247,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 * pass `tenant` to context in custom changes
 
-* `Ash.context_to_opts` now checks for a `tenant`
+* `Ash.Context.to_opts` now checks for a `tenant`
 
 ## [v2.19.0](https://github.com/ash-project/ash/compare/v2.18.1...v2.19.0) (2024-02-16)
 
@@ -1567,7 +1567,7 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 ### Improvements:
 
-* add `Ash.context_to_opts/1-2`
+* add `Ash.Context.to_opts/1-2`
 
 * add topic docs for atomics
 

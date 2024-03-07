@@ -67,30 +67,22 @@ defmodule Ash.Flow.AuthorizationTest do
   end
 
   test "Domain.destroy should fail when actor is not admin", %{post: post} do
-    Ash.set_actor(%{admin: false})
-
     assert_raise Ash.Error.Forbidden, fn ->
-      post |> Domain.destroy!()
+      post |> Domain.destroy!(actor: %{admin: false})
     end
   end
 
   test "Domain.destroy should succeed when actor is admin", %{post: post} do
-    Ash.set_actor(%{admin: true})
-
-    post |> Domain.destroy!()
+    post |> Domain.destroy!(actor: %{admin: true})
   end
 
   test "flow should fail when actor is not admin", %{post: post} do
-    Ash.set_actor(%{admin: false})
-
     assert %Ash.Flow.Result{valid?: false} =
-             DestroyPost.run(post.id, authorize?: true)
+             DestroyPost.run(post.id, authorize?: true, actor: %{admin: false})
   end
 
   test "flow should succeed when actor is admin", %{post: post} do
-    Ash.set_actor(%{admin: true})
-
     assert %Ash.Flow.Result{valid?: true, result: %{destroy_post: _}} =
-             DestroyPost.run(post.id, authorize?: true)
+             DestroyPost.run(post.id, authorize?: true, actor: %{admin: true})
   end
 end

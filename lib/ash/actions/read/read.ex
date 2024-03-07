@@ -25,7 +25,11 @@ defmodule Ash.Actions.Read do
   end
 
   def run(query, action, opts) do
-    {query, opts} = Ash.Actions.Helpers.add_process_context(query.domain, query, opts)
+    query = Ash.Query.new(query)
+    domain = Ash.Helpers.domain!(query, opts)
+    {query, opts} = Ash.Actions.Helpers.add_process_context(domain, query, opts)
+
+    query = %{query | domain: domain}
 
     action = get_action(query.resource, action || query.action)
 
@@ -1379,7 +1383,7 @@ defmodule Ash.Actions.Read do
                 load =
                   query.resource
                   |> Ash.Resource.Info.related(key)
-                  |> Ash.Query.new(query.domain)
+                  |> Ash.Query.new(domain: query.domain)
                   |> Ash.Query.load(other)
                   |> add_calc_context_to_query(actor, authorize?, tenant, tracer)
 
