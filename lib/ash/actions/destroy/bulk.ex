@@ -9,28 +9,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   def run(domain, stream, action, input, opts, not_atomic_reason)
       when is_atom(action) and not is_nil(action) do
-    resource =
-      opts[:resource] ||
-        case stream do
-          [%resource{} | _] ->
-            resource
-
-          %Ash.Query{resource: resource} ->
-            resource
-
-          resource when is_atom(resource) ->
-            if Ash.Resource.Info.resource?(resource) do
-              resource
-            end
-
-          _ ->
-            nil
-        end
-
-    if !resource do
-      raise ArgumentError,
-            "Could not determine resource for bulk destroy. Please provide the `resource` option if providing a stream of inputs."
-    end
+    resource = opts[:resource]
 
     run(
       domain,
@@ -43,28 +22,7 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   def run(domain, stream, nil, input, opts, not_atomic_reason) do
-    resource =
-      opts[:resource] ||
-        case stream do
-          [%resource{} | _] ->
-            resource
-
-          %Ash.Query{resource: resource} ->
-            resource
-
-          resource when is_atom(resource) ->
-            if Ash.Resource.Info.resource?(resource) do
-              resource
-            end
-
-          _ ->
-            nil
-        end
-
-    if !resource do
-      raise ArgumentError,
-            "Could not determine resource for bulk destroy. Please provide the `resource` option if providing a stream of inputs."
-    end
+    resource = opts[:resource]
 
     run(
       domain,
@@ -157,11 +115,12 @@ defmodule Ash.Actions.Destroy.Bulk do
                 end
               end)
               |> Keyword.put(:authorize?, opts[:authorize?] && opts[:authorize_query?])
+              |> Keyword.put(:domain, domain)
               |> Keyword.take(Ash.stream_opt_keys())
 
             run(
               domain,
-              domain.stream!(
+              Ash.stream!(
                 query,
                 read_opts
               ),
@@ -289,22 +248,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     not_atomic_reason =
       not_atomic_reason || "Cannot perform atomic destroys on a stream of inputs"
 
-    resource =
-      opts[:resource] ||
-        case stream do
-          [%resource{} | _] ->
-            resource
-
-          _ ->
-            nil
-        end
-
-    if !resource do
-      raise ArgumentError,
-            "Could not determine resource for bulk destroy. Please provide the `resource` option if providing a stream of inputs."
-    end
-
-    opts = Keyword.put(opts, :resource, resource)
+    resource = opts[:resource]
 
     opts = set_strategy(opts, resource)
 
@@ -879,7 +823,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   defp authorize_bulk_query(query, atomic_changeset, opts) do
     if opts[:authorize?] && opts[:authorize_query?] do
-      case query.domain.can(query, opts[:actor],
+      case Ash.can(query, opts[:actor],
              return_forbidden_error?: true,
              atomic_changeset: atomic_changeset,
              filter_with: opts[:authorize_query_with] || :filter,
@@ -906,7 +850,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   defp authorize_atomic_changeset(query, changeset, opts) do
     if opts[:authorize?] do
-      case query.domain.can(changeset, opts[:actor],
+      case Ash.can(changeset, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,
              atomic_changeset: changeset,
@@ -1104,7 +1048,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
     batch =
       batch
-      |> authorize(domain, opts)
+      |> authorize(opts)
       |> Enum.to_list()
       |> run_bulk_before_batches(
         changes,
@@ -1400,12 +1344,12 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
-  defp authorize(batch, domain, opts) do
+  defp authorize(batch, opts) do
     if opts[:authorize?] do
       batch
       |> Enum.map(fn changeset ->
         if changeset.valid? do
-          case domain.can(
+          case Ash.can(
                  changeset,
                  opts[:actor],
                  return_forbidden_error?: true,

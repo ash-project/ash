@@ -17,6 +17,45 @@ defmodule Ash.Domain.Info do
     |> Enum.map(& &1.resource)
   end
 
+  @doc """
+  Determine what domain to use when interacting with a related resource.
+
+  We choose the first domain found in the following order:
+
+  * `relationship.domain`, i.e an explicitly configured domain for a relationship
+  * `resource.domain`, i.e. the domain the resource declares
+  * `subject.domain`, i.e. the domain of the query, changeset or action input (if it has one)
+  * `default`, the default domain provided as the third argument
+  """
+  @spec related_domain(
+          Ash.Resource.t() | Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t(),
+          atom | Ash.Resource.Relationships.relationship(),
+          Ash.Domain.t() | nil
+        ) :: Ash.Domain.t()
+  def related_domain(subject, relationship, default \\ nil) do
+    resource =
+      if is_atom(subject) do
+        subject
+      else
+        subject.resource
+      end
+
+    relationship =
+      if is_atom(relationship) do
+        Ash.Resource.Info.relationship(resource, relationship)
+      else
+        relationship
+      end
+
+    subject_domain =
+      case subject do
+        %{domain: domain} -> domain
+        _ -> nil
+      end
+
+    relationship.domain || Ash.Resource.Info.domain(resource) || subject_domain || default
+  end
+
   def find_manage_relationships_with_identity_not_configured(otp_app) do
     otp_app
     |> Application.get_env(:ash_domains, [])

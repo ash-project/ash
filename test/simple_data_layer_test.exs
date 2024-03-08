@@ -58,11 +58,11 @@ defmodule Ash.Test.SimpleDataLayerTest do
   end
 
   test "set_data can be used in a before_action callback" do
-    assert [%{name: "Fred"}] = Domain.read!(Person)
+    assert [%{name: "Fred"}] = Ash.read!(Person)
   end
 
   test "pagination works" do
     assert %Ash.Page.Offset{results: [%{name: "Fred"}]} =
-             Domain.read!(Person, action: :paginated, page: [limit: 1])
+             Ash.read!(Person, action: :paginated, page: [limit: 1])
   end
 end

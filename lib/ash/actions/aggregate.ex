@@ -107,7 +107,7 @@ defmodule Ash.Actions.Aggregate do
 
   defp authorize_query(query, opts, agg_authorize?) do
     if agg_authorize? do
-      case query.domain.can(query, opts[:actor],
+      case Ash.can(query, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,
              run_queries?: false,

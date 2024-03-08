@@ -61,7 +61,7 @@ Post
 |> Ash.Changeset.manage_relationship(:related_posts, [1, 2, 3], type: :append)
 |> Ash.Changeset.manage_relationship(:related_posts, [4, 5], type: :remove)
 |> Ash.Changeset.manage_relationship(:comments, [10], type: :append)
-|> Domain.update!()
+|> Ash.update!()
 ```
 
 `Ash.Changeset.manage_relationship` doesn't leverage bulk operations yet, so it performs the following operations:

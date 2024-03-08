@@ -162,10 +162,10 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{})
-      |> Domain.create!()
+      |> Ash.create!()
 
     assert %Ash.BulkResult{records: [%{title: "title1"}, %{title: "title2"}]} =
-             Domain.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_records?: true,
                return_errors?: true,
                authorize?: false,
@@ -176,7 +176,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
   test "runs changes" do
     assert %Ash.BulkResult{records: [%{title: "title1_stuff"}, %{title: "title2_stuff"}]} =
-             Domain.bulk_create!(
+             Ash.bulk_create!(
                [%{title: "title1"}, %{title: "title2"}],
                Post,
                :create_with_change,
@@ -188,7 +188,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
   test "accepts arguments" do
     assert %Ash.BulkResult{records: [%{title: "title1"}, %{title: "title2"}]} =
-             Domain.bulk_create!(
+             Ash.bulk_create!(
                [%{a_title: "title1"}, %{a_title: "title2"}],
                Post,
                :create_with_argument,
@@ -202,7 +202,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     assert %Ash.BulkResult{
              records: [%{title: "before_title1_after"}, %{title: "before_title2_after"}]
            } =
-             Domain.bulk_create!(
+             Ash.bulk_create!(
                [%{title: "title1"}, %{title: "title2"}],
                Post,
                :create_with_after_batch,
@@ -214,7 +214,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
   test "will return error count" do
     assert %Ash.BulkResult{records: [%{title: "title1_stuff"}], error_count: 1, errors: nil} =
-             Domain.bulk_create!(
+             Ash.bulk_create!(
                [%{title: "title1"}, %{title: %{foo: :bar}}],
                Post,
                :create_with_change,
@@ -230,7 +230,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
              error_count: 1,
              errors: [%Ash.Changeset{}]
            } =
-             Domain.bulk_create!(
+             Ash.bulk_create!(
                [%{title: "title1"}, %{title: %{foo: :bar}}],
                Post,
                :create_with_change,
@@ -248,7 +248,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                %{title: "title2", title2: "changes", title3: "wont"}
              ]
            } =
-             Domain.bulk_create!(
+             Ash.bulk_create!(
                [
                  %{title: "title1", title2: "changes", title3: "wont"},
                  %{title: "title2", title2: "changes", title3: "wont"}
@@ -266,7 +266,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                %{title: "title2", title2: "did_change", title3: "wont"}
              ]
            } =
-             Domain.bulk_create!(
+             Ash.bulk_create!(
                [
                  %{title: "title1", title2: "did_change", title3: "oh no"},
                  %{title: "title2", title2: "did_change", title3: "what happened"}
@@ -289,7 +289,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                %{title: "title2", title2: "changes", title3: "wont"}
              ]
            } =
-             Domain.bulk_create!(
+             Ash.bulk_create!(
                [
                  %{title: "title1", title2: "changes", title3: "wont"},
                  %{title: "title2", title2: "changes", title3: "wont"}
@@ -307,7 +307,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                %{title: "title2", title2: "did_change", title3: "wont"}
              ]
            } =
-             Domain.bulk_create!(
+             Ash.bulk_create!(
                [
                  %{title: "title1", title2: "did_change", title3: "oh no"},
                  %{title: "title2", title2: "did_change", title3: "what happened"}
@@ -330,7 +330,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                %{title: "title2", title2: "changes", title3: "changes"}
              ]
            } =
-             Domain.bulk_create!(
+             Ash.bulk_create!(
                [
                  %{title: "title1", title2: "changes", title3: "changes"},
                  %{title: "title2", title2: "changes", title3: "changes"}
@@ -348,7 +348,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                %{title: "title2", title2: "did_change", title3: "did_change"}
              ]
            } =
-             Domain.bulk_create!(
+             Ash.bulk_create!(
                [
                  %{title: "title1", title2: "did_change", title3: "did_change"},
                  %{title: "title2", title2: "did_change", title3: "did_change"}
@@ -371,7 +371,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                %{title: "title2", title2: "changes", title3: "wont"}
              ]
            } =
-             Domain.bulk_create!(
+             Ash.bulk_create!(
                [
                  %{title: "title1", title2: "changes", title3: "wont"},
                  %{title: "title2", title2: "changes", title3: "wont"}
@@ -389,7 +389,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                %{title: "title2", title2: "did_change", title3: "wont"}
              ]
            } =
-             Domain.bulk_create!(
+             Ash.bulk_create!(
                [
                  %{title: "title1", title2: "did_change", title3: "oh no"},
                  %{title: "title2", title2: "did_change", title3: "what happened"}
@@ -407,7 +407,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
   test "runs after action hooks" do
     assert %Ash.BulkResult{records: [%{title: "title1_stuff"}, %{title: "title2_stuff"}]} =
-             Domain.bulk_create!(
+             Ash.bulk_create!(
                [%{title: "title1"}, %{title: "title2"}],
                Post,
                :create_with_after_action,
@@ -419,7 +419,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
   test "runs after transaction hooks" do
     assert %Ash.BulkResult{records: [%{title: "title1_stuff"}, %{title: "title2_stuff"}]} =
-             Domain.bulk_create!(
+             Ash.bulk_create!(
                [%{title: "title1"}, %{title: "title2"}],
                Post,
                :create_with_after_transaction,
@@ -432,7 +432,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   describe "authorization" do
     test "policy success results in successes" do
       assert %Ash.BulkResult{records: [%{title: "title1"}, %{title: "title2"}]} =
-               Domain.bulk_create!(
+               Ash.bulk_create!(
                  [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}],
                  Post,
                  :create_with_policy,
@@ -449,7 +449,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  %{hidden_attribute: %Ash.ForbiddenField{}, hidden_calc: %Ash.ForbiddenField{}}
                ]
              } =
-               Domain.bulk_create!(
+               Ash.bulk_create!(
                  [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}],
                  Post,
                  :create_with_policy,
@@ -462,7 +462,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
     test "policy failure results in failures" do
       assert %Ash.BulkResult{errors: [_, _]} =
-               Domain.bulk_create(
+               Ash.bulk_create(
                  [%{title: "title1", authorize?: false}, %{title: "title2", authorize?: false}],
                  Post,
                  :create_with_policy,
@@ -478,7 +478,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     test "by default nothing is returned in the stream" do
       assert [] =
                [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
-               |> Domain.bulk_create!(
+               |> Ash.bulk_create!(
                  Post,
                  :create_with_policy,
                  authorize?: true,
@@ -490,7 +490,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     test "by returning notifications, you get the notifications in the stream" do
       assert [{:notification, _}, {:notification, _}] =
                [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
-               |> Domain.bulk_create!(
+               |> Ash.bulk_create!(
                  Post,
                  :create_with_policy,
                  authorize?: true,
@@ -504,7 +504,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     test "by returning records, you get the records in the stream" do
       assert [{:ok, %{title: "title1"}}, {:ok, %{title: "title2"}}] =
                [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
-               |> Domain.bulk_create!(
+               |> Ash.bulk_create!(
                  Post,
                  :create_with_policy,
                  authorize?: true,
@@ -529,7 +529,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                {:ok, %{title: "title2"}}
              ] =
                [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
-               |> Domain.bulk_create!(
+               |> Ash.bulk_create!(
                  Post,
                  :create_with_policy,
                  authorize?: true,
@@ -561,7 +561,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  %{title: "title1", authorize?: true},
                  %{title: "title2", authorize?: false}
                ]
-               |> Domain.bulk_create!(
+               |> Ash.bulk_create!(
                  Post,
                  :create_with_policy,
                  authorize?: true,

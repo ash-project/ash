@@ -1190,6 +1190,7 @@ defmodule Ash.Query do
           t() | Ash.Resource.t(),
           atom
           | Ash.Query.Calculation.t()
+          | Ash.Query.Aggregate.t()
           | list(atom | Ash.Query.Calculation.t() | Ash.Query.Aggregate.t())
           | list({atom | Ash.Query.Calculation.t() | Ash.Query.Aggregate.t(), term})
         ) ::

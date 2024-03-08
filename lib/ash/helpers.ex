@@ -1,6 +1,8 @@
 defmodule Ash.Helpers do
   @moduledoc false
 
+  @dialyzer {:nowarn_function, {:unwrap_or_raise!, 2}}
+
   @spec try_compile(term) :: :ok
   def try_compile(module) when is_atom(module) do
     try do
@@ -17,6 +19,170 @@ defmodule Ash.Helpers do
   end
 
   def try_compile(_), do: :ok
+
+  defmacro expect_resource!(resource) do
+    formatted = format_caller(__CALLER__)
+
+    quote generated: true, bind_quoted: [resource: resource, formatted: formatted] do
+      if !Ash.Resource.Info.resource?(resource) do
+        raise ArgumentError,
+              "Expected an `Ash.Resource` in #{formatted}, got: #{inspect(resource)}"
+      end
+    end
+  end
+
+  defmacro expect_resource_or_query!(resource_or_query) do
+    formatted = format_caller(__CALLER__)
+
+    quote generated: true,
+          bind_quoted: [resource_or_query: resource_or_query, formatted: formatted] do
+      case resource_or_query do
+        %Ash.Query{} ->
+          :ok
+
+        other ->
+          if !Ash.Resource.Info.resource?(other) do
+            raise ArgumentError,
+                  "Expected an `%Ash.Query{}` or an `Ash.Resource` in #{formatted}, got: #{inspect(other)}"
+          end
+      end
+    end
+  end
+
+  defmacro expect_query!(query) do
+    formatted = format_caller(__CALLER__)
+
+    quote generated: true, bind_quoted: [query: query, formatted: formatted] do
+      case query do
+        %Ash.Query{} ->
+          :ok
+
+        other ->
+          raise ArgumentError,
+                "Expected an `%Ash.Query{}` in #{formatted}, got: #{inspect(other)}"
+      end
+    end
+  end
+
+  defmacro expect_changeset!(changeset) do
+    formatted = format_caller(__CALLER__)
+
+    quote generated: true, bind_quoted: [changeset: changeset, formatted: formatted] do
+      case changeset do
+        %Ash.Changeset{} ->
+          :ok
+
+        other ->
+          raise ArgumentError,
+                "Expected an `%Ash.Changeset{}` in #{formatted}, got: #{inspect(other)}"
+      end
+    end
+  end
+
+  defmacro expect_resource_or_record!(resource) do
+    formatted = format_caller(__CALLER__)
+
+    quote generated: true, bind_quoted: [resource: resource, formatted: formatted] do
+      case resource do
+        %resource{} = record ->
+          if !Ash.Resource.Info.resource?(resource) do
+            raise ArgumentError,
+                  "Expected an `Ash.Resource` or a record in #{formatted}, got: #{inspect(record)}"
+          end
+
+        other ->
+          if !Ash.Resource.Info.resource?(resource) do
+            raise ArgumentError,
+                  "Expected an `Ash.Resource` or a record in #{formatted}, got: #{inspect(other)}"
+          end
+      end
+    end
+  end
+
+  defmacro expect_changeset_or_record!(changeset_or_record) do
+    formatted = format_caller(__CALLER__)
+
+    quote generated: true,
+          bind_quoted: [changeset_or_record: changeset_or_record, formatted: formatted] do
+      case changeset_or_record do
+        %Ash.Changeset{} ->
+          :ok
+
+        %resource{} = record ->
+          if !Ash.Resource.Info.resource?(resource) do
+            raise ArgumentError,
+                  "Expected an `Ash.Resource` or a record in #{formatted}, got: #{inspect(record)}"
+          end
+
+        other ->
+          raise ArgumentError,
+                "Expected an `Ash.Resource` or a record in #{formatted}, got: #{inspect(other)}"
+      end
+    end
+  end
+
+  defmacro expect_record!(record) do
+    formatted = format_caller(__CALLER__)
+
+    quote bind_quoted: [record: record, formatted: formatted] do
+      case record do
+        %resource{} = record ->
+          if !Ash.Resource.Info.resource?(resource) do
+            raise ArgumentError,
+                  "Expected a record in #{formatted}, got: #{inspect(record)}"
+          end
+
+        other ->
+          raise ArgumentError,
+                "Expected a record in #{formatted}, got: #{inspect(other)}"
+      end
+    end
+  end
+
+  defmacro expect_options!(options) do
+    formatted = format_caller(__CALLER__)
+
+    quote generated: true, bind_quoted: [options: options, formatted: formatted] do
+      case options do
+        [] ->
+          :ok
+
+        [{atom, _} | _] when is_atom(atom) ->
+          :ok
+
+        other ->
+          raise ArgumentError,
+                "Expected a keyword list in #{formatted}, got: #{inspect(other)}"
+      end
+    end
+  end
+
+  def resource_from_query_or_stream(domain, query_or_stream, opts) do
+    resource =
+      opts[:resource] ||
+        case query_or_stream do
+          [%resource{} | _] ->
+            resource
+
+          %Ash.Query{resource: resource} ->
+            resource
+
+          resource when is_atom(resource) ->
+            if Ash.Resource.Info.resource?(resource) do
+              resource
+            end
+
+          _ ->
+            nil
+        end
+
+    if !resource do
+      raise ArgumentError,
+            "Could not determine resource for bulk action. Please provide the `resource` option if providing a stream of inputs."
+    end
+
+    Ash.Domain.Info.resource(domain, resource)
+  end
 
   def get_action(resource, params, type, preset \\ nil) do
     case Keyword.fetch(params, :action) do
@@ -173,50 +339,106 @@ defmodule Ash.Helpers do
       """
   end
 
-  def domain!(%input_struct{domain: domain}, _opts)
-      when input_struct in [Ash.Query, Ash.Changeset, Ash.ActionInput] and is_atom(domain) and
-             not is_nil(domain) do
-    domain
-  end
+  defmacro domain!(
+             subject,
+             opts,
+             instructions \\ "Please specify the `:domain` option, or adjust the input."
+           ) do
+    formatted = format_caller(__CALLER__)
 
-  def domain!([record | _], opts) do
-    domain!(record, opts)
-  end
+    quote generated: true,
+          bind_quoted: [
+            subject: subject,
+            opts: opts,
+            formatted: formatted,
+            instructions: instructions
+          ] do
+      domain = Ash.Helpers.get_domain(subject, opts)
 
-  def domain!(%page_struct{rerun: {query, _}}, opts)
-      when page_struct in [Ash.Page.Offset, Ash.Page.Keyset] do
-    domain!(query, opts)
-  end
+      expanded =
+        if not is_nil(subject) do
+          "\n\n#{inspect(subject)}"
+        end
 
-  def domain!(%page_struct{results: results}, opts)
-      when page_struct in [Ash.Page.Offset, Ash.Page.Keyset] do
-    domain!(results, opts)
-  end
+      if !domain do
+        raise(
+          ArgumentError,
+          """
+          Could not determine domain for input in #{formatted}. #{instructions}#{expanded}
+          """
+        )
+      end
 
-  def domain!(%{resource: resource}, opts) when not is_nil(resource) do
-    domain!(resource, opts)
-  end
-
-  def domain!(nil, opts) do
-    opts[:domain] ||
-      raise(ArgumentError, "Could not determine domain. Please specify the `:domain` option.")
-  end
-
-  def domain!(%resource{}, opts) do
-    if Ash.Resource.Info.resource?(resource) do
-      domain!(resource, opts)
-    else
-      domain!(nil, opts)
+      domain
     end
   end
 
-  def domain!(resource, opts) do
-    opts[:domain] ||
-      Ash.Resource.Info.domain(resource) ||
-      raise(
-        ArgumentError,
-        "Could not determine domain for #{inspect(resource)}. Please specify the `:domain` option or ensure the resource has a configured domain."
-      )
+  defp format_caller(caller) do
+    mod = caller.module
+    {func, arity} = caller.function
+    "`#{inspect(mod)}.#{func}/#{arity}`"
+  end
+
+  def get_domain(nil, nil) do
+    nil
+  end
+
+  def get_domain(%input_struct{domain: domain}, _opts)
+      when input_struct in [Ash.Query, Ash.Changeset, Ash.ActionInput] and not is_nil(domain) do
+    domain
+  end
+
+  def get_domain([record | _], opts) do
+    get_domain(record, opts)
+  end
+
+  def get_domain({resource, _}, opts) when is_atom(resource) do
+    get_domain(resource, opts)
+  end
+
+  def get_domain(%page_struct{rerun: {query, _}}, opts)
+      when page_struct in [Ash.Page.Offset, Ash.Page.Keyset] do
+    get_domain(query, opts)
+  end
+
+  def get_domain(%page_struct{results: results}, opts)
+      when page_struct in [Ash.Page.Offset, Ash.Page.Keyset] do
+    get_domain(results, opts)
+  end
+
+  def get_domain(%{resource: resource}, opts) when not is_nil(resource) do
+    get_domain(resource, opts)
+  end
+
+  def get_domain(nil, opts) do
+    cond do
+      domain = opts[:domain] ->
+        domain
+
+      resource = opts[:resource] ->
+        get_domain(resource, Keyword.delete(opts, :resource))
+
+      true ->
+        nil
+    end
+  end
+
+  def get_domain(%resource{}, opts) do
+    if Ash.Resource.Info.resource?(resource) do
+      get_domain(resource, opts)
+    else
+      get_domain(nil, opts)
+    end
+  end
+
+  def get_domain(resource, opts) do
+    opts[:domain] || domain_from_resource(resource)
+  end
+
+  defp domain_from_resource(resource) do
+    if Ash.Resource.Info.resource?(resource) || (is_map(resource) and not is_struct(resource)) do
+      Ash.Resource.Info.domain(resource)
+    end
   end
 
   def unwrap_or_raise!(first, destroy? \\ false)

@@ -17,7 +17,7 @@ An example of a single error being raised, representing multiple underlying erro
 ```elixir
 AshExample.Representative
 |> Ash.Changeset.for_create(:create, %{employee_id: "the best"})
-|> AshExample.Domain.create!()
+|> Ash.create!()
  ** (Ash.Error.Invalid) Input Invalid
  * employee_id: must be absent.
  * first_name, last_name: at least 1 must be present.
@@ -29,7 +29,7 @@ This allows easy rescuing of the major error classes, as well as inspection of t
 try do
   AshExample.Representative
   |> Ash.Changeset.for_create(:create, %{employee_id: "dabes"})
-  |> AshExample.Domain.create!()
+  |> Ash.create!()
 rescue
   e in Ash.Error.Invalid ->
     "Encountered #{Enum.count(e.errors)} errors"
@@ -44,7 +44,7 @@ This pattern does add some additional overhead when you want to rescue specific 
 try do
   AshExample.Representative
   |> Ash.Changeset.for_create(:create, %{employee_id: "dabes"})
-  |> AshExample.Domain.create!()
+  |> Ash.create!()
 rescue
   e in Ash.Error.Invalid ->
     case Enum.find(e.errors, &(&1.__struct__ == A.Specific.Error)) do

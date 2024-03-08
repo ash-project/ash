@@ -46,13 +46,13 @@ defmodule Ash.Test.CountTest do
     Enum.each(1..10, fn _ ->
       Countable
       |> Ash.Changeset.for_create(:create, %{owner_id: "foo"})
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
     end)
 
     assert {:ok, %Ash.Page.Offset{count: count}} =
              Countable
              |> Ash.Query.for_read(:read)
-             |> Domain.read(page: [count: true], authorize?: false)
+             |> Ash.read(page: [count: true], authorize?: false)
 
     assert count == 10
   end
@@ -61,19 +61,19 @@ defmodule Ash.Test.CountTest do
     Enum.each(1..10, fn _ ->
       Countable
       |> Ash.Changeset.for_create(:create, %{owner_id: "foo"}, authorize?: false)
-      |> Domain.create!()
+      |> Ash.create!()
     end)
 
     Enum.each(1..10, fn _ ->
       Countable
       |> Ash.Changeset.for_create(:create, %{owner_id: "bar"}, authorize?: false)
-      |> Domain.create!()
+      |> Ash.create!()
     end)
 
     assert {:ok, %Ash.Page.Offset{count: count}} =
              Countable
              |> Ash.Query.for_read(:read)
-             |> Domain.read(actor: %{id: "foo"}, page: [count: true])
+             |> Ash.read(actor: %{id: "foo"}, page: [count: true])
 
     assert count == 10
   end

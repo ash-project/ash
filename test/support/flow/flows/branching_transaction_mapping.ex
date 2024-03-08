@@ -69,7 +69,7 @@ defmodule Ash.Test.Flow.Steps.CreateUser do
     created_user =
       Ash.Test.Flow.User
       |> Changeset.for_create(:create, input.attributes |> Map.merge(%{org: input.org}))
-      |> Ash.Test.Flow.Domain.create()
+      |> Ash.create()
 
     case created_user do
       {:ok, resource_record} ->
@@ -93,12 +93,12 @@ defmodule Ash.Test.Flow.Steps.UpdateUser do
         :by_name,
         %{name: input.attributes.first_name}
       )
-      |> Ash.Test.Flow.Domain.read_one!()
+      |> Ash.read_one!()
 
     user_updated =
       user_to_update
       |> Changeset.for_update(:update, input.attributes)
-      |> Ash.Test.Flow.Domain.update()
+      |> Ash.update()
 
     case user_updated do
       {:ok, resource_record} ->

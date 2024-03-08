@@ -164,7 +164,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
   end
 
   test "a simple read calls the tracer with the action" do
-    Domain.read!(Post, tracer: Ash.Tracer.Simple)
+    Ash.read!(Post, tracer: Ash.Tracer.Simple)
 
     assert [
              %Ash.Tracer.Simple.Span{
@@ -180,7 +180,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
 
   test "a read with async loads calls the tracer for each" do
     Ash.Changeset.for_create(Post, :create, %{title: "title"}, tracer: Ash.Tracer.Simple)
-    |> Domain.create!()
+    |> Ash.create!()
 
     assert [
              %Ash.Tracer.Simple.Span{
@@ -208,7 +208,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
 
     Post
     |> Ash.Query.load(:author)
-    |> Domain.read!(tracer: Ash.Tracer.Simple)
+    |> Ash.read!(tracer: Ash.Tracer.Simple)
 
     assert_receive {:telemetry,
                     {[:ash, :domain, :read, :start], %{system_time: _},

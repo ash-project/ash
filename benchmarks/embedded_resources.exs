@@ -13,7 +13,7 @@ defmodule Embed do
 end
 
 defmodule Resource do
-  use Ash.Resource
+  use Ash.Resource, domain: Domain
 
   attributes do
     uuid_primary_key :id
@@ -39,19 +39,19 @@ embeds_input = 1..100 |> Enum.map(&%{name: "Embed #{&1}"})
 
 Resource
 |> Ash.Changeset.for_create(:create, %{embeds: embeds_input, maps: embeds_input})
-|> Domain.create!()
+|> Ash.create!()
 
 Benchee.run(
   %{
     embeds: fn ->
       Resource
       |> Ash.Changeset.for_create(:create, %{embeds: embeds_input})
-      |> Domain.create!()
+      |> Ash.create!()
     end,
     maps: fn ->
       Resource
       |> Ash.Changeset.for_create(:create, %{maps: embeds_input})
-      |> Domain.create!()
+      |> Ash.create!()
     end
   }
 )

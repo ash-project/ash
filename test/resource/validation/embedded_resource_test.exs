@@ -158,7 +158,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
       authorize?: true,
       tenant: "one"
     )
-    |> Domain.create!()
+    |> Ash.create!()
   end
 
   test "changeset during validation and changes includes actor, authorize and tenant for an embedded resource used as an argument" do
@@ -177,6 +177,6 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
                authorize?: true,
                tenant: "one"
              )
-             |> Domain.update()
+             |> Ash.update()
   end
 end

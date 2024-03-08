@@ -36,16 +36,16 @@ defmodule Ash.Test.Policy.StrictConditionTest do
   test "condition in filter policy is evaluated" do
     Resource
     |> Ash.Changeset.for_create(:create, %{visible: true}, authorize?: false)
-    |> Domain.create!()
+    |> Ash.create!()
 
     Resource
     |> Ash.Changeset.for_create(:create, %{visible: false}, authorize?: false)
-    |> Domain.create!()
+    |> Ash.create!()
 
     assert_raise Ash.Error.Forbidden, fn ->
       Resource
       |> Ash.Query.for_read(:read, %{}, actor: %{id: "foo"})
-      |> Domain.read!()
+      |> Ash.read!()
     end
   end
 end

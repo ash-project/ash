@@ -11,7 +11,7 @@ defmodule Ash.Test.Resource.UpsertTest do
 
     def change(changeset, _opts, _context) do
       Ash.Changeset.after_action(changeset, fn _changeset, record ->
-        Domain.load(record, :variants, lazy?: true)
+        Ash.load(record, :variants, lazy?: true)
       end)
     end
   end
@@ -141,7 +141,7 @@ defmodule Ash.Test.Resource.UpsertTest do
           upsert_identity: :unique_name
         )
         |> Ash.Changeset.atomic_update(:name, expr(name <> " bar"))
-        |> Domain.create!()
+        |> Ash.create!()
 
       assert product.name == "foo"
 
@@ -152,7 +152,7 @@ defmodule Ash.Test.Resource.UpsertTest do
           upsert_identity: :unique_name
         )
         |> Ash.Changeset.atomic_update(:name, expr(name <> " bar"))
-        |> Domain.create!()
+        |> Ash.create!()
 
       assert updated.id == product.id
       assert updated.name == "foo bar"
@@ -195,7 +195,7 @@ defmodule Ash.Test.Resource.UpsertTest do
         |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy"},
           upsert_fields: :replace_all
         )
-        |> Domain.create!()
+        |> Ash.create!()
 
       assert product.other == "malfoy"
     end
@@ -210,7 +210,7 @@ defmodule Ash.Test.Resource.UpsertTest do
         |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy"},
           upsert_fields: [:name]
         )
-        |> Domain.create!()
+        |> Ash.create!()
 
       assert product.other == "george"
     end
@@ -225,7 +225,7 @@ defmodule Ash.Test.Resource.UpsertTest do
         |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy"},
           upsert_fields: {:replace, [:name]}
         )
-        |> Domain.create!()
+        |> Ash.create!()
 
       assert product.other == "george"
     end
@@ -240,7 +240,7 @@ defmodule Ash.Test.Resource.UpsertTest do
         |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy"},
           upsert_fields: {:replace_all_except, [:other]}
         )
-        |> Domain.create!()
+        |> Ash.create!()
 
       assert product.other == "george"
     end

@@ -309,17 +309,17 @@ defmodule Ash.Test.Type.UnionTest do
   test "it handles changing union attribute on a resource" do
     Example
     |> Ash.Changeset.for_create(:create, %{thing: %Foo{type: "foo", foo: "foo"}})
-    |> Ash.Test.Domain.create!()
+    |> Ash.create!()
     |> Ash.Changeset.new()
     |> Ash.Changeset.change_attribute(:thing, %Bar{type: "bar", bar: "bar"})
     |> Ash.Changeset.for_update(:update)
-    |> Ash.Test.Domain.update!()
+    |> Ash.update!()
   end
 
   test "it handles paths on a resource" do
     Example
     |> Ash.Changeset.for_create(:create, %{things: [%{type: :foo, foo: "bar"}]})
-    |> Ash.Test.Domain.create()
+    |> Ash.create()
   end
 
   test "it dumps to native as explicit maps by default" do
@@ -379,8 +379,8 @@ defmodule Ash.Test.Type.UnionTest do
     assert {:ok, _} =
              Example
              |> Ash.Changeset.for_create(:create, %{things: []})
-             |> Ash.Test.Domain.create!()
+             |> Ash.create!()
              |> Ash.Changeset.for_update(:add_thing, %{new_thing: %{type: :foo, foo: "foo"}})
-             |> Ash.Test.Domain.update()
+             |> Ash.update()
   end
 end

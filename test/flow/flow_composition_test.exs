@@ -28,15 +28,15 @@ defmodule Ash.Flow.FlowCompositionTest do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "abc", org: org.id})
-    |> Domain.create!()
+    |> Ash.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "def", org: org.id})
-    |> Domain.create!()
+    |> Ash.create!()
 
     org_id = org.id
 
@@ -50,36 +50,36 @@ defmodule Ash.Flow.FlowCompositionTest do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "abc", org: org.id})
     |> Ash.Changeset.force_change_attribute(:approved, true)
-    |> Domain.create!()
+    |> Ash.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "def", org: org.id})
     |> Ash.Changeset.force_change_attribute(:approved, true)
-    |> Domain.create!()
+    |> Ash.create!()
 
     GetOrgAndUsersAndUnapproveThem.run!("Org 1")
 
-    assert Enum.all?(User |> Domain.read!(), &(&1.approved == false))
+    assert Enum.all?(User |> Ash.read!(), &(&1.approved == false))
   end
 
   test "a custom step can be used to introduce custom logic" do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "abc", org: org.id})
-    |> Domain.create!()
+    |> Ash.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "def", org: org.id})
-    |> Domain.create!()
+    |> Ash.create!()
 
     assert %Result{result: 2} = GetOrgAndUsersAndUnapproveThemReturningCount.run!("Org 1")
   end

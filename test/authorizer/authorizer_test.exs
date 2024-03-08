@@ -63,7 +63,7 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       assert_raise Ash.Error.Forbidden, fn ->
         Post
         |> Ash.Changeset.for_create(:create, %{title: "test"})
-        |> Domain.create!()
+        |> Ash.create!()
       end
     end
 
@@ -79,7 +79,7 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       post =
         Post
         |> Ash.Changeset.for_create(:title_is_authorization, %{}, actor: :an_actor)
-        |> Domain.create!()
+        |> Ash.create!()
 
       assert post.title == "true"
     end
@@ -97,19 +97,19 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       assert_raise Ash.Error.Forbidden, fn ->
         Post
         |> Ash.Changeset.for_create(:create, %{title: "test"})
-        |> Domain.create!()
+        |> Ash.create!()
       end
 
       assert_raise Ash.Error.Forbidden, fn ->
         Post
         |> Ash.Changeset.for_create(:create, %{title: "test"})
-        |> Domain.create!(actor: nil)
+        |> Ash.create!(actor: nil)
       end
 
       assert_raise Ash.Error.Forbidden, fn ->
         Post
         |> Ash.Changeset.for_create(:create, %{title: "test"}, actor: nil)
-        |> Domain.create!()
+        |> Ash.create!()
       end
     end
   end
@@ -123,13 +123,13 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "test"})
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "foo"})
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
-      assert [%Post{title: "foo"}] = Domain.read!(Post, authorize?: true)
+      assert [%Post{title: "foo"}] = Ash.read!(Post, authorize?: true)
     end
 
     test "a filter cannot be applied to creates" do
@@ -142,29 +142,29 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       assert_raise Ash.Error.Forbidden, fn ->
         Post
         |> Ash.Changeset.for_create(:create, %{title: "test"}, authorize?: true)
-        |> Domain.create!()
+        |> Ash.create!()
       end
 
       good_post =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "foo"}, authorize?: false)
-        |> Domain.create!()
+        |> Ash.create!()
 
       bad_post =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "test"}, authorize?: false)
-        |> Domain.create!()
+        |> Ash.create!()
 
       # Filters apply to the base data
       assert_raise Ash.Error.Forbidden, fn ->
         bad_post
         |> Ash.Changeset.for_update(:update, %{title: "next"}, authorize?: true)
-        |> Domain.update!()
+        |> Ash.update!()
       end
 
       good_post
       |> Ash.Changeset.for_update(:update, %{title: "next"}, authorize?: true)
-      |> Domain.update!()
+      |> Ash.update!()
     end
   end
 end

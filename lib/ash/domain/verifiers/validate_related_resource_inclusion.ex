@@ -87,7 +87,8 @@ defmodule Ash.Domain.Verifiers.ValidateRelatedResourceInclusion do
   end
 
   defp resource_accepted?(nil, destination, _this_domain, resources) do
-    destination in resources
+    Ash.Resource.Info.domain(destination) ||
+      destination in resources
   end
 
   defp resource_accepted?(domain, destination, this_domain, resources) do

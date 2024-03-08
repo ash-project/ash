@@ -2,7 +2,7 @@
 
 Identities are a way to declare that a record (an instance of a resource) can be uniquely identified by a set of attributes. This information can be used in various ways throughout the framework. The primary key of the resource does not need to be listed as an identity.
 
-## Using Domain.get
+## Using Ash.get
 
 This will allow these fields to be passed to `Ash.get/3`, e.g `Ash.get(Resource, [email: "foo"])`.
 

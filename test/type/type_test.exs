@@ -74,7 +74,7 @@ defmodule Ash.Test.Type.TypeTest do
     post =
       Post
       |> Ash.Changeset.for_create(:create, %{title: "foobar", post_type: :text})
-      |> Domain.create!()
+      |> Ash.create!()
 
     assert post.title == "foobar"
   end
@@ -83,7 +83,7 @@ defmodule Ash.Test.Type.TypeTest do
     assert_raise(Ash.Error.Invalid, ~r/is too long, max_length is 10/, fn ->
       Post
       |> Ash.Changeset.for_create(:create, %{title: "foobarbazbuzbiz", post_type: :text})
-      |> Domain.create!()
+      |> Ash.create!()
     end)
   end
 
@@ -91,7 +91,7 @@ defmodule Ash.Test.Type.TypeTest do
     assert_raise(Ash.Error.Invalid, ~r/atom must be one of/, fn ->
       Post
       |> Ash.Changeset.for_create(:create, %{title: "foobar", post_type: :something_else})
-      |> Domain.create!()
+      |> Ash.create!()
     end)
   end
 end

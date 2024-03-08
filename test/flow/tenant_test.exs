@@ -47,7 +47,7 @@ defmodule Ash.Flow.TenantTest do
 
       Post
       |> Ash.Query.for_read(:get_by_id, %{id: post_id}, opts)
-      |> Domain.read_one(not_found_error?: true)
+      |> Ash.read_one(not_found_error?: true)
     end
   end
 
@@ -79,7 +79,7 @@ defmodule Ash.Flow.TenantTest do
     foo_post =
       Post
       |> Ash.Changeset.for_create(:create, %{tenant: "foo"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     assert %Ash.Flow.Result{valid?: false} =
              DestroyPost.run(foo_post.id, tenant: "bar")
