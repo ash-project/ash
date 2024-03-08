@@ -47,16 +47,16 @@ defmodule Ash.Test.Policy.FilterConditionTest do
   test "condition in filter policy is evaluated" do
     Resource
     |> Ash.Changeset.for_create(:create, %{visible: true}, authorize?: false)
-    |> Domain.create!()
+    |> Ash.create!()
 
     Resource
     |> Ash.Changeset.for_create(:create, %{visible: false}, authorize?: false)
-    |> Domain.create!()
+    |> Ash.create!()
 
     [visible_resource] =
       Resource
       |> Ash.Query.for_read(:read, %{}, actor: %{id: "foo"})
-      |> Domain.read!()
+      |> Ash.read!()
 
     assert visible_resource.visible == true
   end

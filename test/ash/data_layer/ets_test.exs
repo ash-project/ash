@@ -83,7 +83,7 @@ defmodule Ash.DataLayer.EtsTest do
 
     user
     |> Ash.Changeset.for_update(:update, %{name: "Joe"})
-    |> Domain.update!()
+    |> Ash.update!()
 
     assert [{%{id: ^id}, %EtsTestUser{name: "Joe", id: ^id}}] = user_table()
   end
@@ -104,7 +104,7 @@ defmodule Ash.DataLayer.EtsTest do
 
     assert length(user_table()) == 2
 
-    Domain.destroy!(mike)
+    Ash.destroy!(mike)
 
     assert [{%{id: ^joes_id}, ^joe}] = strip_metadata(user_table())
   end
@@ -115,7 +115,7 @@ defmodule Ash.DataLayer.EtsTest do
     %{id: id} = create_user(%{name: "Matthew"})
     create_user(%{name: "Zachary"})
 
-    assert %EtsTestUser{id: ^id, name: "Matthew"} = Domain.get!(EtsTestUser, id)
+    assert %EtsTestUser{id: ^id, name: "Matthew"} = Ash.get!(EtsTestUser, id)
   end
 
   test "sort" do
@@ -129,7 +129,7 @@ defmodule Ash.DataLayer.EtsTest do
       |> Ash.Query.new()
       |> Ash.Query.sort(:name)
 
-    assert [^joe, ^matthew, ^mike, ^zachary] = strip_metadata(Domain.read!(query))
+    assert [^joe, ^matthew, ^mike, ^zachary] = strip_metadata(Ash.read!(query))
   end
 
   test "limit" do
@@ -144,7 +144,7 @@ defmodule Ash.DataLayer.EtsTest do
       |> Ash.Query.sort(:name)
       |> Ash.Query.limit(2)
 
-    assert [^joe, ^matthew] = strip_metadata(Domain.read!(query))
+    assert [^joe, ^matthew] = strip_metadata(Ash.read!(query))
   end
 
   test "offset" do
@@ -159,7 +159,7 @@ defmodule Ash.DataLayer.EtsTest do
       |> Ash.Query.sort(:name)
       |> Ash.Query.offset(1)
 
-    assert [^matthew, ^mike, ^zachary] = strip_metadata(Domain.read!(query))
+    assert [^matthew, ^mike, ^zachary] = strip_metadata(Ash.read!(query))
   end
 
   describe "filter" do
@@ -235,13 +235,13 @@ defmodule Ash.DataLayer.EtsTest do
     |> Ash.Query.new()
     |> Ash.Query.sort(:name)
     |> Ash.Query.filter(^filter)
-    |> Domain.read!()
+    |> Ash.read!()
   end
 
   defp create_user(attrs, opts \\ []) do
     EtsTestUser
     |> Ash.Changeset.for_create(:create, attrs)
-    |> Domain.create!(opts)
+    |> Ash.create!(opts)
     |> strip_metadata()
   end
 

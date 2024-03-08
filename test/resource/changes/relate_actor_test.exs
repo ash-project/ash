@@ -91,21 +91,21 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     actor =
       Author
       |> Ash.Changeset.for_create(:create)
-      |> Domain.create!()
+      |> Ash.create!()
 
     params = [text: "foo"]
 
     post_with =
       Post
       |> Ash.Changeset.for_create(:create_with_actor, params, actor: actor)
-      |> Domain.create!()
+      |> Ash.create!()
 
     assert post_with.author_id == actor.id
 
     {:error, changeset} =
       Post
       |> Ash.Changeset.for_create(:create_with_actor, params, actor: nil)
-      |> Domain.create()
+      |> Ash.create()
 
     assert changeset.errors |> Enum.count() == 1
   end
@@ -114,17 +114,17 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     account =
       Account
       |> Ash.Changeset.for_create(:create, %{})
-      |> Domain.create!()
+      |> Ash.create!()
 
     actor =
       Author
       |> Ash.Changeset.for_create(:create_with_account, %{account: account})
-      |> Domain.create!()
+      |> Ash.create!()
 
     post =
       Post
       |> Ash.Changeset.for_create(:create_with_actor_field, %{text: "foo"}, actor: actor)
-      |> Domain.create!()
+      |> Ash.create!()
 
     assert post.account_id == account.id
   end
@@ -133,13 +133,13 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     actor =
       Author
       |> Ash.Changeset.for_create(:create)
-      |> Domain.create!()
-      |> Domain.load!(:account)
+      |> Ash.create!()
+      |> Ash.load!(:account)
 
     {:error, changeset} =
       Post
       |> Ash.Changeset.for_create(:create_with_actor_field, %{text: "foo"}, actor: actor)
-      |> Domain.create()
+      |> Ash.create()
 
     assert changeset.errors |> Enum.count() == 1
   end
@@ -148,21 +148,21 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     actor =
       Author
       |> Ash.Changeset.for_create(:create)
-      |> Domain.create!()
+      |> Ash.create!()
 
     params = [text: "foo"]
 
     post_with =
       Post
       |> Ash.Changeset.for_create(:create_possibly_without_actor, params, actor: actor)
-      |> Domain.create!()
+      |> Ash.create!()
 
     assert post_with.author_id == actor.id
 
     post_without =
       Post
       |> Ash.Changeset.for_create(:create_possibly_without_actor, params, actor: nil)
-      |> Domain.create!()
+      |> Ash.create!()
 
     assert is_nil(post_without.author_id)
   end

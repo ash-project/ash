@@ -1150,7 +1150,7 @@ defmodule Ash.Filter do
           Ash.Resource.Info.relationship(acc.destination, relationship)
       end)
 
-    case relationship_query(query.resource, path, actor, tenant, base_related_query) do
+    case relationship_query(query.resource, domain, path, actor, tenant, base_related_query) do
       %{errors: []} = related_query ->
         if filters[{path, related_query.action.name}] do
           {:cont, {:ok, filters}}
@@ -1167,7 +1167,7 @@ defmodule Ash.Filter do
             filter_references: refs[path] || []
           })
           |> Ash.Query.select([])
-          |> domain.can(actor,
+          |> Ash.can(actor,
             run_queries?: false,
             alter_source?: true,
             no_check?: true,
@@ -1260,9 +1260,10 @@ defmodule Ash.Filter do
     end)
   end
 
-  defp relationship_query(resource, [last], actor, tenant, base) do
+  defp relationship_query(resource, domain, [last], actor, tenant, base) do
     relationship = Ash.Resource.Info.relationship(resource, last)
     base_query = base || Ash.Query.new(relationship.destination)
+    domain = relationship.domain || domain
 
     action =
       relationship.read_action || (base_query.action && base_query.action.name) ||
@@ -1280,15 +1281,23 @@ defmodule Ash.Filter do
       Ash.Query.for_read(query, action, %{},
         actor: actor,
         authorize?: true,
-        tenant: tenant
+        tenant: tenant,
+        domain: domain
       )
     end
   end
 
-  defp relationship_query(resource, [next | rest], actor, tenant, base) do
-    resource
-    |> Ash.Resource.Info.related(next)
-    |> relationship_query(rest, actor, tenant, base)
+  defp relationship_query(resource, domain, [next | rest], actor, tenant, base) do
+    relationship = Ash.Resource.Info.relationship(resource, next)
+
+    relationship_query(
+      relationship.destination,
+      relationship.domain || domain,
+      rest,
+      actor,
+      tenant,
+      base
+    )
   end
 
   defp group_refs_by_all_paths(paths_with_refs) do

@@ -106,34 +106,34 @@ defmodule Ash.Test.Type.ModuleTest do
   test "module attribute with no constraints" do
     ModuleAttr
     |> Ash.Changeset.for_create(:create, %{module: GenericModule})
-    |> Domain.create!()
+    |> Ash.create!()
   end
 
   test "module attribute with behaviour constraint when the module complies" do
     ModuleAttrWithBehaviourConstraint
     |> Ash.Changeset.for_create(:create, %{module: StinkyModule})
-    |> Domain.create!()
+    |> Ash.create!()
   end
 
   test "module attribute with behaviour constraint when the module is not compliant" do
     assert_raise Ash.Error.Invalid, fn ->
       ModuleAttrWithBehaviourConstraint
       |> Ash.Changeset.for_create(:create, %{module: GenericModule})
-      |> Domain.create!()
+      |> Ash.create!()
     end
   end
 
   test "module attribute with protocol constraint when the module complies" do
     ModuleAttrWithProtocolConstraint
     |> Ash.Changeset.for_create(:create, %{module: StinkyStruct})
-    |> Domain.create!()
+    |> Ash.create!()
   end
 
   test "module attribute with protocol constraint when the module is not compliant" do
     assert_raise Ash.Error.Invalid, fn ->
       ModuleAttrWithProtocolConstraint
       |> Ash.Changeset.for_create(:create, %{module: GenericModule})
-      |> Domain.create!()
+      |> Ash.create!()
     end
   end
 end

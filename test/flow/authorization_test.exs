@@ -61,19 +61,19 @@ defmodule Ash.Flow.AuthorizationTest do
   end
 
   setup do
-    post = Post |> Ash.Changeset.for_create(:create) |> Domain.create!()
+    post = Post |> Ash.Changeset.for_create(:create) |> Ash.create!()
 
     %{post: post}
   end
 
-  test "Domain.destroy should fail when actor is not admin", %{post: post} do
+  test "Ash.destroy should fail when actor is not admin", %{post: post} do
     assert_raise Ash.Error.Forbidden, fn ->
-      post |> Domain.destroy!(actor: %{admin: false})
+      post |> Ash.destroy!(actor: %{admin: false})
     end
   end
 
-  test "Domain.destroy should succeed when actor is admin", %{post: post} do
-    post |> Domain.destroy!(actor: %{admin: true})
+  test "Ash.destroy should succeed when actor is admin", %{post: post} do
+    post |> Ash.destroy!(actor: %{admin: true})
   end
 
   test "flow should fail when actor is not admin", %{post: post} do

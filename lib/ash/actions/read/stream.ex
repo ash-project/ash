@@ -40,9 +40,9 @@ defmodule Ash.Actions.Read.Stream do
           page_opts = Keyword.merge(keyset, limit: batch_size)
 
           opts =
-            Keyword.put(opts, :page, page_opts)
+            Keyword.merge(opts, page: page_opts, domain: domain)
 
-          case domain.read!(query, opts) do
+          case Ash.read!(query, opts) do
             %{more?: true, results: results} ->
               {results, List.last(results).__metadata__.keyset}
 
@@ -73,7 +73,7 @@ defmodule Ash.Actions.Read.Stream do
           {:halt, false}
 
         true ->
-          {domain.read!(query, opts), false}
+          {Ash.read!(query, Keyword.put(opts, :domain, domain)), false}
       end,
       & &1
     )
@@ -101,7 +101,7 @@ defmodule Ash.Actions.Read.Stream do
           opts =
             Keyword.put(opts, :page, page_opts)
 
-          case domain.read!(query, opts) do
+          case Ash.read!(query, Keyword.put(opts, :domain, domain)) do
             %{more?: true, results: results} ->
               {results, offset + limit}
 
@@ -136,7 +136,7 @@ defmodule Ash.Actions.Read.Stream do
             |> Ash.Query.limit(limit)
             |> Ash.Query.offset(offset)
 
-          results = domain.read!(query, opts)
+          results = Ash.read!(query, Keyword.put(opts, :domain, domain))
 
           if Enum.count(results) == limit do
             {results, false}

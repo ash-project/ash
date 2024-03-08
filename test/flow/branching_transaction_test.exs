@@ -1,7 +1,7 @@
 defmodule Ash.Flow.BranchingTransactionTest do
   @moduledoc false
   use ExUnit.Case, async: false
-  alias Ash.Test.Flow.{Domain, Org, User}
+  alias Ash.Test.Flow.{Org, User}
 
   alias Ash.Test.Flow.Flows.SignUpUser
 
@@ -20,7 +20,7 @@ defmodule Ash.Flow.BranchingTransactionTest do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     SignUpUser.run!(org.name, "Bruce", "Wayne")
     :ok
@@ -30,7 +30,7 @@ defmodule Ash.Flow.BranchingTransactionTest do
     user =
       User
       |> Ash.Query.for_read(:by_name, %{name: "Bruce"})
-      |> Domain.read!()
+      |> Ash.read!()
       |> List.first()
 
     assert user.email == nil

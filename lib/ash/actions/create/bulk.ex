@@ -451,7 +451,7 @@ defmodule Ash.Actions.Create.Bulk do
 
     batch =
       batch
-      |> authorize(domain, opts)
+      |> authorize(opts)
       |> run_bulk_before_batches(
         changes,
         all_changes,
@@ -791,11 +791,11 @@ defmodule Ash.Actions.Create.Bulk do
     end
   end
 
-  defp authorize(batch, domain, opts) do
+  defp authorize(batch, opts) do
     if opts[:authorize?] do
       Enum.map(batch, fn changeset ->
         if changeset.valid? do
-          case domain.can(changeset, opts[:actor],
+          case Ash.can(changeset, opts[:actor],
                  return_forbidden_error?: true,
                  run_queries?: false,
                  maybe_is: false,
@@ -1180,9 +1180,10 @@ defmodule Ash.Actions.Create.Bulk do
             resource |> Ash.Resource.Info.public_attributes() |> Enum.map(& &1.name)
           end
 
-        domain.load(
+        Ash.load(
           records,
           List.wrap(opts[:load]) ++ select,
+          domain: domain,
           actor: opts[:actor],
           authorize?: opts[:authorize?],
           tracer: opts[:tracer]

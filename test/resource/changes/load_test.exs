@@ -39,9 +39,7 @@ defmodule Ash.Test.Resource.Changes.LoadTest do
   end
 
   test "you can use it to load on create" do
-    assert Domain.create!(
-             Ash.Changeset.for_create(Post, :create, text: "foo", second_text: "bar")
-           ).full_text ==
+    assert Ash.create!(Ash.Changeset.for_create(Post, :create, text: "foo", second_text: "bar")).full_text ==
              "foobar"
   end
 end

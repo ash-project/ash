@@ -35,32 +35,32 @@ defmodule Ash.Test.Type.EnumTest do
   test "it handles exact matches" do
     Post
     |> Ash.Changeset.for_create(:create, %{status: :open})
-    |> Domain.create!()
+    |> Ash.create!()
   end
 
   test "it handles string matches" do
     Post
     |> Ash.Changeset.for_create(:create, %{status: "open"})
-    |> Domain.create!()
+    |> Ash.create!()
   end
 
   test "it handles mixed case string matches" do
     Post
     |> Ash.Changeset.for_create(:create, %{status: "OpEn"})
-    |> Domain.create!()
+    |> Ash.create!()
   end
 
   test "it handles mixed case string matches against mixed case atoms" do
     Post
     |> Ash.Changeset.for_create(:create, %{status: "nEveRHAppened"})
-    |> Domain.create!()
+    |> Ash.create!()
   end
 
   test "it fails on mismatches" do
     assert_raise Ash.Error.Invalid, fn ->
       Post
       |> Ash.Changeset.for_create(:create, %{status: "what"})
-      |> Domain.create!()
+      |> Ash.create!()
     end
   end
 

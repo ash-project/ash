@@ -35,7 +35,7 @@ defmodule Ash.Test.Type.TimeTest do
         time_a: ~T[08:30:00],
         time_b: ~T[15:45:30]
       })
-      |> Domain.create!()
+      |> Ash.create!()
 
     assert post.time_a == ~T[08:30:00]
     assert post.time_b == ~T[15:45:30]

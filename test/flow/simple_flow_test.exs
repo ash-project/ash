@@ -3,7 +3,7 @@ defmodule Ash.Flow.SimpleFlowTest do
   use ExUnit.Case, async: false
 
   alias Ash.Flow.Result
-  alias Ash.Test.Flow.{Domain, Org, User}
+  alias Ash.Test.Flow.{Org, User}
 
   alias Ash.Test.Flow.Flows.{
     GetOrgAndUsers,
@@ -30,7 +30,7 @@ defmodule Ash.Flow.SimpleFlowTest do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     org_id = org.id
 
@@ -41,16 +41,16 @@ defmodule Ash.Flow.SimpleFlowTest do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "abc", org: org.id})
     |> Ash.Changeset.manage_relationship(:org, org.id, type: :append_and_remove)
-    |> Domain.create!()
+    |> Ash.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "def", org: org.id})
-    |> Domain.create!()
+    |> Ash.create!()
 
     org_id = org.id
 
@@ -63,26 +63,26 @@ defmodule Ash.Flow.SimpleFlowTest do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "abc", org: org.id})
-    |> Domain.create!()
+    |> Ash.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "def", org: org.id})
-    |> Domain.create!()
+    |> Ash.create!()
 
     GetOrgAndUsersAndDestroyThem.run!("Org 1")
 
-    assert User |> Domain.read!() |> Enum.empty?()
+    assert User |> Ash.read!() |> Enum.empty?()
   end
 
   test "a flow with a create and an update step works" do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     assert %Result{
              result: %{
@@ -96,7 +96,7 @@ defmodule Ash.Flow.SimpleFlowTest do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     assert %Result{
              result: %{
@@ -105,6 +105,6 @@ defmodule Ash.Flow.SimpleFlowTest do
              }
            } = SignUpAndDeleteUser.run!(org.name, "Bruce", "Wayne")
 
-    assert Domain.read!(User) == []
+    assert Ash.read!(User) == []
   end
 end

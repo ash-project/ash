@@ -184,7 +184,7 @@ defmodule Ash.Test.GeneratorTest do
       check all(input <- Ash.Generator.action_input(Post, :create)) do
         Post
         |> Ash.Changeset.for_create(:create, input)
-        |> Domain.create!()
+        |> Ash.create!()
       end
     end
 
@@ -196,7 +196,7 @@ defmodule Ash.Test.GeneratorTest do
         post =
           Post
           |> Ash.Changeset.for_create(:create, input)
-          |> Domain.create!()
+          |> Ash.create!()
 
         assert post.title == "text"
       end
@@ -213,14 +213,14 @@ defmodule Ash.Test.GeneratorTest do
     test "a directly usable changeset can be created" do
       Post
       |> Ash.Generator.changeset(:create)
-      |> Domain.create!()
+      |> Ash.create!()
     end
 
     test "many changesets can be generated" do
       posts =
         Post
         |> Ash.Generator.many_changesets(:create, 5)
-        |> Enum.map(&Domain.create!/1)
+        |> Enum.map(&Ash.create!/1)
 
       assert Enum.count(posts) == 5
     end

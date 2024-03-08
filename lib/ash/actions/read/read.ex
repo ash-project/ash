@@ -26,7 +26,13 @@ defmodule Ash.Actions.Read do
 
   def run(query, action, opts) do
     query = Ash.Query.new(query)
-    domain = Ash.Helpers.domain!(query, opts)
+
+    domain = query.domain || opts[:domain]
+
+    if !domain do
+      raise Ash.Error.Framework.AssumptionFailed, message: "got a query without a domain"
+    end
+
     {query, opts} = Ash.Actions.Helpers.add_process_context(domain, query, opts)
 
     query = %{query | domain: domain}
@@ -776,7 +782,7 @@ defmodule Ash.Actions.Read do
 
   defp authorize_query(query, opts) do
     if opts[:authorize?] do
-      case query.domain.can(query, opts[:actor],
+      case Ash.can(query, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,
              run_queries?: false,
@@ -1957,7 +1963,7 @@ defmodule Ash.Actions.Read do
     |> Helpers.load_runtime_types(query, load_attributes?)
     |> case do
       {:ok, result} ->
-        query.domain.load(result, query)
+        Ash.load(result, query, domain: query.domain)
 
       other ->
         other

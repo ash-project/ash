@@ -86,7 +86,7 @@ defmodule Ash.Test.Actions.BelongsToTest do
     reviewer =
       Reviewer
       |> Ash.Changeset.for_create(:create, %{name: "Zach"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     post =
       Post
@@ -96,16 +96,16 @@ defmodule Ash.Test.Actions.BelongsToTest do
         reviewer_id: reviewer.id,
         review_by_date: DateTime.utc_now()
       })
-      |> Domain.create!()
-      |> Domain.load!(:reviewer)
+      |> Ash.create!()
+      |> Ash.load!(:reviewer)
 
     updated_post =
       post
       |> Ash.Changeset.for_update(:update_with_reviewer, %{
         requires_review: false
       })
-      |> Domain.update!()
-      |> Domain.load!(:reviewer)
+      |> Ash.update!()
+      |> Ash.load!(:reviewer)
 
     assert updated_post.requires_review == false
     assert updated_post.review_by_date == nil

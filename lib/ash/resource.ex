@@ -131,11 +131,11 @@ defmodule Ash.Resource do
         def cast_input(%struct{} = value, _) when struct == __MODULE__, do: {:ok, value}
 
         @impl Ash.Type
-        def load(records, load, _constraints, %{domain: domain} = context) do
+        def load(records, load, _constraints, context) do
           opts = Ash.Context.to_opts(context)
           attribute_loads = __MODULE__ |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
 
-          domain.load(records, List.wrap(load), opts)
+          Ash.load(records, List.wrap(load), opts)
         end
 
         @impl Ash.Type

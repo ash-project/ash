@@ -44,7 +44,7 @@ defmodule Ash.Test.Actions.IdentityTest do
     test "will check for an identity mismatch at validation" do
       Post
       |> Ash.Changeset.for_create(:create, %{title: "fred"}, domain: Domain)
-      |> Domain.create!()
+      |> Ash.create!()
 
       assert %{
                valid?: false,
@@ -62,12 +62,12 @@ defmodule Ash.Test.Actions.IdentityTest do
     test "will check for an identity mismatch prior to submission" do
       Post
       |> Ash.Changeset.for_create(:create, %{title: "fred", url: "google.com"}, domain: Domain)
-      |> Domain.create!()
+      |> Ash.create!()
 
       assert_raise Ash.Error.Invalid, ~r/url: has already been taken/, fn ->
         Post
         |> Ash.Changeset.for_create(:create, %{title: "george", url: "google.com"})
-        |> Domain.create!()
+        |> Ash.create!()
       end
     end
   end

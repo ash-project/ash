@@ -34,7 +34,7 @@ Example usage of the above:
 # Error when not setting a tenant
 MyApp.Users
 |> Ash.Query.filter(name == "fred")
-|> MyMyDomain.read!()
+|> Ash.read!()
 ** (Ash.Error.Invalid)
 
 * "Queries against the Helpdesk.Accounts.User resource require a tenant to be specified"
@@ -44,7 +44,7 @@ MyApp.Users
 MyApp.Users
 |> Ash.Query.filter(name == "fred")
 |> Ash.Query.set_tenant(1)
-|> MyMyDomain.read!()
+|> Ash.read!()
 
 [...]
 
@@ -52,7 +52,7 @@ MyApp.Users
 MyApp.Users
 |> Ash.Changeset.for_create(:create, %{name: "fred"})
 |> Ash.Changeset.set_tenant(1)
-|> MyMyDomain.create!()
+|> Ash.create!()
 
 %MyApp.User{organization_id: 1}
 ```

@@ -126,10 +126,6 @@ defmodule AppName.ResourceName do
 
 For all available pagination options, see `d:Ash.Resource.Dsl.actions.read|pagination`.
 
-### Querying the paginated resource
-
-For all available querying options, see [`Ash.Domain.read.pagination`](https://hexdocs.pm/ash/Ash.Domain.html#c:read/2-pagination).
-
 > #### Check the updated query return type! {: .info}
 > Pagination will modify the return type of calling the query action.
 >

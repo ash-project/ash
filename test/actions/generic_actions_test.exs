@@ -57,19 +57,19 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       assert "Hello fred" =
                Post
                |> Ash.ActionInput.for_action(:hello, %{name: "fred"})
-               |> Domain.run_action!()
+               |> Ash.run_action!()
     end
 
     test "generic actions validate their input" do
       assert {:error, %Ash.Error.Invalid{}} =
                Post
                |> Ash.ActionInput.for_action(:hello, %{name: %{a: 10}})
-               |> Domain.run_action()
+               |> Ash.run_action()
 
       assert_raise Ash.Error.Invalid, ~r/Input Invalid/, fn ->
         Post
         |> Ash.ActionInput.for_action(:hello, %{name: %{a: 10}})
-        |> Domain.run_action!()
+        |> Ash.run_action!()
       end
     end
 
@@ -77,12 +77,12 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       assert {:error, %Ash.Error.Invalid{}} =
                Post
                |> Ash.ActionInput.for_action(:hello, %{name: "fred", one: 1})
-               |> Domain.run_action()
+               |> Ash.run_action()
 
       assert_raise Ash.Error.Invalid, ~r/Input Invalid/, fn ->
         Post
         |> Ash.ActionInput.for_action(:hello, %{name: "fred", one: 1})
-        |> Domain.run_action!()
+        |> Ash.run_action!()
       end
     end
   end
@@ -92,12 +92,12 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       assert "Hello fred" =
                Post
                |> Ash.ActionInput.for_action(:hello, %{name: "fred"})
-               |> Domain.run_action!(authorize?: true)
+               |> Ash.run_action!(authorize?: true)
 
       assert_raise Ash.Error.Forbidden, ~r/Forbidden/, fn ->
         Post
         |> Ash.ActionInput.for_action(:hello, %{name: "mike"})
-        |> Domain.run_action!(authorize?: true)
+        |> Ash.run_action!(authorize?: true)
       end
     end
   end

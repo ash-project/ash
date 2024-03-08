@@ -161,9 +161,7 @@ defmodule Ash.Test.CodeInterfaceTest do
   describe "calculations" do
     test "calculation value can be fetched dynamically" do
       assert {:ok, "Zach Daniel"} =
-               Domain.calculate(User, :full_name,
-                 refs: %{first_name: "Zach", last_name: "Daniel"}
-               )
+               Ash.calculate(User, :full_name, refs: %{first_name: "Zach", last_name: "Daniel"})
     end
 
     test "the same calculation can be fetched with the calculation interface" do
@@ -179,7 +177,7 @@ defmodule Ash.Test.CodeInterfaceTest do
       user =
         User
         |> Ash.Changeset.for_create(:create, %{first_name: "Zach", last_name: "Daniel"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       assert "Zach Daniel" = User.full_name_record!(user)
     end
@@ -189,7 +187,7 @@ defmodule Ash.Test.CodeInterfaceTest do
     user =
       User
       |> Ash.Changeset.for_create(:create, %{first_name: "ted", last_name: "Danson"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     assert User.get_by_id!(user.id).id == user.id
   end

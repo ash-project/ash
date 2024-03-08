@@ -316,7 +316,8 @@ defmodule Ash.CodeInterface do
               end
             )
 
-          unquote(domain).calculate!(unquote(resource), unquote(interface.calculation),
+          Ash.calculate!(unquote(resource), unquote(interface.calculation),
+            domain: unquote(domain),
             refs: refs,
             args: arguments,
             actor: opts[:actor],
@@ -351,7 +352,8 @@ defmodule Ash.CodeInterface do
               end
             )
 
-          unquote(domain).calculate(unquote(resource), unquote(interface.calculation),
+          Ash.calculate(unquote(resource), unquote(interface.calculation),
+            domain: unquote(domain),
             refs: refs,
             args: arguments,
             actor: opts[:actor],
@@ -439,14 +441,16 @@ defmodule Ash.CodeInterface do
 
                   {input, input_opts} = Keyword.pop(input_opts, :input)
 
+                  input_opts = Keyword.put(input_opts, :domain, unquote(domain))
+
                   input =
                     input
                     |> Kernel.||(unquote(resource))
                     |> Ash.ActionInput.for_action(unquote(action.name), params, input_opts)
                 end
 
-              act = quote do: unquote(domain).run_action(input, opts)
-              act! = quote do: unquote(domain).run_action!(input, opts)
+              act = quote do: Ash.run_action(input, opts)
+              act! = quote do: Ash.run_action!(input, opts)
 
               {subject, [], resolve_subject, act, act!}
 
@@ -459,6 +463,7 @@ defmodule Ash.CodeInterface do
                     Keyword.split(opts, [:query, :actor, :tenant, :authorize?, :tracer])
 
                   {query, query_opts} = Keyword.pop(query_opts, :query)
+                  query_opts = Keyword.put(query_opts, :domain, unquote(domain))
 
                   query =
                     if unquote(filter_keys) && !Enum.empty?(unquote(filter_keys)) do
@@ -491,7 +496,7 @@ defmodule Ash.CodeInterface do
                   quote do
                     unquote(resolve_not_found_error?)
 
-                    unquote(domain).read_one(query, opts)
+                    Ash.read_one(query, opts)
                     |> case do
                       {:ok, nil} when not_found_error? ->
                         {:error, Ash.Error.Query.NotFound.exception(resource: query.resource)}
@@ -501,7 +506,7 @@ defmodule Ash.CodeInterface do
                     end
                   end
                 else
-                  quote do: unquote(domain).read(query, opts)
+                  quote do: Ash.read(query, opts)
                 end
 
               act! =
@@ -509,7 +514,7 @@ defmodule Ash.CodeInterface do
                   quote do
                     unquote(resolve_not_found_error?)
 
-                    unquote(domain).read_one!(query, opts)
+                    Ash.read_one!(query, opts)
                     |> case do
                       nil when not_found_error? ->
                         raise Ash.Error.Query.NotFound, resource: query.resource
@@ -519,7 +524,7 @@ defmodule Ash.CodeInterface do
                     end
                   end
                 else
-                  quote do: unquote(domain).read!(query, opts)
+                  quote do: Ash.read!(query, opts)
                 end
 
               {subject, [], resolve_subject, act, act!}
@@ -533,6 +538,7 @@ defmodule Ash.CodeInterface do
                     Keyword.split(opts, [:changeset, :actor, :tenant, :authorize?, :tracer])
 
                   {changeset, changeset_opts} = Keyword.pop(changeset_opts, :changeset)
+                  changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
                   changeset =
                     changeset
@@ -540,8 +546,8 @@ defmodule Ash.CodeInterface do
                     |> Ash.Changeset.for_create(unquote(action.name), params, changeset_opts)
                 end
 
-              act = quote do: unquote(domain).create(changeset, opts)
-              act! = quote do: unquote(domain).create!(changeset, opts)
+              act = quote do: Ash.create(changeset, opts)
+              act! = quote do: Ash.create!(changeset, opts)
 
               {subject, [], resolve_subject, act, act!}
 
@@ -554,13 +560,15 @@ defmodule Ash.CodeInterface do
                   {changeset_opts, opts} =
                     Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer])
 
+                  changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
+
                   changeset =
                     record
                     |> Ash.Changeset.for_update(unquote(action.name), params, changeset_opts)
                 end
 
-              act = quote do: unquote(domain).update(changeset, opts)
-              act! = quote do: unquote(domain).update!(changeset, opts)
+              act = quote do: Ash.update(changeset, opts)
+              act! = quote do: Ash.update!(changeset, opts)
 
               {subject, subject_args, resolve_subject, act, act!}
 
@@ -573,13 +581,15 @@ defmodule Ash.CodeInterface do
                   {changeset_opts, opts} =
                     Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer])
 
+                  changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
+
                   changeset =
                     record
                     |> Ash.Changeset.for_destroy(unquote(action.name), params, changeset_opts)
                 end
 
-              act = quote do: unquote(domain).destroy(changeset, opts)
-              act! = quote do: unquote(domain).destroy!(changeset, opts)
+              act = quote do: Ash.destroy(changeset, opts)
+              act! = quote do: Ash.destroy!(changeset, opts)
 
               {subject, subject_args, resolve_subject, act, act!}
           end
@@ -589,7 +599,6 @@ defmodule Ash.CodeInterface do
         resolve_subject =
           quote do
             unquote(resolve_subject)
-            unquote(subject) = %{unquote(subject) | domain: unquote(domain)}
           end
 
         common_args =
@@ -632,7 +641,7 @@ defmodule Ash.CodeInterface do
           unquote(resolve_opts_params)
           opts = Keyword.put(opts, :actor, actor)
           unquote(resolve_subject)
-          unquote(domain).can(unquote(subject), actor, opts)
+          Ash.can(unquote(subject), actor, opts)
         end
 
         # sobelow_skip ["DOS.BinToAtom"]
@@ -641,7 +650,7 @@ defmodule Ash.CodeInterface do
           unquote(resolve_opts_params)
           opts = Keyword.put(opts, :actor, actor)
           unquote(resolve_subject)
-          unquote(domain).can?(unquote(subject), actor, opts)
+          Ash.can?(unquote(subject), actor, opts)
         end
       end
     end

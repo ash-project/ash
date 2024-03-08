@@ -84,13 +84,13 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
     author =
       Author
       |> Ash.Changeset.for_create(:create, %{name: "fred"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     author =
       author
       |> Ash.Changeset.for_update(:only_allow_name)
       |> Ash.Changeset.atomic_update(:name, Ash.Expr.expr(name <> " weasley"))
-      |> Domain.update!()
+      |> Ash.update!()
 
     assert author.name == "fred weasley"
   end
@@ -116,7 +116,7 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
     author =
       Author
       |> Ash.Changeset.for_create(:create, %{name: "fred", score: 0})
-      |> Domain.create!()
+      |> Ash.create!()
 
     assert Author.increment_score!(author, authorize?: true).score == 1
   end
@@ -126,7 +126,7 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
       author =
         Author
         |> Ash.Changeset.for_create(:create, %{name: "fred", score: 0})
-        |> Domain.create!()
+        |> Ash.create!()
 
       assert Author.increment_score!(author).score == 1
       assert Author.increment_score!(author).score == 2

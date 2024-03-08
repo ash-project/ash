@@ -974,11 +974,12 @@ defmodule Ash.Flow.Executor.AshEngine do
                           actor: data[:actor],
                           tenant: tenant,
                           authorize?: opts[:authorize?],
-                          tracer: data[:tracer]
+                          tracer: data[:tracer],
+                          domain: domain
                         )
                         |> then(fn query ->
                           if get? do
-                            case domain.read_one(query) do
+                            case Ash.read_one(query) do
                               {:ok, nil} ->
                                 if not_found_error? do
                                   {:error, Ash.Error.Query.NotFound.exception(resource: resource)}
@@ -993,7 +994,7 @@ defmodule Ash.Flow.Executor.AshEngine do
                                 other
                             end
                           else
-                            domain.read(query)
+                            Ash.read(query)
                           end
                         end)
                     end
@@ -1091,9 +1092,10 @@ defmodule Ash.Flow.Executor.AshEngine do
                           authorize?: opts[:authorize?],
                           tracer: data[:tracer],
                           upsert?: upsert?,
-                          upsert_identity: upsert_identity
+                          upsert_identity: upsert_identity,
+                          domain: domain
                         )
-                        |> domain.create()
+                        |> Ash.create()
                     end
                   end)
               )
@@ -1335,9 +1337,10 @@ defmodule Ash.Flow.Executor.AshEngine do
                                 actor: data[:actor],
                                 tenant: tenant,
                                 authorize?: opts[:authorize?],
-                                tracer: data[:tracer]
+                                tracer: data[:tracer],
+                                domain: domain
                               )
-                              |> domain.update()
+                              |> Ash.update()
                           end
                       end
                     end)
@@ -1455,9 +1458,10 @@ defmodule Ash.Flow.Executor.AshEngine do
                                 actor: data[:actor],
                                 tenant: tenant,
                                 authorize?: opts[:authorize?],
-                                tracer: data[:tracer]
+                                tracer: data[:tracer],
+                                domain: domain
                               )
-                              |> domain.destroy()
+                              |> Ash.destroy()
                               |> case do
                                 :ok ->
                                   {:ok, record}

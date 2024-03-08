@@ -40,7 +40,7 @@ defmodule Ash.Test.Actions.DestroyTest do
 
     def change(changeset, _, _) do
       Ash.Changeset.after_action(changeset, fn _changeset, data ->
-        Domain.destroy!(data)
+        Ash.destroy!(data)
 
         {:ok, data}
       end)
@@ -66,7 +66,7 @@ defmodule Ash.Test.Actions.DestroyTest do
         accept []
 
         manual fn changeset, _ ->
-          Domain.destroy(changeset.data, return_destroyed?: true)
+          Ash.destroy(changeset.data, return_destroyed?: true)
         end
       end
     end
@@ -125,53 +125,53 @@ defmodule Ash.Test.Actions.DestroyTest do
       post =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "foo", contents: "bar"})
-        |> Domain.create!()
+        |> Ash.create!()
 
-      assert Domain.destroy!(post) == :ok
+      assert Ash.destroy!(post) == :ok
 
-      refute Domain.read_one!(Ash.Query.filter(Post, id == ^post.id))
+      refute Ash.read_one!(Ash.Query.filter(Post, id == ^post.id))
     end
 
     test "returns the record if requested" do
       post =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "foo", contents: "bar"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       post_id = post.id
 
-      assert {:ok, %{id: ^post_id}} = Domain.destroy(post, return_destroyed?: true)
+      assert {:ok, %{id: ^post_id}} = Ash.destroy(post, return_destroyed?: true)
 
-      refute Domain.read_one!(Ash.Query.filter(Post, id == ^post.id))
+      refute Ash.read_one!(Ash.Query.filter(Post, id == ^post.id))
     end
 
     test "returns the record and notifications if requested" do
       post =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "foo", contents: "bar"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       post_id = post.id
 
       assert {:ok, %{id: ^post_id}, [_]} =
-               Domain.destroy(post, return_destroyed?: true, return_notifications?: true)
+               Ash.destroy(post, return_destroyed?: true, return_notifications?: true)
 
-      refute Domain.read_one!(Ash.Query.filter(Post, id == ^post.id))
+      refute Ash.read_one!(Ash.Query.filter(Post, id == ^post.id))
     end
 
     test "the destroy does not happen if it is unauthorized" do
       author =
         Author
         |> Ash.Changeset.for_create(:create, %{name: "foobar"})
-        |> Domain.create!(authorize?: false)
+        |> Ash.create!(authorize?: false)
 
       start_supervised({Ash.Test.Authorizer, strict_check: :continue, check: :forbidden})
 
       assert_raise(Ash.Error.Forbidden, fn ->
-        Domain.destroy!(author, authorize?: true)
+        Ash.destroy!(author, authorize?: true)
       end)
 
-      assert Domain.get!(Author, author.id, authorize?: false)
+      assert Ash.get!(Author, author.id, authorize?: false)
     end
   end
 
@@ -180,11 +180,11 @@ defmodule Ash.Test.Actions.DestroyTest do
       author =
         Author
         |> Ash.Changeset.for_create(:create, %{name: "foo"})
-        |> Domain.create!()
+        |> Ash.create!()
 
-      assert Domain.destroy!(author, action: :manual) == :ok
+      assert Ash.destroy!(author, action: :manual) == :ok
 
-      refute Domain.read_one!(Ash.Query.filter(Author, id == ^author.id))
+      refute Ash.read_one!(Ash.Query.filter(Author, id == ^author.id))
     end
   end
 end

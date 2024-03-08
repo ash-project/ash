@@ -53,6 +53,6 @@ Ash.Changeset.for_create(MyApp.FetchComplexResource, :validate_input, %{})
 
 # This will return the structs by default
 # Although you are free to do custom persistence in your resource changes
-MyApp.MyDomain.create!(changeset)
+Ash.create!(changeset)
 # %MyApp.FetchComplexResource{...}
 ```

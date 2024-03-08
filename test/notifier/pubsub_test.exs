@@ -96,9 +96,9 @@ defmodule Ash.Test.Notifier.PubSubTest do
     post =
       Post
       |> Ash.Changeset.for_create(:create, %{})
-      |> Domain.create!()
+      |> Ash.create!()
 
-    Domain.destroy!(post)
+    Ash.destroy!(post)
 
     message = "post:foo:#{post.id}"
     assert_receive {:broadcast, ^message, "destroy", %Ash.Notifier.Notification{}}
@@ -108,9 +108,9 @@ defmodule Ash.Test.Notifier.PubSubTest do
     post =
       Post
       |> Ash.Changeset.for_create(:create, %{})
-      |> Domain.create!()
+      |> Ash.create!()
 
-    Domain.destroy!(post)
+    Ash.destroy!(post)
 
     message = "post:foo:#{post.id}"
     pid = self()
@@ -121,9 +121,9 @@ defmodule Ash.Test.Notifier.PubSubTest do
     post =
       Post
       |> Ash.Changeset.for_create(:create, %{})
-      |> Domain.create!()
+      |> Ash.create!()
 
-    Domain.destroy!(post, notification_metadata: %{foo: :bar})
+    Ash.destroy!(post, notification_metadata: %{foo: :bar})
 
     message = "post:foo:#{post.id}"
 
@@ -135,11 +135,11 @@ defmodule Ash.Test.Notifier.PubSubTest do
     post =
       Post
       |> Ash.Changeset.for_create(:create, %{name: "ted"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     post
     |> Ash.Changeset.for_update(:update, %{name: "joe"})
-    |> Domain.update!()
+    |> Ash.update!()
 
     message = "post:foo:#{post.id}"
     assert_receive {:broadcast, ^message, "update", %Ash.Notifier.Notification{}}
@@ -154,13 +154,13 @@ defmodule Ash.Test.Notifier.PubSubTest do
     post =
       Post
       |> Ash.Changeset.for_create(:create, %{name: "ted"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     new_id = Ash.UUID.generate()
 
     post
     |> Ash.Changeset.for_update(:update, %{id: new_id})
-    |> Domain.update!(action: :update_pkey)
+    |> Ash.update!(action: :update_pkey)
 
     message = "post:foo:#{post.id}"
     assert_receive {:broadcast, ^message, "update_pkey", %Ash.Notifier.Notification{}}
@@ -173,7 +173,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
     user =
       User
       |> Ash.Changeset.for_create(:create, %{name: "Dave"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     message = "users.#{user.id}.created"
     assert_receive {:broadcast, ^message, "create", %Ash.Notifier.Notification{}}
