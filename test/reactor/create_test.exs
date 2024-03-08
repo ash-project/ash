@@ -263,7 +263,7 @@ defmodule Ash.Test.ReactorCreateTest do
         argument :author, result(:create_author)
 
         run fn _, _ ->
-          assert [_] = Domain.read!(Author)
+          assert [_] = Ash.read!(Author)
 
           raise "hell"
         end
@@ -275,6 +275,6 @@ defmodule Ash.Test.ReactorCreateTest do
                async?: false
              )
 
-    assert [] = Domain.read!(Author)
+    assert [] = Ash.read!(Author)
   end
 end

@@ -35,11 +35,11 @@ defmodule Ash.Test.Actions.StreamTest do
   test "records can be streamed" do
     1..10
     |> Stream.map(&%{title: "title#{&1}"})
-    |> Domain.bulk_create!(Post, :create)
+    |> Ash.bulk_create!(Post, :create)
 
     count =
       Post
-      |> Domain.stream!(batch_size: 100_000)
+      |> Ash.stream!(batch_size: 100_000)
       |> Enum.count()
 
     assert count == 10
@@ -48,11 +48,11 @@ defmodule Ash.Test.Actions.StreamTest do
   test "records can be streamed using limit/offset strategy" do
     1..10
     |> Stream.map(&%{title: "title#{&1}"})
-    |> Domain.bulk_create!(Post, :create)
+    |> Ash.bulk_create!(Post, :create)
 
     count =
       Post
-      |> Domain.stream!(batch_size: 5, stream_with: :offset)
+      |> Ash.stream!(batch_size: 5, stream_with: :offset)
       |> Enum.count()
 
     assert count == 10
@@ -61,11 +61,11 @@ defmodule Ash.Test.Actions.StreamTest do
   test "records can be streamed using full_read strategy" do
     1..10
     |> Stream.map(&%{title: "title#{&1}"})
-    |> Domain.bulk_create!(Post, :create)
+    |> Ash.bulk_create!(Post, :create)
 
     count =
       Post
-      |> Domain.stream!(batch_size: 5, stream_with: :full_read)
+      |> Ash.stream!(batch_size: 5, stream_with: :full_read)
       |> Enum.count()
 
     assert count == 10
@@ -74,12 +74,12 @@ defmodule Ash.Test.Actions.StreamTest do
   test "records can be streamed, and the overall limit will be honored" do
     1..10
     |> Stream.map(&%{title: "title#{&1}"})
-    |> Domain.bulk_create!(Post, :create)
+    |> Ash.bulk_create!(Post, :create)
 
     count =
       Post
       |> Ash.Query.limit(7)
-      |> Domain.stream!(batch_size: 5)
+      |> Ash.stream!(batch_size: 5)
       |> Enum.count()
 
     assert count == 7

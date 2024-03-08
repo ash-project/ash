@@ -15,7 +15,7 @@ changeset = Ash.Changeset.for_create(Resource, :create, %{})
 Benchee.run(
   %{
     create: fn ->
-      Ash.Test.Domain.create!(changeset)
+      Ash.create!(changeset)
     end
 
   }

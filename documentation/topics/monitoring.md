@@ -39,14 +39,14 @@ A tracer can be configured globally in application config.
 config :ash, :tracer, MyApp.Tracer
 ```
 
-Additionally, one can be provide when creating changesets or calling an domain, i.e
+Additionally, one can be provide when creating changesets or calling an action, i.e
 
 ```elixir
 Resource
 # better to put it here, as changesets are traced as well. It will be carried over to the domain action
 |> Ash.Changeset.for_create(:create, %{}, tracer: MyApp.Tracer)
 # but you can also pass it here.
-|> Domain.create!(tracer: MyApp.Tracer)
+|> Ash.create!(tracer: MyApp.Tracer)
 ```
 
 For customizing the names created for each span, see:

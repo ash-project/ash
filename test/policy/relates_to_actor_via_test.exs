@@ -177,63 +177,63 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
       user =
         User
         |> Ash.Changeset.for_create(:create)
-        |> Domain.create!()
+        |> Ash.create!()
 
       account =
         Account
         |> Ash.Changeset.for_create(:create)
         |> Ash.Changeset.manage_relationship(:user, user, type: :append)
-        |> Domain.create!(authorize?: false)
+        |> Ash.create!(authorize?: false)
 
       actor =
         Actor
         |> Ash.Changeset.for_create(:create)
         |> Ash.Changeset.manage_relationship(:user, user, type: :append)
-        |> Domain.create!(authorize?: false)
-        |> Domain.load!(:type)
+        |> Ash.create!(authorize?: false)
+        |> Ash.load!(:type)
 
-      assert {:ok, _} = Domain.get(Account, account.id, actor: actor)
+      assert {:ok, _} = Ash.get(Account, account.id, actor: actor)
     end
 
     test "relates_to_actor_via with has_many" do
       user =
         User
         |> Ash.Changeset.for_create(:create)
-        |> Domain.create!()
+        |> Ash.create!()
 
       account =
         Account
         |> Ash.Changeset.for_create(:create)
         |> Ash.Changeset.manage_relationship(:user, user, type: :append)
-        |> Domain.create!(authorize?: false)
+        |> Ash.create!(authorize?: false)
 
       role =
         Role
         |> Ash.Changeset.for_create(:create)
         |> Ash.Changeset.manage_relationship(:account, account, type: :append)
-        |> Domain.create!(authorize?: false)
+        |> Ash.create!(authorize?: false)
 
       actor =
         Actor
         |> Ash.Changeset.for_create(:create)
         |> Ash.Changeset.manage_relationship(:role, role, type: :append)
-        |> Domain.create!(authorize?: false)
-        |> Domain.load!(:type)
+        |> Ash.create!(authorize?: false)
+        |> Ash.load!(:type)
 
-      assert {:ok, _} = Domain.get(Account, account.id, actor: actor)
+      assert {:ok, _} = Ash.get(Account, account.id, actor: actor)
     end
 
     test "relates_to_actor_via raises if relationship does not exist" do
       assert_raise Ash.Error.Unknown, ~r/does_not_exist/, fn ->
         BadPolicyRelName
         |> Ash.Changeset.for_create(:create)
-        |> Domain.create!(authorize?: true)
+        |> Ash.create!(authorize?: true)
       end
 
       assert_raise Ash.Error.Unknown, ~r/:does_not_exist/, fn ->
         BadPolicyRelPathName
         |> Ash.Changeset.for_create(:create)
-        |> Domain.create!(authorize?: true)
+        |> Ash.create!(authorize?: true)
       end
     end
   end

@@ -210,10 +210,9 @@ defmodule Ash.Policy.FilterCheck do
           end
 
         authorizer.resource
-        |> authorizer.domain.query()
         |> Ash.Query.filter(^filter)
         |> Ash.Query.filter(^auto_filter(authorizer.actor, authorizer, opts))
-        |> authorizer.domain.read()
+        |> Ash.read(domain: authorizer.domain)
         |> case do
           {:ok, authorized_data} ->
             authorized_pkeys = Enum.map(authorized_data, &Map.take(&1, pkey))

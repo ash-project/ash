@@ -49,7 +49,7 @@ defmodule Ash.Test.Type.StringTest do
         string_c: "  bar  ",
         string_d: "  bar  "
       })
-      |> Domain.create!()
+      |> Ash.create!()
 
     assert post.string_a == "foo"
     assert post.string_b == "  foo  "
@@ -66,7 +66,7 @@ defmodule Ash.Test.Type.StringTest do
         string_c: " ",
         string_d: " "
       })
-      |> Domain.create!()
+      |> Ash.create!()
 
     assert post.string_a == nil
     assert post.string_b == nil
@@ -83,7 +83,7 @@ defmodule Ash.Test.Type.StringTest do
     Enum.each(allowed_values, fn {e_val, f_val} ->
       Post
       |> Ash.Changeset.for_create(:create, %{string_e: e_val, string_f: f_val})
-      |> Domain.create!()
+      |> Ash.create!()
     end)
   end
 
@@ -91,13 +91,13 @@ defmodule Ash.Test.Type.StringTest do
     assert_raise(Ash.Error.Invalid, ~r/string_e: length must be greater/, fn ->
       Post
       |> Ash.Changeset.for_create(:create, %{string_e: "   45   "})
-      |> Domain.create!()
+      |> Ash.create!()
     end)
 
     assert_raise(Ash.Error.Invalid, ~r/string_f: length must be greater/, fn ->
       Post
       |> Ash.Changeset.for_create(:create, %{string_f: "12"})
-      |> Domain.create!()
+      |> Ash.create!()
     end)
   end
 
@@ -105,13 +105,13 @@ defmodule Ash.Test.Type.StringTest do
     assert_raise(Ash.Error.Invalid, ~r/string_e: length must be less/, fn ->
       Post
       |> Ash.Changeset.for_create(:create, %{string_e: "1234567"})
-      |> Domain.create!()
+      |> Ash.create!()
     end)
 
     assert_raise(Ash.Error.Invalid, ~r/string_f: length must be less/, fn ->
       Post
       |> Ash.Changeset.for_create(:create, %{string_f: "   45   "})
-      |> Domain.create!()
+      |> Ash.create!()
     end)
   end
 end

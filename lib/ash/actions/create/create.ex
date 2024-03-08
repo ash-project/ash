@@ -103,8 +103,8 @@ defmodule Ash.Actions.Create do
 
     with %{valid?: true} = changeset <- changeset(changeset, domain, action, opts),
          %{valid?: true} = changeset <- check_upsert_support(changeset, opts),
-         %{valid?: true} = changeset <- authorize(changeset, domain, opts),
-         {:commit, {:ok, result, instructions}} <- {:commit, commit(changeset, domain, opts)} do
+         %{valid?: true} = changeset <- authorize(changeset, opts),
+         {:ok, result, instructions} <- commit(changeset, domain, opts) do
       add_notifications(
         changeset.resource,
         result,
@@ -133,21 +133,13 @@ defmodule Ash.Actions.Create do
 
       {:error, error} ->
         errors = Helpers.process_errors(changeset, List.wrap(error))
-
-        Ash.Changeset.run_after_transactions(
-          {:error, Ash.Error.to_error_class(errors, changeset: changeset)},
-          changeset
-        )
-
-      {:commit, {:error, error}} ->
-        errors = Helpers.process_errors(changeset, List.wrap(error))
         {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
     end
   end
 
-  defp authorize(changeset, domain, opts) do
+  defp authorize(changeset, opts) do
     if opts[:authorize?] do
-      case domain.can(changeset, opts[:actor],
+      case Ash.can(changeset, opts[:actor],
              add_calculations?: true,
              alter_source?: true,
              return_forbidden_error?: true,

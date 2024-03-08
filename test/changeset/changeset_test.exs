@@ -318,7 +318,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       record =
         Category
         |> Ash.Changeset.for_create(:create, %{name: "foo"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       assert %Ash.Changeset{
                action_type: :update,
@@ -356,7 +356,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       changeset = %{changeset | before_action: [capitalize_name]}
 
-      category = changeset |> Domain.create!()
+      category = changeset |> Ash.create!()
 
       assert %Category{name: "Foo"} = category
     end
@@ -372,10 +372,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
       changeset = %{changeset | after_action: [capitalize_name]}
 
-      category = changeset |> Domain.create!()
+      category = changeset |> Ash.create!()
       assert %Category{name: "modified"} = category
 
-      assert {:ok, %Category{name: "foo"}} = Domain.get(Category, category.id)
+      assert {:ok, %Category{name: "foo"}} = Ash.get(Category, category.id)
     end
 
     test "it applies an around_transaction function on a changeset" do
@@ -399,7 +399,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Ash.Changeset.for_create(:create, %{name: "foo"})
         |> Ash.Changeset.around_transaction(change_name)
 
-      category = changeset |> Domain.create!()
+      category = changeset |> Ash.create!()
 
       assert %Category{name: "foo_before_after"} = category
     end
@@ -410,7 +410,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       category =
         Category
         |> Ash.Changeset.for_create(:create, %{name: "foo"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       {:ok, %{category: category}}
     end
@@ -447,7 +447,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       category =
         Category
         |> Ash.Changeset.for_create(:create, %{name: "foo"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       changeset =
         category
@@ -497,11 +497,11 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Post
         |> Ash.Changeset.new()
         |> Ash.Changeset.manage_relationship(:author, author, on_no_match: :create)
-        |> Domain.create!()
+        |> Ash.create!()
 
-      assert [%{name: "title"}] = Domain.read!(Author)
+      assert [%{name: "title"}] = Ash.read!(Author)
 
-      assert %{name: "title"} = Domain.load!(post, :author).author
+      assert %{name: "title"} = Ash.load!(post, :author).author
     end
 
     test "it removes belongs_to entities on replace" do
@@ -511,7 +511,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Post
         |> Ash.Changeset.new()
         |> Ash.Changeset.manage_relationship(:author, author, on_no_match: :create)
-        |> Domain.create!()
+        |> Ash.create!()
 
       new_author = %{name: "title2"}
 
@@ -522,17 +522,17 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           on_no_match: :create,
           on_missing: :destroy
         )
-        |> Domain.update!()
+        |> Ash.update!()
 
-      assert [%{name: "title2"}] = Domain.read!(Author)
+      assert [%{name: "title2"}] = Ash.read!(Author)
 
-      assert %{name: "title2"} = Domain.load!(post, :author).author
+      assert %{name: "title2"} = Ash.load!(post, :author).author
     end
 
     test "upsert with many_to_many relationships creates and relates records, and returns the created/related records" do
       Category
       |> Ash.Changeset.for_create(:create, %{name: "foo"})
-      |> Domain.create!()
+      |> Ash.create!()
 
       post =
         Post
@@ -541,7 +541,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           on_lookup: :relate,
           on_no_match: :create
         )
-        |> Domain.create!()
+        |> Ash.create!()
 
       assert [%{name: "bar"}, %{name: "foo"}] = Enum.sort_by(post.categories, & &1.name)
     end
@@ -576,14 +576,14 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     test "upsert with many_to_many relationships can eager validate" do
       Category
       |> Ash.Changeset.for_create(:create, %{name: "foo"})
-      |> Domain.create!()
+      |> Ash.create!()
 
       assert %{valid?: false, errors: [%Ash.Error.Query.NotFound{}]} =
                Post
                |> Ash.Changeset.new()
                |> Ash.Changeset.manage_relationship(:categories, [%{name: "foo"}, %{name: "bar"}],
                  on_lookup: :relate,
-                 eager_validate_with: Domain,
+                 eager_validate_with: Ash,
                  use_identities: [:unique_name]
                )
 
@@ -592,7 +592,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                |> Ash.Changeset.new()
                |> Ash.Changeset.manage_relationship(:categories, [%{name: "foo"}],
                  on_lookup: :relate,
-                 eager_validate_with: Domain,
+                 eager_validate_with: Ash,
                  use_identities: [:unique_name]
                )
     end
@@ -605,11 +605,11 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Author
         |> Ash.Changeset.new()
         |> Ash.Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
-        |> Domain.create!()
+        |> Ash.create!()
 
-      assert [%{title: "title"}, %{title: "title"}] = Domain.read!(Post)
+      assert [%{title: "title"}, %{title: "title"}] = Ash.read!(Post)
 
-      assert %{posts: [%{title: "title"}, %{title: "title"}]} = Domain.load!(author, :posts)
+      assert %{posts: [%{title: "title"}, %{title: "title"}]} = Ash.load!(author, :posts)
     end
 
     test "it ignores creates if configured" do
@@ -620,11 +620,11 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Author
         |> Ash.Changeset.new()
         |> Ash.Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :ignore)
-        |> Domain.create!()
+        |> Ash.create!()
 
-      assert [] = Domain.read!(Post)
+      assert [] = Ash.read!(Post)
 
-      assert %{posts: []} = Domain.load!(author, :posts)
+      assert %{posts: []} = Ash.load!(author, :posts)
     end
 
     test "it errors on creates if configured" do
@@ -639,7 +639,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                      |> Ash.Changeset.manage_relationship(:posts, [post1, post2],
                        on_no_match: :error
                      )
-                     |> Domain.create!()
+                     |> Ash.create!()
                    end
     end
 
@@ -651,16 +651,16 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Author
         |> Ash.Changeset.new()
         |> Ash.Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
-        |> Domain.create!()
+        |> Ash.create!()
 
-      assert [%{title: "title"}, %{title: "title"}] = Domain.read!(Post)
+      assert [%{title: "title"}, %{title: "title"}] = Ash.read!(Post)
 
       author
       |> Ash.Changeset.new()
       |> Ash.Changeset.manage_relationship(:posts, [], on_missing: :destroy)
-      |> Domain.update!()
+      |> Ash.update!()
 
-      assert [] = Domain.read!(Post)
+      assert [] = Ash.read!(Post)
     end
 
     test "it unrelates records if specified" do
@@ -674,10 +674,10 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           on_no_match: :create,
           use_identities: [:unique_name_per_author]
         )
-        |> Domain.create!()
+        |> Ash.create!()
 
       assert [%{title: "title"}, %{title: "title1"}] =
-               Enum.sort_by(Domain.read!(UniqueNamePerAuthor), & &1.title)
+               Enum.sort_by(Ash.read!(UniqueNamePerAuthor), & &1.title)
 
       author =
         author
@@ -686,12 +686,12 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           on_missing: :unrelate,
           use_identities: [:unique_name_per_author]
         )
-        |> Domain.update!()
+        |> Ash.update!()
 
       assert [%{title: "title"}, %{title: "title1"}] =
-               Enum.sort_by(Domain.read!(UniqueNamePerAuthor), & &1.title)
+               Enum.sort_by(Ash.read!(UniqueNamePerAuthor), & &1.title)
 
-      assert %{unique_posts: [%{title: "title"}]} = Domain.load!(author, :unique_posts)
+      assert %{unique_posts: [%{title: "title"}]} = Ash.load!(author, :unique_posts)
     end
 
     test "it properly assumes the destination field of the relationship matches records when not provided" do
@@ -702,19 +702,19 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Author
         |> Ash.Changeset.new()
         |> Ash.Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
-        |> Domain.create!()
+        |> Ash.create!()
 
-      assert [%{title: "title"}, %{title: "title"}] = Domain.read!(Post)
+      assert [%{title: "title"}, %{title: "title"}] = Ash.read!(Post)
 
       author =
         author
         |> Ash.Changeset.new()
         |> Ash.Changeset.manage_relationship(:posts, [], on_missing: :unrelate)
-        |> Domain.update!()
+        |> Ash.update!()
 
-      assert [%{title: "title"}, %{title: "title"}] = Domain.read!(Post)
+      assert [%{title: "title"}, %{title: "title"}] = Ash.read!(Post)
 
-      assert %{posts: []} = Domain.load!(author, :posts)
+      assert %{posts: []} = Ash.load!(author, :posts)
     end
 
     test "it updates records" do
@@ -725,9 +725,9 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         Author
         |> Ash.Changeset.new()
         |> Ash.Changeset.manage_relationship(:posts, [post1, post2], on_no_match: :create)
-        |> Domain.create!()
+        |> Ash.create!()
 
-      assert posts = [%{title: "title"}, %{title: "title"}] = Domain.read!(Post)
+      assert posts = [%{title: "title"}, %{title: "title"}] = Ash.read!(Post)
 
       post_ids = Enum.map(posts, &Map.get(&1, :id))
       input = Enum.map(post_ids, &%{"id" => &1, title: "new_title"})
@@ -735,9 +735,9 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       author
       |> Ash.Changeset.new()
       |> Ash.Changeset.manage_relationship(:posts, input, on_match: :update)
-      |> Domain.update!()
+      |> Ash.update!()
 
-      assert [%{title: "new_title"}, %{title: "new_title"}] = Domain.read!(Post)
+      assert [%{title: "new_title"}, %{title: "new_title"}] = Ash.read!(Post)
     end
 
     test "it updates only join records in many_to_many relationships with on_match: :update_join" do
@@ -750,13 +750,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           on_no_match: :create,
           join_keys: [:priority]
         )
-        |> Domain.create!()
+        |> Ash.create!()
 
       assert [%{id: foo_id, name: "foo"}, %{id: bar_id, name: "bar"}] =
-               Domain.read!(Category) |> Enum.sort_by(& &1.name, :desc)
+               Ash.read!(Category) |> Enum.sort_by(& &1.name, :desc)
 
       assert [%{category_id: ^foo_id, priority: 0}, %{category_id: ^bar_id, priority: 1}] =
-               Domain.read!(PostCategory) |> Enum.sort_by(& &1.priority)
+               Ash.read!(PostCategory) |> Enum.sort_by(& &1.priority)
 
       post
       |> Ash.Changeset.new()
@@ -767,32 +767,32 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         use_identities: [:unique_name],
         join_keys: [:priority]
       )
-      |> Domain.update!()
+      |> Ash.update!()
 
       assert [%{id: ^foo_id, name: "foo"}, %{id: ^bar_id, name: "bar"}] =
-               Domain.read!(Category) |> Enum.sort_by(& &1.name, :desc)
+               Ash.read!(Category) |> Enum.sort_by(& &1.name, :desc)
 
       assert [%{category_id: ^bar_id, priority: 1}, %{category_id: ^foo_id, priority: 2}] =
-               Domain.read!(PostCategory) |> Enum.sort_by(& &1.priority)
+               Ash.read!(PostCategory) |> Enum.sort_by(& &1.priority)
     end
   end
 
   describe "manage_relationship/3 type: :append_and_remove" do
     test "it replaces entities to a resource's relationship" do
-      post1 = Post |> Ash.Changeset.for_create(:create, %{title: "title1"}) |> Domain.create!()
-      post2 = Post |> Ash.Changeset.for_create(:create, %{title: "title2"}) |> Domain.create!()
+      post1 = Post |> Ash.Changeset.for_create(:create, %{title: "title1"}) |> Ash.create!()
+      post2 = Post |> Ash.Changeset.for_create(:create, %{title: "title2"}) |> Ash.create!()
 
       author =
         Author
         |> Ash.Changeset.new()
         |> Ash.Changeset.manage_relationship(:posts, [post1], type: :append_and_remove)
-        |> Domain.create!()
+        |> Ash.create!()
 
       [author] =
         Author
         |> Ash.Query.load(posts: [:author])
         |> Ash.Query.filter(id == ^author.id)
-        |> Domain.read!()
+        |> Ash.read!()
 
       assert [author_post] = author.posts
 
@@ -802,13 +802,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         author
         |> Ash.Changeset.new()
         |> Ash.Changeset.manage_relationship(:posts, [post2], type: :append_and_remove)
-        |> Domain.update!()
+        |> Ash.update!()
 
       [author] =
         Author
         |> Ash.Query.load(posts: [:author])
         |> Ash.Query.filter(id == ^author.id)
-        |> Domain.read!()
+        |> Ash.read!()
 
       assert [author_post] = author.posts
 
@@ -819,7 +819,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       post1 =
         CompositeKeyPost
         |> Ash.Changeset.for_create(:create, %{serial: 1})
-        |> Domain.create!()
+        |> Ash.create!()
 
       author =
         Author
@@ -829,27 +829,27 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           [%{id: post1.id, serial: post1.serial}],
           type: :append_and_remove
         )
-        |> Domain.create!()
+        |> Ash.create!()
 
       [fetched_post] =
         CompositeKeyPost
         |> Ash.Query.load(author: :composite_key_posts)
         |> Ash.Query.filter(id == ^post1.id and serial == ^post1.serial)
-        |> Domain.read!()
+        |> Ash.read!()
 
-      assert Domain.reload!(author) == Domain.reload!(fetched_post.author)
+      assert Ash.reload!(author) == Ash.reload!(fetched_post.author)
     end
 
     test "it accepts a list of maps representing primary_keys as a second param" do
       post1 =
         CompositeKeyPost
         |> Ash.Changeset.for_create(:create, %{serial: 1})
-        |> Domain.create!()
+        |> Ash.create!()
 
       post2 =
         CompositeKeyPost
         |> Ash.Changeset.for_create(:create, %{serial: 2})
-        |> Domain.create!()
+        |> Ash.create!()
 
       author =
         Author
@@ -862,27 +862,27 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           ],
           type: :append_and_remove
         )
-        |> Domain.create!()
+        |> Ash.create!()
 
       [fetched_post] =
         CompositeKeyPost
         |> Ash.Query.load(author: :composite_key_posts)
         |> Ash.Query.filter(id == ^post1.id and serial == ^post1.serial)
-        |> Domain.read!()
+        |> Ash.read!()
 
-      assert Domain.reload!(author) == Domain.reload!(fetched_post.author)
+      assert Ash.reload!(author) == Ash.reload!(fetched_post.author)
     end
 
     test "it accepts mix of entities and maps representing primary_keys as a second param" do
       post1 =
         CompositeKeyPost
         |> Ash.Changeset.for_create(:create, %{serial: 1})
-        |> Domain.create!()
+        |> Ash.create!()
 
       post2 =
         CompositeKeyPost
         |> Ash.Changeset.for_create(:create, %{serial: 2})
-        |> Domain.create!()
+        |> Ash.create!()
 
       author =
         Author
@@ -895,13 +895,13 @@ defmodule Ash.Test.Changeset.ChangesetTest do
           ],
           type: :append_and_remove
         )
-        |> Domain.create!()
+        |> Ash.create!()
 
       [fetched_author] =
         Author
         |> Ash.Query.load(:composite_key_posts)
         |> Ash.Query.filter(id == ^author.id)
-        |> Domain.read!()
+        |> Ash.read!()
 
       assert Enum.sort(Enum.map(fetched_author.composite_key_posts, & &1.id)) ==
                Enum.sort([post1.id, post2.id])
@@ -911,17 +911,17 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       post1 =
         CompositeKeyPost
         |> Ash.Changeset.for_create(:create, %{serial: 1})
-        |> Domain.create!()
+        |> Ash.create!()
 
       post2 =
         CompositeKeyPost
         |> Ash.Changeset.for_create(:create, %{serial: 2})
-        |> Domain.create!()
+        |> Ash.create!()
 
       invalid_post =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "a title"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       changeset =
         Author
@@ -941,7 +941,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
 
     test "it returns error if relationship does not exists" do
-      post1 = Post |> Ash.Changeset.for_create(:create, %{title: "foo"}) |> Domain.create!()
+      post1 = Post |> Ash.Changeset.for_create(:create, %{title: "foo"}) |> Ash.create!()
 
       changeset =
         Author
@@ -967,7 +967,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   describe "changing_relationship?/2" do
     test "it returns true if the attribute is being changed by the current changeset" do
-      post = Post |> Ash.Changeset.for_create(:create, %{title: "title2"}) |> Domain.create!()
+      post = Post |> Ash.Changeset.for_create(:create, %{title: "title2"}) |> Ash.create!()
 
       changeset =
         Author
@@ -1015,7 +1015,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       |> Ash.Changeset.new()
       |> Ash.Changeset.set_argument(:confirm_name, "foo")
       |> Ash.Changeset.for_create(:create_with_confirmation, %{"name" => "foo"})
-      |> Domain.create!()
+      |> Ash.create!()
     end
 
     test "arguments can be provided as strings" do
@@ -1023,7 +1023,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       |> Ash.Changeset.new()
       |> Ash.Changeset.set_argument("confirm_name", "foo")
       |> Ash.Changeset.for_create(:create_with_confirmation, %{"name" => "foo"})
-      |> Domain.create!()
+      |> Ash.create!()
     end
 
     test "arguments can be used in invalid changes" do
@@ -1032,7 +1032,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         |> Ash.Changeset.new()
         |> Ash.Changeset.set_argument(:confirm_name, "bar")
         |> Ash.Changeset.for_create(:create_with_confirmation, %{"name" => "foo"})
-        |> Domain.create!()
+        |> Ash.create!()
       end
     end
 
@@ -1040,7 +1040,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       assert_raise Ash.Error.Invalid, ~r/argument confirm_name is required/, fn ->
         Category
         |> Ash.Changeset.for_create(:create_with_confirmation, %{"name" => "foo"})
-        |> Domain.create!()
+        |> Ash.create!()
       end
     end
 

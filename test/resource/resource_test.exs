@@ -72,9 +72,9 @@ defmodule Ash.Test.Resource.ResourceTest do
   test "it returns the correct error when doing a read with no data layer setup" do
     Post
     |> Ash.Changeset.for_create(:create, %{name: "foo"})
-    |> Domain.create()
+    |> Ash.create()
 
-    {_, error} = Domain.read(Post)
+    {_, error} = Ash.read(Post)
     [%Ash.Error.SimpleDataLayer.NoDataProvided{message: message} | _] = error.errors
     assert message != nil
   end

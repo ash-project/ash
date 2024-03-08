@@ -41,9 +41,9 @@ defmodule Ash.Type.Struct do
 
   @impl Ash.Type
   def load(record, load, _constraints, %{domain: domain} = context) do
-    opts = context |> Map.take([:actor, :authorize?, :tenant, :tracer]) |> Map.to_list()
+    opts = Ash.Context.to_opts(context, domain: domain)
 
-    domain.load(record, load, opts)
+    Ash.load(record, load, opts)
   end
 
   @impl Ash.Type

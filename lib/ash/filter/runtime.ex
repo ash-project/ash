@@ -71,7 +71,7 @@ defmodule Ash.Filter.Runtime do
             |> Ash.Query.load(refs_to_load)
             |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-          domain.load!(records, load, authorize?: false)
+          Ash.load!(records, load, authorize?: false, domain: domain)
       end
 
     filter
@@ -110,7 +110,7 @@ defmodule Ash.Filter.Runtime do
           |> Ash.Query.load(need_to_load)
           |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-        case domain.load(records, query, authorize?: false) do
+        case Ash.load(records, query, authorize?: false, domain: domain) do
           {:ok, loaded} ->
             filter_matches(domain, loaded, filter, opts)
 
@@ -119,47 +119,6 @@ defmodule Ash.Filter.Runtime do
         end
     end
   end
-
-  # it looks like this somehow isn't used? I think something was removed that shouldn't have been
-
-  # This is bad, as parent requirements are loaded iteratively instead of up front.
-  # we can improve this
-  # def load_parent_requirements(domain, expression, [first | rest]) do
-  #   case load_parent_requirements(domain, expression, first) do
-  #     {:ok, first} ->
-  #       {:ok, [first | rest]}
-
-  #     other ->
-  #       other
-  #   end
-  # end
-
-  # def load_parent_requirements(domain, expression, %resource{} = parent) do
-  #   expression
-  #   |> Ash.Filter.flat_map(fn %Ash.Query.Parent{expr: expr} ->
-  #     Ash.Filter.list_refs(expr)
-  #   end)
-  #   |> Enum.reject(&match?(%{attribute: %Ash.Resource.Attribute{}}, &1))
-  #   |> Enum.uniq()
-  #   |> case do
-  #     [] ->
-  #       {:ok, parent}
-
-  #     refs ->
-  #       to_load =
-  #         refs
-  #         |> Enum.map(& &1.relationship_path)
-  #         |> Enum.uniq()
-  #         |> Enum.map(&path_to_load(resource, &1, refs))
-
-  #       query =
-  #         resource
-  #         |> Ash.Query.load(to_load)
-  #         |> Ash.Query.set_context(%{private: %{internal?: true}})
-
-  #       domain.load(parent, query)
-  #   end
-  # end
 
   defp matches(%resource{} = record, expression, opts) do
     relationship_paths =
@@ -283,7 +242,7 @@ defmodule Ash.Filter.Runtime do
               |> Ash.Query.load(refs)
               |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-            domain.load!(record, load, authorize?: false)
+            Ash.load!(record, load, domain: domain, authorize?: false)
         end
 
       expression
@@ -302,7 +261,7 @@ defmodule Ash.Filter.Runtime do
             |> Ash.Query.load(need_to_load)
             |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-          case domain.load(record, query, authorize?: false) do
+          case Ash.load(record, query, authorize?: false, domain: domain) do
             {:ok, loaded} ->
               do_match(loaded, expression, parent, resource, unknown_on_unknown_refs?)
 

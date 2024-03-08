@@ -90,13 +90,13 @@ defmodule Ash.Test.PlugHelpersTest do
 
     User
     |> Changeset.for_create(:create, attrs, tenant: attrs.customer_id)
-    |> Domain.create!()
+    |> Ash.create!()
   end
 
   def build_tenant(attrs) do
     Customer
     |> Changeset.for_create(:create, attrs)
-    |> Domain.create!()
+    |> Ash.create!()
   end
 
   doctest Ash.PlugHelpers

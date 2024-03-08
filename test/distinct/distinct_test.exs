@@ -41,28 +41,28 @@ defmodule Ash.Test.Sort.DistinctTest do
   setup do
     Post
     |> Ash.Changeset.for_create(:create, %{title: "fred armisen"})
-    |> Domain.create!()
+    |> Ash.create!()
 
     Post
     |> Ash.Changeset.for_create(:create, %{title: "fred armisen"})
-    |> Domain.create!()
+    |> Ash.create!()
 
     Post
     |> Ash.Changeset.for_create(:create, %{title: "fred weasley"})
-    |> Domain.create!()
+    |> Ash.create!()
 
     :ok
   end
 
   test "distinct by attribute works" do
-    assert [_, _] = Post |> Ash.Query.distinct(:title) |> Domain.read!()
+    assert [_, _] = Post |> Ash.Query.distinct(:title) |> Ash.read!()
   end
 
   test "distinct by calculation works" do
     assert [_] =
              Post
              |> Ash.Query.distinct(:first_title_word)
-             |> Domain.read!()
+             |> Ash.read!()
   end
 
   test "distinct_sort calculation works" do
@@ -70,12 +70,12 @@ defmodule Ash.Test.Sort.DistinctTest do
              Post
              |> Ash.Query.distinct(:first_title_word)
              |> Ash.Query.distinct_sort(:second_title_word)
-             |> Domain.read!()
+             |> Ash.read!()
 
     assert [%{title: "fred weasley"}] =
              Post
              |> Ash.Query.distinct(:first_title_word)
              |> Ash.Query.distinct_sort(second_title_word: :desc)
-             |> Domain.read!()
+             |> Ash.read!()
   end
 end

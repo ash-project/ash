@@ -43,7 +43,7 @@ defmodule Ash.Test.Actions.TimeoutTest do
       assert_raise Ash.Error.Invalid,
                    ~r/Ash.Test.Actions.TimeoutTest.Author.create timed out after 1ms/,
                    fn ->
-                     Domain.create!(Ash.Changeset.for_create(Author, :create, %{name: "Fred"}),
+                     Ash.create!(Ash.Changeset.for_create(Author, :create, %{name: "Fred"}),
                        timeout: 1
                      )
                    end

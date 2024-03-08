@@ -98,14 +98,14 @@ defmodule Ash.Test.Actions.HasManyTest do
       |> Ash.Changeset.for_create(:create, %{
         title: "buz"
       })
-      |> Domain.create!()
+      |> Ash.create!()
 
     post =
       post
       |> Ash.Changeset.for_update(:add_comment, %{
         comment: %{content: "foo"}
       })
-      |> Domain.update!()
+      |> Ash.update!()
 
     assert length(post.comments) == 1
 
@@ -114,7 +114,7 @@ defmodule Ash.Test.Actions.HasManyTest do
       |> Ash.Changeset.for_update(:add_comment, %{
         comment: %{content: "bar"}
       })
-      |> Domain.update!()
+      |> Ash.update!()
 
     assert length(post.comments) == 2
 
@@ -123,7 +123,7 @@ defmodule Ash.Test.Actions.HasManyTest do
       |> Ash.Changeset.for_update(:delete_comment, %{
         comment: Enum.at(post.comments, 0)
       })
-      |> Domain.update!()
+      |> Ash.update!()
 
     assert length(post.comments) == 1
   end

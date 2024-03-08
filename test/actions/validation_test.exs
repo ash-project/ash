@@ -59,29 +59,29 @@ defmodule Ash.Test.Actions.ValidationTest do
     assert_raise(Ash.Error.Invalid, ~r/bio, date: must be absent/, fn ->
       Profile
       |> Ash.Changeset.for_create(:create, %{bio: "foobar"})
-      |> Domain.create!()
+      |> Ash.create!()
     end)
   end
 
   test "validations only run when their when conditions validate properly" do
     Profile
     |> Ash.Changeset.for_create(:create, %{foo: false, status: "bar"})
-    |> Domain.create!()
+    |> Ash.create!()
 
     Profile
     |> Ash.Changeset.for_create(:create, %{foo: true, status: "foo"})
-    |> Domain.create!()
+    |> Ash.create!()
 
     assert_raise(Ash.Error.Invalid, ~r/status: must not equal foo/, fn ->
       Profile
       |> Ash.Changeset.for_create(:create, %{foo: false, status: "foo"})
-      |> Domain.create!()
+      |> Ash.create!()
     end)
 
     assert_raise(Ash.Error.Invalid, ~r/status: must equal foo/, fn ->
       Profile
       |> Ash.Changeset.for_create(:create, %{foo: true, status: "bar"})
-      |> Domain.create!()
+      |> Ash.create!()
     end)
   end
 
@@ -89,9 +89,9 @@ defmodule Ash.Test.Actions.ValidationTest do
     assert_raise(Ash.Error.Invalid, ~r/bio: must be present/, fn ->
       Profile
       |> Ash.Changeset.for_create(:create, %{})
-      |> Domain.create!()
+      |> Ash.create!()
       |> Ash.Changeset.for_update(:update, %{})
-      |> Domain.update!()
+      |> Ash.update!()
     end)
   end
 
@@ -99,10 +99,10 @@ defmodule Ash.Test.Actions.ValidationTest do
     assert_raise(Ash.Error.Invalid, ~r/date: must be absent/, fn ->
       Profile
       |> Ash.Changeset.for_create(:create, %{})
-      |> Domain.create!()
+      |> Ash.create!()
       |> Ash.Changeset.for_update(:update, %{bio: "foo", date: Date.utc_today()})
-      |> Domain.update!()
-      |> Domain.destroy!()
+      |> Ash.update!()
+      |> Ash.destroy!()
     end)
   end
 
@@ -110,14 +110,14 @@ defmodule Ash.Test.Actions.ValidationTest do
     test "it succeeds if the value is in the list" do
       Profile
       |> Ash.Changeset.for_create(:create, %{status: "foo"})
-      |> Domain.create!()
+      |> Ash.create!()
     end
 
     test "it fails if the value is not in the list" do
       assert_raise(Ash.Error.Invalid, ~r/expected one of foo, bar/, fn ->
         Profile
         |> Ash.Changeset.for_create(:create, %{status: "blart"})
-        |> Domain.create!()
+        |> Ash.create!()
       end)
     end
   end

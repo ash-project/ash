@@ -3,13 +3,13 @@ defmodule Ash.Can do
 
   require Ash.Query
 
-  def can?(action_or_query_or_changeset, actor, opts \\ []) do
+  def can?(action_or_query_or_changeset, domain, actor, opts \\ []) do
     opts =
       opts
       |> Keyword.put_new(:maybe_is, true)
       |> Keyword.put_new(:filter_with, :filter)
 
-    case can(action_or_query_or_changeset, actor, opts) do
+    case can(action_or_query_or_changeset, domain, actor, opts) do
       {:ok, :maybe} -> opts[:maybe_is]
       {:ok, result} -> result
       {:ok, true, _} -> {:ok, true}
@@ -17,7 +17,7 @@ defmodule Ash.Can do
     end
   end
 
-  def can(action_or_query_or_changeset, actor, opts \\ []) do
+  def can(action_or_query_or_changeset, domain, actor, opts \\ []) do
     opts = Keyword.put_new(opts, :maybe_is, :maybe)
     opts = Keyword.put_new(opts, :run_queries?, true)
     opts = Keyword.put_new(opts, :filter_with, :filter)
@@ -59,8 +59,6 @@ defmodule Ash.Can do
         {resource, name, input} when is_atom(name) ->
           {resource, Ash.Resource.Info.action(resource, name), input}
       end
-
-    domain = Ash.Helpers.domain!(resource, opts)
 
     subject =
       case action_or_query_or_changeset do
@@ -121,9 +119,15 @@ defmodule Ash.Can do
 
     subject = %{subject | domain: domain}
 
-    domain
-    |> run_check(actor, subject, opts)
-    |> alter_source(domain, actor, subject, opts)
+    case Ash.Domain.Info.resource(domain, resource) do
+      {:ok, _} ->
+        domain
+        |> run_check(actor, subject, opts)
+        |> alter_source(domain, actor, subject, opts)
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   defp alter_source({:ok, true, query}, domain, actor, %Ash.Changeset{} = subject, opts) do

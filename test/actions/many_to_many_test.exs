@@ -96,7 +96,7 @@ defmodule Ash.Test.Actions.ManyToManyTest do
         title: "buz",
         linked_posts: [%{title: "foo"}, %{title: "bar"}]
       })
-      |> Domain.create!()
+      |> Ash.create!()
     end
   end
 end

@@ -67,9 +67,9 @@ defmodule Ash.Test.Resource.NoPkTest do
              |> Changeset.for_action(:create, %{
                temperature: :rand.uniform()
              })
-             |> Domain.create()
+             |> Ash.create()
 
-    assert {:ok, [actual]} = Domain.read(Temperature)
+    assert {:ok, [actual]} = Ash.read(Temperature)
     assert expected.time == actual.time
     assert expected.temperature == actual.temperature
   end
@@ -81,7 +81,7 @@ defmodule Ash.Test.Resource.NoPkTest do
                location:
                  "Taumata­whakatangihanga­koauau­o­tamatea­turi­pukaka­piki­maunga­horo­nuku­pokai­whenua­ki­tana­tahu"
              })
-             |> Domain.create()
+             |> Ash.create()
 
     assert {:ok, actual} =
              Temperature
@@ -89,7 +89,7 @@ defmodule Ash.Test.Resource.NoPkTest do
                temperature: :rand.uniform(),
                location_id: location.id
              })
-             |> Domain.create()
+             |> Ash.create()
 
     assert actual.location_id == location.id
   end

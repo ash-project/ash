@@ -52,7 +52,7 @@ defmodule Ash.Actions.Helpers do
 
   def add_process_context(domain, query_or_changeset, opts) do
     query_or_changeset = set_context(query_or_changeset, opts[:context] || %{})
-    domain = domain || query_or_changeset.domain
+    domain = domain || opts[:domain] || query_or_changeset.domain
 
     opts =
       case query_or_changeset.context do
@@ -96,6 +96,8 @@ defmodule Ash.Actions.Helpers do
     opts = set_opts(opts, domain, query_or_changeset)
 
     query_or_changeset = add_context(query_or_changeset, opts)
+
+    query_or_changeset = %{query_or_changeset | domain: domain}
 
     {query_or_changeset, opts}
   end
@@ -160,7 +162,8 @@ defmodule Ash.Actions.Helpers do
         message: "Could not determine domain for action."
     end
 
-    if !skip_requiring_actor?(query_or_changeset) && !internal?(query_or_changeset) && !Keyword.has_key?(opts, :actor) &&
+    if !skip_requiring_actor?(query_or_changeset) && !internal?(query_or_changeset) &&
+         !Keyword.has_key?(opts, :actor) &&
          Ash.Domain.Info.require_actor?(domain) do
       raise Ash.Error.to_error_class(
               Ash.Error.Forbidden.DomainRequiresActor.exception(domain: domain)
@@ -546,7 +549,7 @@ defmodule Ash.Actions.Helpers do
         |> Ash.Query.load(changeset.load)
         |> select_selected(result)
 
-      case domain.load(result, query, opts) do
+      case Ash.load(result, query, Keyword.put(opts, :domain, domain)) do
         {:ok, result} ->
           {:ok, result, instructions}
 
@@ -565,7 +568,7 @@ defmodule Ash.Actions.Helpers do
         |> Ash.Query.load(changeset.load)
         |> select_selected(result)
 
-      case domain.load(result, query, opts) do
+      case Ash.load(result, query, Keyword.put(opts, :domain, domain)) do
         {:ok, result} ->
           {:ok, result, %{}}
 

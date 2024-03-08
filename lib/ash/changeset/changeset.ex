@@ -1543,12 +1543,13 @@ defmodule Ash.Changeset do
           tenant: tenant,
           actor: changeset.context[:private][:actor],
           authorize?: changeset.context[:private][:authorize?],
-          tracer: changeset.context[:private][:tracer]
+          tracer: changeset.context[:private][:tracer],
+          domain: domain
         )
         |> Ash.Query.do_filter(values)
         |> Ash.Query.limit(1)
         |> Ash.Query.set_context(%{private: %{internal?: true}})
-        |> domain.read_one(authorize?: false)
+        |> Ash.read_one(authorize?: false)
         |> case do
           {:ok, nil} ->
             changeset

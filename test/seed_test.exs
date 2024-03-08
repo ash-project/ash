@@ -179,14 +179,14 @@ defmodule Ash.Test.SeedTest do
     test "it creates a single record with resource and input" do
       assert %Post{id: id, title: "seeded"} = seed!(Post, %{title: "seeded"})
 
-      assert post = Domain.get!(Post, id)
+      assert post = Ash.get!(Post, id)
       assert post.title == "seeded"
     end
 
     test "it creates a single record with a struct" do
       assert %Post{id: id, title: "seeded"} = seed!(%Post{title: "seeded"})
 
-      assert post = Domain.get!(Post, id)
+      assert post = Ash.get!(Post, id)
       assert post.title == "seeded"
     end
 
@@ -216,7 +216,7 @@ defmodule Ash.Test.SeedTest do
                categories: categories,
                author: %Author{name: "ted dansen"},
                ratings: ratings
-             } = Post |> Domain.get!(id) |> Domain.load!([:categories, :author, :ratings])
+             } = Post |> Ash.get!(id) |> Ash.load!([:categories, :author, :ratings])
 
       assert categories |> Enum.map(& &1.name) |> Enum.sort() == ["bar", "foo"]
       assert ratings |> Enum.map(& &1.rating) |> Enum.sort() == [1, 2]
@@ -243,7 +243,7 @@ defmodule Ash.Test.SeedTest do
                categories: categories,
                author: author,
                ratings: ratings
-             } = Post |> Domain.get!(id) |> Domain.load!([:categories, :author, :ratings])
+             } = Post |> Ash.get!(id) |> Ash.load!([:categories, :author, :ratings])
 
       assert %Post{id: id} =
                seed!(%Post{
@@ -259,15 +259,15 @@ defmodule Ash.Test.SeedTest do
                categories: categories,
                author: author,
                ratings: ratings
-             } = Post |> Domain.get!(id) |> Domain.load!([:categories, :author, :ratings])
+             } = Post |> Ash.get!(id) |> Ash.load!([:categories, :author, :ratings])
 
       assert categories |> Enum.map(& &1.name) |> Enum.sort() == ["bar", "foo"]
       assert ratings |> Enum.map(& &1.rating) |> Enum.sort() == [1, 2]
       assert author.name == "ted dansen"
 
-      assert Enum.count(Domain.read!(Category)) == 2
-      assert Enum.count(Domain.read!(Rating)) == 2
-      assert Enum.count(Domain.read!(Author)) == 1
+      assert Enum.count(Ash.read!(Category)) == 2
+      assert Enum.count(Ash.read!(Rating)) == 2
+      assert Enum.count(Ash.read!(Author)) == 1
     end
   end
 end

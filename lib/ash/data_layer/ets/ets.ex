@@ -462,7 +462,8 @@ defmodule Ash.DataLayer.Ets do
     |> Ash.Query.unset(:load)
     |> Ash.Query.filter(ref(^source_attribute) in ^source_attributes)
     |> Ash.Query.set_context(%{private: %{internal?: true}})
-    |> query.domain.read(authorize?: false)
+    |> Ash.Query.set_domain(query.domain)
+    |> Ash.read(authorize?: false)
     |> case do
       {:error, error} ->
         {:error, error}
@@ -482,7 +483,8 @@ defmodule Ash.DataLayer.Ets do
               ^Map.get(parent, source_attribute)
           )
           |> Ash.Query.set_context(%{private: %{internal?: true}})
-          |> query.domain.read(authorize?: false)
+          |> Ash.Query.set_domain(query.domain)
+          |> Ash.read(authorize?: false)
           |> case do
             {:ok, join_data} ->
               join_attrs =
@@ -635,11 +637,12 @@ defmodule Ash.DataLayer.Ets do
           },
           {:ok, record} ->
             with {:ok, loaded_record} <-
-                   domain.load(
+                   Ash.load(
                      record,
                      record.__struct__
                      |> Ash.Query.load(relationship_path_to_load(relationship_path, field))
                      |> Ash.Query.set_context(%{private: %{internal?: true}}),
+                     domain: domain,
                      actor: context[:actor],
                      authorize?: false
                    ),

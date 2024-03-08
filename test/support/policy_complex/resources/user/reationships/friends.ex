@@ -9,7 +9,7 @@ defmodule Ash.Test.Support.PolicyComplex.User.Relationships.Friends do
     friend_links =
       Ash.Test.Support.PolicyComplex.FriendLink
       |> Ash.Query.filter(source_id in ^user_ids or destination_id in ^user_ids)
-      |> domain.read!(authorize?: false)
+      |> Ash.read!(authorize?: false, domain: domain)
 
     all_relevant_user_ids =
       friend_links
@@ -21,7 +21,7 @@ defmodule Ash.Test.Support.PolicyComplex.User.Relationships.Friends do
     all_relevant_users =
       query
       |> Ash.Query.filter(id in ^all_relevant_user_ids)
-      |> domain.read!(authorize?: false)
+      |> Ash.read!(authorize?: false, domain: domain)
       |> Map.new(&{&1.id, &1})
 
     {:ok,
