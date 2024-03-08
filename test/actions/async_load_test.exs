@@ -61,7 +61,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       other_posts =
         destination_query
         |> Ash.Query.filter(category in ^categories)
-        |> domain.read!()
+        |> Ash.read!(domain: domain)
         |> Enum.group_by(& &1.category)
 
       {:ok,
@@ -221,22 +221,22 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       post1 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "post1", category: "foo"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "post2", category: "bar"})
-      |> Domain.create!()
+      |> Ash.create!()
 
       post3 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "post2", category: "foo"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       post3_id = post3.id
 
       assert [%{id: ^post3_id}] =
                post1
-               |> Domain.load!(:posts_in_same_category)
+               |> Ash.load!(:posts_in_same_category)
                |> Map.get(:posts_in_same_category)
     end
 
@@ -244,19 +244,19 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       post1 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "post1", category: "foo"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "post2", category: "bar"})
-      |> Domain.create!()
+      |> Ash.create!()
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "post2", category: "foo"})
-      |> Domain.create!()
+      |> Ash.create!()
 
       assert [%Post{title: "post1"}] =
                post1
-               |> Domain.load!(posts_in_same_category: :posts_in_same_category)
+               |> Ash.load!(posts_in_same_category: :posts_in_same_category)
                |> Map.get(:posts_in_same_category)
                |> Enum.flat_map(&Map.get(&1, :posts_in_same_category))
     end
@@ -265,15 +265,15 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       post1 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "post1", category: "foo"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "post2", category: "bar"})
-      |> Domain.create!()
+      |> Ash.create!()
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "post2", category: "foo"})
-      |> Domain.create!()
+      |> Ash.create!()
 
       assert %Post{
                title: "post1",
@@ -289,7 +289,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
                ]
              } =
                post1
-               |> Domain.load!([
+               |> Ash.load!([
                  :title_plus_title,
                  posts_in_same_category: [
                    :title_plus_title,
@@ -302,25 +302,25 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       author =
         Author
         |> Ash.Changeset.for_create(:create, %{name: "zerg"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       post1 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "post1"})
         |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
-        |> Domain.create!()
+        |> Ash.create!()
 
       post2 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "post2"})
         |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
-        |> Domain.create!()
+        |> Ash.create!()
 
       [author] =
         Author
         |> Ash.Query.load(posts: [:author])
         |> Ash.Query.filter(posts.id == ^post1.id)
-        |> Domain.read!(authorize?: true)
+        |> Ash.read!(authorize?: true)
 
       assert Enum.sort(Enum.map(author.posts, &Map.get(&1, :id))) ==
                Enum.sort([post1.id, post2.id])
@@ -334,12 +334,12 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       category1 =
         Category
         |> Ash.Changeset.for_create(:create, %{name: "lame"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       category2 =
         Category
         |> Ash.Changeset.for_create(:create, %{name: "cool"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       post =
         Post
@@ -347,13 +347,13 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
         |> Ash.Changeset.manage_relationship(:categories, [category1, category2],
           type: :append_and_remove
         )
-        |> Domain.create!()
+        |> Ash.create!()
 
       [post] =
         Post
         |> Ash.Query.load(:categories)
         |> Ash.Query.filter(id == ^post.id)
-        |> Domain.read!(authorize?: true)
+        |> Ash.read!(authorize?: true)
 
       assert [%{id: id1}, %{id: id2}] = post.categories
 
@@ -364,12 +364,12 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       category1 =
         Category
         |> Ash.Changeset.for_create(:create, %{name: "lame"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       category2 =
         Category
         |> Ash.Changeset.for_create(:create, %{name: "cool"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       post =
         Post
@@ -377,13 +377,13 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
         |> Ash.Changeset.manage_relationship(:categories, [category1, category2],
           type: :append_and_remove
         )
-        |> Domain.create!()
+        |> Ash.create!()
 
       [post] =
         Post
         |> Ash.Query.load(categories: :posts)
         |> Ash.Query.filter(id == ^post.id)
-        |> Domain.read!(authorize?: true)
+        |> Ash.read!(authorize?: true)
 
       post_id = post.id
 
@@ -394,17 +394,17 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       category1 =
         Category
         |> Ash.Changeset.for_create(:create, %{name: "lame"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       category2 =
         Category
         |> Ash.Changeset.for_create(:create, %{name: "cool"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       author =
         Author
         |> Ash.Changeset.for_create(:create, %{name: "zerg"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       post =
         Post
@@ -413,13 +413,13 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
           type: :append_and_remove
         )
         |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
-        |> Domain.create!()
+        |> Ash.create!()
 
       [post] =
         Post
         |> Ash.Query.load(categories: :posts, author: [])
         |> Ash.Query.filter(id == ^post.id)
-        |> Domain.read!(authorize?: true)
+        |> Ash.read!(authorize?: true)
 
       post_id = post.id
 
@@ -430,13 +430,13 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       author =
         Author
         |> Ash.Changeset.for_create(:create, %{name: "zerg"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       _post1 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "post1"})
         |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
-        |> Domain.create!()
+        |> Ash.create!()
 
       :timer.sleep(2)
 
@@ -444,12 +444,12 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
         Post
         |> Ash.Changeset.for_create(:create, %{title: "post2"})
         |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
-        |> Domain.create!()
+        |> Ash.create!()
 
       [author] =
         Author
         |> Ash.Query.load(:latest_post)
-        |> Domain.read!()
+        |> Ash.read!()
 
       assert author.latest_post.id == post2.id
     end

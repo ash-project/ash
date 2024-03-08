@@ -95,8 +95,8 @@ defmodule Ash.Actions.Destroy do
 
     with %{valid?: true} = changeset <- Ash.Changeset.validate_multitenancy(changeset),
          %{valid?: true} = changeset <- changeset(changeset, domain, action, opts),
-         %{valid?: true} = changeset <- authorize(changeset, domain, opts),
-         {:commit, {:ok, result, instructions}} <- {:commit, commit(changeset, domain, opts)} do
+         %{valid?: true} = changeset <- authorize(changeset, opts),
+         {:ok, result, instructions} <- commit(changeset, domain, opts) do
       changeset.resource
       |> add_notifications(
         changeset.action,
@@ -125,21 +125,13 @@ defmodule Ash.Actions.Destroy do
 
       {:error, error} ->
         errors = Helpers.process_errors(changeset, List.wrap(error))
-
-        Ash.Changeset.run_after_transactions(
-          {:error, Ash.Error.to_error_class(errors, changeset: changeset)},
-          changeset
-        )
-
-      {:commit, {:error, error}} ->
-        errors = Helpers.process_errors(changeset, List.wrap(error))
         {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
     end
   end
 
-  defp authorize(changeset, domain, opts) do
+  defp authorize(changeset, opts) do
     if opts[:authorize?] do
-      case domain.can(changeset, opts[:actor],
+      case Ash.can(changeset, opts[:actor],
              alter_source?: true,
              return_forbidden_error?: true,
              maybe_is: false

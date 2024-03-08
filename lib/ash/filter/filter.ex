@@ -1175,7 +1175,7 @@ defmodule Ash.Filter do
             }
           })
           |> Ash.Query.select([])
-          |> domain.can(actor,
+          |> Ash.can(actor,
             run_queries?: false,
             alter_source?: true,
             no_check?: true,
@@ -1292,8 +1292,14 @@ defmodule Ash.Filter do
     end)
   end
 
+<<<<<<< HEAD
   defp relationship_query(relationship, actor, tenant, base) do
+=======
+  defp relationship_query(resource, domain, [last], actor, tenant, base) do
+    relationship = Ash.Resource.Info.relationship(resource, last)
+>>>>>>> efe22c34 (improvement!: Deprecate calling functions on (domain) api in favor of `Ash`)
     base_query = base || Ash.Query.new(relationship.destination)
+    domain = relationship.domain || domain
 
     action =
       relationship.read_action || (base_query.action && base_query.action.name) ||
@@ -1311,11 +1317,28 @@ defmodule Ash.Filter do
       Ash.Query.for_read(query, action, %{},
         actor: actor,
         authorize?: true,
-        tenant: tenant
+        tenant: tenant,
+        domain: domain
       )
     end
   end
 
+<<<<<<< HEAD
+=======
+  defp relationship_query(resource, domain, [next | rest], actor, tenant, base) do
+    relationship = Ash.Resource.Info.relationship(resource, next)
+
+    relationship_query(
+      relationship.destination,
+      relationship.domain || domain,
+      rest,
+      actor,
+      tenant,
+      base
+    )
+  end
+
+>>>>>>> efe22c34 (improvement!: Deprecate calling functions on (domain) api in favor of `Ash`)
   defp group_refs_by_all_paths(paths_with_refs) do
     all_paths_with_refs =
       paths_with_refs

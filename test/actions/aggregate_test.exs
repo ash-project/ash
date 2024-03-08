@@ -169,76 +169,76 @@ defmodule Ash.Test.Actions.AggregateTest do
     end
   end
 
-  describe "Domain.aggregate" do
+  describe "Ash.aggregate" do
     test "allows counting records" do
-      assert %{count: 0} = Domain.aggregate!(Post, {:count, :count}, authorize?: false)
+      assert %{count: 0} = Ash.aggregate!(Post, {:count, :count}, authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "title"})
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
-      assert %{count: 1} = Domain.aggregate!(Post, {:count, :count}, authorize?: false)
+      assert %{count: 1} = Ash.aggregate!(Post, {:count, :count}, authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "title"})
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
-      assert %{count: 2} = Domain.aggregate!(Post, {:count, :count}, authorize?: false)
+      assert %{count: 2} = Ash.aggregate!(Post, {:count, :count}, authorize?: false)
     end
 
     test "honors tenant" do
-      assert %{count: 0} = Domain.aggregate!(Post, {:count, :count}, authorize?: false)
+      assert %{count: 0} = Ash.aggregate!(Post, {:count, :count}, authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "title", tenant: "foo"})
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
       assert %{count: 1} =
-               Domain.aggregate!(Post, {:count, :count}, tenant: "foo", authorize?: false)
+               Ash.aggregate!(Post, {:count, :count}, tenant: "foo", authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "title", tenant: "foo"})
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "title", tenant: "bar"})
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
       assert %{count: 2} =
-               Domain.aggregate!(Post, {:count, :count}, tenant: "foo", authorize?: false)
+               Ash.aggregate!(Post, {:count, :count}, tenant: "foo", authorize?: false)
 
-      assert %{count: 3} = Domain.aggregate!(Post, {:count, :count}, authorize?: false)
+      assert %{count: 3} = Ash.aggregate!(Post, {:count, :count}, authorize?: false)
     end
 
     test "runs authorization" do
-      assert %{count: 0} = Domain.aggregate!(Post, {:count, :count}, authorize?: true)
+      assert %{count: 0} = Ash.aggregate!(Post, {:count, :count}, authorize?: true)
 
-      assert 0 = Domain.count!(Post, authorize?: true)
+      assert 0 = Ash.count!(Post, authorize?: true)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "title"})
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
-      assert %{count: 0} = Domain.aggregate!(Post, {:count, :count}, authorize?: true)
-      assert 0 = Domain.count!(Post, authorize?: true)
+      assert %{count: 0} = Ash.aggregate!(Post, {:count, :count}, authorize?: true)
+      assert 0 = Ash.count!(Post, authorize?: true)
 
       assert %{count: 1} =
                Post
                |> Ash.Query.for_read(:unpublic)
-               |> Domain.aggregate!({:count, :count}, actor: nil)
+               |> Ash.aggregate!({:count, :count}, actor: nil)
 
       assert %{count: 1} =
-               Domain.aggregate!(Post, {:count, :count}, actor: nil, action: :unpublic)
+               Ash.aggregate!(Post, {:count, :count}, actor: nil, action: :unpublic)
 
-      assert 1 = Domain.count!(Post, actor: nil, action: :unpublic, authorize?: true)
-      assert 0 = Domain.count!(Post, authorize?: true)
+      assert 1 = Ash.count!(Post, actor: nil, action: :unpublic, authorize?: true)
+      assert 0 = Ash.count!(Post, authorize?: true)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "title", public: true})
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
-      assert %{count: 1} = Domain.aggregate!(Post, {:count, :count}, authorize?: true)
-      assert 1 = Domain.count!(Post, authorize?: true)
+      assert %{count: 1} = Ash.aggregate!(Post, {:count, :count}, authorize?: true)
+      assert 1 = Ash.count!(Post, authorize?: true)
     end
 
     test "use custom actions from the query" do
@@ -272,23 +272,23 @@ defmodule Ash.Test.Actions.AggregateTest do
       post =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "title", public: true})
-        |> Domain.create!(authorize?: false)
+        |> Ash.create!(authorize?: false)
 
       Comment
       |> Ash.Changeset.for_create(:create, %{post_id: post.id, public: true})
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
       Comment
       |> Ash.Changeset.for_create(:create, %{post_id: post.id, public: false})
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
       assert %{count_of_comments: 2, count_of_comments_unauthorized: 2} =
-               Domain.load!(post, [:count_of_comments, :count_of_comments_unauthorized],
+               Ash.load!(post, [:count_of_comments, :count_of_comments_unauthorized],
                  authorize?: false
                )
 
       assert %{count_of_comments: 1, count_of_comments_unauthorized: 2} =
-               Domain.load!(post, [:count_of_comments, :count_of_comments_unauthorized],
+               Ash.load!(post, [:count_of_comments, :count_of_comments_unauthorized],
                  authorize?: true
                )
     end
@@ -301,7 +301,7 @@ defmodule Ash.Test.Actions.AggregateTest do
           public: true,
           thing: "not the same"
         })
-        |> Domain.create!(authorize?: false)
+        |> Ash.create!(authorize?: false)
 
       Comment
       |> Ash.Changeset.for_create(:create, %{
@@ -309,9 +309,9 @@ defmodule Ash.Test.Actions.AggregateTest do
         public: true,
         thing: "doesnt match"
       })
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
-      assert Domain.load!(post, :count_of_comment_posts_with_matching_things, authorize?: false).count_of_comment_posts_with_matching_things ==
+      assert Ash.load!(post, :count_of_comment_posts_with_matching_things, authorize?: false).count_of_comment_posts_with_matching_things ==
                0
 
       Comment
@@ -320,9 +320,9 @@ defmodule Ash.Test.Actions.AggregateTest do
         public: true,
         thing: "not the same"
       })
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
-      assert Domain.load!(post, :count_of_comment_posts_with_matching_things, authorize?: false).count_of_comment_posts_with_matching_things ==
+      assert Ash.load!(post, :count_of_comment_posts_with_matching_things, authorize?: false).count_of_comment_posts_with_matching_things ==
                1
     end
 
@@ -334,7 +334,7 @@ defmodule Ash.Test.Actions.AggregateTest do
           public: true,
           thing: "not the same"
         })
-        |> Domain.create!(authorize?: false)
+        |> Ash.create!(authorize?: false)
 
       Comment
       |> Ash.Changeset.for_create(:create, %{
@@ -344,7 +344,7 @@ defmodule Ash.Test.Actions.AggregateTest do
         thing2: 10,
         thing3: 100
       })
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
       Comment
       |> Ash.Changeset.for_create(:create, %{
@@ -354,7 +354,7 @@ defmodule Ash.Test.Actions.AggregateTest do
         thing2: 20,
         thing3: 200
       })
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
       Comment
       |> Ash.Changeset.for_create(:create, %{
@@ -364,26 +364,26 @@ defmodule Ash.Test.Actions.AggregateTest do
         thing2: nil,
         thing3: nil
       })
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
       assert Decimal.eq?(
-               Domain.load!(post, :min_of_thing2, authorize?: false).min_of_thing2,
+               Ash.load!(post, :min_of_thing2, authorize?: false).min_of_thing2,
                Decimal.new(10)
              )
 
       assert Decimal.eq?(
-               Domain.load!(post, :max_of_thing2, authorize?: false).max_of_thing2,
+               Ash.load!(post, :max_of_thing2, authorize?: false).max_of_thing2,
                Decimal.new(20)
              )
 
       assert Decimal.eq?(
-               Domain.load!(post, :average_of_thing2, authorize?: false).average_of_thing2,
+               Ash.load!(post, :average_of_thing2, authorize?: false).average_of_thing2,
                Decimal.new(15)
              )
 
-      assert Domain.load!(post, :min_of_thing3, authorize?: false).min_of_thing3 == 100
-      assert Domain.load!(post, :max_of_thing3, authorize?: false).max_of_thing3 == 200
-      assert Domain.load!(post, :average_of_thing3, authorize?: false).average_of_thing3 == 150
+      assert Ash.load!(post, :min_of_thing3, authorize?: false).min_of_thing3 == 100
+      assert Ash.load!(post, :max_of_thing3, authorize?: false).max_of_thing3 == 200
+      assert Ash.load!(post, :average_of_thing3, authorize?: false).average_of_thing3 == 150
     end
   end
 end

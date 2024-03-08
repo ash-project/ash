@@ -162,15 +162,15 @@ defmodule Ash.Test.Resource.CalculationsTest do
       post =
         Post1
         |> Ash.Changeset.for_create(:create, %{name: "Post 1", contents: "Contents 1"})
-        |> Domain.create!()
+        |> Ash.create!()
 
       comment =
         Comment1
         |> Ash.Changeset.for_create(:create, %{post_id: post.id})
-        |> Domain.create!()
+        |> Ash.create!()
 
       # assert true == true
-      comment_with_post_name = Domain.load!(comment, :post_name)
+      comment_with_post_name = Ash.load!(comment, :post_name)
       assert comment_with_post_name.post_name == post.name
     end
 
@@ -261,14 +261,14 @@ defmodule Ash.Test.Resource.CalculationsTest do
         |> Ash.Changeset.for_create(:create, %{name: "Post 1", contents: "Contents 1"},
           tenant: tenant_id
         )
-        |> Domain.create!()
+        |> Ash.create!()
 
       comment =
         Comment2
         |> Ash.Changeset.for_create(:create, %{post_id: post.id}, tenant: tenant_id)
-        |> Domain.create!()
+        |> Ash.create!()
 
-      comment_with_post_name = Domain.load!(comment, :post_name, tenant: tenant_id)
+      comment_with_post_name = Ash.load!(comment, :post_name, tenant: tenant_id)
       assert comment_with_post_name.post_name == post.name
     end
   end

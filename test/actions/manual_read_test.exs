@@ -55,16 +55,16 @@ defmodule Ash.Test.Actions.ManualReadTest do
   test "reading works" do
     Author
     |> Ash.Changeset.for_create(:create, %{name: "name"})
-    |> Domain.create!()
+    |> Ash.create!()
 
     assert [] =
              Author
              |> Ash.Query.for_read(:read)
-             |> Domain.read!()
+             |> Ash.read!()
 
     assert [_] =
              Author
              |> Ash.Query.for_read(:all)
-             |> Domain.read!()
+             |> Ash.read!()
   end
 end

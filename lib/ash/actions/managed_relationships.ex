@@ -52,8 +52,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
           actor = engine_opts[:actor]
 
-          # In order to use `lazy?: true` here we need this feature: https://github.com/ash-project/ash/issues/438
-          case domain.load(acc, key, authorize?: authorize?, actor: actor, lazy?: false) do
+          case Ash.load(acc, key, authorize?: authorize?, actor: actor, domain: domain) do
             {:ok, loaded} -> {:cont, {:ok, loaded}}
             {:error, error} -> {:halt, {:error, error}}
           end
@@ -95,7 +94,8 @@ defmodule Ash.Actions.ManagedRelationships do
 
         changeset =
           if changeset.action.type == :update do
-            case changeset.domain.load(changeset.data, relationship.name,
+            case Ash.load(changeset.data, relationship.name,
+                   domain: changeset.domain,
                    authorize?: opts[:authorize?],
                    actor: actor,
                    tenant: engine_opts[:tenant]
@@ -335,7 +335,7 @@ defmodule Ash.Actions.ManagedRelationships do
   defp get_input_value(_, _), do: nil
 
   defp domain(changeset, relationship) do
-    relationship.domain || changeset.domain
+    Ash.Domain.Info.related_domain(changeset, relationship, changeset.domain)
   end
 
   defp maybe_force_change_attribute(changeset, %{no_attributes?: true}, _, _), do: changeset
@@ -1312,11 +1312,12 @@ defmodule Ash.Actions.ManagedRelationships do
         })
         |> Ash.Changeset.for_update(action_name, input,
           actor: actor,
-          authorize?: opts[:authorize?]
+          authorize?: opts[:authorize?],
+          domain: domain
         )
         |> Ash.Changeset.set_context(relationship.context)
         |> Ash.Changeset.set_tenant(changeset.tenant)
-        |> domain.update(return_notifications?: true)
+        |> Ash.update(return_notifications?: true)
         |> case do
           {:ok, updated, update_notifications} ->
             {:ok, [updated | current_value], update_notifications, [match]}
@@ -1358,11 +1359,12 @@ defmodule Ash.Actions.ManagedRelationships do
             })
             |> Ash.Changeset.for_update(action_name, regular_params,
               actor: actor,
-              authorize?: opts[:authorize?]
+              authorize?: opts[:authorize?],
+              domain: domain
             )
             |> Ash.Changeset.set_context(relationship.context)
             |> Ash.Changeset.set_tenant(changeset.tenant)
-            |> domain.update(return_notifications?: true)
+            |> Ash.update(return_notifications?: true)
           else
             {:ok, match, []}
           end
@@ -1591,11 +1593,12 @@ defmodule Ash.Actions.ManagedRelationships do
                     })
                     |> Ash.Changeset.for_destroy(action_name, %{},
                       actor: actor,
-                      authorize?: opts[:authorize?]
+                      authorize?: opts[:authorize?],
+                      domain: domain
                     )
                     |> Ash.Changeset.set_context(relationship.context)
                     |> Ash.Changeset.set_tenant(changeset.tenant)
-                    |> domain.destroy(return_notifications?: true)
+                    |> Ash.destroy(return_notifications?: true)
                     # credo:disable-for-next-line Credo.Check.Refactor.Nesting
                     |> case do
                       {:ok, destroy_destination_notifications} ->
@@ -1624,11 +1627,12 @@ defmodule Ash.Actions.ManagedRelationships do
             })
             |> Ash.Changeset.for_destroy(action_name, %{},
               actor: actor,
-              authorize?: opts[:authorize?]
+              authorize?: opts[:authorize?],
+              domain: domain
             )
             |> Ash.Changeset.set_context(relationship.context)
             |> Ash.Changeset.set_tenant(changeset.tenant)
-            |> domain.destroy(return_notifications?: true)
+            |> Ash.destroy(return_notifications?: true)
             |> case do
               {:ok, notifications} ->
                 {:cont, {:ok, current_value, notifications ++ all_notifications}}
@@ -1744,12 +1748,13 @@ defmodule Ash.Actions.ManagedRelationships do
     })
     |> Ash.Changeset.for_update(action_name, %{},
       authorize?: opts[:authorize?],
-      actor: actor
+      actor: actor,
+      domain: domain
     )
     |> maybe_force_change_attribute(relationship, :destination_attribute, nil)
     |> Ash.Changeset.set_context(relationship.context)
     |> Ash.Changeset.set_tenant(tenant)
-    |> domain.update(return_notifications?: true)
+    |> Ash.update(return_notifications?: true)
     |> case do
       {:ok, _unrelated, notifications} ->
         {:ok, notifications}
@@ -1847,10 +1852,11 @@ defmodule Ash.Actions.ManagedRelationships do
     })
     |> Ash.Changeset.for_destroy(action_name, %{},
       actor: actor,
-      authorize?: opts[:authorize?]
+      authorize?: opts[:authorize?],
+      domain: domain
     )
     |> Ash.Changeset.set_context(relationship.context)
     |> Ash.Changeset.set_tenant(tenant)
-    |> domain.destroy(return_notifications?: true)
+    |> Ash.destroy(return_notifications?: true)
   end
 end

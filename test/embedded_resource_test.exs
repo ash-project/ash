@@ -257,7 +257,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                  ]
                }
              )
-             |> Domain.create!()
+             |> Ash.create!()
   end
 
   test "embed_nil_values?: false causes nil values not to be dumped" do
@@ -283,7 +283,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
           ]
         }
       )
-      |> Domain.create!()
+      |> Ash.create!()
     end
 
     assert_raise Ash.Error.Invalid, ~r/must have 1 or more items/, fn ->
@@ -298,7 +298,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
           tags_max_length: []
         }
       )
-      |> Domain.create!()
+      |> Ash.create!()
     end
   end
 
@@ -314,7 +314,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                  }
                }
              )
-             |> Domain.create!()
+             |> Ash.create!()
   end
 
   test "embedded resources run validations on create" do
@@ -333,7 +333,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                        }
                      }
                    )
-                   |> Domain.create!()
+                   |> Ash.create!()
                  end
   end
 
@@ -349,7 +349,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                  }
                }
              )
-             |> Domain.create!()
+             |> Ash.create!()
 
     input = %{counter: author.profile.counter - 1}
 
@@ -363,7 +363,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                        profile: input
                      }
                    )
-                   |> Domain.update!()
+                   |> Ash.update!()
                  end
   end
 
@@ -379,7 +379,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                  }
                }
              )
-             |> Domain.create!()
+             |> Ash.create!()
 
     assert_raise Ash.Error.Invalid, ~r/must be named "destroy me" to remove a profile/, fn ->
       Changeset.for_update(
@@ -387,7 +387,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
         :update,
         %{profile: nil}
       )
-      |> Domain.update!()
+      |> Ash.update!()
     end
 
     author =
@@ -396,14 +396,14 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
         :update,
         %{profile: %{first_name: "destroy", last_name: "me"}}
       )
-      |> Domain.update!()
+      |> Ash.update!()
 
     Changeset.for_update(
       author,
       :update,
       %{profile: nil}
     )
-    |> Domain.update!()
+    |> Ash.update!()
   end
 
   test "when a non-array embedded resource has a public primary key, changes are considered a destroy + create, not an update" do
@@ -418,7 +418,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                  }
                }
              )
-             |> Domain.create!()
+             |> Ash.create!()
 
     assert_raise Ash.Error.Invalid, ~r/must be named "destroy me" to remove a profile/, fn ->
       Changeset.for_update(
@@ -426,7 +426,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
         :update,
         %{profile_with_id: %{first_name: "foo", last_name: "bar"}}
       )
-      |> Domain.update!()
+      |> Ash.update!()
     end
 
     author =
@@ -441,14 +441,14 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
           }
         }
       )
-      |> Domain.update!()
+      |> Ash.update!()
 
     Changeset.for_update(
       author,
       :update,
       %{profile_with_id: %{first_name: "foo", last_name: "bar"}}
     )
-    |> Domain.update!()
+    |> Ash.update!()
   end
 
   test "a list of embeds without an id are destroyed and created each time" do
@@ -463,7 +463,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                  ]
                }
              )
-             |> Domain.create!()
+             |> Ash.create!()
 
     assert_raise Ash.Error.Invalid,
                  ~r/Invalid value provided for score: must be present/,
@@ -477,7 +477,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                        ]
                      }
                    )
-                   |> Domain.update!()
+                   |> Ash.update!()
                  end
 
     assert_raise Ash.Error.Invalid,
@@ -492,7 +492,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                        ]
                      }
                    )
-                   |> Domain.update!()
+                   |> Ash.update!()
                  end
   end
 
@@ -508,7 +508,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                  ]
                }
              )
-             |> Domain.create!()
+             |> Ash.create!()
 
     exception =
       assert_raise Ash.Error.Invalid,
@@ -523,7 +523,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                          ]
                        }
                      )
-                     |> Domain.update!()
+                     |> Ash.update!()
                    end
 
     assert Enum.at(exception.errors, 0).path == [:tags_with_id, 0]
@@ -538,7 +538,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
           ]
         }
       )
-      |> Domain.update!()
+      |> Ash.update!()
 
     # The ID of the Tag should not change
     assert Enum.map(applied_author.tags_with_id, & &1.id) ==
@@ -557,7 +557,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                  ]
                }
              )
-             |> Domain.create!()
+             |> Ash.create!()
 
     applied_author =
       Changeset.for_update(
@@ -569,7 +569,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
           ]
         }
       )
-      |> Domain.update!()
+      |> Ash.update!()
 
     # The id of the Union Tag should not change
     assert Enum.map(applied_author.union_tags_with_id, & &1.value.id) ==

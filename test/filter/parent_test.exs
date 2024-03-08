@@ -63,21 +63,21 @@ defmodule Ash.Test.Filter.ParentTest do
     author =
       User
       |> Ash.Changeset.for_create(:create, %{name: "best"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     Post
     |> Ash.Changeset.for_create(:create, %{title: "best"})
     |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
-    |> Domain.create!()
+    |> Ash.create!()
 
     assert [_] =
              User
              |> Ash.Query.filter(exists(posts, title == parent(name)))
-             |> Domain.read!()
+             |> Ash.read!()
 
     assert [] =
              User
              |> Ash.Query.filter(exists(posts, title == parent(name <> "foo")))
-             |> Domain.read!()
+             |> Ash.read!()
   end
 end

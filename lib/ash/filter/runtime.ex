@@ -54,7 +54,7 @@ defmodule Ash.Filter.Runtime do
             |> load_all(refs_to_load)
             |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-          domain.load!(records, load, authorize?: false)
+          Ash.load!(records, load, authorize?: false, domain: domain)
       end
 
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
@@ -79,47 +79,6 @@ defmodule Ash.Filter.Runtime do
         other
     end
   end
-
-  # it looks like this somehow isn't used? I think something was removed that shouldn't have been
-
-  # This is bad, as parent requirements are loaded iteratively instead of up front.
-  # we can improve this
-  # def load_parent_requirements(domain, expression, [first | rest]) do
-  #   case load_parent_requirements(domain, expression, first) do
-  #     {:ok, first} ->
-  #       {:ok, [first | rest]}
-
-  #     other ->
-  #       other
-  #   end
-  # end
-
-  # def load_parent_requirements(domain, expression, %resource{} = parent) do
-  #   expression
-  #   |> Ash.Filter.flat_map(fn %Ash.Query.Parent{expr: expr} ->
-  #     Ash.Filter.list_refs(expr)
-  #   end)
-  #   |> Enum.reject(&match?(%{attribute: %Ash.Resource.Attribute{}}, &1))
-  #   |> Enum.uniq()
-  #   |> case do
-  #     [] ->
-  #       {:ok, parent}
-
-  #     refs ->
-  #       to_load =
-  #         refs
-  #         |> Enum.map(& &1.relationship_path)
-  #         |> Enum.uniq()
-  #         |> Enum.map(&path_to_load(resource, &1, refs))
-
-  #       query =
-  #         resource
-  #         |> Ash.Query.load(to_load)
-  #         |> Ash.Query.set_context(%{private: %{internal?: true}})
-
-  #       domain.load(parent, query)
-  #   end
-  # end
 
   defp matches(record, expression, opts) do
     relationship_paths =
@@ -215,7 +174,7 @@ defmodule Ash.Filter.Runtime do
               |> load_all(refs)
               |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-            domain.load!(record, load, authorize?: false)
+            Ash.load!(record, load, domain: domain, authorize?: false)
         end
 
       do_match(record, expression, parent, resource, unknown_on_unknown_refs?)

@@ -68,7 +68,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
         name: "Delorean DMC-12",
         caller: self()
       )
-      |> Domain.create!()
+      |> Ash.create!()
 
       assert_received :before_action
     end
@@ -81,7 +81,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
         name: "Delorean DMC-12",
         caller: self()
       )
-      |> Domain.create!()
+      |> Ash.create!()
 
       assert_received :before_transaction
     end
@@ -94,7 +94,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
         name: "Delorean DMC-12",
         caller: self()
       )
-      |> Domain.create!()
+      |> Ash.create!()
 
       assert_received :after_action
     end
@@ -107,7 +107,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
         name: "Delorean DMC-12",
         caller: self()
       )
-      |> Domain.create!()
+      |> Ash.create!()
 
       assert_received :after_transaction
     end

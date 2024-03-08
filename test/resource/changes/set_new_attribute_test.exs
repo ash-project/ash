@@ -28,11 +28,11 @@ defmodule Ash.Test.Resource.Changes.SetNewAttributeTest do
 
   test "set_new_attributes set attribute when it's not already changing" do
     %Resource{name: "default_name"} =
-      Resource |> Ash.Changeset.for_create(:create) |> Domain.create!()
+      Resource |> Ash.Changeset.for_create(:create) |> Ash.create!()
   end
 
   test "set_new_attribute does not set attribute when it's already changing" do
     %Resource{name: "specific_name"} =
-      Resource |> Ash.Changeset.for_create(:create, %{name: "specific_name"}) |> Domain.create!()
+      Resource |> Ash.Changeset.for_create(:create, %{name: "specific_name"}) |> Ash.create!()
   end
 end

@@ -1,6 +1,6 @@
 # Code Interface
 
-One of the ways that we interact with our resources is via hand-written code. The general pattern for that looks like building a query or a changeset for a given action, and dispatching it to the domain using things like `MyDomain.read/3` and `MyDomain.create/3`. This, however, is just one way to use Ash, and is designed to help you build tools that work with resources, and to power things like `AshPhoenix.Form`, `AshGraphql.Resource` and `AshJsonApi.Resource`. When working with your resources in code, we generally want something more idiomatic and simple. For example, on a resource called `Helpdesk.Support.Ticket`:
+One of the ways that we interact with our resources is via hand-written code. The general pattern for that looks like building a query or a changeset for a given action, and calling it via functions like `Ash.read/2` and `Ash.create/2`. This, however, is just one way to use Ash, and is designed to help you build tools that work with resources, and to power things like `AshPhoenix.Form`, `AshGraphql.Resource` and `AshJsonApi.Resource`. When working with your resources in code, we generally want something more idiomatic and simple. For example, on a resource called `Helpdesk.Support.Ticket`:
 
 ```elixir
 code_interface do
@@ -55,7 +55,7 @@ Resource.register_user(username, password, %{key: "val"}, [tenant: "organization
 
 ## Calculations
 
-Resource calculations can be run dynamically using `YourDomain.calculate/3`, but
+Resource calculations can be run dynamically using `Ash.calculate/3`, but
 you can also expose them using the code_interface with `define_calculation`.
 
 For example:
@@ -85,7 +85,7 @@ User.full_name("Jessie", "James", "-")
 User.full_name(user)
 ```
 
-This allows for running calculations without an instance of a resource, i.e `Domain.load(user, :full_name)`
+This allows for running calculations without an instance of a resource, i.e `Ash.load(user, :full_name)`
 
 
 By default, configured args will be provided for any matching named reference *or* argument. This is normally fine, but in the case that you have an argument and a reference with the same name, you can specify it by supplying `{:arg, :name}` and `{:ref, :name}`. For example:

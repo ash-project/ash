@@ -162,8 +162,8 @@ defmodule Ash.EmbeddableType do
         __MODULE__
         |> Ash.Changeset.new()
         |> Ash.EmbeddableType.copy_source(constraints)
-        |> Ash.Changeset.for_create(action, value)
-        |> ShadowDomain.create()
+        |> Ash.Changeset.for_create(action, value, domain: ShadowDomain)
+        |> Ash.create()
         |> case do
           {:ok, result} ->
             {:ok, result}
@@ -195,10 +195,11 @@ defmodule Ash.EmbeddableType do
           end
 
         values
-        |> ShadowDomain.bulk_create(
+        |> Ash.bulk_create(
           __MODULE__,
           action,
           Keyword.merge(opts,
+            domain: ShadowDomain,
             context: context,
             sorted?: true,
             return_records?: true,
@@ -258,7 +259,7 @@ defmodule Ash.EmbeddableType do
                 |> Ash.DataLayer.Simple.set_data([casted])
                 |> Ash.Query.load(load)
                 |> Ash.Query.for_read(action, %{}, domain: ShadowDomain)
-                |> ShadowDomain.read()
+                |> Ash.read()
                 |> case do
                   {:ok, [casted]} ->
                     {:ok, casted}
@@ -333,7 +334,7 @@ defmodule Ash.EmbeddableType do
       def apply_constraints(nil, _), do: {:ok, nil}
 
       def apply_constraints(term, constraints) do
-        ShadowDomain.load(term, constraints[:load] || [], lazy?: true)
+        Ash.load(term, constraints[:load] || [], lazy?: true, domain: ShadowDomain)
       end
 
       def handle_change(nil, new_value, _constraints) do
@@ -345,7 +346,7 @@ defmodule Ash.EmbeddableType do
           constraints[:destroy_action] ||
             Ash.Resource.Info.primary_action!(__MODULE__, :destroy).name
 
-        case ShadowDomain.destroy(old_value, action: action) do
+        case Ash.destroy(old_value, action: action, domain: ShadowDomain) do
           :ok -> {:ok, nil}
           {:error, error} -> {:error, Ash.EmbeddableType.handle_errors(error)}
         end
@@ -368,7 +369,7 @@ defmodule Ash.EmbeddableType do
               constraints[:destroy_action] ||
                 Ash.Resource.Info.primary_action!(__MODULE__, :destroy).name
 
-            case ShadowDomain.destroy(old_value, action: action) do
+            case Ash.destroy(old_value, action: action, domain: ShadowDomain) do
               :ok ->
                 {:ok, new_value}
 
@@ -408,8 +409,8 @@ defmodule Ash.EmbeddableType do
           old_value
           |> Ash.Changeset.new()
           |> Ash.EmbeddableType.copy_source(constraints)
-          |> Ash.Changeset.for_update(action, new_uncasted_value)
-          |> ShadowDomain.update()
+          |> Ash.Changeset.for_update(action, new_uncasted_value, domain: ShadowDomain)
+          |> Ash.update()
           |> case do
             {:ok, value} -> {:ok, value}
             {:error, error} -> {:error, Ash.EmbeddableType.handle_errors(error)}
@@ -440,8 +441,8 @@ defmodule Ash.EmbeddableType do
               old_value
               |> Ash.Changeset.new()
               |> Ash.EmbeddableType.copy_source(constraints)
-              |> Ash.Changeset.for_update(action, new_uncasted_value)
-              |> ShadowDomain.update()
+              |> Ash.Changeset.for_update(action, new_uncasted_value, domain: ShadowDomain)
+              |> Ash.update()
               |> case do
                 {:ok, value} -> {:ok, value}
                 {:error, error} -> {:error, Ash.EmbeddableType.handle_errors(error)}
@@ -469,7 +470,7 @@ defmodule Ash.EmbeddableType do
       end
 
       def load(record, load, _constraints, %{domain: domain} = context) do
-        opts = Ash.Context.to_opts(context)
+        opts = Ash.Context.to_opts(context, domain: domain)
 
         attribute_loads = __MODULE__ |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
 
@@ -479,7 +480,7 @@ defmodule Ash.EmbeddableType do
             load_statement -> attribute_loads ++ List.wrap(load_statement)
           end
 
-        domain.load(record, load, opts)
+        Ash.load(record, load, opts)
       end
 
       def merge_load(left, right, constraints, context) do
@@ -528,7 +529,7 @@ defmodule Ash.EmbeddableType do
                   query
                 end
 
-              case ShadowDomain.read(query) do
+              case Ash.read(query, domain: ShadowDomain) do
                 {:ok, result} ->
                   case Ash.Type.list_constraint_errors(result, constraints) do
                     [] ->
@@ -546,7 +547,7 @@ defmodule Ash.EmbeddableType do
                   |> Ash.EmbeddableType.copy_source(constraints)
                   |> Ash.Query.load(constraints[:load] || [])
 
-                ShadowDomain.load(term, query)
+                Ash.load(term, query, domain: ShadowDomain)
               else
                 {:ok, term}
               end
@@ -641,7 +642,7 @@ defmodule Ash.EmbeddableType do
           end)
         end)
         |> Enum.reduce_while(:ok, fn {record, index}, :ok ->
-          case ShadowDomain.destroy(record, action: destroy_action) do
+          case Ash.destroy(record, action: destroy_action, domain: ShadowDomain) do
             :ok ->
               {:cont, :ok}
 
@@ -731,8 +732,8 @@ defmodule Ash.EmbeddableType do
                     value_updating_from
                     |> Ash.Changeset.new()
                     |> Ash.EmbeddableType.copy_source(constraints)
-                    |> Ash.Changeset.for_update(action, new)
-                    |> ShadowDomain.update()
+                    |> Ash.Changeset.for_update(action, new, domain: ShadowDomain)
+                    |> Ash.update()
                     |> case do
                       {:ok, value} ->
                         {:cont, {:ok, [value | new_uncasted_values]}}

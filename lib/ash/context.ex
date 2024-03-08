@@ -3,6 +3,16 @@ defmodule Ash.Context do
   Functions for working with the context provided to various callbacks in Ash.
   """
 
+  @doc """
+  Copies keys from the given context map into a keyword list. Does *not* copy the `:domain` key.
+
+  Keys copied:
+
+  * `:actor`
+  * `:authorize?`
+  * `:tracer`
+  * `:tenant`
+  """
   def to_opts(map, add_to \\ []) when is_map(map) do
     add_to
     |> add_if_present(map, :actor)

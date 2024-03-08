@@ -35,7 +35,7 @@ defmodule Ash.Test.Type.NaiveDateTimeTest do
         naive_datetime_a: ~N[2022-04-17 08:30:00],
         naive_datetime_b: ~N[2022-04-17 15:45:30]
       })
-      |> Domain.create!()
+      |> Ash.create!()
 
     assert post.naive_datetime_a == ~N[2022-04-17 08:30:00]
     assert post.naive_datetime_b == ~N[2022-04-17 15:45:30]

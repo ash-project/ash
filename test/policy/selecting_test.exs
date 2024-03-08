@@ -115,19 +115,19 @@ defmodule Ash.Test.Policy.SelectingTest do
       Parent
       |> Ash.Changeset.for_create(:create, %{owner_id: "owner", guest_id: "guest"})
       |> Ash.Changeset.for_create(:create)
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
     OwnerOnlyResource
     |> Ash.Changeset.for_create(:create, %{parent_id: parent.id, state: "active"})
     |> Ash.Changeset.for_create(:create)
-    |> Domain.create!(authorize?: false)
+    |> Ash.create!(authorize?: false)
 
     assert {:ok, parent} =
              Parent
              |> Ash.Query.for_read(:read)
              |> Ash.Query.load(:owner_only_resource)
              |> Ash.Query.limit(1)
-             |> Domain.read_one(actor: %{id: "owner"})
+             |> Ash.read_one(actor: %{id: "owner"})
 
     refute is_nil(parent.owner_only_resource)
   end
@@ -137,18 +137,18 @@ defmodule Ash.Test.Policy.SelectingTest do
       Parent
       |> Ash.Changeset.for_create(:create, %{owner_id: "owner", guest_id: "guest"})
       |> Ash.Changeset.for_create(:create)
-      |> Domain.create!(authorize?: false)
+      |> Ash.create!(authorize?: false)
 
     OwnerOnlyResource
     |> Ash.Changeset.for_create(:create, %{parent_id: parent.id, state: "active"})
     |> Ash.Changeset.for_create(:create)
-    |> Domain.create!(authorize?: false)
+    |> Ash.create!(authorize?: false)
 
     assert {:error, %Ash.Error.Forbidden{}} =
              Parent
              |> Ash.Query.for_read(:read)
              |> Ash.Query.load(:owner_only_resource)
              |> Ash.Query.limit(1)
-             |> Domain.read_one(actor: %{id: "guest"})
+             |> Ash.read_one(actor: %{id: "guest"})
   end
 end

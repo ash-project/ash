@@ -87,9 +87,12 @@ defmodule Ash.Actions.Update.Bulk do
           _ ->
             run(
               domain,
-              domain.stream!(
+              Ash.stream!(
                 query,
-                Keyword.put(read_opts, :authorize?, opts[:authorize?] && opts[:authorize_query?])
+                Keyword.merge(read_opts,
+                  authorize?: opts[:authorize?] && opts[:authorize_query?],
+                  domain: domain
+                )
               ),
               action,
               input,
@@ -204,22 +207,7 @@ defmodule Ash.Actions.Update.Bulk do
   def run(domain, stream, action, input, opts, not_atomic_reason) do
     not_atomic_reason = not_atomic_reason || "Cannot perform atomic updates on a stream of inputs"
 
-    resource =
-      opts[:resource] ||
-        case stream do
-          [%resource{} | _] ->
-            resource
-
-          _ ->
-            nil
-        end
-
-    opts = Keyword.put(opts, :resource, resource)
-
-    if !resource do
-      raise ArgumentError,
-            "Could not determine resource for bulk #{action.type}. Please provide the `resource` option if providing a stream of inputs."
-    end
+    resource = opts[:resource]
 
     opts = set_strategy(opts, resource)
 
@@ -826,7 +814,7 @@ defmodule Ash.Actions.Update.Bulk do
 
   defp authorize_bulk_query(query, atomic_changeset, opts) do
     if opts[:authorize?] && opts[:authorize_query?] do
-      case query.domain.can(query, opts[:actor],
+      case Ash.can(query, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,
              atomic_changeset: atomic_changeset,
@@ -854,7 +842,7 @@ defmodule Ash.Actions.Update.Bulk do
 
   defp authorize_atomic_changeset(query, changeset, opts) do
     if opts[:authorize?] do
-      case changeset.domain.can(changeset, opts[:actor],
+      case Ash.can(changeset, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,
              atomic_changeset: changeset,
@@ -1141,7 +1129,7 @@ defmodule Ash.Actions.Update.Bulk do
 
     batch =
       batch
-      |> authorize(domain, opts)
+      |> authorize(opts)
       |> run_bulk_before_batches(
         changes,
         all_changes,
@@ -1473,12 +1461,12 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp authorize(batch, domain, opts) do
+  defp authorize(batch, opts) do
     if opts[:authorize?] do
       batch
       |> Enum.map(fn changeset ->
         if changeset.valid? do
-          case domain.can(changeset, opts[:actor], return_forbidden_error?: true, maybe_is: false) do
+          case Ash.can(changeset, opts[:actor], return_forbidden_error?: true, maybe_is: false) do
             {:ok, true} ->
               changeset
 
@@ -1816,9 +1804,10 @@ defmodule Ash.Actions.Update.Bulk do
         {:ok, records}
 
       load ->
-        domain.load(
+        Ash.load(
           records,
           load,
+          domain: domain,
           actor: opts[:actor],
           authorize?: opts[:authorize?],
           tracer: opts[:tracer]

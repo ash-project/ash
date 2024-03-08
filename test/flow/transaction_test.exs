@@ -23,47 +23,47 @@ defmodule Ash.Flow.TransactionTest do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "abc", org: org.id})
-    |> Domain.create!()
+    |> Ash.create!()
     |> Ash.Changeset.for_update(:approve, %{})
-    |> Domain.update!()
+    |> Ash.update!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "def", org: org.id})
-    |> Domain.create!()
+    |> Ash.create!()
     |> Ash.Changeset.for_update(:approve, %{})
-    |> Domain.update!()
+    |> Ash.update!()
 
     UnapproveAllUsers.run!("Org 1")
 
-    assert User |> Domain.read!() |> Enum.all?(&(not &1.approved))
+    assert User |> Ash.read!() |> Enum.all?(&(not &1.approved))
   end
 
   test "a flow in a transaction will be rolled back if an error is raised" do
     org =
       Org
       |> Ash.Changeset.for_create(:create, %{name: "Org 1"})
-      |> Domain.create!()
+      |> Ash.create!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "abc", org: org.id})
-    |> Domain.create!()
+    |> Ash.create!()
     |> Ash.Changeset.for_update(:approve, %{})
-    |> Domain.update!()
+    |> Ash.update!()
 
     User
     |> Ash.Changeset.for_create(:create, %{first_name: "def", org: org.id})
-    |> Domain.create!()
+    |> Ash.create!()
     |> Ash.Changeset.for_update(:approve, %{})
-    |> Domain.update!()
+    |> Ash.update!()
 
     assert_raise(Ash.Error.Unknown, ~r/uh oh!/, fn ->
       UnapproveAllUsers.run!("Org 1", %{error: :raise})
     end)
 
-    assert User |> Domain.read!() |> Enum.all?(& &1.approved)
+    assert User |> Ash.read!() |> Enum.all?(& &1.approved)
   end
 end

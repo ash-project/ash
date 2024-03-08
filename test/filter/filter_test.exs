@@ -225,16 +225,16 @@ defmodule Ash.Test.Filter.FilterTest do
     test "in can be done with references on both sides" do
       Post
       |> Ash.Changeset.for_create(:create, %{title: "dawg"})
-      |> Domain.create!()
+      |> Ash.create!()
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "lame"})
-      |> Domain.create!()
+      |> Ash.create!()
 
       assert [_] =
                Post
                |> Ash.Query.filter(title in cool_titles)
-               |> Domain.read!()
+               |> Ash.read!()
     end
   end
 
@@ -316,13 +316,13 @@ defmodule Ash.Test.Filter.FilterTest do
       post1 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "title1", contents: "contents1", points: 1})
-        |> Domain.create!()
+        |> Ash.create!()
         |> strip_metadata()
 
       post2 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "title2", contents: "contents2", points: 2})
-        |> Domain.create!()
+        |> Ash.create!()
         |> strip_metadata()
 
       %{post1: post1, post2: post2}
@@ -332,7 +332,7 @@ defmodule Ash.Test.Filter.FilterTest do
       assert [^post1] =
                Post
                |> Ash.Query.filter(title == ^post1.title)
-               |> Domain.read!()
+               |> Ash.read!()
                |> strip_metadata()
     end
 
@@ -340,7 +340,7 @@ defmodule Ash.Test.Filter.FilterTest do
       assert [^post1] =
                Post
                |> Ash.Query.filter(title == ^post1.title and contents == ^post1.contents)
-               |> Domain.read!()
+               |> Ash.read!()
                |> strip_metadata()
     end
 
@@ -348,7 +348,7 @@ defmodule Ash.Test.Filter.FilterTest do
       assert [] =
                Post
                |> Ash.Query.filter(title == "no match")
-               |> Domain.read!()
+               |> Ash.read!()
     end
 
     test "no field matches single record, but each matches one record", %{
@@ -358,7 +358,7 @@ defmodule Ash.Test.Filter.FilterTest do
       assert [] =
                Post
                |> Ash.Query.filter(title == ^post1.title and contents == ^post2.contents)
-               |> Domain.read!()
+               |> Ash.read!()
     end
 
     test "less than works", %{
@@ -368,14 +368,14 @@ defmodule Ash.Test.Filter.FilterTest do
       assert [^post1] =
                Post
                |> Ash.Query.filter(points < 2)
-               |> Domain.read!()
+               |> Ash.read!()
                |> strip_metadata()
 
       assert [^post1, ^post2] =
                Post
                |> Ash.Query.filter(points < 3)
                |> Ash.Query.sort(points: :asc)
-               |> Domain.read!()
+               |> Ash.read!()
                |> strip_metadata()
     end
 
@@ -386,14 +386,14 @@ defmodule Ash.Test.Filter.FilterTest do
       assert [^post2] =
                Post
                |> Ash.Query.filter(points > 1)
-               |> Domain.read!()
+               |> Ash.read!()
                |> strip_metadata()
 
       assert [^post1, ^post2] =
                Post
                |> Ash.Query.filter(points > 0)
                |> Ash.Query.sort(points: :asc)
-               |> Domain.read!()
+               |> Ash.read!()
                |> strip_metadata()
     end
   end
@@ -402,13 +402,13 @@ defmodule Ash.Test.Filter.FilterTest do
     setup do
       Profile
       |> Ash.Changeset.for_create(:create, %{embedded_bio: %{title: "Dr.", bio: "foo"}})
-      |> Domain.create!()
+      |> Ash.create!()
 
       Profile
       |> Ash.Changeset.for_create(:create, %{
         embedded_bio: %{title: "Highlander", bio: "There can be only one"}
       })
-      |> Domain.create!()
+      |> Ash.create!()
 
       :ok
     end
@@ -417,14 +417,14 @@ defmodule Ash.Test.Filter.FilterTest do
       assert [%Profile{embedded_bio: %EmbeddedBio{title: "Dr."}}] =
                Profile
                |> Ash.Query.filter(embedded_bio[:title] == "Dr.")
-               |> Domain.read!()
+               |> Ash.read!()
     end
 
     test "expressions work on accessed values" do
       assert [%Profile{embedded_bio: %EmbeddedBio{title: "Highlander"}}] =
                Profile
                |> Ash.Query.filter(contains(embedded_bio[:bio], "can be only one"))
-               |> Domain.read!()
+               |> Ash.read!()
     end
   end
 
@@ -433,13 +433,13 @@ defmodule Ash.Test.Filter.FilterTest do
       post1 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "title1", contents: "contents1", points: 1})
-        |> Domain.create!()
+        |> Ash.create!()
         |> strip_metadata()
 
       post2 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "title2", contents: "contents2", points: 2})
-        |> Domain.create!()
+        |> Ash.create!()
         |> strip_metadata()
 
       post3 =
@@ -448,20 +448,20 @@ defmodule Ash.Test.Filter.FilterTest do
         |> Ash.Changeset.manage_relationship(:related_posts, [post1, post2],
           type: :append_and_remove
         )
-        |> Domain.create!()
+        |> Ash.create!()
         |> strip_metadata()
 
       post4 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "title4", contents: "contents4", points: 4})
         |> Ash.Changeset.manage_relationship(:related_posts, [post3], type: :append_and_remove)
-        |> Domain.create!()
+        |> Ash.create!()
         |> strip_metadata()
 
       profile1 =
         Profile
         |> Ash.Changeset.for_create(:create, %{bio: "dope"})
-        |> Domain.create!()
+        |> Ash.create!()
         |> strip_metadata()
 
       user1 =
@@ -469,32 +469,32 @@ defmodule Ash.Test.Filter.FilterTest do
         |> Ash.Changeset.for_create(:create, %{name: "broseph"})
         |> Ash.Changeset.manage_relationship(:posts, [post1, post2], type: :append_and_remove)
         |> Ash.Changeset.manage_relationship(:profile, profile1, type: :append_and_remove)
-        |> Domain.create!()
+        |> Ash.create!()
         |> strip_metadata()
 
       user2 =
         User
         |> Ash.Changeset.for_create(:create, %{name: "broseph", special: false})
         |> Ash.Changeset.manage_relationship(:posts, [post2], type: :append_and_remove)
-        |> Domain.create!()
+        |> Ash.create!()
         |> strip_metadata()
 
       profile2 =
         Profile
         |> Ash.Changeset.for_create(:create, %{bio: "dope2"})
         |> Ash.Changeset.manage_relationship(:user, user2, type: :append_and_remove)
-        |> Domain.create!()
+        |> Ash.create!()
         |> strip_metadata()
 
       %{
-        post1: Domain.reload!(post1),
-        post2: Domain.reload!(post2),
-        post3: Domain.reload!(post3),
-        post4: Domain.reload!(post4),
-        profile1: Domain.reload!(profile1),
-        user1: Domain.reload!(user1),
-        user2: Domain.reload!(user2),
-        profile2: Domain.reload!(profile2)
+        post1: Ash.reload!(post1),
+        post2: Ash.reload!(post2),
+        post3: Ash.reload!(post3),
+        post4: Ash.reload!(post4),
+        profile1: Ash.reload!(profile1),
+        user1: Ash.reload!(user1),
+        user2: Ash.reload!(user2),
+        profile2: Ash.reload!(profile2)
       }
     end
 
@@ -502,32 +502,32 @@ defmodule Ash.Test.Filter.FilterTest do
       assert [%{id: ^user2_id}] =
                User
                |> Ash.Query.filter(profile == ^profile2.id)
-               |> Domain.read!()
+               |> Ash.read!()
     end
 
     test "filtering on a belongs_to relationship", %{profile1: %{id: id}, user1: user1} do
       assert [%{id: ^id}] =
                Profile
                |> Ash.Query.filter(user == ^user1.id)
-               |> Domain.read!()
+               |> Ash.read!()
     end
 
     test "filtering on a has_many relationship", %{user2: %{id: user2_id}, post2: post2} do
       assert [%{id: ^user2_id}] =
                User
                |> Ash.Query.filter(posts == ^post2.id)
-               |> Domain.read!()
+               |> Ash.read!()
     end
 
     test "filtering on a many_to_many relationship", %{post4: %{id: post4_id}, post3: post3} do
       assert [%{id: ^post4_id}] =
                Post
                |> Ash.Query.filter(related_posts == ^post3.id)
-               |> Domain.read!()
+               |> Ash.read!()
     end
 
     test "relationship filters are honored when filtering on relationships", %{post2: post} do
-      post = Domain.load!(post, [:special_author1, :author1])
+      post = Ash.load!(post, [:special_author1, :author1])
 
       assert post.author1
       refute post.special_author1
@@ -687,18 +687,18 @@ defmodule Ash.Test.Filter.FilterTest do
       %{id: id} =
         SoftDeletePost
         |> Ash.Changeset.for_create(:create, %{})
-        |> Domain.create!()
+        |> Ash.create!()
 
-      assert [%{id: ^id}] = Domain.read!(SoftDeletePost)
+      assert [%{id: ^id}] = Ash.read!(SoftDeletePost)
     end
 
     test "resources that don't apply to the base filter are not returned" do
       SoftDeletePost
       |> Ash.Changeset.for_create(:create, %{})
-      |> Domain.create!()
-      |> Domain.destroy!()
+      |> Ash.create!()
+      |> Ash.destroy!()
 
-      assert [] = Domain.read!(SoftDeletePost)
+      assert [] = Ash.read!(SoftDeletePost)
     end
   end
 
@@ -706,46 +706,46 @@ defmodule Ash.Test.Filter.FilterTest do
     test "works for simple strings" do
       Post
       |> Ash.Changeset.for_create(:create, %{title: "foobar"})
-      |> Domain.create!()
+      |> Ash.create!()
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "bazbuz"})
-      |> Domain.create!()
+      |> Ash.create!()
 
       assert [%{title: "foobar"}] =
                Post
                |> Ash.Query.filter(contains(title, "oba"))
-               |> Domain.read!()
+               |> Ash.read!()
     end
 
     test "works for simple strings with a case insensitive search term" do
       Post
       |> Ash.Changeset.for_create(:create, %{title: "foobar"})
-      |> Domain.create!()
+      |> Ash.create!()
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "bazbuz"})
-      |> Domain.create!()
+      |> Ash.create!()
 
       assert [%{title: "foobar"}] =
                Post
                |> Ash.Query.filter(contains(title, ^%Ash.CiString{string: "OBA"}))
-               |> Domain.read!()
+               |> Ash.read!()
     end
 
     test "works for case insensitive strings" do
       Post
       |> Ash.Changeset.for_create(:create, %{category: "foobar"})
-      |> Domain.create!()
+      |> Ash.create!()
 
       Post
       |> Ash.Changeset.for_create(:create, %{category: "bazbuz"})
-      |> Domain.create!()
+      |> Ash.create!()
 
       assert [%{category: %Ash.CiString{string: "foobar"}}] =
                Post
                |> Ash.Query.filter(contains(category, "OBA"))
-               |> Domain.read!()
+               |> Ash.read!()
     end
   end
 
@@ -754,26 +754,26 @@ defmodule Ash.Test.Filter.FilterTest do
       user1 =
         User
         |> Ash.Changeset.for_create(:create, %{roles: [:user]})
-        |> Domain.create!()
+        |> Ash.create!()
 
       _user2 =
         User
         |> Ash.Changeset.for_create(:create, %{roles: []})
-        |> Domain.create!()
+        |> Ash.create!()
 
       user1_id = user1.id
 
       assert [%User{id: ^user1_id}] =
                User
                |> Ash.Query.filter(length(roles) > 0)
-               |> Domain.read!()
+               |> Ash.read!()
     end
 
     test "with an explicit list" do
       user1 =
         User
         |> Ash.Changeset.for_create(:create, %{roles: [:user]})
-        |> Domain.create!()
+        |> Ash.create!()
 
       user1_id = user1.id
       explicit_list = [:foo]
@@ -781,42 +781,42 @@ defmodule Ash.Test.Filter.FilterTest do
       assert [%User{id: ^user1_id}] =
                User
                |> Ash.Query.filter(length(^explicit_list) > 0)
-               |> Domain.read!()
+               |> Ash.read!()
 
       assert [] =
                User
                |> Ash.Query.filter(length(^explicit_list) > 1)
-               |> Domain.read!()
+               |> Ash.read!()
     end
 
     test "when nil" do
       user1 =
         User
         |> Ash.Changeset.for_create(:create, %{roles: [:user]})
-        |> Domain.create!()
+        |> Ash.create!()
 
       _user2 =
         User
         |> Ash.Changeset.for_create(:create)
-        |> Domain.create!()
+        |> Ash.create!()
 
       user1_id = user1.id
 
       assert [%User{id: ^user1_id}] =
                User
                |> Ash.Query.filter(length(roles || []) > 0)
-               |> Domain.read!()
+               |> Ash.read!()
     end
 
     test "with bad input" do
       User
       |> Ash.Changeset.for_create(:create, %{name: "fred"})
-      |> Domain.create!()
+      |> Ash.create!()
 
       assert_raise(Ash.Error.Unknown, fn ->
         User
         |> Ash.Query.filter(length(name) > 0)
-        |> Domain.read!()
+        |> Ash.read!()
       end)
     end
   end
@@ -826,36 +826,36 @@ defmodule Ash.Test.Filter.FilterTest do
       profile =
         Profile
         |> Ash.Changeset.for_create(:create, %{embedded_bio: %{title: "fred"}})
-        |> Domain.create!()
+        |> Ash.create!()
 
       profile_id = profile.id
 
       Profile
       |> Ash.Changeset.for_create(:create, %{embedded_bio: %{title: "george"}})
-      |> Domain.create!()
+      |> Ash.create!()
 
       assert [%{id: ^profile_id}] =
                Profile
                |> Ash.Query.filter(get_path(embedded_bio, :title) == "fred")
-               |> Domain.read!()
+               |> Ash.read!()
     end
 
     test "it can be used with arguments" do
       profile =
         Profile
         |> Ash.Changeset.for_create(:create, %{embedded_bio: %{title: "fred"}})
-        |> Domain.create!()
+        |> Ash.create!()
 
       profile_id = profile.id
 
       Profile
       |> Ash.Changeset.for_create(:create, %{embedded_bio: %{title: "george"}})
-      |> Domain.create!()
+      |> Ash.create!()
 
       assert [%{id: ^profile_id}] =
                Profile
                |> Ash.Query.for_read(:get_path_search, %{input: %{title: "fred"}})
-               |> Domain.read!()
+               |> Ash.read!()
     end
   end
 
@@ -864,14 +864,14 @@ defmodule Ash.Test.Filter.FilterTest do
       post1 =
         Post
         |> Ash.Changeset.for_create(:create, %{title: "title1", contents: "contents1", points: 2})
-        |> Domain.create!()
+        |> Ash.create!()
 
       post_id = post1.id
 
       assert [%Post{id: ^post_id}] =
                Post
                |> Ash.Query.filter(points + 1 == 3)
-               |> Domain.read!()
+               |> Ash.read!()
     end
 
     test "function calls are evaluated properly" do
@@ -881,21 +881,21 @@ defmodule Ash.Test.Filter.FilterTest do
           title: "title1",
           approved_at: DateTime.new!(Date.utc_today() |> Date.add(-7), Time.utc_now())
         })
-        |> Domain.create!()
+        |> Ash.create!()
 
       Post
       |> Ash.Changeset.for_create(:create, %{
         title: "title1",
         approved_at: DateTime.new!(Date.utc_today() |> Date.add(-7 * 4), Time.utc_now())
       })
-      |> Domain.create!()
+      |> Ash.create!()
 
       post_id = post1.id
 
       assert [%Post{id: ^post_id}] =
                Post
                |> Ash.Query.filter(approved_at > ago(2, :week))
-               |> Domain.read!()
+               |> Ash.read!()
     end
 
     test "now() evaluates to the current datetime" do
@@ -905,28 +905,28 @@ defmodule Ash.Test.Filter.FilterTest do
           title: "title1",
           approved_at: DateTime.new!(Date.utc_today() |> Date.add(7), Time.utc_now())
         })
-        |> Domain.create!()
+        |> Ash.create!()
 
       Post
       |> Ash.Changeset.for_create(:create, %{
         title: "title1",
         approved_at: DateTime.new!(Date.utc_today() |> Date.add(-7), Time.utc_now())
       })
-      |> Domain.create!()
+      |> Ash.create!()
 
       post_id = post1.id
 
       assert [%Post{id: ^post_id}] =
                Post
                |> Ash.Query.filter(approved_at > now())
-               |> Domain.read!()
+               |> Ash.read!()
     end
   end
 
   test "using tuple instead of keyword list does not raise an error" do
     Post
     |> Ash.Query.filter(id: {:in, [Ash.UUID.generate()]})
-    |> Domain.read!()
+    |> Ash.read!()
   end
 
   test "parsing input with embedded references works" do
@@ -934,17 +934,17 @@ defmodule Ash.Test.Filter.FilterTest do
     |> Ash.Changeset.for_create(:create, %{
       embedded_bio: %{title: "Mr."}
     })
-    |> Domain.create!()
+    |> Ash.create!()
 
     Profile
     |> Ash.Changeset.for_create(:create, %{
       embedded_bio: %{title: "Dr."}
     })
-    |> Domain.create!()
+    |> Ash.create!()
 
     assert [%{embedded_bio: %{title: "Dr."}}] =
              Profile
              |> Ash.Query.filter_input(%{embedded_bio: %{at_path: [:title], eq: "Dr."}})
-             |> Domain.read!()
+             |> Ash.read!()
   end
 end
