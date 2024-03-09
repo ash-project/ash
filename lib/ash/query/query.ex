@@ -754,10 +754,6 @@ defmodule Ash.Query do
     end
   end
 
-  @doc "Returns true if the value is one of the expression structs."
-  @deprecated "use Ash.Filter.TemplateHelpers.expr?/1"
-  def is_expr?(value), do: expr?(value)
-
   @doc """
   Creates an Ash expression for evaluation later.
   """
