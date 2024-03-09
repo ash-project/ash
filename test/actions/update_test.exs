@@ -383,7 +383,6 @@ defmodule Ash.Test.Actions.UpdateTest do
         )
 
       assert changeset.valid?
-      assert changeset.atomics[:name]
     end
   end
 

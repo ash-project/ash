@@ -119,13 +119,12 @@ defmodule Ash.Type.Keyword do
   end
 
   @impl true
-  def cast_atomic_update(_new_value, _constraints) do
-    {:not_atomic, "Keywords do not support atomic updates"}
-  end
-
-  @impl true
-  def cast_atomic_update_array(_new_value, _constraints) do
-    {:not_atomic, "Keywords do not support atomic updates"}
+  def cast_atomic(new_value, constraints) do
+    if constraints[:keys] do
+      {:not_atomic, "Keywords do not support atomic updates when using the `keys` constraint"}
+    else
+      {:atomic, new_value}
+    end
   end
 
   @impl true

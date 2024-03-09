@@ -102,7 +102,6 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
       )
 
     assert changeset.valid?
-    assert changeset.atomics[:name]
   end
 
   test "values are eagerly validated" do

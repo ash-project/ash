@@ -20,6 +20,11 @@ defmodule Ash.Type.Boolean do
   end
 
   @impl true
+  def cast_atomic(new_value, _constraints) do
+    {:atomic, new_value}
+  end
+
+  @impl true
   def cast_stored(nil, _), do: {:ok, nil}
 
   def cast_stored(value, _) do

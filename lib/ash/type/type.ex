@@ -247,9 +247,9 @@ defmodule Ash.Type do
   @callback embedded?() :: boolean
   @callback generator(constraints) :: Enumerable.t()
   @callback simple_equality?() :: boolean
-  @callback cast_atomic_update(new_value :: Ash.Expr.t(), constraints) ::
+  @callback cast_atomic(new_value :: Ash.Expr.t(), constraints) ::
               {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
-  @callback cast_atomic_update_array(new_value :: Ash.Expr.t(), constraints) ::
+  @callback cast_atomic_array(new_value :: Ash.Expr.t(), constraints) ::
               {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
   @callback custom_apply_constraints_array?() :: boolean
   @callback load(
@@ -830,25 +830,25 @@ defmodule Ash.Type do
     type.dump_to_native(term, constraints)
   end
 
-  @spec cast_atomic_update(t(), term, constraints()) ::
+  @spec cast_atomic(t(), term, constraints()) ::
           {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
   # not currently supported
-  def cast_atomic_update({:array, {:array, _}}, _term, _constraints),
+  def cast_atomic({:array, {:array, _}}, _term, _constraints),
     do: {:not_atomic, "cannot currently atomically update doubly nested arrays"}
 
-  def cast_atomic_update({:array, type}, term, constraints) do
+  def cast_atomic({:array, type}, term, constraints) do
     type = get_type(type)
 
     with {:ok, value} <- maybe_cast_input({:array, type}, term, constraints) do
-      type.cast_atomic_update_array(value, item_constraints(constraints))
+      type.cast_atomic_array(value, item_constraints(constraints))
     end
   end
 
-  def cast_atomic_update(type, term, constraints) do
+  def cast_atomic(type, term, constraints) do
     type = get_type(type)
 
     with {:ok, value} <- maybe_cast_input(type, term, constraints) do
-      type.cast_atomic_update(value, constraints)
+      type.cast_atomic(value, constraints)
     end
   end
 
@@ -1325,15 +1325,15 @@ defmodule Ash.Type do
       end
 
       @impl true
-      def cast_atomic_update(new_value, constraints) do
-        {:atomic, new_value}
+      def cast_atomic(_new_value, _constraints) do
+        {:not_atomic, "Type `#{inspect(__MODULE__)}` does not support atomic updates"}
       end
 
       @impl true
-      def cast_atomic_update_array(new_value, constraints) do
+      def cast_atomic_array(new_value, constraints) do
         new_value
         |> Enum.reduce_while({:atomic, []}, fn val, {:atomic, vals} ->
-          case cast_atomic_update(val, constraints) do
+          case cast_atomic(val, constraints) do
             {:atomic, atomic} ->
               {:cont, {:atomic, [atomic | vals]}}
 
@@ -1357,8 +1357,8 @@ defmodule Ash.Type do
                      include_source: 2,
                      describe: 1,
                      generator: 1,
-                     cast_atomic_update: 2,
-                     cast_atomic_update_array: 2,
+                     cast_atomic: 2,
+                     cast_atomic_array: 2,
                      cast_input_array: 2,
                      dump_to_native_array: 2,
                      dump_to_embedded: 2,

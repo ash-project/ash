@@ -67,6 +67,8 @@ defmodule Ash.Type.Enum do
     quote location: :keep, generated: true do
       use Ash.Type
 
+      require Ash.Expr
+
       @behaviour unquote(__MODULE__)
 
       @values unquote(__MODULE__).build_values(unquote(opts[:values]))
@@ -74,6 +76,8 @@ defmodule Ash.Type.Enum do
       @description_map unquote(__MODULE__).build_description_map(unquote(opts[:values]))
 
       @string_values @values |> Enum.map(&to_string/1)
+
+      @any_not_downcase? Enum.any?(@string_values, fn value -> String.downcase(value) != value end)
 
       @impl unquote(__MODULE__)
       def values, do: @values
@@ -112,6 +116,46 @@ defmodule Ash.Type.Enum do
 
       def dump_to_native(value, _) do
         {:ok, to_string(value)}
+      end
+
+      @impl true
+      def cast_atomic(new_value, _constraints) do
+        if @any_not_downcase? do
+          {:atomic,
+           Ash.Expr.expr(
+             if ^new_value in ^@values do
+               string_downcase(^new_value)
+             else
+               error(
+                 Ash.Error.Changes.InvalidChanges,
+                 message: "must be one of %{values}",
+                 vars: %{values: Enum.map_join(@values, ", ")}
+               )
+             end
+           )}
+        else
+          error_expr =
+            Ash.Expr.expr(
+              error(
+                Ash.Error.Changes.InvalidChanges,
+                message: "must be one of %{values}",
+                vars: %{values: Enum.map_join(@values, ", ")}
+              )
+            )
+
+          Enum.reduce(@values, {:atomic, error_expr}, fn valid_value, {:atomic, expr} ->
+            expr =
+              Ash.Expr.expr(
+                if string_downcase(^new_value) == string_downcase(^valid_value) do
+                  ^valid_value
+                else
+                  ^expr
+                end
+              )
+
+            {:atomic, expr}
+          end)
+        end
       end
 
       @impl unquote(__MODULE__)
