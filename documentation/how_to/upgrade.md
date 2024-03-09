@@ -10,6 +10,10 @@ This section contains each breaking change, and the steps required to address it
 
 * `actions.create.reject`, `actions.update.reject` and `actions.destroy.reject` have been removed. Blacklisting inputs makes it too easy to make mistakes. Instead, specify an explicit `accept` list.
 
+* `relationships.belongs_to.attribute_writable?` no longer makes the underlying attribute both public and writable. It defaults to the value of `writable?` on the relationship (which itself defaults to `true`), and only controls the generated attributes `writable? true` property. So now, by default, it will be `true`, which is safe when coupled with changes to the `default_accept`, discussed below. Generally, this means you should be safe to remove any occurrences of `attribute_writable? true`.
+
+* `relationships.belongs_to.attribute_public?` has been added, which controls the underlying attribute's `public?` value. This, similar to `attribute_writable?` defaults to the `public?` attribute of the relationship. 
+
 ### `Ash.Registry` has been removed
 
 `Ash.Registry` is no longer needed. Place each resource in the domain instead.
@@ -82,6 +86,64 @@ To make this change you will need to do two things:
 
 1. replace `Ash.Api` with `Ash.Domain` in your application
 2. replace places where an `:api` option is passed to a function with the `:domain` option. For example, `AshPhoenix.Form.for_create(..., api: MyApp.SomeApi)` should now be `AshPhoenix.Form.for_create(..., domain: MyApp.SomeDomain)`
+
+### the `Domain` of a resource must now be known when constructing a changeset, query or action input
+
+In order to honor rules on the `Domain` module about authorization and timeouts, we have to know the `Domain` when building the changeset.
+
+#### What you'll need to change
+
+##### Embedded Resources
+
+The domain for the calls to embedded resources is gotten from the parent changeset. No need to change them at all. a `domain` constraint has been added in case you wish to make a given embedded resource use a specific domain always.
+
+For example:
+
+```elixir
+attribute :bio, MyApp.Bio do
+  constraints domain: MyApp.SomeDomain
+end
+```
+
+##### Single Domain resources
+
+While it is possible for resources to be used with multiple domains, it almost never happens in practice. Any resources that are only used from a single domain only (*not* including embedded resources) should be modified to have a `domain` option specified in their call to `use Ash.Resource`. For example:
+
+```elixir
+use Ash.Resource,
+  domain: MyApp.MyDomain
+```
+
+###### Using `Ash.*` to interact with your resources
+
+Calling functions on the domain has been deprecated. You must now use the functions defined in the `Ash` module to interact with your resources. They are the same as what was previously available in your domain module. For example:
+
+```elixir
+MyDomain1.create!(changeset)
+MyDomain2.read!(query)
+MyDomain3.calculate!(...)
+```
+
+can now be written as
+
+```elixir
+Ash.create!(changeset)
+Ash.read!(query)
+Ash.calculate!(query)
+```
+
+This makes refactoring resources easier, as you no longer need to change the call site, it remains the same regardless of what Domain a resource is in.
+
+##### Multi Domain resources
+
+For these, you will need to include the `domain` option when you construct a changeset.
+
+For example:
+
+```elixir
+MyResource
+|> Ash.Changeset.for_create(:create, input, domain: MyApp.MyDomain)
+```
 
 ### Actions no longer default to accepting all public writable attributes
 
@@ -201,64 +263,6 @@ def requires_original_data?(_resource, _action), do: true
 ```
 
 Keep in mind, this will prevent the usage of these checks/notifiers with atomic actions.
-
-### the `Domain` of a resource must now be known when constructing a changeset, query or action input
-
-In order to honor rules on the `Domain` module about authorization and timeouts, we have to know the `Domain` when building the changeset.
-
-#### What you'll need to change
-
-##### Embedded Resources
-
-The domain for the calls to embedded resources is gotten from the parent changeset. No need to change them at all. a `domain` constraint has been added in case you wish to make a given embedded resource use a specific domain always.
-
-For example:
-
-```elixir
-attribute :bio, MyApp.Bio do
-  constraints domain: MyApp.SomeDomain
-end
-```
-
-##### Single Domain resources
-
-While it is possible for resources to be used with multiple domains, it almost never happens in practice. Any resources that are only used from a single domain only (*not* including embedded resources) should be modified to have a `domain` option specified in their call to `use Ash.Resource`. For example:
-
-```elixir
-use Ash.Resource,
-  domain: MyApp.MyDomain
-```
-
-###### Using `Ash.*` to interact with your resources
-
-For resources that have a static domain configured, you can now use functions in `Ash` to interact with your resources. They are the same as what is available in your domain module. For example:
-
-```elixir
-MyDomain1.create!(changeset)
-MyDomain2.read!(query)
-MyDomain3.calculate!(...)
-```
-
-can now be written as
-
-```elixir
-Ash.create!(changeset)
-Ash.read!(query)
-Ash.calculate!(query)
-```
-
-This makes refactoring resources easier, as you no longer need to change the call site, it remains the same regardless of what Domain a resource is in.
-
-##### Multi Domain resources
-
-For these, you will need to include the `domain` option every time you construct a changeset.
-
-For example:
-
-```elixir
-MyResource
-|> Ash.Changeset.for_create(:create, input, domain: MyApp.MyDomain)
-```
 
 ### `Domain.authorization.authorize` now defaults to `:by_default`
 

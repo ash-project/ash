@@ -153,7 +153,6 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       belongs_to :org, Org do
         public?(true)
         allow_nil? false
-        attribute_writable? true
       end
     end
   end

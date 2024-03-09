@@ -70,7 +70,6 @@ defmodule Ash.Test.NotifierTest do
     relationships do
       belongs_to :post, Ash.Test.NotifierTest.Post do
         public?(true)
-        attribute_writable? true
       end
     end
   end

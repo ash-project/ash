@@ -34,7 +34,6 @@ defmodule Ash.Test.Resource.NoPkTest do
     relationships do
       belongs_to :location, Ash.Test.Resource.NoPkTest.Location do
         public?(true)
-        attribute_writable? true
       end
     end
   end
