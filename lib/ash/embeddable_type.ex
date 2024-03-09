@@ -148,7 +148,7 @@ defmodule Ash.EmbeddableType do
 
       def storage_type(_), do: :map
 
-      def cast_atomic_update(_, _) do
+      def cast_atomic(_, _) do
         {:not_atomic, "Embedded attributes do not support atomic updates"}
       end
 
@@ -461,7 +461,7 @@ defmodule Ash.EmbeddableType do
     quote location: :keep do
       alias Ash.EmbeddableType.ShadowDomain
 
-      def cast_atomic_update_array(_, _) do
+      def cast_atomic_array(_, _) do
         {:not_atomic, "Embedded attributes do not support atomic updates"}
       end
 

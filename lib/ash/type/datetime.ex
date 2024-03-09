@@ -22,6 +22,11 @@ defmodule Ash.Type.DateTime do
   def constraints, do: @constraints
 
   @impl true
+  def cast_atomic(new_value, _constraints) do
+    {:atomic, new_value}
+  end
+
+  @impl true
   def init(constraints) do
     {precision, constraints} = Keyword.pop(constraints, :precision)
     precision = precision || :second
