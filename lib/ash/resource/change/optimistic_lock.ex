@@ -9,9 +9,10 @@ defmodule Ash.Resource.Change.OptimisticLock do
 
   @impl true
   def change(changeset, opts, _context) do
-    Ash.Changeset.filter(changeset, %{
-      opts[:attribute] => Map.get(changeset.data, opts[:attribute])
-    })
+    Ash.Changeset.filter(
+      changeset,
+      {opts[:attribute], [eq: Map.get(changeset.data, opts[:attribute])]}
+    )
   end
 
   @impl true

@@ -21,7 +21,7 @@ defmodule Ash.Changeset do
     :tenant,
     :timeout,
     invalid_keys: MapSet.new(),
-    filters: %{},
+    filter: nil,
     action_failed?: false,
     atomics: [],
     atomic_validations: [],
@@ -4823,10 +4823,17 @@ defmodule Ash.Changeset do
 
   Used by optimistic locking. See `Ash.Resource.Change.Builtins.optimistic_lock/1` for more.
   """
-  @spec filter(t(), %{optional(atom) => term}) :: t()
-  def filter(changeset, fields) do
-    if Ash.DataLayer.data_layer_can?(changeset.resource, :changeset_filter) || fields == %{} do
-      %{changeset | filters: Map.merge(changeset.filters, fields)}
+  @spec filter(t(), Ash.Expr.t()) :: t()
+  def filter(changeset, expr) do
+    if Ash.DataLayer.data_layer_can?(changeset.resource, :changeset_filter) do
+      %{
+        changeset
+        | filter:
+            Ash.Filter.add_to_filter(
+              changeset.filter,
+              Ash.Filter.parse!(changeset.resource, expr)
+            )
+      }
     else
       IO.warn(
         "Filters (used by optimistic locking) is not supported in the #{inspect(Ash.DataLayer.data_layer(changeset.resource))} data layer"

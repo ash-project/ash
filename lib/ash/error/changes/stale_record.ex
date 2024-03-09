@@ -10,12 +10,7 @@ defmodule Ash.Error.Changes.StaleRecord do
     def code(_), do: "stale_record"
 
     def message(error) do
-      filter =
-        Enum.map_join(error.filters, ", ", fn {key, value} ->
-          "#{key}: #{inspect(value)}"
-        end)
-
-      "Attempted to update stale record of #{inspect(error.resource)} with filter `#{filter}`"
+      "Attempted to update stale record of #{inspect(error.resource)} with filter `#{error.filter}`"
     end
   end
 end
