@@ -187,15 +187,6 @@ defmodule Ash.Policy.Check.Builtins do
   end
 
   @doc """
-  This check is true when a field on the record matches a specific filter.
-  """
-  @deprecated "Use an `expr/1` check instead, i.e `expr(attribute == value)`"
-  @spec attribute(atom, any()) :: Ash.Policy.Check.ref()
-  def attribute(attribute, filter) do
-    {Ash.Policy.Check.Attribute, attribute: attribute, filter: filter}
-  end
-
-  @doc """
   This check is true when the value of the specified attribute of the actor equals the specified value.
 
   This check will *never* pass if the actor does not have the specified key. For example,

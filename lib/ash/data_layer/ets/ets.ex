@@ -45,12 +45,6 @@ defmodule Ash.DataLayer.Ets do
 
   alias Ash.Actions.Sort
 
-  @deprecated "use Ash.DataLayer.Ets.Info.private?/1 instead"
-  defdelegate private?(resource), to: Ash.DataLayer.Ets.Info
-
-  @deprecated "use Ash.DataLayer.Ets.Info.table/1 instead"
-  defdelegate table(resource), to: Ash.DataLayer.Ets.Info
-
   defmodule Query do
     @moduledoc false
     defstruct [
@@ -178,7 +172,7 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   @impl true
   def can?(_, :distinct_sort), do: true
-  def can?(resource, :async_engine), do: not private?(resource)
+  def can?(resource, :async_engine), do: not Ash.DataLayer.Ets.Info.private?(resource)
   def can?(_, {:lateral_join, _}), do: true
   def can?(_, :bulk_create), do: true
   def can?(_, :composite_primary_key), do: true
@@ -219,7 +213,7 @@ defmodule Ash.DataLayer.Ets do
 
   def can?(resource, {:join, other_resource}) do
     # See the comment in can?/2 in mnesia data layer to explain this
-    not (private?(resource) and
+    not (Ash.DataLayer.Ets.Info.private?(resource) and
            Ash.DataLayer.data_layer(other_resource) == Ash.DataLayer.Mnesia)
   end
 
