@@ -3,24 +3,9 @@ defmodule Ash.Resource.Info do
 
   alias Spark.Dsl.Extension
 
-  @deprecated "Use `Ash.Resource.set_metadata/2` instead"
-  defdelegate set_metadata(record, map), to: Ash.Resource
-
-  @deprecated "Use `Ash.Resource.put_metadata/3` instead"
-  defdelegate put_metadata(record, key, term), to: Ash.Resource
-
-  @deprecated "Use `Ash.Resource.unload_many/2` instead"
-  defdelegate unload_many(record, loads), to: Ash.Resource
-
-  @deprecated "Use `Ash.Resource.unload/2` instead"
-  defdelegate unload(record, key_or_path), to: Ash.Resource
-
-  @deprecated "Use `Ash.Resource.get_metadata/2` instead"
-  defdelegate get_metadata(record, key_or_path), to: Ash.Resource
-
-  @deprecated "Use `Ash.Resource.selected?/2` instead"
-  defdelegate selected?(record, field), to: Ash.Resource
-
+  @doc """
+  Returns the statically configured domain for the resource.
+  """
   def domain(resource) do
     Spark.Dsl.Extension.get_persisted(resource, :domain)
   end
