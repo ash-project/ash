@@ -82,7 +82,7 @@ For example:
 ```elixir
 belongs_to :owner, MyApp.User do
   attribute_type :integer
-  attribute_writable? true
+  attribute_writable? false
 end
 ```
 

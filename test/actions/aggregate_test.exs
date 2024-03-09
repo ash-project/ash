@@ -40,7 +40,6 @@ defmodule Ash.Test.Actions.AggregateTest do
 
     relationships do
       belongs_to :post, Ash.Test.Actions.AggregateTest.Post do
-        attribute_writable? true
         public?(true)
       end
     end

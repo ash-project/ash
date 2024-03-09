@@ -647,7 +647,8 @@ end
 |------|------|---------|------|
 | [`primary_key?`](#relationships-belongs_to-primary_key?){: #relationships-belongs_to-primary_key? } | `boolean` | `false` | Whether the generated attribute is, or is part of, the primary key of a resource. |
 | [`allow_nil?`](#relationships-belongs_to-allow_nil?){: #relationships-belongs_to-allow_nil? } | `boolean` | `true` | Whether this relationship must always be present, e.g: must be included on creation, and never removed (it may be modified). The generated attribute will not allow nil values. |
-| [`attribute_writable?`](#relationships-belongs_to-attribute_writable?){: #relationships-belongs_to-attribute_writable? } | `boolean` | `false` | Whether the generated attribute will be marked as public & writable. |
+| [`attribute_writable?`](#relationships-belongs_to-attribute_writable?){: #relationships-belongs_to-attribute_writable? } | `boolean` |  | Whether the generated attribute will be marked as writable. If not set, it will default to the relationship's `writable?` setting. |
+| [`attribute_public?`](#relationships-belongs_to-attribute_public?){: #relationships-belongs_to-attribute_public? } | `boolean` |  | Whether or not the generated attribute will be public. If not set, it will default to the relationship's `public?` setting. |
 | [`define_attribute?`](#relationships-belongs_to-define_attribute?){: #relationships-belongs_to-define_attribute? } | `boolean` | `true` | If set to `false` an attribute is not created on the resource for this relationship, and one must be manually added in `attributes`, invalidating many other options. |
 | [`attribute_type`](#relationships-belongs_to-attribute_type){: #relationships-belongs_to-attribute_type } | `any` | `:uuid` | The type of the generated created attribute. See `Ash.Type` for more. |
 | [`description`](#relationships-belongs_to-description){: #relationships-belongs_to-description } | `String.t` |  | An optional description for the relationship |
