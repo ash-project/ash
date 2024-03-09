@@ -785,15 +785,21 @@ defmodule Ash.Changeset do
             {:cont, %{changeset | arguments: Map.put(changeset.arguments, key, value)}}
 
           attribute = Ash.Resource.Info.attribute(changeset.resource, key) ->
-            case Ash.Type.cast_atomic_update(attribute.type, value, attribute.constraints) do
-              {:atomic, atomic} ->
-                {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
+            if Ash.Filter.TemplateHelpers.expr?(value) do
+              case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
+                {:atomic, atomic} ->
+                  atomic = set_error_field(atomic, attribute.name)
+                  {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
 
-              {:error, error} ->
-                {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
+                {:error, error} ->
+                  {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
 
-              {:not_atomic, reason} ->
-                {:halt, {:not_atomic, reason}}
+                {:not_atomic, reason} ->
+                  {:halt, {:not_atomic, reason}}
+              end
+            else
+              {:cont,
+               %{changeset | attributes: Map.put(changeset.attributes, attribute.name, value)}}
             end
 
           true ->
@@ -808,21 +814,19 @@ defmodule Ash.Changeset do
 
           attribute = Ash.Resource.Info.attribute(changeset.resource, key) ->
             if attribute.name in action.accept do
-              case change_attribute(changeset, key, value) do
-                %{valid?: true, attributes: %{^key => value}} ->
-                  case Ash.Type.cast_atomic_update(attribute.type, value, attribute.constraints) do
-                    {:atomic, atomic} ->
-                      {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
+              if Ash.Filter.TemplateHelpers.expr?(value) do
+                case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
+                  {:atomic, atomic} ->
+                    {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
 
-                    {:error, error} ->
-                      {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
+                  {:error, error} ->
+                    {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
 
-                    {:not_atomic, reason} ->
-                      {:halt, {:not_atomic, reason}}
-                  end
-
-                %{valid?: false} = changeset ->
-                  {:cont, changeset}
+                  {:not_atomic, reason} ->
+                    {:halt, {:not_atomic, reason}}
+                end
+              else
+                {:cont, change_attribute(changeset, key, value)}
               end
             else
               {:cont,
@@ -841,6 +845,17 @@ defmodule Ash.Changeset do
         end
       end)
     end
+  end
+
+  defp set_error_field(expr, field) do
+    Ash.Filter.map(expr, fn
+      %Ash.Query.Function.Error{arguments: [module, nested_expr]} = func
+      when is_map(nested_expr) and not is_struct(nested_expr) ->
+        %{func | arguments: [module, Map.put(nested_expr, :field, field)]}
+
+      other ->
+        other
+    end)
   end
 
   @manage_types [:append_and_remove, :append, :remove, :direct_control, :create]
@@ -1189,15 +1204,20 @@ defmodule Ash.Changeset do
           other
       end)
 
-    case Ash.Type.cast_atomic_update(attribute.type, value, attribute.constraints) do
-      {:atomic, value} ->
-        %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+    if Ash.Filter.TemplateHelpers.expr?(value) do
+      case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
+        {:atomic, value} ->
+          value = set_error_field(value, attribute.name)
+          %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
 
-      {:not_atomic, message} ->
-        add_error(
-          changeset,
-          "Cannot atomically update #{inspect(changeset.resource)}.#{attribute.name}: #{message}"
-        )
+        {:not_atomic, message} ->
+          add_error(
+            changeset,
+            "Cannot atomically update #{inspect(changeset.resource)}.#{attribute.name}: #{message}"
+          )
+      end
+    else
+      change_attribute(changeset, key, value)
     end
   end
 

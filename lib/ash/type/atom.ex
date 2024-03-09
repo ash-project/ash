@@ -56,6 +56,11 @@ defmodule Ash.Type.Atom do
   end
 
   @impl true
+  def cast_atomic(new_value, _constraints) do
+    {:atomic, new_value}
+  end
+
+  @impl true
   def cast_input(value, _) when is_atom(value) do
     {:ok, value}
   end
