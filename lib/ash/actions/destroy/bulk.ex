@@ -1467,7 +1467,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
       batch ->
         batch
-        |> Enum.group_by(&{&1.atomics, &1.filters})
+        |> Enum.group_by(&{&1.atomics, &1.filter})
         |> Enum.flat_map(fn {_atomics, batch} ->
           result =
             case action.manual do
