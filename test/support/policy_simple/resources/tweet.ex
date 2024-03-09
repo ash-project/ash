@@ -50,7 +50,6 @@ defmodule Ash.Test.Support.PolicySimple.Tweet do
   relationships do
     belongs_to :user, Ash.Test.Support.PolicySimple.User do
       public?(true)
-      attribute_writable? true
     end
   end
 end

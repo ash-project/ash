@@ -34,13 +34,11 @@ defmodule Ash.Test.Support.PolicyField.Ticket do
     belongs_to :representative, Ash.Test.Support.PolicyField.User do
       public?(true)
       allow_nil? false
-      attribute_writable? true
     end
 
     belongs_to :reporter, Ash.Test.Support.PolicyField.User do
       public?(true)
       allow_nil? false
-      attribute_writable? true
     end
   end
 

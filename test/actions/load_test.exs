@@ -195,7 +195,6 @@ defmodule Ash.Test.Actions.LoadTest do
         attribute_type(:ci_string)
         source_attribute(:campaign_name)
         destination_attribute(:name)
-        attribute_writable?(true)
         public?(true)
       end
     end
@@ -256,7 +255,6 @@ defmodule Ash.Test.Actions.LoadTest do
     relationships do
       belongs_to :author, Author do
         public?(true)
-        attribute_writable? true
       end
 
       has_many :posts_in_same_category, __MODULE__ do
