@@ -1987,8 +1987,7 @@ defmodule Ash.Api do
 
   @doc """
   Updates all items in the provided enumerable or query with the provided input for the action, which
-  is a map, where the keys are the primary keys of the records to update, and the values are maps
-  of values to apply to that record.
+  is a map. The input will be applied to all records in the enumerable/query.
 
   If the data layer supports updating from a query, and the update action can be done fully atomically,
   it will be updated in a single pass using the data layer.
@@ -2020,8 +2019,7 @@ defmodule Ash.Api do
 
   @doc """
   Destroys all items in the provided enumerable or query with the provided input for the action, which
-  is a map, where the keys are the primary keys of the records to update, and the values are maps
-  of values to apply to that record.
+  is a map. The input will be applied to all records in the enumerable/query.
 
   If the data layer supports destroying from a query, and the destroy action can be done fully atomically,
   it will be updated in a single pass using the data layer.
