@@ -79,6 +79,11 @@ defmodule Ash.Type.CiString do
     end)
   end
 
+  @impl true
+  def cast_atomic(new_value, _constraints) do
+    {:atomic, new_value}
+  end
+
   def apply_constraints(%Ash.CiString{} = value, constraints) do
     value
     |> Ash.CiString.value()

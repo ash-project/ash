@@ -30,7 +30,13 @@ defmodule Ash.Query.Function.StringSplit do
     do: [
       [:string],
       [:string, :string],
-      [:string, :string, {:keyword, fields: @options}]
+      [:string, :string, {:keyword, fields: @options}],
+      [:ci_string],
+      [:ci_string, :string],
+      [:ci_string, :ci_string],
+      [:ci_string, :string, {:keyword, fields: @options}],
+      [:ci_string, :ci_string, {:keyword, fields: @options}],
+      [:string, :ci_string, {:keyword, fields: @options}]
     ]
 
   def new([string]) do
@@ -49,7 +55,17 @@ defmodule Ash.Query.Function.StringSplit do
     split(value, delimiter, opts)
   end
 
-  defp split(value, delimiter, opts) do
+  defp split(string, delimiter, opts, case_insensitive? \\ false)
+
+  defp split(%Ash.CiString{string: value}, delimiter, opts, _) do
+    split(value, delimiter, opts, true)
+  end
+
+  defp split(value, %Ash.CiString{string: delimiter}, opts, _) do
+    split(value, delimiter, opts, true)
+  end
+
+  defp split(value, delimiter, opts, case_insensitive?) do
     split_opts =
       if opts[:trim?] do
         [trim: true]
@@ -57,6 +73,13 @@ defmodule Ash.Query.Function.StringSplit do
         []
       end
 
-    {:known, String.split(value, delimiter, split_opts)}
+    if case_insensitive? do
+      {:known,
+       Ash.CiString.new(
+         String.split(String.downcase(value), String.downcase(delimiter), split_opts)
+       )}
+    else
+      {:known, String.split(value, delimiter, split_opts)}
+    end
   end
 end

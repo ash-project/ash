@@ -312,6 +312,16 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
+      def cast_atomic(value, constraints) do
+        unquote(subtype_of).cast_atomic(value, constraints)
+      end
+
+      @impl Ash.Type
+      def cast_atomic_array(value, constraints) do
+        unquote(subtype_of).cast_atomic_array(value, constraints)
+      end
+
+      @impl Ash.Type
       def apply_constraints(value, _constraints) do
         {:ok, value}
       end
