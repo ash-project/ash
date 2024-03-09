@@ -67,7 +67,6 @@ defmodule Ash.Test.ReactorCreateTest do
 
     relationships do
       belongs_to :author, Ash.Test.ReactorCreateTest.Author do
-        attribute_writable? true
         public? true
         allow_nil? true
       end

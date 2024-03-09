@@ -2335,14 +2335,7 @@ defmodule Ash.Changeset do
           if required_attribute.name in changeset.invalid_keys do
             changeset
           else
-            add_error(
-              changeset,
-              Required.exception(
-                resource: changeset.resource,
-                field: required_attribute.name,
-                type: :attribute
-              )
-            )
+            add_required_attribute_error(changeset, required_attribute)
           end
         else
           changeset
@@ -2353,14 +2346,7 @@ defmodule Ash.Changeset do
           if required_attribute.name in changeset.invalid_keys do
             changeset
           else
-            add_error(
-              changeset,
-              Required.exception(
-                resource: changeset.resource,
-                field: required_attribute.name,
-                type: :attribute
-              )
-            )
+            add_required_attribute_error(changeset, required_attribute)
           end
         else
           changeset
@@ -2395,14 +2381,7 @@ defmodule Ash.Changeset do
           if required_attribute.name in changeset.invalid_keys do
             changeset
           else
-            add_error(
-              changeset,
-              Required.exception(
-                resource: changeset.resource,
-                field: required_attribute.name,
-                type: :attribute
-              )
-            )
+            add_required_attribute_error(changeset, required_attribute)
           end
         else
           changeset
@@ -2414,6 +2393,33 @@ defmodule Ash.Changeset do
   end
 
   def require_values(changeset, _, _, _), do: changeset
+
+  defp add_required_attribute_error(changeset, required_attribute) do
+    changeset.resource
+    |> Ash.Resource.Info.relationships()
+    |> Enum.find(&(&1.type == :belongs_to && &1.source_attribute == required_attribute.name))
+    |> case do
+      nil ->
+        add_error(
+          changeset,
+          Required.exception(
+            resource: changeset.resource,
+            field: required_attribute.name,
+            type: :attribute
+          )
+        )
+
+      %{name: name} ->
+        add_error(
+          changeset,
+          Required.exception(
+            resource: changeset.resource,
+            field: name,
+            type: :relationship
+          )
+        )
+    end
+  end
 
   defp is_belongs_to_rel_being_managed?(attribute, changeset) do
     Enum.any?(changeset.relationships, fn {key, _} ->

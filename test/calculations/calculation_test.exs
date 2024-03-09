@@ -325,7 +325,6 @@ defmodule Ash.Test.CalculationTest do
     relationships do
       belongs_to(:user, Ash.Test.CalculationTest.User) do
         public?(true)
-        attribute_writable?(true)
       end
     end
   end
@@ -654,12 +653,10 @@ defmodule Ash.Test.CalculationTest do
     relationships do
       belongs_to :user, User do
         public?(true)
-        attribute_writable?(true)
       end
 
       belongs_to :role, Role do
         public?(true)
-        attribute_writable?(true)
       end
     end
   end

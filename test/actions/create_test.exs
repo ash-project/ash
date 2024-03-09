@@ -863,8 +863,9 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Ash.create!()
 
       ProfileWithBelongsTo
-      |> Ash.Changeset.for_create(:create)
+      |> Ash.Changeset.new()
       |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.Changeset.for_create(:create)
       |> Ash.create!()
     end
 
@@ -874,13 +875,14 @@ defmodule Ash.Test.Actions.CreateTest do
       |> Ash.create!()
 
       ProfileWithBelongsTo
-      |> Ash.Changeset.for_create(:create)
+      |> Ash.Changeset.new()
       |> Ash.Changeset.manage_relationship(:author, %{name: "author name"},
         type: :append_and_remove,
         on_no_match: :create,
         on_lookup: :relate,
         on_match: :ignore
       )
+      |> Ash.Changeset.for_create(:create)
       |> Ash.create!()
     end
   end

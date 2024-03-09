@@ -7,7 +7,7 @@ defmodule Ash.Test.Flow.User do
   end
 
   actions do
-    default_accept :*
+    default_accept [:first_name, :last_name, :email]
     defaults [:read, :destroy]
 
     read :for_org do
@@ -60,6 +60,7 @@ defmodule Ash.Test.Flow.User do
   relationships do
     belongs_to :org, Ash.Test.Flow.Org do
       public?(true)
+      attribute_public?(false)
     end
   end
 end
