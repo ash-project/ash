@@ -59,6 +59,8 @@ Ash.Changeset.new/2 has been removed. `Ash.Changeset.new/1` is still available f
 
 `Ash.Changeset.manage_relationship/4` no longer uses `:all` to signal that all changes will be sent to the join relationship. Instead, use `:*`.
 
+`Ash.Changeset.filter` now accepts expressions. The value of the filter is no longer a simple equality map, but rather a regular Ash expression. We add to it on successive calls to `Ash.Changeset.filter`. Additionally, this value is stored in `changeset.filter` instead of `changeset.filters`.
+
 #### Builtin Changes
 
 The functions provided to `after_action/1`, `after_transaction/1`, `before_transaction/1` and `before_action/1` must all now take an additional argument, which is the change context.
