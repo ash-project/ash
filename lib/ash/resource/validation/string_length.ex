@@ -3,7 +3,7 @@ defmodule Ash.Resource.Validation.StringLength do
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.InvalidAttribute
-  import Ash.Filter.TemplateHelpers
+  import Ash.Expr
 
   @impl true
   def init(opts) do

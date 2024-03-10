@@ -497,7 +497,7 @@ defmodule Ash.Actions.Read.Calculations do
         expression =
           calculation.opts
           |> calculation.module.expression(calculation.context)
-          |> Ash.Filter.build_filter_from_template(
+          |> Ash.Expr.fill_template(
             calculation.context.actor,
             calculation.context.arguments,
             calculation.context.source_context
@@ -562,7 +562,7 @@ defmodule Ash.Actions.Read.Calculations do
       expression ||
         calculation.opts
         |> calculation.module.expression(calculation.context)
-        |> Ash.Filter.build_filter_from_template(
+        |> Ash.Expr.fill_template(
           calculation.context.actor,
           calculation.context.arguments,
           calculation.context.source_context

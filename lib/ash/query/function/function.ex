@@ -6,7 +6,7 @@ defmodule Ash.Query.Function do
   are there. A function must meet both behaviours.
   """
 
-  import Ash.Filter.TemplateHelpers, only: [expr?: 1]
+  import Ash.Expr, only: [expr?: 1]
 
   @type arg :: any
   @doc """

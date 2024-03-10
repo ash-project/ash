@@ -3,8 +3,7 @@ defmodule Ash.Resource.Change.Increment do
   Increments an attribute's value by the amount specified, which defaults to 1.
   """
   use Ash.Resource.Change
-  require Ash.Expr
-  import Ash.Filter.TemplateHelpers
+  import Ash.Expr
 
   @impl true
   def change(changeset, opts, _context) do
@@ -25,7 +24,7 @@ defmodule Ash.Resource.Change.Increment do
       {:atomic,
        %{
          opts[:attribute] =>
-           Ash.Expr.expr(
+           expr(
              if ^atomic_ref(opts[:attribute]) + ^opts[:amount] > ^opts[:overflow_limit] do
                ^opts[:amount]
              else
@@ -34,8 +33,7 @@ defmodule Ash.Resource.Change.Increment do
            )
        }}
     else
-      {:atomic,
-       %{opts[:attribute] => Ash.Expr.expr(^atomic_ref(opts[:attribute]) + ^opts[:amount])}}
+      {:atomic, %{opts[:attribute] => expr(^atomic_ref(opts[:attribute]) + ^opts[:amount])}}
     end
   end
 

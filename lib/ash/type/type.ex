@@ -853,7 +853,7 @@ defmodule Ash.Type do
   end
 
   defp maybe_cast_input(type, term, constraints) do
-    if Ash.Filter.TemplateHelpers.expr?(term) do
+    if Ash.Expr.expr?(term) do
       {:ok, term}
     else
       Ash.Type.cast_input(type, term, constraints)

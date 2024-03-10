@@ -3,7 +3,7 @@ defmodule Ash.Query.Function.If do
   If predicate is truthy, then the second argument is returned, otherwise the third.
   """
   use Ash.Query.Function, name: :if
-  import Ash.Filter.TemplateHelpers, only: [expr?: 1]
+  import Ash.Expr, only: [expr?: 1]
 
   def args, do: [[:boolean, :any], [:boolean, :any, :any]]
 

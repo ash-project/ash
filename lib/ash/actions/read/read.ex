@@ -8,6 +8,7 @@ defmodule Ash.Actions.Read do
   require Logger
   require Ash.Flags
   require Ash.Query
+  import Ash.Expr
   require Ash.Tracer
 
   def unpaginated_read(query, action \\ nil, opts \\ []) do
@@ -1142,7 +1143,7 @@ defmodule Ash.Actions.Read do
     if multitenancy_attribute && query.tenant do
       {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(query.resource)
       attribute_value = apply(m, f, [query.tenant | a])
-      Ash.Query.filter(query, ref(^multitenancy_attribute) == ^attribute_value)
+      Ash.Query.filter(query, ^ref(multitenancy_attribute) == ^attribute_value)
     else
       query
     end
@@ -2056,7 +2057,7 @@ defmodule Ash.Actions.Read do
         expression = calculation.module.expression(calculation.opts, calculation.context)
 
         expression =
-          Ash.Filter.build_filter_from_template(
+          Ash.Expr.fill_template(
             expression,
             calculation.context.actor,
             calculation.context.arguments,

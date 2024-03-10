@@ -303,7 +303,7 @@ defmodule Ash.Can do
               {:filter, _authorizer, filter} ->
                 filter =
                   if opts[:atomic_changeset] do
-                    Ash.Filter.build_filter_from_template(
+                    Ash.Expr.fill_template(
                       filter,
                       actor,
                       %{},
@@ -329,7 +329,7 @@ defmodule Ash.Can do
               {:filter, filter} ->
                 filter =
                   if opts[:atomic_changeset] do
-                    Ash.Filter.build_filter_from_template(
+                    Ash.Expr.fill_template(
                       filter,
                       actor,
                       %{},
@@ -386,7 +386,7 @@ defmodule Ash.Can do
               {:filter_and_continue, filter, authorizer_state} ->
                 filter =
                   if opts[:atomic_changeset] do
-                    Ash.Filter.build_filter_from_template(
+                    Ash.Expr.fill_template(
                       filter,
                       actor,
                       %{},
