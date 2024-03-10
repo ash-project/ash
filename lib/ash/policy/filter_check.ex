@@ -35,6 +35,7 @@ defmodule Ash.Policy.FilterCheck do
       @behaviour Ash.Policy.FilterCheck
       @behaviour Ash.Policy.Check
 
+      import Ash.Expr
       require Ash.Query
 
       def type, do: :filter
