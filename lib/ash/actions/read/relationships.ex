@@ -1,6 +1,7 @@
 defmodule Ash.Actions.Read.Relationships do
   @moduledoc false
   require Ash.Query
+  import Ash.Expr
 
   def load([], _query, _lazy?) do
     {:ok, []}
@@ -375,7 +376,7 @@ defmodule Ash.Actions.Read.Relationships do
 
     join_query =
       relationship.through
-      |> Ash.Query.filter(ref(^relationship.source_attribute_on_join_resource) in ^record_ids)
+      |> Ash.Query.filter(^ref(relationship.source_attribute_on_join_resource) in ^record_ids)
       |> Ash.Query.set_context(%{
         accessing_from: %{source: relationship.source, name: relationship.join_relationship}
       })
@@ -427,7 +428,7 @@ defmodule Ash.Actions.Read.Relationships do
             |> select_destination_attribute(relationship)
             |> Ash.Query.sort(relationship.sort)
             |> Ash.Query.do_filter(relationship.filter)
-            |> Ash.Query.filter(ref(^relationship.destination_attribute) in ^destination_ids)
+            |> Ash.Query.filter(^ref(relationship.destination_attribute) in ^destination_ids)
             |> Ash.Actions.Read.unpaginated_read()
             |> case do
               {:ok, records} ->
@@ -467,7 +468,7 @@ defmodule Ash.Actions.Read.Relationships do
         result =
           related_query
           |> select_destination_attribute(relationship)
-          |> Ash.Query.filter(ref(^relationship.destination_attribute) in ^destination_attributes)
+          |> Ash.Query.filter(^ref(relationship.destination_attribute) in ^destination_attributes)
           |> Ash.Query.unset([:limit, :offset, :distinct, :distinct_sort])
           |> Ash.Query.set_context(%{
             accessing_from: %{source: relationship.source, name: relationship.name}

@@ -2,9 +2,6 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
   @moduledoc "This check passes if the data relates to the actor via the specified relationship or path of relationships."
   use Ash.Policy.FilterCheckWithContext
 
-  require Ash.Expr
-  import Ash.Filter.TemplateHelpers
-
   @impl true
   def describe(opts) do
     path = Enum.join(opts[:relationship_path], ".")
@@ -22,7 +19,7 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
       |> Ash.Resource.Info.primary_key()
 
     if to_many? || opts[:ash_field_policy?] do
-      Ash.Expr.expr(
+      expr(
         exists(
           ^opts[:relationship_path],
           ^Enum.map(pkey, &{&1, {:_actor, actor_path(&1, actor_field)}})
@@ -33,11 +30,9 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
         actor_path = actor_path(pkey_field, actor_field)
 
         if expr do
-          Ash.Expr.expr(
-            ^expr and ^ref(opts[:relationship_path], pkey_field) == ^actor(actor_path)
-          )
+          expr(^expr and ^ref(opts[:relationship_path], pkey_field) == ^actor(actor_path))
         else
-          Ash.Expr.expr(^ref(opts[:relationship_path], pkey_field) == ^actor(actor_path))
+          expr(^ref(opts[:relationship_path], pkey_field) == ^actor(actor_path))
         end
       end)
     end

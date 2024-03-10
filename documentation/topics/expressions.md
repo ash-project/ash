@@ -92,7 +92,7 @@ The available aggregate kinds can also be seen in the `Ash.Query.Aggregate` modu
 
 ## Templates
 
-Most of the time, when you are using an expression, you will actually be creating a `template`. In this template, you have a few references that can be used, which will be replaced when before the expression is evaluated. The following references are available. The ones that start with `^` must be imported from `Ash.Filter.TemplateHelpers`.
+Most of the time, when you are using an expression, you will actually be creating a `template`. In this template, you have a few references that can be used, which will be replaced when before the expression is evaluated. The following references are available.
 
 ```elixir
 ^actor(:key) # equivalent to `get_in(actor || %{}, [:key])`
@@ -100,8 +100,8 @@ Most of the time, when you are using an expression, you will actually be creatin
 ^arg(:arg_name) # equivalent to `Map.get(arguments, :arg_name)`
 ^context(:key) # equivalent to `get_in(context, :key)`
 ^context([:key1, :key2]) # equivalent to `get_in(context, [:key1, :key2])`
-ref(:key) # equivalent to referring to `key`. Allows for dynamic references
-ref(:key, [:path]) # equivalent to referring to `path.key`. Allows for dynamic references with dynamic (or static) paths.
+^ref(:key) # equivalent to referring to `key`. Allows for dynamic references
+^ref(:key, [:path]) # equivalent to referring to `path.key`. Allows for dynamic references with dynamic (or static) paths.
 ```
 
 ## Use cases for expressions

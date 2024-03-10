@@ -311,7 +311,7 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     imports: [
-      Ash.Filter.TemplateHelpers
+      Ash.Expr
     ],
     entities: [
       @has_one,
@@ -469,7 +469,7 @@ defmodule Ash.Resource.Dsl do
     imports: [
       Ash.Resource.Change.Builtins,
       Ash.Resource.Validation.Builtins,
-      Ash.Filter.TemplateHelpers
+      Ash.Expr
     ],
     target: Ash.Resource.Actions.Create,
     schema: Ash.Resource.Actions.Create.opt_schema(),
@@ -532,7 +532,7 @@ defmodule Ash.Resource.Dsl do
     ],
     imports: [
       Ash.Resource.Preparation.Builtins,
-      Ash.Filter.TemplateHelpers
+      Ash.Expr
     ],
     target: Ash.Resource.Actions.Read,
     schema: Ash.Resource.Actions.Read.opt_schema(),
@@ -563,7 +563,7 @@ defmodule Ash.Resource.Dsl do
     imports: [
       Ash.Resource.Change.Builtins,
       Ash.Resource.Validation.Builtins,
-      Ash.Filter.TemplateHelpers
+      Ash.Expr
     ],
     examples: [
       "update :flag_for_review, primary?: true"
@@ -604,7 +604,7 @@ defmodule Ash.Resource.Dsl do
     imports: [
       Ash.Resource.Change.Builtins,
       Ash.Resource.Validation.Builtins,
-      Ash.Filter.TemplateHelpers
+      Ash.Expr
     ],
     deprecations: [
       manual?: "Use the `manual` option instead, and provide an implementation."
@@ -739,7 +739,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    imports: [Ash.Filter.TemplateHelpers],
+    imports: [Ash.Expr],
     no_depend_modules: [:simple_notifiers],
     schema: [
       description: [
@@ -878,7 +878,7 @@ defmodule Ash.Resource.Dsl do
     imports: [
       Ash.Resource.Validation.Builtins,
       Ash.Resource.Change.Builtins,
-      Ash.Filter.TemplateHelpers
+      Ash.Expr
     ],
     examples: [
       """
@@ -1204,7 +1204,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    imports: [Ash.Filter.TemplateHelpers],
+    imports: [Ash.Expr],
     entities: [
       @count,
       @exists,
@@ -1296,7 +1296,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    imports: [Ash.Resource.Calculation.Builtins, Ash.Filter.TemplateHelpers],
+    imports: [Ash.Resource.Calculation.Builtins, Ash.Expr],
     entities: [
       @calculate
     ]

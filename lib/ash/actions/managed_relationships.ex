@@ -6,6 +6,7 @@ defmodule Ash.Actions.ManagedRelationships do
   alias Ash.Error.Query.NotFound
 
   require Ash.Query
+  import Ash.Expr
 
   if Application.compile_env(:ash, :use_all_identities_in_manage_relationship?) == true do
     IO.warn("""
@@ -1381,10 +1382,10 @@ defmodule Ash.Actions.ManagedRelationships do
               accessing_from: %{source: join_relationship.source, name: join_relationship.name}
             })
             |> Ash.Query.filter(
-              ref(^relationship.source_attribute_on_join_resource) == ^source_value
+              ^ref(relationship.source_attribute_on_join_resource) == ^source_value
             )
             |> Ash.Query.filter(
-              ref(^relationship.destination_attribute_on_join_resource) == ^destination_value
+              ^ref(relationship.destination_attribute_on_join_resource) == ^destination_value
             )
             |> Ash.Query.set_context(join_relationship.context)
             |> Ash.Query.limit(1)
@@ -1549,10 +1550,10 @@ defmodule Ash.Actions.ManagedRelationships do
               accessing_from: %{source: join_relationship.source, name: join_relationship.name}
             })
             |> Ash.Query.filter(
-              ref(^relationship.source_attribute_on_join_resource) == ^source_value
+              ^ref(relationship.source_attribute_on_join_resource) == ^source_value
             )
             |> Ash.Query.filter(
-              ref(^relationship.destination_attribute_on_join_resource) == ^destination_value
+              ^ref(relationship.destination_attribute_on_join_resource) == ^destination_value
             )
             |> Ash.Query.limit(1)
             |> Ash.Query.set_tenant(changeset.tenant)
@@ -1693,9 +1694,9 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.Query.set_context(%{
       accessing_from: %{source: join_relationship.source, name: join_relationship.name}
     })
-    |> Ash.Query.filter(ref(^relationship.source_attribute_on_join_resource) == ^source_value)
+    |> Ash.Query.filter(^ref(relationship.source_attribute_on_join_resource) == ^source_value)
     |> Ash.Query.filter(
-      ref(^relationship.destination_attribute_on_join_resource) == ^destination_value
+      ^ref(relationship.destination_attribute_on_join_resource) == ^destination_value
     )
     |> Ash.Query.limit(1)
     |> Ash.Query.set_tenant(tenant)
@@ -1799,9 +1800,9 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.Query.set_context(%{
       accessing_from: %{source: join_relationship.source, name: join_relationship.name}
     })
-    |> Ash.Query.filter(ref(^relationship.source_attribute_on_join_resource) == ^source_value)
+    |> Ash.Query.filter(^ref(relationship.source_attribute_on_join_resource) == ^source_value)
     |> Ash.Query.filter(
-      ref(^relationship.destination_attribute_on_join_resource) == ^destination_value
+      ^ref(relationship.destination_attribute_on_join_resource) == ^destination_value
     )
     |> Ash.Query.limit(1)
     |> Ash.Query.set_tenant(tenant)

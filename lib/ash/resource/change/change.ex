@@ -166,7 +166,8 @@ defmodule Ash.Resource.Change do
     quote do
       @behaviour Ash.Resource.Change
       @before_compile Ash.Resource.Change
-      require Ash.Expr
+
+      import Ash.Expr
 
       @impl true
       def init(opts), do: {:ok, opts}

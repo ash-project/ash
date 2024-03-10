@@ -119,15 +119,6 @@ defmodule Ash.Filter do
   attributes, relationships, aggregates and calculations, honors field policies
   and any policies on related resources.
 
-  ## Filter Templates
-
-  To see the available templates, see `Ash.Filter.TemplateHelpers`.  You can
-  pass a filter template to `build_filter_from_template/2` with an actor, and it
-  will return the new result
-
-  Additionally, you can ask if the filter template contains an actor reference
-  via `template_references_actor?/1`
-
   ## Writing a filter
 
   ### Built In Predicates
@@ -564,267 +555,6 @@ defmodule Ash.Filter do
     %Simple{resource: resource, predicates: predicates}
   end
 
-  @doc "Replace any actor value references in a template with the values from a given actor"
-  def build_filter_from_template(
-        template,
-        actor \\ nil,
-        args \\ %{},
-        context \\ %{},
-        changeset \\ nil
-      ) do
-    walk_filter_template(template, fn
-      {:_actor, :_primary_key} ->
-        if actor do
-          Map.take(actor, Ash.Resource.Info.primary_key(actor.__struct__))
-        end
-
-      {:_actor, field} when is_atom(field) or is_binary(field) ->
-        Map.get(actor || %{}, field)
-
-      {:_actor, path} when is_list(path) ->
-        get_path(actor || %{}, path)
-
-      {:_arg, field} ->
-        case Map.fetch(args, field) do
-          :error ->
-            Map.get(args, to_string(field))
-
-          {:ok, value} ->
-            value
-        end
-
-      {:_atomic_ref, field} when is_atom(field) ->
-        if changeset do
-          Ash.Changeset.atomic_ref(changeset, field)
-        else
-          {:_atomic_ref, field}
-        end
-
-      {:_context, fields} when is_list(fields) ->
-        get_path(context, fields)
-
-      {:_context, field} ->
-        Map.get(context, field)
-
-      {:_ref, path, name} ->
-        %Ref{
-          attribute: build_filter_from_template(name, actor, args, context),
-          relationship_path: build_filter_from_template(path, actor, args, context)
-        }
-
-      %Call{name: :sigil_i, args: [%Call{name: :<<>>, args: [str]}, mods]} ->
-        Ash.CiString.sigil_i(str, mods)
-
-      other ->
-        other
-    end)
-  end
-
-  defp get_path(map, [key]) when is_struct(map) do
-    Map.get(map, key)
-  end
-
-  defp get_path(map, [key]) when is_map(map) do
-    Map.get(map, key)
-  end
-
-  defp get_path(map, [key | rest]) when is_map(map) do
-    get_path(get_path(map, [key]), rest)
-  end
-
-  defp get_path(_, _), do: nil
-
-  def template_references_actor?(template) do
-    template_references?(template, fn
-      {:_actor, _} -> true
-      _ -> false
-    end)
-  end
-
-  def template_references_argument?(template) do
-    template_references?(template, fn
-      {:_arg, _} -> true
-      _ -> false
-    end)
-  end
-
-  def template_references_context?(template) do
-    template_references?(template, fn
-      {:_context, _} -> true
-      _ -> false
-    end)
-  end
-
-  @doc "Whether or not a given template contains an actor reference"
-  def template_references?(%BooleanExpression{op: :and, left: left, right: right}, pred) do
-    template_references?(left, pred) || template_references?(right, pred)
-  end
-
-  def template_references?(%Not{expression: expression}, pred) do
-    template_references?(expression, pred)
-  end
-
-  def template_references?(%Ash.Query.Exists{expr: expr}, pred) do
-    template_references?(expr, pred)
-  end
-
-  def template_references?(%Ash.Query.Parent{expr: expr}, pred) do
-    template_references?(expr, pred)
-  end
-
-  def template_references?(%{left: left, right: right}, pred) do
-    template_references?(left, pred) || template_references?(right, pred)
-  end
-
-  def template_references?(%{arguments: args}, pred) do
-    Enum.any?(args, &template_references?(&1, pred))
-  end
-
-  def template_references?(%Ash.Query.Call{args: args}, pred) do
-    Enum.any?(args, &template_references?(&1, pred))
-  end
-
-  def template_references?(list, pred) when is_list(list) do
-    Enum.any?(list, &template_references?(&1, pred))
-  end
-
-  def template_references?(map, pred) when is_map(map) and not is_struct(map) do
-    Enum.any?(map, &template_references?(&1, pred))
-  end
-
-  def template_references?(tuple, pred) when is_tuple(tuple) do
-    pred.(tuple) ||
-      tuple
-      |> Tuple.to_list()
-      |> Enum.any?(&template_references?(&1, pred))
-  end
-
-  def template_references?(thing, pred), do: pred.(thing)
-
-  @doc false
-  def walk_filter_template(filter, mapper) when is_list(filter) do
-    case mapper.(filter) do
-      ^filter ->
-        Enum.map(filter, &walk_filter_template(&1, mapper))
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(%BooleanExpression{left: left, right: right} = expr, mapper) do
-    case mapper.(expr) do
-      ^expr ->
-        %{
-          expr
-          | left: walk_filter_template(left, mapper),
-            right: walk_filter_template(right, mapper)
-        }
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(%Not{expression: expression} = not_expr, mapper) do
-    case mapper.(not_expr) do
-      ^not_expr ->
-        %{not_expr | expression: walk_filter_template(expression, mapper)}
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(%Ash.Query.Parent{expr: expr} = this_expr, mapper) do
-    case mapper.(this_expr) do
-      ^this_expr ->
-        %{this_expr | expr: walk_filter_template(expr, mapper)}
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(%Ash.Query.Exists{expr: expr} = exists_expr, mapper) do
-    case mapper.(exists_expr) do
-      ^exists_expr ->
-        %{exists_expr | expr: walk_filter_template(expr, mapper)}
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(%{__predicate__?: _, left: left, right: right} = pred, mapper) do
-    case mapper.(pred) do
-      ^pred ->
-        %{
-          pred
-          | left: walk_filter_template(left, mapper),
-            right: walk_filter_template(right, mapper)
-        }
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(%{__predicate__?: _, arguments: arguments} = func, mapper) do
-    case mapper.(func) do
-      ^func ->
-        %{
-          func
-          | arguments: Enum.map(arguments, &walk_filter_template(&1, mapper))
-        }
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(%Call{args: args} = call, mapper) do
-    case mapper.(call) do
-      ^call ->
-        %{
-          call
-          | args: Enum.map(args, &walk_filter_template(&1, mapper))
-        }
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(filter, mapper) when is_map(filter) do
-    if Map.has_key?(filter, :__struct__) do
-      filter
-    else
-      case mapper.(filter) do
-        ^filter ->
-          Enum.into(filter, %{}, &walk_filter_template(&1, mapper))
-
-        other ->
-          walk_filter_template(other, mapper)
-      end
-    end
-  end
-
-  def walk_filter_template(tuple, mapper) when is_tuple(tuple) do
-    case mapper.(tuple) do
-      ^tuple ->
-        tuple
-        |> Tuple.to_list()
-        |> Enum.map(&walk_filter_template(&1, mapper))
-        |> List.to_tuple()
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(value, mapper), do: mapper.(value)
-
   @doc """
   Can be used to find a simple equality predicate on an attribute
 
@@ -840,7 +570,7 @@ defmodule Ash.Filter do
 
       %{right: right, left: left} ->
         Enum.find([right, left], fn value ->
-          !Ash.Filter.TemplateHelpers.expr?(value)
+          !Ash.Expr.expr?(value)
         end)
     end
   end
@@ -3380,7 +3110,7 @@ defmodule Ash.Filter do
              {:func, function_module} when not is_nil(function_module) <-
                {:func, get_function(name, context.resource, context.public?)},
              {:ok, function} <- Function.new(function_module, args) do
-          if Ash.Filter.TemplateHelpers.expr?(function) && !match?(%{__predicate__?: _}, function) do
+          if Ash.Expr.expr?(function) && !match?(%{__predicate__?: _}, function) do
             hydrate_refs(function, context)
           else
             if is_nil(context.resource) ||
@@ -3456,7 +3186,7 @@ defmodule Ash.Filter do
   defp refs_to_path(item), do: [item]
 
   defp validate_datalayer_supports_nested_expressions(args, resource) do
-    if resource && Enum.any?(args, &Ash.Filter.TemplateHelpers.expr?/1) &&
+    if resource && Enum.any?(args, &Ash.Expr.expr?/1) &&
          !Ash.DataLayer.data_layer_can?(resource, :nested_expressions) do
       {:error, "Datalayer does not support nested expressions"}
     else
@@ -3474,12 +3204,24 @@ defmodule Ash.Filter do
     do_hydrate_refs(value, context)
   end
 
-  def do_hydrate_refs({:ref, value}, context) do
+  def do_hydrate_refs({:_ref, value}, context) do
     do_hydrate_refs(
       %Ash.Query.Ref{
         attribute: value,
         relationship_path: [],
-        input?: context.input?,
+        input?: Map.get(context, :input?, false),
+        resource: context.root_resource
+      },
+      context
+    )
+  end
+
+  def do_hydrate_refs({:_ref, path, value}, context) do
+    do_hydrate_refs(
+      %Ash.Query.Ref{
+        attribute: value,
+        relationship_path: path,
+        input?: Map.get(context, :input?, false),
         resource: context.root_resource
       },
       context
