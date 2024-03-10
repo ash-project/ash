@@ -3,22 +3,32 @@ defmodule Ash.Resource.ManualRelationship do
   A module to implement manual relationships.
   """
 
-  @type context :: %{
-          optional(:relationship) => Ash.Resource.Relationships.relationship(),
-          optional(:query) => Ash.Query.t(),
-          optional(:actor) => term,
-          optional(:tenant) => term,
-          optional(:authorize?) => boolean,
-          optional(:domain) => module,
-          optional(any) => any
-        }
+  defmodule Context do
+    defstruct [
+      :relationship,
+      :query,
+      :actor,
+      :tenant,
+      :authorize?,
+      :domain
+    ]
+
+    @type t :: %__MODULE__{
+            relationship: Ash.Resource.Relationships.relationship(),
+            query: Ash.Query.t(),
+            actor: term,
+            tenant: term,
+            authorize?: boolean,
+            domain: module
+          }
+  end
 
   @callback select(opts :: Keyword.t()) :: list(atom)
 
   @callback load(
               list(Ash.Resource.record()),
               opts :: Keyword.t(),
-              context :: context()
+              context :: Context.t()
             ) ::
               {:ok, map} | {:error, term}
 

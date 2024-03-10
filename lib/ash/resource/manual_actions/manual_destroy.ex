@@ -5,18 +5,22 @@ defmodule Ash.Resource.ManualDestroy do
   Note that in the returns of these functions you must return the destroyed record or records.
   """
 
-  @type context :: %{
-          optional(:actor) => term,
-          optional(:tenant) => term,
-          optional(:authorize?) => boolean,
-          optional(:domain) => module,
-          optional(any) => any
-        }
+  defmodule Context do
+    defstruct [
+      :actor,
+      :tenant,
+      :tracer,
+      :authorize?,
+      :domain,
+      :return_records?,
+      :batch_size
+    ]
+  end
 
   @callback destroy(
               changeset :: Ash.Changeset.t(),
               opts :: Keyword.t(),
-              context :: context()
+              context :: Context.t()
             ) ::
               {:ok, Ash.Resource.record()}
               | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
@@ -25,7 +29,7 @@ defmodule Ash.Resource.ManualDestroy do
   @callback bulk_destroy(
               changesets :: Enumerable.t(Ash.Changeset.t()),
               opts :: Keyword.t(),
-              context :: context()
+              context :: Context.t()
             ) ::
               list(
                 {:ok, Ash.Resource.record()}

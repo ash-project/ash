@@ -275,7 +275,7 @@ defmodule Ash.Actions.Read.Relationships do
       Ash.Context.to_opts(related_query.context),
       fn ->
         result =
-          module.load(records, opts, %{
+          module.load(records, opts, %Ash.Resource.ManualRelationship.Context{
             relationship: relationship,
             query:
               related_query
