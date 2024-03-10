@@ -11,12 +11,12 @@ defmodule Ash.Actions.Action do
     {input, opts} = Ash.Actions.Helpers.add_process_context(domain, input, opts)
 
     context =
-      Map.merge(input.context, %{
+      %Ash.Resource.Actions.Implementation.Context{
         actor: opts[:actor],
         tenant: opts[:tenant],
         authorize?: opts[:authorize?],
         domain: opts[:domain]
-      })
+      }
 
     {module, run_opts} = input.action.run
 

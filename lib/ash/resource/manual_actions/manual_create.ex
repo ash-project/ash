@@ -3,19 +3,25 @@ defmodule Ash.Resource.ManualCreate do
   A module to implement manual create actions.
   """
 
-  @type context :: %{
-          optional(:actor) => term,
-          optional(:tenant) => term,
-          optional(:tracer) => term,
-          optional(:authorize?) => boolean,
-          optional(:domain) => module,
-          optional(any) => any
-        }
+  defmodule Context do
+    defstruct [
+      :actor,
+      :tenant,
+      :tracer,
+      :authorize?,
+      :domain,
+      :upsert?,
+      :upsert_keys,
+      :upsert_fields,
+      :return_records?,
+      :batch_size
+    ]
+  end
 
   @callback create(
               changeset :: Ash.Changeset.t(),
               opts :: Keyword.t(),
-              context :: context()
+              context :: Context.t()
             ) ::
               {:ok, Ash.Resource.record()}
               | {:ok, Ash.Resource.record(), %{notifications: [Ash.Notifier.Notification.t()]}}
@@ -24,10 +30,11 @@ defmodule Ash.Resource.ManualCreate do
   @callback bulk_create(
               changesets :: Enumerable.t(Ash.Changeset.t()),
               opts :: Keyword.t(),
-              context :: context()
+              context :: Context.t()
             ) ::
               list(
-                {:ok, Ash.Resource.record()}
+                :ok
+                | {:ok, Ash.Resource.record()}
                 | {:error, Ash.Error.t()}
                 | {:notifications, list(Ash.Notifier.Notification.t())}
               )

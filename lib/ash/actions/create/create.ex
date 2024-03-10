@@ -277,11 +277,15 @@ defmodule Ash.Actions.Create do
                     if result = changeset.context[:private][:action_result] do
                       result
                     else
-                      mod.create(changeset, action_opts, %{
+                      mod.create(changeset, action_opts, %Ash.Resource.ManualCreate.Context{
                         actor: opts[:actor],
                         tenant: changeset.tenant,
+                        tracer: opts[:tracer],
                         authorize?: opts[:authorize?],
-                        domain: changeset.domain
+                        domain: changeset.domain,
+                        upsert?: opts[:upsert?],
+                        upsert_keys: upsert_keys,
+                        upsert_fields: changeset.context[:private][:upsert_fields]
                       })
                       |> validate_manual_action_return_result!(
                         changeset.resource,
