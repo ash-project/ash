@@ -63,7 +63,7 @@ defmodule Ash.Flow.Template do
   end
 
   defp do_remap_result_references({:_expr, expr}, prefix) do
-    {:_expr, Ash.Filter.walk_filter_template(expr, &do_remap_result_references(&1, prefix))}
+    {:_expr, Ash.Expr.walk_template(expr, &do_remap_result_references(&1, prefix))}
   end
 
   defp do_remap_result_references({:_result, step}, prefix) when is_function(prefix) do
@@ -110,7 +110,7 @@ defmodule Ash.Flow.Template do
   end
 
   defp do_set_dependent_values({:_expr, expr}, input) do
-    {:_expr, Ash.Filter.walk_filter_template(expr, &do_set_dependent_values(&1, input))}
+    {:_expr, Ash.Expr.walk_template(expr, &do_set_dependent_values(&1, input))}
   end
 
   defp do_set_dependent_values({:_merge, items}, input) do

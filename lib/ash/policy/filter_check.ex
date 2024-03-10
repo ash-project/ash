@@ -50,7 +50,7 @@ defmodule Ash.Policy.FilterCheck do
       def requires_original_data?(_, _), do: false
 
       def strict_check(nil, authorizer, opts) do
-        if Ash.Filter.template_references_actor?(filter(opts)) do
+        if Ash.Expr.template_references_actor?(filter(opts)) do
           {:ok, false}
         else
           try_strict_check(nil, authorizer, opts)
@@ -66,7 +66,7 @@ defmodule Ash.Policy.FilterCheck do
 
         opts
         |> filter()
-        |> Ash.Filter.build_filter_from_template(actor, Ash.Policy.FilterCheck.args(authorizer))
+        |> Ash.Expr.fill_template(actor, Ash.Policy.FilterCheck.args(authorizer))
         |> try_eval(authorizer)
         |> case do
           {:ok, false} ->
@@ -179,7 +179,7 @@ defmodule Ash.Policy.FilterCheck do
       def auto_filter(actor, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
 
-        Ash.Filter.build_filter_from_template(
+        Ash.Expr.fill_template(
           filter(opts),
           actor,
           Ash.Policy.FilterCheck.args(authorizer)
@@ -189,7 +189,7 @@ defmodule Ash.Policy.FilterCheck do
       def auto_filter_not(actor, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
 
-        Ash.Filter.build_filter_from_template(
+        Ash.Expr.fill_template(
           reject(opts),
           actor,
           Ash.Policy.FilterCheck.args(authorizer)

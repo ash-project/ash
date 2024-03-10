@@ -4,9 +4,7 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.InvalidAttribute
-  require Ash.Expr
-
-  import Ash.Filter.TemplateHelpers
+  import Ash.Expr
 
   @opt_schema [
     attribute: [
@@ -48,8 +46,8 @@ defmodule Ash.Resource.Validation.AttributeDoesNotEqual do
 
   @impl true
   def atomic(_changeset, opts, context) do
-    {:atomic, [opts[:attribute]], Ash.Expr.expr(^atomic_ref(opts[:attribute]) == ^opts[:value]),
-     Ash.Expr.expr(
+    {:atomic, [opts[:attribute]], expr(^atomic_ref(opts[:attribute]) == ^opts[:value]),
+     expr(
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
          value: ^atomic_ref(opts[:attribute]),

@@ -68,6 +68,7 @@ defmodule Ash.Resource.Preparation do
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.Preparation
+      import Ash.Expr
 
       def init(opts), do: {:ok, opts}
 

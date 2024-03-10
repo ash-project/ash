@@ -132,7 +132,6 @@ defmodule Ash.MixProject do
       end,
       groups_for_modules: [
         Resources: [
-          Ash.Filter.TemplateHelpers,
           Ash.Resource.Calculation,
           Ash.Resource.Calculation.Builtins,
           Ash.CodeInterface,

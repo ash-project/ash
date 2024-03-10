@@ -1,7 +1,7 @@
 defmodule Ash.DataLayer.Ets do
   @behaviour Ash.DataLayer
   require Ash.Query
-  require Ash.Expr
+  import Ash.Expr
 
   @ets %Spark.Dsl.Section{
     name: :ets,
@@ -388,7 +388,7 @@ defmodule Ash.DataLayer.Ets do
     source_attributes = Enum.map(root_data, &Map.get(&1, source_attribute))
 
     source_query
-    |> Ash.Query.filter(ref(^source_attribute) in ^source_attributes)
+    |> Ash.Query.filter(^ref(source_attribute) in ^source_attributes)
     |> Ash.Query.set_context(%{private: %{internal?: true}})
     |> Ash.Query.unset(:load)
     |> Ash.Query.unset(:select)
@@ -421,7 +421,7 @@ defmodule Ash.DataLayer.Ets do
                 filter,
                 Ash.Filter.parse!(
                   query.resource,
-                  Ash.Expr.expr(ref(^destination_attribute) == ^Map.get(parent, source_attribute))
+                  Ash.Expr.expr(^ref(destination_attribute) == ^Map.get(parent, source_attribute))
                 )
               )
             end
@@ -454,7 +454,7 @@ defmodule Ash.DataLayer.Ets do
 
     source_query
     |> Ash.Query.unset(:load)
-    |> Ash.Query.filter(ref(^source_attribute) in ^source_attributes)
+    |> Ash.Query.filter(^ref(source_attribute) in ^source_attributes)
     |> Ash.Query.set_context(%{private: %{internal?: true}})
     |> Ash.Query.set_domain(query.domain)
     |> Ash.read(authorize?: false)
@@ -473,7 +473,7 @@ defmodule Ash.DataLayer.Ets do
         |> Enum.reduce_while({:ok, []}, fn parent, {:ok, results} ->
           through_query
           |> Ash.Query.filter(
-            ref(^source_attribute_on_join_resource) ==
+            ^ref(source_attribute_on_join_resource) ==
               ^Map.get(parent, source_attribute)
           )
           |> Ash.Query.set_context(%{private: %{internal?: true}})

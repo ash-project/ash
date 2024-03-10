@@ -4,7 +4,7 @@ defmodule Ash.Resource.Calculation.Expression do
 
   def expression(opts, context) do
     expr =
-      Ash.Filter.build_filter_from_template(
+      Ash.Expr.fill_template(
         opts[:expr],
         context.actor,
         context.arguments,
@@ -29,7 +29,7 @@ defmodule Ash.Resource.Calculation.Expression do
 
   def calculate([%resource{} | _] = records, opts, context) do
     expression =
-      Ash.Filter.build_filter_from_template(
+      Ash.Expr.fill_template(
         opts[:expr],
         context.actor,
         context.arguments,
@@ -87,7 +87,7 @@ defmodule Ash.Resource.Calculation.Expression do
 
   def load(query, opts, context) do
     expr =
-      Ash.Filter.build_filter_from_template(
+      Ash.Expr.fill_template(
         opts[:expr],
         context.actor,
         context.arguments,

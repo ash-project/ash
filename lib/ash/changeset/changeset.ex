@@ -247,7 +247,7 @@ defmodule Ash.Changeset do
   }
 
   require Ash.Tracer
-  require Ash.Expr
+  import Ash.Expr
   require Logger
 
   defmodule OriginalDataNotAvailable do
@@ -599,7 +599,7 @@ defmodule Ash.Changeset do
           {:atomic, _fields, condition_expr, error_expr}, changeset ->
             condition_expr = rewrite_atomics(changeset, condition_expr)
 
-            Ash.Filter.walk_filter_template(condition_expr, fn
+            Ash.Expr.walk_template(condition_expr, fn
               {:_atomic_ref, field} ->
                 atomic_ref(changeset, field)
 
@@ -618,7 +618,7 @@ defmodule Ash.Changeset do
 
                   condition ->
                     condition_expr =
-                      Ash.Expr.expr(^condition and ^condition_expr)
+                      expr(^condition and ^condition_expr)
 
                     {:cont, validate_atomically(changeset, condition_expr, error_expr)}
                 end
@@ -649,7 +649,7 @@ defmodule Ash.Changeset do
   end
 
   defp rewrite_atomics(changeset, expr) do
-    Ash.Filter.walk_filter_template(expr, fn
+    Ash.Expr.walk_template(expr, fn
       {:_atomic_ref, ref} ->
         atomic_ref(changeset, ref)
 
@@ -682,11 +682,11 @@ defmodule Ash.Changeset do
           atomic_changes =
             Map.new(atomic_changes, fn {key, value} ->
               new_value =
-                Ash.Expr.expr(
+                expr(
                   if ^condition do
                     ^value
                   else
-                    ref(^key)
+                    ^ref(key)
                   end
                 )
 
@@ -748,7 +748,7 @@ defmodule Ash.Changeset do
             new_value
 
           :error ->
-            Ash.Expr.expr(ref(^field))
+            expr(^ref(field))
         end
     end
   end
@@ -766,7 +766,7 @@ defmodule Ash.Changeset do
             if condition == true do
               expr
             else
-              Ash.Expr.expr(^condition and ^expr)
+              expr(^condition and ^expr)
             end
 
           {:cont, new_expr}
@@ -785,7 +785,7 @@ defmodule Ash.Changeset do
             {:cont, %{changeset | arguments: Map.put(changeset.arguments, key, value)}}
 
           attribute = Ash.Resource.Info.attribute(changeset.resource, key) ->
-            if Ash.Filter.TemplateHelpers.expr?(value) do
+            if expr?(value) do
               case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
                 {:atomic, atomic} ->
                   atomic = set_error_field(atomic, attribute.name)
@@ -814,7 +814,7 @@ defmodule Ash.Changeset do
 
           attribute = Ash.Resource.Info.attribute(changeset.resource, key) ->
             if attribute.name in action.accept do
-              if Ash.Filter.TemplateHelpers.expr?(value) do
+              if expr?(value) do
                 case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
                   {:atomic, atomic} ->
                     {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
@@ -1165,7 +1165,7 @@ defmodule Ash.Changeset do
   If you were to instead do this using `atomic_update`, you would get the correct result:
 
   ```elixir
-  Ash.Changeset.atomic_update(changeset, :score, [Ash.Expr.expr(score + 1)])
+  Ash.Changeset.atomic_update(changeset, :score, [expr(score + 1)])
   ```
 
   There are drawbacks/things to consider, however. The first is that atomic update results
@@ -1196,7 +1196,7 @@ defmodule Ash.Changeset do
     attribute = Ash.Resource.Info.attribute(changeset.resource, key)
 
     value =
-      Ash.Filter.walk_filter_template(value, fn
+      Ash.Expr.walk_template(value, fn
         {:_atomic_ref, field} ->
           atomic_ref(changeset, field)
 
@@ -1204,7 +1204,7 @@ defmodule Ash.Changeset do
           other
       end)
 
-    if Ash.Filter.TemplateHelpers.expr?(value) do
+    if expr?(value) do
       case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
         {:atomic, value} ->
           value = set_error_field(value, attribute.name)
@@ -1816,7 +1816,7 @@ defmodule Ash.Changeset do
                    Ash.Tracer.set_metadata(tracer, :validation, metadata)
 
                    opts =
-                     Ash.Filter.build_filter_from_template(
+                     Ash.Expr.fill_template(
                        opts,
                        actor,
                        changeset.arguments,
@@ -1841,7 +1841,7 @@ defmodule Ash.Changeset do
                 Ash.Tracer.set_metadata(tracer, :change, metadata)
 
                 opts =
-                  Ash.Filter.build_filter_from_template(
+                  Ash.Expr.fill_template(
                     opts,
                     actor,
                     changeset.arguments,
@@ -1880,7 +1880,7 @@ defmodule Ash.Changeset do
   def hydrate_atomic_refs(changeset, actor, opts \\ []) do
     Enum.reduce_while(changeset.atomics, {:ok, changeset}, fn {key, expr}, {:ok, changeset} ->
       expr =
-        Ash.Filter.build_filter_from_template(
+        Ash.Expr.fill_template(
           expr,
           actor,
           changeset.arguments,
@@ -1920,7 +1920,7 @@ defmodule Ash.Changeset do
     changeset.atomic_validations
     |> Enum.reduce_while(changeset, fn {condition_expr, error_expr}, changeset ->
       condition_expr =
-        Ash.Filter.build_filter_from_template(
+        Ash.Expr.fill_template(
           condition_expr,
           actor,
           changeset.arguments,
@@ -1929,7 +1929,7 @@ defmodule Ash.Changeset do
         )
 
       error_expr =
-        Ash.Filter.build_filter_from_template(
+        Ash.Expr.fill_template(
           error_expr,
           actor,
           changeset.arguments,
@@ -1959,7 +1959,7 @@ defmodule Ash.Changeset do
             [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
 
             full_atomic_update =
-              Ash.Expr.expr(
+              expr(
                 if ^condition_expr do
                   ^error_expr
                 else
@@ -1995,8 +1995,8 @@ defmodule Ash.Changeset do
 
   defp extract_eager_error(true, error_expr, true) do
     with %Ash.Query.Function.Error{arguments: [exception, input]} <- error_expr,
-         false <- Ash.Filter.TemplateHelpers.expr?(exception),
-         false <- Ash.Filter.TemplateHelpers.expr?(input) do
+         false <- expr?(exception),
+         false <- expr?(input) do
       {:ok, Ash.Error.from_json(exception, Jason.decode!(Jason.encode!(input)))}
     else
       _ ->
@@ -2202,7 +2202,7 @@ defmodule Ash.Changeset do
 
     if Enum.all?(validation.where || [], fn {module, opts} ->
          opts =
-           Ash.Filter.build_filter_from_template(
+           Ash.Expr.fill_template(
              opts,
              actor,
              changeset.arguments,
@@ -2226,7 +2226,7 @@ defmodule Ash.Changeset do
           Ash.Tracer.set_metadata(tracer, :validation, metadata)
 
           opts =
-            Ash.Filter.build_filter_from_template(
+            Ash.Expr.fill_template(
               validation.opts,
               actor,
               changeset.arguments,
@@ -3846,10 +3846,10 @@ defmodule Ash.Changeset do
                  relationship.type in [:has_many, :has_one] do
               destination_value = Map.get(changeset.data, relationship.source_attribute)
 
-              Ash.Expr.expr(
+              expr(
                 ^this_filter and
-                  (is_nil(ref(^relationship.destination_attribute, [])) or
-                     ref(^relationship.destination_attribute, []) == ^destination_value)
+                  (is_nil(^ref(relationship.destination_attribute, [])) or
+                     ^ref(relationship.destination_attribute, []) == ^destination_value)
               )
             else
               this_filter
@@ -3857,7 +3857,7 @@ defmodule Ash.Changeset do
           end)
 
         if filter && filter != %{} do
-          Ash.Expr.expr(^expr or ^filter)
+          expr(^expr or ^filter)
         else
           expr
         end
