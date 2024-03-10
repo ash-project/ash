@@ -138,6 +138,7 @@ defmodule Ash.Resource.Validation do
       @before_compile Ash.Resource.Validation
 
       import Ash.Expr
+      require Ash.Query
 
       @impl true
       def init(opts), do: {:ok, opts}

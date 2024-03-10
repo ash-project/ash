@@ -39,7 +39,7 @@ defmodule Ash.Expr do
   end
 
   @doc "Returns true if the value is or contains an expression"
-  @spec expr?(term) :: true
+  @spec expr?(term) :: boolean()
   def expr?({:_actor, _}), do: true
   def expr?({:_arg, _}), do: true
   def expr?({:_ref, _, _}), do: true
