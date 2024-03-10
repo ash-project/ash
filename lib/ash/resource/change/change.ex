@@ -168,6 +168,7 @@ defmodule Ash.Resource.Change do
       @before_compile Ash.Resource.Change
 
       import Ash.Expr
+      require Ash.Query
 
       @impl true
       def init(opts), do: {:ok, opts}

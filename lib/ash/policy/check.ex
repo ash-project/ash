@@ -72,6 +72,9 @@ defmodule Ash.Policy.Check do
     quote do
       @behaviour Ash.Policy.Check
 
+      import Ash.Expr
+      require Ash.Query
+
       def type, do: :manual
       def requires_original_data?(_, _), do: false
 
