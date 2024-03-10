@@ -40,7 +40,7 @@ defmodule Ash.Test.Support.PolicySimple.Tweet do
     end
 
     policy action(:create_foo) do
-      authorize_if expr(is_foo(foo: arg(:foo)))
+      authorize_if expr(is_foo(foo: ^arg(:foo)))
     end
 
     policy action(:create_bar) do

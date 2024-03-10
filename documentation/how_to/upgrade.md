@@ -25,6 +25,16 @@ resources do
 end
 ```
 
+### Expression changes
+
+When calling a calculation with arguments, this is done via passing a keyword list to the calculation, for example: `full_name(separator: "")`. In 2.0, keyword lists were not evaluated as part of the expression in the same way as other values, meaning two things:
+
+1. You did not have to pin usage of template functions, i.e `full_name(separator: arg(:separator))`. Now, you will need to do so: `full_name(separator: ^arg(:separator))`
+
+2. You had to use `expr` to pass an expression to a calculation argument (this only works if `allow_expr? true` is configured on the calculation argument). For example: `full_name(separator: expr(sep_1 <> sep_2))` would now be `full_name(separator: sep_1 <> sep_2)`
+
+If you do not have any expression calculations that accept arguments, you likely need to do nothing. To make these changes, you will need to look at each place you build an expression that you may be calling a calculation w/ arguments, i.e `Ash.Query.filter`, and the `expression` callback in `Ash.Calculation`, and see if they must be modified as described above.
+
 ### Module/function changes
 
 #### Ash.Filter
