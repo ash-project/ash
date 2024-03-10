@@ -75,6 +75,10 @@ defmodule Ash.Test.CalculationTest do
         end)
       end)
     end
+
+    def expression(opts, context) do
+      expr(string_join(^Enum.map(opts[:keys], &ref/1), ^context.arguments.separator))
+    end
   end
 
   defmodule NameWithUsersName do
@@ -434,6 +438,7 @@ defmodule Ash.Test.CalculationTest do
         # As it's an empty string, the separator would otherwise be trimmed and set to `nil`.
         argument(:separator, :string,
           default: " ",
+          allow_expr?: true,
           constraints: [allow_empty?: true, trim?: false]
         )
       end
@@ -1220,5 +1225,14 @@ defmodule Ash.Test.CalculationTest do
              |> Ash.Changeset.for_update(:update, %{first_name: "something new"})
              |> Ash.update!()
              |> Map.get(:__metadata__)
+  end
+
+  test "arguments can be referenced in calculations", %{user1: user1} do
+    user1_id = user1.id
+
+    assert [%{id: ^user1_id}] =
+             User
+             |> Ash.Query.filter(full_name(separator: first_name) == "zachzachdaniel")
+             |> Ash.read!()
   end
 end
