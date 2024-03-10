@@ -3,18 +3,22 @@ defmodule Ash.Resource.ManualUpdate do
   A module to implement manual update actions.
   """
 
-  @type context :: %{
-          optional(:actor) => term,
-          optional(:tenant) => term,
-          optional(:authorize?) => boolean,
-          optional(:domain) => module,
-          optional(any) => any
-        }
+  defmodule Context do
+    defstruct [
+      :actor,
+      :tenant,
+      :tracer,
+      :authorize?,
+      :domain,
+      :return_records?,
+      :batch_size
+    ]
+  end
 
   @callback update(
               changeset :: Ash.Changeset.t(),
               opts :: Keyword.t(),
-              context :: context()
+              context :: Context.t()
             ) ::
               {:ok, Ash.Resource.record()}
               | {:ok, Ash.Resource.record(), %{notifications: [Ash.Notifier.Notification.t()]}}
@@ -23,10 +27,11 @@ defmodule Ash.Resource.ManualUpdate do
   @callback bulk_update(
               changesets :: Enumerable.t(Ash.Changeset.t()),
               opts :: Keyword.t(),
-              context :: context()
+              context :: Context.t()
             ) ::
               list(
-                {:ok, Ash.Resource.record()}
+                :ok
+                | {:ok, Ash.Resource.record()}
                 | {:error, Ash.Error.t()}
                 | {:notifications, list(Ash.Notifier.Notification.t())}
               )

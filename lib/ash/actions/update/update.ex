@@ -393,7 +393,7 @@ defmodule Ash.Actions.Update do
                       mod.update(
                         changeset,
                         action_opts,
-                        %{
+                        %Ash.Resource.ManualUpdate.Context{
                           actor: opts[:actor],
                           tenant: changeset.tenant,
                           authorize?: opts[:authorize?],
