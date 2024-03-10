@@ -22,8 +22,8 @@ defmodule Ash.Policy.FilterCheckWithContext do
       @behaviour Ash.Policy.FilterCheckWithContext
       @behaviour Ash.Policy.Check
 
-      require Ash.Query
       import Ash.Expr
+      require Ash.Query
 
       def type, do: :filter
 
