@@ -1592,10 +1592,19 @@ defmodule Ash.Actions.Update.Bulk do
             case action.manual do
               {mod, opts} ->
                 if function_exported?(mod, context_key, 3) do
+                  context_struct =
+                    case context_key do
+                      :bulk_update ->
+                        Ash.Resource.ManualUpdate.Context
+
+                      :bulk_destroy ->
+                        Ash.Resource.ManualDestroy.Context
+                    end
+
                   apply(mod, context_key, [
                     batch,
                     opts,
-                    %{
+                    struct(context_struct,
                       actor: opts[:actor],
                       batch_size: opts[:batch_size],
                       authorize?: opts[:authorize?],
@@ -1605,11 +1614,18 @@ defmodule Ash.Actions.Update.Bulk do
                         opts[:return_records?] || must_return_records? ||
                           must_return_records_for_changes?,
                       tenant: opts[:tenant]
-                    }
+                    )
                   ])
-                  |> Enum.flat_map(fn
+                  |> case do
                     {:ok, result} ->
                       [result]
+
+                    :ok ->
+                      if opts[:return_records?] do
+                        raise "`#{inspect(mod)}.#{context_key}/3` returned :ok without a result when `return_records?` is true"
+                      else
+                        []
+                      end
 
                     {:error, error} ->
                       store_error(ref, error, opts)
@@ -1618,7 +1634,7 @@ defmodule Ash.Actions.Update.Bulk do
                     {:notifications, notifications} ->
                       store_notification(ref, notifications, opts)
                       []
-                  end)
+                  end
                 else
                   [changeset] = batch
 

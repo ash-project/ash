@@ -2,15 +2,19 @@ defmodule Ash.Resource.Actions.Implementation do
   @moduledoc """
   An implementation of a generic action.
   """
-  @type context :: %{
-          optional(:actor) => term,
-          optional(:tenant) => term,
-          optional(:authorize?) => boolean,
-          optional(:domain) => module,
-          optional(any) => any
-        }
 
-  @callback run(Ash.ActionInput.t(), opts :: Keyword.t(), context) ::
+  defmodule Context do
+    defstruct [:actor, :tenant, :authorize?, :domain]
+
+    @type t :: %__MODULE__{
+            actor: term,
+            tenant: term,
+            authorize?: boolean,
+            domain: module
+          }
+  end
+
+  @callback run(Ash.ActionInput.t(), opts :: Keyword.t(), Context.t()) ::
               {:ok, term()} | {:ok, [Ash.Notifier.Notification.t()]} | {:error, term()}
 
   defmacro __using__(_) do

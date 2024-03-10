@@ -950,7 +950,7 @@ defmodule Ash.Actions.Create.Bulk do
             case action.manual do
               {mod, opts} ->
                 if function_exported?(mod, :bulk_create, 3) do
-                  mod.bulk_create(batch, opts, %{
+                  mod.bulk_create(batch, opts, %Ash.Resource.ManualCreate.Context{
                     actor: opts[:actor],
                     batch_size: opts[:batch_size],
                     authorize?: opts[:authorize?],
@@ -969,9 +969,16 @@ defmodule Ash.Actions.Create.Bulk do
                     tenant: opts[:tenant]
                   })
                   |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
-                  |> Enum.flat_map(fn
-                    {:ok, result} ->
-                      [result]
+                  |> case do
+                    {:ok, results} ->
+                      results
+
+                    :ok ->
+                      if opts[:return_records?] do
+                        raise "`#{inspect(mod)}.bulk_create/3` returned :ok without a result when `return_records?` is true"
+                      else
+                        []
+                      end
 
                     {:error, error} ->
                       store_error(ref, error, opts)
@@ -980,12 +987,12 @@ defmodule Ash.Actions.Create.Bulk do
                     {:notifications, notifications} ->
                       store_notification(ref, notifications, opts)
                       []
-                  end)
+                  end
                 else
                   [changeset] = batch
 
                   result =
-                    mod.create(changeset, opts, %{
+                    mod.create(changeset, opts, %Ash.Resource.ManualCreate.Context{
                       actor: opts[:actor],
                       tenant: opts[:tenant],
                       authorize?: opts[:authorize?],
