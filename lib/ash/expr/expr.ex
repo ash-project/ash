@@ -144,16 +144,10 @@ defmodule Ash.Expr do
   end
 
   defmacro expr(body) do
-    if Keyword.keyword?(body) do
-      quote location: :keep do
-        unquote(body)
-      end
-    else
-      expr = do_expr(body)
+    expr = do_expr(body)
 
-      quote location: :keep do
-        unquote(expr)
-      end
+    quote location: :keep do
+      unquote(expr)
     end
   end
 
@@ -631,6 +625,13 @@ defmodule Ash.Expr do
   end
 
   def do_expr({left, _, _}, escape?) when is_tuple(left), do: do_expr(left, escape?)
+
+  def do_expr({left, right}, escape?) do
+    left = do_expr(left, escape?)
+    right = do_expr(right, escape?)
+
+    soft_escape({left, right}, escape?)
+  end
 
   def do_expr(other, _), do: other
 
