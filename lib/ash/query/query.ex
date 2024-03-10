@@ -126,7 +126,7 @@ defmodule Ash.Query do
   alias Ash.Query.{Aggregate, Calculation}
 
   require Ash.Tracer
-  import Ash.Filter.TemplateHelpers, only: [expr?: 1]
+  import Ash.Expr, only: [expr?: 1]
 
   defimpl Inspect do
     import Inspect.Algebra
@@ -647,7 +647,7 @@ defmodule Ash.Query do
           case module.init(opts) do
             {:ok, opts} ->
               opts =
-                Ash.Filter.build_filter_from_template(
+                Ash.Expr.fill_template(
                   opts,
                   actor,
                   query.arguments,
@@ -739,11 +739,11 @@ defmodule Ash.Query do
   defp add_action_filters(query, %{filter: nil}, _actor), do: query
 
   defp add_action_filters(query, action, actor) do
-    if Ash.Filter.template_references_actor?(action.filter) and is_nil(actor) do
+    if Ash.Expr.template_references_actor?(action.filter) and is_nil(actor) do
       Ash.Query.add_error(query, ReadActionRequiresActor.exception([]))
     else
       built_filter =
-        Ash.Filter.build_filter_from_template(
+        Ash.Expr.fill_template(
           action.filter,
           actor,
           query.arguments,

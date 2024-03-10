@@ -137,6 +137,8 @@ defmodule Ash.Resource.Validation do
       @behaviour Ash.Resource.Validation
       @before_compile Ash.Resource.Validation
 
+      import Ash.Expr
+
       @impl true
       def init(opts), do: {:ok, opts}
 

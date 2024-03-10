@@ -323,7 +323,7 @@ defmodule Ash.Query.BooleanExpression do
   end
 
   defp can_optimize?(value) do
-    !Ash.Filter.TemplateHelpers.expr?(value)
+    !Ash.Expr.expr?(value)
   end
 
   defp do_new(op, left, right) do

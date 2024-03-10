@@ -23,6 +23,7 @@ defmodule Ash.Policy.FilterCheckWithContext do
       @behaviour Ash.Policy.Check
 
       require Ash.Query
+      import Ash.Expr
 
       def type, do: :filter
 
@@ -35,7 +36,7 @@ defmodule Ash.Policy.FilterCheckWithContext do
       def strict_check(nil, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
 
-        if Ash.Filter.template_references_actor?(filter(nil, authorizer, opts)) do
+        if Ash.Expr.template_references_actor?(filter(nil, authorizer, opts)) do
           {:ok, false}
         else
           try_strict_check(nil, authorizer, opts)
@@ -51,7 +52,7 @@ defmodule Ash.Policy.FilterCheckWithContext do
 
         actor
         |> filter(authorizer, opts)
-        |> Ash.Filter.build_filter_from_template(actor, Ash.Policy.FilterCheck.args(authorizer))
+        |> Ash.Expr.fill_template(actor, Ash.Policy.FilterCheck.args(authorizer))
         |> try_eval(authorizer)
         |> case do
           {:ok, false} ->
@@ -158,7 +159,7 @@ defmodule Ash.Policy.FilterCheckWithContext do
       def auto_filter(actor, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
 
-        Ash.Filter.build_filter_from_template(
+        Ash.Expr.fill_template(
           filter(actor, authorizer, opts),
           actor,
           Ash.Policy.FilterCheck.args(authorizer)
@@ -168,7 +169,7 @@ defmodule Ash.Policy.FilterCheckWithContext do
       def auto_filter_not(actor, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
 
-        Ash.Filter.build_filter_from_template(
+        Ash.Expr.fill_template(
           reject(actor, authorizer, opts),
           actor,
           Ash.Policy.FilterCheck.args(authorizer)

@@ -7,7 +7,6 @@ defmodule Ash.Query.Operator do
   """
 
   alias Ash.Query.{Call, Expression, Not, Ref}
-  import Ash.Filter.TemplateHelpers, only: [expr?: 1]
 
   @doc """
   Create a new predicate. There are various return types possible:
@@ -119,7 +118,7 @@ defmodule Ash.Query.Operator do
   end
 
   def new(mod, left, right) do
-    if expr?(left) or expr?(right) do
+    if Ash.Expr.expr?(left) or Ash.Expr.expr?(right) do
       mod.new(left, right)
     else
       case mod.new(left, right) do
@@ -310,7 +309,7 @@ defmodule Ash.Query.Operator do
   end
 
   defp cast_one(value, {type, constraints}) do
-    if Ash.Filter.TemplateHelpers.expr?(value) do
+    if Ash.Expr.expr?(value) do
       {:ok, value}
     else
       case Ash.Query.Type.try_cast(value, type, constraints) do
@@ -324,7 +323,7 @@ defmodule Ash.Query.Operator do
   end
 
   defp cast_one(value, type) do
-    if Ash.Filter.TemplateHelpers.expr?(value) do
+    if Ash.Expr.expr?(value) do
       {:ok, value}
     else
       case Ash.Query.Type.try_cast(value, type) do

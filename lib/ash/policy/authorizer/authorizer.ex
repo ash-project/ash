@@ -216,7 +216,7 @@ defmodule Ash.Policy.Authorizer do
     ],
     imports: [
       Ash.Policy.Check.Builtins,
-      Ash.Filter.TemplateHelpers
+      Ash.Expr
     ],
     schema: [
       default_access_type: [
@@ -276,7 +276,7 @@ defmodule Ash.Policy.Authorizer do
     name: :field_policies,
     imports: [
       Ash.Policy.Check.Builtins,
-      Ash.Filter.TemplateHelpers
+      Ash.Expr
     ],
     describe: """
     Authorize access to specific fields via policies scoped to fields.

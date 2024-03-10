@@ -947,11 +947,11 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp pre_template(opts, changeset, actor) do
-    if Ash.Filter.template_references_context?(opts) do
+    if Ash.Expr.template_references_context?(opts) do
       opts
     else
       {:templated,
-       Ash.Filter.build_filter_from_template(
+       Ash.Expr.fill_template(
          opts,
          actor,
          changeset.arguments,
@@ -2100,7 +2100,7 @@ defmodule Ash.Actions.Update.Bulk do
   defp templated_opts({:templated, opts}, _actor, _arguments, _context), do: opts
 
   defp templated_opts(opts, actor, arguments, context) do
-    Ash.Filter.build_filter_from_template(
+    Ash.Expr.fill_template(
       opts,
       actor,
       arguments,

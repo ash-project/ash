@@ -4,8 +4,7 @@ defmodule Ash.Resource.Validation.Compare do
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.InvalidAttribute
-  require Ash.Expr
-  import Ash.Filter.TemplateHelpers
+  import Ash.Expr
 
   @impl true
   def init(opts) do
@@ -83,8 +82,8 @@ defmodule Ash.Resource.Validation.Compare do
         |> Enum.map(fn
           {:greater_than, value} ->
             {:atomic, [opts[:attribute]],
-             Ash.Expr.expr(^atomic_ref(opts[:attribute]) <= ^atomic_value(value)),
-             Ash.Expr.expr(
+             expr(^atomic_ref(opts[:attribute]) <= ^atomic_value(value)),
+             expr(
                error(^InvalidAttribute, %{
                  field: ^opts[:attribute],
                  value: ^atomic_ref(opts[:attribute]),
@@ -95,8 +94,8 @@ defmodule Ash.Resource.Validation.Compare do
 
           {:less_than, value} ->
             {:atomic, [opts[:attribute]],
-             Ash.Expr.expr(^atomic_ref(opts[:attribute]) >= ^atomic_value(value)),
-             Ash.Expr.expr(
+             expr(^atomic_ref(opts[:attribute]) >= ^atomic_value(value)),
+             expr(
                error(^InvalidAttribute, %{
                  field: ^opts[:attribute],
                  value: ^atomic_ref(opts[:attribute]),
@@ -107,8 +106,8 @@ defmodule Ash.Resource.Validation.Compare do
 
           {:greater_than_or_equal_to, value} ->
             {:atomic, [opts[:attribute]],
-             Ash.Expr.expr(^atomic_ref(opts[:attribute]) < ^atomic_value(value)),
-             Ash.Expr.expr(
+             expr(^atomic_ref(opts[:attribute]) < ^atomic_value(value)),
+             expr(
                error(^InvalidAttribute, %{
                  field: ^opts[:attribute],
                  value: ^atomic_ref(opts[:attribute]),
@@ -121,8 +120,8 @@ defmodule Ash.Resource.Validation.Compare do
 
           {:less_than_or_equal_to, value} ->
             {:atomic, [opts[:attribute]],
-             Ash.Expr.expr(^atomic_ref(opts[:attribute]) > ^atomic_value(value)),
-             Ash.Expr.expr(
+             expr(^atomic_ref(opts[:attribute]) > ^atomic_value(value)),
+             expr(
                error(^InvalidAttribute, %{
                  field: ^opts[:attribute],
                  value: ^atomic_ref(opts[:attribute]),

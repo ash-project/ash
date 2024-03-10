@@ -33,6 +33,10 @@ Ash.Filter.parse/5 is now `Ash.Filter.parse/3`. Ash.Filter.parse_input/5 is now 
 
 `Ash.Filter.used_aggregates/3` no longer accepts `:all` as a relationship path, instead using `:*`. Its very unlikely that this is used in your application.
 
+#### Ash.Filter.TemplateHelpers
+
+Tools for templating expressions were previously in `Ash.Filter.TemplateHelpers`. This often led to confusion because it was a hard to remember module name, and didn't really make sense to be separate from the rest of our utilities. Now, all the functions/macros you need for expressions are in `Ash.Expr`. This means that in any given file where you want to work with expressions, you only need to do `import Ash.Expr`. Additionally, this `import Ash.Expr` has been added to changes, preparations, validations and calculations automatically.
+
 #### Ash.CiString
 
 * `Ash.CiString.new(nil)` now returns `nil` instead of `%Ash.CiString{value: nil}`
@@ -76,6 +80,10 @@ is now
 ```elixir
 change after_action(fn changeset, result, context -> ... end)
 ```
+
+#### Expressions
+
+Previously, in expressions, you could say `expr(ref(^some_atom))`. This is a tool for building dynamic references, but it was an exception to the standard pattern of prefixing "external" things in an expression, i.e `arg` with `^`. Now, you must do the same with `ref/1` and `ref/2`. You will need to search for `ref(` in your application, and ensure that if it is inside of an expression you have prefixed it with `^`. The original example becomes: `expr(^ref(some_atom))`.
 
 ### Ash.Api is now Ash.Domain
 

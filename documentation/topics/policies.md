@@ -225,7 +225,6 @@ defmodule MyApp.Checks.ActorOverAgeLimit do
   use Ash.Policy.FilterCheck
 
   require Ash.Query
-  import Ash.Filter.TemplateHelpers, only: [actor: 1]
 
   # A description is not necessary, as it will be derived from the filter, but one could be added
   # def describe(_opts), do: "actor is over the age limit"

@@ -123,6 +123,8 @@ defmodule Ash.Resource.Calculation do
 
       @before_compile Ash.Resource.Calculation
 
+      import Ash.Expr
+
       def init(opts), do: {:ok, opts}
 
       def describe(opts), do: "##{inspect(__MODULE__)}<#{inspect(opts)}>"
