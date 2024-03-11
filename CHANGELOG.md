@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.20.1](https://github.com/ash-project/ash/compare/v2.20.0...v2.20.1) (2024-03-11)
+
+
+
+
+### Bug Fixes:
+
+* typespec for `action` policy check supports list of action names (#924)
+
+* ensure that message is honored in atomic validations
+
+* don't require actor when constructing aggregate query
+
+### Improvements:
+
+* store casted values even if they are `nil`
+
+* Ash.Reactor: Backport improvements from 3.0 branch.
+
 ## [v2.20.0](https://github.com/ash-project/ash/compare/v2.19.14...v2.20.0) (2024-03-05)
 
 
