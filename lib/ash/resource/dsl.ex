@@ -102,7 +102,6 @@ defmodule Ash.Resource.Dsl do
         writable? false
         default &Ash.UUID.generate/0
         primary_key? true
-        generated? true
         type :uuid
     """,
     examples: [
