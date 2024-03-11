@@ -1497,7 +1497,7 @@ defmodule Ash.Actions.ManagedRelationships do
     {%{}, input}
   end
 
-  defp split_join_keys(input, :all) do
+  defp split_join_keys(input, :*) do
     {input, %{}}
   end
 
