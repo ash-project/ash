@@ -4079,7 +4079,8 @@ defmodule Ash.Changeset do
         )
 
       if argument do
-        with {:ok, casted} <-
+        with value <- Ash.Type.Helpers.handle_indexed_maps(argument.type, value),
+             {:ok, casted} <-
                Ash.Type.Helpers.cast_input(argument.type, value, argument.constraints, changeset),
              {:constrained, {:ok, casted}, _last_val} when not is_nil(casted) <-
                {:constrained,
@@ -4214,8 +4215,8 @@ defmodule Ash.Changeset do
 
       attribute ->
         with value <- Ash.Type.Helpers.handle_indexed_maps(attribute.type, value),
-             {:ok, prepared} <-
-               prepare_change(changeset, attribute, value, attribute.constraints),
+             {{:ok, prepared}, _} <-
+               {prepare_change(changeset, attribute, value, attribute.constraints), value},
              {:ok, casted} <-
                Ash.Type.Helpers.cast_input(
                  attribute.type,
