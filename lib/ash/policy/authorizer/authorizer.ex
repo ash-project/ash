@@ -145,7 +145,7 @@ defmodule Ash.Policy.Authorizer do
       access_type: [
         type: {:one_of, [:strict, :filter, :runtime]},
         doc: """
-        What portion of the checks inside the policy are allowed to run. See the guide for more.
+        Determines how the policy is applied. See the guide for more.
         """
       ],
       condition: [
