@@ -55,7 +55,7 @@ defmodule Ash.Policy.Check.Builtins do
 
   This is a very common pattern, allowing action-specific policies.
   """
-  @spec action(atom) :: Ash.Policy.Check.ref()
+  @spec action(atom | list(atom)) :: Ash.Policy.Check.ref()
   def action(action) do
     {Ash.Policy.Check.Action, action: action}
   end
