@@ -1338,7 +1338,7 @@ defmodule Ash.Resource.Dsl do
       global?: [
         type: :boolean,
         doc: """
-        Whether or not the data also exists outside of each tenant.
+        Whether or not the data may be accessed without setting a tenant. For example, with attribute multitenancy, this allows accessing without filtering by the tenant attribute.
         """,
         default: false
       ],
