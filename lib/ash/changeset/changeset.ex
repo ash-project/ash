@@ -4081,26 +4081,27 @@ defmodule Ash.Changeset do
       if argument do
         with {:ok, casted} <-
                Ash.Type.Helpers.cast_input(argument.type, value, argument.constraints, changeset),
-             {:constrained, {:ok, casted}, argument} when not is_nil(casted) <-
+             {:constrained, {:ok, casted}, _last_val} when not is_nil(casted) <-
                {:constrained,
                 Ash.Type.apply_constraints(argument.type, casted, argument.constraints),
-                argument} do
+                casted} do
           %{changeset | arguments: Map.put(changeset.arguments, argument.name, casted)}
           |> store_casted_argument(argument.name, casted, store_casted?)
         else
-          {:constrained, {:ok, nil}, _argument} ->
+          {:constrained, {:ok, nil}, _} ->
             %{changeset | arguments: Map.put(changeset.arguments, argument.name, nil)}
             |> store_casted_argument(argument.name, nil, store_casted?)
 
-          {:constrained, {:error, error}, argument} ->
+          {:constrained, {:error, error}, last_val} ->
             add_invalid_errors(value, :argument, changeset, argument, error)
+            |> store_casted_argument(argument.name, last_val, store_casted?)
 
           {:error, error} ->
             add_invalid_errors(value, :argument, changeset, argument, error)
         end
       else
         %{changeset | arguments: Map.put(changeset.arguments, argument, value)}
-        |> store_casted_argument(argument.name, value, store_casted?)
+        |> store_casted_argument(argument, value, store_casted?)
       end
     else
       %{changeset | arguments: Map.put(changeset.arguments, argument, value)}
@@ -4109,7 +4110,10 @@ defmodule Ash.Changeset do
   end
 
   defp store_casted_argument(changeset, name, value, true) do
-    %{changeset | casted_arguments: Map.put(changeset.casted_arguments, name, value)}
+    %{
+      changeset
+      | casted_arguments: Map.put(changeset.casted_arguments, name, value)
+    }
   end
 
   defp store_casted_argument(changeset, _name, _value, _store_casted?) do
@@ -4261,8 +4265,9 @@ defmodule Ash.Changeset do
               |> store_casted_attribute(attribute.name, casted, store_casted?)
           end
         else
-          {{:error, error_or_errors}, _last_val} ->
+          {{:error, error_or_errors}, last_val} ->
             add_invalid_errors(value, :attribute, changeset, attribute, error_or_errors)
+            |> store_casted_attribute(attribute.name, last_val, store_casted?)
 
           :error ->
             add_invalid_errors(value, :attribute, changeset, attribute)
