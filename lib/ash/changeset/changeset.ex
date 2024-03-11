@@ -42,7 +42,6 @@ defmodule Ash.Changeset do
     phase: :validate,
     relationships: %{},
     select: nil,
-    nil_inputs: [],
     load: [],
     valid?: true
   ]
@@ -1652,34 +1651,11 @@ defmodule Ash.Changeset do
     Enum.reduce(params, changeset, fn {name, value}, changeset ->
       cond do
         argument = get_action_argument(action, name) ->
-          changeset
-          |> set_argument(name, value)
-          |> then(fn changeset ->
-            if Map.has_key?(changeset.arguments, argument.name) do
-              Map.update!(
-                changeset,
-                :casted_arguments,
-                &Map.put(&1, name, changeset.arguments[argument.name])
-              )
-            else
-              changeset
-            end
-          end)
+          do_set_argument(changeset, argument.name, value, true)
 
         attr = Ash.Resource.Info.public_attribute(changeset.resource, name) ->
           if attr.writable? do
-            change_attribute(changeset, attr.name, value)
-            |> then(fn changeset ->
-              if Map.has_key?(changeset.attributes, attr.name) do
-                Map.update!(
-                  changeset,
-                  :casted_attributes,
-                  &Map.put(&1, name, changeset.attributes[attr.name])
-                )
-              else
-                changeset
-              end
-            end)
+            do_change_attribute(changeset, attr.name, value, true)
           else
             changeset
           end
@@ -4094,7 +4070,7 @@ defmodule Ash.Changeset do
     do_set_argument(changeset, argument, value)
   end
 
-  defp do_set_argument(changeset, argument, value) do
+  defp do_set_argument(changeset, argument, value, store_casted? \\ false) do
     if changeset.action do
       argument =
         Enum.find(
@@ -4110,9 +4086,11 @@ defmodule Ash.Changeset do
                 Ash.Type.apply_constraints(argument.type, casted, argument.constraints),
                 argument} do
           %{changeset | arguments: Map.put(changeset.arguments, argument.name, casted)}
+          |> store_casted_argument(argument.name, casted, store_casted?)
         else
           {:constrained, {:ok, nil}, _argument} ->
             %{changeset | arguments: Map.put(changeset.arguments, argument.name, nil)}
+            |> store_casted_argument(argument.name, nil, store_casted?)
 
           {:constrained, {:error, error}, argument} ->
             add_invalid_errors(value, :argument, changeset, argument, error)
@@ -4122,10 +4100,20 @@ defmodule Ash.Changeset do
         end
       else
         %{changeset | arguments: Map.put(changeset.arguments, argument, value)}
+        |> store_casted_argument(argument.name, value, store_casted?)
       end
     else
       %{changeset | arguments: Map.put(changeset.arguments, argument, value)}
+      |> store_casted_argument(argument, value, store_casted?)
     end
+  end
+
+  defp store_casted_argument(changeset, name, value, true) do
+    %{changeset | casted_arguments: Map.put(changeset.casted_arguments, name, value)}
+  end
+
+  defp store_casted_argument(changeset, _name, _value, _store_casted?) do
+    changeset
   end
 
   @doc """
@@ -4203,7 +4191,10 @@ defmodule Ash.Changeset do
   @spec change_attribute(t(), atom, any) :: t()
   def change_attribute(changeset, attribute, value) do
     maybe_already_validated_error!(changeset, :change_attribute)
+    do_change_attribute(changeset, attribute, value)
+  end
 
+  defp do_change_attribute(changeset, attribute, value, store_casted? \\ false) do
     case Ash.Resource.Info.attribute(changeset.resource, attribute) do
       nil ->
         error =
@@ -4243,30 +4234,23 @@ defmodule Ash.Changeset do
                 | attributes: Map.put(changeset.attributes, attribute.name, casted),
                   defaults: changeset.defaults -- [attribute.name]
               }
+              |> store_casted_attribute(attribute.name, casted, store_casted?)
 
             is_nil(data_value) and is_nil(casted) ->
               %{
                 changeset
                 | attributes: Map.delete(changeset.attributes, attribute.name),
-                  nil_inputs: [attribute.name | changeset.nil_inputs],
                   defaults: changeset.defaults -- [attribute.name]
               }
+              |> store_casted_attribute(attribute.name, nil, store_casted?)
 
             Ash.Type.equal?(attribute.type, casted, data_value) ->
-              if is_nil(casted) do
-                %{
-                  changeset
-                  | attributes: Map.delete(changeset.attributes, attribute.name),
-                    defaults: changeset.defaults -- [attribute.name],
-                    nil_inputs: [attribute.name | changeset.nil_inputs]
-                }
-              else
-                %{
-                  changeset
-                  | attributes: Map.delete(changeset.attributes, attribute.name),
-                    defaults: changeset.defaults -- [attribute.name]
-                }
-              end
+              %{
+                changeset
+                | attributes: Map.delete(changeset.attributes, attribute.name),
+                  defaults: changeset.defaults -- [attribute.name]
+              }
+              |> store_casted_attribute(attribute.name, casted, store_casted?)
 
             true ->
               %{
@@ -4274,6 +4258,7 @@ defmodule Ash.Changeset do
                 | attributes: Map.put(changeset.attributes, attribute.name, casted),
                   defaults: changeset.defaults -- [attribute.name]
               }
+              |> store_casted_attribute(attribute.name, casted, store_casted?)
           end
         else
           {{:error, error_or_errors}, _last_val} ->
@@ -4286,6 +4271,14 @@ defmodule Ash.Changeset do
             add_invalid_errors(value, :attribute, changeset, attribute, error_or_errors)
         end
     end
+  end
+
+  defp store_casted_attribute(changeset, name, value, true) do
+    %{changeset | casted_attributes: Map.put(changeset.casted_attributes, name, value)}
+  end
+
+  defp store_casted_attribute(changeset, _name, _value, _store_casted?) do
+    changeset
   end
 
   @doc """

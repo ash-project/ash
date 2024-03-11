@@ -1565,9 +1565,7 @@ defmodule Ash.Api do
         |> Map.put(:actor, opts[:actor])
         |> Map.put(:api, opts[:api])
 
-      Code.ensure_compiled!(module)
-
-      if function_exported?(module, :expression, 2) do
+      if module.has_expression?() do
         expr =
           case module.expression(calc_opts, calc_context) do
             {:ok, result} -> {:ok, result}
@@ -1576,7 +1574,11 @@ defmodule Ash.Api do
           end
 
         with {:ok, expr} <- expr do
-          case Ash.Expr.eval(expr, record: record, resource: resource) do
+          case Ash.Expr.eval(expr,
+                 record: record,
+                 resource: resource,
+                 unknown_on_unknown_refs?: true
+               ) do
             {:ok, result} ->
               {:ok, result}
 
@@ -1591,6 +1593,10 @@ defmodule Ash.Api do
                 {:ok, _} ->
                   {:error, "Invalid calculation return"}
 
+                :unknown ->
+                  {:error,
+                   "Calculation evaluated to unknown. If your calculation requires data layer functionality, provide a record to `calculate/3` instead of a resource."}
+
                 {:error, error} ->
                   {:error, error}
               end
@@ -1600,18 +1606,27 @@ defmodule Ash.Api do
           end
         end
       else
-        case module.calculate([record], calc_opts, calc_context) do
-          [result] ->
-            {:ok, result}
+        if module.has_calculate?() do
+          case module.calculate([record], calc_opts, calc_context) do
+            [result] ->
+              {:ok, result}
 
-          {:ok, [result]} ->
-            {:ok, result}
+            {:ok, [result]} ->
+              {:ok, result}
 
-          {:ok, _} ->
-            {:error, "Invalid calculation return"}
+            {:ok, _} ->
+              {:error, "Invalid calculation return"}
 
-          {:error, error} ->
-            {:error, error}
+            :unknown ->
+              {:error,
+               "Calculation evaluated to unknown. If your calculation requires data layer functionality, load the calculation on a record instead."}
+
+            {:error, error} ->
+              {:error, error}
+          end
+        else
+          {:error,
+           "Calculation evaluated to unknown. If your calculation requires data layer functionality, load the calculation on a record instead."}
         end
       end
     else

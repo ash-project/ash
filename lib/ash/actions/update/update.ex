@@ -62,9 +62,6 @@ defmodule Ash.Actions.Update do
               |> Map.merge(changeset.arguments)
               |> Map.merge(changeset.casted_arguments)
 
-            params =
-              Enum.reduce(changeset.nil_inputs, params, &Map.put(&2, &1, nil))
-
             res =
               Ash.Changeset.fully_atomic_changeset(
                 changeset.resource,
