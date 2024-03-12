@@ -15,7 +15,7 @@ defmodule Ash.Test.Flow.ChildResource do
     create :create do
       primary? true
 
-      argument :parent_resource, Ash.Test.Flow.ParentResource
+      argument :parent_resource, :map
 
       change manage_relationship(:parent_resource, type: :append)
     end

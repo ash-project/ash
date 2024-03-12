@@ -173,6 +173,7 @@ defmodule Ash.Actions.Destroy do
                   result
                 else
                   mod.destroy(changeset, action_opts, %Ash.Resource.ManualDestroy.Context{
+                    select: changeset.select,
                     actor: opts[:actor],
                     tenant: changeset.tenant,
                     authorize?: opts[:authorize?],

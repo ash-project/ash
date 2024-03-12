@@ -335,9 +335,6 @@ defmodule Ash.Actions.Read.Calculations do
     end)
   end
 
-  # TODO: might consider grouping them by the first item in their path
-  # so they can be applied at once? Even then, we iterate the whole thing multiple
-  # times, so probably not an issue.
   defp rewrite_at_path(
          records,
          {{[{:attr, type, constraints, name} | rest], data, calc_name, calc_load}, source}

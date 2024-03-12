@@ -478,7 +478,6 @@ defmodule Ash.Resource.Info do
       end
 
     case Ash.Query.Aggregate.kind_to_type(aggregate.kind, attribute_type, attribute_constraints) do
-      # TODO: pass this back up somehow, maybe optionally.
       {:ok, type, _constraints} ->
         {:ok, type}
 

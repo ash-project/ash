@@ -4,6 +4,7 @@ defmodule Ash.Resource.ManualRelationship do
   """
 
   defmodule Context do
+    @moduledoc "The context passed into manual relationship functions"
     defstruct [
       :relationship,
       :query,

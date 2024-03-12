@@ -10,7 +10,6 @@ defmodule Ash.Domain.Info.Livebook do
     |> Enum.join(".")
   end
 
-  # TODO: move to Ash.Resource.Info as it's also used in diagram
   defp resource_name(resource) do
     resource
     |> Ash.Resource.Info.short_name()

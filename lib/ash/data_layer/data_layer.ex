@@ -174,6 +174,7 @@ defmodule Ash.DataLayer do
           return_records?: boolean,
           upsert?: boolean,
           upsert_keys: nil | list(atom),
+          select: list(atom),
           upsert_fields:
             nil
             | list(atom)
@@ -185,6 +186,7 @@ defmodule Ash.DataLayer do
 
   @type bulk_update_options :: %{
           return_records?: boolean,
+          select: list(atom),
           tenant: term()
         }
 

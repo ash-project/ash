@@ -119,40 +119,6 @@ defmodule Ash.Resource do
         require Ash.EmbeddableType
 
         Ash.EmbeddableType.define_embeddable_type(embed_nil_values?: embed_nil_values?)
-      else
-        # TODO: remove this in 3.0
-        use Ash.Type
-
-        @impl true
-        def storage_type(_), do: :map
-
-        @impl Ash.Type
-        def cast_input(nil, _), do: {:ok, nil}
-        def cast_input(%struct{} = value, _) when struct == __MODULE__, do: {:ok, value}
-
-        @impl Ash.Type
-        def load(records, load, _constraints, context) do
-          opts = Ash.Context.to_opts(context)
-          attribute_loads = __MODULE__ |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
-
-          Ash.load(records, List.wrap(load), opts)
-        end
-
-        @impl Ash.Type
-        def cast_stored(nil, _), do: {:ok, nil}
-
-        def cast_stored(_, _),
-          do:
-            {:error,
-             "Cannot cast a non embedded resource from storage. A non-embedded resource may only be used as an argument type."}
-
-        @impl Ash.Type
-        def dump_to_native(nil, _), do: {:ok, nil}
-
-        def dump_to_native(_, _),
-          do:
-            {:error,
-             "Cannot dump a non embedded resource to native. A non-embedded resource may only be used as an argument type."}
       end
     end
   end

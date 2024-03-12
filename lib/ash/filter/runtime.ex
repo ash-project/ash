@@ -210,8 +210,6 @@ defmodule Ash.Filter.Runtime do
         |> Ash.Filter.list_refs()
         |> Enum.split_with(&(&1.relationship_path == []))
 
-      # TODO: this currently does not handle the same calculation with
-      # different inputs. This is problematic.
       refs_to_load =
         refs_to_load
         |> Enum.map(fn

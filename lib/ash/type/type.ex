@@ -532,7 +532,7 @@ defmodule Ash.Type do
   def ash_type?({:array, value}), do: ash_type?(value)
 
   def ash_type?(module) when is_atom(module) do
-    ash_type_module?(module) || Ash.Resource.Info.resource?(module)
+    ash_type_module?(module)
   end
 
   def ash_type?(_), do: false

@@ -4,6 +4,8 @@ defmodule Ash.Resource.Actions.Implementation do
   """
 
   defmodule Context do
+    @moduledoc "The context passed into generic action functions"
+
     defstruct [:actor, :tenant, :authorize?, :domain]
 
     @type t :: %__MODULE__{

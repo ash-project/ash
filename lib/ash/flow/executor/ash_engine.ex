@@ -461,8 +461,6 @@ defmodule Ash.Flow.Executor.AshEngine do
                           transaction_name: transaction.name
                         )
                       )
-                      # TODO: Can we resume a transaction? For now, you cannot.
-                      # Either the whole thing fails or the whole thing succeeds.
                       |> case do
                         [] ->
                           {:ok, %{}}
