@@ -1,5 +1,7 @@
 defmodule Ash.SatSolver.Utils do
   @moduledoc false
+
+  @doc false
   def replace_ordered_sublist([], _sublist, _replacement), do: []
 
   def replace_ordered_sublist([h | tail] = list, sublist, replacement) do
@@ -10,12 +12,14 @@ defmodule Ash.SatSolver.Utils do
     end
   end
 
+  @doc false
   def is_ordered_sublist_of?(_, []), do: false
 
   def is_ordered_sublist_of?(sublist, [_ | rest] = list) do
     List.starts_with?(list, sublist) || is_ordered_sublist_of?(sublist, rest)
   end
 
+  @doc false
   def ordered_sublists(list) do
     front = sublists_front(list)
 
@@ -27,6 +31,7 @@ defmodule Ash.SatSolver.Utils do
     front ++ back
   end
 
+  @doc false
   def sublists_back([_, _]), do: []
 
   def sublists_back([]), do: []
@@ -37,6 +42,7 @@ defmodule Ash.SatSolver.Utils do
     [list | sublists_back(list)]
   end
 
+  @doc false
   def sublists_front(list) do
     list
     |> do_sublists_front()
@@ -49,11 +55,11 @@ defmodule Ash.SatSolver.Utils do
     end)
   end
 
-  def do_sublists_front([]) do
+  defp do_sublists_front([]) do
     []
   end
 
-  def do_sublists_front([_first | rest] = list) do
+  defp do_sublists_front([_first | rest] = list) do
     [list | do_sublists_front(rest)]
   end
 end

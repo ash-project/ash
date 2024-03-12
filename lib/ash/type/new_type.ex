@@ -24,17 +24,22 @@ defmodule Ash.Type.NewType do
   ```
   """
 
+  @doc "Returns the type that the NewType is a subtype of."
   @callback subtype_of() :: module | atom
+  @doc "Returns the underlying subtype constraints"
   @callback subtype_constraints() :: Keyword.t()
+  @doc "Returns the modified NewType constraints"
   @callback type_constraints(constraints :: Keyword.t(), subtype_constraints :: Keyword.t()) ::
               Keyword.t()
 
   @type t :: module | atom | {:array, module | atom}
 
+  @doc "Returns true if the corresponding type is an Ash.Type.NewType"
   @spec new_type?(Ash.Type.t()) :: boolean
   def new_type?({:array, type}), do: new_type?(type)
   def new_type?(type), do: Spark.implements_behaviour?(type, __MODULE__)
 
+  @doc "Returns the type that the given newtype is a subtype of"
   @spec subtype_of(t()) :: Ash.Type.t()
   def subtype_of({:array, type}), do: {:array, subtype_of(type)}
 
@@ -52,6 +57,8 @@ defmodule Ash.Type.NewType do
     end
   end
 
+  @doc "Returns the constraints schema."
+  @spec constraints(Ash.Type.t(), Keyword.t()) :: Keyword.t()
   def constraints({:array, type}, constraints) do
     item_constraints = constraints(type, constraints)
     Keyword.update(constraints, :items, item_constraints, &Keyword.merge(&1, item_constraints))

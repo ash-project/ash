@@ -320,11 +320,14 @@ defmodule Ash.Type do
     @builtin_types
   end
 
+  @doc "Returns the list of available type short names"
   def short_names, do: @short_names
 
+  @doc "Returns true if the type is an ash builtin type"
   def builtin?(type) when type in @builtin_types, do: true
   def builtin?(_), do: false
 
+  @doc "Returns true if the type is an embedded resource"
   def embedded_type?({:array, type}) do
     embedded_type?(type)
   end
@@ -334,16 +337,18 @@ defmodule Ash.Type do
     type.embedded?()
   end
 
+  @doc "Calls the type's `describe` function with the given constraints"
   def describe(type, constraints) do
     case get_type(type) do
       {:array, type} ->
-        type.describe(constraints)
+        "#{type.describe(constraints)}[]"
 
       type ->
         type.describe(constraints)
     end
   end
 
+  @doc "Gets the array constraints for a type"
   def array_constraints({:array, type}) do
     [items: array_constraints(type)]
   end
@@ -354,6 +359,7 @@ defmodule Ash.Type do
 
   @spec get_type(atom | module | {:array, atom | module}) ::
           atom | module | {:array, atom | module}
+  @doc "Gets the type module for a given short name or module"
   def get_type({:array, value}) do
     {:array, get_type(value)}
   end
@@ -370,6 +376,7 @@ defmodule Ash.Type do
     value
   end
 
+  @doc "Returns true if the type is a composite type"
   @spec composite?(
           t(),
           constraints
@@ -379,6 +386,7 @@ defmodule Ash.Type do
     type.composite?(constraints)
   end
 
+  @doc "Returns the wrapped composite types"
   @spec composite_types(
           t(),
           constraints
@@ -397,6 +405,7 @@ defmodule Ash.Type do
     end
   end
 
+  @doc "Returns the StreamData generator for a given type"
   @spec generator(
           module | {:array, module},
           constraints
@@ -439,7 +448,6 @@ defmodule Ash.Type do
   This is leveraged by embedded types to know if something is being updated
   or destroyed. This is not called on creates.
   """
-  # Callback does not currently support this
   def handle_change({:array, {:array, _type}}, _, new_value, _) do
     {:ok, new_value}
   end
@@ -522,16 +530,6 @@ defmodule Ash.Type do
       Module.concat(type, EctoType)
     else
       type.ecto_type()
-    end
-  end
-
-  def ash_type_option(type) do
-    type = get_type(type)
-
-    if ash_type?(type) do
-      {:ok, type}
-    else
-      {:error, "Attribute type must be a built in type or a type module, got: #{inspect(type)}"}
     end
   end
 
@@ -793,6 +791,7 @@ defmodule Ash.Type do
     end)
   end
 
+  @doc "Returns the constraint schema for a type"
   @spec constraints(t()) :: constraints()
   def constraints({:array, _type}) do
     @array_constraints
@@ -803,6 +802,7 @@ defmodule Ash.Type do
     type.constraints()
   end
 
+  @doc "Returns `true` if the type should be cast in underlying queries"
   def cast_in_query?(type, constraints \\ [])
 
   def cast_in_query?({:array, type}, constraints) do
@@ -840,7 +840,6 @@ defmodule Ash.Type do
 
   @spec cast_atomic(t(), term, constraints()) ::
           {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
-  # not currently supported
   def cast_atomic({:array, {:array, _}}, _term, _constraints),
     do: {:not_atomic, "cannot currently atomically update doubly nested arrays"}
 
@@ -1015,6 +1014,13 @@ defmodule Ash.Type do
     end)
   end
 
+  @doc """
+  Gets the load rewrites for a given type, load, calculation and path.
+
+  This is used for defining types that support a nested load statement.
+  See the embedded type and union type implementations for examples of how
+  to use this.
+  """
   def get_rewrites({:array, type}, merged_load, calculation, path, constraints) do
     get_rewrites(type, merged_load, calculation, path, constraints[:items] || [])
   end
@@ -1024,6 +1030,13 @@ defmodule Ash.Type do
     type.get_rewrites(merged_load, calculation, path, constraints)
   end
 
+  @doc """
+  Applies rewrites to a given value.
+
+  This is used for defining types that support a nested load statement.
+  See the embedded type and union type implementations for examples of how
+  to use this.
+  """
   def rewrite(_type, nil, _rewrites, _constraints), do: nil
   def rewrite(_type, [], _rewrites, _constraints), do: []
 
@@ -1073,6 +1086,7 @@ defmodule Ash.Type do
 
   def splicing_nil_values(value, callback), do: callback.(value)
 
+  @doc "Returns true if the type supports nested loads"
   @spec can_load?(t(), Keyword.t()) :: boolean
   def can_load?(type, constraints \\ [])
   def can_load?({:array, type}, constraints), do: can_load?(type, item_constraints(constraints))
@@ -1082,8 +1096,8 @@ defmodule Ash.Type do
     type.can_load?(constraints)
   end
 
+  @doc "Prepares a given array of values for an attribute change. Runs before casting."
   @spec prepare_change_array?(t()) :: boolean
-
   def prepare_change_array?({:array, type}),
     do: prepare_change_array?(type)
 
@@ -1092,6 +1106,7 @@ defmodule Ash.Type do
     type.prepare_change_array?()
   end
 
+  @doc "Handles the change of a given array of values for an attribute change. Runs after casting."
   @spec handle_change_array?(t()) :: boolean
   def handle_change_array?({:array, type}),
     do: handle_change_array?(type)
@@ -1102,7 +1117,7 @@ defmodule Ash.Type do
   end
 
   @doc """
-  Determines if a type can be compared using ==
+  Determines if a type can be compared using the `==` operator.
   """
   @spec simple_equality?(t()) :: boolean
   def simple_equality?({:array, type}), do: simple_equality?(type)

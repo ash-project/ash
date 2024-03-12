@@ -34,7 +34,6 @@ on:
       sat-solver:
         type: string
         default: "Picosat"
-
 jobs:
   deps:
     name: mix deps.get
@@ -125,18 +124,6 @@ jobs:
         with:
           mix-env: test
           task: deps.unlock --check-unused
-
-  # Need to clean lots of things up before we can add this
-  # doctor:
-  #   name: mix doctor --full --raise
-  #   runs-on: ubuntu-latest
-  #   needs: build-test
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - uses: team-alembic/staple-actions/actions/mix-doctor@main
-  #       with:
-  #         mix-env: test
-
   test:
     name: mix test
     runs-on: ubuntu-latest
@@ -236,7 +223,6 @@ jobs:
     needs:
       - credo
       - unused-deps
-      # - doctor
       - spark-formatter
       - spark-cheat-sheets
       - sobelow
