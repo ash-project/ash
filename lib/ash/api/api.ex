@@ -2129,7 +2129,7 @@ defmodule Ash.Api do
   @impl true
   def verify(module, opts) do
     if Application.get_env(:ash, :validate_api_config_inclusion?, true) &&
-         Keyword.get(opts, :validate_config_inclusion?, true) do
+         Keyword.get(opts, :validate_config_inclusion?, true) && Code.ensure_loaded?(Mix.Project) do
       otp_app = Mix.Project.config()[:app]
 
       apis =

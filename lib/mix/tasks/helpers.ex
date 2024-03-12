@@ -53,10 +53,14 @@ defmodule Ash.Mix.Tasks.Helpers do
         end)
       else
         apps =
-          if apps_paths = Mix.Project.apps_paths() do
-            apps_paths |> Map.keys() |> Enum.sort()
+          if Code.ensure_loaded?(Mix.Project) do
+            if apps_paths = Mix.Project.apps_paths() do
+              apps_paths |> Map.keys() |> Enum.sort()
+            else
+              [Mix.Project.config()[:app]]
+            end
           else
-            [Mix.Project.config()[:app]]
+            []
           end
 
         Enum.flat_map(apps, &Application.get_env(&1, :ash_apis, []))

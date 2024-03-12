@@ -52,7 +52,8 @@ defmodule Ash.Resource do
   @impl true
   def verify(module, opts) do
     if Application.get_env(:ash, :validate_api_resource_inclusion?, true) &&
-         Keyword.get(opts, :validate_api_inclusion?, true) && !Ash.Resource.Info.embedded?(module) do
+         Keyword.get(opts, :validate_api_inclusion?, true) && !Ash.Resource.Info.embedded?(module) &&
+         Code.ensure_loaded?(Mix.Project) do
       otp_app = Mix.Project.config()[:app]
 
       apis =
