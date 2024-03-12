@@ -72,11 +72,11 @@ defmodule Ash.Actions.Read.AsyncLimiter do
     |> Enum.map(fn
       %Task{} = task ->
         case Task.yield(task, 0) do
-          {:ok, term} ->
-            term
-
           {:ok, {:__exception__, e, stacktrace}} ->
             reraise e, stacktrace
+
+          {:ok, term} ->
+            term
 
           {:exit, term} ->
             {:error, term}
