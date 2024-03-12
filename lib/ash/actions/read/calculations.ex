@@ -1084,7 +1084,8 @@ defmodule Ash.Actions.Read.Calculations do
       Ash.DataLayer.data_layer_can?(left.resource, :expression_calculation)
 
     do_load_calculation_requirements(
-      right.load ++ Map.values(right.calculations) ++ Map.values(right.aggregates),
+      right.load ++
+        Map.values(right.calculations) ++ Map.values(right.aggregates) ++ query_select(right),
       api,
       left,
       calc_name,
@@ -1095,6 +1096,14 @@ defmodule Ash.Actions.Read.Calculations do
       []
     )
   end
+
+  defp query_select(%{resource: resource, select: nil}) do
+    resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.map(& &1.name)
+  end
+
+  defp query_select(%{select: select}), do: select
 
   defp to_loaded_query(resource, %Ash.Query{resource: resource} = query) do
     query
