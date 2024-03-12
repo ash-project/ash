@@ -5,6 +5,7 @@ defmodule Mix.Tasks.Ash.TearDown do
   use Mix.Task
 
   @shortdoc "Runs all tear_down tasks for any extension on any resource/domain in your application."
+  @doc @shortdoc
   def run(argv) do
     Mix.Task.run("compile")
 

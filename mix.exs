@@ -317,19 +317,30 @@ defmodule Ash.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      # DSLs
       {:spark, "~> 2.0"},
+      # Ash resources are backed by ecto scheams
       {:ecto, "~> 3.7"},
+      # Used by the ETS data layer
       {:ets, "~> 0.8"},
+      # Data & types
       {:decimal, "~> 2.0"},
-      {:picosat_elixir, "~> 0.2", optional: true},
-      {:simple_sat, "~> 0.1", optional: true},
       {:comparable, "~> 1.0"},
       {:jason, ">= 1.0.0"},
-      {:stream_data, "~> 0.6"},
+      # Observability
       {:telemetry, "~> 1.1"},
-      {:plug, ">= 0.0.0", optional: true},
-      {:earmark, "~> 1.4"},
+      # Used for providing Ash.Reactor, will be used more in the future
       {:reactor, github: "ash-project/reactor"},
+      # Used for Ash.PlugHelpers
+      {:plug, ">= 0.0.0", optional: true},
+      # Testing Utilities
+      {:stream_data, "~> 0.6"},
+      # Used in generating flow charts
+      {:earmark, "~> 1.4"},
+
+      # SAT Solvers
+      {:picosat_elixir, "~> 0.2", optional: true},
+      {:simple_sat, "~> 0.1", optional: true},
 
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},
@@ -340,6 +351,7 @@ defmodule Ash.MixProject do
       {:mimic, "~> 1.7", only: [:test]},
       {:sobelow, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:git_ops, "~> 2.5", only: [:dev, :test]},
+      {:mix_audit, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},
       {:benchee, "~> 1.1", only: [:dev, :test]},
       {:doctor, "~> 0.21", only: [:dev, :test]}

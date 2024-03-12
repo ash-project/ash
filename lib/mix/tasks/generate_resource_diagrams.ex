@@ -25,6 +25,7 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
   @recursive true
 
   @shortdoc "Generates Mermaid Resource Diagrams for each Ash domain"
+  @doc @shortdoc
   def run(argv) do
     Mix.Task.run("compile")
 
