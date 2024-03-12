@@ -673,6 +673,7 @@ defmodule Ash.Actions.Read.Calculations do
                   query
                   | load_through: load_through
                 }
+                |> Ash.Query.ensure_selected(attr.name)
             end
 
           agg = Ash.Resource.Info.aggregate(query.resource, load) ->

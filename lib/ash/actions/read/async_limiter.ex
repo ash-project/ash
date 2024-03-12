@@ -75,6 +75,9 @@ defmodule Ash.Actions.Read.AsyncLimiter do
           {:ok, term} ->
             term
 
+          {:ok, {:__exception__, e, stacktrace}} ->
+            reraise e, stacktrace
+
           {:exit, term} ->
             {:error, term}
 
