@@ -291,7 +291,6 @@ defmodule Ash.Filter do
   be sure to use `parse_input/2` instead! The only difference is that it only accepts
   filters over public attributes/relationships.
   """
-  # TODO: remove aggregates/calculation arguments. They are old and are no longer necessary (unused)
   def parse(resource, statement, context \\ %{})
 
   def parse(_resource, nil, _context) do

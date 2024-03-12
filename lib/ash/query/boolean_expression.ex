@@ -261,9 +261,6 @@ defmodule Ash.Query.BooleanExpression do
   end
 
   def optimized_new(op, left, right) do
-    # TODO: more optimization passes
-    # Remove predicates that are on both sides of an `and`
-    # if a predicate is on both sides of an `or`, lift it to an `and`
     do_new(op, left, right)
   end
 

@@ -394,6 +394,7 @@ defmodule Ash.Actions.Update do
                         changeset,
                         action_opts,
                         %Ash.Resource.ManualUpdate.Context{
+                          select: changeset.select,
                           actor: opts[:actor],
                           tenant: changeset.tenant,
                           authorize?: opts[:authorize?],

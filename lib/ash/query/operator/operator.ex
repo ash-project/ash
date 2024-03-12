@@ -211,7 +211,6 @@ defmodule Ash.Query.Operator do
          {:array, :same}
        ]) do
     case right do
-      # TODO: app level type compatibility?
       %Ref{attribute: %{type: {:array, _type}}} ->
         {:ok, left, right}
 

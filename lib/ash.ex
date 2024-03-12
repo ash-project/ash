@@ -334,6 +334,14 @@ defmodule Ash do
       doc:
         "Whether or not to cast attributes and arguments as input. This is an optimization for cases where the input is already casted and/or not in need of casting"
     ],
+    load: [
+      type: :any,
+      doc: "A load statement to apply to records. Ignored if `return_records?` is not true."
+    ],
+    select: [
+      type: {:list, :atom},
+      doc: "A select statement to apply to records. Ignored if `return_records?` is not true."
+    ],
     authorize_query_with: [
       type: {:one_of, [:filter, :error]},
       default: :filter,
@@ -1479,6 +1487,7 @@ defmodule Ash do
   def load(data, query, opts \\ [])
   def load([], _, _), do: {:ok, []}
   def load(nil, _, _), do: {:ok, nil}
+  def load(:ok, _, _), do: {:ok, :ok}
   def load({:error, error}, _, _), do: {:error, error}
 
   def load({:ok, values}, query, opts) do

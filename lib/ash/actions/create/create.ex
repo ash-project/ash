@@ -278,6 +278,7 @@ defmodule Ash.Actions.Create do
                       result
                     else
                       mod.create(changeset, action_opts, %Ash.Resource.ManualCreate.Context{
+                        select: opts[:select],
                         actor: opts[:actor],
                         tenant: changeset.tenant,
                         tracer: opts[:tracer],
