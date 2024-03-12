@@ -21,7 +21,7 @@ defmodule Ash.Resource.Change do
         type: {:wrap_list, {:in, [:create, :update, :destroy]}},
         default: [:create, :update],
         doc: """
-        The action types the validation should run on. Destroy actions are omitted by default as most changes don't make sense for a destroy.
+        The action types the change should run on. Destroy actions are omitted by default as most changes don't make sense for a destroy.
         """
       ],
       only_when_valid?: [
@@ -46,13 +46,13 @@ defmodule Ash.Resource.Change do
       ],
       where: [
         type:
-          {:list,
+          {:wrap_list,
            {:spark_function_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins,
             {Ash.Resource.Validation.Function, 1}}},
         required: false,
         default: [],
         doc: """
-        Validations that should pass in order for this validation to apply. These validations failing will result in this validation being ignored.
+        Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored.
         """
       ],
       always_atomic?: [
