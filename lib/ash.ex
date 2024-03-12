@@ -336,6 +336,14 @@ defmodule Ash do
       doc:
         "Whether or not to cast attributes and arguments as input. This is an optimization for cases where the input is already casted and/or not in need of casting"
     ],
+    load: [
+      type: :any,
+      doc: "A load statement to apply to records. Ignored if `return_records?` is not true."
+    ],
+    select: [
+      type: {:list, :atom},
+      doc: "A select statement to apply to records. Ignored if `return_records?` is not true."
+    ],
     authorize_query_with: [
       type: {:one_of, [:filter, :error]},
       default: :filter,
@@ -456,16 +464,6 @@ defmodule Ash do
                                doc:
                                  "If a query is given, determines whether or not authorization is run on that query."
                              ],
-                             load: [
-                               type: :any,
-                               doc:
-                                 "A load statement to apply to records. Ignored if `return_records?` is not true."
-                             ],
-                             select: [
-                               type: {:list, :atom},
-                               doc:
-                                 "A select statement to apply to records. Ignored if `return_records?` is not true."
-                             ],
                              strategy: [
                                type: {:wrap_list, {:one_of, [:atomic, :atomic_batches, :stream]}},
                                default: @bulk_strategy_default,
@@ -549,16 +547,6 @@ defmodule Ash do
                                type: :atom,
                                doc:
                                  "The identity to use when detecting conflicts for `upsert?`, e.g. `upsert_identity: :full_name`. By default, the primary key is used. Has no effect if `upsert?: true` is not provided"
-                             ],
-                             load: [
-                               type: :any,
-                               doc:
-                                 "A load statement to apply to records. Ignored if `return_records?` is not true."
-                             ],
-                             select: [
-                               type: {:list, :atom},
-                               doc:
-                                 "A select statement to apply to records. Ignored if `return_records?` is not true."
                              ],
                              upsert_fields: [
                                type:
@@ -1495,6 +1483,7 @@ defmodule Ash do
   def load(data, query, opts \\ [])
   def load([], _, _), do: {:ok, []}
   def load(nil, _, _), do: {:ok, nil}
+  def load(:ok, _, _), do: {:ok, :ok}
   def load({:error, error}, _, _), do: {:error, error}
 
   def load({:ok, values}, query, opts) do
@@ -1941,7 +1930,7 @@ defmodule Ash do
           action :: atom,
           input :: map,
           opts :: Keyword.t()
-  ) ::
+        ) ::
           Ash.BulkResult.t() | no_return
   def bulk_update!(stream_or_query, action, input, opts \\ []) do
     stream_or_query

@@ -1143,8 +1143,6 @@ defmodule Ash.Actions.Update.Bulk do
         context_key
       )
 
-    # TODO: We will likely need to store the changeset in record metadata after calling the
-    # data layer instead of passing this in, as this is a stale changeset
     changesets_by_index = index_changesets(batch, context_key)
 
     run_batch(
@@ -1535,6 +1533,15 @@ defmodule Ash.Actions.Update.Bulk do
          metadata_key,
          context_key
        ) do
+    context_struct =
+      case context_key do
+        :bulk_update ->
+          Ash.Resource.ManualUpdate.Context
+
+        :bulk_destroy ->
+          Ash.Resource.ManualDestroy.Context
+      end
+
     batch
     |> Enum.map(fn changeset ->
       if changeset.valid? do
@@ -1589,20 +1596,12 @@ defmodule Ash.Actions.Update.Bulk do
             case action.manual do
               {mod, opts} ->
                 if function_exported?(mod, context_key, 3) do
-                  context_struct =
-                    case context_key do
-                      :bulk_update ->
-                        Ash.Resource.ManualUpdate.Context
-
-                      :bulk_destroy ->
-                        Ash.Resource.ManualDestroy.Context
-                    end
-
                   apply(mod, context_key, [
                     batch,
                     opts,
                     struct(context_struct,
                       actor: opts[:actor],
+                      select: opts[:select],
                       batch_size: opts[:batch_size],
                       authorize?: opts[:authorize?],
                       tracer: opts[:tracer],
@@ -1613,6 +1612,7 @@ defmodule Ash.Actions.Update.Bulk do
                       tenant: opts[:tenant]
                     )
                   ])
+                  |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
                   |> case do
                     {:ok, result} ->
                       [result]
@@ -1639,13 +1639,14 @@ defmodule Ash.Actions.Update.Bulk do
                     apply(mod, action.type, [
                       changeset,
                       opts,
-                      %{
+                      struct(context_struct, %{
+                        select: opts[:select],
                         actor: opts[:actor],
                         tenant: opts[:tenant],
                         authorize?: opts[:authorize?],
                         tracer: opts[:tracer],
                         domain: domain
-                      }
+                      })
                     ])
 
                   case result do

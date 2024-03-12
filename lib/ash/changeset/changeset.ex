@@ -164,7 +164,6 @@ defmodule Ash.Changeset do
              | {:ok, Ash.Resource.record(), [Ash.Notifier.Notification.t()]}
              | {:error, any})
 
-  # TODO: make these structs i.e %Changeset.AfterActionHook{}
   @type after_transaction_fun ::
           (t, {:ok, Ash.Resource.record()} | {:error, any} ->
              {:ok, Ash.Resource.record()} | {:error, any})

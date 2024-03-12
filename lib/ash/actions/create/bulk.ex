@@ -21,6 +21,11 @@ defmodule Ash.Actions.Create.Bulk do
       raise ArgumentError, "Cannot specify `sorted?: true` and `return_stream?: true` together"
     end
 
+    opts =
+      Keyword.put_new_lazy(opts, :select, fn ->
+        resource |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
+      end)
+
     if opts[:transaction] == :all &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
       notify? =
@@ -459,8 +464,6 @@ defmodule Ash.Actions.Create.Bulk do
         ref
       )
 
-    # TODO: We will likely need to store the changeset in record metadata after calling the
-    # data layer instead of passing this in, as this is a stale changeset
     changesets_by_index = index_changesets(batch)
 
     run_batch(
@@ -952,6 +955,7 @@ defmodule Ash.Actions.Create.Bulk do
                 if function_exported?(mod, :bulk_create, 3) do
                   mod.bulk_create(batch, opts, %Ash.Resource.ManualCreate.Context{
                     actor: opts[:actor],
+                    select: opts[:select],
                     batch_size: opts[:batch_size],
                     authorize?: opts[:authorize?],
                     tracer: opts[:tracer],
@@ -993,6 +997,7 @@ defmodule Ash.Actions.Create.Bulk do
 
                   result =
                     mod.create(changeset, opts, %Ash.Resource.ManualCreate.Context{
+                      select: opts[:select],
                       actor: opts[:actor],
                       tenant: opts[:tenant],
                       authorize?: opts[:authorize?],
@@ -1023,6 +1028,7 @@ defmodule Ash.Actions.Create.Bulk do
                     resource,
                     batch,
                     %{
+                      select: opts[:select],
                       batch_size: opts[:batch_size],
                       return_records?:
                         opts[:return_records?] || must_return_records? ||

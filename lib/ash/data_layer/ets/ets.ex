@@ -611,7 +611,6 @@ defmodule Ash.DataLayer.Ets do
   def do_add_aggregates(records, _domain, _resource, []), do: {:ok, records}
 
   def do_add_aggregates(records, domain, _resource, aggregates) do
-    # TODO support crossing domains by getting the destination domain, and set destination query context.
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
       aggregates
       |> Enum.reduce_while(

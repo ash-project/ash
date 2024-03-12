@@ -705,17 +705,17 @@ defmodule Ash.Actions.Helpers do
     {:error, error}
   end
 
-  def select(results, query) when is_list(results) do
-    Enum.map(results, &select(&1, query))
-  end
-
   def select(nil, _), do: nil
 
   def select(result, %{select: nil}) do
     result
   end
 
-  def select(result, %{resource: resource, select: select}) do
+  def select(result, nil) do
+    result
+  end
+
+  def select(%resource{} = result, %{resource: resource, select: select}) do
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.flat_map(fn attribute ->
@@ -726,9 +726,19 @@ defmodule Ash.Actions.Helpers do
       end
     end)
     |> Enum.reduce(result, fn key, record ->
-      Map.put(record, key, %Ash.NotLoaded{field: key, type: :attribute})
+      record
+      |> Map.put(key, %Ash.NotLoaded{field: key, type: :attribute})
     end)
     |> Ash.Resource.put_metadata(:selected, select)
+  end
+
+  def select(:ok, _query), do: :ok
+
+  def select(results, query) do
+    if Enumerable.impl_for(results) do
+      Enum.map(results, &select(&1, query))
+    else
+    end
   end
 
   def attributes_to_select(%{select: nil, resource: resource}) do

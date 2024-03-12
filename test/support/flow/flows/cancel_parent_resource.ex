@@ -6,7 +6,7 @@ defmodule Ash.Test.Flows.CancelParentResource do
   flow do
     domain(Ash.Test.Flow.Domain)
 
-    argument :record, Ash.Test.Flow.ParentResource do
+    argument :record, :map do
       allow_nil? false
     end
 

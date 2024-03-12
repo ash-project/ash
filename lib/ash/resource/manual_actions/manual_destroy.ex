@@ -6,15 +6,29 @@ defmodule Ash.Resource.ManualDestroy do
   """
 
   defmodule Context do
+    @moduledoc "The context passed into manual update action functions"
+
     defstruct [
       :actor,
       :tenant,
+      :select,
       :tracer,
       :authorize?,
       :domain,
       :return_records?,
       :batch_size
     ]
+
+    @type t :: %__MODULE__{
+            actor: any(),
+            select: list(atom),
+            tenant: any(),
+            tracer: list(module),
+            authorize?: boolean(),
+            domain: Ash.Domain.t(),
+            return_records?: boolean(),
+            batch_size: pos_integer()
+          }
   end
 
   @callback destroy(
