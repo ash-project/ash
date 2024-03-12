@@ -2888,13 +2888,35 @@ defmodule Ash.Query do
   defp merge_load(left, []), do: sanitize_loads(left)
 
   defp merge_load(
-         %__MODULE__{load: left_loads, calculations: left_calculations, tenant: left_tenant},
-         %__MODULE__{load: right_loads, calculations: right_calculations} = query
+         %__MODULE__{
+           resource: resource,
+           load: left_loads,
+           calculations: left_calculations,
+           aggregates: left_aggregates,
+           tenant: left_tenant,
+           select: left_select
+         },
+         %__MODULE__{
+           load: right_loads,
+           aggregates: right_aggregates,
+           calculations: right_calculations,
+           select: right_select
+         } =
+           query
        ) do
+    select =
+      if is_nil(left_select) or is_nil(right_select) do
+        all_attribute_names(resource)
+      else
+        Enum.uniq(left_select ++ right_select)
+      end
+
     %{
       query
       | load: merge_load(left_loads, right_loads),
-        calculations: Map.merge(left_calculations, right_calculations)
+        calculations: Map.merge(left_calculations, right_calculations),
+        aggregates: Map.merge(left_aggregates, right_aggregates),
+        select: select
     }
     |> set_tenant(query.tenant || left_tenant)
   end
@@ -2903,7 +2925,7 @@ defmodule Ash.Query do
     load_relationship(query, right)
   end
 
-  defp merge_load(left, %Ash.Query{} = query) when is_list(left) do
+  defp merge_load(left, %__MODULE__{} = query) when is_list(left) do
     load_relationship(query, left)
   end
 
@@ -2916,6 +2938,10 @@ defmodule Ash.Query do
     |> Enum.reduce(sanitize_loads(left), fn {rel, rest}, acc ->
       Keyword.update(acc, rel, rest, &merge_load(&1, rest))
     end)
+  end
+
+  defp all_attribute_names(resource) do
+    resource |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
   end
 
   defp sanitize_loads(load) when is_atom(load), do: {load, []}
