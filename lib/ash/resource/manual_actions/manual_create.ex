@@ -4,8 +4,11 @@ defmodule Ash.Resource.ManualCreate do
   """
 
   defmodule Context do
+    @moduledoc "The context passed into manual update action functions"
+
     defstruct [
       :actor,
+      :select,
       :tenant,
       :tracer,
       :authorize?,
@@ -16,6 +19,20 @@ defmodule Ash.Resource.ManualCreate do
       :return_records?,
       :batch_size
     ]
+
+    @type t :: %__MODULE__{
+            actor: any(),
+            select: list(atom),
+            tenant: any(),
+            tracer: list(module),
+            authorize?: boolean(),
+            domain: Ash.Domain.t(),
+            upsert?: boolean(),
+            upsert_keys: list(atom),
+            upsert_fields: list(atom),
+            return_records?: boolean(),
+            batch_size: pos_integer()
+          }
   end
 
   @callback create(

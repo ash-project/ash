@@ -142,7 +142,7 @@ See the [policies guide](/documentation/topics/policies.md) for more.
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`description`](#policies-policy-description){: #policies-policy-description } | `String.t` |  | A description for the policy, used when explaining authorization results |
-| [`access_type`](#policies-policy-access_type){: #policies-policy-access_type } | `:strict \| :filter \| :runtime` |  | What portion of the checks inside the policy are allowed to run. See the guide for more. |
+| [`access_type`](#policies-policy-access_type){: #policies-policy-access_type } | `:strict \| :filter \| :runtime` |  | Determines how the policy is applied. See the guide for more. |
 
 
 ## policies.policy.authorize_if
@@ -339,7 +339,7 @@ A policy that, if passed, will skip all following policies. If failed, authoriza
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`description`](#policies-bypass-description){: #policies-bypass-description } | `String.t` |  | A description for the policy, used when explaining authorization results |
-| [`access_type`](#policies-bypass-access_type){: #policies-bypass-access_type } | `:strict \| :filter \| :runtime` |  | What portion of the checks inside the policy are allowed to run. See the guide for more. |
+| [`access_type`](#policies-bypass-access_type){: #policies-bypass-access_type } | `:strict \| :filter \| :runtime` |  | Determines how the policy is applied. See the guide for more. |
 
 
 ## policies.bypass.authorize_if

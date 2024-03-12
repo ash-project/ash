@@ -3243,7 +3243,7 @@ end
 |------|------|---------|------|
 | [`strategy`](#multitenancy-strategy){: #multitenancy-strategy } | `:context \| :attribute` | `:context` | Determine if multitenancy is performed with attribute filters or using data layer features. |
 | [`attribute`](#multitenancy-attribute){: #multitenancy-attribute } | `atom` |  | If using the `attribute` strategy, the attribute to use, e.g `org_id` |
-| [`global?`](#multitenancy-global?){: #multitenancy-global? } | `boolean` | `false` | Whether or not the data also exists outside of each tenant. |
+| [`global?`](#multitenancy-global?){: #multitenancy-global? } | `boolean` | `false` | Whether or not the data may be accessed without setting a tenant. For example, with attribute multitenancy, this allows accessing without filtering by the tenant attribute. |
 | [`parse_attribute`](#multitenancy-parse_attribute){: #multitenancy-parse_attribute } | `mfa` | `{Ash.Resource.Dsl, :identity, []}` | An mfa ({module, function, args}) pointing to a function that takes a tenant and returns the attribute value |
 
 
