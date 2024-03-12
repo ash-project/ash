@@ -10,6 +10,7 @@ defmodule Mix.Tasks.Ash.GenerateLivebook do
   use Mix.Task
 
   @shortdoc "Generates a Livebook for each Ash domain"
+  @doc @shortdoc
   def run(argv) do
     Mix.Task.run("compile")
 

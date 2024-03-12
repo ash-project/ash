@@ -23,6 +23,7 @@ defmodule Mix.Tasks.Ash.GeneratePolicyCharts do
   @recursive true
 
   @shortdoc "Generates a Mermaid Flow Chart for a given resource's policies."
+  @doc @shortdoc
   def run(argv) do
     Mix.Task.run("compile")
 

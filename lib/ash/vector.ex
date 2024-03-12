@@ -55,6 +55,7 @@ end
 defimpl Inspect, for: Ash.Vector do
   import Inspect.Algebra
 
+  @doc false
   def inspect(vec, opts) do
     concat(["Ash.Vector.new(", Inspect.List.inspect(Ash.Vector.to_list(vec), opts), ")"])
   end
