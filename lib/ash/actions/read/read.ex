@@ -552,7 +552,7 @@ defmodule Ash.Actions.Read do
 
         query.timeout ->
           {:ok,
-           Ash.Engine.task_with_timeout(
+           Ash.ProcessHelpers.task_with_timeout(
              func,
              query.resource,
              query.timeout,
@@ -1572,7 +1572,7 @@ defmodule Ash.Actions.Read do
           end
         else
           {:ok,
-           Ash.Engine.async(
+           Ash.ProcessHelpers.async(
              fn ->
                do_fetch_count(query, data_layer_query)
              end,
