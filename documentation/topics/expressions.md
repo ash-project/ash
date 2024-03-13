@@ -8,7 +8,7 @@ Ash.Query.expr(x + y)
 Ash.Query.expr(post.title <> " | " <> post.subtitle)
 ```
 
-Ash expressions have some interesting properties in their evaluation, primarily because they are made to be portable, i.e executable in some data layer (like SQL) or executable in Elixir. In general, these expressions will behave the same way they do in Elixir. The primary difference is how `nil` values work. They behave the way that `NULL` values behave in SQL. This is primarily because this pattern is easier to replicate to various popular data layers, and is generally safer when using expressions for things like authentication. The practical implications of this are that `nil` values will "poison" many expressions, and cause them to return `nil`. For example, `x + nil` would always evaluate to `nil`. Additionally, `true and nil` will always result in `nil`, *this is also true with or and not*, i.e `true or nil` will return `nil`, and `not nil` will return `nil`.
+Ash expressions have some interesting properties in their evaluation, primarily because they are made to be portable, i.e executable in some data layer (like SQL) or executable in Elixir. In general, these expressions will behave the same way they do in Elixir. The primary difference is how `nil` values work. They behave the way that `NULL` values behave in SQL. This is primarily because this pattern is easier to replicate to various popular data layers, and is generally safer when using expressions for things like authentication. The practical implications of this are that `nil` values will "poison" many expressions, and cause them to return `nil`. For example, `x + nil` would always evaluate to `nil`. Additionally, `true and nil` will always result in `nil`, _this is also true with or and not_, i.e `true or nil` will return `nil`, and `not nil` will return `nil`.
 
 ## Operators
 
@@ -52,6 +52,7 @@ The following functions are built in:
 - `at/2` | Get an element from a list, i.e `at(list, 1)`
 - `round/1` | Round a float, decimal or int to 0 precision, i.e `round(num)`
 - `round/2` | Round a float, decimal or int to the provided precision or less, i.e `round(1.1234, 3) == 1.1234` and `round(1.12, 3) == 1.12`
+- String interpolation | `"#{first_name} #{last_name}"`, is remapped to the equivalent usage of `<<>>`
 
 ## Sub-expressions
 
@@ -75,7 +76,7 @@ The following functions are built in:
 
 ## Escape Hatches
 
-- `lazy/1` - Takes an MFA and evaluates it just before running the query. This is important for calculations, because the `expression/2` callback should be *stable* (returns the same value given the same input). For example `lazy({ULID, :generate, [timestamp_input]})`
+- `lazy/1` - Takes an MFA and evaluates it just before running the query. This is important for calculations, because the `expression/2` callback should be _stable_ (returns the same value given the same input). For example `lazy({ULID, :generate, [timestamp_input]})`
 
 ## Inline Aggregates
 
@@ -126,7 +127,7 @@ Given a filter like the following:
 Ash.Query.filter(Post, comments.points > 10 and comments.tag.name == "elixir")
 ```
 
-The filter refers to a *single post/comment/tag combination*. So in english, this is "posts where they have a comment with more than 10 points and *that same comment* has a tag with the name `elixir`". What this also means is that filters like the above do not compose nicely when new filters are added. For example:
+The filter refers to a _single post/comment/tag combination_. So in english, this is "posts where they have a comment with more than 10 points and _that same comment_ has a tag with the name `elixir`". What this also means is that filters like the above do not compose nicely when new filters are added. For example:
 
 ```elixir
 def has_comment_with_more_points_than(query, score) do
@@ -142,11 +143,12 @@ Post
 |> has_comment_tagged("elixir")
 ```
 
-That code *seems* like it ought to produce a filter over `Post` that would give us any post with a comment having more than 10 points, *and* with a comment tagged `elixir`. That is not the same thing as having a *single* comment that meets both those criteria. So how do we make this better?
+That code _seems_ like it ought to produce a filter over `Post` that would give us any post with a comment having more than 10 points, _and_ with a comment tagged `elixir`. That is not the same thing as having a _single_ comment that meets both those criteria. So how do we make this better?
 
 ##### Exists
 
 Lets rewrite the above using exists:
+
 ```elixir
 def has_comment_with_more_points_than(query, score) do
   Ash.Query.filter(Post, exists(comments, points > ^score))
@@ -161,7 +163,7 @@ Post
 |> has_comment_tagged("elixir")
 ```
 
-Now, they will compose properly!  Generally speaking, you should use exists when you are filtering across any relationships that are `to_many` relationships *even if you don't expect your filter to be composed. Currently, the filter syntax does not minimize(combine) these `exists/2` statements, but doing so is not complex and can be added. While unlikely, please lodge an issue if you see any performance issues with `exists`.
+Now, they will compose properly! Generally speaking, you should use exists when you are filtering across any relationships that are `to_many` relationships \*even if you don't expect your filter to be composed. Currently, the filter syntax does not minimize(combine) these `exists/2` statements, but doing so is not complex and can be added. While unlikely, please lodge an issue if you see any performance issues with `exists`.
 
 ##### Exists at path
 

@@ -382,6 +382,32 @@ defmodule Ash.Filter.Runtime do
   end
 
   defp resolve_expr(
+         %Ash.CustomExpression{simple_expression: {:ok, expression}},
+         record,
+         parent,
+         resource,
+         unknown_on_unknown_refs?
+       ) do
+    case resolve_expr(expression, record, parent, resource, unknown_on_unknown_refs?) do
+      {:ok, resolved} -> {:ok, resolved}
+      other -> other
+    end
+  end
+
+  defp resolve_expr(
+         %Ash.CustomExpression{expression: expression},
+         record,
+         parent,
+         resource,
+         unknown_on_unknown_refs?
+       ) do
+    case resolve_expr(expression, record, parent, resource, unknown_on_unknown_refs?) do
+      {:ok, resolved} -> {:ok, resolved}
+      other -> other
+    end
+  end
+
+  defp resolve_expr(
          %Ash.Query.Parent{},
          _,
          parent,
