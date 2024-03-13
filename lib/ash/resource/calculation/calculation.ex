@@ -148,6 +148,10 @@ defmodule Ash.Resource.Calculation do
       else
         def has_calculate?, do: false
       end
+
+      def strict_loads?, do: true
+
+      defoverridable strict_loads?: 0
     end
   end
 
@@ -161,6 +165,7 @@ defmodule Ash.Resource.Calculation do
   @callback expression(opts :: opts, context :: Context.t()) :: any
   @callback load(query :: Ash.Query.t(), opts :: opts, context :: Context.t()) ::
               atom | [atom] | Keyword.t()
+  @callback strict_loads?() :: boolean()
   @callback has_expression?() :: boolean()
 
   @optional_callbacks expression: 2, calculate: 3
