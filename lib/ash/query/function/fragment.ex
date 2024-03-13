@@ -17,6 +17,7 @@ defmodule Ash.Query.Function.Fragment do
   def private?, do: true
 
   def new([fragment | rest]) when is_binary(fragment) do
+    fragment = "(" <> fragment <> ")"
     split = split_fragment(fragment)
 
     if Enum.count(split, &(&1 == :slot)) != length(rest) do
@@ -28,7 +29,7 @@ defmodule Ash.Query.Function.Fragment do
     end
   end
 
-  def new([fragment | _] = args) when is_function(fragment, 1) do
+  def new([fragment | _] = args) when is_function(fragment) do
     {:ok, %__MODULE__{arguments: args}}
   end
 
@@ -41,7 +42,11 @@ defmodule Ash.Query.Function.Fragment do
   end
 
   def evaluate(%{arguments: [function | rest]}) when is_function(function) do
-    function.(rest)
+    {:known, apply(function, rest)}
+  end
+
+  def evaluate(%{arguments: [{m, f, a} | rest]}) do
+    {:known, apply(m, f, a ++ rest)}
   end
 
   def evaluate(_), do: :unknown

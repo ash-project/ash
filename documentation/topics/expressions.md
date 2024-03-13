@@ -31,7 +31,7 @@ The following operators are available and they behave the same as they do in Eli
 
 ## Functions
 
-The following functions are built in. Data Layers can add their own functions to expressions. For example, `AshPostgres` adds a `fragment` function that allows you to provide SQL directly.
+The following functions are built in. Data Layers can add their own functions to expressions. For example, `AshPostgres` adds `trigram_similarity` function.
 
 The following functions are built in:
 
@@ -52,7 +52,20 @@ The following functions are built in:
 - `at/2` | Get an element from a list, i.e `at(list, 1)`
 - `round/1` | Round a float, decimal or int to 0 precision, i.e `round(num)`
 - `round/2` | Round a float, decimal or int to the provided precision or less, i.e `round(1.1234, 3) == 1.1234` and `round(1.12, 3) == 1.12`
-- String interpolation | `"#{first_name} #{last_name}"`, is remapped to the equivalent usage of `<<>>`
+- String interpolation | `"#{first_name} #{last_name}"`, is remapped to the equivalent usage of `<>`
+- `fragment/*` | Creates a fragment of a data layer expression. See the section on fragments below.
+
+## Fragments
+
+Fragments come in two forms.
+
+## String Fragments
+
+For SQL/query-backed data layers, they will be a string with question marks for interpolation. For example: `fragment("(? + ?)", foo, bar)`.
+
+## Function Fragments
+
+For elixir-backed data layers, they will be a function or an MFA that will be called with the provided arguments. For example: `fragment(&Module.add/2, foo, bar)` or `fragment({Module, :add, []}, foo, bar)`. When using anonymous functions, you can _only_ use the format `&Module.function/arity`. `&Module.add/2` is okay, but `fn a, b -> Module.add(a, b) end` is not.
 
 ## Sub-expressions
 

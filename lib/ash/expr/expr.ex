@@ -645,13 +645,106 @@ defmodule Ash.Expr do
     soft_escape(Ash.CiString.sigil_i(str, mods), escape?)
   end
 
-  def do_expr({:fragment, _, [first | _]}, _escape?)
-      when not (is_binary(first) or is_function(first, 1)) do
+  def do_expr({:fragment, _, [first | _] = args}, escape?)
+      when is_binary(first) or is_function(first) do
+    last_arg = List.last(args)
+
+    args =
+      if Keyword.keyword?(last_arg) && Keyword.has_key?(last_arg, :do) do
+        Enum.map(:lists.droplast(args), &do_expr(&1, false)) ++
+          [
+            Enum.map(last_arg, fn {key, arg_value} ->
+              {key, do_expr(arg_value, false)}
+            end)
+          ]
+      else
+        Enum.map(args, &do_expr(&1, false))
+      end
+
+    soft_escape(%Ash.Query.Call{name: :fragment, args: args, operator?: false}, escape?)
+  end
+
+  def do_expr(
+        {:&, _,
+         [
+           {:/, _,
+            [
+              {{:., _, [{:__aliases__, _, [_]}, _]}, _, []},
+              _
+            ]}
+         ]} = expr,
+        _
+      ) do
+    expr
+  end
+
+  def do_expr(
+        {:&, _, _} = expr,
+        _
+      ) do
+    raise """
+    The only kind of anonymous functions allowed in expressions are in the format `&Module.function/arity`.
+
+    Got: #{Macro.to_string(expr)}
+    """
+  end
+
+  def do_expr(
+        {:fn, _, _} = expr,
+        _
+      ) do
+    raise """
+    The only kind of anonymous functions allowed in expressions are in the format `&Module.function/arity`.
+
+    Got: #{Macro.to_string(expr)}
+    """
+  end
+
+  def do_expr({:fragment, _, [{:&, _, _} | _] = args}, escape?) do
+    last_arg = List.last(args)
+
+    args =
+      if Keyword.keyword?(last_arg) && Keyword.has_key?(last_arg, :do) do
+        Enum.map(:lists.droplast(args), &do_expr(&1, false)) ++
+          [
+            Enum.map(last_arg, fn {key, arg_value} ->
+              {key, do_expr(arg_value, false)}
+            end)
+          ]
+      else
+        Enum.map(args, &do_expr(&1, false))
+      end
+
+    soft_escape(%Ash.Query.Call{name: :fragment, args: args, operator?: false}, escape?)
+  end
+
+  def do_expr({:fragment, _, [{m, f, a} | _] = args}, escape?)
+      when is_atom(m) and is_atom(f) and is_list(a) do
+    last_arg = List.last(args)
+
+    args =
+      if Keyword.keyword?(last_arg) && Keyword.has_key?(last_arg, :do) do
+        Enum.map(:lists.droplast(args), &do_expr(&1, false)) ++
+          [
+            Enum.map(last_arg, fn {key, arg_value} ->
+              {key, do_expr(arg_value, false)}
+            end)
+          ]
+      else
+        Enum.map(args, &do_expr(&1, false))
+      end
+
+    soft_escape(%Ash.Query.Call{name: :fragment, args: args, operator?: false}, escape?)
+  end
+
+  def do_expr({:fragment, _, [first | _]}, _escape?) do
     raise """
     To prevent SQL injection attacks, fragment(...) allows only two specific kinds of values
 
     1. A string literal *not* interpolated. This is for use with data layers like `AshPostgres.
     2. A one argument function or an MFA *not* interpolated. This is for use with data layers like `Ash.DataLayer.Simple` and `Ash.DataLayer.Ets`.
+
+    Got: #{Macro.to_string(first)}
     """
   end
 

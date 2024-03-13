@@ -3014,7 +3014,10 @@ defmodule Ash.Filter do
   defp resolve_call(%Call{name: name, args: args} = call, context) do
     could_be_calculation? = Enum.count_until(args, 2) == 1 && Keyword.keyword?(Enum.at(args, 0))
 
-    resource = Ash.Resource.Info.related(context.resource, call.relationship_path)
+    resource =
+      if context.resource do
+        Ash.Resource.Info.related(context.resource, call.relationship_path)
+      end
 
     context =
       Map.merge(context, %{
@@ -3063,7 +3066,12 @@ defmodule Ash.Filter do
           custom_expression(name, args) ->
         {module, arguments} = custom_expression
 
-        data_layer = Ash.Resource.Info.data_layer(resource)
+        data_layer =
+          if resource do
+            Ash.Resource.Info.data_layer(resource)
+          else
+            Ash.DataLayer.Simple
+          end
 
         with {:ok, expr} <- module.expression(data_layer, arguments),
              {:ok, expr} <- hydrate_refs(expr, context) do
@@ -3084,7 +3092,10 @@ defmodule Ash.Filter do
                  simple_expression: {:ok, simple_expr}
                }}
             else
-              _ ->
+              {:error, error} ->
+                {:error, error}
+
+              :unknown ->
                 {:ok,
                  %Ash.CustomExpression{
                    arguments: arguments,
@@ -3093,6 +3104,13 @@ defmodule Ash.Filter do
                  }}
             end
           end
+        else
+          {:error, error} ->
+            {:error, error}
+
+          :unknown ->
+            {:error,
+             "Custom expression: `#{inspect(module)}` returned `:unknown` for data layer `#{inspect(data_layer)}` for arguments `#{inspect(arguments)}`"}
         end
 
       true ->
@@ -3188,7 +3206,7 @@ defmodule Ash.Filter do
   end
 
   def custom_expression(name, args) do
-    with module when not is_nil(module) <- Keyword.get(@custom_expressions, name),
+    with module when not is_nil(module) <- Enum.find(@custom_expressions, &(&1.name() == name)),
          args when not is_nil(args) <-
            Enum.find_value(
              module.arguments(),
