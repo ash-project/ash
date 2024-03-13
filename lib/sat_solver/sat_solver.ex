@@ -967,7 +967,7 @@ defmodule Ash.SatSolver do
       end
 
     true ->
-      def solve_expression(cnf) do
+      def solve_expression(_cnf) do
         raise """
         No SAT solver available.
 
