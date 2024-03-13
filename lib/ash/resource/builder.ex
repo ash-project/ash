@@ -35,8 +35,32 @@ defmodule Ash.Resource.Builder do
         ) ::
           Spark.Dsl.Builder.result()
   defbuilder add_action(dsl_state, type, name, opts \\ []) do
-    with {:ok, action} <- build_action(type, name, opts) do
+    with {:ok, opts} <-
+           handle_nested_builders(opts, [
+             :pagination
+           ]),
+         {:ok, action} <- build_action(type, name, opts) do
       Transformer.add_entity(dsl_state, [:actions], action, type: :append)
+    end
+  end
+
+  @doc """
+  Builds and adds an action to the front of the actions list
+  """
+  @spec prepend_action(
+          Spark.Dsl.Builder.input(),
+          type :: Ash.Resource.Actions.action_type(),
+          name :: atom,
+          opts :: Keyword.t()
+        ) ::
+          Spark.Dsl.Builder.result()
+  defbuilder prepend_action(dsl_state, type, name, opts \\ []) do
+    with {:ok, opts} <-
+           handle_nested_builders(opts, [
+             :pagination
+           ]),
+         {:ok, action} <- build_action(type, name, opts) do
+      Transformer.add_entity(dsl_state, [:actions], action)
     end
   end
 
