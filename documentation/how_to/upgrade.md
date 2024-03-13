@@ -223,12 +223,12 @@ In Ash 2.0, `before_action` and `before_transaction` hooks that were added to a 
 ```elixir
 create :foo do
   change before_action(fn changeset, _context ->
-    IO.inspect("first")
+    IO.puts("first")
     changeset
   end)
 
   change before_action(fn changeset, _context ->
-    IO.inspect("second")
+    IO.puts("second")
     changeset
   end)
 end

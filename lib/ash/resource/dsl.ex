@@ -641,10 +641,17 @@ defmodule Ash.Resource.Dsl do
     """,
     schema: [
       defaults: [
-        type: {:list, {:in, [:create, :read, :update, :destroy]}},
+        type:
+          {:list,
+           {:or,
+            [
+              {:one_of, [:create, :read, :update, :destroy]},
+              {:tuple, [:atom, {:wrap_list, :atom}]}
+            ]}},
         doc: """
         Creates a simple action of each specified type, with the same name as the type. These will be `primary?` unless one already exists for that type. Embedded resources, however, have a default of all resource types.
-        """
+        """,
+        snippet: "[:read, :destroy, create: :*, update: :*]"
       ],
       default_accept: [
         type: {:or, [{:list, :atom}, {:literal, :*}]},

@@ -47,7 +47,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       update :update_with_change do
         change fn changeset, _ ->

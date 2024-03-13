@@ -10,7 +10,7 @@ defmodule Ash.Test.Support.PolicySimple.Organization do
 
   actions do
     default_accept :*
-    defaults [:read, :update, :destroy]
+    defaults [:read, :destroy, update: :*]
 
     create(:create) do
       primary? true

@@ -62,7 +62,7 @@ defmodule Ash.Test.Type.UnionTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       update :add_thing do
         argument :new_thing, FooBarUnion, allow_nil?: false

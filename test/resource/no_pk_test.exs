@@ -18,7 +18,7 @@ defmodule Ash.Test.Resource.NoPkTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read]
+      defaults [:read, create: :*]
     end
 
     attributes do
@@ -48,7 +48,7 @@ defmodule Ash.Test.Resource.NoPkTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do

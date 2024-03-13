@@ -21,7 +21,7 @@ defmodule Ash.Test.ReactorDestroyTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       create :undo_destroy do
         argument :record, :struct do

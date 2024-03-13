@@ -26,7 +26,7 @@ defmodule Ash.Test.ReactorCreateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       destroy :undo_create do
         argument :changeset, :struct do
@@ -58,7 +58,7 @@ defmodule Ash.Test.ReactorCreateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       create :with_actor_as_author do
         change relate_actor(:author)

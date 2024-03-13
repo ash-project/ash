@@ -11,7 +11,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
         defposts do
           actions do
             default_accept :*
-            defaults [:create, :read, :update, :destroy]
+            defaults [:read, :destroy, create: :*, update: :*]
           end
         end
 

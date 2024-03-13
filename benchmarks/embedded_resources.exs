@@ -8,7 +8,7 @@ defmodule Embed do
 
   actions do
     default_accept :*
-    defaults [:create, :update, :destroy, :read]
+    defaults [:read, :destroy, create: :*, update: :*]
   end
 end
 
@@ -23,7 +23,7 @@ defmodule Resource do
 
   actions do
     default_accept :*
-    defaults [:create, :update, :destroy, :read]
+    defaults [:read, :destroy, create: :*, update: :*]
   end
 end
 
