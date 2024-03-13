@@ -35,6 +35,12 @@ defmodule Ash.CustomExpression do
     end
   end
   ```
+
+  ### Options
+
+  - `name` - The name of the custom expression. This is the name that will be used in Ash expressions.
+  - `arguments` - A list of lists of types that the custom expression accepts. Each list represents a set of arguments that the custom expression can accept.
+  - `predicate?` - Whether this expression can be exposed as a predicate in filter interfaces. Defaults to `false`.
   """
 
   defstruct [:module, :arguments, :expression, :simple_expression]
@@ -69,6 +75,7 @@ defmodule Ash.CustomExpression do
         raise ArgumentError, "You must provide arguments for the custom expression"
       end
 
+      def predicate?, do: !!opts[:predicate?]
       def arguments, do: opts[:arguments]
       def name, do: opts[:name]
     end
