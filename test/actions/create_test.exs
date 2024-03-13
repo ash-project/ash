@@ -23,7 +23,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
   end
 
@@ -39,7 +39,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -67,7 +67,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -135,7 +135,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       create :only_allow_name do
         accept([:name])
@@ -180,7 +180,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       create :manual_create do
         accept []
@@ -220,7 +220,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     relationships do
@@ -248,7 +248,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       create :create_with_required do
         require_attributes [:tag]
@@ -330,7 +330,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -350,7 +350,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       create :manual do
         skip_global_validations?(true)

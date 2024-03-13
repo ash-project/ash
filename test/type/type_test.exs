@@ -66,7 +66,7 @@ defmodule Ash.Test.Type.TypeTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read]
+      defaults [:read, create: :*]
     end
   end
 

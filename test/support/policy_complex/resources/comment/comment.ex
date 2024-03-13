@@ -36,7 +36,7 @@ defmodule Ash.Test.Support.PolicyComplex.Comment do
 
   actions do
     default_accept :*
-    defaults [:read, :update, :destroy]
+    defaults [:read, :destroy, update: :*]
 
     create :create do
       accept [:text]

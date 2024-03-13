@@ -46,7 +46,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
     actions do
       default_accept :*
-      defaults [:create]
+      defaults create: :*
     end
   end
 
@@ -76,7 +76,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       create :create_with_change do
         change fn changeset, _ ->

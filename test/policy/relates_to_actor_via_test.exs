@@ -9,7 +9,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     ets do
@@ -45,7 +45,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     ets do
@@ -65,7 +65,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     ets do
@@ -102,7 +102,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     ets do
@@ -128,7 +128,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     ets do
@@ -154,7 +154,7 @@ defmodule Ash.Test.Policy.RelatesToActorViaTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     ets do

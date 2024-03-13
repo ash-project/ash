@@ -14,7 +14,7 @@ defmodule Ash.Test.Actions.StreamTest do
 
     actions do
       default_accept :*
-      defaults [:create, :update, :destroy]
+      defaults [:destroy, create: :*, update: :*]
 
       read :read do
         primary? true

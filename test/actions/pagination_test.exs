@@ -27,7 +27,7 @@ defmodule Ash.Actions.PaginationTest do
 
     actions do
       default_accept :*
-      defaults [:create, :update, :destroy]
+      defaults [:destroy, create: :*, update: :*]
 
       read :read do
         primary? true
@@ -97,7 +97,7 @@ defmodule Ash.Actions.PaginationTest do
         pagination keyset?: true, offset?: true, countable: true, default_limit: 25
       end
 
-      defaults [:create, :update]
+      defaults create: :*, update: :*
     end
 
     attributes do

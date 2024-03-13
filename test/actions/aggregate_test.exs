@@ -14,7 +14,7 @@ defmodule Ash.Test.Actions.AggregateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -64,7 +64,7 @@ defmodule Ash.Test.Actions.AggregateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
       read :unpublic
     end
 

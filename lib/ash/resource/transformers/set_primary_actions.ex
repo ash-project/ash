@@ -9,6 +9,9 @@ defmodule Ash.Resource.Transformers.ValidatePrimaryActions do
   alias Spark.Dsl.Transformer
   alias Spark.Error.DslError
 
+  def after?(Ash.Resource.Transformers.DefaultAccept), do: true
+  def after?(_), do: false
+
   def transform(dsl_state) do
     with {:ok, dsl_state} <- add_defaults(dsl_state) do
       dsl_state
@@ -45,19 +48,66 @@ defmodule Ash.Resource.Transformers.ValidatePrimaryActions do
 
     default_defaults =
       if Transformer.get_persisted(dsl_state, :embedded?) do
-        [:create, :read, :update, :destroy]
+        [{:create, :*}, :read, {:update, :*}, :destroy]
         |> Enum.reject(fn action_name ->
           Enum.any?(actions, &(&1.name == action_name))
         end)
+        |> Enum.reverse()
       else
         []
       end
+
+    default_accept =
+      List.wrap(
+        Transformer.get_option(
+          dsl_state,
+          [:actions],
+          :default_accept
+        )
+      )
 
     dsl_state
     |> Transformer.get_option([:actions], :defaults)
     |> Kernel.||(default_defaults)
     |> Enum.with_index()
-    |> Enum.reduce_while({:ok, dsl_state}, fn {type, i}, {:ok, dsl_state} ->
+    |> Enum.reduce_while({:ok, dsl_state}, fn {type_and_accept, i}, {:ok, dsl_state} ->
+      {type, accept} =
+        case type_and_accept do
+          {type, _accept} when type in [:destroy, :read] ->
+            raise Spark.Error.DslError,
+              module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
+              path: [:actions, :default_accept],
+              message: """
+              Do not specify an accept for the default actions of type `:read` and `:destroy`.
+
+              Place them at the beginning of the list if you need to avoid specifying a value for them:
+
+                  defaults [:read, :destroy, create: [...], update: [...]]
+              """
+
+          type when type in [:create, :update] ->
+            if default_accept == [:*] do
+              raise Spark.Error.DslError,
+                module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
+                path: [:actions, :default_accept],
+                message: """
+                When using default actions with `default_accept :*` is only supported when an explicit accept is given.
+
+                For example:
+
+                  defaults [:read, :destroy, create: :*, update: :*]
+                """
+            end
+
+            {type, default_accept}
+
+          {type, accept} ->
+            {type, List.wrap(accept)}
+
+          type ->
+            {type, []}
+        end
+
       unless type in [:create, :update, :read, :destroy] do
         raise Spark.Error.DslError,
           path: [:actions, :default_actions, i],
@@ -78,7 +128,10 @@ defmodule Ash.Resource.Transformers.ValidatePrimaryActions do
             )
         )
       else
-        Ash.Resource.Builder.prepend_action(dsl_state, type, type, primary?: primary?)
+        Ash.Resource.Builder.prepend_action(dsl_state, type, type,
+          primary?: primary?,
+          accept: accept
+        )
       end
       |> case do
         {:ok, dsl_state} -> {:cont, {:ok, dsl_state}}

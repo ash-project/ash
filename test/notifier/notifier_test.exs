@@ -26,7 +26,7 @@ defmodule Ash.Test.NotifierTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     relationships do
@@ -56,7 +56,7 @@ defmodule Ash.Test.NotifierTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -89,7 +89,7 @@ defmodule Ash.Test.NotifierTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       create :create_with_comment do
         change load(:comments)

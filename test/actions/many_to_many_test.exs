@@ -21,7 +21,7 @@ defmodule Ash.Test.Actions.ManyToManyTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     ets do
@@ -53,7 +53,7 @@ defmodule Ash.Test.Actions.ManyToManyTest do
 
     actions do
       default_accept :*
-      defaults [:read, :update, :destroy]
+      defaults [:read, :destroy, update: :*]
 
       create :create do
         primary? true

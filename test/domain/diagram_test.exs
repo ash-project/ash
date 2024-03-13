@@ -42,10 +42,10 @@ defmodule Ash.Test.Domain.Info.DiagramTest do
                    UUID id
                    String name
                    User[] users
-                   destroy()
                    update(String name)
-                   read()
                    create(String name)
+                   destroy()
+                   read()
                    by_name(String name)
                }
 
@@ -100,10 +100,10 @@ defmodule Ash.Test.Domain.Info.DiagramTest do
                    UUID id
                    String name
                    User[] users
-                   destroy()
                    update(String name)
-                   read()
                    create(String name)
+                   destroy()
+                   read()
                    by_name(String name)
                }
 

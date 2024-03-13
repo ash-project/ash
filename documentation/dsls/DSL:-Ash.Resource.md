@@ -751,7 +751,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`defaults`](#actions-defaults){: #actions-defaults } | `list(:create \| :read \| :update \| :destroy)` |  | Creates a simple action of each specified type, with the same name as the type. These will be `primary?` unless one already exists for that type. Embedded resources, however, have a default of all resource types. |
+| [`defaults`](#actions-defaults){: #actions-defaults } | `list(:create \| :read \| :update \| :destroy \| {atom, atom \| list(atom)})` |  | Creates a simple action of each specified type, with the same name as the type. These will be `primary?` unless one already exists for that type. Embedded resources, however, have a default of all resource types. |
 | [`default_accept`](#actions-default_accept){: #actions-default_accept } | `list(atom) \| :*` |  | A default value for the `accept` option for each action. Use `:*` to accept all public attributes. |
 
 

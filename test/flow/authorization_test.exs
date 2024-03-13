@@ -15,7 +15,7 @@ defmodule Ash.Flow.AuthorizationTest do
 
     actions do
       default_accept :*
-      defaults([:create, :read, :update, :destroy])
+      defaults([:read, :destroy, create: :*, update: :*])
 
       read :get_by_id do
         get_by(:id)

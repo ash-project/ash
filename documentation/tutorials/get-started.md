@@ -179,7 +179,7 @@ defmodule Helpdesk.Support.Ticket do
 
   actions do
     # Add a set of simple actions. You'll customize these later.
-    defaults [:create, :read, :update, :destroy]
+    defaults [:read, :destroy, create: :*, update: :*]
   end
 
   # Attributes are the simple pieces of data that exist on your resource
@@ -485,7 +485,7 @@ defmodule Helpdesk.Support.Representative do
 
   actions do
     # Add the default simple actions
-    defaults [:create, :read, :update, :destroy]
+    defaults [:read, :destroy, create: :*, update: :*]
   end
 
   # Attributes are the simple pieces of data that exist on your resource

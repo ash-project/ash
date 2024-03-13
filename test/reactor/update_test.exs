@@ -21,7 +21,7 @@ defmodule Ash.Test.ReactorUpdateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       update :undo_update_post do
         argument :changeset, :struct do
