@@ -105,6 +105,22 @@ Most of the time, when you are using an expression, you will actually be creatin
 ^ref(:key, [:path]) # equivalent to referring to `path.key`. Allows for dynamic references with dynamic (or static) paths.
 ```
 
+## Custom Expressions
+
+Custom expressions allow you to extend Ash's expression language with your own expressions. To see more, see `Ash.CustomExpression`. To add a custom expression, configure it and recompile ash. For example:
+
+```elixir
+config :ash, :custom_expressions, [
+  MyApp.CustomExpression
+]
+```
+
+```
+mix deps.compile ash --force
+```
+
+These expressions will be available across all usages of Ash expressions within your application.
+
 ## Use cases for expressions
 
 ### Filters
