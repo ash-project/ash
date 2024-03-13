@@ -11,7 +11,7 @@ defmodule Ash.Test.Policy.SelectingTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     ets do
@@ -53,7 +53,7 @@ defmodule Ash.Test.Policy.SelectingTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     ets do

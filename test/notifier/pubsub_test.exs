@@ -38,7 +38,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
       update :update_pkey
     end
 
@@ -74,7 +74,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
 
     actions do
       default_accept :*
-      defaults [:create]
+      defaults create: :*
     end
 
     attributes do

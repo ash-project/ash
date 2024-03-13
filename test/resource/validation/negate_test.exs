@@ -11,7 +11,7 @@ defmodule Ash.Test.Resource.Validation.NegateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :update, :destroy, :read]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do

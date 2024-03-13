@@ -30,7 +30,7 @@ defmodule Ash.Test.Actions.ReadTest do
 
     actions do
       default_accept :*
-      defaults([:read, :create, :update, :destroy])
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -60,7 +60,7 @@ defmodule Ash.Test.Actions.ReadTest do
 
     actions do
       default_accept :*
-      defaults([:read, :create, :update, :destroy])
+      defaults [:read, :destroy, create: :*, update: :*]
 
       read :not_paginatable
 

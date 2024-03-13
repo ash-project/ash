@@ -16,7 +16,7 @@ defmodule Ash.Test.CalculationTest do
 
     actions do
       default_accept :*
-      defaults([:create, :read, :update, :destroy])
+      defaults([:read, :destroy, create: :*, update: :*])
     end
 
     relationships do
@@ -276,7 +276,7 @@ defmodule Ash.Test.CalculationTest do
 
     actions do
       default_accept :*
-      defaults([:create, :read, :update, :destroy])
+      defaults([:read, :destroy, create: :*, update: :*])
 
       read :by_user_name do
         argument :user_name, :string, allow_nil?: false
@@ -374,7 +374,7 @@ defmodule Ash.Test.CalculationTest do
 
     actions do
       default_accept :*
-      defaults([:create, :read, :update, :destroy])
+      defaults([:read, :destroy, create: :*, update: :*])
 
       read :paginated do
         pagination do
@@ -664,7 +664,7 @@ defmodule Ash.Test.CalculationTest do
 
     actions do
       default_accept :*
-      defaults([:create, :read, :update, :destroy])
+      defaults([:read, :destroy, create: :*, update: :*])
     end
 
     ets do

@@ -26,6 +26,9 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
         :default_accept
       ) || default_default_accept
 
+    dsl_state =
+      Transformer.set_option(dsl_state, [:actions], :default_accept, default_accept)
+
     dsl_state
     |> Transformer.get_entities([:actions])
     |> Enum.reject(&(&1.type == :action))

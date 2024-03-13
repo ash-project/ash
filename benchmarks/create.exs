@@ -6,7 +6,7 @@ defmodule Resource do
   end
 
   actions do
-    defaults [:create, :update, :destroy, :read]
+    defaults [:read, :destroy, create: :*, update: :*]
   end
 end
 

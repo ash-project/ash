@@ -106,7 +106,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
 
         actions do
           default_accept :*
-          defaults [:read, :update, :destroy, :create]
+          defaults [:read, :destroy, update: :*, create: :*]
         end
       end
 
@@ -146,7 +146,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
 
         actions do
           default_accept :*
-          defaults [:read, :update, :destroy, :create]
+          defaults [:read, :destroy, update: :*, create: :*]
         end
 
         relationships do
@@ -200,7 +200,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
 
         actions do
           default_accept :*
-          defaults [:read, :update, :destroy, :create]
+          defaults [:read, :destroy, update: :*, create: :*]
         end
       end
 
@@ -244,7 +244,7 @@ defmodule Ash.Test.Resource.CalculationsTest do
 
         actions do
           default_accept :*
-          defaults [:read, :update, :destroy, :create]
+          defaults [:read, :destroy, update: :*, create: :*]
         end
 
         relationships do

@@ -36,7 +36,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       read :get_path_search do
         argument :input, :map
@@ -69,7 +69,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -103,7 +103,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     relationships do
@@ -129,7 +129,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -202,7 +202,7 @@ defmodule Ash.Test.Filter.FilterTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update]
+      defaults [:read, create: :*, update: :*]
 
       destroy :destroy do
         primary? true

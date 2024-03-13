@@ -23,7 +23,7 @@ The intent behind Ash is _not_ to have you building simple CRUD style applicatio
 
 ```elixir
 actions do
-  defaults [:create, :read, :update, :destroy]
+  defaults [:read, :destroy, create: :*, update: :*]
 end
 ```
 

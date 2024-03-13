@@ -11,7 +11,7 @@ defmodule Ash.Test.Support.PolicySimple.Car do
 
   actions do
     default_accept :*
-    defaults [:read, :update, :destroy]
+    defaults [:read, :destroy, update: :*]
 
     create :create do
       primary? true

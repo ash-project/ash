@@ -12,7 +12,7 @@ defmodule Ash.Test.Flow.Org do
 
   actions do
     default_accept :*
-    defaults [:create, :read, :update, :destroy]
+    defaults [:read, :destroy, create: :*, update: :*]
 
     read :by_name do
       argument :name, :string, allow_nil?: false

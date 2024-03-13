@@ -26,7 +26,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
     actions do
       default_accept :*
-      defaults [:read, :create, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
   end
 
@@ -40,7 +40,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       update :set_private_attribute_to_nil do
         accept []
@@ -104,7 +104,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       update :only_allow_name do
         accept([:name])
@@ -175,7 +175,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
     actions do
       default_accept :*
-      defaults [:read, :create, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     relationships do
@@ -201,7 +201,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
     actions do
       default_accept :*
-      defaults [:read, :create, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -242,7 +242,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :update, :destroy]
+      defaults [:destroy, create: :*, update: :*]
 
       read :read do
         primary? true

@@ -15,7 +15,7 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read]
+      defaults [:read, create: :*]
 
       create :create_with_account do
         argument :account, :map
@@ -41,7 +41,7 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read]
+      defaults [:read, create: :*]
     end
   end
 

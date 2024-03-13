@@ -17,7 +17,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read]
+      defaults [:read, create: :*]
     end
 
     attributes do
@@ -85,7 +85,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read]
+      defaults [:read, create: :*]
 
       read :authorized_actor
       read :authorized_context
@@ -155,7 +155,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :destroy]
+      defaults [:read, :destroy, create: :*]
     end
 
     relationships do
@@ -174,7 +174,7 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read]
+      defaults [:read, create: :*]
     end
 
     attributes do
