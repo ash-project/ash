@@ -1,4 +1,5 @@
 defmodule Ash.Test.Expressions.JaroDistance do
+  @moduledoc false
   use Ash.CustomExpression,
     name: :jaro_distance,
     arguments: [
