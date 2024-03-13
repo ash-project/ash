@@ -13,7 +13,7 @@ defmodule Ash.CustomExpression do
       ]
 
     def expression(AshPostgres.DataLayer, [left, right]) do
-      expr(fragment("levenshtein(?, ?)", left, right))
+      {:ok, expr(fragment("levenshtein(?, ?)", left, right))}
     end
 
     # It is good practice to always define an expression for `Ash.DataLayer.Simple`,
@@ -21,16 +21,17 @@ defmodule Ash.CustomExpression do
     # This allows us to completely avoid communicating with the database in some cases.
 
     def expression(data_layer, [left, right]) when data_layer in [
-      AshPostgres.DataLayer.Ets,
-      AshPostgres.DataLayer.Simple
+      Ash.DataLayer.Ets,
+      Ash.DataLayer.Simple
     ] do
-      expr(fragment(&levenshtein/2, left, right))
+      {:ok, expr(fragment(&__MODULE__.levenshtein/2, left, right))}
     end
 
     # always define this fallback clause as well
     def expression(_data_layer, _args), do: :unknown
 
-    defp levenshtein(left, right) do
+    @doc "Computes the levenshtein distance of two strings"
+    def levenshtein(left, right) do
       # ......
     end
   end
@@ -67,6 +68,8 @@ defmodule Ash.CustomExpression do
     quote bind_quoted: [opts: opts] do
       @behaviour Ash.CustomExpression
 
+      import Ash.Expr
+
       if !opts[:name] do
         raise ArgumentError, "You must provide a name for the custom expression"
       end
@@ -75,9 +78,9 @@ defmodule Ash.CustomExpression do
         raise ArgumentError, "You must provide arguments for the custom expression"
       end
 
-      def predicate?, do: !!opts[:predicate?]
-      def arguments, do: opts[:arguments]
-      def name, do: opts[:name]
+      def predicate?, do: unquote(!!opts[:predicate?])
+      def arguments, do: unquote(opts[:arguments])
+      def name, do: unquote(opts[:name])
     end
   end
 end

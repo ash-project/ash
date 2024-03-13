@@ -22,6 +22,8 @@ if Mix.env() == :test do
     Ash.Test.Support.PolicySimple.Domain
   ]
 
+  config :ash, :custom_expressions, [Ash.Test.Expressions.JaroDistance]
+
   config :ash, :sat_testing, true
 
   config :ash, :validate_domain_resource_inclusion?, false
