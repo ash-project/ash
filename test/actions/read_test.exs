@@ -62,6 +62,8 @@ defmodule Ash.Test.Actions.ReadTest do
       default_accept :*
       defaults([:read, :create, :update, :destroy])
 
+      read :not_paginatable
+
       read :read_with_after_action do
         prepare(PostPreparation)
       end
@@ -320,7 +322,7 @@ defmodule Ash.Test.Actions.ReadTest do
     test "raises an error when page is sent but pagination is not enabled on a resource" do
       res =
         assert_raise Ash.Error.Invalid, fn ->
-          Ash.read!(Post, page: [limit: 10])
+          Ash.read!(Post, action: :not_paginatable, page: [limit: 10])
         end
 
       assert %Ash.Error.Invalid.ActionRequiresPagination{resource: Post, action: _} =

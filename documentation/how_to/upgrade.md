@@ -185,6 +185,37 @@ end
 
 For those who want to be more explicit, or after your upgrade has complete if you wish to refactor existing resources and actions, the general best path forward is to copy the `default_accept` into each action (or put it in a module attribute and reference it) as the `accept` option. This way when a new action is added, it does not "inherit" some list of accepted attributes.
 
+### Default read actions are now paginatable
+
+In 2.0, if you have `:read` in your default actions list, it would generate an action like this:
+
+```elixir
+read :read do
+  primary? true
+end
+```
+
+Now, it generates an action like this:
+
+```elixir
+read :read do
+  primary? true
+  pagination [keyset?: true, offset?: true, countable: true, required?: false]
+end
+```
+
+### What you will need to change
+
+For most cases, this won't affect you. However, if you are using `AshGraphql`, and have any queries connected to a default `:read` action, it will default to making those queries paginatable with keyset pagination. To keep the old behavior, you will need to add `paginate_with nil` to the query, for example:
+
+```elixir
+graphql do
+  queries do
+    list :list_things, :read, paginate_with: nil
+  end
+end
+```
+
 ### Before action and before transaction hooks order has been reversed
 
 In Ash 2.0, `before_action` and `before_transaction` hooks that were added to a changeset were prepended to the list of hooks by default. These hooks were then run in order. What this meant is that, given an action like the following:
