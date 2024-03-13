@@ -49,24 +49,22 @@ defmodule Ash.Type.Struct do
   @impl Ash.Type
   def merge_load(left, right, constraints, context) do
     instance_of = constraints[:instance_of]
+    left = Ash.Query.load(instance_of, left)
     right = Ash.Query.load(instance_of, right)
 
-    instance_of
-    |> Ash.Query.new()
-    |> Ash.Query.load(left)
-    |> case do
-      %{valid?: true} = query ->
-        {:ok, Ash.Query.merge_query_load(query, right, context)}
-
-      query ->
-        {:error, Ash.Error.to_ash_error(query.errors)}
+    if left.valid? do
+      {:ok, Ash.Query.merge_query_load(left, right, context)}
+    else
+      {:error, Ash.Error.to_ash_error(left.errors)}
     end
   end
 
   @impl Ash.Type
   def get_rewrites(merged_load, calculation, path, constraints) do
-    if constraints[:instance_of] && Ash.Resource.Info.resource?(constraints[:instance_of]) do
-      merged_load = Ash.Query.load(__MODULE__, merged_load)
+    instance_of = constraints[:instance_of]
+
+    if instance_of && Ash.Resource.Info.resource?(instance_of) do
+      merged_load = Ash.Query.load(instance_of, merged_load)
       Ash.Actions.Read.Calculations.get_all_rewrites(merged_load, calculation, path)
     else
       []
@@ -80,7 +78,9 @@ defmodule Ash.Type.Struct do
 
   @impl Ash.Type
   def can_load?(constraints) do
-    constraints[:instance_of] && Ash.Resource.Info.resource?(constraints[:instance_of])
+    instance_of = constraints[:instance_of]
+
+    instance_of && Ash.Resource.Info.resource?(instance_of)
   end
 
   @impl true
