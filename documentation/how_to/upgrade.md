@@ -101,6 +101,17 @@ change after_action(fn changeset, result, context -> ... end)
 
 Previously, in expressions, you could say `expr(ref(^some_atom))`. This is a tool for building dynamic references, but it was an exception to the standard pattern of prefixing "external" things in an expression, i.e `arg` with `^`. Now, you must do the same with `ref/1` and `ref/2`. You will need to search for `ref(` in your application, and ensure that if it is inside of an expression you have prefixed it with `^`. The original example becomes: `expr(^ref(some_atom))`.
 
+#### Exception changes
+
+When sorting or filtering, if a field is not found, an `Ash.Query.Error.NoSuchField` is used, where it would have previously been an `Ash.Query.Error.NoSuchAttribute`. This was wrong as sometimes the field reference was not an attribute. Places that would previously return `Ash.Query.Error.NoSuchAttributeOrRelationship` now return `Ash.Query.Error.NoSuchField` as well.
+
+Additionally, the following exceptions have had keys remapped:
+
+`NoSuchAttribute`: `name` -> `attribute`
+`NoSuchRelationship`: `name` -> `relationship`
+`NoSuchFunction`: `name` -> `function`
+`NoSuchOperator`: `name` -> `operator`
+
 ### Ash.Api is now Ash.Domain
 
 The previous name was often confusing as this is an overloaded term for many. To that end, `Ash.Api` has been renamed to `Ash.Domain`, which better fits our usage and concepts.

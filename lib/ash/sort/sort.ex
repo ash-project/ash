@@ -22,7 +22,7 @@ defmodule Ash.Sort do
           list(sort_item)
           | sort_item
 
-  alias Ash.Error.Query.{InvalidSortOrder, NoSuchAttribute}
+  alias Ash.Error.Query.{InvalidSortOrder, NoSuchField}
 
   @doc """
   Builds an expression to be used in a sort statement.
@@ -174,7 +174,7 @@ defmodule Ash.Sort do
              :desc_nils_last
            ] do
     case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
+      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
       field -> {:ok, {field, direction}}
     end
   end
@@ -185,35 +185,35 @@ defmodule Ash.Sort do
 
   def parse_sort(resource, "++" <> field, handler) do
     case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
+      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
       field -> {:ok, add_order(field, :asc_nils_first)}
     end
   end
 
   def parse_sort(resource, "--" <> field, handler) do
     case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
+      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
       field -> {:ok, add_order(field, :desc_nils_last)}
     end
   end
 
   def parse_sort(resource, "+" <> field, handler) do
     case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
+      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
       field -> {:ok, add_order(field, :asc)}
     end
   end
 
   def parse_sort(resource, "-" <> field, handler) do
     case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
+      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
       field -> {:ok, add_order(field, :desc)}
     end
   end
 
   def parse_sort(resource, field, handler) do
     case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
+      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
       field -> {:ok, add_order(field, :asc)}
     end
   end
