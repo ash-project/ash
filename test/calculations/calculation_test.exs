@@ -135,6 +135,20 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule BestFriendsFirstNameThatFails do
+    use Ash.Resource.Calculation
+
+    def load(_query, _opts, _) do
+      [:best_friend]
+    end
+
+    def calculate(records, _opts, _) do
+      Enum.map(records, fn record ->
+        record.best_friend && record.best_friend.first_name
+      end)
+    end
+  end
+
   defmodule NamesOfBestFriendsOfMe do
     use Ash.Resource.Calculation
 
@@ -472,6 +486,12 @@ defmodule Ash.Test.CalculationTest do
       calculate :best_friends_first_name_plus_stuff,
                 :string,
                 BestFriendsFirstNamePlusStuff do
+        public?(true)
+      end
+
+      calculate :best_friends_first_name_that_fails,
+                :string,
+                BestFriendsFirstNameThatFails do
         public?(true)
       end
 
@@ -849,6 +869,16 @@ defmodule Ash.Test.CalculationTest do
       |> Enum.sort()
 
     assert best_friends_names == [nil, "zach daniel"]
+  end
+
+  test "calculations must specify required fields by default" do
+    assert_raise RuntimeError,
+                 ~r/Invalid return from calculation, expected a value, got \`%Ash.NotLoaded{}\`/,
+                 fn ->
+                   User
+                   |> Ash.Query.load([:best_friends_first_name_that_fails])
+                   |> Ash.read!()
+                 end
   end
 
   test "nested aggregates are loaded if necessary" do
