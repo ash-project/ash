@@ -185,6 +185,33 @@ end
 
 For those who want to be more explicit, or after your upgrade has complete if you wish to refactor existing resources and actions, the general best path forward is to copy the `default_accept` into each action (or put it in a module attribute and reference it) as the `accept` option. This way when a new action is added, it does not "inherit" some list of accepted attributes.
 
+### Before action and before transaction hooks order has been reversed
+
+In Ash 2.0, `before_action` and `before_transaction` hooks that were added to a changeset were prepended to the list of hooks by default. These hooks were then run in order. What this meant is that, given an action like the following:
+
+```elixir
+create :foo do
+  change before_action(fn changeset, _context ->
+    IO.inspect("first")
+    changeset
+  end)
+
+  change before_action(fn changeset, _context ->
+    IO.inspect("second")
+    changeset
+  end)
+end
+```
+
+You would see `second` printed _before_ `first`.
+
+#### What you'll need to change
+
+In many cases, this won't matter to you. However, if you have a situation where the order of your before action/transaction hooks matters, you can do one of two things:
+
+1. reorder the changes that add those before action/transaction hooks
+2. use the `:prepend` option to `Ash.Changeset.before_action/2` and `Ash.Changeset.before_transaction/2` to explicitly prepend the hook to the list of hooks
+
 ### Context in changes, preparations, validations, calculations are now structs
 
 To help make it clear what keys are available in the context provided to callbacks on these modules, they have been adjusted to provide a _struct_ instead of a `map`. This helps avoid potential ambiguity, and
