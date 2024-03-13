@@ -23,4 +23,65 @@ defmodule Ash.ProcessHelpers do
       Ash.Tracer.set_span_context(tracer, tracer_context)
     end)
   end
+
+  @doc """
+  Creates a task that will properly transfer the ash context to the new process
+  """
+  def async(func, opts) do
+    ash_context = Ash.ProcessHelpers.get_context_for_transfer(opts)
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+
+    Task.async(fn ->
+      try do
+        Ash.ProcessHelpers.transfer_context(ash_context, opts)
+
+        func.()
+      rescue
+        e ->
+          e =
+            if Ash.Error.ash_error?(e) do
+              if e.stacktrace && e.stacktrace.stacktrace do
+                update_in(e.stacktrace.stacktrace, &(&1 ++ Enum.drop(stacktrace, 1)))
+              else
+                e
+              end
+            else
+              e
+            end
+
+          {:__exception__, e, __STACKTRACE__ ++ Enum.drop(stacktrace, 1)}
+      end
+    end)
+  end
+
+  @doc """
+  Creates a task that will properly transfer the ash context to the new process, and timeout if it takes longer than the given timeout
+  """
+  def task_with_timeout(fun, resource, timeout, name, tracer) do
+    if !Application.get_env(:ash, :disable_async?) &&
+         (is_nil(resource) ||
+            Ash.DataLayer.data_layer_can?(resource, :async_engine)) && timeout &&
+         timeout != :infinity && !Ash.DataLayer.in_transaction?(resource) do
+      task =
+        async(
+          fun,
+          tracer: tracer
+        )
+
+      try do
+        case Task.await(task, timeout) do
+          {:__exception__, e, stacktrace} ->
+            reraise e, stacktrace
+
+          other ->
+            other
+        end
+      catch
+        :exit, {:timeout, {Task, :await, [^task, timeout]}} ->
+          {:error, Ash.Error.Invalid.Timeout.exception(timeout: timeout, name: name)}
+      end
+    else
+      fun.()
+    end
+  end
 end

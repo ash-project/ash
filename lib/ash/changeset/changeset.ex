@@ -2622,7 +2622,7 @@ defmodule Ash.Changeset do
       end)
     else
       if changeset.timeout do
-        Ash.Engine.task_with_timeout(
+        Ash.ProcessHelpers.task_with_timeout(
           fn ->
             transaction_hooks(changeset, fn changeset ->
               run_around_actions(changeset, func)

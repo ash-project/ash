@@ -10,7 +10,7 @@ Ash emits the following telemetry events, suffixed with `:start` and `:stop`. St
 
 Note the mention of `:start` and `:stop` suffixes. The event below `[:ash, (domain_short_name), :create]`, is actually referring to two events, `[:ash, (domain_short_name), :create, :start]` and `[:ash, (domain_short_name), :create, :stop]`.
 
-_Replace `(domain_short_name)` with your domain short name, from `d:Ash.Domain.Info.short_name`.
+\_Replace `(domain_short_name)` with your domain short name, from `d:Ash.Domain.Info.short_name`.
 
 ### Events
 
@@ -53,7 +53,6 @@ For customizing the names created for each span, see:
 
 - `d:Ash.Domain.Dsl.execution|trace_name`
 - `d:Ash.Resource.Dsl.resource|trace_name`
-- `d:Ash.Flow.Dsl.flow|trace_name`
 
 ### Trace types
 

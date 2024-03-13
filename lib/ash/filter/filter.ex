@@ -1249,7 +1249,7 @@ defmodule Ash.Filter do
         related = Ash.Resource.Info.related(resource, shortest_path)
 
         # We should do these asynchronously in parallel
-        # We used to, but this was changed to happen in place as part
+        # We used to, but this was changed to happen synchronously as part
         # of an architecture simplification (removal of Ash.Engine)
         {relationship, context, _action} =
           last_relationship_context_and_action(resource, at_path ++ path)
