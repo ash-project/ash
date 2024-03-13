@@ -199,9 +199,6 @@ defmodule Ash.Expr do
           relationship_path: fill_template(path, actor, args, context)
         }
 
-      %Ash.Query.Call{name: :sigil_i, args: [%Ash.Query.Call{name: :<<>>, args: [str]}, mods]} ->
-        Ash.CiString.sigil_i(str, mods)
-
       other ->
         other
     end)
@@ -258,6 +255,13 @@ defmodule Ash.Expr do
 
   def template_references?(%Ash.Query.Parent{expr: expr}, pred) do
     template_references?(expr, pred)
+  end
+
+  def template_references?(
+        %Ash.CustomExpression{expression: expression, simple_expression: simple_expression},
+        pred
+      ) do
+    template_references?(expression, pred) || template_references?(simple_expression, pred)
   end
 
   def template_references?(%{left: left, right: right}, pred) do
@@ -537,6 +541,42 @@ defmodule Ash.Expr do
     """
   end
 
+  def do_expr(
+        {:<<>>, meta,
+         [
+           {:"::", _meta1,
+            [{{:., _meta2, [Kernel, :to_string]}, _meta3, [left]}, {:binary, _, _}]}
+         ]},
+        escape?
+      ) do
+    do_expr({:type, meta, [left, :string]}, escape?)
+  end
+
+  def do_expr(
+        {:<<>>, meta, [second_to_last, last]},
+        escape?
+      ) do
+    do_expr({:<>, meta, [second_to_last, last]}, escape?)
+  end
+
+  def do_expr({:<<>>, _meta, [single]}, _escape?) do
+    single
+  end
+
+  def do_expr(
+        {:<<>>, meta, [next | rest]},
+        escape?
+      ) do
+    do_expr({:<>, meta, [next, do_expr({:<<>>, meta, rest}, escape?)]}, escape?)
+  end
+
+  def do_expr(
+        {:"::", meta, [{{:., _meta1, [Kernel, :to_string]}, _meta2, [left]}, {:binary, _, _}]},
+        escape?
+      ) do
+    do_expr({:type, meta, [left, :string]}, escape?)
+  end
+
   def do_expr({:., _, [left, right]} = ref, escape?) when is_atom(right) do
     case do_ref(left, right) do
       %Ash.Query.Ref{} = ref ->
@@ -601,9 +641,18 @@ defmodule Ash.Expr do
     soft_escape(%Ash.Query.Call{name: :lazy, args: args, operator?: false}, escape?)
   end
 
-  def do_expr({:fragment, _, [first | _]}, _escape?) when not is_binary(first) do
-    raise "to prevent SQL injection attacks, fragment(...) does not allow strings " <>
-            "to be interpolated as the first argument via the `^` operator, got: `#{inspect(first)}`"
+  def do_expr({:sigil_i, _, [{:<<>>, _, [str]}, mods]}, escape?) do
+    soft_escape(Ash.CiString.sigil_i(str, mods), escape?)
+  end
+
+  def do_expr({:fragment, _, [first | _]}, _escape?)
+      when not (is_binary(first) or is_function(first, 1)) do
+    raise """
+    To prevent SQL injection attacks, fragment(...) allows only two specific kinds of values
+
+    1. A string literal *not* interpolated. This is for use with data layers like `AshPostgres.
+    2. A one argument function or an MFA *not* interpolated. This is for use with data layers like `Ash.DataLayer.Simple` and `Ash.DataLayer.Ets`.
+    """
   end
 
   def do_expr({op, _, args}, escape?) when is_atom(op) and is_list(args) do

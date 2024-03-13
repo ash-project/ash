@@ -679,6 +679,12 @@ defmodule Ash.Policy.Authorizer do
 
         {%{this | expr: expr}, %{acc | stack: original_stack}}
 
+      %Ash.CustomExpression{expression: expression, simple_expression: simple_expression} =
+          custom_expression ->
+        {expression, acc} = replace_refs(expression, acc)
+        {simple_expression, acc} = replace_refs(simple_expression, acc)
+        {%{custom_expression | expression: expression, simple_expression: simple_expression}, acc}
+
       %Ash.Query.Exists{expr: expr, at_path: at_path, path: path} = exists ->
         full_path = at_path ++ path
         [{resource, current_path, _} | _] = acc.stack
