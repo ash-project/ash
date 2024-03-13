@@ -805,7 +805,7 @@ defmodule Ash.Query do
       Enum.reduce(non_existent, query, fn field, query ->
         Ash.Query.add_error(
           query,
-          Ash.Error.Query.NoSuchAttribute.exception(resource: query.resource, name: field)
+          Ash.Error.Query.NoSuchAttribute.exception(resource: query.resource, attribute: field)
         )
       end)
 

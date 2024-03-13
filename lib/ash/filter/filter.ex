@@ -6,7 +6,7 @@ defmodule Ash.Filter do
 
   alias Ash.Error.Query.{
     InvalidFilterValue,
-    NoSuchAttributeOrRelationship,
+    NoSuchField,
     NoSuchFilterPredicate,
     NoSuchFunction,
     NoSuchOperator
@@ -351,8 +351,8 @@ defmodule Ash.Filter do
         %{attribute: attribute, relationship_path: relationship_path}
         when is_atom(attribute) or is_binary(attribute) ->
           [
-            NoSuchAttributeOrRelationship.exception(
-              attribute_or_relationship: attribute,
+            NoSuchField.exception(
+              field: attribute,
               resource: Ash.Resource.Info.related(resource, relationship_path)
             )
           ]
@@ -2534,8 +2534,8 @@ defmodule Ash.Filter do
     case related(context, ref.relationship_path) do
       nil ->
         {:error,
-         NoSuchAttributeOrRelationship.exception(
-           attribute_or_relationship: List.first(ref.relationship_path),
+         NoSuchField.exception(
+           field: List.first(ref.relationship_path),
            resource: context.resource
          )}
 
@@ -2807,8 +2807,8 @@ defmodule Ash.Filter do
 
       true ->
         {:error,
-         NoSuchAttributeOrRelationship.exception(
-           attribute_or_relationship: field,
+         NoSuchField.exception(
+           field: field,
            resource: context.resource
          )}
     end
@@ -2996,7 +2996,7 @@ defmodule Ash.Filter do
       end
     else
       {:op, nil} ->
-        {:error, NoSuchOperator.exception(name: name)}
+        {:error, NoSuchOperator.exception(operator: name)}
 
       other ->
         other
@@ -3205,7 +3205,7 @@ defmodule Ash.Filter do
           end
         else
           {:func, nil} ->
-            {:error, NoSuchFunction.exception(name: name, resource: context.resource)}
+            {:error, NoSuchFunction.exception(function: name, resource: context.resource)}
 
           other ->
             other
