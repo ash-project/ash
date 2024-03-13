@@ -4409,28 +4409,28 @@ defmodule Ash.Changeset do
   @doc """
   Adds a before_action hook to the changeset.
 
-  Provide the option `append?: true` to place the hook after all
-  other hooks instead of before.
+  Provide the option `prepend?: true` to place the hook before all
+  other hooks instead of after.
   """
   @spec before_action(
-          t(),
-          before_action_fun(),
-          Keyword.t()
+          changeset :: t(),
+          fun :: before_action_fun(),
+          opts :: Keyword.t()
         ) ::
           t()
   def before_action(changeset, func, opts \\ []) do
-    if opts[:append?] do
-      %{changeset | before_action: changeset.before_action ++ [func]}
-    else
+    if opts[:prepend?] do
       %{changeset | before_action: [func | changeset.before_action]}
+    else
+      %{changeset | before_action: changeset.before_action ++ [func]}
     end
   end
 
   @doc """
   Adds a before_transaction hook to the changeset.
 
-  Provide the option `append?: true` to place the hook after all
-  other hooks instead of before.
+  Provide the option `prepend?: true` to place the hook before all
+  other hooks instead of after.
   """
   @spec before_transaction(
           t(),
@@ -4438,10 +4438,10 @@ defmodule Ash.Changeset do
           Keyword.t()
         ) :: t()
   def before_transaction(changeset, func, opts \\ []) do
-    if opts[:append?] do
-      %{changeset | before_transaction: changeset.before_transaction ++ [func]}
-    else
+    if opts[:prepend?] do
       %{changeset | before_transaction: [func | changeset.before_transaction]}
+    else
+      %{changeset | before_transaction: changeset.before_transaction ++ [func]}
     end
   end
 
