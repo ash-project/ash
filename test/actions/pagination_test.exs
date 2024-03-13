@@ -509,10 +509,10 @@ defmodule Ash.Actions.PaginationTest do
 
     test "can get the full count when asking for records after a specific keyset use the query after applying `before_action` hooks" do
       %{results: [%{__metadata__: %{keyset: keyset}}], count: 3} =
-        Api.read!(User, action: :keyset_before_action, page: [count: true, limit: 1])
+        Ash.read!(User, action: :keyset_before_action, page: [count: true, limit: 1])
 
       assert %{count: 3} =
-               Api.read!(User,
+               Ash.read!(User,
                  action: :keyset_before_action,
                  page: [count: true, limit: 1, after: keyset]
                )
