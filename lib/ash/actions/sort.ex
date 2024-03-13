@@ -3,7 +3,7 @@ defmodule Ash.Actions.Sort do
   alias Ash.Error.Query.{
     AggregatesNotSupported,
     InvalidSortOrder,
-    NoSuchAttribute,
+    NoSuchField,
     UnsortableAttribute
   }
 
@@ -110,7 +110,7 @@ defmodule Ash.Actions.Sort do
             end
 
           !attribute ->
-            {sorts, [NoSuchAttribute.exception(name: field, resource: resource) | errors]}
+            {sorts, [NoSuchField.exception(attribute: field, resource: resource) | errors]}
 
           Ash.Type.embedded_type?(attribute.type) ->
             {sorts, ["Cannot sort on embedded types" | errors]}

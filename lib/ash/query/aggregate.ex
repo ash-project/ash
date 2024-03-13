@@ -299,7 +299,7 @@ defmodule Ash.Query.Aggregate do
   defp validate_path(resource, [relationship | rest]) do
     case Ash.Resource.Info.relationship(resource, relationship) do
       nil ->
-        {:error, NoSuchRelationship.exception(resource: resource, name: relationship)}
+        {:error, NoSuchRelationship.exception(resource: resource, relationship: relationship)}
 
       %{type: :many_to_many, through: through, destination: destination} ->
         cond do
