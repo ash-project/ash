@@ -6,13 +6,13 @@ This section contains each breaking change, and the steps required to address it
 
 ### DSL Changes
 
-* `code_interface.define_for` is now `code_interface.domain`. Additionally, it is set automatically if the `domain` option is specified on `use Ash.Resource`.
+- `code_interface.define_for` is now `code_interface.domain`. Additionally, it is set automatically if the `domain` option is specified on `use Ash.Resource`.
 
-* `actions.create.reject`, `actions.update.reject` and `actions.destroy.reject` have been removed. Blacklisting inputs makes it too easy to make mistakes. Instead, specify an explicit `accept` list.
+- `actions.create.reject`, `actions.update.reject` and `actions.destroy.reject` have been removed. Blacklisting inputs makes it too easy to make mistakes. Instead, specify an explicit `accept` list.
 
-* `relationships.belongs_to.attribute_writable?` no longer makes the underlying attribute both public and writable. It defaults to the value of `writable?` on the relationship (which itself defaults to `true`), and only controls the generated attributes `writable? true` property. So now, by default, it will be `true`, which is safe when coupled with changes to the `default_accept`, discussed below. Generally, this means you should be safe to remove any occurrences of `attribute_writable? true`.
+- `relationships.belongs_to.attribute_writable?` no longer makes the underlying attribute both public and writable. It defaults to the value of `writable?` on the relationship (which itself defaults to `true`), and only controls the generated attributes `writable? true` property. So now, by default, it will be `true`, which is safe when coupled with changes to the `default_accept`, discussed below. Generally, this means you should be safe to remove any occurrences of `attribute_writable? true`.
 
-* `relationships.belongs_to.attribute_public?` has been added, which controls the underlying attribute's `public?` value. This, similar to `attribute_writable?` defaults to the `public?` attribute of the relationship. 
+- `relationships.belongs_to.attribute_public?` has been added, which controls the underlying attribute's `public?` value. This, similar to `attribute_writable?` defaults to the `public?` attribute of the relationship.
 
 ### `Ash.Registry` has been removed
 
@@ -49,7 +49,7 @@ Tools for templating expressions were previously in `Ash.Filter.TemplateHelpers`
 
 #### Ash.CiString
 
-* `Ash.CiString.new(nil)` now returns `nil` instead of `%Ash.CiString{value: nil}`
+- `Ash.CiString.new(nil)` now returns `nil` instead of `%Ash.CiString{value: nil}`
 
 #### Ash.Resource.Validation
 
@@ -57,7 +57,7 @@ Tools for templating expressions were previously in `Ash.Filter.TemplateHelpers`
 
 #### Ash.Query.Calculation
 
-The function signature of `Ash.Query.Calculation.new` has been changed.  We use an options list over optional arguments, and now require constraints to be provided. You will need to adjust your calls to this function.
+The function signature of `Ash.Query.Calculation.new` has been changed. We use an options list over optional arguments, and now require constraints to be provided. You will need to adjust your calls to this function.
 
 #### Ash.Calculation
 
@@ -69,7 +69,7 @@ Ash.Query.to_query has been removed. Use `Ash.Query.new` instead.
 
 #### Ash.Changeset
 
-Ash.Changeset.new/2 has been removed. `Ash.Changeset.new/1` is still available for creating a new changeset, but attributes and arguments should, with few exceptions, be passed to the relevant `Ash.Changeset.for_<action_type>` functions, *not* to Ash.Changeset.new/2. Removing the second argument helps clarify the purpose of `Ash.Changeset.new/1`.
+Ash.Changeset.new/2 has been removed. `Ash.Changeset.new/1` is still available for creating a new changeset, but attributes and arguments should, with few exceptions, be passed to the relevant `Ash.Changeset.for_<action_type>` functions, _not_ to Ash.Changeset.new/2. Removing the second argument helps clarify the purpose of `Ash.Changeset.new/1`.
 
 `Ash.Changeset.manage_relationship/4` no longer uses `:all` to signal that all changes will be sent to the join relationship. Instead, use `:*`.
 
@@ -97,8 +97,7 @@ Previously, in expressions, you could say `expr(ref(^some_atom))`. This is a too
 
 ### Ash.Api is now Ash.Domain
 
-The previous name was often confusing as this is an overloaded term for many. To that end, `Ash.Api` has been renamed to `Ash.Domain`, which better fits our usage and concepts. 
-
+The previous name was often confusing as this is an overloaded term for many. To that end, `Ash.Api` has been renamed to `Ash.Domain`, which better fits our usage and concepts.
 
 #### What you'll need to change
 
@@ -127,7 +126,7 @@ end
 
 ##### Single Domain resources
 
-While it is possible for resources to be used with multiple domains, it almost never happens in practice. Any resources that are only used from a single domain only (*not* including embedded resources) should be modified to have a `domain` option specified in their call to `use Ash.Resource`. For example:
+While it is possible for resources to be used with multiple domains, it almost never happens in practice. Any resources that are only used from a single domain only (_not_ including embedded resources) should be modified to have a `domain` option specified in their call to `use Ash.Resource`. For example:
 
 ```elixir
 use Ash.Resource,
@@ -188,7 +187,7 @@ For those who want to be more explicit, or after your upgrade has complete if yo
 
 ### Context in changes, preparations, validations, calculations are now structs
 
-To help make it clear what keys are available in the context provided to callbacks on these modules, they have been adjusted to provide a *struct* instead of a `map`. This helps avoid potential ambiguity, and
+To help make it clear what keys are available in the context provided to callbacks on these modules, they have been adjusted to provide a _struct_ instead of a `map`. This helps avoid potential ambiguity, and
 acts as documentation.
 
 #### What you'll need to change
@@ -197,15 +196,15 @@ If you are using something like `Keyword.new(context)` to generate options to pa
 
 ### Calculation arguments are now in `context.arguments`
 
-Per the above change, we have specified the values available in the context of a calculation, with `Ash.Resource.Calculation.Context`. In Ash 2.0, context was merged with arguments, which was problematic in various ways. Now, arguments are in `context.arguments`. 
+Per the above change, we have specified the values available in the context of a calculation, with `Ash.Resource.Calculation.Context`. In Ash 2.0, context was merged with arguments, which was problematic in various ways. Now, arguments are in `context.arguments`.
 
 #### What you'll need to change
 
-You will need to update your module-backed calculations to account for this. 
+You will need to update your module-backed calculations to account for this.
 
 ```elixir
 def calculate(records, _opts, context) do
-  Enum.map(records, fn record -> 
+  Enum.map(records, fn record ->
     record.first_name <> context.delimiter <> record.last_name
   end)
 end
@@ -215,7 +214,7 @@ would need to be adjusted to access arguments in the context:
 
 ```elixir
 def calculate(records, _opts, %{arguments: arguments}) do
-  Enum.map(records, fn record -> 
+  Enum.map(records, fn record ->
     record.first_name <> arguments.delimiter <> record.last_name
   end)
 end
@@ -223,11 +222,11 @@ end
 
 ### `private?: true` -> `public?: true`
 
-There is no longer a `private?` option for attributes, relationships, calculations and aggregates. Instead of attributes defaulting to `private?: false`, they now default to `public?: false`. It was too easy to add an attribute and not realize that you had exposed it over your api. One 
+There is no longer a `private?` option for attributes, relationships, calculations and aggregates. Instead of attributes defaulting to `private?: false`, they now default to `public?: false`. It was too easy to add an attribute and not realize that you had exposed it over your api. One
 
 #### What you'll need to change
 
-If you are using api extensions (i.e `AshGraphql` and `AshJsonApi`), you will need to go to your resources and "invert" the definitions. i.e *remove* `private?: true` and *add* `public?: true` to *every other* attribute.
+If you are using api extensions (i.e `AshGraphql` and `AshJsonApi`), you will need to go to your resources and "invert" the definitions. i.e _remove_ `private?: true` and _add_ `public?: true` to _every other_ attribute.
 
 ### Anonymous calculations now operate on a list, just like module calculations
 
@@ -238,7 +237,7 @@ Previously, anonymous function calculations were special cased to operate on a s
 Update any anonymous function calculations to take and return a list, for example:
 
 ```elixir
-calculate :full_name, :string, fn record, _context -> 
+calculate :full_name, :string, fn record, _context ->
   record.first_name <> " " <> record.last_name
 end
 ```
@@ -246,17 +245,53 @@ end
 would become
 
 ```elixir
-calculate :full_name, :string, fn records, _context -> 
+calculate :full_name, :string, fn records, _context ->
   # note, you can also return `{:ok, list}` or `{:error, error}`
-  Enum.map(records, fn record -> 
+  Enum.map(records, fn record ->
     record.first_name <> " " <> record.last_name
   end)
 end
 ```
 
+### Calculation loads do not select all related fields by default
+
+In 2.0 relationship loads from the `load/3` callback in a calculation will select _all_ fields of that relationship and make them available to the calculation.
+
+For example, the following calculation `load/3` callback expresses a dependency on _all_ fields of the relationship `:relationship`.
+
+```elixir
+def load(_, _, _) do
+  [:relationship]
+end
+```
+
+#### What you'll need to change
+
+##### Refactor
+
+In 3.0, relationship dependencies alone will only make the related primary keys available. You now need to select explicit fields that you want to use in your calculation, for example:
+
+```elixir
+def load(_, _, _) do
+  [relationship: [:field1, :field2]]
+end
+```
+
+#### Keep the old behavior
+
+Each calculation can still opt into the old behavior by adding the callback `strict_loads/0` and returning `true`.
+
+```elixir
+def load(_, _, _) do
+  [:relationship]
+end
+
+def strict_loads, do: true
+```
+
 ### PubSub notifier no longer publishes events for previous values by default
 
-Previously, the Ash notifier would publish a message containing both the old *and* new values for changing attributes. Typically, we use
+Previously, the Ash notifier would publish a message containing both the old _and_ new values for changing attributes. Typically, we use
 things like IDs in notification topics, that do not change, so for most this will not have an impact.
 
 If you wish to send a notification for the old value and the new value, then an action cannot be done atomically. Bulk actions must update each record in turn, and atomic updates can't be leveraged.
@@ -292,7 +327,7 @@ Previously, the default was `:when_requested`. This meant that, unless you said 
 
 ##### Keep old behavior
 
-To avoid making a significant refactor, and to keep your current behavior, you can go to your domain and set the configuration below. Otherwise skip to the refactor steps below. We advise that you take this route to start, but we *highly suggest* that you change your domains to `authorize :by_default` in the future. `authorize :when_requested` will not be deprecated, so there is no time constraint.
+To avoid making a significant refactor, and to keep your current behavior, you can go to your domain and set the configuration below. Otherwise skip to the refactor steps below. We advise that you take this route to start, but we _highly suggest_ that you change your domains to `authorize :by_default` in the future. `authorize :when_requested` will not be deprecated, so there is no time constraint.
 
 ```elixir
 authorization do
@@ -306,11 +341,11 @@ For each domain that has the old configuration, after setting it to the new conf
 
 This may be a good time to do the refactor from `YourDomain.func` to `Ash.func`, if you want to. See the section about domains being required when building changesets.
 
-### `require_atomic?` defaults to `true` 
+### `require_atomic?` defaults to `true`
 
 On `:update` actions, and `:destroy` actions, they now default to `require_atomic? true`. This means that the following things will cause errors when attempting to run the action:
 
-1. changes or validations exist that do not have the `atomic` callback. *This includes anonymous function changes/validations*.
+1. changes or validations exist that do not have the `atomic` callback. _This includes anonymous function changes/validations_.
 2. attributes are being changed that do not support atomic updates. This most notably includes (for now) embedded resources.
 3. the action has a manual implementation
 4. the action has applicable notifiers that require the original data.
@@ -328,7 +363,7 @@ For builtin types, the above applies to `:union`, `:map`, `:keyword`, embedded t
 
 ### `Ash.Error.Invalid.NoSuchInput` errors on unknown action inputs
 
-In 2.0, inputs to actions that don't match an accepted attribute or argument were silently ignored. This made it very easy to make certain kinds of mistakes, like assuming that an input is being used by an action when it actually is not. Now, unknown action inputs will cause an `Ash.Error.Invalid.NoSuchInput`. 
+In 2.0, inputs to actions that don't match an accepted attribute or argument were silently ignored. This made it very easy to make certain kinds of mistakes, like assuming that an input is being used by an action when it actually is not. Now, unknown action inputs will cause an `Ash.Error.Invalid.NoSuchInput`.
 
 #### What you'll need to change
 
@@ -341,7 +376,7 @@ A logic error was fixed in this behavior for embedded resources. If you are usin
 
 ### `%Ash.NotLoaded{}` for attributes
 
-In 2.0, attributes that were not selected were replaced with `nil` values. This could lead to confusion when dealing with records that didn't have all attributes selected. If you passed these records to a function it might see that an attribute is `nil` when actually it just wasn't selected. To find out if it was selected, you could look into `record.__metadata__.selected`, but you'd have to know to do that.  To alleviate these issues, attributes that are not selected are now filled in with `%Ash.NotLoaded{}`, just like calculations and aggregates.
+In 2.0, attributes that were not selected were replaced with `nil` values. This could lead to confusion when dealing with records that didn't have all attributes selected. If you passed these records to a function it might see that an attribute is `nil` when actually it just wasn't selected. To find out if it was selected, you could look into `record.__metadata__.selected`, but you'd have to know to do that. To alleviate these issues, attributes that are not selected are now filled in with `%Ash.NotLoaded{}`, just like calculations and aggregates.
 
 #### What you'll need to change
 
