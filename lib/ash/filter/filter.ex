@@ -23,6 +23,7 @@ defmodule Ash.Filter do
     DateAdd,
     DateTimeAdd,
     Error,
+    Fragment,
     FromNow,
     GetPath,
     If,
@@ -54,6 +55,8 @@ defmodule Ash.Filter do
   alias Ash.Query.{BooleanExpression, Call, Not, Ref}
   alias Ash.Query.{Aggregate, Calculation, Function, Operator}
 
+  @custom_expressions Application.compile_env(:ash, :custom_expressions) || []
+
   @functions [
     Ago,
     At,
@@ -62,6 +65,7 @@ defmodule Ash.Filter do
     CountNils,
     DateAdd,
     DateTimeAdd,
+    Fragment,
     FromNow,
     GetPath,
     IsNil,
@@ -1086,6 +1090,14 @@ defmodule Ash.Filter do
         # you have to map over the internals of this yourself
         func.(this)
 
+      %Ash.CustomExpression{expression: expression, simple_expression: simple_expression} =
+          custom_expression ->
+        %{
+          custom_expression
+          | expression: map(expression, func),
+            simple_expression: map(simple_expression, func)
+        }
+
       %Ash.Query.Exists{} = expr ->
         # you have to map over the internals of exists yourself
         func.(expr)
@@ -1134,6 +1146,9 @@ defmodule Ash.Filter do
       %Ash.Query.Parent{} = this ->
         # you have to flat_map over the internals of this yourself
         func.(this)
+
+      %Ash.CustomExpression{expression: expression, simple_expression: simple_expression} ->
+        flat_map(expression, func) ++ flat_map(simple_expression, func)
 
       %Ash.Query.Exists{} = expr ->
         # you have to flat_map over the internals of exists yourself
@@ -2146,6 +2161,10 @@ defmodule Ash.Filter do
     end
   end
 
+  defp add_expression_part(%Ash.CustomExpression{} = custom, _context, expression) do
+    {:ok, BooleanExpression.optimized_new(:and, expression, custom)}
+  end
+
   defp add_expression_part(
          %Ash.Query.Exists{at_path: at_path, path: path, expr: exists_expression} = exists,
          context,
@@ -2752,8 +2771,13 @@ defmodule Ash.Filter do
         relationship_path: []
       })
 
-    case {calculation(%{context | resource: resource}, name), could_be_calculation?} do
-      {resource_calculation, true} when not is_nil(resource_calculation) ->
+    resource_calculation =
+      if could_be_calculation? do
+        calculation(%{context | resource: resource}, name)
+      end
+
+    cond do
+      resource_calculation ->
         {module, opts} = resource_calculation.calculation
 
         with {:ok, args} <-
@@ -2784,7 +2808,43 @@ defmodule Ash.Filter do
             {:error, error}
         end
 
-      _ ->
+      custom_expression =
+          custom_expression(name, args) ->
+        {module, arguments} = custom_expression
+
+        data_layer = Ash.Resource.Info.data_layer(resource)
+
+        with {:ok, expr} <- module.expression(data_layer, arguments),
+             {:ok, expr} <- hydrate_refs(expr, context) do
+          if data_layer == Ash.DataLayer.Simple do
+            {:ok,
+             %Ash.CustomExpression{
+               arguments: arguments,
+               expression: expr,
+               simple_expression: {:ok, expr}
+             }}
+          else
+            with {:ok, simple_expr} <- module.expression(Ash.DataLayer.Simple, arguments),
+                 {:ok, simple_expr} <- hydrate_refs(simple_expr, context) do
+              {:ok,
+               %Ash.CustomExpression{
+                 arguments: arguments,
+                 expression: expr,
+                 simple_expression: {:ok, simple_expr}
+               }}
+            else
+              _ ->
+                {:ok,
+                 %Ash.CustomExpression{
+                   arguments: arguments,
+                   expression: expr,
+                   simple_expression: :unknown
+                 }}
+            end
+          end
+        end
+
+      true ->
         with :ok <- validate_datalayer_supports_nested_expressions(args, context.resource),
              {:ok, args} <- hydrate_refs(args, context),
              refs <- list_refs(args),
@@ -2873,6 +2933,17 @@ defmodule Ash.Filter do
       {:error, "Datalayer does not support nested expressions"}
     else
       :ok
+    end
+  end
+
+  def custom_expression(name, args) do
+    with module when not is_nil(module) <- Keyword.get(@custom_expressions, name),
+         args when not is_nil(args) <-
+           Enum.find_value(
+             module.arguments(),
+             &Ash.Query.Function.try_cast_arguments(&1, args)
+           ) do
+      {module, args}
     end
   end
 
