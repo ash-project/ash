@@ -45,7 +45,7 @@ defmodule Ash.Test.Sort.SortTest do
     end
 
     test "private attributes cannot be used" do
-      assert {:error, %Ash.Error.Query.NoSuchAttribute{}} = Ash.Sort.parse_input(Post, "points")
+      assert {:error, %Ash.Error.Query.NoSuchField{}} = Ash.Sort.parse_input(Post, "points")
     end
 
     test "a list sort parses properly" do

@@ -638,7 +638,7 @@ defmodule Ash.Test.Filter.FilterTest do
       filter = Filter.parse!(Post, points: 1)
 
       err =
-        assert_raise(Ash.Error.Query.NoSuchAttributeOrRelationship, fn ->
+        assert_raise(Ash.Error.Query.NoSuchField, fn ->
           Filter.add_to_filter!(filter, bad_field: "bad field")
         end)
 
@@ -676,7 +676,7 @@ defmodule Ash.Test.Filter.FilterTest do
     test "parse_input fails when a private attribute is used" do
       Ash.Filter.parse!(Profile, private: "private")
 
-      assert_raise(Ash.Error.Query.NoSuchAttributeOrRelationship, fn ->
+      assert_raise(Ash.Error.Query.NoSuchField, fn ->
         Ash.Filter.parse_input!(Profile, private: "private")
       end)
     end

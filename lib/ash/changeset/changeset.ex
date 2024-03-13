@@ -3666,7 +3666,7 @@ defmodule Ash.Changeset do
         error =
           NoSuchRelationship.exception(
             resource: changeset.resource,
-            name: relationship
+            relationship: relationship
           )
 
         add_error(changeset, error)
@@ -4200,7 +4200,7 @@ defmodule Ash.Changeset do
         error =
           NoSuchAttribute.exception(
             resource: changeset.resource,
-            name: attribute
+            attribute: attribute
           )
 
         add_error(changeset, error)
@@ -4302,7 +4302,7 @@ defmodule Ash.Changeset do
         error =
           NoSuchAttribute.exception(
             resource: changeset.resource,
-            name: attribute
+            attribute: attribute
           )
 
         add_error(changeset, error)
@@ -4332,7 +4332,7 @@ defmodule Ash.Changeset do
         error =
           NoSuchAttribute.exception(
             resource: changeset.resource,
-            name: attribute
+            attribute: attribute
           )
 
         add_error(changeset, error)
