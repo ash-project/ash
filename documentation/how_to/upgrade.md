@@ -4,6 +4,12 @@
 
 This section contains each breaking change, and the steps required to address it in your application
 
+### Dependency Changes
+
+#### Ash.Flow
+
+If you use `Ash.Flow`, include `{:ash_flow, "~> 0.1.0"}` in your application.
+
 ### DSL Changes
 
 - `code_interface.define_for` is now `code_interface.domain`. Additionally, it is set automatically if the `domain` option is specified on `use Ash.Resource`.
