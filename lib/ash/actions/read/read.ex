@@ -1543,7 +1543,7 @@ defmodule Ash.Actions.Read do
             (opts[:page][:count] != false and action.pagination.countable == :by_default)) do
       with {:ok, filter} <-
              filter_with_related(
-               query_before_pagination,
+               query,
                opts[:authorize?],
                relationship_path_filters
              ),
