@@ -702,14 +702,26 @@ defmodule Ash.Query do
     %{query | around_transaction: query.around_transaction ++ [func]}
   end
 
+  @doc """
+  Adds a before_action hook to the query.
+
+  Provide the option `prepend?: true` to place the hook before all
+  other hooks instead of after.
+  """
   @spec before_action(
-          t(),
-          (t() -> t() | {t(), list(Ash.Notifier.Notification.t())})
+          query :: t(),
+          fun :: (t() -> t() | {t(), list(Ash.Notifier.Notification.t())}),
+          opts :: Keyword.t()
         ) ::
           t()
-  def before_action(query, func) do
+  def before_action(query, func, opts \\ []) do
     query = new(query)
-    %{query | before_action: [func | query.before_action]}
+
+    if opts[:prepend?] do
+      %{query | before_action: [func | query.before_action]}
+    else
+      %{query | before_action: query.before_action ++ [func]}
+    end
   end
 
   @spec authorize_results(
