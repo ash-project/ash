@@ -120,6 +120,9 @@ defmodule Ash.Test.Resource.CalculationsTest do
         def load(_query, _opts, _context), do: [:post]
 
         @impl true
+        def strict_loads?, do: false
+
+        @impl true
         def calculate(records, _opts, _) do
           Enum.map(records, fn comment ->
             post = comment.post
@@ -209,6 +212,9 @@ defmodule Ash.Test.Resource.CalculationsTest do
 
         @impl true
         def load(_query, _opts, _context), do: [:post]
+
+        @impl true
+        def strict_loads?, do: false
 
         @impl true
         def calculate(records, _opts, _) do
