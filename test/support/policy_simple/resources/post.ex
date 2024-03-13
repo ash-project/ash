@@ -36,7 +36,7 @@ defmodule Ash.Test.Support.PolicySimple.Post do
 
   actions do
     default_accept :*
-    defaults [:read, :update, :destroy]
+    defaults [:read, :destroy, update: :*]
 
     create :create do
       primary? true

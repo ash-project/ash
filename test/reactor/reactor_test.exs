@@ -36,7 +36,7 @@ defmodule Ash.Test.ReactorTest do
 
       actions do
         default_accept :*
-        defaults [:create, :destroy]
+        defaults [:destroy, create: :*]
       end
     end
 

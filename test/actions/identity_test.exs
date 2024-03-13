@@ -26,7 +26,7 @@ defmodule Ash.Test.Actions.IdentityTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       create :create_with_required do
         require_attributes [:tag]

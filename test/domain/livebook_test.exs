@@ -30,10 +30,10 @@ defmodule Ash.Test.Domain.Info.LivebookTest do
                      UUID id
                      String name
                      User[] users
-                     destroy()
                      update(String name)
-                     read()
                      create(String name)
+                     destroy()
+                     read()
                      by_name(String name)
                  }
 
@@ -106,10 +106,10 @@ defmodule Ash.Test.Domain.Info.LivebookTest do
 
              | Name | Type | Input | Description |
              | ---- | ---- | ----- | ----------- |
-             | **destroy** | _destroy_ | <ul></ul> |  |
              | **update** | _update_ | <ul><li><b>name</b> <i>String</i> attribute</li></ul> |  |
-             | **read** | _read_ | <ul></ul> |  |
              | **create** | _create_ | <ul><li><b>name</b> <i>String</i> attribute</li></ul> |  |
+             | **destroy** | _destroy_ | <ul></ul> |  |
+             | **read** | _read_ | <ul></ul> |  |
              | **by_name** | _read_ | <ul><li><b>name</b> <i>String</i> </li></ul> |  |
 
              """

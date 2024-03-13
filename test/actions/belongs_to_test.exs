@@ -35,7 +35,7 @@ defmodule Ash.Test.Actions.BelongsToTest do
 
     actions do
       default_accept :*
-      defaults([:create, :read, :update, :destroy])
+      defaults([:read, :destroy, create: :*, update: :*])
 
       create :create_with_reviewer do
         argument :reviewer_id, :uuid, allow_nil?: true
@@ -73,7 +73,7 @@ defmodule Ash.Test.Actions.BelongsToTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do

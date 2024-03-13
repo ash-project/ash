@@ -33,7 +33,7 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       update :only_allow_name do
         accept([:name])

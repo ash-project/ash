@@ -24,7 +24,7 @@ defmodule Ash.Test.Resource.Changes.LoadTest do
 
     actions do
       default_accept :*
-      defaults [:read, :update, :destroy]
+      defaults [:read, :destroy, update: :*]
 
       create :create do
         change load(:full_text)

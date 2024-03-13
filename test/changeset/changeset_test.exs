@@ -19,7 +19,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     actions do
       default_accept :*
-      defaults [:read, :create, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
 
       create :create_with_confirmation do
         argument :confirm_name, :string do
@@ -76,7 +76,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     actions do
       default_accept :*
-      defaults [:read, :create, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -112,7 +112,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     actions do
       default_accept :*
-      defaults [:read, :create, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -142,7 +142,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     actions do
       default_accept :*
-      defaults [:read, :create, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -180,7 +180,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     actions do
       default_accept :*
-      defaults [:read, :create, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     multitenancy do
@@ -231,7 +231,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     actions do
       default_accept :*
-      defaults [:read, :create, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -264,7 +264,7 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
     actions do
       default_accept :*
-      defaults [:read, :create, :update, :destroy]
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     identities do

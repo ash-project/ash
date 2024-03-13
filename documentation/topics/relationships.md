@@ -180,7 +180,7 @@ defmodule MyApp.TweetHashtag do
   end
 
   actions do
-    defaults [:create, :read, :update, :destroy]
+    defaults [:read, :destroy, create: :*, update: :*]
   end
 end
 ```
@@ -312,7 +312,7 @@ allows relating the employee to their organization.
 Some important caveats here:
 
 1. You can still manage relationships from one to the other, but "relate" and "unrelate"
-will have no effect, because there are no fields to change.
+   will have no effect, because there are no fields to change.
 
 2. Loading the relationship on a list of resources will not behave as expected in all circumstances involving multitenancy. For example,
    if you get a list of `Organization` and then try to load `employees`, you would need to set a single tenant on the load query, meaning

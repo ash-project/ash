@@ -19,7 +19,7 @@ defmodule Ash.Test.ReactorReadOneTest do
 
     actions do
       default_accept :*
-      defaults [:create, :read]
+      defaults [:read, create: :*]
     end
 
     code_interface do
