@@ -31,7 +31,7 @@ See the [Aggregates guide](/documentation/topics/aggregates.md) for more informa
 
 ## Domain
 
-A method of broadly separating resources into different [domains](https://en.wikipedia.org/wiki/Domain_(software_engineering)), A.K.A [bounded contexts](https://martinfowler.com/bliki/BoundedContext.html).
+A method of broadly separating resources into different [domains](<https://en.wikipedia.org/wiki/Domain_(software_engineering)>), A.K.A [bounded contexts](https://martinfowler.com/bliki/BoundedContext.html).
 
 See `d:Ash.Domain` for more information.
 
@@ -68,12 +68,6 @@ The tools and functions used to reduce the amount of data returned when running 
 - Fetching Tickets updated in the last week
 
 See `Ash.Filter` for more information.
-
-## Flow
-
-Flows combine actions together into a static workflow, somewhat similarly to [Ecto.Multi](https://hexdocs.pm/ecto/Ecto.Multi.html). The result of running one action in a flow can be used as input to another action, and flows can be halted and resumed on request. Flows also support transactions; steps can be grouped together into transactions or the whole flow can be run inside a single transaction.
-
-See the [Flows guide](/documentation/topics/flows.md) for more information.
 
 ## Identity
 

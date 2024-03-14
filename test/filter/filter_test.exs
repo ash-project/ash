@@ -642,9 +642,9 @@ defmodule Ash.Test.Filter.FilterTest do
           Filter.add_to_filter!(filter, bad_field: "bad field")
         end)
 
-      [error_context] = err.error_context
-      assert error_context =~ "parsing addition of filter statement: [bad_field: \"bad field\"]"
-      assert error_context =~ ", to resource: " <> (Post |> Module.split() |> Enum.join("."))
+      [bread_crumbs] = err.bread_crumbs
+      assert bread_crumbs =~ "parsing addition of filter statement: [bad_field: \"bad field\"]"
+      assert bread_crumbs =~ ", to resource: " <> (Post |> Module.split() |> Enum.join("."))
     end
   end
 
@@ -655,12 +655,12 @@ defmodule Ash.Test.Filter.FilterTest do
           Filter.parse!(Post, flarb: 1)
         end)
 
-      [error_context] = err.error_context
-      assert error_context =~ "parsing addition of filter statement: [flarb: 1]"
-      assert error_context =~ ", to resource: " <> (Post |> Module.split() |> Enum.join("."))
+      [bread_crumbs] = err.bread_crumbs
+      assert bread_crumbs =~ "parsing addition of filter statement: [flarb: 1]"
+      assert bread_crumbs =~ ", to resource: " <> (Post |> Module.split() |> Enum.join("."))
 
       [inner_error] = err.errors
-      [inner_error_context] = inner_error.error_context
+      [inner_error_context] = inner_error.bread_crumbs
       assert inner_error_context =~ "parsing addition of filter statement: [flarb: 1]"
 
       assert inner_error_context =~

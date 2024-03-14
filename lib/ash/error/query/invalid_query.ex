@@ -4,15 +4,9 @@ defmodule Ash.Error.Query.InvalidQuery do
   """
   use Ash.Error.Exception
 
-  def_ash_error([:field, :message], class: :invalid)
+  use Splode.Error, fields: [:field, :message], class: :invalid
 
-  defimpl Ash.ErrorKind do
-    def id(_), do: Ash.UUID.generate()
-
-    def code(_), do: "invalid_query"
-
-    def message(error) do
-      error.message
-    end
+  def splode_message(error) do
+    error.message
   end
 end

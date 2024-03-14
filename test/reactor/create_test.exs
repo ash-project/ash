@@ -226,7 +226,7 @@ defmodule Ash.Test.ReactorCreateTest do
 
       create :create_author, Author, :create do
         inputs(%{name: input(:author_name)})
-        tenant input(:organisation_name)
+        tenant(input(:organisation_name))
       end
     end
 
