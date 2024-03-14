@@ -2,17 +2,11 @@ defmodule Ash.Error.Framework do
   @moduledoc "Used when an unknown/generic framework error occurs"
   use Ash.Error.Exception
 
-  def_ash_error([:errors], class: :framework)
+  use Splode.Error, fields: [:errors, :changeset, :query, :action_input], class: :framework
 
   @type t :: %__MODULE__{}
 
-  defimpl Ash.ErrorKind do
-    def id(_), do: Ash.UUID.generate()
-
-    def code(_), do: "framework"
-
-    def message(%{errors: errors}) do
-      Ash.Error.error_messages(errors, nil)
-    end
+  def splode_message(%{errors: errors}) do
+    Splode.ErrorClass.error_messages(errors)
   end
 end

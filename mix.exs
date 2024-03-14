@@ -319,6 +319,8 @@ defmodule Ash.MixProject do
       {:reactor, github: "ash-project/reactor"},
       # Used for Ash.PlugHelpers
       {:plug, ">= 0.0.0", optional: true},
+      # Used for aggregatable and standardized exceptions
+      {:splode, "~> 0.1"},
       # Testing Utilities
       {:stream_data, "~> 0.6"},
 

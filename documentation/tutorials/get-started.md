@@ -311,7 +311,7 @@ And we can see our newly created ticket with a subject and a status.
 If we didn't include a subject, or left off the arguments completely, we would see an error instead
 
 ```text
-** (Ash.Error.Invalid) Input Invalid
+** (Ash.Error.Invalid) Invalid Error
 
 * attribute subject is required
 ```

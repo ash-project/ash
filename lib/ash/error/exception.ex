@@ -8,79 +8,30 @@ defmodule Ash.Error.Exception do
   end
 
   defmacro def_ash_error(fields, opts \\ []) do
-    quote location: :keep, generated: true do
-      defexception unquote(fields) ++
-                     [
-                       :changeset,
-                       :query,
-                       error_context: [],
-                       vars: [],
-                       path: [],
-                       stacktrace: nil,
-                       class: unquote(opts)[:class]
-                     ]
+    quote location: :keep, generated: true, bind_quoted: [fields: fields, opts: opts] do
+      IO.warn("""
+      def_ash_error is deprecated. Instead, use `Splode.Error`, and
+      remove any usage of `Ash.ErrorKind`. Place your `message/1` function
+      into the module body as `def splode_message/1`. For example:
 
-      def from_json(json) do
-        keyword =
-          json
-          |> Map.to_list()
-          |> Enum.map(fn {key, value} -> {Ash.Error.atomize_safely(key), value} end)
+      ```elixir
+      use Splode.Error,
+        fields: #{inspect(fields)},
+        class: #{inspect(opts[:class])}
 
-        exception(keyword)
+      def splode_message(error) do
+        ...your_message
       end
+      ```
+      """)
 
-      def new(opts), do: exception(opts)
+      use Splode.Error,
+        fields: fields,
+        class: opts[:class]
 
-      @impl Exception
-      def message(%{vars: vars} = exception) do
-        string = Ash.ErrorKind.message(exception)
-
-        string =
-          case Ash.Error.breadcrumb(Map.get(exception, :error_context)) do
-            "" ->
-              string
-
-            context ->
-              context <> "\n" <> string
-          end
-
-        Enum.reduce(List.wrap(vars), string, fn {key, value}, acc ->
-          if String.contains?(acc, "%{#{key}}") do
-            String.replace(acc, "%{#{key}}", to_string(value))
-          else
-            acc
-          end
-        end)
+      def splode_message(exception) do
+        Ash.ErrorKind.message(exception)
       end
-
-      def exception(opts) do
-        opts =
-          if is_nil(opts[:stacktrace]) do
-            {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
-
-            stacktrace =
-              %{
-                __struct__: Ash.Error.Stacktrace,
-                stacktrace: stacktrace
-              }
-
-            Keyword.put(opts, :stacktrace, stacktrace)
-          else
-            opts
-          end
-
-        super(opts) |> Map.update(:vars, [], &clean_vars/1)
-      end
-
-      defp clean_vars(vars) when is_map(vars) do
-        clean_vars(Map.to_list(vars))
-      end
-
-      defp clean_vars(vars) do
-        vars |> Kernel.||([]) |> Keyword.drop([:field, :message, :path])
-      end
-
-      defoverridable exception: 1, message: 1, from_json: 1
     end
   end
 end

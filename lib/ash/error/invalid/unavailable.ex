@@ -7,27 +7,22 @@ defmodule Ash.Error.Invalid.Unavailable do
   """
   use Ash.Error.Exception
 
-  def_ash_error([:resource, :source, :reason], class: :invalid)
+  use Splode.Error, fields: [:resource, :source, :reason], class: :invalid
 
-  defimpl Ash.ErrorKind do
-    def id(_), do: Ash.UUID.generate()
+  def splode_message(%{resource: resource, source: source, reason: reason})
+      when not is_nil(source) do
+    """
+    #{inspect(resource)} - the resource is not available#{with_reason(reason)}.
 
-    def code(_), do: "unavailable"
+    In:
 
-    def message(%{resource: resource, source: source, reason: reason}) when not is_nil(source) do
-      """
-      #{inspect(resource)} - the resource is not available#{with_reason(reason)}.
-
-      In:
-
-      #{source}
-      """
-    end
-
-    def message(%{resource: resource, reason: reason}),
-      do: "#{inspect(resource)} - the resource is not available#{with_reason(reason)}"
-
-    defp with_reason(nil), do: ""
-    defp with_reason(reason), do: ": #{reason}"
+    #{source}
+    """
   end
+
+  def splode_message(%{resource: resource, reason: reason}),
+    do: "#{inspect(resource)} - the resource is not available#{with_reason(reason)}"
+
+  defp with_reason(nil), do: ""
+  defp with_reason(reason), do: ": #{reason}"
 end

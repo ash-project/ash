@@ -66,7 +66,7 @@ defmodule Ash.Test.Actions.GenericActionsTest do
                |> Ash.ActionInput.for_action(:hello, %{name: %{a: 10}})
                |> Ash.run_action()
 
-      assert_raise Ash.Error.Invalid, ~r/Input Invalid/, fn ->
+      assert_raise Ash.Error.Invalid, ~r/Invalid Error/, fn ->
         Post
         |> Ash.ActionInput.for_action(:hello, %{name: %{a: 10}})
         |> Ash.run_action!()
@@ -79,7 +79,7 @@ defmodule Ash.Test.Actions.GenericActionsTest do
                |> Ash.ActionInput.for_action(:hello, %{name: "fred", one: 1})
                |> Ash.run_action()
 
-      assert_raise Ash.Error.Invalid, ~r/Input Invalid/, fn ->
+      assert_raise Ash.Error.Invalid, ~r/Invalid Error/, fn ->
         Post
         |> Ash.ActionInput.for_action(:hello, %{name: "fred", one: 1})
         |> Ash.run_action!()

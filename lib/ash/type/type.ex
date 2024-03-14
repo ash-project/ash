@@ -703,7 +703,7 @@ defmodule Ash.Type do
                   new_errors =
                     new_errors
                     |> List.wrap()
-                    |> Ash.Error.flatten_preserving_keywords()
+                    |> Ash.Helpers.flatten_preserving_keywords()
                     |> Enum.map(fn
                       string when is_binary(string) ->
                         [message: string, index: index]
@@ -1235,7 +1235,7 @@ defmodule Ash.Type do
               errors =
                 keyword
                 |> List.wrap()
-                |> Ash.Error.flatten_preserving_keywords()
+                |> Ash.Helpers.flatten_preserving_keywords()
                 |> Enum.map(fn
                   message when is_binary(message) ->
                     [message: message, index: index, path: [index]]
@@ -1283,7 +1283,7 @@ defmodule Ash.Type do
                 errors =
                   keyword
                   |> List.wrap()
-                  |> Ash.Error.flatten_preserving_keywords()
+                  |> Ash.Helpers.flatten_preserving_keywords()
                   |> Enum.map(fn
                     string when is_binary(string) ->
                       [message: string, index: index]

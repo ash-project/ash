@@ -1067,7 +1067,7 @@ defmodule Ash.Policy.Authorizer do
             rescue
               e ->
                 reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
-                          error_context:
+                          bread_crumbs:
                             "Creating filter for check: #{check_module.describe(check_opts)} on resource: #{authorizer.resource}"
                         ),
                         __STACKTRACE__
@@ -1097,7 +1097,7 @@ defmodule Ash.Policy.Authorizer do
             rescue
               e ->
                 reraise Ash.Error.to_ash_error(e, __STACKTRACE__,
-                          error_context:
+                          bread_crumbs:
                             "Creating filter for check: #{check_module.describe(check_opts)} on resource: #{authorizer.resource}"
                         ),
                         __STACKTRACE__

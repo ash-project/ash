@@ -6,8 +6,8 @@ defmodule Ash.Error.Forbidden.Policy do
 
   alias Ash.Policy.Policy
 
-  def_ash_error(
-    [
+  use Splode.Error,
+    fields: [
       scenarios: [],
       facts: %{},
       filter: nil,
@@ -21,7 +21,6 @@ defmodule Ash.Error.Forbidden.Policy do
       changeset_doesnt_match_filter: false
     ],
     class: :forbidden
-  )
 
   def exception(opts) do
     exception =
@@ -36,6 +35,14 @@ defmodule Ash.Error.Forbidden.Policy do
     end
 
     exception
+  end
+
+  def splode_message(error) do
+    if error.policy_breakdown? do
+      "forbidden:\n\n#{Ash.Error.Forbidden.Policy.report(error, help_text?: false)}"
+    else
+      "forbidden"
+    end
   end
 
   @help_text """
@@ -419,18 +426,4 @@ defmodule Ash.Error.Forbidden.Policy do
   end
 
   defp get_errors(_), do: []
-
-  defimpl Ash.ErrorKind do
-    def id(_), do: Ecto.UUID.generate()
-
-    def message(error) do
-      if error.policy_breakdown? do
-        "forbidden:\n\n#{Ash.Error.Forbidden.Policy.report(error, help_text?: false)}"
-      else
-        "forbidden"
-      end
-    end
-
-    def code(_), do: "forbidden_by_policy"
-  end
 end
