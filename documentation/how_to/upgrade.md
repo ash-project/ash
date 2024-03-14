@@ -103,6 +103,24 @@ Previously, in expressions, you could say `expr(ref(^some_atom))`. This is a too
 
 #### Exception changes
 
+##### Ash exceptions have been simplified and are now backed by `Splode`
+
+Usage of `def_ash_error/2` will show you what to change in its warnings.
+
+Instead of combining `def_ash_error` with `defimpl Ash.ErrorKind`, you create a custom error like so:
+
+```elixir
+defmodule MyCustomError do
+  use Splode.Error, class: :invalid, fields: [:foo, :bar]
+
+  def splode_message(error) do
+    "Message: #{error.foo} - #{error.bar}"
+  end
+end
+```
+
+##### Ash exception changes
+
 When sorting or filtering, if a field is not found, an `Ash.Query.Error.NoSuchField` is used, where it would have previously been an `Ash.Query.Error.NoSuchAttribute`. This was wrong as sometimes the field reference was not an attribute. Places that would previously return `Ash.Query.Error.NoSuchAttributeOrRelationship` now return `Ash.Query.Error.NoSuchField` as well.
 
 Additionally, the following exceptions have had keys remapped:
