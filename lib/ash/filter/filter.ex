@@ -278,7 +278,7 @@ defmodule Ash.Filter do
 
       {:error, error} ->
         raise Ash.Error.to_error_class(error,
-                error_context: parse_error_context(resource, statement, context)
+                bread_crumbs: parse_bread_crumbs(resource, statement, context)
               )
     end
   end
@@ -782,7 +782,7 @@ defmodule Ash.Filter do
 
       {:error, error} ->
         raise Ash.Error.to_ash_error(error, nil,
-                error_context: parse_error_context(base.resource, addition, context)
+                bread_crumbs: parse_bread_crumbs(base.resource, addition, context)
               )
     end
   end
@@ -820,11 +820,11 @@ defmodule Ash.Filter do
     end
   end
 
-  defp parse_error_context(%{resource: resource} = _filter, addition, context) do
-    parse_error_context(resource, addition, context)
+  defp parse_bread_crumbs(%{resource: resource} = _filter, addition, context) do
+    parse_bread_crumbs(resource, addition, context)
   end
 
-  defp parse_error_context(resource, addition, context) do
+  defp parse_bread_crumbs(resource, addition, context) do
     context_str = if context, do: ", given context: #{inspect(context)}", else: ""
 
     "parsing addition of filter statement: #{inspect(addition)}, to resource: #{inspect(resource)}" <>

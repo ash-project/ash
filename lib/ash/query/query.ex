@@ -1533,7 +1533,7 @@ defmodule Ash.Query do
               query,
               :aggregates,
               Ash.Error.to_ash_error(errors, nil,
-                error_context: "Loading aggregate: #{inspect(field)} for query: #{inspect(query)}"
+                bread_crumbs: "Loading aggregate: #{inspect(field)} for query: #{inspect(query)}"
               )
             )
 
@@ -1542,7 +1542,7 @@ defmodule Ash.Query do
               query,
               :aggregates,
               Ash.Error.to_ash_error(error, nil,
-                error_context: "Loading aggregate: #{inspect(field)} for query: #{inspect(query)}"
+                bread_crumbs: "Loading aggregate: #{inspect(field)} for query: #{inspect(query)}"
               )
             )
 

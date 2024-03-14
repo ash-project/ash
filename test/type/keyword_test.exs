@@ -104,9 +104,7 @@ defmodule Type.KeywordTest do
                message: "field must be present",
                private_vars: nil,
                value: [bar: 1],
-               changeset: nil,
-               query: nil,
-               error_context: [],
+               bread_crumbs: [],
                vars: [],
                path: [:metadata]
              }
@@ -128,9 +126,7 @@ defmodule Type.KeywordTest do
                message: "must be more than or equal to %{min}",
                private_vars: nil,
                value: [foo: "hello", bar: -1],
-               changeset: nil,
-               query: nil,
-               error_context: [],
+               bread_crumbs: [],
                vars: [min: 0],
                path: [:metadata]
              }
@@ -178,9 +174,7 @@ defmodule Type.KeywordTest do
                message: "value must not be nil",
                private_vars: nil,
                value: [foo: "", bar: "2"],
-               changeset: nil,
-               query: nil,
-               error_context: [],
+               bread_crumbs: [],
                vars: [],
                path: [:metadata]
              }

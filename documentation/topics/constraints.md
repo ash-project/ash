@@ -74,7 +74,7 @@ If when creating or updating this attribute one of the constraints are not met, 
 ```elixir
 iex(1)> MyProject.MyDomain.Account.create!(%{username: "hi"})
 
-** (Ash.Error.Invalid) Input Invalid
+** (Ash.Error.Invalid) Invalid Error
 
 * Invalid value provided for username: length must be greater than or equal to 3.
 
@@ -82,21 +82,21 @@ iex(1)> MyProject.MyDomain.Account.create!(%{username: "hi"})
 
 iex(2)> MyProject.MyDomain.Account.create!(%{username: "Hello there this is a long string"})
 
-** (Ash.Error.Invalid) Input Invalid
+** (Ash.Error.Invalid) Invalid Error
 
 * Invalid value provided for username: length must be less than or equal to 20.
 
 "Hello there this is a long string"
 
 iex(3)> MyProject.MyDomain.Account.create!(%{username: "hello there"})
-** (Ash.Error.Invalid) Input Invalid
+** (Ash.Error.Invalid) Invalid Error
 
 * Invalid value provided for username: must match the pattern ~r/^[a-z_-]*$/.
 
 "hello there"
 
 iex(4)> MyProject.MyDomain.Account.create!(%{username: ""})
-** (Ash.Error.Invalid) Input Invalid
+** (Ash.Error.Invalid) Invalid Error
 
 * attribute title is required
 ```
@@ -170,7 +170,7 @@ Above we have defined a custom action which takes 2 arguments `:title` and `:age
 ```elixir
 iex(1)> MyProject.MyDomain.Account.create_username_with_age!(%{username: "hello", age: 100})
 
-** (Ash.Error.Invalid) Input Invalid
+** (Ash.Error.Invalid) Invalid Error
 
 * Invalid value provided for age: must be less than or equal to 99.
 

@@ -85,7 +85,7 @@ defmodule Ash.EmbeddableType do
     errors
     |> do_handle_errors()
     |> List.wrap()
-    |> Ash.Error.flatten_preserving_keywords()
+    |> Ash.Helpers.flatten_preserving_keywords()
   end
 
   defp do_handle_errors(errors) when is_list(errors) do
