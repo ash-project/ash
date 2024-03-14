@@ -20,6 +20,25 @@ defmodule Ash.Helpers do
 
   def try_compile(_), do: :ok
 
+  def flatten_preserving_keywords(list) do
+    if Keyword.keyword?(list) do
+      [list]
+    else
+      Enum.flat_map(list, fn item ->
+        cond do
+          Keyword.keyword?(item) ->
+            [item]
+
+          is_list(item) ->
+            flatten_preserving_keywords(item)
+
+          true ->
+            [item]
+        end
+      end)
+    end
+  end
+
   defmacro expect_resource!(resource) do
     formatted = format_caller(__CALLER__)
 
@@ -250,11 +269,8 @@ defmodule Ash.Helpers do
       {:ok, result} ->
         {:ok, result, query}
 
-      {:error, %Ash.Error.Invalid.MultipleResults{} = error} ->
-        {:error, %{error | query: query}}
-
       {:error, error} ->
-        {:error, error}
+        {:error, Ash.Error.to_ash_error(error, query: query)}
     end
   end
 

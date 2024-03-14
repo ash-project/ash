@@ -2,25 +2,19 @@ defmodule Ash.Error.Invalid.Timeout do
   @moduledoc "Used when a request to a domain times out."
   use Ash.Error.Exception
 
-  def_ash_error([:name, :timeout], class: :invalid)
+  use Splode.Error, fields: [:name, :timeout], class: :invalid
 
-  defimpl Ash.ErrorKind do
-    def id(_), do: Ash.UUID.generate()
+  def splode_message(%{name: name, timeout: timeout}) do
+    """
+    #{name} timed out after #{timeout}ms.
 
-    def code(_), do: "timeout"
+    The default timeout can be configured on the domain,
 
-    def message(%{name: name, timeout: timeout}) do
-      """
-      #{name} timed out after #{timeout}ms.
+        execution do
+          timeout :timer.seconds(60)
+        end
 
-      The default timeout can be configured on the domain,
-
-          execution do
-            timeout :timer.seconds(60)
-          end
-
-      Each request can be configured with a timeout via `Ash.Changeset.timeout/2` or `Ash.Query.timeout/2`.
-      """
-    end
+    Each request can be configured with a timeout via `Ash.Changeset.timeout/2` or `Ash.Query.timeout/2`.
+    """
   end
 end

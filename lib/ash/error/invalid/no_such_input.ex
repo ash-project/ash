@@ -2,34 +2,28 @@ defmodule Ash.Error.Invalid.NoSuchInput do
   @moduledoc "Used when an input is provided to an action that is not accepted"
   use Ash.Error.Exception
 
-  def_ash_error([:resource, :action, :input, :inputs], class: :invalid)
+  use Splode.Error, fields: [:resource, :action, :input, :inputs], class: :invalid
 
-  defimpl Ash.ErrorKind do
-    def id(_), do: Ash.UUID.generate()
+  def splode_message(error) do
+    """
+    No such input `#{error.input}` for action #{inspect(error.resource)}.#{error.action}
 
-    def code(_), do: "no_such_input"
+    #{valid_inputs(error)}
+    """
+  end
 
-    def message(error) do
-      """
-      No such input `#{error.input}` for action #{inspect(error.resource)}.#{error.action}
+  defp valid_inputs(error) do
+    case Enum.filter(error.inputs, &is_atom/1) do
+      [] ->
+        "No valid inputs exist"
 
-      #{valid_inputs(error)}
-      """
-    end
+      inputs ->
+        """
 
-    defp valid_inputs(error) do
-      case Enum.filter(error.inputs, &is_atom/1) do
-        [] ->
-          "No valid inputs exist"
+        Valid Inputs:
 
-        inputs ->
-          """
-
-          Valid Inputs:
-
-          #{Enum.map_join(inputs, "\n", &"* #{&1}")}
-          """
-      end
+        #{Enum.map_join(inputs, "\n", &"* #{&1}")}
+        """
     end
   end
 end

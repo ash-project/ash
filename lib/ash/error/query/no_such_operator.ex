@@ -2,15 +2,9 @@ defmodule Ash.Error.Query.NoSuchOperator do
   @moduledoc "Used when an operator that doesn't exist is used in a query"
   use Ash.Error.Exception
 
-  def_ash_error([:operator], class: :invalid)
+  use Splode.Error, fields: [:operator], class: :invalid
 
-  defimpl Ash.ErrorKind do
-    def id(_), do: Ash.UUID.generate()
-
-    def code(_), do: "no_such_operator"
-
-    def message(error) do
-      "No such operator #{error.operator}"
-    end
+  def splode_message(error) do
+    "No such operator #{error.operator}"
   end
 end

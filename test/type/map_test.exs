@@ -108,9 +108,7 @@ defmodule Type.MapTest do
                message: "field must be present",
                private_vars: nil,
                value: %{bar: 1},
-               changeset: nil,
-               query: nil,
-               error_context: [],
+               bread_crumbs: [],
                vars: [],
                path: [:metadata]
              }
@@ -132,9 +130,7 @@ defmodule Type.MapTest do
                message: "must be more than or equal to %{min}",
                private_vars: nil,
                value: %{bar: -1, foo: "hello"},
-               changeset: nil,
-               query: nil,
-               error_context: [],
+               bread_crumbs: [],
                vars: [min: 0],
                path: [:metadata]
              }
@@ -182,9 +178,7 @@ defmodule Type.MapTest do
                message: "value must not be nil",
                private_vars: nil,
                value: %{:bar => "2", "foo" => ""},
-               changeset: nil,
-               query: nil,
-               error_context: [],
+               bread_crumbs: [],
                vars: [],
                path: [:metadata]
              }
