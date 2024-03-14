@@ -387,7 +387,8 @@ defmodule Ash.Actions.Read.Relationships do
         case Ash.Actions.Read.unpaginated_read(join_query, nil,
                authorize?: related_query.context[:private][:authorize?],
                actor: related_query.context[:private][:actor],
-               tracer: related_query.context[:private][:tracer]
+               tracer: related_query.context[:private][:tracer],
+               tenant: related_query.tenant
              ) do
           {:ok, join_records} ->
             {join_id_mapping, destination_ids} =
