@@ -433,6 +433,9 @@ defmodule Ash.Actions.Update do
                           {:ok, data} ->
                             {:ok, %{data | __metadata__: changeset.data.__metadata__}}
 
+                          {:error, :no_rollback, error} ->
+                            {:error, :no_rollback, error}
+
                           {:error, error} ->
                             {:error, error}
                         end
