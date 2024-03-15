@@ -210,10 +210,30 @@ defmodule Ash.CodeInterface do
   end
   ```
   """
-  defmacro define_interface(domain, resource) do
-    quote bind_quoted: [domain: domain, resource: resource], generated: true, location: :keep do
+  defmacro define_interface(domain, resource, definitions \\ nil) do
+    quote bind_quoted: [domain: domain, resource: resource, definitions: definitions],
+          generated: true,
+          location: :keep do
+      calculation_interfaces =
+        case definitions do
+          nil ->
+            Ash.Resource.Info.calculation_interfaces(resource)
+
+          definitions ->
+            Enum.filter(definitions, &match?(%Ash.Resource.CalculationInterface{}, &1))
+        end
+
+      interfaces =
+        case definitions do
+          nil ->
+            Ash.Resource.Info.interfaces(resource)
+
+          definitions ->
+            Enum.filter(definitions, &match?(%Ash.Resource.Interface{}, &1))
+        end
+
       interfaces_for_defaults =
-        Enum.group_by(Ash.Resource.Info.calculation_interfaces(resource), fn interface ->
+        Enum.group_by(calculation_interfaces, fn interface ->
           {interface.name, Enum.count(interface.args, &is_atom/1), Enum.count(interface.args)}
         end)
 
@@ -282,7 +302,7 @@ defmodule Ash.CodeInterface do
         def unquote(safe_name)(unquote_splicing(args), opts \\ [])
       end
 
-      for interface <- Ash.Resource.Info.calculation_interfaces(resource) do
+      for interface <- calculation_interfaces do
         calculation = Ash.Resource.Info.calculation(resource, interface.calculation)
 
         {arg_bindings, arg_access} =
@@ -362,7 +382,7 @@ defmodule Ash.CodeInterface do
         end
       end
 
-      for interface <- Ash.Resource.Info.interfaces(resource) do
+      for interface <- interfaces do
         action = Ash.CodeInterface.require_action(resource, interface)
 
         filter_keys =
