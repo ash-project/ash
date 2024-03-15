@@ -79,6 +79,18 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
   end
 
+  defmodule Domain do
+    use Ash.Domain
+
+    resources do
+      resource User do
+        define :get_user, action: :read, get?: true
+
+        define_calculation(:full_name, args: [:first_name, :last_name])
+      end
+    end
+  end
+
   describe "generic actions" do
     test "can be invoked" do
       assert "Hello fred" == User.hello!("fred")
@@ -123,6 +135,10 @@ defmodule Ash.Test.CodeInterfaceTest do
       assert_raise Ash.Error.Query.NotFound, fn ->
         User.get_user!(Ash.UUID.generate())
       end
+
+      assert_raise Ash.Error.Query.NotFound, fn ->
+        Domain.get_user!(Ash.UUID.generate())
+      end
     end
 
     test "do not raise on not found if were defined with `not_found_error?: false`" do
@@ -131,6 +147,7 @@ defmodule Ash.Test.CodeInterfaceTest do
 
     test "do not raise on not found if option `not_found_error?: false` is passed" do
       assert nil == User.get_user!(Ash.UUID.generate(), not_found_error?: false)
+      assert nil == Domain.get_user!(Ash.UUID.generate(), not_found_error?: false)
       assert nil == User.get_user_safely!(Ash.UUID.generate(), not_found_error?: false)
     end
 
@@ -166,6 +183,7 @@ defmodule Ash.Test.CodeInterfaceTest do
 
     test "the same calculation can be fetched with the calculation interface" do
       assert "Zach Daniel" = User.full_name!("Zach", "Daniel")
+      assert "Zach Daniel" = Domain.full_name!("Zach", "Daniel")
     end
 
     test "the same calculation can be fetched with the calculation interface with optional" do
