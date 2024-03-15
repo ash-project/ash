@@ -1414,7 +1414,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.ValidateMultitenancy,
     Ash.Resource.Verifiers.ValidatePrimaryKey,
     Ash.Resource.Verifiers.VerifyAcceptedByDomain,
-    Ash.Resource.Verifiers.VerifyActionsAtomic
+    Ash.Resource.Verifiers.VerifyActionsAtomic,
+    Ash.Resource.Verifiers.VerifyPrimaryKeyPresent
   ]
 
   @moduledoc false
