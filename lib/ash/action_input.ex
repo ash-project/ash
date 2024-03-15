@@ -60,7 +60,7 @@ defmodule Ash.ActionInput do
       input.domain || opts[:domain] || Ash.Resource.Info.domain(input.resource) ||
         raise ArgumentError,
           message:
-            "Could not determine domain for action. Provide the `domain` option or configure an domain in the resource directly."
+            "Could not determine domain for action. Provide the `domain` option or configure a domain in the resource directly."
 
     input = %{input | domain: domain}
 

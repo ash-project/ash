@@ -2,7 +2,7 @@ defmodule Ash.Test.Domain.Info.DiagramTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  test "generate a mermaid entity relationship diagram from an Domain" do
+  test "generate a mermaid entity relationship diagram from a domain" do
     assert Ash.Domain.Info.Diagram.mermaid_er_diagram(Ash.Test.Flow.Domain) == """
            erDiagram
                User {
@@ -20,7 +20,7 @@ defmodule Ash.Test.Domain.Info.DiagramTest do
            """
   end
 
-  test "generate a mermaid class diagram from an Domain" do
+  test "generate a mermaid class diagram from a domain" do
     assert Ash.Domain.Info.Diagram.mermaid_class_diagram(Ash.Test.Flow.Domain) == """
            classDiagram
                class User {
@@ -53,7 +53,7 @@ defmodule Ash.Test.Domain.Info.DiagramTest do
            """
   end
 
-  test "include private fields in a mermaid entity relationship diagram from an Domain if specified" do
+  test "include private fields in a mermaid entity relationship diagram from a domain if specified" do
     assert Ash.Domain.Info.Diagram.mermaid_er_diagram(Ash.Test.Flow.Domain, show_private?: true) ==
              """
              erDiagram
@@ -74,7 +74,7 @@ defmodule Ash.Test.Domain.Info.DiagramTest do
              """
   end
 
-  test "include private fields in a mermaid class diagram from an Domain if specified" do
+  test "include private fields in a mermaid class diagram from a domain if specified" do
     assert Ash.Domain.Info.Diagram.mermaid_class_diagram(Ash.Test.Flow.Domain,
              show_private?: true
            ) == """

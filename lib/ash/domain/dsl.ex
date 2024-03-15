@@ -77,7 +77,7 @@ defmodule Ash.Domain.Dsl do
   }
 
   defmodule ResourceReference do
-    @moduledoc "A resource reference in an domain"
+    @moduledoc "A resource reference in a domain"
     defstruct [:resource, definitions: []]
 
     @type t :: %__MODULE__{

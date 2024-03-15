@@ -203,7 +203,7 @@ many_to_many :authors, MyApp.OtherDomain.Resource do
 end
 ```
 
-However, if the join table is a part of the same domain but the destination resource is a part of a different domain, you will have to add a custom `has_many` association to the source domain as well. Suppose you have an domain called `MyApp.Organizations` with a resource named `MyApp.Organizations.Organization`, an domain called `MyApp.Accounts` with a resource named `MyApp.Accounts.User`, as well as a join resource `MyApp.Organizations.OrganizationUsers`. Then, in order to add `many_to_many :users` for `MyApp.Organizations.Organization`, you'll need the following setup:
+However, if the join table is a part of the same domain but the destination resource is a part of a different domain, you will have to add a custom `has_many` association to the source domain as well. Suppose you have a domain called `MyApp.Organizations` with a resource named `MyApp.Organizations.Organization`, a domain called `MyApp.Accounts` with a resource named `MyApp.Accounts.User`, as well as a join resource `MyApp.Organizations.OrganizationUsers`. Then, in order to add `many_to_many :users` for `MyApp.Organizations.Organization`, you'll need the following setup:
 
 ```elixir
 relationships do

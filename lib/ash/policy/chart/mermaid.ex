@@ -2,7 +2,7 @@ defmodule Ash.Policy.Chart.Mermaid do
   @moduledoc "Generates policy mermaid charts"
 
   def chart(resource) do
-    policies = Ash.Policy.Info.policies(resource)
+    policies = Ash.Policy.Info.policies(nil, resource)
     policy_count = Enum.count(policies)
 
     at_least_one_policy =

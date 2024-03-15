@@ -693,6 +693,53 @@ defmodule Ash do
     ]
   ]
 
+  @can_opts [
+    maybe_is: [
+      type: :boolean,
+      doc: "If the actor *may* be able to perform the action, what value should be returned.",
+      default: :maybe
+    ],
+    filter_with: [
+      type: {:one_of, [:filter, :error]},
+      default: :filter,
+      doc:
+        "If set to `:error`, the query will raise an error on a match. If set to `:filter` the query will filter out unauthorized access."
+    ],
+    run_queries?: [
+      type: :boolean,
+      doc: "Whether or not to run queries. If set to `true`, `:maybe` will not be returned.",
+      default: true
+    ],
+    data: [
+      type: {:or, [:struct, {:list, :struct}]},
+      doc: "The record or records specifically attempting to be acted upon."
+    ],
+    tenant: [
+      type: :any,
+      doc: "The tenant to use for authorization"
+    ],
+    alter_source?: [
+      type: :boolean,
+      default: false,
+      doc: "If set to `true`, the source being authorized is returned so it can be run."
+    ],
+    base_query: [
+      type: :any,
+      doc: "A base query on which to apply an generated filters"
+    ],
+    atomic_changeset: [
+      type: :any,
+      doc: "A base query on which to apply an generated filters"
+    ],
+    return_forbidden_error?: [
+      type: :boolean,
+      default: false,
+      doc: "Whether or not to return a forbidden error in cases of not being authorized."
+    ]
+  ]
+
+  @can_question_mark_opts Spark.Options.Helpers.set_default!(@can_opts, :maybe_is, true)
+
   @doc """
   Runs an aggregate or aggregates over a resource query. See `aggregate/3` for more.
   """
@@ -702,6 +749,7 @@ defmodule Ash do
           opts :: Keyword.t()
         ) ::
           term | no_return
+  @doc spark_opts: [{2, @aggregate_opts}]
   def aggregate!(query, aggregate_or_aggregates, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -732,6 +780,7 @@ defmodule Ash do
           opts :: Keyword.t()
         ) ::
           {:ok, term} | {:error, Ash.Error.t()}
+  @doc spark_opts: [{2, @aggregate_opts}]
   def aggregate(query, aggregate_or_aggregates, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -752,6 +801,7 @@ defmodule Ash do
   @doc """
   Fetches the count of results that would be returned from a given query, or raises an error.
   """
+  @doc spark_opts: [{1, @aggregate_opts}]
   def count!(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -764,6 +814,7 @@ defmodule Ash do
   @doc """
   Fetches the count of results that would be returned from a given query.
   """
+  @doc spark_opts: [{1, @aggregate_opts}]
   def count(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -783,6 +834,7 @@ defmodule Ash do
   @doc """
   Returns whether or not the query would return any results, or raises an error.
   """
+  @doc spark_opts: [{1, @aggregate_opts}]
   def exists?(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -795,6 +847,7 @@ defmodule Ash do
   @doc """
   Returns whether or not the query would return any results.
   """
+  @doc spark_opts: [{1, @aggregate_opts}]
   def exists(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -821,6 +874,7 @@ defmodule Ash do
   @doc """
   Fetches the first value for a given field, or raises an error.
   """
+  @doc spark_opts: [{2, @aggregate_opts}]
   def first(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -860,6 +914,7 @@ defmodule Ash do
   @doc """
   Fetches the first value for a given field.
   """
+  @doc spark_opts: [{2, @aggregate_opts}]
   def first!(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -872,6 +927,7 @@ defmodule Ash do
   @doc """
   Fetches the sum of a given field.
   """
+  @doc spark_opts: [{2, @aggregate_opts}]
   def sum(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -893,6 +949,7 @@ defmodule Ash do
   @doc """
   Fetches the sum of a given field or raises an error.
   """
+  @doc spark_opts: [{2, @aggregate_opts}]
   def sum!(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -905,6 +962,7 @@ defmodule Ash do
   @doc """
   Fetches a list of all values of a given field.
   """
+  @doc spark_opts: [{2, @aggregate_opts}]
   def list(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -944,6 +1002,7 @@ defmodule Ash do
   @doc """
   Fetches a list of all values of a given field or raises an error.
   """
+  @doc spark_opts: [{2, @aggregate_opts}]
   def list!(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -956,6 +1015,7 @@ defmodule Ash do
   @doc """
   Fetches the greatest of all values of a given field.
   """
+  @doc spark_opts: [{2, @aggregate_opts}]
   def max(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -977,6 +1037,7 @@ defmodule Ash do
   @doc """
   Fetches the greatest of all values of a given field or raises an error.
   """
+  @doc spark_opts: [{2, @aggregate_opts}]
   def max!(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -989,6 +1050,7 @@ defmodule Ash do
   @doc """
   Fetches the least of all values of a given field.
   """
+  @doc spark_opts: [{2, @aggregate_opts}]
   def min(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -1010,6 +1072,7 @@ defmodule Ash do
   @doc """
   Fetches the least of all values of a given field or raises an error.
   """
+  @doc spark_opts: [{2, @aggregate_opts}]
   def min!(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -1022,6 +1085,7 @@ defmodule Ash do
   @doc """
   Fetches the average of all values of a given field.
   """
+  @doc spark_opts: [{2, @aggregate_opts}]
   def avg(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -1043,6 +1107,7 @@ defmodule Ash do
   @doc """
   Fetches the average of all values of a given field or raises an error.
   """
+  @doc spark_opts: [{2, @aggregate_opts}]
   def avg!(query, field, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -1055,7 +1120,11 @@ defmodule Ash do
   @doc """
   Returns whether or not the user can perform the action, or raises on errors.
 
-  See `can/3` for more info.
+  Calls `can/3` with a `maybe_is: true`. See `can/3` for more info.
+
+  ### Options
+
+  #{Spark.Options.docs(@can_question_mark_opts)}
   """
   @spec can?(
           query_or_changeset_or_action ::
@@ -1068,9 +1137,17 @@ defmodule Ash do
           opts :: Keyword.t()
         ) ::
           boolean | no_return
+
+  @doc spark_opts: [{2, @can_question_mark_opts}]
   def can?(action_or_query_or_changeset, actor, opts \\ []) do
-    domain = Ash.Helpers.domain!(action_or_query_or_changeset, opts)
-    Ash.Can.can?(action_or_query_or_changeset, domain, actor, opts)
+    case Spark.Options.validate(opts, @can_opts) do
+      {:ok, opts} ->
+        domain = Ash.Helpers.domain!(action_or_query_or_changeset, opts)
+        Ash.Can.can?(action_or_query_or_changeset, domain, actor, opts)
+
+      {:error, error} ->
+        {:error, Ash.Error.to_error_class(error)}
+    end
   end
 
   @doc """
@@ -1082,24 +1159,9 @@ defmodule Ash do
   so assuming `:maybe` is `true` is fine. The actual action invocation will be properly checked regardless.
   If you have runtime checks, you may need to use `can` instead of `can?`, or configure what `:maybe` means.
 
-  ## Options
+  ### Options
 
-    - `maybe_is` - What to treat `:maybe` results as, defaults to `true` if using `can?`, or `:maybe` if using `can`.
-    - `run_queries?` - In order to determine authorization status for changesets that use filter checks, we may need to
-      run queries (almost always only one query). Set this to `false` to disable (returning `:maybe` instead).
-      The default value is `true`.
-    - `data` - A record or list of records. For authorizing reads with filter checks, this can be provided and a filter
-      check will only be `true` if all records match the filter. This is detected by running a query.
-    - `alter_source?` - If true, the query or changeset will be returned with authorization modifications made. For a query,
-      this mans adding field visibility calculations and altering the filter or the sort. For a changeset, this means only adding
-      field visibility calculations. The default value is `false`.
-    - `base_query` - If authorizing an update, some cases can return both a new changeset and a query filtered for only things
-      that will be authorized to update. Providing the `base_query` will cause that query to be altered instead of a new one to be
-      generated.
-    - `no_check?` - If set to `true`, the query will not run the checks for runtime policies, and will instead consider the policy to have
-      failed. This is used for things like atomic updates, where the policies must check with strict check or filter checks.
-    - `atomic_changeset` - A changeset to use to fill any `atomic_ref` templates.
-    - `filter_with` - If set to `:error`, any filter authorization will produce an error on matches, otherwise matches will be filtered out.
+  #{Spark.Options.docs(@can_opts)}
   """
   @spec can(
           action_or_query_or_changeset ::
@@ -1116,12 +1178,19 @@ defmodule Ash do
           | {:ok, true, Ash.Changeset.t(), Ash.Query.t()}
           | {:ok, false, Exception.t()}
           | {:error, term}
+  @doc spark_opts: [{2, @can_opts}]
   def can(action_or_query_or_changeset, actor, opts \\ []) do
     domain = Ash.Helpers.domain!(action_or_query_or_changeset, opts)
 
-    case Ash.Can.can(action_or_query_or_changeset, domain, actor, opts) do
-      {:error, error} -> {:error, Ash.Error.to_error_class(error)}
-      other -> other
+    case Spark.Options.validate(opts, @can_opts) do
+      {:ok, opts} ->
+        case Ash.Can.can(action_or_query_or_changeset, domain, actor, opts) do
+          {:error, error} -> {:error, Ash.Error.to_error_class(error)}
+          other -> other
+        end
+
+      {:error, error} ->
+        {:error, Ash.Error.to_error_class(error)}
     end
   end
 
@@ -1130,6 +1199,7 @@ defmodule Ash do
   """
   @spec run_action!(input :: Ash.ActionInput.t(), opts :: Keyword.t()) ::
           term | no_return
+  @doc spark_opts: [{1, @run_action_opts}]
   def run_action!(input, opts \\ []) do
     Ash.Helpers.expect_options!(opts)
 
@@ -1145,6 +1215,7 @@ defmodule Ash do
 
   #{Spark.Options.docs(@run_action_opts)}
   """
+  @doc spark_opts: [{1, @run_action_opts}]
   @spec run_action(input :: Ash.ActionInput.t(), opts :: Keyword.t()) ::
           {:ok, term} | {:error, Ash.Error.t()}
   def run_action(input, opts \\ []) do
@@ -1167,6 +1238,7 @@ defmodule Ash do
   """
   @spec calculate!(resource :: Ash.Resource.t(), calculation :: atom, opts :: Keyword.t()) ::
           term | no_return
+  @doc spark_opts: [{2, @calculate_opts}]
   def calculate!(resource_or_record, calculation, opts \\ []) do
     Ash.Helpers.expect_resource_or_record!(resource_or_record)
     Ash.Helpers.expect_options!(opts)
@@ -1183,6 +1255,7 @@ defmodule Ash do
 
   #{Spark.Options.docs(@calculate_opts)}
   """
+  @doc spark_opts: [{2, @calculate_opts}]
   @spec calculate(resource :: Ash.Resource.t(), calculation :: atom, opts :: Keyword.t()) ::
           {:ok, term} | {:error, term}
   def calculate(resource_or_record, calculation, opts \\ []) do
@@ -1199,6 +1272,7 @@ defmodule Ash do
   """
   @spec get!(Ash.Resource.t(), term(), Keyword.t()) ::
           Ash.Resource.record() | no_return
+  @doc spark_opts: [{2, @get_opts_schema}]
   def get!(resource, id, opts \\ []) do
     Ash.Helpers.expect_resource!(resource)
     Ash.Helpers.expect_options!(opts)
@@ -1218,6 +1292,7 @@ defmodule Ash do
 
   #{Spark.Options.docs(@get_opts_schema)}
   """
+  @doc spark_opts: [{2, @get_opts_schema}]
   @spec get(Ash.Resource.t(), term(), Keyword.t()) ::
           {:ok, Ash.Resource.record()} | {:error, term}
   def get(resource, id, opts \\ []) do
@@ -1456,6 +1531,7 @@ defmodule Ash do
           opts :: Keyword.t()
         ) ::
           Ash.Resource.record() | [Ash.Resource.record()] | no_return
+  @doc spark_opts: [{2, @load_opts_schema}]
   def load!(data, query, opts \\ []) do
     opts = Spark.Options.validate!(opts, @load_opts_schema)
 
@@ -1480,6 +1556,7 @@ defmodule Ash do
         ) ::
           {:ok, Ash.Resource.record() | [Ash.Resource.record()]} | {:error, term}
 
+  @doc spark_opts: [{2, @load_opts_schema}]
   def load(data, query, opts \\ [])
   def load([], _, _), do: {:ok, []}
   def load(nil, _, _), do: {:ok, nil}
@@ -1596,6 +1673,7 @@ defmodule Ash do
   """
   @spec stream!(query :: Ash.Query.t(), opts :: Keyword.t()) ::
           Enumerable.t(Ash.Resource.record())
+  @doc spark_opts: [{1, @stream_opts}]
   def stream!(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -1619,6 +1697,7 @@ defmodule Ash do
   """
   @spec read!(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
           list(Ash.Resource.record()) | Ash.Page.page() | no_return
+  @doc spark_opts: [{1, @read_opts_schema}]
   def read!(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -1646,6 +1725,7 @@ defmodule Ash do
   """
   @spec read(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
           {:ok, list(Ash.Resource.record()) | Ash.Page.page()} | {:error, term}
+  @doc read: [{1, @read_opts_schema}]
   def read(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -1678,6 +1758,7 @@ defmodule Ash do
   """
   @spec reload!(record :: Ash.Resource.record(), opts :: Keyword.t()) ::
           Ash.Resource.record() | no_return
+  @doc spark_opts: [{1, @get_opts_schema}]
   def reload!(record, opts \\ []) do
     Ash.Helpers.expect_record!(record)
     Ash.Helpers.expect_options!(opts)
@@ -1692,6 +1773,7 @@ defmodule Ash do
   """
   @spec reload(record :: Ash.Resource.record(), opts :: Keyword.t()) ::
           {:ok, Ash.Resource.record()} | {:error, Ash.Error.t()}
+  @doc spark_opts: [{1, @get_opts_schema}]
   def reload(record, opts \\ []) do
     Ash.Helpers.expect_record!(record)
     Ash.Helpers.expect_options!(opts)
@@ -1704,6 +1786,7 @@ defmodule Ash do
   @doc """
   Runs an ash query, returning a single result or raise an error. See `read_one/2` for more.
   """
+  @doc spark_opts: [{1, @read_one_opts_schema}]
   def read_one!(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
@@ -1722,6 +1805,7 @@ defmodule Ash do
 
   #{Spark.Options.docs(@read_one_opts_schema)}
   """
+  @doc spark_opts: [{1, @read_one_opts_schema}]
   def read_one(query, opts \\ []) do
     Ash.Helpers.expect_options!(opts)
     Ash.Helpers.expect_resource_or_query!(query)
@@ -1761,6 +1845,7 @@ defmodule Ash do
   @doc """
   Create a record or raises an error. See `create/2` for more information.
   """
+  @doc spark_opts: [{1, @create_opts_schema}]
   @spec create!(Ash.Changeset.t(), Keyword.t()) ::
           Ash.Resource.record()
           | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
@@ -1779,6 +1864,7 @@ defmodule Ash do
 
   #{Spark.Options.docs(@create_opts_schema)}
   """
+  @doc spark_opts: [{1, @create_opts_schema}]
   @spec create(Ash.Changeset.t(), Keyword.t()) ::
           {:ok, Ash.Resource.record()}
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
@@ -1800,6 +1886,7 @@ defmodule Ash do
   """
   @spec bulk_create!(Enumerable.t(map), Ash.Resource.t(), atom, Keyword.t()) ::
           Ash.BulkResult.t() | no_return
+  @doc spark_opts: [{3, @bulk_create_opts_schema}]
   def bulk_create!(inputs, resource, action, opts \\ []) do
     inputs
     |> bulk_create(resource, action, opts)
@@ -1888,6 +1975,7 @@ defmodule Ash do
               | {:error, Ash.Changeset.t() | Ash.Error.t()}
               | {:notification, Ash.Notifier.Notification.t()}
             )
+  @doc spark_opts: [{3, @bulk_create_opts_schema}]
   def bulk_create(inputs, resource, action, opts \\ []) do
     Ash.Helpers.expect_options!(opts)
     domain = Ash.Helpers.domain!(resource, opts)
@@ -1932,6 +2020,7 @@ defmodule Ash do
           opts :: Keyword.t()
         ) ::
           Ash.BulkResult.t() | no_return
+  @doc spark_opts: [{3, @bulk_update_opts_schema}]
   def bulk_update!(stream_or_query, action, input, opts \\ []) do
     stream_or_query
     |> bulk_update(action, input, opts)
@@ -1981,6 +2070,7 @@ defmodule Ash do
           Keyword.t()
         ) ::
           Ash.BulkResult.t()
+  @doc spark_opts: [{3, @bulk_update_opts_schema}]
   def bulk_update(query_or_stream, action, input, opts \\ []) do
     Ash.Helpers.expect_options!(opts)
     domain = Ash.Helpers.domain!(query_or_stream, opts)
@@ -2028,6 +2118,7 @@ defmodule Ash do
           opts :: Keyword.t()
         ) ::
           Ash.BulkResult.t() | no_return
+  @doc spark_opts: [{3, @bulk_destroy_opts_schema}]
   def bulk_destroy!(stream_or_query, action, input, opts \\ []) do
     stream_or_query
     |> bulk_destroy(action, input, opts)
@@ -2077,6 +2168,7 @@ defmodule Ash do
           Keyword.t()
         ) ::
           Ash.BulkResult.t()
+  @doc spark_opts: [{3, @bulk_destroy_opts_schema}]
   def bulk_destroy(query_or_stream, action, input, opts \\ []) do
     Ash.Helpers.expect_options!(opts)
     domain = Ash.Helpers.domain!(query_or_stream, opts)
@@ -2118,6 +2210,7 @@ defmodule Ash do
           Ash.Resource.record()
           | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | no_return
+  @doc spark_opts: [{1, @update_opts_schema}]
   def update!(changeset, opts \\ []) do
     Ash.Helpers.expect_changeset!(changeset)
     Ash.Helpers.expect_options!(opts)
@@ -2137,6 +2230,7 @@ defmodule Ash do
           {:ok, Ash.Resource.record()}
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
+  @doc spark_opts: [{1, @update_opts_schema}]
   def update(changeset, opts \\ []) do
     Ash.Helpers.expect_changeset!(changeset)
     Ash.Helpers.expect_options!(opts)
@@ -2165,6 +2259,7 @@ defmodule Ash do
           | list(Ash.Notifier.Notification.t())
           | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | no_return
+  @doc spark_opts: [{1, @destroy_opts_schema}]
   def destroy!(changeset_or_record, opts \\ []) do
     Ash.Helpers.expect_changeset_or_record!(changeset_or_record)
     Ash.Helpers.expect_options!(opts)
@@ -2186,7 +2281,7 @@ defmodule Ash do
           | {:ok, list(Ash.Notifier.Notification.t())}
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
-
+  @doc spark_opts: [{1, @destroy_opts_schema}]
   def destroy(changeset_or_record, opts \\ []) do
     Ash.Helpers.expect_changeset_or_record!(changeset_or_record)
     Ash.Helpers.expect_options!(opts)

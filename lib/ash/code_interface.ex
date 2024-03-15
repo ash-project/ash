@@ -312,7 +312,21 @@ defmodule Ash.CodeInterface do
 
         {safe_name, bang_name} = Ash.CodeInterface.resolve_calc_method_names(interface.name)
 
-        @doc "Calculate `#{calculation.name}`, raising any errors. See `#{interface.name}/#{Enum.count(interface.args) + 1}` for more."
+        opts_location = Enum.count(arg_bindings)
+        opt_schema = Ash.Resource.Interface.interface_options(:calculate)
+
+        @doc """
+        Calculate `#{calculation.name}`, raising any errors.
+
+        #{if calculation.description, do: "\n### Description:" <> calculation.description}
+
+        ### Options
+
+        #{Spark.Options.docs(Spark.Options.docs(Ash.Resource.Interface.interface_options(:calculate)))}
+        """
+        @doc spark_opts: [
+               {opts_location, opt_schema}
+             ]
         def unquote(bang_name)(unquote_splicing(arg_bindings), opts) do
           {refs, arguments, record} =
             Enum.reduce(
@@ -347,8 +361,16 @@ defmodule Ash.CodeInterface do
 
         @doc """
         Calculate `#{calculation.name}`, returning `{:ok, result}` or `{:error, error}`.
-        #{if calculation.description, do: "\nDescription:" <> calculation.description}
+
+        #{if calculation.description, do: "\n### Description:" <> calculation.description}
+
+        ### Options
+
+        #{Spark.Options.docs(Spark.Options.docs(Ash.Resource.Interface.interface_options(:calculate)))}
         """
+        @doc spark_opts: [
+               {opts_location, opt_schema}
+             ]
         def unquote(safe_name)(unquote_splicing(arg_bindings), opts) do
           {refs, arguments, record} =
             Enum.reduce(
@@ -629,8 +651,15 @@ defmodule Ash.CodeInterface do
                   opts \\ []
                 ]
 
+        first_opts_location = Enum.count(subject_args) + Enum.count(arg_vars_function)
+        opt_schema = Ash.Resource.Interface.interface_options(action.type)
+
         @doc doc
         @dialyzer {:nowarn_function, {interface.name, length(common_args)}}
+        @doc spark_opts: [
+               {first_opts_location, opt_schema},
+               {first_opts_location + 1, opt_schema}
+             ]
         def unquote(interface.name)(unquote_splicing(common_args)) do
           unquote(resolve_opts_params)
           unquote(resolve_subject)
@@ -640,6 +669,10 @@ defmodule Ash.CodeInterface do
         @doc doc
         # sobelow_skip ["DOS.BinToAtom"]
         @dialyzer {:nowarn_function, {:"#{interface.name}!", length(common_args)}}
+        @doc spark_opts: [
+               {first_opts_location, opt_schema},
+               {first_opts_location + 1, opt_schema}
+             ]
         def unquote(:"#{interface.name}!")(unquote_splicing(common_args)) do
           unquote(resolve_opts_params)
           unquote(resolve_subject)
@@ -649,6 +682,11 @@ defmodule Ash.CodeInterface do
         # sobelow_skip ["DOS.BinToAtom"]
         @dialyzer {:nowarn_function,
                    {:"#{subject_name}_to_#{interface.name}", length(common_args)}}
+
+        @doc spark_opts: [
+               {first_opts_location, opt_schema},
+               {first_opts_location + 1, opt_schema}
+             ]
         def unquote(:"#{subject_name}_to_#{interface.name}")(unquote_splicing(common_args)) do
           unquote(resolve_opts_params)
           unquote(resolve_subject)
@@ -657,6 +695,10 @@ defmodule Ash.CodeInterface do
 
         # sobelow_skip ["DOS.BinToAtom"]
         @dialyzer {:nowarn_function, {:"can_#{interface.name}", length(common_args) + 1}}
+        @doc spark_opts: [
+               {first_opts_location + 1, opt_schema},
+               {first_opts_location + 2, opt_schema}
+             ]
         def unquote(:"can_#{interface.name}")(actor, unquote_splicing(common_args)) do
           unquote(resolve_opts_params)
           opts = Keyword.put(opts, :actor, actor)
@@ -666,6 +708,10 @@ defmodule Ash.CodeInterface do
 
         # sobelow_skip ["DOS.BinToAtom"]
         @dialyzer {:nowarn_function, {:"can_#{interface.name}?", length(common_args) + 1}}
+        @doc spark_opts: [
+               {first_opts_location + 1, opt_schema},
+               {first_opts_location + 2, opt_schema}
+             ]
         def unquote(:"can_#{interface.name}?")(actor, unquote_splicing(common_args)) do
           unquote(resolve_opts_params)
           opts = Keyword.put(opts, :actor, actor)
