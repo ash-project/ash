@@ -464,7 +464,7 @@ defmodule Ash.Query do
     domain =
       query.domain || opts[:domain] || Ash.Resource.Info.domain(query.resource) ||
         raise ArgumentError,
-              "Could not determine domain for query. Provide the `domain` option or configure an domain in the resource directly."
+              "Could not determine domain for query. Provide the `domain` option or configure a domain in the resource directly."
 
     {query, opts} =
       Ash.Actions.Helpers.add_process_context(

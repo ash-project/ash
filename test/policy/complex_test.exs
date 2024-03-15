@@ -88,6 +88,14 @@ defmodule Ash.Test.Policy.ComplexTest do
              |> Enum.sort()
   end
 
+  test "it applies policies from the domain", %{me: me} do
+    assert_raise Ash.Error.Forbidden,
+                 ~r/authorize unless: actor.forbidden_by_domain == true | ✓ |/,
+                 fn ->
+                   Ash.read!(Post, actor: %{me | forbidden_by_domain: true})
+                 end
+  end
+
   test "it properly limits on reads of comments", %{
     me: me,
     comment_by_me_on_my_post: comment_by_me_on_my_post,

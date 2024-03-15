@@ -747,7 +747,6 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     imports: [Ash.Expr],
-    no_depend_modules: [:simple_notifiers],
     schema: [
       description: [
         type: :string,
@@ -778,11 +777,6 @@ defmodule Ash.Resource.Dsl do
         doc: """
         A pluralized version of the resource short_name. May be used by generators or automated tooling.
         """
-      ],
-      simple_notifiers: [
-        type: {:list, :module},
-        doc:
-          "A list of notifiers that require no DSL. Can be used to avoid compile time dependencies on notifiers"
       ],
       require_primary_key?: [
         type: :boolean,

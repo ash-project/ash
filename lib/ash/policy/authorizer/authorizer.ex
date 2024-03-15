@@ -1416,7 +1416,7 @@ defmodule Ash.Policy.Authorizer do
   defp get_policies(authorizer) do
     %{
       authorizer
-      | policies: Ash.Policy.Info.policies(authorizer.resource)
+      | policies: Ash.Policy.Info.policies(authorizer.domain, authorizer.resource)
     }
   end
 

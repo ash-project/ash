@@ -147,7 +147,7 @@ defmodule Ash.Resource.Info do
   """
   @spec simple_notifiers(Spark.Dsl.t() | Ash.Resource.t()) :: list(module)
   def simple_notifiers(resource) do
-    Extension.get_opt(resource, [:resource], :simple_notifiers) || []
+    Extension.get_persisted(resource, :simple_notifiers, [])
   end
 
   @doc """

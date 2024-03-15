@@ -20,6 +20,8 @@ If you use `Ash.Flow`, include `{:ash_flow, "~> 0.1.0"}` in your application.
 
 - `relationships.belongs_to.attribute_public?` has been added, which controls the underlying attribute's `public?` value. This, similar to `attribute_writable?` defaults to the `public?` attribute of the relationship.
 
+- `resource.simple_notifiers` has been removed, in favor of specifying non-DSL notifiers in the `simple_notifiers` option to `use Ash.Resource`.
+
 ### `Ash.Registry` has been removed
 
 `Ash.Registry` is no longer needed. Place each resource in the domain instead.

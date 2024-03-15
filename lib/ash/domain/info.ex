@@ -153,31 +153,31 @@ defmodule Ash.Domain.Info do
     Extension.get_opt(domain, [:domain], :description, nil)
   end
 
-  @doc "The allow MFA for an domain"
+  @doc "The allow MFA for a domain"
   @spec allow(Ash.Domain.t() | Spark.Dsl.t()) :: mfa() | nil
   def allow(domain) do
     Extension.get_opt(domain, [:resources], :allow, nil, true)
   end
 
-  @doc "The execution timeout for an domain"
+  @doc "The execution timeout for a domain"
   @spec timeout(Ash.Domain.t()) :: nil | :infinity | integer()
   def timeout(domain) do
     Extension.get_opt(domain, [:execution], :timeout, 30_000, true)
   end
 
-  @doc "The short name for an domain"
+  @doc "The short name for a domain"
   @spec short_name(Ash.Domain.t()) :: atom
   def short_name(domain) do
     Extension.get_opt(domain, [:execution], :short_name, nil) || domain.default_short_name()
   end
 
-  @doc "The trace name for an domain"
+  @doc "The trace name for a domain"
   @spec trace_name(Ash.Domain.t()) :: String.t()
   def trace_name(domain) do
     Extension.get_opt(domain, [:execution], :trace_name, nil) || to_string(short_name(domain))
   end
 
-  @doc "The span_name for an domain and resource combination"
+  @doc "The span_name for a domain and resource combination"
   @spec span_name(Ash.Domain.t(), Ash.Resource.t(), action :: atom | binary()) :: String.t()
   def span_name(domain, resource, action) do
     "#{trace_name(domain)}:#{Ash.Resource.Info.trace_name(resource)}.#{action}"
@@ -189,7 +189,7 @@ defmodule Ash.Domain.Info do
     List.flatten([:ash, short_name(domain), name])
   end
 
-  @doc "Whether or not the actor is always required for an domain"
+  @doc "Whether or not the actor is always required for a domain"
   @spec require_actor?(Ash.Domain.t()) :: boolean
   def require_actor?(domain) do
     Extension.get_opt(domain, [:authorization], :require_actor?, false, true)
