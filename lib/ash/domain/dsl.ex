@@ -78,8 +78,42 @@ defmodule Ash.Domain.Dsl do
 
   defmodule ResourceReference do
     @moduledoc "A resource reference in an domain"
-    defstruct [:resource]
+    defstruct [:resource, definitions: []]
+
+    @type t :: %__MODULE__{
+            resource: module(),
+            definitions: list(Ash.Resource.Interface.t() | Ash.Resource.CalculationInterface.t())
+          }
   end
+
+  @define %Spark.Dsl.Entity{
+    name: :define,
+    describe: """
+    Defines a function with the corresponding name and arguments. See the [code interface guide](/documentation/topics/code-interface.md) for more.
+    """,
+    examples: [
+      "define :get_user_by_id, User, action: :get_by_id, args: [:id], get?: true"
+    ],
+    target: Ash.Resource.Interface,
+    schema: Ash.Resource.Interface.schema(),
+    transform: {Ash.Resource.Interface, :transform, []},
+    args: [:name]
+  }
+
+  @define_calculation %Spark.Dsl.Entity{
+    name: :define_calculation,
+    describe: """
+    Defines a function with the corresponding name and arguments, that evaluates a calculation. Use `:_record` to take an instance of a record. See the [code interface guide](/documentation/topics/code-interface.md) for more.
+    """,
+    examples: [
+      "define_calculation :referral_link, User, args: [:id]",
+      "define_calculation :referral_link, User, args: [{:arg, :id}, {:ref, :id}]"
+    ],
+    target: Ash.Resource.CalculationInterface,
+    schema: Ash.Resource.CalculationInterface.schema(),
+    transform: {Ash.Resource.CalculationInterface, :transform, []},
+    args: [:name]
+  }
 
   @resource %Spark.Dsl.Entity{
     name: :resource,
@@ -88,6 +122,9 @@ defmodule Ash.Domain.Dsl do
       "resource Foo"
     ],
     target: ResourceReference,
+    entities: [
+      definitions: [@define, @define_calculation]
+    ],
     args: [:resource],
     no_depend_modules: [:resource],
     schema: [
