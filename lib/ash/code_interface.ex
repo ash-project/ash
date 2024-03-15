@@ -316,14 +316,15 @@ defmodule Ash.CodeInterface do
         opt_schema = Ash.Resource.Interface.interface_options(:calculate)
 
         @doc """
-        Calculate `#{calculation.name}`, raising any errors.
+             #{calculation.description || "Calculates #{calculation.name} action on #{inspect(resource)}."}
 
-        #{if calculation.description, do: "\n### Description:" <> calculation.description}
+             #{Ash.CodeInterface.describe_calculation(resource, calculation, interface.args)}
 
-        ### Options
+             ### Options
 
-        #{Spark.Options.docs(Spark.Options.docs(Ash.Resource.Interface.interface_options(:calculate)))}
-        """
+             #{Spark.Options.docs(Spark.Options.docs(Ash.Resource.Interface.interface_options(:calculate)))}
+             """
+             |> Ash.CodeInterface.trim_double_newlines()
         @doc spark_opts: [
                {opts_location, opt_schema}
              ]
@@ -360,14 +361,15 @@ defmodule Ash.CodeInterface do
         end
 
         @doc """
-        Calculate `#{calculation.name}`, returning `{:ok, result}` or `{:error, error}`.
+             #{calculation.description || "Calculates #{calculation.name} action on #{inspect(resource)}."}
 
-        #{if calculation.description, do: "\n### Description:" <> calculation.description}
+             #{Ash.CodeInterface.describe_calculation(resource, calculation, interface.args)}
 
-        ### Options
+             ### Options
 
-        #{Spark.Options.docs(Spark.Options.docs(Ash.Resource.Interface.interface_options(:calculate)))}
-        """
+             #{Spark.Options.docs(Spark.Options.docs(Ash.Resource.Interface.interface_options(:calculate)))}
+             """
+             |> Ash.CodeInterface.trim_double_newlines()
         @doc spark_opts: [
                {opts_location, opt_schema}
              ]
@@ -448,13 +450,17 @@ defmodule Ash.CodeInterface do
           """
         end
 
-        doc = """
-        #{action.description || "Calls the #{action.name} action on the #{inspect(resource)} resource."}
+        doc =
+          """
+          #{action.description || "Calls the #{action.name} action on #{inspect(resource)}."}
 
-        ## Options
+          #{Ash.CodeInterface.describe_action(resource, action, interface.args)}
 
-        #{Spark.Options.docs(Ash.Resource.Interface.interface_options(action.type))}
-        """
+          ## Options
+
+          #{Spark.Options.docs(Ash.Resource.Interface.interface_options(action.type))}
+          """
+          |> Ash.CodeInterface.trim_double_newlines()
 
         resolve_opts_params =
           quote do
@@ -720,5 +726,134 @@ defmodule Ash.CodeInterface do
         end
       end
     end
+  end
+
+  def describe_action(resource, action, args) do
+    resource
+    |> Ash.Resource.Info.action_inputs(action.name)
+    |> Enum.filter(&is_atom/1)
+    |> Enum.uniq()
+    |> case do
+      [] ->
+        ""
+
+      inputs ->
+        {arguments, inputs} = Enum.split_with(inputs, &(&1 in args))
+
+        arguments =
+          Enum.map(arguments, &describe_input(resource, action, &1))
+
+        inputs =
+          Enum.map(inputs, &describe_input(resource, action, &1))
+
+        case {arguments, inputs} do
+          {[], []} ->
+            ""
+
+          {arguments, []} ->
+            """
+            # Arguments
+
+            #{Enum.join(arguments, "\n")}
+            """
+
+          {[], inputs} ->
+            """
+            # Inputs
+
+            #{Enum.join(inputs, "\n")}
+            """
+
+          {arguments, inputs} ->
+            """
+            # Arguments
+
+            #{Enum.join(arguments, "\n")}
+
+            # Inputs
+
+            #{Enum.join(inputs, "\n")}
+            """
+        end
+    end
+  end
+
+  def describe_calculation(resource, calculation, args) do
+    calculation.arguments
+    |> case do
+      [] ->
+        ""
+
+      inputs ->
+        {arguments, inputs} = Enum.split_with(inputs, &(&1 in args))
+
+        arguments = Enum.sort_by(arguments, fn arg -> Enum.find_index(args, &(&1 == arg)) end)
+
+        arguments =
+          Enum.map(arguments, &describe_input(resource, calculation, &1))
+
+        inputs =
+          Enum.map(inputs, &describe_input(resource, calculation, &1))
+
+        case {arguments, inputs} do
+          {[], []} ->
+            ""
+
+          {arguments, []} ->
+            """
+            # Arguments
+
+            #{Enum.join(arguments, "\n")}
+            """
+
+          {[], inputs} ->
+            """
+            # Inputs
+
+            #{Enum.join(inputs, "\n")}
+            """
+
+          {arguments, inputs} ->
+            """
+            # Arguments
+
+            #{Enum.join(arguments, "\n")}
+
+            # Inputs
+
+            #{Enum.join(inputs, "\n")}
+            """
+        end
+    end
+  end
+
+  defp describe_input(resource, %{arguments: arguments}, name) do
+    case Enum.find(arguments, &(&1.name == name)) do
+      nil ->
+        case Ash.Resource.Info.field(resource, name) do
+          nil ->
+            "* #{name}"
+
+          field ->
+            describe(field)
+        end
+
+      argument ->
+        describe(argument)
+    end
+  end
+
+  defp describe(%{name: name, description: description}) when not is_nil(description) do
+    "* #{name} - #{description}"
+  end
+
+  defp describe(%{name: name}) do
+    "* #{name}"
+  end
+
+  def trim_double_newlines(str) do
+    str
+    |> String.replace(~r/\n{2,}/, "\n")
+    |> String.trim_trailing()
   end
 end
