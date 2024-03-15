@@ -23,7 +23,7 @@ defmodule Ash.Test.Resource.DomainTest do
     end
   end
 
-  test "cannot define a resource that points to an domain that doesn't accept it" do
+  test "cannot define a resource that points to a domain that doesn't accept it" do
     assert_raise RuntimeError, ~r/domain does not accept this resource/, fn ->
       defmodule NoResourcesDomain do
         use Ash.Domain
@@ -39,7 +39,7 @@ defmodule Ash.Test.Resource.DomainTest do
     end
   end
 
-  test "a resource defined with an domain can be used with functions in `Ash`" do
+  test "a resource defined with a domain can be used with functions in `Ash`" do
     assert %Foo{} =
              Foo
              |> Ash.Changeset.for_create(:create)

@@ -93,9 +93,9 @@ defmodule Ash.Policy.Info do
     end
   end
 
-  def describe_resource(resource) do
-    resource
-    |> policies()
+  def describe_resource(domain, resource) do
+    domain
+    |> policies(resource)
     |> describe_policies()
   end
 
@@ -143,7 +143,15 @@ defmodule Ash.Policy.Info do
     |> set_access_type(default_access_type(resource))
   end
 
-  def policies(resource) do
+  def policies(domain, resource) do
+    if domain do
+      do_policies(domain) ++ do_policies(resource)
+    else
+      do_policies(resource)
+    end
+  end
+
+  defp do_policies(resource) do
     resource
     |> Extension.get_entities([:policies])
     |> set_access_type(default_access_type(resource))

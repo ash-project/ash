@@ -1069,7 +1069,7 @@ defmodule Ash.Changeset do
       changeset.domain || opts[:domain] || Ash.Resource.Info.domain(changeset.resource) ||
         raise ArgumentError,
           message:
-            "Could not determine domain for changeset. Provide the `domain` option or configure an domain in the resource directly."
+            "Could not determine domain for changeset. Provide the `domain` option or configure a domain in the resource directly."
 
     changeset = %{changeset | domain: domain}
 
@@ -1318,7 +1318,7 @@ defmodule Ash.Changeset do
       changeset.domain || opts[:domain] || Ash.Resource.Info.domain(changeset.resource) ||
         raise ArgumentError,
           message:
-            "Could not determine domain for changeset. Provide the `domain` option or configure an domain in the resource directly."
+            "Could not determine domain for changeset. Provide the `domain` option or configure a domain in the resource directly."
 
     {changeset, opts} =
       Ash.Actions.Helpers.add_process_context(

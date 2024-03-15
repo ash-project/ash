@@ -2,7 +2,7 @@ defmodule Ash.Domain do
   @moduledoc """
   A domain allows you to interact with your resources, and holds domain-wide configuration.
 
-  For example, the json domain extension adds an domain extension that lets you toggle authorization on/off
+  For example, the json domain extension adds a domain extension that lets you toggle authorization on/off
   for all resources in a given domain. You include resources in your domain like so:
 
   ```elixir
@@ -22,11 +22,19 @@ defmodule Ash.Domain do
     opt_schema: [
       validate_config_inclusion?: [
         type: :boolean,
-        default: true
+        default: true,
+        doc: "Whether or not to validate that this domain is included in the configuration."
       ]
     ]
 
   @type t() :: module
+
+  @impl Spark.Dsl
+  def handle_opts(opts) do
+    quote do
+      @persist {:simple_notifiers, unquote(opts[:simple_notifiers])}
+    end
+  end
 
   @impl Spark.Dsl
   def explain(dsl_state, _opts) do

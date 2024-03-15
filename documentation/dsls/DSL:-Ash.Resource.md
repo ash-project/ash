@@ -1924,7 +1924,6 @@ end
 | [`trace_name`](#resource-trace_name){: #resource-trace_name } | `String.t` |  | The name to use in traces. Defaults to the short_name stringified. See the [monitoring guide](/documentation/topics/monitoring.md) for more. |
 | [`short_name`](#resource-short_name){: #resource-short_name } | `atom` |  | A short identifier for the resource, which should be unique. See the [monitoring guide](/documentation/topics/monitoring.md) for more. |
 | [`plural_name`](#resource-plural_name){: #resource-plural_name } | `atom` |  | A pluralized version of the resource short_name. May be used by generators or automated tooling. |
-| [`simple_notifiers`](#resource-simple_notifiers){: #resource-simple_notifiers } | `list(module)` |  | A list of notifiers that require no DSL. Can be used to avoid compile time dependencies on notifiers |
 | [`require_primary_key?`](#resource-require_primary_key?){: #resource-require_primary_key? } | `boolean` | `true` | Allow the resource to be used without any primary key fields. Warning: this option is experimental, and should not be used unless you know what you're doing. |
 
 

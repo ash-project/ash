@@ -19,14 +19,19 @@ defmodule Ash.Resource do
       extensions: [Ash.Resource.Dsl]
     ],
     opt_schema: [
+      simple_notifiers: [
+        type: {:list, {:behaviour, Ash.Notifier}},
+        doc: "Notifiers with no DSL."
+      ],
       validate_domain_inclusion?: [
         type: :boolean,
+        doc: "Whether or not to validate that this resource is included in a domain.",
         default: true
       ],
       domain: [
         type: :atom,
         doc:
-          "The domain to use when interacting with this resource. Also sets defaults for various options that ask for an domain."
+          "The domain to use when interacting with this resource. Also sets defaults for various options that ask for a domain."
       ],
       embed_nil_values?: [
         type: :boolean,
