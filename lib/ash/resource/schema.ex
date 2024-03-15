@@ -9,316 +9,326 @@ defmodule Ash.Schema do
   defmacro define_schema do
     if Ash.Resource.Info.embedded?(__CALLER__.module) do
       quote unquote: false do
-        alias Ash.Query.Aggregate
-        use Ecto.Schema
-        @primary_key false
+        if Ash.Schema.define?(__MODULE__) do
+          alias Ash.Query.Aggregate
+          use Ecto.Schema
+          @primary_key false
 
-        embedded_schema do
-          for attribute <- Ash.Resource.Info.attributes(__MODULE__),
-              attribute.name not in Ash.Resource.reserved_names() do
-            read_after_writes? = attribute.generated? and is_nil(attribute.default)
+          embedded_schema do
+            for attribute <- Ash.Resource.Info.attributes(__MODULE__),
+                attribute.name not in Ash.Resource.reserved_names() do
+              read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
-            constraint_opts =
-              case attribute.type do
-                {:array, _type} ->
-                  attribute.constraints[:items] || []
+              constraint_opts =
+                case attribute.type do
+                  {:array, _type} ->
+                    attribute.constraints[:items] || []
 
-                _ ->
-                  attribute.constraints
-              end
+                  _ ->
+                    attribute.constraints
+                end
 
-            field(
-              attribute.name,
-              Ash.Type.ecto_type(Ash.Schema.not_a_resource!(attribute.type)),
-              Keyword.merge(constraint_opts,
-                primary_key: attribute.primary_key?,
-                read_after_writes: read_after_writes?,
-                redact: attribute.sensitive?,
-                source: attribute.source
+              field(
+                attribute.name,
+                Ash.Type.ecto_type(Ash.Schema.not_a_resource!(attribute.type)),
+                Keyword.merge(constraint_opts,
+                  primary_key: attribute.primary_key?,
+                  read_after_writes: read_after_writes?,
+                  redact: attribute.sensitive?,
+                  source: attribute.source
+                )
               )
-            )
-          end
-
-          field(:aggregates, :map, virtual: true, default: %{})
-          field(:calculations, :map, virtual: true, default: %{})
-          field(:__metadata__, :map, virtual: true, default: %{}, redact: true)
-          field(:__order__, :integer, virtual: true, redact: true)
-          field(:__lateral_join_source__, :integer, virtual: true, redact: true)
-
-          struct_fields_name =
-            if Module.get_attribute(__MODULE__, :struct_fields) do
-              :struct_fields
-            else
-              :ecto_struct_fields
             end
 
-          Module.register_attribute(__MODULE__, :ash_struct_fields, accumulate: true)
+            field(:aggregates, :map, virtual: true, default: %{})
+            field(:calculations, :map, virtual: true, default: %{})
+            field(:__metadata__, :map, virtual: true, default: %{}, redact: true)
+            field(:__order__, :integer, virtual: true, redact: true)
+            field(:__lateral_join_source__, :integer, virtual: true, redact: true)
 
-          for field <- Module.get_attribute(__MODULE__, struct_fields_name) do
-            Module.put_attribute(__MODULE__, :ash_struct_fields, field)
-          end
-
-          for relationship <- Ash.Resource.Info.relationships(__MODULE__),
-              relationship.name not in Ash.Resource.reserved_names() do
-            Module.put_attribute(
-              __MODULE__,
-              :ash_struct_fields,
-              {relationship.name, %Ash.NotLoaded{type: :relationship, field: relationship.name}}
-            )
-          end
-
-          for aggregate <- Ash.Resource.Info.aggregates(__MODULE__),
-              aggregate.name not in Ash.Resource.reserved_names() do
-            {:ok, type, _} =
-              if aggregate.kind == :custom do
-                {:ok, aggregate.type, []}
+            struct_fields_name =
+              if Module.get_attribute(__MODULE__, :struct_fields) do
+                :struct_fields
               else
-                Aggregate.kind_to_type(aggregate.kind, :string, [])
+                :ecto_struct_fields
               end
 
-            field(
-              aggregate.name,
-              Ash.Type.ecto_type(Ash.Schema.not_a_resource!(type)),
-              virtual: true
-            )
+            Module.register_attribute(__MODULE__, :ash_struct_fields, accumulate: true)
 
-            Module.put_attribute(
-              __MODULE__,
-              :ash_struct_fields,
-              {aggregate.name, %Ash.NotLoaded{type: :aggregate, field: aggregate.name}}
-            )
+            for field <- Module.get_attribute(__MODULE__, struct_fields_name) do
+              Module.put_attribute(__MODULE__, :ash_struct_fields, field)
+            end
+
+            for relationship <- Ash.Resource.Info.relationships(__MODULE__),
+                relationship.name not in Ash.Resource.reserved_names() do
+              Module.put_attribute(
+                __MODULE__,
+                :ash_struct_fields,
+                {relationship.name, %Ash.NotLoaded{type: :relationship, field: relationship.name}}
+              )
+            end
+
+            for aggregate <- Ash.Resource.Info.aggregates(__MODULE__),
+                aggregate.name not in Ash.Resource.reserved_names() do
+              {:ok, type, _} =
+                if aggregate.kind == :custom do
+                  {:ok, aggregate.type, []}
+                else
+                  Aggregate.kind_to_type(aggregate.kind, :string, [])
+                end
+
+              field(
+                aggregate.name,
+                Ash.Type.ecto_type(Ash.Schema.not_a_resource!(type)),
+                virtual: true
+              )
+
+              Module.put_attribute(
+                __MODULE__,
+                :ash_struct_fields,
+                {aggregate.name, %Ash.NotLoaded{type: :aggregate, field: aggregate.name}}
+              )
+            end
+
+            for calculation <- Ash.Resource.Info.calculations(__MODULE__),
+                calculation.name not in Ash.Resource.reserved_names() do
+              {mod, _} = calculation.calculation
+
+              field(
+                calculation.name,
+                Ash.Type.ecto_type(Ash.Schema.not_a_resource!(calculation.type)),
+                virtual: true
+              )
+
+              Module.put_attribute(
+                __MODULE__,
+                :ash_struct_fields,
+                {calculation.name, %Ash.NotLoaded{type: :calculation, field: calculation.name}}
+              )
+            end
+
+            struct_fields = Module.get_attribute(__MODULE__, :ash_struct_fields)
+            Module.delete_attribute(__MODULE__, struct_fields_name)
+            Module.register_attribute(__MODULE__, struct_fields_name, accumulate: true)
+            Enum.each(struct_fields, &Module.put_attribute(__MODULE__, struct_fields_name, &1))
           end
 
-          for calculation <- Ash.Resource.Info.calculations(__MODULE__),
-              calculation.name not in Ash.Resource.reserved_names() do
-            {mod, _} = calculation.calculation
+          after_compile =
+            @after_compile -- [{Ecto.Schema, :__after_compile__}]
 
-            field(
-              calculation.name,
-              Ash.Type.ecto_type(Ash.Schema.not_a_resource!(calculation.type)),
-              virtual: true
-            )
+          Module.delete_attribute(__MODULE__, :after_compile)
+          Module.register_attribute(__MODULE__, :after_compile, accumulate: true)
 
-            Module.put_attribute(
-              __MODULE__,
-              :ash_struct_fields,
-              {calculation.name, %Ash.NotLoaded{type: :calculation, field: calculation.name}}
-            )
+          for compile_hook <- after_compile do
+            @after_compile compile_hook
           end
-
-          struct_fields = Module.get_attribute(__MODULE__, :ash_struct_fields)
-          Module.delete_attribute(__MODULE__, struct_fields_name)
-          Module.register_attribute(__MODULE__, struct_fields_name, accumulate: true)
-          Enum.each(struct_fields, &Module.put_attribute(__MODULE__, struct_fields_name, &1))
-        end
-
-        after_compile =
-          @after_compile -- [{Ecto.Schema, :__after_compile__}]
-
-        Module.delete_attribute(__MODULE__, :after_compile)
-        Module.register_attribute(__MODULE__, :after_compile, accumulate: true)
-
-        for compile_hook <- after_compile do
-          @after_compile compile_hook
         end
       end
     else
       quote unquote: false do
-        alias Ash.Query.Aggregate
-        use Ecto.Schema
-        @primary_key false
+        if Ash.Schema.define?(__MODULE__) do
+          alias Ash.Query.Aggregate
+          use Ecto.Schema
+          @primary_key false
 
-        schema Ash.DataLayer.source(__MODULE__) do
-          for attribute <- Ash.Resource.Info.attributes(__MODULE__),
-              attribute.name not in Ash.Resource.reserved_names() do
-            read_after_writes? = attribute.generated? and is_nil(attribute.default)
+          schema Ash.DataLayer.source(__MODULE__) do
+            for attribute <- Ash.Resource.Info.attributes(__MODULE__),
+                attribute.name not in Ash.Resource.reserved_names() do
+              read_after_writes? = attribute.generated? and is_nil(attribute.default)
 
-            constraint_opts =
-              case attribute.type do
-                {:array, _type} ->
-                  attribute.constraints[:items] || []
+              constraint_opts =
+                case attribute.type do
+                  {:array, _type} ->
+                    attribute.constraints[:items] || []
 
-                _ ->
-                  attribute.constraints
-              end
+                  _ ->
+                    attribute.constraints
+                end
 
-            field(
-              attribute.name,
-              Ash.Type.ecto_type(Ash.Schema.not_a_resource!(attribute.type)),
-              Keyword.merge(constraint_opts,
-                primary_key: attribute.primary_key?,
-                read_after_writes: read_after_writes?,
-                redact: attribute.sensitive?,
-                source: attribute.source
+              field(
+                attribute.name,
+                Ash.Type.ecto_type(Ash.Schema.not_a_resource!(attribute.type)),
+                Keyword.merge(constraint_opts,
+                  primary_key: attribute.primary_key?,
+                  read_after_writes: read_after_writes?,
+                  redact: attribute.sensitive?,
+                  source: attribute.source
+                )
               )
-            )
-          end
-
-          field(:aggregates, :map, virtual: true, default: %{})
-          field(:calculations, :map, virtual: true, default: %{})
-          field(:__metadata__, :map, virtual: true, default: %{}, redact: true)
-          field(:__order__, :integer, virtual: true, redact: true)
-          field(:__lateral_join_source__, :integer, virtual: true, redact: true)
-
-          struct_fields_name =
-            if Module.get_attribute(__MODULE__, :struct_fields) do
-              :struct_fields
-            else
-              :ecto_struct_fields
             end
 
-          Module.register_attribute(__MODULE__, :ash_struct_fields, accumulate: true)
+            field(:aggregates, :map, virtual: true, default: %{})
+            field(:calculations, :map, virtual: true, default: %{})
+            field(:__metadata__, :map, virtual: true, default: %{}, redact: true)
+            field(:__order__, :integer, virtual: true, redact: true)
+            field(:__lateral_join_source__, :integer, virtual: true, redact: true)
 
-          for field <- Module.get_attribute(__MODULE__, struct_fields_name) do
-            Module.put_attribute(__MODULE__, :ash_struct_fields, field)
-          end
-
-          for relationship <- Ash.Resource.Info.relationships(__MODULE__),
-              relationship.name not in Ash.Resource.reserved_names() do
-            case relationship do
-              %{no_attributes?: true} ->
-                :ok
-
-              %{manual?: true} ->
-                :ok
-
-              %{manual: manual} when not is_nil(manual) ->
-                :ok
-
-              %{type: :belongs_to} ->
-                belongs_to relationship.name, relationship.destination,
-                  define_field: false,
-                  references: relationship.destination_attribute,
-                  foreign_key: relationship.source_attribute
-
-              %{type: :has_many} ->
-                has_many relationship.name, relationship.destination,
-                  foreign_key: relationship.destination_attribute,
-                  references: relationship.source_attribute
-
-              %{type: :has_one} ->
-                has_one relationship.name, relationship.destination,
-                  foreign_key: relationship.destination_attribute,
-                  references: relationship.source_attribute
-
-              %{type: :many_to_many} ->
-                many_to_many relationship.name, relationship.destination,
-                  join_through: relationship.through,
-                  join_keys: [
-                    {relationship.source_attribute_on_join_resource,
-                     relationship.source_attribute},
-                    {relationship.destination_attribute_on_join_resource,
-                     relationship.destination_attribute}
-                  ]
-            end
-
-            Module.put_attribute(
-              __MODULE__,
-              :ash_struct_fields,
-              {relationship.name, %Ash.NotLoaded{type: :relationship, field: relationship.name}}
-            )
-          end
-
-          for aggregate <- Ash.Resource.Info.aggregates(__MODULE__),
-              aggregate.name not in Ash.Resource.reserved_names() do
-            {:ok, type, _} =
-              if aggregate.kind == :custom do
-                {:ok, aggregate.type, []}
+            struct_fields_name =
+              if Module.get_attribute(__MODULE__, :struct_fields) do
+                :struct_fields
               else
-                Aggregate.kind_to_type(aggregate.kind, :string, [])
+                :ecto_struct_fields
               end
 
-            field(
-              aggregate.name,
-              Ash.Type.ecto_type(Ash.Schema.not_a_resource!(type)),
-              virtual: true
-            )
+            Module.register_attribute(__MODULE__, :ash_struct_fields, accumulate: true)
 
-            Module.put_attribute(
-              __MODULE__,
-              :ash_struct_fields,
-              {aggregate.name, %Ash.NotLoaded{type: :aggregate, field: aggregate.name}}
-            )
+            for field <- Module.get_attribute(__MODULE__, struct_fields_name) do
+              Module.put_attribute(__MODULE__, :ash_struct_fields, field)
+            end
+
+            for relationship <- Ash.Resource.Info.relationships(__MODULE__),
+                relationship.name not in Ash.Resource.reserved_names() do
+              case relationship do
+                %{no_attributes?: true} ->
+                  :ok
+
+                %{manual?: true} ->
+                  :ok
+
+                %{manual: manual} when not is_nil(manual) ->
+                  :ok
+
+                %{type: :belongs_to} ->
+                  belongs_to relationship.name, relationship.destination,
+                    define_field: false,
+                    references: relationship.destination_attribute,
+                    foreign_key: relationship.source_attribute
+
+                %{type: :has_many} ->
+                  has_many relationship.name, relationship.destination,
+                    foreign_key: relationship.destination_attribute,
+                    references: relationship.source_attribute
+
+                %{type: :has_one} ->
+                  has_one relationship.name, relationship.destination,
+                    foreign_key: relationship.destination_attribute,
+                    references: relationship.source_attribute
+
+                %{type: :many_to_many} ->
+                  many_to_many relationship.name, relationship.destination,
+                    join_through: relationship.through,
+                    join_keys: [
+                      {relationship.source_attribute_on_join_resource,
+                       relationship.source_attribute},
+                      {relationship.destination_attribute_on_join_resource,
+                       relationship.destination_attribute}
+                    ]
+              end
+
+              Module.put_attribute(
+                __MODULE__,
+                :ash_struct_fields,
+                {relationship.name, %Ash.NotLoaded{type: :relationship, field: relationship.name}}
+              )
+            end
+
+            for aggregate <- Ash.Resource.Info.aggregates(__MODULE__),
+                aggregate.name not in Ash.Resource.reserved_names() do
+              {:ok, type, _} =
+                if aggregate.kind == :custom do
+                  {:ok, aggregate.type, []}
+                else
+                  Aggregate.kind_to_type(aggregate.kind, :string, [])
+                end
+
+              field(
+                aggregate.name,
+                Ash.Type.ecto_type(Ash.Schema.not_a_resource!(type)),
+                virtual: true
+              )
+
+              Module.put_attribute(
+                __MODULE__,
+                :ash_struct_fields,
+                {aggregate.name, %Ash.NotLoaded{type: :aggregate, field: aggregate.name}}
+              )
+            end
+
+            for calculation <- Ash.Resource.Info.calculations(__MODULE__),
+                calculation.name not in Ash.Resource.reserved_names() do
+              {mod, _} = calculation.calculation
+
+              field(
+                calculation.name,
+                Ash.Type.ecto_type(Ash.Schema.not_a_resource!(calculation.type)),
+                virtual: true
+              )
+
+              Module.put_attribute(
+                __MODULE__,
+                :ash_struct_fields,
+                {calculation.name, %Ash.NotLoaded{type: :calculation, field: calculation.name}}
+              )
+            end
+
+            struct_fields = Module.get_attribute(__MODULE__, :ash_struct_fields)
+
+            Module.delete_attribute(__MODULE__, struct_fields_name)
+            Module.register_attribute(__MODULE__, struct_fields_name, accumulate: true)
+            Enum.each(struct_fields, &Module.put_attribute(__MODULE__, struct_fields_name, &1))
           end
 
-          for calculation <- Ash.Resource.Info.calculations(__MODULE__),
-              calculation.name not in Ash.Resource.reserved_names() do
-            {mod, _} = calculation.calculation
+          after_compile =
+            @after_compile -- [{Ecto.Schema, :__after_compile__}]
 
-            field(
-              calculation.name,
-              Ash.Type.ecto_type(Ash.Schema.not_a_resource!(calculation.type)),
-              virtual: true
-            )
+          Module.delete_attribute(__MODULE__, :after_compile)
+          Module.register_attribute(__MODULE__, :after_compile, accumulate: true)
 
-            Module.put_attribute(
-              __MODULE__,
-              :ash_struct_fields,
-              {calculation.name, %Ash.NotLoaded{type: :calculation, field: calculation.name}}
-            )
+          for compile_hook <- after_compile do
+            @after_compile compile_hook
           end
-
-          struct_fields = Module.get_attribute(__MODULE__, :ash_struct_fields)
-
-          Module.delete_attribute(__MODULE__, struct_fields_name)
-          Module.register_attribute(__MODULE__, struct_fields_name, accumulate: true)
-          Enum.each(struct_fields, &Module.put_attribute(__MODULE__, struct_fields_name, &1))
-        end
-
-        after_compile =
-          @after_compile -- [{Ecto.Schema, :__after_compile__}]
-
-        Module.delete_attribute(__MODULE__, :after_compile)
-        Module.register_attribute(__MODULE__, :after_compile, accumulate: true)
-
-        for compile_hook <- after_compile do
-          @after_compile compile_hook
         end
       end
     end
   end
 
-  if Application.compile_env(:ash, :allow_resources_as_types) || false do
-    def not_a_resource!(other), do: other
-  else
-    @doc false
-    def not_a_resource!({:array, type}) do
-      {:array, not_a_resource!(type)}
-    end
+  def define?(resource) do
+    has_action?(resource) or !Enum.empty?(Ash.Resource.Info.fields(resource))
+  end
 
-    def not_a_resource!(module) when is_atom(module) do
-      type =
-        if Ash.Type.NewType.new_type?(module) do
-          Ash.Type.NewType.subtype_of(module)
-        else
-          module
-        end
+  defp has_action?(resource) do
+    resource
+    |> Ash.Resource.Info.actions()
+    |> Enum.any?(&(&1.type != :action))
+  end
 
-      if Ash.Resource.Info.resource?(type) && !Ash.Resource.Info.embedded?(type) do
-        raise """
-        Non-embedded resources can no longer be used as types.
+  @doc false
+  def not_a_resource!({:array, type}) do
+    {:array, not_a_resource!(type)}
+  end
 
-        Got #{inspect(module)}
-
-        To use them as a type, instead use the `:struct` type, with the `instance_of` constraint.
-
-        For example:
-
-            attribute :foo, :struct, constraints: [instance_of: #{inspect(module)}]
-
-        Or as an array:
-
-            attribute :foo, {:array, :struct}, constraints: [items: [instance_of: #{inspect(module)}]]
-
-        You can disable this warning by setting `config :ash, allow_resources_as_types: true` in your config.
-
-        In 3.0, the flag to disable this behaviour will not be available.
-        """
+  def not_a_resource!(module) when is_atom(module) do
+    type =
+      if Ash.Type.NewType.new_type?(module) do
+        Ash.Type.NewType.subtype_of(module)
       else
         module
       end
-    end
 
-    def not_a_resource!(type), do: type
+    if Ash.Resource.Info.resource?(type) && !Ash.Resource.Info.embedded?(type) do
+      raise """
+      Non-embedded resources can not be used as types.
+
+      Got #{inspect(module)}
+
+      To use them as a type, instead use the `:struct` type, with the `instance_of` constraint.
+
+      For example:
+
+          attribute :foo, :struct, constraints: [instance_of: #{inspect(module)}]
+
+      Or as an array:
+
+          attribute :foo, {:array, :struct}, constraints: [items: [instance_of: #{inspect(module)}]]
+
+      You can disable this warning by setting `config :ash, allow_resources_as_types: true` in your config.
+
+      In 3.0, the flag to disable this behaviour will not be available.
+      """
+    else
+      module
+    end
   end
+
+  def not_a_resource!(type), do: type
 end

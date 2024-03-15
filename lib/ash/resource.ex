@@ -192,39 +192,41 @@ defmodule Ash.Resource do
 
       @primary_key @primary_key_with_types |> Enum.map(&elem(&1, 0))
 
-      if Ash.Resource.Info.primary_key_simple_equality?(__MODULE__) do
-        def primary_key_matches?(left, right) do
-          left_taken = Map.take(left, @primary_key)
-          left_taken == Map.take(right, @primary_key) && Enum.all?(Map.values(left_taken))
-        end
-      else
-        case @primary_key_with_types do
-          [{field, type}] ->
-            @pkey_field field
-            @pkey_type type
+      if !Enum.empty?(@primary_key) do
+        if Ash.Resource.Info.primary_key_simple_equality?(__MODULE__) do
+          def primary_key_matches?(left, right) do
+            left_taken = Map.take(left, @primary_key)
+            left_taken == Map.take(right, @primary_key) && Enum.all?(Map.values(left_taken))
+          end
+        else
+          case @primary_key_with_types do
+            [{field, type}] ->
+              @pkey_field field
+              @pkey_type type
 
-            def primary_key_matches?(left, right) when not is_nil(left) and not is_nil(right) do
-              Ash.Type.equal?(
-                @pkey_type,
-                Map.fetch!(left, @pkey_field),
-                Map.fetch!(right, @pkey_field)
-              )
-            end
+              def primary_key_matches?(left, right) when not is_nil(left) and not is_nil(right) do
+                Ash.Type.equal?(
+                  @pkey_type,
+                  Map.fetch!(left, @pkey_field),
+                  Map.fetch!(right, @pkey_field)
+                )
+              end
 
-            def primary_key_matches?(_left, _right), do: false
+              def primary_key_matches?(_left, _right), do: false
 
-          _ ->
-            def primary_key_matches?(left, right) do
-              Enum.all?(@primary_key_with_types, fn {name, type} ->
-                with {:ok, left_value} when not is_nil(left_value) <- Map.fetch(left, name),
-                     {:ok, right_value} when not is_nil(right_value) <- Map.fetch(right, name) do
-                  Ash.Type.equal?(type, left_value, right_value)
-                else
-                  _ ->
-                    false
-                end
-              end)
-            end
+            _ ->
+              def primary_key_matches?(left, right) do
+                Enum.all?(@primary_key_with_types, fn {name, type} ->
+                  with {:ok, left_value} when not is_nil(left_value) <- Map.fetch(left, name),
+                       {:ok, right_value} when not is_nil(right_value) <- Map.fetch(right, name) do
+                    Ash.Type.equal?(type, left_value, right_value)
+                  else
+                    _ ->
+                      false
+                  end
+                end)
+              end
+          end
         end
       end
 
