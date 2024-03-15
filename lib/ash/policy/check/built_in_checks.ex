@@ -51,13 +51,21 @@ defmodule Ash.Policy.Check.Builtins do
   end
 
   @doc """
-  This check is true when the action name matches the provided action name.
+  This check is true when the action name matches the provided action name or names.
 
   This is a very common pattern, allowing action-specific policies.
   """
   @spec action(atom | list(atom)) :: Ash.Policy.Check.ref()
   def action(action) do
     {Ash.Policy.Check.Action, action: action}
+  end
+
+  @doc """
+  This check is true when the resource name matches the provided resource name or names.
+  """
+  @spec resource(atom | list(atom)) :: Ash.Policy.Check.ref()
+  def resource(resource) do
+    {Ash.Policy.Check.Resource, resource: resource}
   end
 
   @doc """
