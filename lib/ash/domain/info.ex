@@ -6,15 +6,23 @@ defmodule Ash.Domain.Info do
   alias Spark.Dsl.Extension
 
   @doc """
-  Gets the resources of a domain module. DO NOT USE AT COMPILE TIME.
-
-  If you need the resource list at compile time, use `depend_on_resources/1`
+  Gets the resources of a domain module.
   """
   @spec resources(Ash.Domain.t()) :: list(Ash.Resource.t())
   def resources(domain) do
     domain
     |> Extension.get_entities([:resources])
     |> Enum.map(& &1.resource)
+  end
+
+  @doc """
+  Gets the resource references of a domain module. DO NOT USE AT COMPILE TIME.
+
+  If you need the resource list at compile time, use `depend_on_resources/1`
+  """
+  @spec resource_references(Ash.Domain.t()) :: list(Ash.Domain.Dsl.ResourceReference.t())
+  def resource_references(domain) do
+    Extension.get_entities(domain, [:resources])
   end
 
   @doc """
@@ -123,7 +131,7 @@ defmodule Ash.Domain.Info do
   Use with care.
   """
   @spec depend_on_resources(Macro.t()) :: Macro.t()
-
+  @deprecated "Use `Ash.Domain.Info.resources/1` instead. This macro is no longer necessary"
   defmacro depend_on_resources(domain) do
     quote do
       Code.ensure_compiled!(unquote(domain))

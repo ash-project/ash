@@ -69,6 +69,7 @@ defmodule Ash.Domain do
   def handle_before_compile(_) do
     quote do
       use Ash.Domain.Interface
+      require Ash.CodeInterface
 
       @default_short_name __MODULE__
                           |> Module.split()
@@ -78,6 +79,10 @@ defmodule Ash.Domain do
 
       def default_short_name do
         @default_short_name
+      end
+
+      for reference <- Ash.Domain.Info.resource_references(__MODULE__) do
+        Ash.CodeInterface.define_interface(__MODULE__, reference.resource, reference.definitions)
       end
     end
   end
