@@ -11,8 +11,7 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
       |> Transformer.get_entities([:attributes])
       |> Enum.filter(& &1.primary_key?)
 
-    with :ok <- validate_attributes_not_nil(attributes, dsl_state),
-         :ok <- maybe_validate_pk_present(attributes, dsl_state) do
+    with :ok <- validate_attributes_not_nil(attributes, dsl_state) do
       dsl_state =
         dsl_state
         |> Transformer.persist(:primary_key, Enum.map(attributes, & &1.name))
@@ -50,27 +49,6 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
   end
 
   defp validate_attribute_not_nil(_, _), do: :ok
-
-  defp maybe_validate_pk_present([], dsl_state) do
-    if Transformer.get_option(dsl_state, [:resource], :require_primary_key?, true) do
-      message = """
-      By default, resources must have a primary key.
-
-      See `d:Ash.Resource.Dsl.resource.require_primary_key?` for more information.
-      """
-
-      {:error,
-       DslError.exception(
-         module: Transformer.get_persisted(dsl_state, :module),
-         path: [:attributes],
-         message: message
-       )}
-    else
-      :ok
-    end
-  end
-
-  defp maybe_validate_pk_present(_, _), do: :ok
 
   def after?(Ash.Resource.Transformers.BelongsToAttribute), do: true
   def after?(Ash.Resource.Transformers.DefaultPrimaryKey), do: true
