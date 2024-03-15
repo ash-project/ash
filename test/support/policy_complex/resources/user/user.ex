@@ -38,6 +38,8 @@ defmodule Ash.Test.Support.PolicyComplex.User do
     attribute :private_email, :string do
       public?(true)
     end
+
+    attribute :forbidden_by_domain, :boolean, default: false
   end
 
   actions do

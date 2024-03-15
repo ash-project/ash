@@ -14,6 +14,15 @@ defmodule Ash.Resource.Interface do
     end
   end
 
+  def interface_options(:calculate) do
+    [
+      actor: [
+        type: :any,
+        doc: "The actor to use for actor references"
+      ]
+    ]
+  end
+
   def interface_options(action_type) do
     [
       tenant: [
