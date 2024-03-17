@@ -78,8 +78,8 @@ defmodule Ash.Actions.Aggregate do
                        resource: query.resource,
                        limit: query.limit,
                        offset: query.offset,
-                       tenant: query.tenant,
-                       api: query.api
+                       domain: query.domain,
+                       tenant: query.tenant
                      }),
                    {:ok, result} <-
                      Ash.DataLayer.run_aggregate_query(
