@@ -76,7 +76,8 @@ defmodule Ash.Actions.Aggregate do
                      Ash.Query.data_layer_query(%Ash.Query{
                        resource: query.resource,
                        limit: query.limit,
-                       offset: query.offset
+                       offset: query.offset,
+                       tenant: query.tenant
                      }),
                    {:ok, result} <-
                      Ash.DataLayer.run_aggregate_query(
