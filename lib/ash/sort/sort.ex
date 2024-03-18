@@ -16,7 +16,7 @@ defmodule Ash.Sort do
           | {atom, sort_order}
           | %Ash.Query.Calculation{}
           | {%Ash.Query.Calculation{}, sort_order}
-          | {atom, {sort_order, Keyword.t() | map}}
+          | {atom, {Keyword.t() | map, sort_order}}
 
   @type t ::
           list(sort_item)

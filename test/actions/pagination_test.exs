@@ -774,14 +774,14 @@ defmodule Ash.Actions.PaginationTest do
       page =
         User
         |> Ash.Query.filter(name_with_arg(does_nothing: true) == "4")
-        |> Ash.Query.sort(name_with_arg: {:desc, %{does_nothing: true}})
+        |> Ash.Query.sort(name_with_arg: {%{does_nothing: true}, :desc})
         |> Ash.read!(page: [limit: 1])
 
       keyset = Enum.at(page.results, 0).__metadata__.keyset
 
       names =
         User
-        |> Ash.Query.sort(name_with_arg: {:desc, %{does_nothing: true}})
+        |> Ash.Query.sort(name_with_arg: {%{does_nothing: true}, :desc})
         |> Ash.read!(page: [after: keyset, limit: 5])
         |> Map.get(:results)
         |> Enum.map(& &1.name)
