@@ -695,7 +695,7 @@ defmodule Ash do
 
   @can_opts [
     maybe_is: [
-      type: :boolean,
+      type: :any,
       doc: "If the actor *may* be able to perform the action, what value should be returned.",
       default: :maybe
     ],
@@ -726,6 +726,12 @@ defmodule Ash do
     base_query: [
       type: :any,
       doc: "A base query on which to apply an generated filters"
+    ],
+    no_check?: [
+      type: :boolean,
+      doc:
+        "Whether or not authorization must pass at the strict/filter step, or if post-checks are allowed to be run",
+      default: false
     ],
     atomic_changeset: [
       type: :any,
