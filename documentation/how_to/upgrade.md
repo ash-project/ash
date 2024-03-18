@@ -75,6 +75,10 @@ This module has been renamed to `Ash.Resource.Calculation`. You will need to ren
 
 Ash.Query.to_query has been removed. Use `Ash.Query.new` instead.
 
+##### New format for sorting on calculations with arguments
+
+The format for sorting on calculations that take input has been swapped. Previously, you would use `sort(calculation: {:desc, %{arg: :value}})`, but for the sake of consistency, you now use `sort(calculation: {%{arg: :value}, :desc})`.
+
 #### Ash.Changeset
 
 Ash.Changeset.new/2 has been removed. `Ash.Changeset.new/1` is still available for creating a new changeset, but attributes and arguments should, with few exceptions, be passed to the relevant `Ash.Changeset.for_<action_type>` functions, _not_ to Ash.Changeset.new/2. Removing the second argument helps clarify the purpose of `Ash.Changeset.new/1`.

@@ -17,26 +17,26 @@ defmodule Ash.Actions.Sort do
     sort
     |> List.wrap()
     |> Enum.map(fn
-      {key, {order, context}} when is_atom(order) ->
-        {key, {order, context}}
+      {key, {context, order}} when is_atom(order) ->
+        {key, {context, order}}
 
       {key, val} ->
         if is_atom(val) do
           {key, val}
         else
-          {key, {:asc, val}}
+          {key, {val, :asc}}
         end
 
       val ->
         {val, :asc}
     end)
     |> Enum.reduce({[], []}, fn
-      {field, {inner_order, _} = order}, {sorts, errors} when inner_order in @sort_orders ->
+      {field, {_, inner_order} = order}, {sorts, errors} when inner_order in @sort_orders ->
         case Ash.Resource.Info.calculation(resource, field) do
           nil ->
             {sorts,
              [
-               "Cannot provide context to a non-calculation field while sorting"
+               "Cannot provide argumentsw to a non-calculation field while sorting"
                | errors
              ]}
 
@@ -229,10 +229,10 @@ defmodule Ash.Actions.Sort do
         order when is_atom(order) ->
           {order, %{}}
 
-        {order, value} when is_list(value) ->
+        {value, order} when is_list(value) ->
           {order, Map.new(value)}
 
-        {order, value} when is_map(value) ->
+        {value, order} when is_map(value) ->
           {order, value}
 
         other ->

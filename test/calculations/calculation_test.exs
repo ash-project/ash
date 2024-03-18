@@ -958,7 +958,7 @@ defmodule Ash.Test.CalculationTest do
       User
       |> Ash.Query.for_read(:paginated)
       |> Ash.Query.load(full_name_with_salutation: [salutation: "Mr"])
-      |> Ash.Query.sort(full_name_with_salutation: {:asc, %{salutation: "Mr"}})
+      |> Ash.Query.sort(full_name_with_salutation: {%{salutation: "Mr"}, :asc})
       |> Ash.read!()
       |> Map.get(:results)
       |> Enum.map(& &1.full_name_with_salutation)
