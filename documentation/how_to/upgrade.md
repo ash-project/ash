@@ -75,6 +75,10 @@ This module has been renamed to `Ash.Resource.Calculation`. You will need to ren
 
 Ash.Query.to_query has been removed. Use `Ash.Query.new` instead.
 
+#### Aggregates
+
+`first` and `list` aggregates have a new option called `include_nil?`, which _defaults to false_. You may need to add `include_nil?: true` to your resource aggregates if you wish to retain the old behavior.
+
 ##### New format for sorting on calculations with arguments
 
 The format for sorting on calculations that take input has been swapped. Previously, you would use `sort(calculation: {:desc, %{arg: :value}})`, but for the sake of consistency, you now use `sort(calculation: {%{arg: :value}, :desc})`.
@@ -136,6 +140,10 @@ Additionally, the following exceptions have had keys remapped:
 `NoSuchFunction`: `name` -> `function`
 `NoSuchOperator`: `name` -> `operator`
 
+---
+
+## Significant Changes
+
 ### Ash.Api is now Ash.Domain
 
 The previous name was often confusing as this is an overloaded term for many. To that end, `Ash.Api` has been renamed to `Ash.Domain`, which better fits our usage and concepts.
@@ -146,6 +154,8 @@ To make this change you will need to do two things:
 
 1. replace `Ash.Api` with `Ash.Domain` in your application
 2. replace places where an `:api` option is passed to a function with the `:domain` option. For example, `AshPhoenix.Form.for_create(..., api: MyApp.SomeApi)` should now be `AshPhoenix.Form.for_create(..., domain: MyApp.SomeDomain)`
+
+---
 
 ### the `Domain` of a resource must now be known when constructing a changeset, query or action input
 
@@ -205,6 +215,8 @@ MyResource
 |> Ash.Changeset.for_create(:create, input, domain: MyApp.MyDomain)
 ```
 
+---
+
 ### Actions no longer default to accepting all public writable attributes
 
 For more context, see the original discussion: https://github.com/ash-project/ash/issues/512
@@ -225,6 +237,8 @@ end
 ```
 
 For those who want to be more explicit, or after your upgrade has complete if you wish to refactor existing resources and actions, the general best path forward is to copy the `default_accept` into each action (or put it in a module attribute and reference it) as the `accept` option. This way when a new action is added, it does not "inherit" some list of accepted attributes.
+
+---
 
 ### Default actions `:create` and `:update` can now have an accept list
 
@@ -259,6 +273,8 @@ read :read do
 end
 ```
 
+---
+
 ### What you will need to change
 
 For most cases, this won't affect you. However, if you are using `AshGraphql`, and have any queries connected to a default `:read` action, it will default to making those queries paginatable with keyset pagination. To keep the old behavior, you will need to add `paginate_with nil` to the query, for example:
@@ -270,6 +286,8 @@ graphql do
   end
 end
 ```
+
+---
 
 ### Before action and before transaction hooks order has been reversed
 
@@ -298,6 +316,8 @@ In many cases, this won't matter to you. However, if you have a situation where 
 1. reorder the changes that add those before action/transaction hooks
 2. use the `:prepend` option to `Ash.Changeset.before_action/2` and `Ash.Changeset.before_transaction/2` to explicitly prepend the hook to the list of hooks
 
+---
+
 ### Context in changes, preparations, validations, calculations are now structs
 
 To help make it clear what keys are available in the context provided to callbacks on these modules, they have been adjusted to provide a _struct_ instead of a `map`. This helps avoid potential ambiguity, and
@@ -306,6 +326,8 @@ acts as documentation.
 #### What you'll need to change
 
 If you are using something like `Keyword.new(context)` to generate options to pass into an action, change that to `Ash.Context.to_opts(context)`.
+
+---
 
 ### Calculation arguments are now in `context.arguments`
 
@@ -333,6 +355,8 @@ def calculate(records, _opts, %{arguments: arguments}) do
 end
 ```
 
+---
+
 ### `private?: true` -> `public?: true`
 
 There is no longer a `private?` option for attributes, relationships, calculations and aggregates. Instead of attributes defaulting to `private?: false`, they now default to `public?: false`. It was too easy to add an attribute and not realize that you had exposed it over your api. One
@@ -340,6 +364,8 @@ There is no longer a `private?` option for attributes, relationships, calculatio
 #### What you'll need to change
 
 If you are using api extensions (i.e `AshGraphql` and `AshJsonApi`), you will need to go to your resources and "invert" the definitions. i.e _remove_ `private?: true` and _add_ `public?: true` to _every other_ attribute.
+
+---
 
 ### Anonymous calculations now operate on a list, just like module calculations
 
@@ -365,6 +391,8 @@ calculate :full_name, :string, fn records, _context ->
   end)
 end
 ```
+
+---
 
 ### Calculation loads do not select all related fields by default
 
@@ -402,6 +430,8 @@ end
 def strict_loads, do: true
 ```
 
+---
+
 ### PubSub notifier no longer publishes events for previous values by default
 
 Previously, the Ash notifier would publish a message containing both the old _and_ new values for changing attributes. Typically, we use
@@ -414,6 +444,8 @@ If you're comfortable with the performance implications, you can restore the pre
 ```elixir
 publish :update, ["user:updated", :email], previous_values?: true
 ```
+
+---
 
 ### Custom checks and notifiers will not have access to the original data by default
 
@@ -431,6 +463,8 @@ def requires_original_data?(_resource, _action), do: true
 ```
 
 Keep in mind, this will prevent the usage of these checks/notifiers with atomic actions.
+
+---
 
 ### `Domain.authorization.authorize` now defaults to `:by_default`
 
@@ -454,6 +488,8 @@ For each domain that has the old configuration, after setting it to the new conf
 
 This may be a good time to do the refactor from `YourDomain.func` to `Ash.func`, if you want to. See the section about domains being required when building changesets.
 
+---
+
 ### `require_atomic?` defaults to `true`
 
 On `:update` actions, and `:destroy` actions, they now default to `require_atomic? true`. This means that the following things will cause errors when attempting to run the action:
@@ -474,6 +510,8 @@ The vast majority of cases will be caught by warnings emitted at compile time. I
 
 For builtin types, the above applies to `:union`, `:map`, `:keyword`, embedded types. It also applies to `:string`, but only if the `match?` constraint is present.
 
+---
+
 ### `Ash.Error.Invalid.NoSuchInput` errors on unknown action inputs
 
 In 2.0, inputs to actions that don't match an accepted attribute or argument were silently ignored. This made it very easy to make certain kinds of mistakes, like assuming that an input is being used by an action when it actually is not. Now, unknown action inputs will cause an `Ash.Error.Invalid.NoSuchInput`.
@@ -486,6 +524,8 @@ A logic error was fixed in this behavior for embedded resources. If you are usin
 
 1. add the `writable?: true` flag to the uuid of the embedded resource (probably what you want)
 2. modify the actions to accept an `id` argument and set the argument to the provided value
+
+---
 
 ### `%Ash.NotLoaded{}` for attributes
 

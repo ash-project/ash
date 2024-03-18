@@ -108,6 +108,7 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, {:aggregate, :min}), do: true
   def can?(_, {:aggregate, :avg}), do: true
   def can?(_, {:aggregate, :exists}), do: true
+  def can?(resource, {:query_aggregate, kind}), do: can?(resource, {:aggregate, kind})
 
   def can?(_, {:join, resource}) do
     # This is to ensure that these can't join, which is necessary for testing
@@ -183,6 +184,7 @@ defmodule Ash.DataLayer.Mnesia do
             field: field,
             resource: resource,
             uniq?: uniq?,
+            include_nil?: include_nil?,
             default_value: default_value
           },
           {:ok, acc} ->
@@ -193,7 +195,14 @@ defmodule Ash.DataLayer.Mnesia do
                 field = field || Enum.at(Ash.Resource.Info.primary_key(resource), 0)
 
                 value =
-                  Ash.DataLayer.Ets.aggregate_value(matches, kind, field, uniq?, default_value)
+                  Ash.DataLayer.Ets.aggregate_value(
+                    matches,
+                    kind,
+                    field,
+                    uniq?,
+                    include_nil?,
+                    default_value
+                  )
 
                 {:cont, {:ok, Map.put(acc, name, value)}}
 

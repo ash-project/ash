@@ -192,6 +192,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:aggregate, :min}), do: true
   def can?(_, {:aggregate, :avg}), do: true
   def can?(_, {:aggregate, :exists}), do: true
+  def can?(resource, {:query_aggregate, kind}), do: can?(resource, {:aggregate, kind})
 
   def can?(_, :create), do: true
   def can?(_, :read), do: true
@@ -306,6 +307,7 @@ defmodule Ash.DataLayer.Ets do
             field: field,
             resource: resource,
             uniq?: uniq?,
+            include_nil?: include_nil?,
             default_value: default_value
           },
           {:ok, acc} ->
@@ -315,7 +317,7 @@ defmodule Ash.DataLayer.Ets do
               {:ok, matches} ->
                 field = field || Enum.at(Ash.Resource.Info.primary_key(resource), 0)
 
-                value = aggregate_value(matches, kind, field, uniq?, default_value)
+                value = aggregate_value(matches, kind, field, uniq?, include_nil?, default_value)
                 {:cont, {:ok, Map.put(acc, name, value)}}
 
               {:error, error} ->
@@ -624,6 +626,7 @@ defmodule Ash.DataLayer.Ets do
             name: name,
             load: load,
             uniq?: uniq?,
+            include_nil?: include_nil?,
             context: context,
             default_value: default_value,
             join_filters: join_filters
@@ -653,7 +656,7 @@ defmodule Ash.DataLayer.Ets do
               field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
 
               value =
-                aggregate_value(sorted, kind, field, uniq?, default_value)
+                aggregate_value(sorted, kind, field, uniq?, include_nil?, default_value)
 
               if load do
                 {:cont, {:ok, Map.put(record, load, value)}}
@@ -692,7 +695,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @doc false
-  def aggregate_value(records, kind, field, uniq?, default) do
+  def aggregate_value(records, kind, field, uniq?, include_nil?, default) do
     case kind do
       :count ->
         if uniq? do
@@ -715,18 +718,41 @@ defmodule Ash.DataLayer.Ets do
         end
 
       :first ->
-        case records do
-          [] ->
-            default
+        if include_nil? do
+          case records do
+            [] ->
+              default
 
-          [record | _rest] ->
-            field_value(record, field)
+            [record | _rest] ->
+              field_value(record, field)
+          end
+        else
+          Enum.find_value(records, fn record ->
+            case field_value(record, field) do
+              nil ->
+                nil
+
+              value ->
+                {:value, value}
+            end
+          end)
+          |> case do
+            nil -> nil
+            {:value, value} -> value
+          end
         end
 
       :list ->
         records
         |> Enum.map(fn record ->
           field_value(record, field)
+        end)
+        |> then(fn values ->
+          if include_nil? do
+            values
+          else
+            Enum.reject(values, &is_nil/1)
+          end
         end)
         |> then(fn values ->
           if uniq? do

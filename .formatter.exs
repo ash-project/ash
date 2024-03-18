@@ -108,6 +108,7 @@ spark_locals_without_parens = [
   identity: 2,
   identity: 3,
   implementation: 1,
+  include_nil?: 1,
   integer_primary_key: 1,
   integer_primary_key: 2,
   join_filter: 2,
