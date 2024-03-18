@@ -4,7 +4,7 @@ defmodule Ash.Error.Invalid.PaginationRequired do
 
   use Splode.Error, fields: [], class: :invalid
 
-  def splode_message(_) do
+  def message(_) do
     "Pagination is required"
   end
 end

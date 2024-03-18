@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.NoSuchRelationship do
 
   use Splode.Error, fields: [:resource, :relationship], class: :invalid
 
-  def splode_message(error) do
+  def message(error) do
     "No such relationship #{error.relationship} for resource #{inspect(error.resource)}"
   end
 end

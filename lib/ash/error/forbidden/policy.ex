@@ -37,7 +37,7 @@ defmodule Ash.Error.Forbidden.Policy do
     exception
   end
 
-  def splode_message(error) do
+  def message(error) do
     if error.policy_breakdown? do
       "forbidden:\n\n#{Ash.Error.Forbidden.Policy.report(error, help_text?: false)}"
     else

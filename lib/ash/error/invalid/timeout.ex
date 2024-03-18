@@ -4,7 +4,7 @@ defmodule Ash.Error.Invalid.Timeout do
 
   use Splode.Error, fields: [:name, :timeout], class: :invalid
 
-  def splode_message(%{name: name, timeout: timeout}) do
+  def message(%{name: name, timeout: timeout}) do
     """
     #{name} timed out after #{timeout}ms.
 

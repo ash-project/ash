@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.NoSuchOperator do
 
   use Splode.Error, fields: [:operator], class: :invalid
 
-  def splode_message(error) do
+  def message(error) do
     "No such operator #{error.operator}"
   end
 end

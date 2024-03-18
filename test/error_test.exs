@@ -7,14 +7,14 @@ defmodule Ash.Test.ErrorTest do
   defmodule TestError do
     use Splode.Error, fields: [:some_field], class: :unknown
 
-    def splode_message(_), do: "WHAT"
+    def message(_), do: "WHAT"
   end
 
   defmodule SpecialError do
     @moduledoc "Used when a flow has been halted for some reason"
     use Splode.Error, fields: [], class: :special
 
-    def splode_message(_), do: "Special error"
+    def message(_), do: "Special error"
   end
 
   defmodule TestResource do
@@ -42,9 +42,9 @@ defmodule Ash.Test.ErrorTest do
     end
 
     test "returns exception if it is a map/struct with class: :special wrapped in an Invalid error" do
-      err = Ash.Error.Invalid.exception(errors: [%{class: :special}])
+      err = Ash.Error.Invalid.exception(errors: [SpecialError.exception([])])
 
-      assert Ash.Error.to_error_class(err, []) == %{class: :special}
+      assert %{class: :special} = Ash.Error.to_error_class(err, [])
     end
 
     test "returns chosen error if the value argument is a list of values" do
@@ -68,7 +68,7 @@ defmodule Ash.Test.ErrorTest do
     end
 
     test "returns chosen error if the value argument is a list of errors" do
-      err1 = Ash.Error.Unknown.UnknownError.exception(error: :an_error)
+      err1 = Ash.Error.Unknown.UnknownError.exception(error: :an_error, splode: Ash.Error)
       err2 = Ash.Error.Invalid.exception(errors: [:more, :errors])
 
       result = Ash.Error.to_error_class([err1, err2], [])

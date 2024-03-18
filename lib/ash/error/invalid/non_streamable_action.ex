@@ -6,7 +6,7 @@ defmodule Ash.Error.Invalid.NonStreamableAction do
     fields: [:resource, :action, :for_bulk_update, :for_bulk_destroy, types: [:keyset]],
     class: :invalid
 
-  def splode_message(%{for_bulk_update: action} = error) when not is_nil(action) do
+  def message(%{for_bulk_update: action} = error) when not is_nil(action) do
     """
     You are attempting to pair read action #{error.action.name} with bulk update
     action #{action}, but #{inspect(error.resource)}.#{error.action.name} does not
@@ -16,7 +16,7 @@ defmodule Ash.Error.Invalid.NonStreamableAction do
     """
   end
 
-  def splode_message(%{for_bulk_destroy: action} = error) when not is_nil(action) do
+  def message(%{for_bulk_destroy: action} = error) when not is_nil(action) do
     """
     You are attempting to pair read action #{error.action.name} with bulk destroy
     action #{action}, but #{inspect(error.resource)}.#{error.action.name} does not
@@ -26,7 +26,7 @@ defmodule Ash.Error.Invalid.NonStreamableAction do
     """
   end
 
-  def splode_message(error) do
+  def message(error) do
     """
     Action #{inspect(error.resource)}.#{error.action.name} does not support streaming with one of #{inspect(error.types)}.
 

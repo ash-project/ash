@@ -4,7 +4,7 @@ defmodule Ash.Error.Framework.SynchronousEngineStuck do
 
   use Splode.Error, fields: [], class: :framework
 
-  def splode_message(_) do
+  def message(_) do
     """
     Synchronous Engine Stuck
 

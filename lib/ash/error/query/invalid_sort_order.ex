@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.InvalidSortOrder do
 
   use Splode.Error, fields: [:order], class: :invalid
 
-  def splode_message(%{order: order}) do
+  def message(%{order: order}) do
     "No such sort order #{inspect(order)}"
   end
 end

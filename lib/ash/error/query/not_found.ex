@@ -4,11 +4,11 @@ defmodule Ash.Error.Query.NotFound do
 
   use Splode.Error, fields: [:primary_key, :resource], class: :invalid
 
-  def splode_message(%{primary_key: nil, resource: _resource}) do
+  def message(%{primary_key: nil, resource: _resource}) do
     "record not found"
   end
 
-  def splode_message(%{primary_key: key, resource: _resource}) do
+  def message(%{primary_key: key, resource: _resource}) do
     "record with #{id_string(key)} not found"
   end
 

@@ -4,7 +4,7 @@ defmodule Ash.Error.Invalid.NoSuchInput do
 
   use Splode.Error, fields: [:resource, :action, :input, :inputs], class: :invalid
 
-  def splode_message(error) do
+  def message(error) do
     """
     No such input `#{error.input}` for action #{inspect(error.resource)}.#{error.action}
 

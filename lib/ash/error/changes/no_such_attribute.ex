@@ -4,7 +4,7 @@ defmodule Ash.Error.Changes.NoSuchAttribute do
 
   use Splode.Error, fields: [:resource, :attribute], class: :invalid
 
-  def splode_message(error) do
+  def message(error) do
     "No such attribute #{error.attribute} for resource #{inspect(error.resource)}"
   end
 end

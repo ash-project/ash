@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.InvalidFilterValue do
 
   use Splode.Error, fields: [:message, :value, :context], class: :invalid
 
-  def splode_message(%{value: value, message: message, context: context})
+  def message(%{value: value, message: message, context: context})
       when not is_nil(context) do
     text =
       if context do
@@ -20,7 +20,7 @@ defmodule Ash.Error.Query.InvalidFilterValue do
     end
   end
 
-  def splode_message(%{value: value, message: message}) do
+  def message(%{value: value, message: message}) do
     if message do
       "Invalid filter value `#{inspect(value)}`: " <> message
     else

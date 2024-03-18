@@ -13,7 +13,7 @@ defmodule Ash.Error.Query.NoComplexSortsWithKeysetPagination do
 
   use Splode.Error, fields: [:resource, :sort], class: :framework
 
-  def splode_message(%{resource: resource, sort: sort}) do
+  def message(%{resource: resource, sort: sort}) do
     """
     Attempted to sort by a calculation or aggregate while using keyset pagination with #{inspect(resource)}
 

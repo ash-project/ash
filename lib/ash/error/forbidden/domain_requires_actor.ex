@@ -4,7 +4,7 @@ defmodule Ash.Error.Forbidden.DomainRequiresActor do
 
   use Splode.Error, fields: [:domain], class: :forbidden
 
-  def splode_message(%{domain: domain}) do
+  def message(%{domain: domain}) do
     "The domain #{inspect(domain)} requires that an actor is provided at all times and none was provided."
   end
 end

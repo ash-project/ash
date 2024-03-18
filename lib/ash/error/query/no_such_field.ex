@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.NoSuchField do
 
   use Splode.Error, fields: [:resource, :field], class: :invalid
 
-  def splode_message(error) do
+  def message(error) do
     "No such field #{error.field} for resource #{inspect(error.resource)}"
   end
 end
