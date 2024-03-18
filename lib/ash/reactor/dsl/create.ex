@@ -11,6 +11,7 @@ defmodule Ash.Reactor.Dsl.Create do
             authorize?: nil,
             description: nil,
             domain: nil,
+            initial: nil,
             inputs: [],
             name: nil,
             resource: nil,
@@ -32,6 +33,7 @@ defmodule Ash.Reactor.Dsl.Create do
           authorize?: boolean | nil,
           description: String.t() | nil,
           domain: Ash.Domain.t(),
+          initial: nil | Ash.Resource.t() | Reactor.Template.t(),
           inputs: [Ash.Reactor.Dsl.Inputs.t()],
           name: atom,
           resource: module,
@@ -80,6 +82,11 @@ defmodule Ash.Reactor.Dsl.Create do
       recursive_as: :steps,
       schema:
         [
+          initial: [
+            type: {:or, [nil, {:spark, Ash.Resource}, Reactor.Template.type()]},
+            required: false,
+            doc: "The initial value passed into the action."
+          ],
           upsert_identity: [
             type: :atom,
             required: false,
