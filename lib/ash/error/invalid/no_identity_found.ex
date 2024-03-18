@@ -4,7 +4,7 @@ defmodule Ash.Error.Invalid.NoIdentityFound do
 
   use Splode.Error, fields: [:resource, :identity], class: :invalid
 
-  def splode_message(%{resource: resource, identity: identity}) do
+  def message(%{resource: resource, identity: identity}) do
     """
     Identity #{inspect(identity)} does not exist on resource #{inspect(resource)}.
 

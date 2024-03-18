@@ -4,7 +4,7 @@ defmodule Ash.Error.Framework.MustBeAtomic do
 
   use Splode.Error, fields: [:resource, :action, :reason], class: :framework
 
-  def splode_message(error) do
+  def message(error) do
     "#{inspect(error.resource)}.#{error.action} must be performed atomically, but it could not be: #{error.reason}"
   end
 end

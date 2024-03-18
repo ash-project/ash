@@ -4,11 +4,11 @@ defmodule Ash.Error.Query.InvalidFilterReference do
 
   use Splode.Error, fields: [:field, :simple_equality?], class: :invalid
 
-  def splode_message(%{field: field, simple_equality?: true}) do
+  def message(%{field: field, simple_equality?: true}) do
     "#{field} cannot be referenced in filters, except by simple equality"
   end
 
-  def splode_message(%{field: field}) do
+  def message(%{field: field}) do
     "#{field} cannot be referenced in filters"
   end
 end

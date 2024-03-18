@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.UnsortableAttribute do
 
   use Splode.Error, fields: [:field], class: :invalid
 
-  def splode_message(%{field: field}) do
+  def message(%{field: field}) do
     "Cannot sort on #{inspect(field)}"
   end
 end

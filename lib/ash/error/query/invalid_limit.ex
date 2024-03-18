@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.InvalidLimit do
 
   use Splode.Error, fields: [:limit], class: :invalid
 
-  def splode_message(%{limit: limit}) do
+  def message(%{limit: limit}) do
     "#{inspect(limit)} is not a valid limit"
   end
 end

@@ -4,7 +4,7 @@ defmodule Ash.Error.Invalid.ActionRequiresPagination do
 
   use Splode.Error, fields: [:resource, :action], class: :invalid
 
-  def splode_message(%{resource: resource, action: action}) do
+  def message(%{resource: resource, action: action}) do
     """
     Pagination is not enabled on resource #{inspect(resource)} for the action #{inspect(action)}. Check that you've
     enabled pagination in your action. For example:

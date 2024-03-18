@@ -115,7 +115,7 @@ Instead of combining `def_ash_error` with `defimpl Ash.ErrorKind`, you create a 
 defmodule MyCustomError do
   use Splode.Error, class: :invalid, fields: [:foo, :bar]
 
-  def splode_message(error) do
+  def message(error) do
     "Message: #{error.foo} - #{error.bar}"
   end
 end

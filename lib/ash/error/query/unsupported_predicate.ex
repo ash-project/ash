@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.UnsupportedPredicate do
 
   use Splode.Error, fields: [:resource, :predicate, :type], class: :invalid
 
-  def splode_message(%{resource: resource, predicate: predicate, type: type}) do
+  def message(%{resource: resource, predicate: predicate, type: type}) do
     "Data layer for #{inspect(resource)} does not support #{inspect(predicate)} for #{inspect(type)}"
   end
 end

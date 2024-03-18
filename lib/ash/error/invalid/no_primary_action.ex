@@ -4,7 +4,7 @@ defmodule Ash.Error.Invalid.NoPrimaryAction do
 
   use Splode.Error, fields: [:resource, :type], class: :invalid
 
-  def splode_message(%{resource: resource, type: type}) do
+  def message(%{resource: resource, type: type}) do
     "No primary action of type #{inspect(type)} for resource #{inspect(resource)}, and no action specified"
   end
 end

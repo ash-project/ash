@@ -14,7 +14,7 @@ defmodule Ash.Error.Invalid.NoMatchingBulkStrategy do
     ],
     class: :invalid
 
-  def splode_message(%{
+  def message(%{
         resource: resource,
         action: action,
         footer: footer,

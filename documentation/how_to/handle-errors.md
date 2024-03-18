@@ -116,7 +116,7 @@ defmodule Ash.Error.Action.InvalidArgument do
   @moduledoc "Used when an invalid value is provided for an action argument"
   use Splode.Error, fields: [:field, :message, :value], class: :invalid
 
-  def splode_message(error) do
+  def message(error) do
     """
     Invalid value provided#{for_field(error)}#{do_message(error)}
 

@@ -6,7 +6,7 @@ defmodule Ash.Error.Framework do
 
   @type t :: %__MODULE__{}
 
-  def splode_message(%{errors: errors}) do
+  def message(%{errors: errors}) do
     Splode.ErrorClass.error_messages(errors)
   end
 end

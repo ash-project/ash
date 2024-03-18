@@ -4,13 +4,13 @@ defmodule Ash.Error.Invalid.MultipleResults do
 
   use Splode.Error, fields: [:count, :at_least?, :query], class: :invalid
 
-  def splode_message(%{count: count, query: nil, at_least?: at_least?}) do
+  def message(%{count: count, query: nil, at_least?: at_least?}) do
     "expected at most one result but got #{at_least(at_least?)}#{count}.
 
     Please ensure your action is configured with an appropriate filter to ensure a single result is returned."
   end
 
-  def splode_message(%{count: count, query: query, at_least?: at_least?}) do
+  def message(%{count: count, query: query, at_least?: at_least?}) do
     """
     expected at most one result but got #{at_least(at_least?)}#{count} in query:
 

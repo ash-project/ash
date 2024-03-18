@@ -4,7 +4,7 @@ defmodule Ash.Error.Load.InvalidQuery do
 
   use Splode.Error, fields: [:load_path], class: :invalid
 
-  def splode_message(%{query: query, load_path: load_path}) do
+  def message(%{query: query, load_path: load_path}) do
     errors_by_path =
       query.errors
       |> Enum.group_by(&List.wrap(&1.path))

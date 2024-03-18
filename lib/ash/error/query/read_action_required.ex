@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.ReadActionRequired do
 
   use Splode.Error, fields: [:resource], class: :invalid
 
-  def splode_message(%{resource: resource}) do
+  def message(%{resource: resource}) do
     """
     A default read action is required on the destination in order to filter
     on a relationship. Destination: #{inspect(resource)}

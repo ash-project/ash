@@ -4,7 +4,7 @@ defmodule Ash.Error.Load.NoSuchRelationship do
 
   use Splode.Error, fields: [:resource, :relationship, :load_path], class: :invalid
 
-  def splode_message(%{resource: resource, relationship: relationship, load_path: load_path}) do
+  def message(%{resource: resource, relationship: relationship, load_path: load_path}) do
     if load_path == [] do
       "No such relationship #{inspect(resource)}.#{relationship}"
     else

@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.InvalidOffset do
 
   use Splode.Error, fields: [:offset], class: :invalid
 
-  def splode_message(%{offset: offset}) do
+  def message(%{offset: offset}) do
     "#{inspect(offset)} is not a valid offset"
   end
 end

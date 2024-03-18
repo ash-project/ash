@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.CalculationsNotSupported do
 
   use Splode.Error, fields: [:resource, :feature], class: :invalid
 
-  def splode_message(%{resource: resource, feature: feature}) do
+  def message(%{resource: resource, feature: feature}) do
     "Data layer for #{inspect(resource)} does not support #{feature} calculations"
   end
 end

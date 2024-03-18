@@ -4,7 +4,7 @@ defmodule Ash.Error.Invalid.TimeoutNotSupported do
 
   use Splode.Error, fields: [:resource], class: :invalid
 
-  def splode_message(%{resource: resource}) do
+  def message(%{resource: resource}) do
     "The data layer for #{inspect(resource)} does not support timeouts"
   end
 end

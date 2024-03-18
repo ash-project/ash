@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.ReadActionRequiresActor do
 
   use Splode.Error, fields: [], class: :invalid
 
-  def splode_message(_error) do
+  def message(_error) do
     "actor is required"
   end
 end

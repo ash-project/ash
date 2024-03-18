@@ -4,7 +4,7 @@ defmodule Ash.Error.Invalid.LimitRequired do
 
   use Splode.Error, fields: [], class: :invalid
 
-  def splode_message(_) do
+  def message(_) do
     "Limit is required"
   end
 end

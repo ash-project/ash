@@ -4,11 +4,11 @@ defmodule Ash.Error.Page.InvalidKeyset do
 
   use Splode.Error, fields: [:value, :key], class: :invalid
 
-  def splode_message(%{value: value, key: nil}) do
+  def message(%{value: value, key: nil}) do
     "Invalid value provided as a keyset: #{inspect(value)}"
   end
 
-  def splode_message(%{value: value, key: key}) do
+  def message(%{value: value, key: key}) do
     "Invalid value provided as a keyset for #{to_string(key)}: #{inspect(value)}"
   end
 end

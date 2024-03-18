@@ -4,7 +4,7 @@ defmodule Ash.Error.Forbidden.MustPassStrictCheck do
 
   use Splode.Error, fields: [], class: :forbidden
 
-  def splode_message(_) do
+  def message(_) do
     "The request was required to pass strict check, but it did not"
   end
 end

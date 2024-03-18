@@ -4,7 +4,7 @@ defmodule Ash.Error.Changes.Required do
 
   use Splode.Error, fields: [:field, :type, :resource], class: :invalid
 
-  def splode_message(error) do
+  def message(error) do
     "#{error.type} #{error.field} is required"
   end
 end

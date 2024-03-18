@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.NoSuchFilterPredicate do
 
   use Splode.Error, fields: [:message, :value, :key, :resource], class: :invalid
 
-  def splode_message(%{key: key, resource: resource}) do
+  def message(%{key: key, resource: resource}) do
     "No such filter predicate for #{inspect(resource)}: #{inspect(key)}"
   end
 end

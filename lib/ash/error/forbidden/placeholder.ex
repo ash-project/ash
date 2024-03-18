@@ -8,7 +8,7 @@ defmodule Ash.Error.Forbidden.Placeholder do
     %__MODULE__{authorizer: Module.concat([authorizer])}
   end
 
-  def splode_message(%{authorizer: authorizer}) do
+  def message(%{authorizer: authorizer}) do
     "This is a placeholder error that should be replaced for authorizer `#{inspect(authorizer)}` automatically. If you get it, please report a bug."
   end
 end

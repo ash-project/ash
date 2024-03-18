@@ -4,7 +4,7 @@ defmodule Ash.Error.Changes.InvalidRelationship do
 
   use Splode.Error, fields: [:relationship, :message], class: :invalid
 
-  def splode_message(error) do
+  def message(error) do
     "Invalid value provided#{for_relationship(error)}#{do_message(error)}"
   end
 
