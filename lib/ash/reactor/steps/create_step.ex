@@ -23,8 +23,18 @@ defmodule Ash.Reactor.CreateStep do
       |> maybe_set_kw(:authorize?, options[:authorize?])
 
     changeset =
-      options[:resource]
-      |> Changeset.for_create(options[:action], arguments[:input], changeset_options)
+      case arguments.initial do
+        changeset when is_struct(changeset, Changeset) ->
+          Changeset.change_attributes(changeset, arguments.input)
+
+        nil ->
+          options[:resource]
+          |> Changeset.for_create(options[:action], arguments.input, changeset_options)
+
+        resource when is_atom(resource) ->
+          resource
+          |> Changeset.for_create(options[:action], arguments.input, changeset_options)
+      end
 
     changeset
     |> options[:domain].create(action_options)

@@ -281,4 +281,36 @@ defmodule Ash.Test.ReactorCreateTest do
 
     assert [] = Ash.read!(Author)
   end
+
+  test "it can be provided a changeset as the initial value" do
+    defmodule CreateFromChangesetReactor do
+      @moduledoc false
+      use Ash.Reactor
+
+      ash do
+        default_api Ash.Test.AnyApi
+      end
+
+      step :create_changeset do
+        run fn _ ->
+          changeset =
+            Post
+            |> Ash.Changeset.for_create(:create, %{title: "Foo", sub_title: "Bar"})
+
+          {:ok, changeset}
+        end
+      end
+
+      create :create_post, Post do
+        initial(result(:create_changeset))
+      end
+
+      return :create_post
+    end
+
+    assert {:ok, post} = Reactor.run(CreateFromChangesetReactor, %{}, %{}, async?: false)
+
+    assert post.title == "Foo"
+    assert post.sub_title == "Bar"
+  end
 end

@@ -3,7 +3,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Create do
 
   alias Ash.Reactor.CreateStep
   alias Ash.Resource.Info
-  alias Reactor.Builder
+  alias Reactor.{Argument, Builder}
   alias Spark.{Dsl.Transformer, Error.DslError}
   import Ash.Reactor.BuilderUtils
 
@@ -12,11 +12,27 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Create do
   def build(create, reactor) do
     with {:ok, reactor} <- ensure_hooked(reactor),
          {:ok, reactor, arguments} <- build_input_arguments(reactor, create) do
+      initial =
+        case create.initial do
+          nil ->
+            Argument.from_value(:initial, create.resource)
+
+          module when is_atom(module) ->
+            Argument.from_value(:initial, module)
+
+          template
+          when is_struct(template, Reactor.Template.Input) or
+                 is_struct(template, Reactor.Template.Result) or
+                 is_struct(template, Reactor.Template.Value) ->
+            %Argument{name: :initial, source: template}
+        end
+
       arguments =
         arguments
         |> maybe_append(create.actor)
         |> maybe_append(create.tenant)
         |> Enum.concat(create.wait_for)
+        |> Enum.concat([initial])
 
       action_options =
         create
