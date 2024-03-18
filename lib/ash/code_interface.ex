@@ -322,7 +322,7 @@ defmodule Ash.CodeInterface do
 
              ### Options
 
-             #{Spark.Options.docs(Spark.Options.docs(Ash.Resource.Interface.interface_options(:calculate)))}
+             #{Spark.Options.docs(Ash.Resource.Interface.interface_options(:calculate))}
              """
              |> Ash.CodeInterface.trim_double_newlines()
         @doc spark_opts: [
@@ -367,7 +367,7 @@ defmodule Ash.CodeInterface do
 
              ### Options
 
-             #{Spark.Options.docs(Spark.Options.docs(Ash.Resource.Interface.interface_options(:calculate)))}
+             #{Spark.Options.docs(Ash.Resource.Interface.interface_options(:calculate))}
              """
              |> Ash.CodeInterface.trim_double_newlines()
         @doc spark_opts: [
@@ -738,7 +738,7 @@ defmodule Ash.CodeInterface do
         ""
 
       inputs ->
-        {arguments, inputs} = Enum.split_with(inputs, &(&1 in args))
+        {arguments, inputs} = Enum.split_with(inputs, &(&1 in (args || [])))
 
         arguments =
           Enum.map(arguments, &describe_input(resource, action, &1))
@@ -780,6 +780,7 @@ defmodule Ash.CodeInterface do
 
   def describe_calculation(resource, calculation, args) do
     calculation.arguments
+    |> Enum.map(& &1.name)
     |> case do
       [] ->
         ""

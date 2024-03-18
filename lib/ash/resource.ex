@@ -18,6 +18,11 @@ defmodule Ash.Resource do
       data_layer: Ash.DataLayer.Simple,
       extensions: [Ash.Resource.Dsl]
     ],
+    extension_kind_types: [
+      authorizers: {:wrap_list, {:behaviour, Ash.Authorizer}},
+      data_layer: {:behaviour, Ash.DataLayer},
+      notifiers: {:wrap_list, {:behaviour, Ash.Notifier}}
+    ],
     opt_schema: [
       simple_notifiers: [
         type: {:list, {:behaviour, Ash.Notifier}},
