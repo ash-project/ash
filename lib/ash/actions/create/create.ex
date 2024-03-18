@@ -141,7 +141,6 @@ defmodule Ash.Actions.Create do
   defp authorize(changeset, opts) do
     if opts[:authorize?] do
       case Ash.can(changeset, opts[:actor],
-             add_calculations?: true,
              alter_source?: true,
              return_forbidden_error?: true,
              maybe_is: false

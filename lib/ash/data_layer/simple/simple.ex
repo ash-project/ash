@@ -8,6 +8,8 @@ defmodule Ash.DataLayer.Simple do
 
   use Spark.Dsl.Extension, transformers: [], sections: []
 
+  @behaviour Ash.DataLayer
+
   @doc false
   def can?(_, :create), do: true
   def can?(_, :bulk_create), do: true
