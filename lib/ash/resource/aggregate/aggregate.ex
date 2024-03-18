@@ -15,6 +15,7 @@ defmodule Ash.Resource.Aggregate do
     :sort,
     :default,
     :uniq?,
+    include_nil?: false,
     join_filters: [],
     authorize?: true,
     filterable?: true

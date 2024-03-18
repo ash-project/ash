@@ -17,6 +17,7 @@ defmodule Ash.Query.Aggregate do
     join_filters: %{},
     context: %{},
     authorize?: true,
+    include_nil?: false,
     uniq?: false,
     filterable?: true
   ]
@@ -93,6 +94,12 @@ defmodule Ash.Query.Aggregate do
       default: false,
       doc:
         "Whether or not to only consider unique values. Only relevant for `count` and `list` aggregates."
+    ],
+    include_nil?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Whether or not to include `nil` values in the aggregate. Only relevant for `list` and `first` aggregates."
     ],
     join_filters: [
       type: {:map, {:wrap_list, :atom}, :any},

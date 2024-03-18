@@ -2465,6 +2465,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`kind`](#aggregates-first-kind){: #aggregates-first-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate |
+| [`include_nil?`](#aggregates-first-include_nil?){: #aggregates-first-include_nil? } | `boolean` |  | Whether or not to include `nil` values in the aggregate. Only relevant for `list` and `first` aggregates. |
 | [`read_action`](#aggregates-first-read_action){: #aggregates-first-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`filter`](#aggregates-first-filter){: #aggregates-first-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`sort`](#aggregates-first-sort){: #aggregates-first-sort } | `any` |  | A sort to be applied to the aggregate |
