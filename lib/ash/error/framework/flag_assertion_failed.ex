@@ -4,7 +4,7 @@ defmodule Ash.Error.Framework.FlagAssertionFailed do
 
   use Splode.Error, fields: [:flag, :heading], class: :framework
 
-  def splode_message(error) do
+  def message(error) do
     flag_env_name =
       error.flag
       |> to_string()

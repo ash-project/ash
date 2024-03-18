@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.InvalidCalculationArgument do
 
   use Splode.Error, fields: [:calculation, :field, :message, :value], class: :invalid
 
-  def splode_message(error) do
+  def message(error) do
     """
     Invalid value provided for calculation argument #{error.field} in #{error.calculation}: #{do_message(error)}
 

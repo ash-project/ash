@@ -4,7 +4,7 @@ defmodule Ash.Error.Forbidden.CannotFilterCreates do
 
   use Splode.Error, fields: [], class: :forbidden
 
-  def splode_message(_) do
+  def message(_) do
     """
     Cannot use a filter to authorize a create.
 

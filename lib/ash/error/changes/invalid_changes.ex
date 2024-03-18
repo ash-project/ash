@@ -4,7 +4,7 @@ defmodule Ash.Error.Changes.InvalidChanges do
 
   use Splode.Error, fields: [:fields, :message, :validation, :value], class: :invalid
 
-  def splode_message(error) do
+  def message(error) do
     case for_fields(error) do
       "" ->
         case do_message(error) do

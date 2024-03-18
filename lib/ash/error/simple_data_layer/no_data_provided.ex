@@ -4,9 +4,9 @@ defmodule Ash.Error.SimpleDataLayer.NoDataProvided do
 
   use Splode.Error, fields: [:resource, :message], class: :framework
 
-  def splode_message(%{message: message}) when message not in ["", nil], do: message
+  def message(%{message: message}) when message not in ["", nil], do: message
 
-  def splode_message(%{resource: resource}) do
+  def message(%{resource: resource}) do
     "No data provided in resource #{inspect(resource)}"
   end
 end

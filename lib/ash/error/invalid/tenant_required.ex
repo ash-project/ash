@@ -4,7 +4,7 @@ defmodule Ash.Error.Invalid.TenantRequired do
 
   use Splode.Error, fields: [:resource], class: :invalid
 
-  def splode_message(%{resource: resource}) do
+  def message(%{resource: resource}) do
     "Queries against the #{inspect(resource)} resource require a tenant to be specified"
   end
 end

@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.NoSuchFunction do
 
   use Splode.Error, fields: [:function, :arity, :resource], class: :invalid
 
-  def splode_message(error) do
+  def message(error) do
     if error.arity do
       "No such function #{error.function}/#{error.arity}"
       |> for_resource(error.resource)

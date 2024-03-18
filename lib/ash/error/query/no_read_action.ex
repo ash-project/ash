@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.NoReadAction do
 
   use Splode.Error, fields: [:resource, :when], class: :invalid
 
-  def splode_message(error) do
+  def message(error) do
     if error.when do
       "No read action exists for  #{inspect(error.resource)} when: #{error.when}"
     else

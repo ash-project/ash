@@ -12,14 +12,14 @@ defmodule Ash.Error.Exception do
       IO.warn("""
       def_ash_error is deprecated. Instead, use `Splode.Error`, and
       remove any usage of `Ash.ErrorKind`. Place your `message/1` function
-      into the module body as `def splode_message/1`. For example:
+      into the module body as `def message/1`. For example:
 
       ```elixir
       use Splode.Error,
         fields: #{inspect(fields)},
         class: #{inspect(opts[:class])}
 
-      def splode_message(error) do
+      def message(error) do
         ...your_message
       end
       ```
@@ -29,7 +29,7 @@ defmodule Ash.Error.Exception do
         fields: fields,
         class: opts[:class]
 
-      def splode_message(exception) do
+      def message(exception) do
         Ash.ErrorKind.message(exception)
       end
     end

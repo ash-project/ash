@@ -4,9 +4,9 @@ defmodule Ash.Error.Invalid.NoSuchResource do
 
   use Splode.Error, fields: [:resource, :message], class: :invalid
 
-  def splode_message(%{message: message}) when message not in ["", nil], do: message
+  def message(%{message: message}) when message not in ["", nil], do: message
 
-  def splode_message(%{resource: resource}) do
+  def message(%{resource: resource}) do
     "No such resource #{inspect(resource)}"
   end
 end

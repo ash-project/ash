@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.InvalidExpression do
 
   use Splode.Error, fields: [:expression, :message], class: :invalid
 
-  def splode_message(%{expression: expression, message: message}) do
+  def message(%{expression: expression, message: message}) do
     "invalid expression: #{inspect(expression)}: #{message}"
   end
 end

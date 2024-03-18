@@ -4,7 +4,7 @@ defmodule Ash.Error.Framework.InvalidReturnType do
 
   use Splode.Error, fields: [:message], class: :framework
 
-  def splode_message(%{message: message}) do
+  def message(%{message: message}) do
     message
   end
 end

@@ -4,7 +4,7 @@ defmodule Ash.Error.Invalid.AtomicsNotSupported do
 
   use Splode.Error, fields: [:resource, :action_type], class: :invalid
 
-  def splode_message(%{resource: resource, action_type: action_type}) do
+  def message(%{resource: resource, action_type: action_type}) do
     "The data layer for #{inspect(resource)} does not support atomics on #{action_type} actions"
   end
 end

@@ -4,7 +4,7 @@ defmodule Ash.Error.Invalid.InvalidPrimaryKey do
 
   use Splode.Error, fields: [:resource, :value], class: :invalid
 
-  def splode_message(%{resource: _resource, value: value}) do
+  def message(%{resource: _resource, value: value}) do
     "invalid primary key #{inspect(value)} provided"
   end
 end

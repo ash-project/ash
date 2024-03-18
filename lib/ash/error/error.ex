@@ -53,5 +53,5 @@ defmodule Ash.Error do
     end
   end
 
-  def ash_error?(value), do: splode_error?(value)
+  def ash_error?(value), do: splode_error?(value, __MODULE__)
 end

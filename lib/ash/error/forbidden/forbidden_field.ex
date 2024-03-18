@@ -6,7 +6,7 @@ defmodule Ash.Error.Forbidden.ForbiddenField do
 
   use Splode.Error, fields: [:resource, :field], class: :forbidden
 
-  def splode_message(error) do
+  def message(error) do
     "Forbidden: cannot access #{error.field} on #{inspect(error.resource)}"
   end
 end

@@ -4,7 +4,7 @@ defmodule Ash.Error.Query.InvalidLoad do
 
   use Splode.Error, fields: [:load], class: :invalid
 
-  def splode_message(%{load: load}) do
+  def message(%{load: load}) do
     "#{inspect(load)} is not a valid load"
   end
 end
