@@ -744,12 +744,14 @@ defmodule Ash.Changeset do
   def atomic_ref(changeset, field) do
     case Keyword.fetch(changeset.atomics, field) do
       {:ok, atomic} ->
-        atomic
+        attribute = Ash.Resource.Info.attribute(changeset.resource, field)
+        Ash.Expr.expr(type(^atomic, ^attribute.type, ^attribute.constraints))
 
       :error ->
         case Map.fetch(changeset.attributes, field) do
           {:ok, new_value} ->
-            new_value
+            attribute = Ash.Resource.Info.attribute(changeset.resource, field)
+            Ash.Expr.expr(type(^new_value, ^attribute.type, ^attribute.constraints))
 
           :error ->
             Ash.Expr.expr(ref(^field))
@@ -1863,7 +1865,27 @@ defmodule Ash.Changeset do
              {:expr,
               Ash.Filter.hydrate_refs(error_expr, %{resource: changeset.resource, public?: false}),
               error_expr} do
-        case extract_eager_error(condition_expr, error_expr, eager?) do
+        eager_condition_expr =
+          if eager? do
+            Ash.Expr.eval(condition_expr,
+              resource: changeset.resource,
+              unknown_on_unknown_refs?: true
+            )
+          else
+            {:ok, condition_expr}
+          end
+
+        eager_error_expr =
+          if eager? do
+            Ash.Expr.eval(error_expr,
+              resource: changeset.resource,
+              unknown_on_unknown_refs?: true
+            )
+          else
+            {:ok, error_expr}
+          end
+
+        case extract_eager_error(eager_condition_expr, eager_error_expr, eager?) do
           {:ok, error} ->
             {:cont,
              add_error(
@@ -1909,15 +1931,8 @@ defmodule Ash.Changeset do
     end)
   end
 
-  defp extract_eager_error(true, error_expr, true) do
-    with %Ash.Query.Function.Error{arguments: [exception, input]} <- error_expr,
-         false <- Ash.Filter.TemplateHelpers.expr?(exception),
-         false <- Ash.Filter.TemplateHelpers.expr?(input) do
-      {:ok, Ash.Error.from_json(exception, Jason.decode!(Jason.encode!(input)))}
-    else
-      _ ->
-        :error
-    end
+  defp extract_eager_error({:ok, true}, {:error, %{class: :invalid} = error}, true) do
+    {:ok, error}
   end
 
   defp extract_eager_error(_, _, _), do: :error

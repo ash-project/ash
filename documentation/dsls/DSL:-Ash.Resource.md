@@ -942,7 +942,7 @@ change {MyCustomChange, :foo}
 |------|------|---------|------|
 | [`only_when_valid?`](#actions-create-change-only_when_valid?){: #actions-create-change-only_when_valid? } | `boolean` | `false` | If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here. |
 | [`description`](#actions-create-change-description){: #actions-create-change-description } | `String.t` |  | An optional description for the change |
-| [`where`](#actions-create-change-where){: #actions-create-change-where } | `list((any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. These validations failing will result in this validation being ignored. |
+| [`where`](#actions-create-change-where){: #actions-create-change-where } | `(any -> any) \| module \| list((any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
 | [`always_atomic?`](#actions-create-change-always_atomic?){: #actions-create-change-always_atomic? } | `boolean` | `false` | By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always. |
 
 
@@ -1386,7 +1386,7 @@ change {MyCustomChange, :foo}
 |------|------|---------|------|
 | [`only_when_valid?`](#actions-update-change-only_when_valid?){: #actions-update-change-only_when_valid? } | `boolean` | `false` | If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here. |
 | [`description`](#actions-update-change-description){: #actions-update-change-description } | `String.t` |  | An optional description for the change |
-| [`where`](#actions-update-change-where){: #actions-update-change-where } | `list((any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. These validations failing will result in this validation being ignored. |
+| [`where`](#actions-update-change-where){: #actions-update-change-where } | `(any -> any) \| module \| list((any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
 | [`always_atomic?`](#actions-update-change-always_atomic?){: #actions-update-change-always_atomic? } | `boolean` | `false` | By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always. |
 
 
@@ -1625,7 +1625,7 @@ change {MyCustomChange, :foo}
 |------|------|---------|------|
 | [`only_when_valid?`](#actions-destroy-change-only_when_valid?){: #actions-destroy-change-only_when_valid? } | `boolean` | `false` | If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here. |
 | [`description`](#actions-destroy-change-description){: #actions-destroy-change-description } | `String.t` |  | An optional description for the change |
-| [`where`](#actions-destroy-change-where){: #actions-destroy-change-where } | `list((any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. These validations failing will result in this validation being ignored. |
+| [`where`](#actions-destroy-change-where){: #actions-destroy-change-where } | `(any -> any) \| module \| list((any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
 | [`always_atomic?`](#actions-destroy-change-always_atomic?){: #actions-destroy-change-always_atomic? } | `boolean` | `false` | By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always. |
 
 
@@ -2060,10 +2060,10 @@ change {MyCustomChange, :foo}
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`on`](#changes-change-on){: #changes-change-on } | `:create \| :update \| :destroy \| list(:create \| :update \| :destroy)` | `[:create, :update]` | The action types the validation should run on. Destroy actions are omitted by default as most changes don't make sense for a destroy. |
+| [`on`](#changes-change-on){: #changes-change-on } | `:create \| :update \| :destroy \| list(:create \| :update \| :destroy)` | `[:create, :update]` | The action types the change should run on. Destroy actions are omitted by default as most changes don't make sense for a destroy. |
 | [`only_when_valid?`](#changes-change-only_when_valid?){: #changes-change-only_when_valid? } | `boolean` | `false` | If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here. |
 | [`description`](#changes-change-description){: #changes-change-description } | `String.t` |  | An optional description for the change |
-| [`where`](#changes-change-where){: #changes-change-where } | `list((any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. These validations failing will result in this validation being ignored. |
+| [`where`](#changes-change-where){: #changes-change-where } | `(any -> any) \| module \| list((any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
 | [`always_atomic?`](#changes-change-always_atomic?){: #changes-change-always_atomic? } | `boolean` | `false` | By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always. |
 
 
