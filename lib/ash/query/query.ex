@@ -1306,6 +1306,8 @@ defmodule Ash.Query do
                resource_calculation.constraints,
                arguments: args,
                filterable?: resource_calculation.filterable?,
+               sortable?: resource_calculation.sortable?,
+               sensitive?: resource_calculation.sensitive?,
                load: resource_calculation.load,
                source_context: query.context
              ) do
@@ -1455,6 +1457,8 @@ defmodule Ash.Query do
              resource_calculation.constraints,
              arguments: args,
              filterable?: resource_calculation.filterable?,
+             sortable?: resource_calculation.sortable?,
+             sensitive?: resource_calculation.sensitive?,
              load: resource_calculation.load,
              source_context: query.context
            ) do
@@ -1517,6 +1521,8 @@ defmodule Ash.Query do
                  uniq?: aggregate.uniq?,
                  read_action: aggregate.read_action,
                  authorize?: aggregate.authorize?,
+                 sortable?: aggregate.sortable?,
+                 sensitive?: aggregate.sensitive?,
                  join_filters: Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
                ) do
           query_aggregate = %{query_aggregate | load: field}
@@ -2068,55 +2074,19 @@ defmodule Ash.Query do
   end
 
   def aggregate(query, name, kind, relationship, opts) when is_list(opts) do
-    aggregate(
-      query,
-      name,
-      kind,
-      relationship,
-      opts[:query],
-      opts[:default],
-      Keyword.get(opts, :filterable?, true),
-      opts[:type],
-      Keyword.get(opts, :constraints, []),
-      opts[:implementation],
-      opts[:uniq?],
-      opts[:read_action],
-      Keyword.get(opts, :authorize?, true),
-      Keyword.get(opts, :join_filters, %{})
-    )
-  end
+    agg_query = opts[:query]
+    default = opts[:default]
+    filterable? = Keyword.get(opts, :filterable?, true)
+    sortable? = Keyword.get(opts, :filterable?, true)
+    type = opts[:type]
+    constraints = opts[:constraints] || []
+    implementation = opts[:implementation]
+    uniq? = opts[:uniq?]
+    read_action = opts[:read_action]
+    authorize? = Keyword.get(opts, :authorize?, true)
+    join_filters = Keyword.get(opts, :join_filters, %{})
+    sensitive? = Keyword.get(opts, :sensitive?, false)
 
-  @doc """
-  Adds an aggregation to the query.
-
-  Aggregations are made available on the `aggregates` field of the records returned
-
-  The filter option accepts either a filter or a keyword list of options to supply to build a limiting query for that aggregate.
-  See the DSL docs for each aggregate type in the [Resource DSL docs](dsl-ash-resource.html#aggregates) for more information.
-  """
-  @spec aggregate(
-          t() | Ash.Resource.t(),
-          atom(),
-          Ash.Query.Aggregate.kind(),
-          atom | list(atom),
-          Ash.Query.t() | Keyword.t() | nil
-        ) :: t()
-  def aggregate(
-        query,
-        name,
-        kind,
-        relationship,
-        agg_query,
-        default \\ nil,
-        filterable? \\ true,
-        type \\ nil,
-        constraints \\ [],
-        implementation \\ nil,
-        uniq? \\ false,
-        read_action \\ nil,
-        authorize? \\ true,
-        join_filters \\ %{}
-      ) do
     {field, agg_query} =
       case agg_query do
         %Ash.Query{} = query ->
@@ -2160,6 +2130,8 @@ defmodule Ash.Query do
              field: field,
              default: default,
              filterable?: filterable?,
+             sortable?: sortable?,
+             sensitive?: sensitive?,
              type: type,
              constraints: constraints,
              implementation: implementation,

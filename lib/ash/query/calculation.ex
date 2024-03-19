@@ -13,7 +13,8 @@ defmodule Ash.Query.Calculation do
     required_loads: [],
     select: [],
     filterable?: true,
-    sortable?: true
+    sortable?: true,
+    sensitive?: false
   ]
 
   @type t :: %__MODULE__{}
@@ -32,6 +33,11 @@ defmodule Ash.Query.Calculation do
     sortable?: [
       type: :boolean,
       doc: "Whether or not this calculation can be sorted on",
+      default: true
+    ],
+    sensitive?: [
+      type: :boolean,
+      doc: "Whether or not references to this calculation will be considered sensitive",
       default: true
     ],
     load: [

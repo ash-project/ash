@@ -19,7 +19,8 @@ defmodule Ash.Resource.Aggregate do
     join_filters: [],
     authorize?: true,
     filterable?: true,
-    sortable?: true
+    sortable?: true,
+    sensitive?: false
   ]
 
   defmodule JoinFilter do
@@ -92,6 +93,11 @@ defmodule Ash.Resource.Aggregate do
       default: true,
       doc: "Whether or not the aggregate should be usable in sorts."
     ],
+    sensitive?: [
+      type: :boolean,
+      default: false,
+      doc: "Whether or not the aggregate should be considered sensitive."
+    ],
     authorize?: [
       type: :boolean,
       default: true,
@@ -112,7 +118,10 @@ defmodule Ash.Resource.Aggregate do
           authorize?: boolean,
           read_action: atom | nil,
           default: term,
-          join_filters: %{list(atom) => term()}
+          join_filters: %{list(atom) => term()},
+          filterable?: boolean,
+          sortable?: boolean,
+          sensitive?: boolean
         }
 
   @doc false

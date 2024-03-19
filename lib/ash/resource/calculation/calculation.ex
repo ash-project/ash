@@ -13,6 +13,7 @@ defmodule Ash.Resource.Calculation do
             load: [],
             name: nil,
             public?: false,
+            sensitive?: false,
             type: nil
 
   @schema [
@@ -53,6 +54,13 @@ defmodule Ash.Resource.Calculation do
       default: false,
       doc: """
       Whether or not the calculation will appear in public interfaces.
+      """
+    ],
+    sensitive?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Whether or not references to the calculation will be considered sensitive.
       """
     ],
     load: [

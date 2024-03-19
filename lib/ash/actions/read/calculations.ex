@@ -848,6 +848,8 @@ defmodule Ash.Actions.Read.Calculations do
                      resource_calculation.constraints,
                      arguments: args,
                      filterable?: resource_calculation.filterable?,
+                     sortable?: resource_calculation.sortable?,
+                     sensitive?: resource_calculation.sensitive?,
                      load: resource_calculation.load,
                      source_context: query.context
                    ) do
