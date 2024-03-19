@@ -19,7 +19,8 @@ defmodule Ash.Query.Aggregate do
     authorize?: true,
     include_nil?: false,
     uniq?: false,
-    filterable?: true
+    filterable?: true,
+    sortable?: true
   ]
 
   @type t :: %__MODULE__{}
@@ -72,6 +73,10 @@ defmodule Ash.Query.Aggregate do
     filterable?: [
       type: :boolean,
       doc: "Whether or not this aggregate may be used in filters."
+    ],
+    sortable?: [
+      type: :boolean,
+      doc: "Whether or not this aggregate may be used in sorts."
     ],
     type: [
       type: :any,
@@ -180,6 +185,7 @@ defmodule Ash.Query.Aggregate do
           field = opts[:field]
           default = opts[:default]
           filterable? = Keyword.get(opts, :filterable?, true)
+          sortable? = Keyword.get(opts, :sortable?, true)
           type = opts[:type]
           constraints = Keyword.get(opts, :constraints, [])
           implementation = opts[:implementation]
@@ -238,6 +244,7 @@ defmodule Ash.Query.Aggregate do
                uniq?: uniq?,
                query: query,
                filterable?: filterable?,
+               sortable?: sortable?,
                authorize?: authorize?,
                read_action: read_action,
                join_filters: Map.new(join_filters, fn {key, value} -> {List.wrap(key), value} end)

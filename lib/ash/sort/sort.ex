@@ -59,7 +59,7 @@ defmodule Ash.Sort do
       type = type && Ash.Type.get_type(type)
 
       case Ash.Query.Calculation.new(
-             :expr_sort,
+             :__expr_sort__,
              Ash.Resource.Calculation.Expression,
              [expr: Ash.Expr.expr(unquote(expression))],
              type,

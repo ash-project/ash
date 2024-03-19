@@ -169,12 +169,13 @@ defmodule Ash.Test.Filter.FilterTest do
         source_attribute: :author1_id,
         public?: true
 
-      belongs_to :special_author1, User,
-        destination_attribute: :id,
-        source_attribute: :author1_id,
-        define_attribute?: false,
-        filter: expr(special == true),
-        public?: true
+      belongs_to :special_author1, User do
+        destination_attribute :id
+        source_attribute :author1_id
+        define_attribute? false
+        public? true
+        filter expr(special == true)
+      end
 
       belongs_to :author2, User,
         destination_attribute: :id,

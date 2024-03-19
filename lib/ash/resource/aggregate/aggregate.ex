@@ -18,7 +18,8 @@ defmodule Ash.Resource.Aggregate do
     include_nil?: false,
     join_filters: [],
     authorize?: true,
-    filterable?: true
+    filterable?: true,
+    sortable?: true
   ]
 
   defmodule JoinFilter do
@@ -85,6 +86,11 @@ defmodule Ash.Resource.Aggregate do
       type: {:or, [:boolean, {:in, [:simple_equality]}]},
       default: true,
       doc: "Whether or not the aggregate should be usable in filters."
+    ],
+    sortable?: [
+      type: :boolean,
+      default: true,
+      doc: "Whether or not the aggregate should be usable in sorts."
     ],
     authorize?: [
       type: :boolean,

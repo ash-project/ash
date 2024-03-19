@@ -19,6 +19,7 @@ defmodule Ash.Resource.Relationships.HasOne do
     :violation_message,
     :manual,
     :writable?,
+    filters: [],
     from_many?: false,
     no_attributes?: false,
     could_be_related_at_creation?: false,
@@ -26,7 +27,8 @@ defmodule Ash.Resource.Relationships.HasOne do
     cardinality: :one,
     type: :has_one,
     allow_nil?: false,
-    filterable?: true
+    filterable?: true,
+    sortable?: true
   ]
 
   @type t :: %__MODULE__{
@@ -35,12 +37,14 @@ defmodule Ash.Resource.Relationships.HasOne do
           source: Ash.Resource.t(),
           name: atom,
           filterable?: boolean,
+          sortable?: boolean,
           from_many?: boolean,
           read_action: atom,
           no_attributes?: boolean,
           writable?: boolean,
           type: Ash.Type.t(),
           filter: Ash.Filter.t() | nil,
+          filters: [any],
           destination: Ash.Resource.t(),
           destination_attribute: atom,
           public?: boolean,
@@ -79,4 +83,8 @@ defmodule Ash.Resource.Relationships.HasOne do
 
   @doc false
   def opt_schema, do: @opt_schema
+
+  def transform(relationship) do
+    {:ok, relationship |> Ash.Resource.Actions.Read.concat_filters()}
+  end
 end

@@ -146,21 +146,22 @@ defmodule Ash.Resource.Actions.Read do
      |> concat_filters()}
   end
 
-  defp concat_filters(%{filters: []} = read) do
-    read
-  end
-
-  defp concat_filters(%{filters: [filter]} = read) do
+  def concat_filters(%{filters: [filter]} = read) do
     %{read | filter: filter.filter}
   end
 
-  defp concat_filters(%{filters: [first | rest]} = read) do
+  def concat_filters(%{filters: [first | rest]} = read) do
     filter =
       Enum.reduce(rest, first.filter, fn filter, acc ->
         Ash.Query.BooleanExpression.new(:and, filter.filter, acc)
       end)
 
     %{read | filter: filter}
+  end
+
+  @doc false
+  def concat_filters(read) do
+    read
   end
 
   defp transform_pagination(read) do

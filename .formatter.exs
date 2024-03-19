@@ -179,6 +179,7 @@ spark_locals_without_parens = [
   skip_global_validations?: 1,
   soft?: 1,
   sort: 1,
+  sortable?: 1,
   source: 1,
   source_attribute: 1,
   source_attribute_on_join_resource: 1,

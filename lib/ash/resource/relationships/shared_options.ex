@@ -69,13 +69,12 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       The domain module to use when working with the related entity.
       """
     ],
-    filter: [
-      type: :any,
-      doc: """
-      A filter to be applied when reading the relationship.
-      """
-    ],
     filterable?: [
+      type: :boolean,
+      default: true,
+      doc: "If set to `false`, the relationship will not be usable in filters."
+    ],
+    sortable?: [
       type: :boolean,
       default: true,
       doc: "If set to `false`, the relationship will not be usable in filters."
