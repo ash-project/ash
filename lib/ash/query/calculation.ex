@@ -12,7 +12,8 @@ defmodule Ash.Query.Calculation do
     context: %{},
     required_loads: [],
     select: [],
-    filterable?: true
+    filterable?: true,
+    sortable?: true
   ]
 
   @type t :: %__MODULE__{}
@@ -26,6 +27,11 @@ defmodule Ash.Query.Calculation do
     filterable?: [
       type: :boolean,
       doc: "Whether or not this calculation can be filtered on",
+      default: true
+    ],
+    sortable?: [
+      type: :boolean,
+      doc: "Whether or not this calculation can be sorted on",
       default: true
     ],
     load: [
@@ -73,7 +79,8 @@ defmodule Ash.Query.Calculation do
          constraints: constraints,
          context: context,
          required_loads: opts[:load],
-         filterable?: opts[:filterable?]
+         filterable?: opts[:filterable?],
+         sortable?: opts[:filterable?]
        }}
     end
   end

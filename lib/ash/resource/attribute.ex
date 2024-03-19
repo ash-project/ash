@@ -17,6 +17,7 @@ defmodule Ash.Resource.Attribute do
     match_other_defaults?: false,
     sensitive?: false,
     filterable?: true,
+    sortable?: true,
     constraints: []
   ]
 
@@ -37,6 +38,7 @@ defmodule Ash.Resource.Attribute do
           type: Ash.Type.t(),
           primary_key?: boolean(),
           public?: boolean(),
+          sortable?: boolean(),
           default: nil | term | (-> term),
           update_default: nil | term | (-> term) | (Ash.Resource.record() -> term),
           sensitive?: boolean(),
@@ -128,10 +130,17 @@ defmodule Ash.Resource.Attribute do
       doc: "A value to be set on all updates, unless a value is being provided already."
     ],
     filterable?: [
-      type: {:or, [:boolean, {:in, [:simple_equality]}]},
+      type: :boolean,
       default: true,
       doc: """
       Whether or not the attribute can be referenced in filters.
+      """
+    ],
+    sortable?: [
+      type: {:or, [:boolean, {:in, [:simple_equality]}]},
+      default: true,
+      doc: """
+      Whether or not the attribute can be referenced in sorts.
       """
     ],
     match_other_defaults?: [

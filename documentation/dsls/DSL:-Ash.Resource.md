@@ -96,7 +96,8 @@ end
 | [`public?`](#attributes-attribute-public?){: #attributes-attribute-public? } | `boolean` | `false` | Whether or not the attribute should be shown over public interfaces. See the [security guide](/documentation/topics/security.md) for more. |
 | [`default`](#attributes-attribute-default){: #attributes-attribute-default } | `(-> any) \| mfa \| any` |  | A value to be set on all creates, unless a value is being provided already. |
 | [`update_default`](#attributes-attribute-update_default){: #attributes-attribute-update_default } | `(-> any) \| mfa \| any` |  | A value to be set on all updates, unless a value is being provided already. |
-| [`filterable?`](#attributes-attribute-filterable?){: #attributes-attribute-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in filters. |
+| [`filterable?`](#attributes-attribute-filterable?){: #attributes-attribute-filterable? } | `boolean` | `true` | Whether or not the attribute can be referenced in filters. |
+| [`sortable?`](#attributes-attribute-sortable?){: #attributes-attribute-sortable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in sorts. |
 | [`match_other_defaults?`](#attributes-attribute-match_other_defaults?){: #attributes-attribute-match_other_defaults? } | `boolean` | `false` | Ensures that other attributes that use the same "lazy" default (a function or an mfa), use the same default value. Has no effect unless `default` is a zero argument function. |
 
 
@@ -156,7 +157,8 @@ create_timestamp :inserted_at
 | [`public?`](#attributes-create_timestamp-public?){: #attributes-create_timestamp-public? } | `boolean` | `false` | Whether or not the attribute should be shown over public interfaces. See the [security guide](/documentation/topics/security.md) for more. |
 | [`default`](#attributes-create_timestamp-default){: #attributes-create_timestamp-default } | `(-> any) \| mfa \| any` | `&DateTime.utc_now/0` | A value to be set on all creates, unless a value is being provided already. |
 | [`update_default`](#attributes-create_timestamp-update_default){: #attributes-create_timestamp-update_default } | `(-> any) \| mfa \| any` |  | A value to be set on all updates, unless a value is being provided already. |
-| [`filterable?`](#attributes-create_timestamp-filterable?){: #attributes-create_timestamp-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in filters. |
+| [`filterable?`](#attributes-create_timestamp-filterable?){: #attributes-create_timestamp-filterable? } | `boolean` | `true` | Whether or not the attribute can be referenced in filters. |
+| [`sortable?`](#attributes-create_timestamp-sortable?){: #attributes-create_timestamp-sortable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in sorts. |
 | [`match_other_defaults?`](#attributes-create_timestamp-match_other_defaults?){: #attributes-create_timestamp-match_other_defaults? } | `boolean` | `true` | Ensures that other attributes that use the same "lazy" default (a function or an mfa), use the same default value. Has no effect unless `default` is a zero argument function. |
 
 
@@ -217,7 +219,8 @@ update_timestamp :updated_at
 | [`public?`](#attributes-update_timestamp-public?){: #attributes-update_timestamp-public? } | `boolean` | `false` | Whether or not the attribute should be shown over public interfaces. See the [security guide](/documentation/topics/security.md) for more. |
 | [`default`](#attributes-update_timestamp-default){: #attributes-update_timestamp-default } | `(-> any) \| mfa \| any` | `&DateTime.utc_now/0` | A value to be set on all creates, unless a value is being provided already. |
 | [`update_default`](#attributes-update_timestamp-update_default){: #attributes-update_timestamp-update_default } | `(-> any) \| mfa \| any` | `&DateTime.utc_now/0` | A value to be set on all updates, unless a value is being provided already. |
-| [`filterable?`](#attributes-update_timestamp-filterable?){: #attributes-update_timestamp-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in filters. |
+| [`filterable?`](#attributes-update_timestamp-filterable?){: #attributes-update_timestamp-filterable? } | `boolean` | `true` | Whether or not the attribute can be referenced in filters. |
+| [`sortable?`](#attributes-update_timestamp-sortable?){: #attributes-update_timestamp-sortable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in sorts. |
 | [`match_other_defaults?`](#attributes-update_timestamp-match_other_defaults?){: #attributes-update_timestamp-match_other_defaults? } | `boolean` | `true` | Ensures that other attributes that use the same "lazy" default (a function or an mfa), use the same default value. Has no effect unless `default` is a zero argument function. |
 
 
@@ -278,7 +281,8 @@ integer_primary_key :id
 | [`public?`](#attributes-integer_primary_key-public?){: #attributes-integer_primary_key-public? } | `boolean` | `true` | Whether or not the attribute should be shown over public interfaces. See the [security guide](/documentation/topics/security.md) for more. |
 | [`default`](#attributes-integer_primary_key-default){: #attributes-integer_primary_key-default } | `(-> any) \| mfa \| any` |  | A value to be set on all creates, unless a value is being provided already. |
 | [`update_default`](#attributes-integer_primary_key-update_default){: #attributes-integer_primary_key-update_default } | `(-> any) \| mfa \| any` |  | A value to be set on all updates, unless a value is being provided already. |
-| [`filterable?`](#attributes-integer_primary_key-filterable?){: #attributes-integer_primary_key-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in filters. |
+| [`filterable?`](#attributes-integer_primary_key-filterable?){: #attributes-integer_primary_key-filterable? } | `boolean` | `true` | Whether or not the attribute can be referenced in filters. |
+| [`sortable?`](#attributes-integer_primary_key-sortable?){: #attributes-integer_primary_key-sortable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in sorts. |
 | [`match_other_defaults?`](#attributes-integer_primary_key-match_other_defaults?){: #attributes-integer_primary_key-match_other_defaults? } | `boolean` | `false` | Ensures that other attributes that use the same "lazy" default (a function or an mfa), use the same default value. Has no effect unless `default` is a zero argument function. |
 
 
@@ -337,7 +341,8 @@ uuid_primary_key :id
 | [`public?`](#attributes-uuid_primary_key-public?){: #attributes-uuid_primary_key-public? } | `boolean` | `true` | Whether or not the attribute should be shown over public interfaces. See the [security guide](/documentation/topics/security.md) for more. |
 | [`default`](#attributes-uuid_primary_key-default){: #attributes-uuid_primary_key-default } | `(-> any) \| mfa \| any` | `&Ash.UUID.generate/0` | A value to be set on all creates, unless a value is being provided already. |
 | [`update_default`](#attributes-uuid_primary_key-update_default){: #attributes-uuid_primary_key-update_default } | `(-> any) \| mfa \| any` |  | A value to be set on all updates, unless a value is being provided already. |
-| [`filterable?`](#attributes-uuid_primary_key-filterable?){: #attributes-uuid_primary_key-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in filters. |
+| [`filterable?`](#attributes-uuid_primary_key-filterable?){: #attributes-uuid_primary_key-filterable? } | `boolean` | `true` | Whether or not the attribute can be referenced in filters. |
+| [`sortable?`](#attributes-uuid_primary_key-sortable?){: #attributes-uuid_primary_key-sortable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in sorts. |
 | [`match_other_defaults?`](#attributes-uuid_primary_key-match_other_defaults?){: #attributes-uuid_primary_key-match_other_defaults? } | `boolean` | `false` | Ensures that other attributes that use the same "lazy" default (a function or an mfa), use the same default value. Has no effect unless `default` is a zero argument function. |
 
 
@@ -362,9 +367,13 @@ See the [relationships guide](/documentation/topics/relationships.md) for more.
 
 ### Nested DSLs
  * [has_one](#relationships-has_one)
+   * filter
  * [has_many](#relationships-has_many)
+   * filter
  * [many_to_many](#relationships-many_to_many)
+   * filter
  * [belongs_to](#relationships-belongs_to)
+   * filter
 
 
 ### Examples
@@ -423,6 +432,8 @@ Generally speaking, a `has_one` also implies that the destination table is uniqu
 See the [relationships guide](/documentation/topics/relationships.md) for more.
 
 
+### Nested DSLs
+ * [filter](#relationships-has_one-filter)
 
 
 ### Examples
@@ -461,12 +472,46 @@ end
 | [`writable?`](#relationships-has_one-writable?){: #relationships-has_one-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-has_one-read_action){: #relationships-has_one-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
 | [`domain`](#relationships-has_one-domain){: #relationships-has_one-domain } | `atom` |  | The domain module to use when working with the related entity. |
-| [`filter`](#relationships-has_one-filter){: #relationships-has_one-filter } | `any` |  | A filter to be applied when reading the relationship. |
 | [`filterable?`](#relationships-has_one-filterable?){: #relationships-has_one-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
+| [`sortable?`](#relationships-has_one-sortable?){: #relationships-has_one-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sort`](#relationships-has_one-sort){: #relationships-has_one-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
 | [`could_be_related_at_creation?`](#relationships-has_one-could_be_related_at_creation?){: #relationships-has_one-could_be_related_at_creation? } | `boolean` | `false` | Whether or not related values may exist for this relationship at creation. |
 | [`violation_message`](#relationships-has_one-violation_message){: #relationships-has_one-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
 
+
+## relationships.has_one.filter
+```elixir
+filter filter
+```
+
+
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.
+
+
+
+### Examples
+```
+filter expr(first_name == "fred")
+filter expr(last_name == "weasley" and magician == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`filter`](#relationships-has_one-filter-filter){: #relationships-has_one-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Dsl.Filter`
 
 
 
@@ -486,6 +531,8 @@ Declares a `has_many` relationship. There can be any number of related entities.
 See the [relationships guide](/documentation/topics/relationships.md) for more.
 
 
+### Nested DSLs
+ * [filter](#relationships-has_many-filter)
 
 
 ### Examples
@@ -522,12 +569,46 @@ end
 | [`writable?`](#relationships-has_many-writable?){: #relationships-has_many-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-has_many-read_action){: #relationships-has_many-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
 | [`domain`](#relationships-has_many-domain){: #relationships-has_many-domain } | `atom` |  | The domain module to use when working with the related entity. |
-| [`filter`](#relationships-has_many-filter){: #relationships-has_many-filter } | `any` |  | A filter to be applied when reading the relationship. |
 | [`filterable?`](#relationships-has_many-filterable?){: #relationships-has_many-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
+| [`sortable?`](#relationships-has_many-sortable?){: #relationships-has_many-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sort`](#relationships-has_many-sort){: #relationships-has_many-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
 | [`could_be_related_at_creation?`](#relationships-has_many-could_be_related_at_creation?){: #relationships-has_many-could_be_related_at_creation? } | `boolean` | `false` | Whether or not related values may exist for this relationship at creation. |
 | [`violation_message`](#relationships-has_many-violation_message){: #relationships-has_many-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
 
+
+## relationships.has_many.filter
+```elixir
+filter filter
+```
+
+
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.
+
+
+
+### Examples
+```
+filter expr(first_name == "fred")
+filter expr(last_name == "weasley" and magician == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`filter`](#relationships-has_many-filter-filter){: #relationships-has_many-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Dsl.Filter`
 
 
 
@@ -549,6 +630,8 @@ A join resource is a resource that consists of a relationship to the source and 
 See the [relationships guide](/documentation/topics/relationships.md) for more.
 
 
+### Nested DSLs
+ * [filter](#relationships-many_to_many-filter)
 
 
 ### Examples
@@ -594,12 +677,46 @@ belongs_to :word, Word, primary_key?: true, allow_nil?: false
 | [`writable?`](#relationships-many_to_many-writable?){: #relationships-many_to_many-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-many_to_many-read_action){: #relationships-many_to_many-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
 | [`domain`](#relationships-many_to_many-domain){: #relationships-many_to_many-domain } | `atom` |  | The domain module to use when working with the related entity. |
-| [`filter`](#relationships-many_to_many-filter){: #relationships-many_to_many-filter } | `any` |  | A filter to be applied when reading the relationship. |
 | [`filterable?`](#relationships-many_to_many-filterable?){: #relationships-many_to_many-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
+| [`sortable?`](#relationships-many_to_many-sortable?){: #relationships-many_to_many-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sort`](#relationships-many_to_many-sort){: #relationships-many_to_many-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
 | [`could_be_related_at_creation?`](#relationships-many_to_many-could_be_related_at_creation?){: #relationships-many_to_many-could_be_related_at_creation? } | `boolean` | `false` | Whether or not related values may exist for this relationship at creation. |
 | [`violation_message`](#relationships-many_to_many-violation_message){: #relationships-many_to_many-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
 
+
+## relationships.many_to_many.filter
+```elixir
+filter filter
+```
+
+
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.
+
+
+
+### Examples
+```
+filter expr(first_name == "fred")
+filter expr(last_name == "weasley" and magician == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`filter`](#relationships-many_to_many-filter-filter){: #relationships-many_to_many-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Dsl.Filter`
 
 
 
@@ -621,6 +738,8 @@ This creates a field on the resource with the corresponding name and type, unles
 See the [relationships guide](/documentation/topics/relationships.md) for more.
 
 
+### Nested DSLs
+ * [filter](#relationships-belongs_to-filter)
 
 
 ### Examples
@@ -661,11 +780,45 @@ end
 | [`writable?`](#relationships-belongs_to-writable?){: #relationships-belongs_to-writable? } | `boolean` | `true` | Whether or not the relationship may be managed. |
 | [`read_action`](#relationships-belongs_to-read_action){: #relationships-belongs_to-read_action } | `atom` |  | The read action on the destination resource to use when loading data and filtering. |
 | [`domain`](#relationships-belongs_to-domain){: #relationships-belongs_to-domain } | `atom` |  | The domain module to use when working with the related entity. |
-| [`filter`](#relationships-belongs_to-filter){: #relationships-belongs_to-filter } | `any` |  | A filter to be applied when reading the relationship. |
 | [`filterable?`](#relationships-belongs_to-filterable?){: #relationships-belongs_to-filterable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
+| [`sortable?`](#relationships-belongs_to-sortable?){: #relationships-belongs_to-sortable? } | `boolean` | `true` | If set to `false`, the relationship will not be usable in filters. |
 | [`sort`](#relationships-belongs_to-sort){: #relationships-belongs_to-sort } | `any` |  | A sort statement to be applied when loading the relationship. |
 | [`violation_message`](#relationships-belongs_to-violation_message){: #relationships-belongs_to-violation_message } | `String.t` |  | A message to show if there is a conflict with this relationship in the database on destroy. |
 
+
+## relationships.belongs_to.filter
+```elixir
+filter filter
+```
+
+
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.
+
+
+
+### Examples
+```
+filter expr(first_name == "fred")
+filter expr(last_name == "weasley" and magician == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`filter`](#relationships-belongs_to-filter-filter){: #relationships-belongs_to-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Dsl.Filter`
 
 
 
@@ -1305,7 +1458,7 @@ filter filter
 ```
 
 
-Applies a filter to the read action. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.
+Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.
 
 
 
@@ -2330,6 +2483,7 @@ end
 | [`default`](#aggregates-count-default){: #aggregates-count-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
 | [`public?`](#aggregates-count-public?){: #aggregates-count-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-count-filterable?){: #aggregates-count-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
+| [`sortable?`](#aggregates-count-sortable?){: #aggregates-count-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`authorize?`](#aggregates-count-authorize?){: #aggregates-count-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -2417,6 +2571,7 @@ exists :has_ticket, :assigned_tickets
 | [`default`](#aggregates-exists-default){: #aggregates-exists-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
 | [`public?`](#aggregates-exists-public?){: #aggregates-exists-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-exists-filterable?){: #aggregates-exists-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
+| [`sortable?`](#aggregates-exists-sortable?){: #aggregates-exists-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`authorize?`](#aggregates-exists-authorize?){: #aggregates-exists-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -2511,6 +2666,7 @@ end
 | [`default`](#aggregates-first-default){: #aggregates-first-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
 | [`public?`](#aggregates-first-public?){: #aggregates-first-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-first-filterable?){: #aggregates-first-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
+| [`sortable?`](#aggregates-first-sortable?){: #aggregates-first-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`authorize?`](#aggregates-first-authorize?){: #aggregates-first-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -2601,6 +2757,7 @@ end
 | [`default`](#aggregates-sum-default){: #aggregates-sum-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
 | [`public?`](#aggregates-sum-public?){: #aggregates-sum-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-sum-filterable?){: #aggregates-sum-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
+| [`sortable?`](#aggregates-sum-sortable?){: #aggregates-sum-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`authorize?`](#aggregates-sum-authorize?){: #aggregates-sum-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -2694,6 +2851,7 @@ end
 | [`default`](#aggregates-list-default){: #aggregates-list-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
 | [`public?`](#aggregates-list-public?){: #aggregates-list-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-list-filterable?){: #aggregates-list-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
+| [`sortable?`](#aggregates-list-sortable?){: #aggregates-list-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`authorize?`](#aggregates-list-authorize?){: #aggregates-list-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -2784,6 +2942,7 @@ end
 | [`default`](#aggregates-max-default){: #aggregates-max-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
 | [`public?`](#aggregates-max-public?){: #aggregates-max-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-max-filterable?){: #aggregates-max-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
+| [`sortable?`](#aggregates-max-sortable?){: #aggregates-max-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`authorize?`](#aggregates-max-authorize?){: #aggregates-max-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -2874,6 +3033,7 @@ end
 | [`default`](#aggregates-min-default){: #aggregates-min-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
 | [`public?`](#aggregates-min-public?){: #aggregates-min-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-min-filterable?){: #aggregates-min-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
+| [`sortable?`](#aggregates-min-sortable?){: #aggregates-min-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`authorize?`](#aggregates-min-authorize?){: #aggregates-min-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -2964,6 +3124,7 @@ end
 | [`default`](#aggregates-avg-default){: #aggregates-avg-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
 | [`public?`](#aggregates-avg-public?){: #aggregates-avg-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-avg-filterable?){: #aggregates-avg-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
+| [`sortable?`](#aggregates-avg-sortable?){: #aggregates-avg-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`authorize?`](#aggregates-avg-authorize?){: #aggregates-avg-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -3059,6 +3220,7 @@ end
 | [`default`](#aggregates-custom-default){: #aggregates-custom-default } | `any` |  | A default value to use in cases where nil would be used. Count defaults to `0`. |
 | [`public?`](#aggregates-custom-public?){: #aggregates-custom-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-custom-filterable?){: #aggregates-custom-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
+| [`sortable?`](#aggregates-custom-sortable?){: #aggregates-custom-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
 | [`authorize?`](#aggregates-custom-authorize?){: #aggregates-custom-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -3186,6 +3348,7 @@ calculate :full_name, :string, expr(first_name <> " " <> last_name)
 | [`load`](#calculations-calculate-load){: #calculations-calculate-load } | `any` | `[]` | A load statement to be applied if the calculation is used. |
 | [`allow_nil?`](#calculations-calculate-allow_nil?){: #calculations-calculate-allow_nil? } | `boolean` | `true` | Whether or not the calculation can return nil. |
 | [`filterable?`](#calculations-calculate-filterable?){: #calculations-calculate-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the calculation should be usable in filters. |
+| [`sortable?`](#calculations-calculate-sortable?){: #calculations-calculate-sortable? } | `boolean` | `true` | Whether or not the calculation can be referenced in sorts. |
 
 
 ## calculations.calculate.argument

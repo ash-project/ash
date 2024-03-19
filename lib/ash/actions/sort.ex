@@ -4,7 +4,7 @@ defmodule Ash.Actions.Sort do
     AggregatesNotSupported,
     InvalidSortOrder,
     NoSuchField,
-    UnsortableAttribute
+    UnsortableField
   }
 
   @sort_orders [:asc, :desc, :asc_nils_first, :asc_nils_last, :desc_nils_first, :desc_nils_last]
@@ -40,6 +40,9 @@ defmodule Ash.Actions.Sort do
                | errors
              ]}
 
+          %{name: name, sortable?: false} ->
+            {sorts, [UnsortableField.exception(resource: resource, field: name) | errors]}
+
           calc ->
             {module, opts} = calc.calculation
 
@@ -67,6 +70,56 @@ defmodule Ash.Actions.Sort do
             end
         end
 
+      {%Ash.Query.Calculation{sortable?: false} = calc, _order}, {sorts, errors} ->
+        {sorts, [UnsortableField.exception(resource: resource, field: calc) | errors]}
+
+      {%Ash.Query.Calculation{
+         name: :__expr_sort__,
+         module: Ash.Resource.Calculation.Expression,
+         opts: [{:expr, expr}]
+       } = calc, order},
+      {sorts, errors} ->
+        expr
+        |> Ash.Filter.list_refs()
+        |> Enum.reduce_while(:ok, fn %{relationship_path: path, attribute: attribute}, :ok ->
+          {ref_attribute, field_name} =
+            case attribute do
+              atom when is_atom(attribute) ->
+                {Ash.Resource.Info.field(Ash.Resource.Info.related(resource, path), attribute),
+                 atom}
+
+              %struct{} = attribute when struct in [Ash.Query.Aggregate, Ash.Query.Calculation] ->
+                {attribute, attribute}
+
+              other ->
+                {other, other.name}
+            end
+
+          if ref_attribute.sortable? do
+            case find_non_sortable_relationship(resource, path) do
+              nil ->
+                {:cont, :ok}
+
+              {resource, non_sortable_field} ->
+                {:halt, {:error, resource, non_sortable_field}}
+            end
+          else
+            {:halt, {:error, resource, field_name}}
+          end
+        end)
+        |> case do
+          :ok ->
+            if order in @sort_orders do
+              {sorts ++ [{calc, order}], errors}
+            else
+              {sorts, [InvalidSortOrder.exception(order: order) | errors]}
+            end
+
+          {:error, resource, non_sortable_field} ->
+            {sorts,
+             [UnsortableField.exception(resource: resource, field: non_sortable_field) | errors]}
+        end
+
       {%Ash.Query.Calculation{} = calc, order}, {sorts, errors} ->
         if order in @sort_orders do
           {sorts ++ [{calc, order}], errors}
@@ -79,38 +132,57 @@ defmodule Ash.Actions.Sort do
 
         cond do
           aggregate = Ash.Resource.Info.aggregate(resource, field) ->
-            aggregate_sort(aggregate, order, resource, sorts, errors)
+            if aggregate.sortable? do
+              aggregate_sort(aggregate, order, resource, sorts, errors)
+            else
+              {sorts, [UnsortableField.exception(resource: resource, field: field) | errors]}
+            end
 
           Map.has_key?(aggregates, field) ->
-            aggregate_sort(Map.get(aggregates, field), order, resource, sorts, errors)
+            if aggregates[field].sortable? do
+              aggregate_sort(Map.get(aggregates, field), order, resource, sorts, errors)
+            else
+              {sorts,
+               [
+                 UnsortableField.exception(resource: resource, field: Map.get(aggregates, field))
+                 | errors
+               ]}
+            end
 
           calc = Ash.Resource.Info.calculation(resource, field) ->
-            {module, opts} = calc.calculation
-            Code.ensure_compiled(module)
+            if calc.sortable? do
+              {module, opts} = calc.calculation
 
-            if :erlang.function_exported(module, :expression, 2) do
-              if Ash.DataLayer.data_layer_can?(resource, :expression_calculation_sort) do
-                calculation_sort(
-                  field,
-                  calc,
-                  module,
-                  opts,
-                  calc.type,
-                  calc.constraints,
-                  order,
-                  sorts,
-                  errors,
-                  context
-                )
+              if module.has_expression?() do
+                if Ash.DataLayer.data_layer_can?(resource, :expression_calculation_sort) do
+                  calculation_sort(
+                    field,
+                    calc,
+                    module,
+                    opts,
+                    calc.type,
+                    calc.constraints,
+                    order,
+                    sorts,
+                    errors,
+                    context
+                  )
+                else
+                  {sorts, ["Datalayer cannot sort on calculations"]}
+                end
               else
-                {sorts, ["Datalayer cannot sort on calculations"]}
+                {sorts, ["Calculations cannot be sorted on unless they define an expression"]}
               end
             else
-              {sorts, ["Calculations cannot be sorted on unless they define an expression"]}
+              {sorts, [UnsortableField.exception(resource: resource, field: field) | errors]}
             end
 
           !attribute ->
             {sorts, [NoSuchField.exception(attribute: field, resource: resource) | errors]}
+
+          !attribute.sortable? ->
+            {sorts,
+             [UnsortableField.exception(resource: resource, field: attribute.name) | errors]}
 
           Ash.Type.embedded_type?(attribute.type) ->
             {sorts, ["Cannot sort on embedded types" | errors]}
@@ -124,7 +196,7 @@ defmodule Ash.Actions.Sort do
           ) ->
             {sorts,
              [
-               UnsortableAttribute.exception(field: field)
+               UnsortableField.exception(resource: resource, field: field, reason: :type)
                | errors
              ]}
 
@@ -164,6 +236,20 @@ defmodule Ash.Actions.Sort do
         end)
       end)
     end)
+  end
+
+  defp find_non_sortable_relationship(_resource, []) do
+    nil
+  end
+
+  defp find_non_sortable_relationship(resource, [first | rest]) do
+    relationship = Ash.Resource.Info.relationship(resource, first)
+
+    if relationship.sortable? do
+      find_non_sortable_relationship(relationship.destination, [rest])
+    else
+      {relationship.source, relationship.name}
+    end
   end
 
   defp aggregate_sort(field, order, resource, sorts, errors) do
