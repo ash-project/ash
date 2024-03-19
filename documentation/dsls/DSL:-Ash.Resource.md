@@ -701,6 +701,7 @@ multiple actions of each type in a large application.
    * prepare
    * pagination
    * metadata
+   * filter
  * [update](#actions-update)
    * change
    * validate
@@ -1110,6 +1111,7 @@ Declares a `read` action. For calling this action, see the `Ash.Domain` document
  * [prepare](#actions-read-prepare)
  * [pagination](#actions-read-pagination)
  * [metadata](#actions-read-metadata)
+ * [filter](#actions-read-filter)
 
 
 ### Examples
@@ -1131,7 +1133,6 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`filter`](#actions-read-filter){: #actions-read-filter } | `any` |  | A filter template that will be applied whenever the action is used. See `Ash.Filter` for more on templates |
 | [`manual`](#actions-read-manual){: #actions-read-manual } | `(any, any, any -> any) \| module` |  | Delegates running of the query to the provided module. Accepts a module or module and opts, or a function that takes the ash query, the data layer query, and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
 | [`get?`](#actions-read-get?){: #actions-read-get? } | `boolean` | `false` | Expresses that this action innately only returns a single result. Used by extensions to validate and/or modify behavior. Causes code interfaces to return a single value instead of a list. See the [code interface guide](/documentation/topics/code-interface.md) for more. |
 | [`modify_query`](#actions-read-modify_query){: #actions-read-modify_query } | `mfa \| (any, any -> any)` |  | Allows direct manipulation of the data layer query via an MFA. The ash query and the data layer query will be provided as additional arguments. The result must be `{:ok, new_data_layer_query} \| {:error, error}`. |
@@ -1297,6 +1298,40 @@ metadata :operation_id, :string, allow_nil?: false
 ### Introspection
 
 Target: `Ash.Resource.Actions.Metadata`
+
+## actions.read.filter
+```elixir
+filter filter
+```
+
+
+Applies a filter to the read action. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.
+
+
+
+### Examples
+```
+filter expr(first_name == "fred")
+filter expr(last_name == "weasley" and magician == true)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`filter`](#actions-read-filter-filter){: #actions-read-filter-filter .spark-required} | `any` |  | The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Resource.Dsl.Filter`
 
 
 
