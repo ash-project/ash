@@ -287,10 +287,6 @@ defmodule Ash.Test.ReactorCreateTest do
       @moduledoc false
       use Ash.Reactor
 
-      ash do
-        default_api Ash.Test.AnyApi
-      end
-
       step :create_changeset do
         run fn _ ->
           changeset =

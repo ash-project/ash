@@ -25,7 +25,8 @@ defmodule Ash.Reactor.CreateStep do
     changeset =
       case arguments.initial do
         changeset when is_struct(changeset, Changeset) ->
-          Changeset.change_attributes(changeset, arguments.input)
+          changeset
+          |> Changeset.for_create(options[:action], arguments.input, changeset_options)
 
         nil ->
           options[:resource]

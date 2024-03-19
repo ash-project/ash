@@ -3,6 +3,7 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
   Responsible for transforming actions.
   """
 
+  alias Ash.{Domain, Resource}
   alias Reactor.Utils
   alias Spark.{Dsl, Dsl.Transformer, Error.DslError}
 
@@ -81,13 +82,14 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
     do: {:ok, entity, dsl_state}
 
   defp transform_entity_domain(entity, dsl_state) do
+    resource_domain = Resource.Info.domain(entity.resource)
     default_domain = Transformer.get_option(dsl_state, [:ash], :default_domain)
 
-    {:ok, %{entity | domain: entity.domain || default_domain}}
+    {:ok, %{entity | domain: entity.domain || resource_domain || default_domain}}
   end
 
   defp validate_entity_domain(entity, dsl_state) do
-    if entity.domain.spark_is() == Ash.Domain do
+    if entity.domain.spark_is() == Domain do
       :ok
     else
       {:error,
@@ -101,7 +103,7 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
   end
 
   defp validate_entity_resource(entity, dsl_state) do
-    if entity.resource.spark_is() == Ash.Resource do
+    if entity.resource.spark_is() == Resource do
       :ok
     else
       {:error,
@@ -116,7 +118,7 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
 
   defp validate_entity_resources(entity, dsl_state) do
     entity.resources
-    |> Enum.reject(&(&1.spark_is() == Ash.Resource))
+    |> Enum.reject(&(&1.spark_is() == Resource))
     |> case do
       [] ->
         :ok
@@ -225,7 +227,7 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
 
     allowed_input_names =
       entity.resource
-      |> Ash.Resource.Info.attributes()
+      |> Resource.Info.attributes()
       |> Enum.map(& &1.name)
       |> maybe_accept_inputs(action)
       |> maybe_reject_inputs(action)
@@ -301,13 +303,13 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
 
   defp get_entity_resource_action(entity, dsl_state) when is_nil(entity.action) do
     entity.resource
-    |> Ash.Resource.Info.actions()
+    |> Resource.Info.actions()
     |> Enum.find(&(&1.type == entity.type && &1.primary?))
     |> case do
       nil ->
         suggestions =
           entity.resource
-          |> Ash.Resource.Info.actions()
+          |> Resource.Info.actions()
           |> Enum.filter(&(&1.type == entity.type))
           |> Enum.map(&to_string(&1.name))
           |> sorted_suggestions(entity.action,
@@ -331,11 +333,11 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
   end
 
   defp get_entity_resource_action(entity, dsl_state) do
-    case Ash.Resource.Info.action(entity.resource, entity.action, entity.type) do
+    case Resource.Info.action(entity.resource, entity.action, entity.type) do
       nil ->
         suggestions =
           entity.resource
-          |> Ash.Resource.Info.actions()
+          |> Resource.Info.actions()
           |> Enum.filter(&(&1.type == entity.type))
           |> Enum.map(&to_string(&1.name))
           |> sorted_suggestions(entity.action)
@@ -356,12 +358,12 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
 
   defp maybe_validate_upsert_identity(entity, dsl_state)
        when entity.upsert? and entity.upsert_identity do
-    if Ash.Resource.Info.identity(entity.resource, entity.upsert_identity) do
+    if Resource.Info.identity(entity.resource, entity.upsert_identity) do
       :ok
     else
       suggestions =
         entity.resource
-        |> Ash.Resource.Info.identities()
+        |> Resource.Info.identities()
         |> Enum.map(& &1.name)
         |> sorted_suggestions(entity.upsert_identity)
 
