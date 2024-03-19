@@ -5,6 +5,37 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.20.2](https://github.com/ash-project/ash/compare/v2.20.1...v2.20.2) (2024-03-19)
+
+
+
+
+### Bug Fixes:
+
+* use proper logic for atomic `present` validations
+
+* Set tenant correctly when reading many_to_many relationship. (#928)
+
+* properly match no_rollback error
+
+* load with right module in `get_rewrites` of `Ash.Type.Struct` (#927)
+
+* ensure that calculation dependency loader combines selects
+
+* properly handle raised errors from async calculations
+
+* ensure depended on attributes are selected in calculations
+
+* properly merge related selects when merging loads
+
+### Improvements:
+
+* cast atomic reference types, makes life easier for data layers
+
+* use `wrap_list` for `where` in `changes.change` (#926)
+
+* don't require Mix to compile an Ash resource
+
 ## [v2.20.1](https://github.com/ash-project/ash/compare/v2.20.0...v2.20.1) (2024-03-11)
 
 
