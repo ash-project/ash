@@ -56,6 +56,7 @@ defmodule Ash.Resource.Transformers.CreateJoinRelationship do
             %{
               relationship
               | through: join_relationship.destination,
+                source_attribute: join_relationship.source_attribute,
                 source_attribute_on_join_resource: join_relationship.destination_attribute
             }
 
