@@ -491,6 +491,18 @@ defmodule Ash.CodeInterface do
 
                   input_opts = Keyword.put(input_opts, :domain, unquote(domain))
 
+                  case input do
+                    %Ash.ActionInput{resource: __MODULE__} ->
+                      input
+
+                    %Ash.ActionInput{resource: other_resource} ->
+                      raise ArgumentError,
+                            "Action input resource #{inspect(other_resource)} does not match expected resource #{inspect(__MODULE__)}."
+
+                    input ->
+                      input
+                  end
+
                   input =
                     input
                     |> Kernel.||(unquote(resource))
@@ -512,6 +524,18 @@ defmodule Ash.CodeInterface do
 
                   {query, query_opts} = Keyword.pop(query_opts, :query)
                   query_opts = Keyword.put(query_opts, :domain, unquote(domain))
+
+                  case query do
+                    %Ash.Query{resource: __MODULE__} ->
+                      query
+
+                    %Ash.Query{resource: other_resource} ->
+                      raise ArgumentError,
+                            "Query resource #{inspect(other_resource)} does not match expected resource #{inspect(__MODULE__)}."
+
+                    query ->
+                      query
+                  end
 
                   query =
                     if unquote(filter_keys) && !Enum.empty?(unquote(filter_keys)) do
@@ -591,6 +615,22 @@ defmodule Ash.CodeInterface do
                   changeset =
                     changeset
                     |> Kernel.||(unquote(resource))
+                    |> case do
+                      %Ash.Changeset{resource: __MODULE__} ->
+                        changeset
+
+                      %Ash.Changeset{resource: other_resource} ->
+                        raise ArgumentError,
+                              "Changeset #{inspect(changeset)} does not match expected resource #{inspect(__MODULE__)}."
+
+                      other_resource
+                      when is_atom(other_resource) and other_resource != __MODULE__ ->
+                        raise ArgumentError,
+                              "Resource #{inspect(other_resource)} does not match expected resource #{inspect(__MODULE__)}."
+
+                      changeset ->
+                        changeset
+                    end
                     |> Ash.Changeset.for_create(unquote(action.name), params, changeset_opts)
                 end
 
@@ -612,6 +652,21 @@ defmodule Ash.CodeInterface do
 
                   changeset =
                     record
+                    |> case do
+                      %Ash.Changeset{resource: __MODULE__} ->
+                        record
+
+                      %Ash.Changeset{resource: other_resource} ->
+                        raise ArgumentError,
+                              "Changeset #{inspect(record)} does not match expected resource #{inspect(__MODULE__)}."
+
+                      %other_resource{} when other_resource != __MODULE__ ->
+                        raise ArgumentError,
+                              "Record #{inspect(record)} does not match expected resource #{inspect(__MODULE__)}."
+
+                      record ->
+                        record
+                    end
                     |> Ash.Changeset.for_update(unquote(action.name), params, changeset_opts)
                 end
 
@@ -633,6 +688,21 @@ defmodule Ash.CodeInterface do
 
                   changeset =
                     record
+                    |> case do
+                      %Ash.Changeset{resource: __MODULE__} ->
+                        record
+
+                      %Ash.Changeset{resource: other_resource} ->
+                        raise ArgumentError,
+                              "Changeset #{inspect(record)} does not match expected resource #{inspect(__MODULE__)}."
+
+                      %other_resource{} when other_resource != __MODULE__ ->
+                        raise ArgumentError,
+                              "Record #{inspect(record)} does not match expected resource #{inspect(__MODULE__)}."
+
+                      record ->
+                        record
+                    end
                     |> Ash.Changeset.for_destroy(unquote(action.name), params, changeset_opts)
                 end
 
