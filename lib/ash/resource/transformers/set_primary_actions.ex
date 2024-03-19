@@ -86,19 +86,6 @@ defmodule Ash.Resource.Transformers.ValidatePrimaryActions do
               """
 
           type when type in [:create, :update] ->
-            if default_accept == [:*] do
-              raise Spark.Error.DslError,
-                module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
-                path: [:actions, :default_accept],
-                message: """
-                When using default actions with `default_accept :*` is only supported when an explicit accept is given.
-
-                For example:
-
-                  defaults [:read, :destroy, create: :*, update: :*]
-                """
-            end
-
             {type, default_accept}
 
           {type, accept} ->
