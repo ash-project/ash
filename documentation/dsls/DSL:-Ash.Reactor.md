@@ -226,6 +226,153 @@ Target: `Ash.Reactor.Dsl.Action`
 
 
 
+## reactor.change
+```elixir
+change name, change
+```
+
+
+Declares a step that will modify a changeset.
+
+### Nested DSLs
+ * [argument](#reactor-change-argument)
+ * [wait_for](#reactor-change-wait_for)
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#reactor-change-name){: #reactor-change-name .spark-required} | `atom` |  | A unique name for this step. |
+| [`change`](#reactor-change-change){: #reactor-change-change .spark-required} | `(any, any -> any) \| module` |  | The module and options for a change. Also accepts a function that takes the changeset and the context. See `Ash.Resource.Change.Builtins` for builtin changes. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`initial`](#reactor-change-initial){: #reactor-change-initial .spark-required} | `module \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The initial value to work from, either a resource or a changeset |
+| [`description`](#reactor-change-description){: #reactor-change-description } | `String.t \| nil` |  | An optional description for the change |
+| [`only_when_valid?`](#reactor-change-only_when_valid?){: #reactor-change-only_when_valid? } | `boolean` | `false` | If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here. |
+| [`where`](#reactor-change-where){: #reactor-change-where } | `(any -> any) \| module \| list((any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
+| [`fail_if_invalid?`](#reactor-change-fail_if_invalid?){: #reactor-change-fail_if_invalid? } | `boolean` | `false` | Fail if the result of the change is an invalid changeset |
+
+
+## reactor.change.argument
+```elixir
+argument name, source \\ nil
+```
+
+
+Specifies an argument to a Reactor step.
+
+Each argument is a value which is either the result of another step, or an input value.
+
+Individual arguments can be transformed with an arbitrary function before
+being passed to any steps.
+
+
+
+
+### Examples
+```
+argument :name, input(:name)
+
+```
+
+```
+argument :year, input(:date, [:year])
+
+```
+
+```
+argument :user, result(:create_user)
+
+```
+
+```
+argument :user_id, result(:create_user) do
+  transform & &1.id
+end
+
+```
+
+```
+argument :user_id, result(:create_user, [:id])
+
+```
+
+```
+argument :three, value(3)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#reactor-change-argument-name){: #reactor-change-argument-name .spark-required} | `atom` |  | The name of the argument which will be used as the key in the `arguments` map passed to the implementation. |
+| [`source`](#reactor-change-argument-source){: #reactor-change-argument-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the argument. See `Reactor.Dsl.Argument` for more information. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-change-argument-transform){: #reactor-change-argument-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the argument before it is passed to the step. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Argument`
+
+## reactor.change.wait_for
+```elixir
+wait_for names
+```
+
+
+Wait for the named step to complete before allowing this one to start.
+
+Desugars to `argument :_, result(step_to_wait_for)`
+
+
+
+
+### Examples
+```
+wait_for :create_user
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#reactor-change-wait_for-names){: #reactor-change-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.WaitFor`
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Change`
+
+
+
 ## reactor.create
 ```elixir
 create name, resource, action \\ nil
