@@ -22,6 +22,8 @@ If you use `Ash.Flow`, include `{:ash_flow, "~> 0.1.0"}` in your application.
 
 - `resource.simple_notifiers` has been removed, in favor of specifying non-DSL notifiers in the `simple_notifiers` option to `use Ash.Resource`.
 
+- `resource.actions.read.filter` can now be specified multiple times. Multiple filters will be combined with `and`.
+
 ### `Ash.Registry` has been removed
 
 `Ash.Registry` is no longer needed. Place each resource in the domain instead.

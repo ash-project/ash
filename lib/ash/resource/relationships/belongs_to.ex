@@ -23,7 +23,9 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :description,
     :attribute_writable?,
     :attribute_public?,
+    filters: [],
     filterable?: true,
+    sortable?: true,
     validate_destination_attribute?: true,
     cardinality: :one,
     type: :belongs_to
@@ -36,6 +38,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           name: atom,
           read_action: atom,
           filter: Ash.Filter.t() | nil,
+          filters: list(any()),
           source: Ash.Resource.t(),
           destination: Ash.Resource.t(),
           allow_nil?: boolean,
@@ -48,6 +51,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           destination_attribute: atom,
           public?: boolean,
           filterable?: boolean,
+          sortable?: boolean,
           source_attribute: atom | nil,
           description: String.t()
         }
@@ -136,6 +140,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
        | source_attribute: source_attribute || :"#{name}_id",
          attribute_public?: attribute_public?,
          attribute_writable?: attribute_writable?
-     }}
+     }
+     |> Ash.Resource.Actions.Read.concat_filters()}
   end
 end

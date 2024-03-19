@@ -20,7 +20,9 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :context,
     :filter,
     :has_many,
+    filters: [],
     filterable?: true,
+    sortable?: true,
     could_be_related_at_creation?: false,
     validate_destination_attribute?: true,
     cardinality: :many,
@@ -34,11 +36,13 @@ defmodule Ash.Resource.Relationships.ManyToMany do
           has_many: boolean,
           public?: boolean,
           filter: Ash.Filter.t() | nil,
+          filters: list(any),
           read_action: atom,
           name: atom,
           through: Ash.Resource.t(),
           destination: Ash.Resource.t(),
           filterable?: boolean,
+          sortable?: boolean,
           join_relationship: atom,
           source_attribute: atom,
           destination_attribute: atom,
@@ -85,6 +89,8 @@ defmodule Ash.Resource.Relationships.ManyToMany do
   @doc false
   # sobelow_skip ["DOS.BinToAtom"]
   def transform(%{join_relationship: join_relationship, name: name} = relationship) do
-    {:ok, %{relationship | join_relationship: join_relationship || :"#{name}_join_assoc"}}
+    {:ok,
+     %{relationship | join_relationship: join_relationship || :"#{name}_join_assoc"}
+     |> Ash.Resource.Actions.Read.concat_filters()}
   end
 end

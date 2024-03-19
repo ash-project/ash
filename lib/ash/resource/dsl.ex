@@ -1,4 +1,34 @@
 defmodule Ash.Resource.Dsl do
+  defmodule Filter do
+    @moduledoc "Introspection target for a filter for read actions and relationships"
+    defstruct [:filter]
+  end
+
+  @filter %Spark.Dsl.Entity{
+    name: :filter,
+    args: [:filter],
+    target: Filter,
+    describe:
+      "Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.",
+    examples: [
+      """
+      filter expr(first_name == "fred")
+      filter expr(last_name == "weasley" and magician == true)
+      """
+    ],
+    imports: [
+      Ash.Expr
+    ],
+    schema: [
+      filter: [
+        type: :any,
+        doc:
+          "The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.",
+        required: true
+      ]
+    ]
+  }
+
   @attribute %Spark.Dsl.Entity{
     name: :attribute,
     describe: """
@@ -183,7 +213,11 @@ defmodule Ash.Resource.Dsl do
     no_depend_modules: [:destination, :manual],
     target: Ash.Resource.Relationships.HasOne,
     schema: Ash.Resource.Relationships.HasOne.opt_schema(),
-    args: [:name, :destination]
+    transform: {Ash.Resource.Relationships.HasOne, :transform, []},
+    args: [:name, :destination],
+    entities: [
+      filters: [@filter]
+    ]
   }
 
   @has_many %Spark.Dsl.Entity{
@@ -205,7 +239,11 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Relationships.HasMany,
     no_depend_modules: [:destination, :manual],
     schema: Ash.Resource.Relationships.HasMany.opt_schema(),
-    args: [:name, :destination]
+    args: [:name, :destination],
+    transform: {Ash.Resource.Relationships.HasMany, :transform, []},
+    entities: [
+      filters: [@filter]
+    ]
   }
 
   @many_to_many %Spark.Dsl.Entity{
@@ -237,7 +275,10 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Relationships.ManyToMany,
     schema: Ash.Resource.Relationships.ManyToMany.opt_schema(),
     transform: {Ash.Resource.Relationships.ManyToMany, :transform, []},
-    args: [:name, :destination]
+    args: [:name, :destination],
+    entities: [
+      filters: [@filter]
+    ]
   }
 
   @belongs_to %Spark.Dsl.Entity{
@@ -262,7 +303,10 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Relationships.BelongsTo,
     schema: Ash.Resource.Relationships.BelongsTo.opt_schema(),
     transform: {Ash.Resource.Relationships.BelongsTo, :transform, []},
-    args: [:name, :destination]
+    args: [:name, :destination],
+    entities: [
+      filters: [@filter]
+    ]
   }
 
   @relationships %Spark.Dsl.Section{
@@ -516,36 +560,6 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Actions.Read.Pagination,
     schema: Ash.Resource.Actions.Read.pagination_schema(),
     transform: {Ash.Resource.Actions.Read.Pagination, :transform, []}
-  }
-
-  defmodule Filter do
-    @moduledoc false
-    defstruct [:filter]
-  end
-
-  @filter %Spark.Dsl.Entity{
-    name: :filter,
-    args: [:filter],
-    target: Filter,
-    describe:
-      "Applies a filter to the read action. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.",
-    examples: [
-      """
-      filter expr(first_name == "fred")
-      filter expr(last_name == "weasley" and magician == true)
-      """
-    ],
-    imports: [
-      Ash.Expr
-    ],
-    schema: [
-      filter: [
-        type: :any,
-        doc:
-          "The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.",
-        required: true
-      ]
-    ]
   }
 
   @read %Spark.Dsl.Entity{

@@ -9,6 +9,7 @@ defmodule Ash.Resource.Calculation do
             constraints: [],
             description: nil,
             filterable?: true,
+            sortable?: true,
             load: [],
             name: nil,
             public?: false,
@@ -68,6 +69,13 @@ defmodule Ash.Resource.Calculation do
       type: {:or, [:boolean, {:in, [:simple_equality]}]},
       default: true,
       doc: "Whether or not the calculation should be usable in filters."
+    ],
+    sortable?: [
+      type: :boolean,
+      default: true,
+      doc: """
+      Whether or not the calculation can be referenced in sorts.
+      """
     ]
   ]
 
@@ -111,6 +119,7 @@ defmodule Ash.Resource.Calculation do
           description: nil | String.t(),
           filterable?: boolean,
           load: keyword,
+          sortable?: boolean,
           name: atom(),
           public?: boolean,
           type: nil | Ash.Type.t()
