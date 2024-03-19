@@ -307,6 +307,7 @@ defmodule Ash.Actions.Helpers do
       domain: changeset.domain,
       actor: changeset.context[:private][:actor],
       action: changeset.action,
+      for: Ash.Resource.Info.notifiers(changeset.resource) ++ changeset.action.notifiers,
       data: result,
       changeset: changeset,
       from: self(),

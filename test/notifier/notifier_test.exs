@@ -12,6 +12,14 @@ defmodule Ash.Test.NotifierTest do
     end
   end
 
+  defmodule Notifier2 do
+    use Ash.Notifier
+
+    def notify(notification) do
+      send(Application.get_env(__MODULE__, :notifier_test_pid), {:notification, notification})
+    end
+  end
+
   defmodule PostLink do
     use Ash.Resource,
       domain: Domain,
@@ -89,7 +97,12 @@ defmodule Ash.Test.NotifierTest do
 
     actions do
       default_accept :*
-      defaults [:read, :destroy, create: :*, update: :*]
+      defaults [:read, create: :*, update: :*]
+
+      destroy :destroy do
+        primary? true
+        notifiers([Notifier2])
+      end
 
       create :create_with_comment do
         change load(:comments)
@@ -127,6 +140,7 @@ defmodule Ash.Test.NotifierTest do
 
   setup do
     Application.put_env(Notifier, :notifier_test_pid, self())
+    Application.put_env(Notifier2, :notifier_test_pid, self())
 
     :ok
   end
@@ -156,6 +170,7 @@ defmodule Ash.Test.NotifierTest do
       |> Ash.create!()
       |> Ash.destroy!()
 
+      assert_receive {:notification, %{action: %{type: :destroy}}}
       assert_receive {:notification, %{action: %{type: :destroy}}}
     end
   end

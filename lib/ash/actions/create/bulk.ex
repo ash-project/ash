@@ -1314,6 +1314,7 @@ defmodule Ash.Actions.Create.Bulk do
       domain: changeset.domain,
       actor: opts[:actor],
       action: changeset.action,
+      for: Ash.Resource.Info.notifiers(changeset.resource) ++ changeset.action.notifiers,
       data: result,
       changeset: changeset
     }

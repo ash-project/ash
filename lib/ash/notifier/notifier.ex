@@ -43,7 +43,7 @@ defmodule Ash.Notifier do
             end
 
           allowed_notifiers ->
-            for notifier <- List.wrap(allowed_notifiers) do
+            for notifier <- Enum.uniq(List.wrap(allowed_notifiers)) do
               notifier.notify(notification)
             end
         end

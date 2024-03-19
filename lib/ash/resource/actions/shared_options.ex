@@ -59,6 +59,10 @@ defmodule Ash.Resource.Actions.SharedOptions do
       type: :mfa,
       doc: "Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more"
     ],
+    notifiers: [
+      type: {:list, {:behaviour, Ash.Notifier}},
+      doc: "Notifiers that will be called specifically for this action."
+    ],
     manual?: [
       type: :boolean,
       doc: """
