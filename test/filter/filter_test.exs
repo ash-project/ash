@@ -42,6 +42,7 @@ defmodule Ash.Test.Filter.FilterTest do
         argument :input, :map
 
         filter expr(get_path(embedded_bio, [:title]) == get_path(^arg(:input), :title))
+        filter expr(embedded_bio[:title] != "__fake_value_dude__")
       end
     end
 

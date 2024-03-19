@@ -88,6 +88,7 @@ spark_locals_without_parens = [
   field_policy_bypass: 2,
   field_policy_bypass: 3,
   filter: 1,
+  filter: 2,
   filterable?: 1,
   first: 3,
   first: 4,

@@ -518,6 +518,36 @@ defmodule Ash.Resource.Dsl do
     transform: {Ash.Resource.Actions.Read.Pagination, :transform, []}
   }
 
+  defmodule Filter do
+    @moduledoc false
+    defstruct [:filter]
+  end
+
+  @filter %Spark.Dsl.Entity{
+    name: :filter,
+    args: [:filter],
+    target: Filter,
+    describe:
+      "Applies a filter to the read action. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.",
+    examples: [
+      """
+      filter expr(first_name == "fred")
+      filter expr(last_name == "weasley" and magician == true)
+      """
+    ],
+    imports: [
+      Ash.Expr
+    ],
+    schema: [
+      filter: [
+        type: :any,
+        doc:
+          "The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.",
+        required: true
+      ]
+    ]
+  }
+
   @read %Spark.Dsl.Entity{
     name: :read,
     describe: """
@@ -550,6 +580,9 @@ defmodule Ash.Resource.Dsl do
       ],
       metadata: [
         @metadata
+      ],
+      filters: [
+        @filter
       ]
     ],
     args: [:name]
