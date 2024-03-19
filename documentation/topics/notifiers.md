@@ -29,7 +29,7 @@ end
 
 ### Including a notifier in a resource
 
-When you need your notifier to also be an extension:
+If the notifier is also an extension, include it in the `notifiers` key:
 
 ```elixir
 defmodule MyResource do
@@ -38,17 +38,21 @@ defmodule MyResource do
 end
 ```
 
-When your notifier is not an extension, include it this way to avoid a compile time dependency:
+Configuring a notifier for a specific action or actions can be a great way to avoid complexity in the implementation of a notifier. It allows you to avoid doing things like pattern matching on the action, and treat it more like a change module, that does its work whenever it is called.
+
+```elixir
+create :create do
+  notifiers [ExampleNotifier]
+end
+```
+
+When your notifier is not an extension, and you want it to run on all actions, include it this way to avoid a compile time dependency:
 
 ```elixir
 defmodule MyResource do
-  use Ash.Resource
-	
-	resource do
-	  simple_notifiers [ExampleNotifier]
-  end
+  use Ash.Resource,
+    simple_notifiers: [ExampleNotifier]
 end
-
 ```
 
 ## Transactions
