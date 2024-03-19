@@ -1936,6 +1936,7 @@ defmodule Ash.Actions.Update.Bulk do
       resource: changeset.resource,
       domain: changeset.domain,
       actor: opts[:actor],
+      for: Ash.Resource.Info.notifiers(changeset.resource) ++ changeset.action.notifiers,
       action: changeset.action,
       data: result,
       changeset: changeset
