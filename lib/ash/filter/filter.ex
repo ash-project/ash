@@ -2622,6 +2622,8 @@ defmodule Ash.Filter do
                      resource_calculation.constraints,
                      arguments: args,
                      filterable?: resource_calculation.filterable?,
+                     sortable?: resource_calculation.sortable?,
+                     sensitive?: resource_calculation.sensitive?,
                      load: resource_calculation.load
                    ) do
               case parse_predicates(nested_statement, calculation, context) do
@@ -2719,6 +2721,8 @@ defmodule Ash.Filter do
                  field: aggregate.field,
                  default: aggregate.default,
                  filterable?: aggregate.filterable?,
+                 sortable?: aggregate.sortable?,
+                 sensitive?: aggregate.sensitive?,
                  type: aggregate.type,
                  constraints: aggregate.constraints,
                  implementation: aggregate.implementation,
@@ -2774,6 +2778,8 @@ defmodule Ash.Filter do
                  resource_calculation.constraints,
                  arguments: args,
                  filterable?: resource_calculation.filterable?,
+                 sortable?: resource_calculation.sortable?,
+                 sensitive?: resource_calculation.sensitive?,
                  load: resource_calculation.load
                ) do
           case parse_predicates(nested_statement, calculation, context) do
@@ -3114,6 +3120,8 @@ defmodule Ash.Filter do
                  resource_calculation.constraints,
                  arguments: args,
                  filterable?: resource_calculation.filterable?,
+                 sortable?: resource_calculation.sortable?,
+                 sensitive?: resource_calculation.sensitive?,
                  load: resource_calculation.load
                ) do
           {:ok,
@@ -3376,6 +3384,8 @@ defmodule Ash.Filter do
                      resource_calculation.constraints,
                      arguments: args,
                      filterable?: resource_calculation.filterable?,
+                     sortable?: resource_calculation.sortable?,
+                     sensitive?: resource_calculation.sensitive?,
                      load: resource_calculation.load
                    ) do
               {:ok, %{ref | attribute: calculation, resource: related}}
@@ -3408,6 +3418,8 @@ defmodule Ash.Filter do
                      default: aggregate.default,
                      filterable?: aggregate.filterable?,
                      type: aggregate.type,
+                     sortable?: aggregate.sortable?,
+                     sensitive?: aggregate.sensitive?,
                      constraints: aggregate.constraints,
                      implementation: aggregate.implementation,
                      uniq?: aggregate.uniq?,
@@ -4006,30 +4018,14 @@ defmodule Ash.Filter do
       "**redacted**"
     end
 
-    defp refers_to_sensitive?(%BooleanExpression{left: left, right: right}) do
-      Enum.any?([left, right], &refers_to_sensitive?/1)
-    end
+    defp refers_to_sensitive?(expr) do
+      Ash.Filter.find(expr, fn
+        %Ref{attribute: %{sensitive?: true}} ->
+          true
 
-    defp refers_to_sensitive?(%Not{expression: expression}) do
-      refers_to_sensitive?(expression)
-    end
-
-    defp refers_to_sensitive?(%{__operator__?: true, left: left, right: right}) do
-      Enum.any?([left, right], &refers_to_sensitive?/1)
-    end
-
-    defp refers_to_sensitive?(%{__function__?: true, arguments: arguments}) do
-      Enum.any?(arguments, &refers_to_sensitive?/1)
-    end
-
-    defp refers_to_sensitive?(%Call{args: arguments}) do
-      Enum.any?(arguments, &refers_to_sensitive?/1)
-    end
-
-    defp refers_to_sensitive?(%Ref{attribute: %{sensitive?: true}}), do: true
-
-    defp refers_to_sensitive?(_other) do
-      false
+        _ ->
+          false
+      end)
     end
   end
 
