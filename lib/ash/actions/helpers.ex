@@ -203,6 +203,10 @@ defmodule Ash.Actions.Helpers do
         if opts[:authorize?] == false && internal?(query_or_changeset) do
           opts
         else
+          if opts[:authorize?] == false do
+            raise Ash.Error.Forbidden.DomainRequiresAuthorization, domain: domain
+          end
+
           Keyword.put(opts, :authorize?, true)
         end
 
