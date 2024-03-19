@@ -2484,6 +2484,7 @@ end
 | [`public?`](#aggregates-count-public?){: #aggregates-count-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-count-filterable?){: #aggregates-count-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-count-sortable?){: #aggregates-count-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
+| [`sensitive?`](#aggregates-count-sensitive?){: #aggregates-count-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-count-authorize?){: #aggregates-count-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -2572,6 +2573,7 @@ exists :has_ticket, :assigned_tickets
 | [`public?`](#aggregates-exists-public?){: #aggregates-exists-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-exists-filterable?){: #aggregates-exists-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-exists-sortable?){: #aggregates-exists-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
+| [`sensitive?`](#aggregates-exists-sensitive?){: #aggregates-exists-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-exists-authorize?){: #aggregates-exists-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -2667,6 +2669,7 @@ end
 | [`public?`](#aggregates-first-public?){: #aggregates-first-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-first-filterable?){: #aggregates-first-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-first-sortable?){: #aggregates-first-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
+| [`sensitive?`](#aggregates-first-sensitive?){: #aggregates-first-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-first-authorize?){: #aggregates-first-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -2758,6 +2761,7 @@ end
 | [`public?`](#aggregates-sum-public?){: #aggregates-sum-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-sum-filterable?){: #aggregates-sum-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-sum-sortable?){: #aggregates-sum-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
+| [`sensitive?`](#aggregates-sum-sensitive?){: #aggregates-sum-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-sum-authorize?){: #aggregates-sum-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -2852,6 +2856,7 @@ end
 | [`public?`](#aggregates-list-public?){: #aggregates-list-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-list-filterable?){: #aggregates-list-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-list-sortable?){: #aggregates-list-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
+| [`sensitive?`](#aggregates-list-sensitive?){: #aggregates-list-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-list-authorize?){: #aggregates-list-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -2943,6 +2948,7 @@ end
 | [`public?`](#aggregates-max-public?){: #aggregates-max-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-max-filterable?){: #aggregates-max-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-max-sortable?){: #aggregates-max-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
+| [`sensitive?`](#aggregates-max-sensitive?){: #aggregates-max-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-max-authorize?){: #aggregates-max-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -3034,6 +3040,7 @@ end
 | [`public?`](#aggregates-min-public?){: #aggregates-min-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-min-filterable?){: #aggregates-min-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-min-sortable?){: #aggregates-min-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
+| [`sensitive?`](#aggregates-min-sensitive?){: #aggregates-min-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-min-authorize?){: #aggregates-min-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -3125,6 +3132,7 @@ end
 | [`public?`](#aggregates-avg-public?){: #aggregates-avg-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-avg-filterable?){: #aggregates-avg-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-avg-sortable?){: #aggregates-avg-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
+| [`sensitive?`](#aggregates-avg-sensitive?){: #aggregates-avg-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-avg-authorize?){: #aggregates-avg-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -3221,6 +3229,7 @@ end
 | [`public?`](#aggregates-custom-public?){: #aggregates-custom-public? } | `boolean` | `false` | Whether or not the aggregate will appear in public interfaces |
 | [`filterable?`](#aggregates-custom-filterable?){: #aggregates-custom-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the aggregate should be usable in filters. |
 | [`sortable?`](#aggregates-custom-sortable?){: #aggregates-custom-sortable? } | `boolean` | `true` | Whether or not the aggregate should be usable in sorts. |
+| [`sensitive?`](#aggregates-custom-sensitive?){: #aggregates-custom-sensitive? } | `boolean` | `false` | Whether or not the aggregate should be considered sensitive. |
 | [`authorize?`](#aggregates-custom-authorize?){: #aggregates-custom-authorize? } | `boolean` | `true` | Whether or not the aggregate query should authorize based on the target action, if the parent query is authorized. Requires filter checks on the target action. |
 
 
@@ -3345,6 +3354,7 @@ calculate :full_name, :string, expr(first_name <> " " <> last_name)
 | [`constraints`](#calculations-calculate-constraints){: #calculations-calculate-constraints } | `keyword` | `[]` | Constraints to provide to the type. See `Ash.Type` for more. |
 | [`description`](#calculations-calculate-description){: #calculations-calculate-description } | `String.t` |  | An optional description for the calculation |
 | [`public?`](#calculations-calculate-public?){: #calculations-calculate-public? } | `boolean` | `false` | Whether or not the calculation will appear in public interfaces. |
+| [`sensitive?`](#calculations-calculate-sensitive?){: #calculations-calculate-sensitive? } | `boolean` | `false` | Whether or not references to the calculation will be considered sensitive. |
 | [`load`](#calculations-calculate-load){: #calculations-calculate-load } | `any` | `[]` | A load statement to be applied if the calculation is used. |
 | [`allow_nil?`](#calculations-calculate-allow_nil?){: #calculations-calculate-allow_nil? } | `boolean` | `true` | Whether or not the calculation can return nil. |
 | [`filterable?`](#calculations-calculate-filterable?){: #calculations-calculate-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the calculation should be usable in filters. |

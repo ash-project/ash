@@ -80,7 +80,8 @@ defmodule Ash.Schema do
               field(
                 aggregate.name,
                 Ash.Type.ecto_type(Ash.Schema.not_a_resource!(type)),
-                virtual: true
+                virtual: true,
+                redact: aggregate.sensitive?
               )
 
               Module.put_attribute(
@@ -97,7 +98,8 @@ defmodule Ash.Schema do
               field(
                 calculation.name,
                 Ash.Type.ecto_type(Ash.Schema.not_a_resource!(calculation.type)),
-                virtual: true
+                virtual: true,
+                redact: calculation.sensitive?
               )
 
               Module.put_attribute(
@@ -234,7 +236,8 @@ defmodule Ash.Schema do
               field(
                 aggregate.name,
                 Ash.Type.ecto_type(Ash.Schema.not_a_resource!(type)),
-                virtual: true
+                virtual: true,
+                redact: aggregate.sensitive?
               )
 
               Module.put_attribute(
@@ -251,7 +254,8 @@ defmodule Ash.Schema do
               field(
                 calculation.name,
                 Ash.Type.ecto_type(Ash.Schema.not_a_resource!(calculation.type)),
-                virtual: true
+                virtual: true,
+                redact: calculation.sensitive?
               )
 
               Module.put_attribute(

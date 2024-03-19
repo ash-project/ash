@@ -20,7 +20,8 @@ defmodule Ash.Query.Aggregate do
     include_nil?: false,
     uniq?: false,
     filterable?: true,
-    sortable?: true
+    sortable?: true,
+    sensitive?: false
   ]
 
   @type t :: %__MODULE__{}
@@ -112,6 +113,11 @@ defmodule Ash.Query.Aggregate do
       doc: """
       A map of relationship paths (an atom or list of atoms), to an expression to apply when fetching the aggregate data. See the aggregates guide for more.
       """
+    ],
+    sensitive?: [
+      type: :boolean,
+      doc: "Whether or not references to this aggregate will be considered sensitive",
+      default: true
     ],
     authorize?: [
       type: :boolean,

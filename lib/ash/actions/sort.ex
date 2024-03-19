@@ -335,6 +335,8 @@ defmodule Ash.Actions.Sort do
              constraints,
              arguments: input,
              filterable?: calc.filterable?,
+             sortable?: calc.sortable?,
+             sensitive?: calc.sensitive?,
              load: calc.load,
              source_context: context
            ) do
