@@ -7,13 +7,21 @@ defmodule Ash.Vector do
 
   defstruct [:data]
 
+  @type t :: %__MODULE__{
+          data: binary()
+        }
+
   @doc """
   Creates a new vector from a list or tensor
   """
+  @spec new(t() | binary() | list(integer)) :: {:ok, t()} | {:error, :invalid_vector}
   def new(%__MODULE__{} = vector), do: {:ok, vector}
 
+  def new(binary) when is_binary(binary) do
+    new(:erlang.binary_to_list(binary))
+  end
+
   def new(list) when is_list(list) do
-    # this definitely has failure cases
     dim = list |> length()
     bin = for v <- list, into: "", do: <<v::float-32>>
     {:ok, from_binary(<<dim::unsigned-16, 0::unsigned-16, bin::binary>>)}
