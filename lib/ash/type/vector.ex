@@ -37,8 +37,8 @@ defmodule Ash.Type.Vector do
   @impl true
   def dump_to_native(nil, _), do: {:ok, nil}
 
-  def dump_to_native(%Ash.Vector{data: data}, _) do
-    {:ok, data}
+  def dump_to_native(%Ash.Vector{} = value, _) do
+    {:ok, value}
   end
 
   def dump_to_native(value, constraints) when is_list(value) do
