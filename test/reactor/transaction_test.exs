@@ -114,9 +114,14 @@ defmodule Ash.Test.Reactor.TransactionTest do
       raise reason
     end)
 
-    assert {:error, [error]} =
-             Reactor.run(FailAndRollBackTransactionReactor, %{}, %{}, async?: false)
+    FailAndRollBackTransactionReactor
+    |> Reactor.run(%{}, %{}, async?: false)
+    |> Ash.Test.assert_has_error(fn
+      %Reactor.Error.Invalid.RunStepError{error: error} ->
+        Exception.message(error) =~ "hell"
 
-    assert Exception.message(error) =~ "hell"
+      _ ->
+        false
+    end)
   end
 end
