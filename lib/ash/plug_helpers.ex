@@ -190,7 +190,7 @@ if Code.ensure_loaded?(Plug.Conn) do
         %Plug.Conn{private: %{ash: %{context: %{fraud_score: 0.427}}}}
 
     """
-    @spec set_context(Conn.t(), Ash.Resource.record()) :: Conn.t()
+    @spec set_context(Conn.t(), map()) :: Conn.t()
     def set_context(conn, context) do
       ash_private =
         conn.private
@@ -214,7 +214,7 @@ if Code.ensure_loaded?(Plug.Conn) do
         ...> context = get_context(conn)
         %{fraud_score: 0.427}
     """
-    @spec get_context(Conn.t()) :: nil | Ash.Resource.record()
+    @spec get_context(Conn.t()) :: nil | map()
     def get_context(%{private: %{ash: %{context: context}}}), do: context
     def get_context(_), do: nil
 
@@ -237,7 +237,7 @@ if Code.ensure_loaded?(Plug.Conn) do
         ...> context = get_context(conn)
         %{location: "Barnard's Loop"}
     """
-    @spec update_context(Conn.t(), (nil | Ash.Resource.record() -> nil | Ash.Resource.record())) ::
+    @spec update_context(Conn.t(), (nil | map() -> nil | map())) ::
             Conn.t()
     def update_context(conn, callback) do
       case get_context(conn) do
