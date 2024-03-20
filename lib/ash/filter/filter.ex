@@ -1417,35 +1417,67 @@ defmodule Ash.Filter do
     end
   end
 
-  def update_aggregates(%__MODULE__{expression: expression} = filter, mapper) do
-    %{filter | expression: update_aggregates(expression, mapper)}
+  def update_aggregates(expression, mapper, nested_path \\ [], parent_paths \\ [])
+
+  def update_aggregates(
+        %__MODULE__{expression: expression} = filter,
+        mapper,
+        nested_path,
+        parent_paths
+      ) do
+    %{filter | expression: update_aggregates(expression, mapper, nested_path, parent_paths)}
   end
 
-  def update_aggregates(expression, mapper) do
+  def update_aggregates(expression, mapper, nested_path, parent_paths) do
     case expression do
       {key, value} when is_atom(key) ->
-        {key, update_aggregates(value, mapper)}
+        {key, update_aggregates(value, mapper, nested_path, parent_paths)}
+
+      %Ash.Query.Exists{expr: expr, path: path, at_path: at_path} = exists ->
+        %{
+          exists
+          | expr: update_aggregates(expr, mapper, at_path ++ path, [nested_path | parent_paths])
+        }
+
+      %Ash.Query.Parent{expr: expr} = exists ->
+        %{
+          exists
+          | expr:
+              update_aggregates(
+                expr,
+                mapper,
+                Enum.at(parent_paths, 0) || [],
+                Enum.drop(parent_paths, 1)
+              )
+        }
 
       %Not{expression: expression} = not_expr ->
-        %{not_expr | expression: update_aggregates(expression, mapper)}
+        %{not_expr | expression: update_aggregates(expression, mapper, nested_path, parent_paths)}
 
       %BooleanExpression{left: left, right: right} = expression ->
         %{
           expression
-          | left: update_aggregates(left, mapper),
-            right: update_aggregates(right, mapper)
+          | left: update_aggregates(left, mapper, nested_path, parent_paths),
+            right: update_aggregates(right, mapper, nested_path, parent_paths)
         }
 
       %{__operator__?: true, left: left, right: right} = op ->
-        left = update_aggregates(left, mapper)
-        right = update_aggregates(right, mapper)
+        left = update_aggregates(left, mapper, nested_path)
+        right = update_aggregates(right, mapper, nested_path)
         %{op | left: left, right: right}
 
       %{__function__?: true, arguments: args} = func ->
-        %{func | arguments: Enum.map(args, &update_aggregates(&1, mapper))}
+        %{
+          func
+          | arguments: Enum.map(args, &update_aggregates(&1, mapper, nested_path, parent_paths))
+        }
 
       %Ref{attribute: %Aggregate{} = agg} = ref ->
-        %{ref | attribute: mapper.(agg, ref)}
+        %{
+          ref
+          | attribute:
+              mapper.(agg, %{ref | relationship_path: nested_path ++ ref.relationship_path})
+        }
 
       other ->
         other

@@ -334,7 +334,10 @@ defmodule Ash.Actions.Read do
                data_layer_calculations,
                query.resource,
                opts[:authorize?],
-               relationship_path_filters
+               relationship_path_filters,
+               opts[:actor],
+               query.tenant,
+               opts[:tracer]
              ),
            query <-
              authorize_loaded_aggregates(
@@ -371,7 +374,10 @@ defmodule Ash.Actions.Read do
                filter,
                query.resource,
                opts[:authorize?],
-               relationship_path_filters
+               relationship_path_filters,
+               opts[:actor],
+               query.tenant,
+               opts[:tracer]
              ),
            query <- Map.put(query, :filter, filter),
            query <- Ash.Query.unset(query, :calculations),
@@ -681,7 +687,10 @@ defmodule Ash.Actions.Read do
              data_layer_calculations,
              query.resource,
              opts[:authorize?],
-             relationship_path_filters
+             relationship_path_filters,
+             opts[:actor],
+             query.tenant,
+             opts[:tracer]
            ),
          query <-
            authorize_loaded_aggregates(
@@ -1403,7 +1412,7 @@ defmodule Ash.Actions.Read do
             },
             agg.context
           ),
-        query: add_calc_context(agg.query, actor, authorize?, tenant, tracer),
+        query: add_calc_context_to_query(agg.query, actor, authorize?, tenant, tracer),
         join_filters:
           Map.new(agg.join_filters, fn {key, filter} ->
             {key, add_calc_context_to_filter(filter, actor, authorize?, tenant, tracer)}
@@ -1443,7 +1452,7 @@ defmodule Ash.Actions.Read do
   end
 
   @doc false
-  def update_aggregate_filters(filter, resource, authorize?, relationship_path_filters) do
+  def update_aggregate_filters(filter, resource, authorize?, relationship_path_filters, actor, tenant, tracer) do
     if authorize? do
       Filter.update_aggregates(filter, fn aggregate, ref ->
         if aggregate.authorize? do
@@ -1466,6 +1475,7 @@ defmodule Ash.Actions.Read do
                       ref.relationship_path
                     )
               }
+              |> add_calc_context(actor, true, tenant, tracer)
 
             _ ->
               %{
@@ -1480,7 +1490,8 @@ defmodule Ash.Actions.Read do
                       ref.relationship_path
                     )
               }
-          end
+              |> add_calc_context(actor, false, tenant, tracer)
+            end
         else
           aggregate
         end
@@ -2067,11 +2078,14 @@ defmodule Ash.Actions.Read do
          hydrated_calculations,
          resource,
          authorize?,
-         relationship_path_filters
+         relationship_path_filters,
+         actor,
+         tenant,
+         tracer
        ) do
     Enum.map(hydrated_calculations, fn {calculation, expression} ->
       {calculation,
-       update_aggregate_filters(expression, resource, authorize?, relationship_path_filters)}
+       update_aggregate_filters(expression, resource, authorize?, relationship_path_filters, actor, tenant, tracer)}
     end)
   end
 
