@@ -11,11 +11,40 @@ defmodule Ash.Test do
   Use the optional second argument to assert that the errors (all together) are of a specific class.
   """
   @spec assert_has_error(
-          Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t(),
+          Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t() | {:error, term},
           error_class :: Ash.Error.class_module(),
           (Ash.Error.t() -> boolean)
         ) :: Ash.Error.t() | no_return
-  def assert_has_error(changeset_query_or_input, error_class \\ nil, callback, opts \\ []) do
+  def assert_has_error(changeset_query_or_input, error_class \\ nil, callback, opts \\ [])
+
+  def assert_has_error({:error, %{splode: splode} = error}, error_class, callback, opts) do
+    error = splode.to_class(error)
+
+    if error_class do
+      ExUnit.Assertions.assert(error.__struct__ == error_class,
+        message:
+          "Expected the value to have errors of class #{inspect(error_class)}, got: #{inspect(error.__struct__)}"
+      )
+    end
+
+    match = Enum.find(error.errors, callback)
+
+    ExUnit.Assertions.assert(match,
+      message:
+        opts[:message] ||
+          """
+          Expected at least one error to match the provided callback, but none did.
+
+          Errors:
+
+          #{inspect(error.errors, pretty: true)}
+          """
+    )
+
+    match
+  end
+
+  def assert_has_error(changeset_query_or_input, error_class, callback, opts) do
     type =
       case changeset_query_or_input do
         %Ash.Changeset{} -> "changeset"

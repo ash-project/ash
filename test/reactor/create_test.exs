@@ -269,10 +269,15 @@ defmodule Ash.Test.ReactorCreateTest do
       end
     end
 
-    assert {:error, [%RuntimeError{message: "hell"}]} =
-             Reactor.run(UndoingCreateAuthorReactor, %{author_name: "Marty McFly"}, %{},
-               async?: false
-             )
+    UndoingCreateAuthorReactor
+    |> Reactor.run(%{author_name: "Marty McFly"}, %{}, async?: false)
+    |> Ash.Test.assert_has_error(fn
+      %Reactor.Error.Invalid.RunStepError{error: %RuntimeError{message: "hell"}} ->
+        true
+
+      _ ->
+        false
+    end)
 
     assert [] = Ash.read!(Author)
   end
