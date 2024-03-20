@@ -42,8 +42,15 @@ defmodule Ash.Test.ReactorReadOneTest do
     ~w[Marty Doc Einstein]
     |> Enum.each(&Post.create!(%{title: &1}))
 
-    assert {:error, [error]} = Reactor.run(SimpleReadOneReactor, %{}, %{}, async?: false)
-    assert Exception.message(error) =~ "expected at most one result"
+    SimpleReadOneReactor
+    |> Reactor.run(%{}, %{}, async?: false)
+    |> Ash.Test.assert_has_error(fn
+      %Reactor.Error.Invalid.RunStepError{error: error} ->
+        Exception.message(error) =~ "expected at most one result"
+
+      _ ->
+        false
+    end)
   end
 
   test "when no records are returned it returns nil" do
@@ -64,8 +71,15 @@ defmodule Ash.Test.ReactorReadOneTest do
       end
     end
 
-    assert {:error, [error]} = Reactor.run(NotFoundReactor, %{}, %{}, async?: false)
-    assert Exception.message(error) =~ "not found"
+    NotFoundReactor
+    |> Reactor.run(%{}, %{}, async?: false)
+    |> Ash.Test.assert_has_error(fn
+      %Reactor.Error.Invalid.RunStepError{error: %Ash.Error.Query.NotFound{}} ->
+        true
+
+      _ ->
+        false
+    end)
   end
 
   test "when exactly one record is returned it returns it" do
