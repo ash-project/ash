@@ -150,6 +150,10 @@ defmodule Ash.Resource.Verifiers.VerifyActionsAtomic do
   end
 
   defp non_atomic_message(module, action_name, reason) do
-    "#{inspect(module)}.#{action_name} cannot be done atomically, because #{reason}"
+    """
+    `#{inspect(module)}.#{action_name}` cannot be done atomically, because #{reason}
+
+    You must either address the issue or set `require_atomic? false` on `#{inspect(module)}.#{action_name}`.
+    """
   end
 end
