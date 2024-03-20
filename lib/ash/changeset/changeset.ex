@@ -447,7 +447,7 @@ defmodule Ash.Changeset do
         else
           attribute = Ash.Resource.Info.attribute(changeset.resource, field)
 
-          attribute && (!attribute.public? || attribute.primary_key?)
+          attribute && attribute.primary_key?
         end
     end || loading?(changeset, field)
   end
@@ -1748,15 +1748,15 @@ defmodule Ash.Changeset do
   end
 
   defp get_action_argument(action, name) when is_binary(name) do
-    Enum.find(action.arguments, &(&1.public? && to_string(&1.name) == name))
+    Enum.find(action.arguments, &(to_string(&1.name) == name))
   end
 
   defp has_argument?(action, name) when is_atom(name) do
-    Enum.any?(action.arguments, &(&1.public? && &1.name == name))
+    Enum.any?(action.arguments, &(&1.name == name))
   end
 
   defp has_argument?(action, name) when is_binary(name) do
-    Enum.any?(action.arguments, &(&1.public? && to_string(&1.name) == name))
+    Enum.any?(action.arguments, &(to_string(&1.name) == name))
   end
 
   defp validate_attributes_accepted(changeset, %{accept: nil}), do: changeset
@@ -2537,7 +2537,7 @@ defmodule Ash.Changeset do
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.reject(
-      &(&1.allow_nil? || !&1.public? || !&1.writable? || &1.generated? ||
+      &(&1.allow_nil? || !&1.writable? || &1.generated? ||
           &1.name in masked_argument_names ||
           &1.name in allow_nil_input)
     )
