@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.20.3](https://github.com/ash-project/ash/compare/v2.20.2...v2.20.3) (2024-03-20)
+
+
+
+
+### Bug Fixes:
+
+* ensure calculation context is set on aggregate contents
+
+* set `source_attribute` from `join_relationship` in `many_to_many` (#932)
+
 ## [v2.20.2](https://github.com/ash-project/ash/compare/v2.20.1...v2.20.2) (2024-03-19)
 
 
