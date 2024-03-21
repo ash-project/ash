@@ -20,8 +20,8 @@ defmodule Ash.Test.Type.FloatTest do
     attributes do
       uuid_primary_key :id
       attribute :amount, :float, allow_nil?: false
-      attribute :positive_amount, :float, allow_nil?: false, constraints: [gt: 0]
-      attribute :negative_amount, :float, allow_nil?: false, constraints: [lt: 0]
+      attribute :positive_amount, :float, allow_nil?: false, constraints: [greater_than: 0]
+      attribute :negative_amount, :float, allow_nil?: false, constraints: [less_than: 0]
     end
   end
 

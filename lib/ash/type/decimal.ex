@@ -8,11 +8,11 @@ defmodule Ash.Type.Decimal do
       type: {:custom, __MODULE__, :decimal, []},
       doc: "Enforces a minimum on the value"
     ],
-    gt: [
+    greater_than: [
       type: {:custom, __MODULE__, :decimal, []},
       doc: "Enforces a minimum on the value (exclusive)"
     ],
-    lt: [
+    less_than: [
       type: {:custom, __MODULE__, :decimal, []},
       doc: "Enforces a maximum on the value (exclusive)"
     ]
@@ -48,9 +48,9 @@ defmodule Ash.Type.Decimal do
     #  A second pass filter to account for inaccuracies in the above float -> decimal
     |> StreamData.filter(fn value ->
       !(constraints[:max] && Decimal.gt?(value, constraints[:max])) &&
-        (!constraints[:lt] || Decimal.lt?(value, constraints[:lt])) &&
+        (!constraints[:less_than] || Decimal.lt?(value, constraints[:less_than])) &&
         !(constraints[:min] && Decimal.lt?(value, constraints[:min])) &&
-        (!constraints[:gt] || Decimal.gt?(value, constraints[:gt]))
+        (!constraints[:greater_than] || Decimal.gt?(value, constraints[:greater_than]))
     end)
   end
 
@@ -91,18 +91,18 @@ defmodule Ash.Type.Decimal do
             errors
           end
 
-        {:lt, lt}, errors ->
-          if Decimal.compare(value, lt) == :lt do
+        {:less_than, less_than}, errors ->
+          if Decimal.compare(value, less_than) == :lt do
             errors
           else
-            [[message: "must be less than %{lt}", lt: lt] | errors]
+            [[message: "must be less than %{less_than}", less_than: less_than] | errors]
           end
 
-        {:gt, gt}, errors ->
-          if Decimal.compare(value, gt) == :gt do
+        {:greater_than, greater_than}, errors ->
+          if Decimal.compare(value, greater_than) == :gt do
             errors
           else
-            [[message: "must be more than %{gt}", gt: gt] | errors]
+            [[message: "must be more than %{greater_than}", greater_than: greater_than] | errors]
           end
       end)
 
