@@ -47,9 +47,9 @@ defmodule Ash.Type.Decimal do
     |> StreamData.map(&Decimal.from_float/1)
     #  A second pass filter to account for inaccuracies in the above float -> decimal
     |> StreamData.filter(fn value ->
-      (!constraints[:max] || !Decimal.gt?(value, constraints[:max])) &&
+      !(constraints[:max] && Decimal.gt?(value, constraints[:max])) &&
         (!constraints[:lt] || Decimal.lt?(value, constraints[:lt])) &&
-        (!constraints[:min] || !Decimal.lt?(value, constraints[:min])) &&
+        !(constraints[:min] && Decimal.lt?(value, constraints[:min])) &&
         (!constraints[:gt] || Decimal.gt?(value, constraints[:gt]))
     end)
   end
