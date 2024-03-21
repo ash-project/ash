@@ -700,7 +700,7 @@ defmodule Ash.Actions.Update.Bulk do
       end
 
     batch_size =
-      if !action.manual? || manual_action_can_bulk? do
+      if action.manual == nil || manual_action_can_bulk? do
         opts[:batch_size] || 100
       else
         1
