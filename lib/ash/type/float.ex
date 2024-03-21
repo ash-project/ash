@@ -7,6 +7,14 @@ defmodule Ash.Type.Float do
     min: [
       type: {:custom, __MODULE__, :float, []},
       doc: "Enforces a minimum on the value"
+    ],
+    greater_than: [
+      type: {:custom, __MODULE__, :float, []},
+      doc: "Enforces a minimum on the value (exclusive)"
+    ],
+    less_than: [
+      type: {:custom, __MODULE__, :float, []},
+      doc: "Enforces a maximum on the value (exclusive)"
     ]
   ]
   @moduledoc """
@@ -40,7 +48,13 @@ defmodule Ash.Type.Float do
 
   @impl true
   def generator(constraints) do
-    StreamData.float(Keyword.take(constraints, [:min, :max]))
+    constraints
+    |> Keyword.take([:min, :max])
+    |> StreamData.float()
+    |> StreamData.filter(fn value ->
+      (!constraints[:less_than] || value < constraints[:less_than]) &&
+        (!constraints[:greater_than] || value > constraints[:greater_than])
+    end)
   end
 
   @impl true
@@ -61,6 +75,20 @@ defmodule Ash.Type.Float do
             [[message: "must be more than or equal to %{min}", min: min] | errors]
           else
             errors
+          end
+
+        {:less_than, less_than}, errors ->
+          if value < less_than do
+            errors
+          else
+            [[message: "must be less than %{less_than}", less_than: less_than] | errors]
+          end
+
+        {:greater_than, greater_than}, errors ->
+          if value > greater_than do
+            errors
+          else
+            [[message: "must be more than %{greater_than}", greater_than: greater_than] | errors]
           end
       end)
 

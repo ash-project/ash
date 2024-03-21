@@ -7,6 +7,14 @@ defmodule Ash.Type.Decimal do
     min: [
       type: {:custom, __MODULE__, :decimal, []},
       doc: "Enforces a minimum on the value"
+    ],
+    greater_than: [
+      type: {:custom, __MODULE__, :decimal, []},
+      doc: "Enforces a minimum on the value (exclusive)"
+    ],
+    less_than: [
+      type: {:custom, __MODULE__, :decimal, []},
+      doc: "Enforces a maximum on the value (exclusive)"
     ]
   ]
   @moduledoc """
@@ -39,21 +47,10 @@ defmodule Ash.Type.Decimal do
     |> StreamData.map(&Decimal.from_float/1)
     #  A second pass filter to account for inaccuracies in the above float -> decimal
     |> StreamData.filter(fn value ->
-      less_than_max =
-        if constraints[:max] do
-          Decimal.lt?(value, constraints[:max]) || Decimal.eq?(value, constraints[:max])
-        else
-          true
-        end
-
-      greater_than_min =
-        if constraints[:min] do
-          Decimal.gt?(value, constraints[:min]) || Decimal.eq?(value, constraints[:min])
-        else
-          true
-        end
-
-      less_than_max && greater_than_min
+      (!constraints[:max] || !Decimal.gt?(value, constraints[:max])) &&
+        (!constraints[:less_than] || Decimal.lt?(value, constraints[:less_than])) &&
+        (!constraints[:min] || !Decimal.lt?(value, constraints[:min])) &&
+        (!constraints[:greater_than] || Decimal.gt?(value, constraints[:greater_than]))
     end)
   end
 
@@ -92,6 +89,20 @@ defmodule Ash.Type.Decimal do
             [[message: "must be more than or equal to %{min}", min: min] | errors]
           else
             errors
+          end
+
+        {:less_than, less_than}, errors ->
+          if Decimal.compare(value, less_than) == :lt do
+            errors
+          else
+            [[message: "must be less than %{less_than}", less_than: less_than] | errors]
+          end
+
+        {:greater_than, greater_than}, errors ->
+          if Decimal.compare(value, greater_than) == :gt do
+            errors
+          else
+            [[message: "must be more than %{greater_than}", greater_than: greater_than] | errors]
           end
       end)
 
