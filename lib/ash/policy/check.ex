@@ -9,6 +9,7 @@ defmodule Ash.Policy.Check do
   for an easy way to write that check.
   """
 
+  @type actor :: any
   @type options :: Keyword.t()
   @type authorizer :: Ash.Policy.Authorizer.t()
   @type check_type :: :simple | :filter | :manual
@@ -29,24 +30,24 @@ defmodule Ash.Policy.Check do
   It should return `{:ok, true}` if it can tell that the request is authorized, and `{:ok, false}` if
   it can tell that it is not. If unsure, it should return `{:ok, :unknown}`
   """
-  @callback strict_check(struct(), authorizer(), options) :: {:ok, boolean | :unknown}
+  @callback strict_check(actor(), authorizer(), options) :: {:ok, boolean | :unknown}
   @doc """
   An optional callback, that allows the check to work with policies set to `access_type :filter`
 
   Return a keyword list filter that will be applied to the query being made, and will scope the results to match the rule
   """
-  @callback auto_filter(struct(), authorizer(), options()) :: Keyword.t() | Ash.Expr.t()
+  @callback auto_filter(actor(), authorizer(), options()) :: Keyword.t() | Ash.Expr.t()
   @doc """
   An optional callback, hat allows the check to work with policies set to `access_type :runtime`
 
   Takes a list of records, and returns the subset of authorized records.
   """
-  @callback check(struct(), list(Ash.Resource.record()), map, options) ::
+  @callback check(actor(), list(Ash.Resource.record()), map, options) ::
               list(Ash.Resource.record())
   @doc "Describe the check in human readable format, given the options"
   @callback describe(options()) :: String.t()
 
-  @callback requires_original_data?(struct(), options()) :: boolean()
+  @callback requires_original_data?(actor(), options()) :: boolean()
 
   @doc """
   The type of the check

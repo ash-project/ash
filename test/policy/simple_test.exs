@@ -31,6 +31,22 @@ defmodule Ash.Test.Policy.SimpleTest do
     end
   end
 
+  test "functions can be used as checks through `matches`", %{user: user} do
+    Tweet
+    |> Ash.Changeset.for_create(:create_bar, %{bar: 2}, actor: user)
+    |> Api.create!()
+
+    Tweet
+    |> Ash.Changeset.for_create(:create_bar, %{bar: 9}, actor: user)
+    |> Api.create!()
+
+    assert_raise Ash.Error.Forbidden, fn ->
+      Tweet
+      |> Ash.Changeset.for_create(:create_bar, %{bar: 1}, actor: user)
+      |> Api.create!()
+    end
+  end
+
   test "filter checks work on create/update/destroy actions", %{user: user} do
     user2 = Api.create!(Ash.Changeset.new(User))
 

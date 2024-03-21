@@ -268,4 +268,15 @@ defmodule Ash.Policy.Check.Builtins do
   def changing_relationships(relationships) do
     {Ash.Policy.Check.ChangingRelationships, relationships: relationships}
   end
+
+  @doc "This check is true when the specified function returns true"
+  defmacro matches(description, func) do
+    {value, function} = Spark.CodeHelpers.lift_functions(func, :matches_policy_check, __CALLER__)
+
+    quote generated: true do
+      unquote(function)
+
+      {Ash.Policy.Check.Matches, description: unquote(description), func: unquote(value)}
+    end
+  end
 end
