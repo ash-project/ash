@@ -8,11 +8,11 @@ defmodule Ash.Type.Float do
       type: {:custom, __MODULE__, :float, []},
       doc: "Enforces a minimum on the value"
     ],
-    greater_than: [
+    gt: [
       type: {:custom, __MODULE__, :float, []},
       doc: "Enforces a minimum on the value (exclusive)"
     ],
-    less_than: [
+    lt: [
       type: {:custom, __MODULE__, :float, []},
       doc: "Enforces a maximum on the value (exclusive)"
     ]
@@ -52,8 +52,8 @@ defmodule Ash.Type.Float do
     |> Keyword.take([:min, :max])
     |> StreamData.float()
     |> StreamData.filter(fn value ->
-      (!constraints[:less_than] || value < constraints[:less_than]) &&
-        (!constraints[:greater_than] || value > constraints[:greater_than])
+      (!constraints[:lt] || value < constraints[:lt]) &&
+        (!constraints[:gt] || value > constraints[:gt])
     end)
   end
 
@@ -77,18 +77,18 @@ defmodule Ash.Type.Float do
             errors
           end
 
-        {:less_than, less_than}, errors ->
-          if value < less_than do
+        {:lt, lt}, errors ->
+          if value < lt do
             errors
           else
-            [[message: "must be less than %{less_than}", less_than: less_than] | errors]
+            [[message: "must be less than %{lt}", lt: lt] | errors]
           end
 
-        {:greater_than, greater_than}, errors ->
-          if value > greater_than do
+        {:gt, gt}, errors ->
+          if value > gt do
             errors
           else
-            [[message: "must be more than %{greater_than}", greater_than: greater_than] | errors]
+            [[message: "must be more than %{gt}", gt: gt] | errors]
           end
       end)
 
