@@ -5,10 +5,12 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
   defmodule AddAfterToTitle do
     use Ash.Resource.Change
 
+    @impl true
     def change(changeset, _, %{bulk?: true}) do
       changeset
     end
 
+    @impl true
     def after_batch(results, _, _) do
       Stream.map(results, fn {_changeset, result} ->
         {:ok, %{result | title: result.title <> "_after"}}
@@ -19,15 +21,47 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
   defmodule AddBeforeToTitle do
     use Ash.Resource.Change
 
+    @impl true
     def change(changeset, _, %{bulk?: true}) do
       changeset
     end
 
+    @impl true
     def before_batch(changesets, _, _) do
-      changesets
-      |> Stream.map(fn changeset ->
+      Stream.map(changesets, fn changeset ->
         title = Ash.Changeset.get_attribute(changeset, :title)
         Ash.Changeset.force_change_attribute(changeset, :title, "before_" <> title)
+      end)
+    end
+  end
+
+  defmodule RecordBatchSizes do
+    use Ash.Resource.Change
+
+    @impl true
+    def batch_change(changesets, _, _) do
+      batch_size = length(changesets)
+
+      Stream.map(changesets, fn changeset ->
+        Ash.Changeset.force_change_attribute(changeset, :change_batch_size, batch_size)
+      end)
+    end
+
+    @impl true
+    def before_batch(changesets, _, _) do
+      batch_size = length(changesets)
+
+      Stream.map(changesets, fn changeset ->
+        Ash.Changeset.force_change_attribute(changeset, :before_batch_size, batch_size)
+      end)
+    end
+
+    @impl true
+    def after_batch(results, _, _) do
+      batch_size = length(results)
+
+      Stream.map(results, fn {_, result} ->
+        {:ok, %{result | after_batch_size: batch_size}}
       end)
     end
   end
@@ -69,6 +103,10 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       update :update_with_after_batch do
         change AddAfterToTitle
         change AddBeforeToTitle
+      end
+
+      update :update_with_batch_sizes do
+        change RecordBatchSizes
       end
 
       update :update_with_after_transaction do
@@ -122,6 +160,10 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       attribute :title2, :string
       attribute :title3, :string
       attribute :hidden_attribute, :string
+
+      attribute :before_batch_size, :integer
+      attribute :after_batch_size, :integer
+      attribute :change_batch_size, :integer
 
       timestamps()
     end
@@ -222,6 +264,41 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
              end)
+  end
+
+  test "runs changes in batches" do
+    create_records = fn count ->
+      Stream.iterate(1, &(&1 + 1))
+      |> Stream.map(fn i -> %{title: "title#{i}"} end)
+      |> Api.bulk_create!(Post, :create, return_stream?: true, return_records?: true)
+      |> Stream.map(fn {:ok, result} -> result end)
+      |> Stream.take(count)
+    end
+
+    update_records = fn records, opts ->
+      opts = [resource: Post, return_records?: true] ++ opts
+      Api.bulk_update!(records, :update_with_batch_sizes, %{}, opts)
+    end
+
+    batch_size_frequencies = fn %Ash.BulkResult{records: records} ->
+      records
+      |> Enum.map(&Map.take(&1, [:before_batch_size, :after_batch_size, :change_batch_size]))
+      |> Enum.frequencies()
+    end
+
+    assert create_records.(101)
+           |> update_records.([])
+           |> batch_size_frequencies.() == %{
+             %{change_batch_size: 100, before_batch_size: 100, after_batch_size: 100} => 100,
+             %{change_batch_size: 1, before_batch_size: 1, after_batch_size: 1} => 1
+           }
+
+    assert create_records.(10)
+           |> update_records.(batch_size: 3)
+           |> batch_size_frequencies.() == %{
+             %{change_batch_size: 3, before_batch_size: 3, after_batch_size: 3} => 9,
+             %{change_batch_size: 1, before_batch_size: 1, after_batch_size: 1} => 1
+           }
   end
 
   test "will return error count" do

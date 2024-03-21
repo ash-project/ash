@@ -700,7 +700,7 @@ defmodule Ash.Actions.Update.Bulk do
       end
 
     batch_size =
-      if manual_action_can_bulk? do
+      if !action.manual? || manual_action_can_bulk? do
         opts[:batch_size] || 100
       else
         1
@@ -1347,6 +1347,9 @@ defmodule Ash.Actions.Update.Bulk do
         false
     end)
     |> Enum.reduce(batch, fn {%{change: {module, change_opts}}, index}, batch ->
+      # change may return a stream but before_batch/3 expects a list
+      batch = Enum.to_list(batch)
+
       if changes[index] == :all do
         module.before_batch(batch, change_opts, %{
           actor: opts[:actor],
@@ -1642,25 +1645,26 @@ defmodule Ash.Actions.Update.Bulk do
                 end
 
               _ ->
-                [changeset] = batch
+                Enum.reduce_while(
+                  batch,
+                  {:ok, []},
+                  fn changeset, {:ok, results} ->
+                    case Ash.DataLayer.update(resource, changeset) do
+                      {:ok, result} ->
+                        result =
+                          Ash.Resource.put_metadata(
+                            result,
+                            metadata_key,
+                            changeset.context[context_key].index
+                          )
 
-                result =
-                  Ash.DataLayer.update(resource, changeset)
+                        {:cont, {:ok, results ++ [result]}}
 
-                case result do
-                  {:ok, result} ->
-                    {:ok,
-                     [
-                       Ash.Resource.put_metadata(
-                         result,
-                         metadata_key,
-                         changeset.context[context_key].index
-                       )
-                     ]}
-
-                  {:error, error} ->
-                    {:error, error}
-                end
+                      {:error, error} ->
+                        {:halt, {:error, error}}
+                    end
+                  end
+                )
             end
 
           case result do
