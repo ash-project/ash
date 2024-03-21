@@ -30,9 +30,34 @@ defmodule Ash.Type.Enum do
   * A string that matches the atom after being downcased, e.g `"OPEN"` or `"oPeN"`
   * A string that matches the stringified, downcased atom, after itself being downcased.
     This allows for enum values like `:Open`, `:SomeState` and `:Some_State`
+
+  ## Value descriptions
+  It's possible to associate a description with a value by passing a `{value, description}` tuple
+  inside the values list, which becomes a keyword list:
+
+  ```elixir
+  defmodule MyApp.TicketStatus do
+    use Ash.Type.Enum,
+      values: [
+        open: "An open ticket",
+        closed: "A closed ticket"
+      ]
+  end
+  ```
+
+  This can be used by extensions to provide detailed descriptions of enum values.
+
+  The description of a value can be retrieved with `description/1`:
+
+  ```elixir
+  MyApp.TicketStatus.description(:open)
+  iex> "An open ticket"
+  ```
   """
   @doc "The list of valid values (not all input types that match them)"
   @callback values() :: [atom]
+  @doc "The description of the value, if existing"
+  @callback description(atom) :: String.t() | nil
   @doc "true if a given term matches a value"
   @callback match?(term) :: boolean
   @doc "finds the valid value that matches a given input term"
@@ -44,12 +69,17 @@ defmodule Ash.Type.Enum do
 
       @behaviour unquote(__MODULE__)
 
-      @values unquote(opts[:values]) ||
-                raise("Must provide `values` option for `use #{inspect(unquote(__MODULE__))}`")
+      @values unquote(__MODULE__).build_values(unquote(opts[:values]))
+
+      @description_map unquote(__MODULE__).build_description_map(unquote(opts[:values]))
+
       @string_values @values |> Enum.map(&to_string/1)
 
       @impl unquote(__MODULE__)
       def values, do: @values
+
+      @impl unquote(__MODULE__)
+      def description(value) when value in @values, do: Map.get(@description_map, value)
 
       @impl Ash.Type
       def storage_type, do: :string
@@ -128,5 +158,52 @@ defmodule Ash.Type.Enum do
 
       defoverridable storage_type: 0
     end
+  end
+
+  @doc false
+  def build_description_map(values) do
+    values
+    |> verify_values!()
+    |> Enum.reduce(%{}, fn
+      {value, description}, acc when is_binary(description) -> Map.put(acc, value, description)
+      _value_with_no_description, acc -> acc
+    end)
+  end
+
+  @doc false
+  def build_values(values) do
+    values
+    |> verify_values!()
+    |> Enum.map(fn
+      {value, _description} -> value
+      value -> value
+    end)
+  end
+
+  @doc false
+  def verify_values!(values) when is_list(values) do
+    Enum.each(values, fn
+      value when is_atom(value) ->
+        :ok
+
+      {value, nil} when is_atom(value) ->
+        :ok
+
+      {value, description} when is_atom(value) and is_binary(description) ->
+        :ok
+
+      other ->
+        raise("`values` must be a list of atoms or {atom, string} tuples, got #{inspect(other)}")
+    end)
+
+    values
+  end
+
+  def verify_values!(nil) do
+    raise("Must provide `values` option for `use #{inspect(__MODULE__)}`")
+  end
+
+  def verify_values!(values) do
+    raise("Must provide a list in `values`, got #{inspect(values)}")
   end
 end
