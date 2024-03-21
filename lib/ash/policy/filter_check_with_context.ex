@@ -9,7 +9,7 @@ defmodule Ash.Policy.FilterCheckWithContext do
           required(:resource) => Ash.Resource.t(),
           required(:api) => Ash.Api.t(),
           optional(:query) => Ash.Query.t(),
-          optional(:changeset) => Ash.Query.t(),
+          optional(:changeset) => Ash.Changeset.t(),
           optional(any) => any
         }
 
