@@ -2032,9 +2032,9 @@ defmodule Ash.Actions.Update.Bulk do
   defp batch_change(module, batch, change_opts, context, actor) do
     case change_opts do
       {:templated, change_opts} ->
-        if function_exported?(module, :batch_change, 4) do
+        if function_exported?(module, :batch_change, 3) do
           {:ok, change_opts} = module.init(change_opts)
-          module.batch_change(batch, change_opts, context, actor)
+          module.batch_change(batch, change_opts, context)
         else
           Enum.map(batch, fn changeset ->
             {:ok, change_opts} = module.init(change_opts)
