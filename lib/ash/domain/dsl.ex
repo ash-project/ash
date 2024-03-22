@@ -170,7 +170,6 @@ defmodule Ash.Domain.Dsl do
 
   @verifiers [
     Ash.Domain.Verifiers.EnsureNoEmbeds,
-    Ash.Domain.Verifiers.EnsureResourcesCompiled,
     Ash.Domain.Verifiers.ValidateRelatedResourceInclusion
   ]
 
