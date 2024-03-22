@@ -2078,8 +2078,7 @@ defmodule Ash.Filter do
   defp do_relationship_paths(
          %Ref{
            relationship_path: path,
-           attribute: %Ash.Query.Aggregate{} = aggregate,
-           input?: input?
+           attribute: %Ash.Query.Aggregate{} = aggregate
          } = ref,
          include_exists?,
          with_refs?,
@@ -2220,7 +2219,7 @@ defmodule Ash.Filter do
     query_rel_paths =
       if aggregate.query && aggregate.query.filter do
         aggregate.query.filter
-        |> relationship_paths(include_exists?, with_refs?, true)
+        |> do_relationship_paths(include_exists?, with_refs?, true)
       else
         []
       end
