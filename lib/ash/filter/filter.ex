@@ -1162,7 +1162,7 @@ defmodule Ash.Filter do
         authorize?
       )
     else
-      {:ok, %{}}
+      {:ok, filters}
     end
   end
 
@@ -1992,29 +1992,6 @@ defmodule Ash.Filter do
          %Ref{
            relationship_path: path,
            resource: resource,
-           attribute: %Ash.Query.Aggregate{field: field, relationship_path: agg_path}
-         },
-         include_exists?,
-         with_references?,
-         true
-       ) do
-    case field do
-      nil ->
-        []
-
-      field when is_atom(field) ->
-        []
-
-      field ->
-        %Ref{relationship_path: path ++ agg_path, resource: resource, attribute: field}
-        |> do_relationship_paths(include_exists?, with_references?, true)
-    end
-  end
-
-  defp do_relationship_paths(
-         %Ref{
-           relationship_path: path,
-           resource: resource,
            attribute: %Ash.Query.Calculation{module: module, opts: opts, context: context}
          } = ref,
          include_exists?,
@@ -2099,7 +2076,11 @@ defmodule Ash.Filter do
   end
 
   defp do_relationship_paths(
-         %Ref{relationship_path: path, attribute: %Ash.Query.Aggregate{} = aggregate} = ref,
+         %Ref{
+           relationship_path: path,
+           attribute: %Ash.Query.Aggregate{} = aggregate,
+           input?: input?
+         } = ref,
          include_exists?,
          with_refs?,
          true
