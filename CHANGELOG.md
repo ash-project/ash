@@ -7,45 +7,39 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 ## [v2.20.3](https://github.com/ash-project/ash/compare/v2.20.2...v2.20.3) (2024-03-20)
 
-
-
-
 ### Bug Fixes:
 
-* ensure calculation context is set on aggregate contents
+- ensure calculation context is set on aggregate contents
 
-* set `source_attribute` from `join_relationship` in `many_to_many` (#932)
+- set `source_attribute` from `join_relationship` in `many_to_many` (#932)
 
 ## [v2.20.2](https://github.com/ash-project/ash/compare/v2.20.1...v2.20.2) (2024-03-19)
 
-
-
-
 ### Bug Fixes:
 
-* use proper logic for atomic `present` validations
+- use proper logic for atomic `present` validations
 
-* Set tenant correctly when reading many_to_many relationship. (#928)
+- Set tenant correctly when reading many_to_many relationship. (#928)
 
-* properly match no_rollback error
+- properly match no_rollback error
 
-* load with right module in `get_rewrites` of `Ash.Type.Struct` (#927)
+- load with right module in `get_rewrites` of `Ash.Type.Struct` (#927)
 
-* ensure that calculation dependency loader combines selects
+- ensure that calculation dependency loader combines selects
 
-* properly handle raised errors from async calculations
+- properly handle raised errors from async calculations
 
-* ensure depended on attributes are selected in calculations
+- ensure depended on attributes are selected in calculations
 
-* properly merge related selects when merging loads
+- properly merge related selects when merging loads
 
 ### Improvements:
 
-* cast atomic reference types, makes life easier for data layers
+- cast atomic reference types, makes life easier for data layers
 
-* use `wrap_list` for `where` in `changes.change` (#926)
+- use `wrap_list` for `where` in `changes.change` (#926)
 
-* don't require Mix to compile an Ash resource
+- don't require Mix to compile an Ash resource
 
 ## [v2.20.1](https://github.com/ash-project/ash/compare/v2.20.0...v2.20.1) (2024-03-11)
 
@@ -5724,7 +5718,7 @@ the order allows direct reuse without any gymnastics
 
 ### Bug Fixes:
 
-- manage_relationships _before_ after_action callbacks
+- manage*relationships \_before* after_action callbacks
 
 ### Improvements:
 
@@ -5740,7 +5734,7 @@ the order allows direct reuse without any gymnastics
 
 ### Bug Fixes:
 
-- manage_relationships _before_ after_action callbacks
+- manage*relationships \_before* after_action callbacks
 
 ## [v1.37.2](https://github.com/ash-project/ash/compare/v1.37.1...v1.37.2) (2021-03-29)
 
@@ -5902,7 +5896,7 @@ the order allows direct reuse without any gymnastics
 
 ### Bug Fixes:
 
-- force_change attrs _after_ `for_create/update`
+- force*change attrs \_after* `for_create/update`
 
 - pattern match errors in `manage_relationships`
 
