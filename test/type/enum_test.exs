@@ -9,6 +9,17 @@ defmodule Ash.Test.Type.EnumTest do
     use Ash.Type.Enum, values: [:open, :Closed, :NeverHappened, :Always_Was]
   end
 
+  defmodule DescriptiveEnum do
+    use Ash.Type.Enum,
+      values: [
+        {:foo, "Clearly a foo"},
+        {:bar, "Obviously a bar"},
+        {:baz, "Undoubtedly a baz"},
+        :a_thing_with_no_description,
+        {:another_thing_with_no_description, nil}
+      ]
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets
@@ -82,5 +93,19 @@ defmodule Ash.Test.Type.EnumTest do
     assert Status.values() == [:open, :Closed, :NeverHappened, :Always_Was]
     assert Status.match("OPEN") == {:ok, :open}
     assert Status.match?(:always_was)
+  end
+
+  test "it handles descriptions" do
+    assert DescriptiveEnum.values() == [
+             :foo,
+             :bar,
+             :baz,
+             :a_thing_with_no_description,
+             :another_thing_with_no_description
+           ]
+
+    assert DescriptiveEnum.description(:foo) == "Clearly a foo"
+    assert DescriptiveEnum.description(:a_thing_with_no_description) == nil
+    assert DescriptiveEnum.description(:another_thing_with_no_description) == nil
   end
 end
