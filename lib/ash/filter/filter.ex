@@ -869,7 +869,16 @@ defmodule Ash.Filter do
       |> Enum.map(&elem(&1, 0))
       |> Enum.reduce_while({:ok, filters}, fn path, {:ok, filters} ->
         last_relationship = last_relationship(query.resource, path)
-        add_authorization_path_filter(filters, last_relationship, domain, query, actor, tenant, refs)
+
+        add_authorization_path_filter(
+          filters,
+          last_relationship,
+          domain,
+          query,
+          actor,
+          tenant,
+          refs
+        )
       end)
       |> add_aggregate_path_authorization(
         domain,
@@ -1027,12 +1036,7 @@ defmodule Ash.Filter do
     end)
   end
 
-<<<<<<< HEAD
   defp relationship_query(relationship, actor, tenant, base) do
-=======
-  defp relationship_query(resource, domain, [last], actor, tenant, base) do
-    relationship = Ash.Resource.Info.relationship(resource, last)
->>>>>>> efe22c34 (improvement!: Deprecate calling functions on (domain) api in favor of `Ash`)
     base_query = base || Ash.Query.new(relationship.destination)
     domain = relationship.domain || domain
 
@@ -1058,22 +1062,6 @@ defmodule Ash.Filter do
     end
   end
 
-<<<<<<< HEAD
-=======
-  defp relationship_query(resource, domain, [next | rest], actor, tenant, base) do
-    relationship = Ash.Resource.Info.relationship(resource, next)
-
-    relationship_query(
-      relationship.destination,
-      relationship.domain || domain,
-      rest,
-      actor,
-      tenant,
-      base
-    )
-  end
-
->>>>>>> efe22c34 (improvement!: Deprecate calling functions on (domain) api in favor of `Ash`)
   defp group_refs_by_all_paths(paths_with_refs) do
     all_paths_with_refs =
       paths_with_refs
