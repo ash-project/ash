@@ -2272,10 +2272,12 @@ defmodule Ash.Actions.Read do
                resource_calculation.name,
                module,
                opts,
-               {resource_calculation.type, resource_calculation.constraints},
-               %{},
-               resource_calculation.filterable?,
-               resource_calculation.load
+               resource_calculation.type,
+               resource_calculation.constraints,
+               filterable?: resource_calculation.filterable?,
+               sortable?: resource_calculation.sortable?,
+               sensitive?: resource_calculation.sensitive?,
+               load: resource_calculation.load
              ) do
           {:ok, calculation} ->
             aggregate_field_with_related_filters(

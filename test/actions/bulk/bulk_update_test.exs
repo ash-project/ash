@@ -273,14 +273,14 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     create_records = fn count ->
       Stream.iterate(1, &(&1 + 1))
       |> Stream.map(fn i -> %{title: "title#{i}"} end)
-      |> Api.bulk_create!(Post, :create, return_stream?: true, return_records?: true)
+      |> Ash.bulk_create!(Post, :create, return_stream?: true, return_records?: true)
       |> Stream.map(fn {:ok, result} -> result end)
       |> Stream.take(count)
     end
 
     update_records = fn records, opts ->
       opts = [resource: Post, return_records?: true] ++ opts
-      Api.bulk_update!(records, :update_with_batch_sizes, %{}, opts)
+      Ash.bulk_update!(records, :update_with_batch_sizes, %{}, opts)
     end
 
     batch_size_frequencies = fn %Ash.BulkResult{records: records} ->

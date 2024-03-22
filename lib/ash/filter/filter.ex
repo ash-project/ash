@@ -906,7 +906,7 @@ defmodule Ash.Filter do
          base_related_query \\ nil,
          _aggregate? \\ false
        ) do
-    case relationship_query(last_relationship, actor, tenant, base_related_query) do
+    case relationship_query(last_relationship, domain, actor, tenant, base_related_query) do
       %{errors: []} = related_query ->
         if filters[{last_relationship.source, last_relationship.name, related_query.action.name}] do
           {:cont, {:ok, filters}}
@@ -1036,7 +1036,7 @@ defmodule Ash.Filter do
     end)
   end
 
-  defp relationship_query(relationship, actor, tenant, base) do
+  defp relationship_query(relationship, domain, actor, tenant, base) do
     base_query = base || Ash.Query.new(relationship.destination)
     domain = relationship.domain || domain
 
@@ -2055,10 +2055,11 @@ defmodule Ash.Filter do
            calc.name,
            module,
            opts,
-           {calc.type, calc.constraints},
-           %{},
-           calc.filterable?,
-           calc.load
+           calc.type,
+           calc.constraints,
+           filterable?: calc.filterable?,
+           sortable?: calc.sortable?,
+           sensitive?: calc.sensitive?
          ) do
       {:ok, calc} ->
         field_to_ref(resource, calc)

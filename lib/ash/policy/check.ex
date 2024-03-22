@@ -49,7 +49,7 @@ defmodule Ash.Policy.Check do
   @callback describe(options()) :: String.t()
 
   @doc "Whether or not your check requires the original data of a changeset (if applicable)"
-  @callback requires_original_data?(sactor(), options()) :: boolean()
+  @callback requires_original_data?(actor(), options()) :: boolean()
 
   @doc """
   The type of the check
