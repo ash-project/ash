@@ -37,7 +37,7 @@ defmodule Ash.Api.GlobalInterface do
     end
   end
 
-  def resource_from_args!(:reload, _, [%resource{} | _]) do
+  def resource_from_args!(fun, _, [%resource{} | _]) when fun in [:reload, :reload!] do
     resource
   end
 

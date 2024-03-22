@@ -2113,15 +2113,17 @@ defmodule Ash.Api do
               | {:error, term}
 
   @doc """
-  Refetches a record by primary key. See `c:reload/1` for more.
+  Refetches a record by primary key. See `c:reload/2` for more.
   """
-  @callback reload!(record :: Ash.Resource.record(), params :: Keyword.t()) ::
+  @callback reload!(record :: Ash.Resource.record(), opts :: Keyword.t()) ::
               Ash.Resource.record() | no_return
 
   @doc """
   Refetches a record by primary key.
+
+  #{Spark.OptionsHelpers.docs(@get_opts_schema)}
   """
-  @callback reload(record :: Ash.Resource.record()) ::
+  @callback reload(record :: Ash.Resource.record(), opts :: Keyword.t()) ::
               {:ok, Ash.Resource.record()} | {:error, term}
 
   @doc false
