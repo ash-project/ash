@@ -90,44 +90,45 @@ defmodule Ash.Resource.Verifiers.VerifyActionsAtomic do
               ]
           end
 
-        attribute_warnings =
-          action.accept
-          |> Enum.map(&Ash.Resource.Info.attribute(dsl, &1))
-          |> Enum.filter(fn %{type: type, constraints: constraints} ->
-            case type do
-              {:array, {:array, _}} ->
-                true
+        attribute_warnings = []
 
-              {:array, type} when is_atom(type) ->
-                Code.ensure_compiled!(type)
-                not_atomic?(type, constraints)
+        action.accept
+        |> Enum.map(&Ash.Resource.Info.attribute(dsl, &1))
+        |> Enum.filter(fn %{type: type, constraints: constraints} ->
+          case type do
+            {:array, {:array, _}} ->
+              true
 
-              type when is_atom(type) ->
-                Code.ensure_compiled!(type)
-                not_atomic?(type, constraints)
+            {:array, type} when is_atom(type) ->
+              Code.ensure_compiled!(type)
+              not_atomic?(type, constraints)
 
-              _ ->
-                false
-            end
-          end)
-          |> case do
-            [] ->
-              []
+            type when is_atom(type) ->
+              Code.ensure_compiled!(type)
+              not_atomic?(type, constraints)
 
-            not_atomic_attributes ->
-              [
-                Spark.Error.DslError.exception(
-                  module: module,
-                  message:
-                    non_atomic_message(
-                      module,
-                      action.name,
-                      "the attributes `#{inspect(not_atomic_attributes)}` cannot be updated atomically"
-                    ),
-                  path: [:actions, action.name]
-                )
-              ]
+            _ ->
+              false
           end
+        end)
+        |> case do
+          [] ->
+            []
+
+          not_atomic_attributes ->
+            [
+              Spark.Error.DslError.exception(
+                module: module,
+                message:
+                  non_atomic_message(
+                    module,
+                    action.name,
+                    "the attributes `#{inspect(not_atomic_attributes)}` cannot be updated atomically"
+                  ),
+                path: [:actions, action.name]
+              )
+            ]
+        end
 
         warnings ++ change_warnings ++ notifier_warnings ++ attribute_warnings
       end)
@@ -144,10 +145,6 @@ defmodule Ash.Resource.Verifiers.VerifyActionsAtomic do
   end
 
   defp not_atomic?(Ash.Type.Union, _), do: true
-
-  defp not_atomic?(type, _constraints) do
-    Ash.Type.embedded_type?(type)
-  end
 
   defp non_atomic_message(module, action_name, reason) do
     """

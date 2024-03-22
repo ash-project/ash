@@ -18,7 +18,7 @@ defmodule Ash.Type.Float do
     ]
   ]
 
-  require Ash.Expr
+  import Ash.Expr
 
   @moduledoc """
   Represents a float (floating point number)
@@ -115,12 +115,9 @@ defmodule Ash.Type.Float do
 
   def cast_atomic(expr, constraints) do
     expr =
-      case {constraints[:max], constraints[:max]} do
-        {nil, nil} ->
-          expr
-
-        {max, nil} ->
-          Ash.Expr.expr(
+      Enum.reduce(constraints, expr, fn
+        {:max, max}, expr ->
+          expr(
             if ^expr > ^max do
               error(
                 Ash.Error.Changes.InvalidChanges,
@@ -132,9 +129,9 @@ defmodule Ash.Type.Float do
             end
           )
 
-        {nil, min} ->
-          Ash.Expr.expr(
-            if ^expr > ^min do
+        {:min, min}, expr ->
+          expr(
+            if ^expr < ^min do
               error(
                 Ash.Error.Changes.InvalidChanges,
                 message: "must be greater than or equal to %{min}",
@@ -145,28 +142,32 @@ defmodule Ash.Type.Float do
             end
           )
 
-        {max, min} ->
-          Ash.Expr.expr(
-            cond do
-              ^expr < ^min ->
-                error(
-                  Ash.Error.Changes.InvalidChanges,
-                  message: "must be greater than or equal to %{min}",
-                  vars: %{min: min}
-                )
-
-              ^expr > ^max ->
-                error(
-                  Ash.Error.Changes.InvalidChanges,
-                  message: "must be less than or equal to %{max}",
-                  vars: %{max: max}
-                )
-
-              true ->
-                ^expr
+        {:less_than, less_than}, expr ->
+          expr(
+            if ^expr < ^less_than do
+              ^expr
+            else
+              error(
+                Ash.Error.Changes.InvalidChanges,
+                message: "must be greater than %{min}",
+                vars: %{min: min}
+              )
             end
           )
-      end
+
+        {:greater_than, greater_than}, expr ->
+          expr(
+            if ^expr > ^greater_than do
+              ^expr
+            else
+              error(
+                Ash.Error.Changes.InvalidChanges,
+                message: "must be greater than %{min}",
+                vars: %{min: min}
+              )
+            end
+          )
+      end)
 
     {:atomic, expr}
   end

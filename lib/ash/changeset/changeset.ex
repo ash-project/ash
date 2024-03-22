@@ -786,21 +786,16 @@ defmodule Ash.Changeset do
             {:cont, %{changeset | arguments: Map.put(changeset.arguments, key, value)}}
 
           attribute = Ash.Resource.Info.attribute(changeset.resource, key) ->
-            if expr?(value) do
-              case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
-                {:atomic, atomic} ->
-                  atomic = set_error_field(atomic, attribute.name)
-                  {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
+            case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
+              {:atomic, atomic} ->
+                atomic = set_error_field(atomic, attribute.name)
+                {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
 
-                {:error, error} ->
-                  {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
+              {:error, error} ->
+                {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
 
-                {:not_atomic, reason} ->
-                  {:halt, {:not_atomic, reason}}
-              end
-            else
-              {:cont,
-               %{changeset | attributes: Map.put(changeset.attributes, attribute.name, value)}}
+              {:not_atomic, reason} ->
+                {:halt, {:not_atomic, reason}}
             end
 
           true ->
@@ -815,19 +810,15 @@ defmodule Ash.Changeset do
 
           attribute = Ash.Resource.Info.attribute(changeset.resource, key) ->
             if attribute.name in action.accept do
-              if expr?(value) do
-                case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
-                  {:atomic, atomic} ->
-                    {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
+              case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
+                {:atomic, atomic} ->
+                  {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
 
-                  {:error, error} ->
-                    {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
+                {:error, error} ->
+                  {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
 
-                  {:not_atomic, reason} ->
-                    {:halt, {:not_atomic, reason}}
-                end
-              else
-                {:cont, change_attribute(changeset, key, value)}
+                {:not_atomic, reason} ->
+                  {:halt, {:not_atomic, reason}}
               end
             else
               {:cont,
@@ -1205,20 +1196,16 @@ defmodule Ash.Changeset do
           other
       end)
 
-    if expr?(value) do
-      case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
-        {:atomic, value} ->
-          value = set_error_field(value, attribute.name)
-          %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+    case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
+      {:atomic, value} ->
+        value = set_error_field(value, attribute.name)
+        %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
 
-        {:not_atomic, message} ->
-          add_error(
-            changeset,
-            "Cannot atomically update #{inspect(changeset.resource)}.#{attribute.name}: #{message}"
-          )
-      end
-    else
-      change_attribute(changeset, key, value)
+      {:not_atomic, message} ->
+        add_error(
+          changeset,
+          "Cannot atomically update #{inspect(changeset.resource)}.#{attribute.name}: #{message}"
+        )
     end
   end
 
