@@ -2128,7 +2128,7 @@ defmodule Ash.Filter do
          _expand_aggregates?
        ) do
     if with_refs? do
-      [{at_path, nil}]
+      []
     else
       [{at_path}]
     end
@@ -2161,7 +2161,7 @@ defmodule Ash.Filter do
     |> do_relationship_paths(include_exists?, true, expand_aggregates?)
     |> List.flatten()
     |> Enum.flat_map(fn {rel_path, ref} ->
-      [{at_path, nil}, {at_path ++ path ++ rel_path, ref}]
+      [{at_path ++ path ++ rel_path, ref}]
     end)
     |> Kernel.++(
       parent_relationship_paths(expression, at_path, include_exists?, true, expand_aggregates?)
