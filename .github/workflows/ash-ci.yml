@@ -34,6 +34,8 @@ on:
       sat-solver:
         type: string
         default: "Picosat"
+env:
+  PG_VERSION: ${{inputs.postgres-version}}
 jobs:
   deps:
     name: mix deps.get

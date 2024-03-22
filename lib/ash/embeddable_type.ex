@@ -148,8 +148,12 @@ defmodule Ash.EmbeddableType do
 
       def storage_type(_), do: :map
 
-      def cast_atomic(_, _) do
-        {:not_atomic, "Embedded attributes do not support atomic updates"}
+      def cast_atomic(value, constraints) do
+        if Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__)) ||
+             constraints[:on_update] == :replace do
+        else
+          {:not_atomic, "Embedded attributes do not support atomic updates"}
+        end
       end
 
       def cast_input(%{__struct__: __MODULE__} = input, _constraints), do: {:ok, input}
@@ -320,16 +324,23 @@ defmodule Ash.EmbeddableType do
       def dump_to_native(nil, _), do: {:ok, nil}
       def dump_to_native(_, _), do: :error
 
-      def constraints,
-        do:
-          Keyword.take(array_constraints(), [
-            :load,
-            :create_action,
-            :destroy_action,
-            :update_action,
-            :domain,
-            :__source__
-          ])
+      def constraints do
+        array_constraints()
+        |> Keyword.take([
+          :load,
+          :create_action,
+          :destroy_action,
+          :update_action,
+          :domain,
+          :__source__
+        ])
+        |> Keyword.put(:on_update,
+          type: {:one_of, [:update, :replace, :update_on_match]},
+          default: :update_on_match,
+          doc:
+            "Whether or not setting the value should update the existing value, replace it, or update it if the primary key's match. If there is no primary key, `update_on_match` is the same as `replace`."
+        )
+      end
 
       def apply_constraints(nil, _), do: {:ok, nil}
 
