@@ -178,6 +178,15 @@ defmodule Ash.Actions.Read do
       Ash.Actions.Read.Calculations.split_and_load_calculations(query.api, query, missing_pkeys?)
 
     query =
+      add_calc_context_to_query(
+        query,
+        opts[:actor],
+        opts[:authorize?],
+        query.tenant,
+        opts[:tracer]
+      )
+
+    query =
       if opts[:initial_data] do
         select = source_fields(query) ++ (query.select || [])
 
@@ -433,20 +442,9 @@ defmodule Ash.Actions.Read do
   defp agg_refs(query, calculations_in_query) do
     calculations_in_query
     |> Enum.flat_map(fn {_, expr} ->
-      Ash.Filter.used_aggregates(expr, :all, true)
+      Ash.Filter.used_aggregates(expr, :all)
     end)
-    |> Enum.concat(
-      Enum.map(query.aggregates, fn {_, aggregate} ->
-        %Ash.Query.Ref{
-          attribute: aggregate,
-          relationship_path: [],
-          resource: query.resource,
-          input?: false
-        }
-      end)
-    )
-    |> Enum.uniq_by(&{&1.relationship_path, &1.attribute, !!&1.input?})
-    |> Enum.map(&{&1.relationship_path, &1.attribute})
+    |> Enum.concat(Map.values(query.aggregates))
   end
 
   defp source_fields(query) do
@@ -1063,6 +1061,10 @@ defmodule Ash.Actions.Read do
         raise Ash.Error.Framework.AssumptionFailed,
           message: "unhandled calculation in filter statement #{inspect(ref)}"
 
+      %Ash.Query.Ref{attribute: %Ash.Resource.Aggregate{}} = ref ->
+        raise Ash.Error.Framework.AssumptionFailed,
+          message: "unhandled calculation in filter statement #{inspect(ref)}"
+
       %Ash.Query.Ref{
         attribute: %Ash.Query.Calculation{} = calc,
         relationship_path: relationship_path
@@ -1454,7 +1456,7 @@ defmodule Ash.Actions.Read do
   @doc false
   def update_aggregate_filters(
         filter,
-        resource,
+        _resource,
         authorize?,
         relationship_path_filters,
         actor,
@@ -1462,44 +1464,16 @@ defmodule Ash.Actions.Read do
         tracer
       ) do
     if authorize? do
-      Filter.update_aggregates(filter, fn aggregate, ref ->
+      Filter.update_aggregates(filter, fn aggregate, _ref ->
         if aggregate.authorize? do
-          case Map.fetch(
-                 relationship_path_filters,
-                 {ref.relationship_path ++ aggregate.relationship_path,
-                  aggregate.query.action.name}
-               ) do
-            {:ok, authorization_filter} ->
-              %{
-                aggregate
-                | query: Ash.Query.do_filter(aggregate.query, authorization_filter),
-                  join_filters:
-                    add_join_filters(
-                      aggregate.join_filters,
-                      aggregate.relationship_path,
-                      ref.resource ||
-                        Ash.Resource.Info.related(resource, ref.relationship_path),
-                      relationship_path_filters,
-                      ref.relationship_path
-                    )
-              }
-              |> add_calc_context(actor, true, tenant, tracer)
-
-            _ ->
-              %{
-                aggregate
-                | join_filters:
-                    add_join_filters(
-                      aggregate.join_filters,
-                      aggregate.relationship_path,
-                      ref.resource ||
-                        Ash.Resource.Info.related(resource, ref.relationship_path),
-                      relationship_path_filters,
-                      ref.relationship_path
-                    )
-              }
-              |> add_calc_context(actor, false, tenant, tracer)
-          end
+          authorize_aggregate(
+            aggregate,
+            relationship_path_filters,
+            actor,
+            authorize?,
+            tenant,
+            tracer
+          )
         else
           aggregate
         end
@@ -1526,7 +1500,9 @@ defmodule Ash.Actions.Read do
         |> Ash.Resource.Info.primary_action!(:read)
         |> Map.get(:name)
 
-      case Map.fetch(path_filters, {prefix ++ path, action}) do
+      last_relationship = last_relationship(resource, prefix ++ path)
+
+      case Map.fetch(path_filters, {last_relationship.source, last_relationship.name, action}) do
         {:ok, filter} ->
           Map.update(current_join_filters, path, filter, fn current_filter ->
             Ash.Query.BooleanExpression.new(:and, current_filter, filter)
@@ -2111,38 +2087,250 @@ defmodule Ash.Actions.Read do
 
       aggregate =
         if authorize? && aggregate.authorize? do
-          case Map.fetch(path_filters, {aggregate.relationship_path, aggregate.query.action.name}) do
-            {:ok, filter} ->
-              %{
-                aggregate
-                | query: Ash.Query.do_filter(aggregate.query, filter),
-                  join_filters:
-                    add_join_filters(
-                      aggregate.join_filters,
-                      aggregate.relationship_path,
-                      query.resource,
-                      path_filters
-                    )
-              }
-
-            :error ->
-              %{
-                aggregate
-                | join_filters:
-                    add_join_filters(
-                      aggregate.join_filters,
-                      aggregate.relationship_path,
-                      query.resource,
-                      path_filters
-                    )
-              }
-          end
+          authorize_aggregate(aggregate, path_filters, actor, authorize?, tenant, tracer)
         else
           aggregate
         end
 
       %{query | aggregates: Map.put(query.aggregates, name, aggregate)}
     end)
+  end
+
+  defp authorize_aggregate(aggregate, path_filters, actor, authorize?, tenant, tracer) do
+    aggregate = add_calc_context(aggregate, actor, authorize?, tenant, tracer)
+    last_relationship = last_relationship(aggregate.resource, aggregate.relationship_path)
+
+    additional_filter =
+      case Map.fetch(
+             path_filters,
+             {last_relationship.source, last_relationship.name, aggregate.query.action.name}
+           ) do
+        :error ->
+          true
+
+        {:ok, filter} ->
+          filter
+      end
+
+    with {:ok, filter} <-
+           filter_with_related(aggregate.query, authorize?, path_filters),
+         filter =
+           update_aggregate_filters(
+             filter,
+             aggregate.query.resource,
+             authorize?,
+             path_filters,
+             actor,
+             tenant,
+             tracer
+           ),
+         {:ok, field} <-
+           aggregate_field_with_related_filters(
+             aggregate,
+             path_filters,
+             actor,
+             authorize?,
+             tenant,
+             tracer
+           ) do
+      %{
+        aggregate
+        | query: Ash.Query.filter(%{aggregate.query | filter: filter}, ^additional_filter),
+          field: field,
+          join_filters:
+            add_join_filters(
+              aggregate.join_filters,
+              aggregate.relationship_path,
+              aggregate.resource,
+              path_filters
+            )
+      }
+    else
+      {:error, error} ->
+        raise "Error processing aggregate authorization filter for #{inspect(aggregate)}: #{inspect(error)}"
+    end
+  end
+
+  defp aggregate_field_with_related_filters(
+         %{field: nil},
+         _path_filters,
+         _actor,
+         _authorize?,
+         _tenant,
+         _tracer
+       ),
+       do: {:ok, nil}
+
+  defp aggregate_field_with_related_filters(
+         %{field: %Ash.Query.Calculation{} = field} = agg,
+         path_filters,
+         actor,
+         authorize?,
+         tenant,
+         tracer
+       ) do
+    calc = add_calc_context(field, actor, authorize?, tenant, tracer)
+
+    related_resource = Ash.Resource.Info.related(agg.resource, agg.relationship_path)
+
+    if calc.module.has_expression?() do
+      expr =
+        case calc.module.expression(calc.opts, calc.context) do
+          %Ash.Query.Function.Type{} = expr ->
+            expr
+
+          expr ->
+            {:ok, expr} = Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
+            expr
+        end
+
+      {:ok, expr} =
+        Ash.Filter.hydrate_refs(
+          expr,
+          %{
+            resource: related_resource,
+            public?: false
+          }
+        )
+
+      expr =
+        add_calc_context_to_filter(
+          expr,
+          actor,
+          authorize?,
+          tenant,
+          tracer
+        )
+
+      case do_filter_with_related(related_resource, expr, path_filters, []) do
+        {:ok, expr} ->
+          {:ok, %{field | module: Ash.Resource.Calculation.Expression, opts: [expr: expr]}}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      {:ok, calc}
+    end
+  end
+
+  defp aggregate_field_with_related_filters(
+         %{field: %Ash.Query.Aggregate{} = field} = agg,
+         path_filters,
+         actor,
+         authorize?,
+         tenant,
+         tracer
+       ) do
+    field = add_calc_context(field, actor, authorize?, tenant, tracer)
+
+    if authorize? && field.authorize? do
+      authorize_aggregate(field, path_filters, actor, authorize?, tenant, tracer)
+    else
+      {:ok, agg}
+    end
+  end
+
+  defp aggregate_field_with_related_filters(
+         aggregate,
+         path_filters,
+         actor,
+         authorize?,
+         tenant,
+         tracer
+       )
+       when is_atom(aggregate.field) do
+    related_resource = Ash.Resource.Info.related(aggregate.resource, aggregate.relationship_path)
+
+    case Ash.Resource.Info.field(related_resource, aggregate.field) do
+      %Ash.Resource.Calculation{} = resource_calculation ->
+        {module, opts} = resource_calculation.calculation
+
+        case Ash.Query.Calculation.new(
+               resource_calculation.name,
+               module,
+               opts,
+               {resource_calculation.type, resource_calculation.constraints},
+               %{},
+               resource_calculation.filterable?,
+               resource_calculation.load
+             ) do
+          {:ok, calculation} ->
+            aggregate_field_with_related_filters(
+              %{aggregate | field: calculation},
+              path_filters,
+              actor,
+              authorize?,
+              tenant,
+              tracer
+            )
+
+          {:error, error} ->
+            {:error, error}
+        end
+
+      %Ash.Resource.Aggregate{} = resource_aggregate ->
+        read_action =
+          resource_aggregate.read_action ||
+            Ash.Resource.Info.primary_action!(related_resource, :read).name
+
+        with %{valid?: true} = aggregate_query <-
+               Ash.Query.for_read(related_resource, read_action),
+             %{valid?: true} = aggregate_query <-
+               Ash.Query.Aggregate.build_query(aggregate_query,
+                 filter: aggregate.filter,
+                 sort: aggregate.sort
+               ),
+             {:ok, query_aggregate} <-
+               Ash.Query.Aggregate.new(
+                 related_resource,
+                 resource_aggregate.name,
+                 resource_aggregate.kind,
+                 path: resource_aggregate.relationship_path,
+                 query: aggregate_query,
+                 field: resource_aggregate.field,
+                 default: resource_aggregate.default,
+                 filterable?: resource_aggregate.filterable?,
+                 type: resource_aggregate.type,
+                 constraints: resource_aggregate.constraints,
+                 implementation: resource_aggregate.implementation,
+                 uniq?: resource_aggregate.uniq?,
+                 read_action: read_action,
+                 authorize?: resource_aggregate.authorize?,
+                 join_filters:
+                   Map.new(resource_aggregate.join_filters, &{&1.relationship_path, &1.filter})
+               ) do
+          aggregate_field_with_related_filters(
+            %{aggregate | field: query_aggregate},
+            path_filters,
+            actor,
+            authorize?,
+            tenant,
+            tracer
+          )
+        else
+          {:error, error} ->
+            {:error, error}
+
+          %{errors: errors} ->
+            {:error, errors}
+        end
+
+      _ ->
+        {:ok, aggregate.field}
+    end
+  end
+
+  defp aggregate_field_with_related_filters(
+         aggregate,
+         _path_filters,
+         _actor,
+         _authorize?,
+         _tenant,
+         _tracer
+       )
+       when is_atom(aggregate.field) do
+    {:ok, aggregate.field}
   end
 
   defp filter_with_related(
@@ -2214,7 +2402,10 @@ defmodule Ash.Actions.Read do
           last_relationship.read_action ||
             Ash.Resource.Info.primary_action!(last_relationship.destination, :read).name
 
-        case Map.get(path_filters, {path, read_action}) do
+        case Map.get(
+               path_filters,
+               {last_relationship.source, last_relationship.name, read_action}
+             ) do
           nil ->
             {:cont, {:ok, filter}}
 
@@ -2235,13 +2426,6 @@ defmodule Ash.Actions.Read do
          filter
          |> Ash.Filter.map(fn
            %Ash.Query.Exists{at_path: at_path, path: exists_path, expr: exists_expr} = exists ->
-             path_filters =
-               path_filters
-               |> Enum.filter(fn {{path, _}, _} ->
-                 List.starts_with?(path, prefix ++ at_path ++ exists_path)
-               end)
-               |> Map.new()
-
              {:ok, new_expr} =
                do_filter_with_related(
                  resource,
@@ -2259,6 +2443,13 @@ defmodule Ash.Actions.Read do
       other ->
         other
     end
+  end
+
+  defp last_relationship(resource, list) do
+    path = :lists.droplast(list)
+    last = List.last(list)
+
+    Ash.Resource.Info.relationship(Ash.Resource.Info.related(resource, path), last)
   end
 
   defp set_phase(query, phase \\ :preparing)

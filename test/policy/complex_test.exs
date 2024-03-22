@@ -129,6 +129,8 @@ defmodule Ash.Test.Policy.ComplexTest do
       |> Api.read_one!()
       |> Map.get(:count_of_commenters)
 
+    assert count_of_commenters_without_authorization == 3
+
     count_of_commenters_with_authorization =
       Post
       |> Ash.Query.load(:count_of_commenters)
@@ -137,7 +139,6 @@ defmodule Ash.Test.Policy.ComplexTest do
       |> Map.get(:count_of_commenters)
 
     assert count_of_commenters_with_authorization == 2
-    assert count_of_commenters_without_authorization == 3
   end
 
   test "aggregates in calculations are authorized", %{me: me} do

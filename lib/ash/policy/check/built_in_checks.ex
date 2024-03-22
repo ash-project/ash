@@ -96,6 +96,15 @@ defmodule Ash.Policy.Check.Builtins do
   ```
   """
   @spec filtering_on(atom | list(atom), atom) :: Ash.Policy.Check.ref()
+  @deprecated """
+  `filtering_on/2` check is deprecated. Instead, add arguments and add policies that said arguments are set.
+
+  For complex queries, policies on what is being filtered on require multiple authorization passes of
+  the same resource, leading to a large amount of typically unnecessary complexity.
+
+  Additionally, they could yield false negatives in some scenarios, and more work would be needed
+  to ensure that they don't.
+  """
   def filtering_on(path \\ [], field) do
     {Ash.Policy.Check.FilteringOn, path: List.wrap(path), field: field}
   end

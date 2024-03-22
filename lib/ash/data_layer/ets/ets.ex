@@ -612,6 +612,7 @@ defmodule Ash.DataLayer.Ets do
 
   def do_add_aggregates(records, api, _resource, aggregates) do
     # TODO support crossing apis by getting the destination api, and set destination query context.
+
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
       aggregates
       |> Enum.reduce_while(
@@ -648,7 +649,8 @@ defmodule Ash.DataLayer.Ets do
                      [record],
                      api
                    ),
-                 {:ok, filtered} <- filter_matches(related, query.filter, api),
+                 {:ok, filtered} <-
+                   filter_matches(related, query.filter, api),
                  sorted <- Sort.runtime_sort(filtered, query.sort, api: api) do
               field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
 
@@ -697,12 +699,12 @@ defmodule Ash.DataLayer.Ets do
       :count ->
         if uniq? do
           records
-          |> Stream.map(&Map.get(&1, field))
+          |> Stream.map(&field_value(&1, field))
           |> Stream.uniq()
           |> Stream.reject(&is_nil/1)
           |> Enum.count()
         else
-          Enum.count(records, &(not is_nil(Map.get(&1, field))))
+          Enum.count(records, &(not is_nil(field_value(&1, field))))
         end
 
       :exists ->
@@ -720,13 +722,13 @@ defmodule Ash.DataLayer.Ets do
             default
 
           [record | _rest] ->
-            Map.get(record, field)
+            field_value(record, field)
         end
 
       :list ->
         records
         |> Enum.map(fn record ->
-          Map.get(record, field)
+          field_value(record, field)
         end)
         |> then(fn values ->
           if uniq? do
@@ -741,11 +743,11 @@ defmodule Ash.DataLayer.Ets do
         |> then(fn records ->
           if uniq? do
             records
-            |> Stream.map(&Map.get(&1, field))
+            |> Stream.map(&field_value(&1, field))
             |> Stream.uniq()
           else
             records
-            |> Stream.map(&Map.get(&1, field))
+            |> Stream.map(&field_value(&1, field))
           end
         end)
         |> Enum.reduce({nil, 0}, fn value, {sum, count} ->
@@ -782,7 +784,7 @@ defmodule Ash.DataLayer.Ets do
 
       kind when kind in [:sum, :max, :min] ->
         records
-        |> Enum.map(&Map.get(&1, field))
+        |> Enum.map(&field_value(&1, field))
         |> case do
           [] ->
             nil
@@ -821,6 +823,31 @@ defmodule Ash.DataLayer.Ets do
             end
         end
     end
+  end
+
+  defp field_value(nil, _), do: nil
+
+  defp field_value(record, field) when is_atom(field) do
+    Map.get(record, field)
+  end
+
+  defp field_value(record, %struct{load: load, name: name})
+       when struct in [Ash.Query.Aggregate, Ash.Query.Calculation] do
+    if load do
+      Map.get(record, load)
+    else
+      case struct do
+        Ash.Query.Aggregate ->
+          Map.get(record.aggregates, name)
+
+        Ash.Query.Calculation ->
+          Map.get(record.calculations, name)
+      end
+    end
+  end
+
+  defp field_value(record, %{name: name}) do
+    Map.get(record, name)
   end
 
   defp get_records(resource, tenant) do

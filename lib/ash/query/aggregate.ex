@@ -470,7 +470,20 @@ defmodule Ash.Query.Aggregate do
     def inspect(%{query: query} = aggregate, opts) do
       field =
         if aggregate.field do
-          [aggregate.field]
+          if is_atom(aggregate.field) do
+            [to_string(aggregate.field)]
+          else
+            case aggregate.field do
+              %{agg_name: agg_name} ->
+                [to_string(agg_name)]
+
+              %{calc_name: calc_name} ->
+                [to_string(calc_name)]
+
+              _ ->
+                [inspect(aggregate.field)]
+            end
+          end
         else
           []
         end

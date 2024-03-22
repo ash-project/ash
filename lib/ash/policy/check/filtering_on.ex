@@ -11,23 +11,6 @@ defmodule Ash.Policy.Check.FilteringOn do
   def requires_original_data?(_, _), do: false
 
   @impl true
-  def match?(
-        _actor,
-        %{
-          query: %Ash.Query{context: %{filter_only?: true, filter_references: references}}
-        },
-        opts
-      ) do
-    path = opts[:path] || []
-    field = opts[:field] || raise "Must provide field to #{inspect(__MODULE__)}"
-
-    references
-    |> Enum.filter(&(&1.relationship_path == path))
-    |> Enum.any?(fn ref ->
-      Ash.Query.Ref.name(ref) == field
-    end)
-  end
-
   def match?(_actor, %{query: %Ash.Query{} = query}, opts) do
     path = opts[:path] || []
     field = opts[:field] || raise "Must provide field to #{inspect(__MODULE__)}"

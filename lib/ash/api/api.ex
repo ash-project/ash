@@ -1263,24 +1263,30 @@ defmodule Ash.Api do
   end
 
   defp apply_filter(query, resource, api, filter, authorizer, authorizer_state, opts) do
-    case opts[:filter_with] || :filter do
-      :filter ->
-        Ash.Query.filter(or_query(query, resource, api), ^filter)
+    case Ash.Filter.hydrate_refs(filter, %{resource: resource, public?: false}) do
+      {:ok, filter} ->
+        case opts[:filter_with] || :filter do
+          :filter ->
+            Ash.Query.filter(or_query(query, resource, api), ^filter)
 
-      :error ->
-        Ash.Query.filter(
-          or_query(query, resource, api),
-          if ^filter do
-            true
-          else
-            error(Ash.Error.Forbidden.Placeholder, %{
-              authorizer: ^inspect(authorizer)
+          :error ->
+            Ash.Query.filter(
+              or_query(query, resource, api),
+              if ^filter do
+                true
+              else
+                error(Ash.Error.Forbidden.Placeholder, %{
+                  authorizer: ^inspect(authorizer)
+                })
+              end
+            )
+            |> Ash.Query.set_context(%{
+              private: %{authorizer_state: %{authorizer => authorizer_state}}
             })
-          end
-        )
-        |> Ash.Query.set_context(%{
-          private: %{authorizer_state: %{authorizer => authorizer_state}}
-        })
+        end
+
+      {:error, error} ->
+        raise "Error building authorization filter: #{inspect(filter)}: #{inspect(error)}"
     end
   end
 

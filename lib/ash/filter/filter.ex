@@ -1016,6 +1016,7 @@ defmodule Ash.Filter do
         _ref ->
           false
       end)
+      |> expand_aggregates()
 
     if return_refs? do
       refs
@@ -1023,6 +1024,17 @@ defmodule Ash.Filter do
       Enum.map(refs, & &1.attribute)
     end
     |> Enum.uniq()
+  end
+
+  defp expand_aggregates(aggregates) do
+    aggregates
+    |> Enum.flat_map(fn
+      %{field: %Ash.Query.Aggregate{} = inner_aggregate} = aggregate ->
+        [aggregate, inner_aggregate | expand_aggregates(aggregate)]
+
+      other ->
+        [other]
+    end)
   end
 
   def put_at_path(value, []), do: value
@@ -1111,14 +1123,21 @@ defmodule Ash.Filter do
   end
 
   @doc false
-  def relationship_filters(api, query, actor, tenant, aggregates, authorize?) do
+  def relationship_filters(
+        api,
+        query,
+        actor,
+        tenant,
+        aggregates,
+        authorize?,
+        filters \\ %{}
+      ) do
     if authorize? do
       paths_with_refs =
         query.filter
-        |> relationship_paths(true, true)
+        |> relationship_paths(true, true, true)
         |> Enum.map(fn {path, refs} ->
-          refs = Enum.filter(refs, &(&1 && &1.input?))
-
+          refs = Enum.filter(refs, & &1.input?)
           {path, refs}
         end)
         |> Enum.reject(fn {path, refs} -> path == [] || refs == [] end)
@@ -1128,10 +1147,20 @@ defmodule Ash.Filter do
 
       paths_with_refs
       |> Enum.map(&elem(&1, 0))
-      |> Enum.reduce_while({:ok, %{}}, fn path, {:ok, filters} ->
-        add_authorization_path_filter(filters, path, api, query, actor, tenant, refs)
+      |> Enum.reduce_while({:ok, filters}, fn path, {:ok, filters} ->
+        last_relationship = last_relationship(query.resource, path)
+        add_authorization_path_filter(filters, last_relationship, api, query, actor, tenant, refs)
       end)
-      |> add_aggregate_path_authorization(api, refs, aggregates, query, actor, tenant, refs)
+      |> add_aggregate_path_authorization(
+        api,
+        refs,
+        aggregates,
+        query,
+        actor,
+        tenant,
+        refs,
+        authorize?
+      )
     else
       {:ok, %{}}
     end
@@ -1139,27 +1168,18 @@ defmodule Ash.Filter do
 
   defp add_authorization_path_filter(
          filters,
-         path,
+         last_relationship,
          api,
-         query,
+         _query,
          actor,
          tenant,
-         refs,
+         _refs,
          base_related_query \\ nil,
-         aggregate? \\ false
+         _aggregate? \\ false
        ) do
-    last_relationship =
-      Enum.reduce(path, nil, fn
-        relationship, nil ->
-          Ash.Resource.Info.relationship(query.resource, relationship)
-
-        relationship, acc ->
-          Ash.Resource.Info.relationship(acc.destination, relationship)
-      end)
-
-    case relationship_query(query.resource, path, actor, tenant, base_related_query) do
+    case relationship_query(last_relationship, actor, tenant, base_related_query) do
       %{errors: []} = related_query ->
-        if filters[{path, related_query.action.name}] do
+        if filters[{last_relationship.source, last_relationship.name, related_query.action.name}] do
           {:cont, {:ok, filters}}
         else
           related_query
@@ -1168,10 +1188,6 @@ defmodule Ash.Filter do
               source: last_relationship.source,
               name: last_relationship.name
             }
-          })
-          |> Ash.Query.set_context(%{
-            filter_only?: !aggregate?,
-            filter_references: refs[path] || []
           })
           |> Ash.Query.select([])
           |> api.can(actor,
@@ -1187,12 +1203,18 @@ defmodule Ash.Filter do
                {:ok,
                 Map.put(
                   filters,
-                  {path, related_query.action.name},
+                  {last_relationship.source, last_relationship.name, related_query.action.name},
                   authorized_related_query.filter
                 )}}
 
             {:ok, false, _error} ->
-              {:halt, {:ok, Map.put(filters, {path, related_query.action.name}, false)}}
+              {:halt,
+               {:ok,
+                Map.put(
+                  filters,
+                  {last_relationship.source, last_relationship.name, related_query.action.name},
+                  false
+                )}}
 
             {:error, error} ->
               {:halt, {:error, error}}
@@ -1212,10 +1234,11 @@ defmodule Ash.Filter do
          query,
          actor,
          tenant,
-         refs
+         refs,
+         authorize?
        ) do
     refs
-    |> Enum.flat_map(fn {path, refs} ->
+    |> Enum.flat_map(fn {_path, refs} ->
       refs
       |> Enum.filter(
         &match?(
@@ -1223,43 +1246,60 @@ defmodule Ash.Filter do
           &1
         )
       )
-      |> Enum.map(fn ref ->
-        {path, ref.attribute}
-      end)
+      |> Enum.map(& &1.attribute)
     end)
     |> Enum.concat(aggregates)
-    |> Enum.reduce_while({:ok, path_filters}, fn {path, aggregate}, {:ok, filters} ->
+    |> Enum.reduce_while({:ok, path_filters}, fn aggregate, {:ok, filters} ->
       aggregate.relationship_path
       |> :lists.droplast()
       |> Ash.Query.Aggregate.subpaths()
       |> Enum.reduce_while({:ok, filters}, fn subpath, {:ok, filters} ->
-        related = Ash.Resource.Info.related(query.resource, subpath)
+        last_relationship = last_relationship(query.resource, subpath)
 
         add_authorization_path_filter(
           filters,
-          path ++ subpath,
+          last_relationship,
           api,
           query,
           actor,
           tenant,
           refs,
-          Ash.Query.for_read(related, Ash.Resource.Info.primary_action(related, :read).name),
+          Ash.Query.for_read(
+            last_relationship.destination,
+            Ash.Resource.Info.primary_action(last_relationship.destination, :read).name
+          ),
           true
         )
       end)
       |> case do
         {:ok, filters} ->
-          add_authorization_path_filter(
-            filters,
-            path ++ aggregate.relationship_path,
-            api,
-            query,
-            actor,
-            tenant,
-            refs,
-            aggregate.query,
-            true
-          )
+          last_relationship = last_relationship(aggregate.resource, aggregate.relationship_path)
+
+          case relationship_filters(
+                 api,
+                 aggregate.query,
+                 actor,
+                 tenant,
+                 [],
+                 authorize?,
+                 filters
+               ) do
+            {:ok, filters} ->
+              add_authorization_path_filter(
+                filters,
+                last_relationship,
+                api,
+                query,
+                actor,
+                tenant,
+                refs,
+                aggregate.query,
+                true
+              )
+
+            {:error, error} ->
+              {:error, error}
+          end
 
         {:error, error} ->
           {:error, error}
@@ -1267,8 +1307,7 @@ defmodule Ash.Filter do
     end)
   end
 
-  defp relationship_query(resource, [last], actor, tenant, base) do
-    relationship = Ash.Resource.Info.relationship(resource, last)
+  defp relationship_query(relationship, actor, tenant, base) do
     base_query = base || Ash.Query.new(relationship.destination)
 
     action =
@@ -1290,12 +1329,6 @@ defmodule Ash.Filter do
         tenant: tenant
       )
     end
-  end
-
-  defp relationship_query(resource, [next | rest], actor, tenant, base) do
-    resource
-    |> Ash.Resource.Info.related(next)
-    |> relationship_query(rest, actor, tenant, base)
   end
 
   defp group_refs_by_all_paths(paths_with_refs) do
@@ -1917,21 +1950,32 @@ defmodule Ash.Filter do
     end
   end
 
-  def relationship_paths(filter_or_expression, include_exists? \\ false, with_reference? \\ false)
-  def relationship_paths(nil, _, _), do: []
-  def relationship_paths(%{expression: nil}, _, _), do: []
+  def relationship_paths(
+        filter_or_expression,
+        include_exists? \\ false,
+        with_refs? \\ false,
+        expand_aggregates? \\ false
+      )
 
-  def relationship_paths(%__MODULE__{expression: expression}, include_exists?, with_reference?),
-    do: relationship_paths(expression, include_exists?, with_reference?)
+  def relationship_paths(nil, _, _, _), do: []
+  def relationship_paths(%__MODULE__{expression: nil}, _, _, _), do: []
 
-  def relationship_paths(expression, include_exists?, with_reference?) do
+  def relationship_paths(
+        %__MODULE__{expression: expression},
+        include_exists?,
+        with_refs?,
+        expand_aggregates?
+      ),
+      do: relationship_paths(expression, include_exists?, with_refs?, expand_aggregates?)
+
+  def relationship_paths(expression, include_exists?, with_refs?, expand_aggregates?) do
     paths =
       expression
-      |> do_relationship_paths(include_exists?, with_reference?)
+      |> do_relationship_paths(include_exists?, with_refs?, expand_aggregates?)
       |> List.wrap()
       |> List.flatten()
 
-    if with_reference? do
+    if with_refs? do
       paths
       |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
       |> Map.new(fn {key, values} ->
@@ -1948,10 +1992,34 @@ defmodule Ash.Filter do
          %Ref{
            relationship_path: path,
            resource: resource,
+           attribute: %Ash.Query.Aggregate{field: field, relationship_path: agg_path}
+         },
+         include_exists?,
+         with_references?,
+         true
+       ) do
+    case field do
+      nil ->
+        []
+
+      field when is_atom(field) ->
+        []
+
+      field ->
+        %Ref{relationship_path: path ++ agg_path, resource: resource, attribute: field}
+        |> do_relationship_paths(include_exists?, with_references?, true)
+    end
+  end
+
+  defp do_relationship_paths(
+         %Ref{
+           relationship_path: path,
+           resource: resource,
            attribute: %Ash.Query.Calculation{module: module, opts: opts, context: context}
          } = ref,
          include_exists?,
-         with_references?
+         with_references?,
+         expand_aggregates?
        ) do
     if module.has_expression?() do
       expression = module.expression(opts, context)
@@ -1971,7 +2039,7 @@ defmodule Ash.Filter do
 
           nested =
             expression
-            |> do_relationship_paths(include_exists?, with_references?)
+            |> do_relationship_paths(include_exists?, with_references?, expand_aggregates?)
             |> List.wrap()
             |> List.flatten()
 
@@ -2030,29 +2098,56 @@ defmodule Ash.Filter do
     end
   end
 
-  defp do_relationship_paths(%Ref{relationship_path: path} = ref, _, true) do
+  defp do_relationship_paths(
+         %Ref{relationship_path: path, attribute: %Ash.Query.Aggregate{} = aggregate} = ref,
+         include_exists?,
+         with_refs?,
+         true
+       ) do
+    this_agg_ref =
+      if with_refs? do
+        {path, ref}
+      else
+        {path}
+      end
+
+    [this_agg_ref | aggregate_refs(path, aggregate, include_exists?, with_refs?)]
+  end
+
+  defp do_relationship_paths(%Ref{relationship_path: path} = ref, _, true, _) do
     [{path, ref}]
   end
 
-  defp do_relationship_paths(%Ref{relationship_path: path}, _, false) do
+  defp do_relationship_paths(%Ref{relationship_path: path}, _, false, _) do
     [{path}]
   end
 
   defp do_relationship_paths(
          %BooleanExpression{left: left, right: right},
          include_exists?,
-         with_reference?
+         with_refs?,
+         expand_aggregates?
        ) do
-    do_relationship_paths(left, include_exists?, with_reference?) ++
-      do_relationship_paths(right, include_exists?, with_reference?)
+    do_relationship_paths(left, include_exists?, with_refs?, expand_aggregates?) ++
+      do_relationship_paths(right, include_exists?, with_refs?, expand_aggregates?)
   end
 
-  defp do_relationship_paths(%Not{expression: expression}, include_exists?, with_reference?) do
-    do_relationship_paths(expression, include_exists?, with_reference?)
+  defp do_relationship_paths(
+         %Not{expression: expression},
+         include_exists?,
+         with_refs?,
+         expand_aggregates?
+       ) do
+    do_relationship_paths(expression, include_exists?, with_refs?, expand_aggregates?)
   end
 
-  defp do_relationship_paths(%Ash.Query.Exists{at_path: at_path}, false, with_reference?) do
-    if with_reference? do
+  defp do_relationship_paths(
+         %Ash.Query.Exists{at_path: at_path},
+         false,
+         with_refs?,
+         _expand_aggregates?
+       ) do
+    if with_refs? do
       [{at_path, nil}]
     else
       [{at_path}]
@@ -2062,71 +2157,214 @@ defmodule Ash.Filter do
   defp do_relationship_paths(
          %Ash.Query.Exists{path: path, expr: expression, at_path: at_path},
          include_exists?,
-         false
+         false,
+         expand_aggregates?
        ) do
     expression
-    |> do_relationship_paths(include_exists?, false)
+    |> do_relationship_paths(include_exists?, false, expand_aggregates?)
     |> List.flatten()
     |> Enum.flat_map(fn {rel_path} ->
       [{at_path}, {at_path ++ path ++ rel_path}]
     end)
-    |> Kernel.++(parent_relationship_paths(expression, at_path, include_exists?, false))
+    |> Kernel.++(
+      parent_relationship_paths(expression, at_path, include_exists?, false, expand_aggregates?)
+    )
   end
 
   defp do_relationship_paths(
          %Ash.Query.Exists{path: path, expr: expression, at_path: at_path},
          include_exists?,
-         true
+         true,
+         expand_aggregates?
        ) do
     expression
-    |> do_relationship_paths(include_exists?, true)
+    |> do_relationship_paths(include_exists?, true, expand_aggregates?)
     |> List.flatten()
     |> Enum.flat_map(fn {rel_path, ref} ->
       [{at_path, nil}, {at_path ++ path ++ rel_path, ref}]
     end)
-    |> Kernel.++(parent_relationship_paths(expression, at_path, include_exists?, true))
+    |> Kernel.++(
+      parent_relationship_paths(expression, at_path, include_exists?, true, expand_aggregates?)
+    )
   end
 
   defp do_relationship_paths(
          %{__operator__?: true, left: left, right: right},
          include_exists?,
-         with_reference?
+         with_refs?,
+         expand_aggregates?
        ) do
-    Enum.flat_map([left, right], &do_relationship_paths(&1, include_exists?, with_reference?))
+    Enum.flat_map(
+      [left, right],
+      &do_relationship_paths(&1, include_exists?, with_refs?, expand_aggregates?)
+    )
   end
 
-  defp do_relationship_paths({key, value}, include_exists?, with_reference?) when is_atom(key) do
-    do_relationship_paths(value, include_exists?, with_reference?)
+  defp do_relationship_paths({key, value}, include_exists?, with_refs?, expand_aggregates?)
+       when is_atom(key) do
+    do_relationship_paths(value, include_exists?, with_refs?, expand_aggregates?)
   end
 
   defp do_relationship_paths(
          %{__function__?: true, arguments: arguments},
          include_exists?,
-         with_reference?
+         with_refs?,
+         expand_aggregates?
        ) do
-    Enum.flat_map(arguments, &do_relationship_paths(&1, include_exists?, with_reference?))
+    Enum.flat_map(
+      arguments,
+      &do_relationship_paths(&1, include_exists?, with_refs?, expand_aggregates?)
+    )
   end
 
-  defp do_relationship_paths(value, include_exists?, with_reference?) when is_list(value) do
-    Enum.flat_map(value, &do_relationship_paths(&1, include_exists?, with_reference?))
+  defp do_relationship_paths(value, include_exists?, with_refs?, expand_aggregates?)
+       when is_list(value) do
+    Enum.flat_map(
+      value,
+      &do_relationship_paths(&1, include_exists?, with_refs?, expand_aggregates?)
+    )
   end
 
-  defp do_relationship_paths(value, include_exists?, with_references?)
+  defp do_relationship_paths(value, include_exists?, with_references?, expand_aggregates?)
        when is_map(value) and not is_struct(value) do
     Enum.flat_map(value, fn {key, value} ->
-      do_relationship_paths(key, include_exists?, with_references?) ++
-        do_relationship_paths(value, include_exists?, with_references?)
+      do_relationship_paths(key, include_exists?, with_references?, expand_aggregates?) ++
+        do_relationship_paths(value, include_exists?, with_references?, expand_aggregates?)
     end)
   end
 
-  defp do_relationship_paths(_, _, _), do: []
+  defp do_relationship_paths(_, _, _, _), do: []
 
-  defp parent_relationship_paths(expression, at_path, include_exists?, with_reference?) do
+  defp aggregate_refs(path, aggregate, include_exists?, with_refs?) do
+    query_rel_paths =
+      if aggregate.query && aggregate.query.filter do
+        aggregate.query.filter
+        |> relationship_paths(include_exists?, with_refs?, true)
+      else
+        []
+      end
+
+    if aggregate.field do
+      related = Ash.Resource.Info.related(aggregate.resource, aggregate.relationship_path)
+
+      field_ref =
+        case aggregate.field do
+          field when is_atom(field) ->
+            Ash.Resource.Info.field(related, aggregate.field)
+
+          field ->
+            field
+        end
+
+      field_ref = field_to_ref(aggregate.resource, field_ref)
+
+      query_rel_paths ++ do_relationship_paths(field_ref, include_exists?, with_refs?, true)
+    else
+      query_rel_paths
+    end
+    |> Enum.map(fn
+      {agg_path} ->
+        {path ++ aggregate.relationship_path ++ agg_path}
+
+      {agg_path, ref} ->
+        {path ++ aggregate.relationship_path ++ agg_path,
+         %{
+           ref
+           | relationship_path: path ++ aggregate.relationship_path ++ ref.relationship_path,
+             input?: true
+         }}
+    end)
+  end
+
+  defp field_to_ref(resource, %Ash.Resource.Attribute{} = attr) do
+    %Ref{
+      resource: resource,
+      attribute: attr,
+      relationship_path: []
+    }
+  end
+
+  defp field_to_ref(resource, %Ash.Resource.Aggregate{} = aggregate) do
+    related = Ash.Resource.Info.related(resource, aggregate.relationship_path)
+
+    read_action =
+      aggregate.read_action || Ash.Resource.Info.primary_action!(related, :read).name
+
+    with %{valid?: true} = aggregate_query <- Ash.Query.for_read(related, read_action),
+         %{valid?: true} = aggregate_query <-
+           Ash.Query.Aggregate.build_query(aggregate_query,
+             filter: aggregate.filter,
+             sort: aggregate.sort
+           ) do
+      case Aggregate.new(
+             resource,
+             aggregate.name,
+             aggregate.kind,
+             path: aggregate.relationship_path,
+             query: aggregate_query,
+             field: aggregate.field,
+             default: aggregate.default,
+             filterable?: aggregate.filterable?,
+             type: aggregate.type,
+             constraints: aggregate.constraints,
+             implementation: aggregate.implementation,
+             uniq?: aggregate.uniq?,
+             read_action: read_action,
+             authorize?: aggregate.authorize?,
+             join_filters: Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
+           ) do
+        {:ok, query_aggregate} ->
+          field_to_ref(resource, query_aggregate)
+
+        {:error, error} ->
+          raise "Could not construct aggregate #{inspect(aggregate)}: #{inspect(error)}"
+      end
+    else
+      %{errors: errors} ->
+        raise "Could not construct aggregate #{inspect(aggregate)}: #{inspect(errors)}"
+    end
+  end
+
+  defp field_to_ref(resource, %Ash.Resource.Calculation{} = calc) do
+    {module, opts} = calc.calculation
+
+    case Calculation.new(
+           calc.name,
+           module,
+           opts,
+           {calc.type, calc.constraints},
+           %{},
+           calc.filterable?,
+           calc.load
+         ) do
+      {:ok, calc} ->
+        field_to_ref(resource, calc)
+
+      {:error, error} ->
+        raise "Could not construct calculation #{inspect(calc)}: #{inspect(error)}"
+    end
+  end
+
+  defp field_to_ref(resource, field) do
+    %Ref{
+      resource: resource,
+      attribute: field,
+      relationship_path: []
+    }
+  end
+
+  defp parent_relationship_paths(
+         expression,
+         at_path,
+         include_exists?,
+         with_refs?,
+         expand_aggregates?
+       ) do
     expression
     |> flat_map(fn
       %Ash.Query.Parent{expr: expr} ->
         expr
-        |> do_relationship_paths(include_exists?, with_reference?)
+        |> do_relationship_paths(include_exists?, with_refs?, expand_aggregates?)
         |> Enum.flat_map(fn
           {rel_path, ref} ->
             [{at_path ++ rel_path, ref}]
@@ -2682,12 +2920,7 @@ defmodule Ash.Filter do
                  constraints: aggregate.constraints,
                  implementation: aggregate.implementation,
                  uniq?: aggregate.uniq?,
-                 read_action:
-                   aggregate.read_action ||
-                     Ash.Resource.Info.primary_action!(
-                       Ash.Resource.Info.related(context.resource, aggregate.relationship_path),
-                       :read
-                     ).name,
+                 read_action: read_action,
                  authorize?: aggregate.authorize?,
                  join_filters: Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
                ) do
@@ -3906,5 +4139,12 @@ defmodule Ash.Filter do
     defp refers_to_sensitive?(_other) do
       false
     end
+  end
+
+  defp last_relationship(resource, list) do
+    path = :lists.droplast(list)
+    last = List.last(list)
+
+    Ash.Resource.Info.relationship(Ash.Resource.Info.related(resource, path), last)
   end
 end
