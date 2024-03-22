@@ -2,35 +2,34 @@ defmodule Ash.Test.Type.DecimalTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  import Ash.Changeset
   require Ash.Query
 
   defmodule Balance do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Ash.Test.Domain
 
     ets do
       private?(true)
     end
 
     actions do
+      default_accept :*
       defaults [:create, :read, :update, :destroy]
     end
 
     attributes do
       uuid_primary_key :id
-      attribute :amount, :decimal, allow_nil?: false
-      attribute :positive_amount, :decimal, allow_nil?: false, constraints: [greater_than: 0]
-      attribute :negative_amount, :decimal, allow_nil?: false, constraints: [less_than: 0]
-    end
-  end
+      attribute :amount, :decimal, allow_nil?: false, public?: true
 
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
+      attribute :positive_amount, :decimal,
+        allow_nil?: false,
+        constraints: [greater_than: 0],
+        public?: true
 
-    resources do
-      resource Balance
+      attribute :negative_amount, :decimal,
+        allow_nil?: false,
+        constraints: [less_than: 0],
+        public?: true
     end
   end
 
@@ -42,8 +41,8 @@ defmodule Ash.Test.Type.DecimalTest do
 
   test "pass with valid attrs" do
     assert Balance
-           |> new(@valid_attrs)
-           |> Api.create!()
+           |> Ash.Changeset.for_create(:create, @valid_attrs)
+           |> Ash.create!()
   end
 
   test "fail with invalid positive_amount" do
@@ -52,8 +51,8 @@ defmodule Ash.Test.Type.DecimalTest do
 
       assert {:error, %Ash.Error.Invalid{}} =
                Balance
-               |> new(invalid_attrs)
-               |> Api.create()
+               |> Ash.Changeset.for_create(:create, invalid_attrs)
+               |> Ash.create()
     end
   end
 
@@ -63,8 +62,8 @@ defmodule Ash.Test.Type.DecimalTest do
 
       assert {:error, %Ash.Error.Invalid{}} =
                Balance
-               |> new(invalid_attrs)
-               |> Api.create()
+               |> Ash.Changeset.for_create(:create, invalid_attrs)
+               |> Ash.create()
     end
   end
 end
