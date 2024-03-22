@@ -1577,16 +1577,41 @@ defmodule Ash.Query do
         args
       end
 
+    args = Map.delete(args, :as)
+
     has_one_expr? = Enum.any?(args, fn {_, value} -> expr?(value) end)
 
-    Enum.reduce_while(calculation.arguments, {:ok, %{}}, fn argument, {:ok, arg_values} ->
-      value =
-        default(
-          Map.get(args, argument.name, Map.get(args, to_string(argument.name))),
-          argument.default
-        )
+    args
+    |> Enum.reduce_while({:ok, %{}}, fn {key, value}, {:ok, arg_values} ->
+      argument =
+        if is_binary(key) do
+          Enum.find(calculation.arguments, fn arg -> to_string(arg.name) == key end)
+        else
+          Enum.find(calculation.arguments, fn arg -> arg.name == key end)
+        end
 
       cond do
+        !argument ->
+          error_calc =
+            case calculation do
+              %{calc_name: calc_name} ->
+                calc_name
+
+              %Ash.Resource.Calculation{name: name} ->
+                name
+
+              calc ->
+                calc
+            end
+
+          {:halt,
+           {:error,
+            Ash.Error.Invalid.NoSuchInput.exception(
+              calculation: error_calc,
+              input: key,
+              inputs: Enum.map(calculation.arguments, & &1.name)
+            )}}
+
         expr?(value) && argument.allow_expr? && allow_expr? ->
           {:cont,
            {:ok,
@@ -1609,7 +1634,7 @@ defmodule Ash.Query do
         is_nil(value) && argument.allow_nil? ->
           {:cont, {:ok, Map.put(arg_values, argument.name, nil)}}
 
-        is_nil(value) ->
+        is_nil(value) && is_nil(argument.default) ->
           {:halt,
            {:error,
             InvalidCalculationArgument.exception(
@@ -1670,12 +1695,48 @@ defmodule Ash.Query do
           end
       end
     end)
+    |> set_defaults(calculation)
   end
 
-  defp default(nil, {module, function, args}), do: apply(module, function, args)
-  defp default(nil, value) when is_function(value, 0), do: value.()
-  defp default(nil, value), do: value
-  defp default(value, _), do: value
+  defp set_defaults({:ok, inputs}, calculation) do
+    Enum.reduce_while(calculation.arguments, {:ok, inputs}, fn argument, {:ok, inputs} ->
+      if Map.has_key?(inputs, argument.name) do
+        if is_nil(inputs[argument.name]) && !argument.allow_nil? do
+          {:halt,
+           {:error,
+            InvalidCalculationArgument.exception(
+              field: argument.name,
+              calculation: calculation.name,
+              message: "is required",
+              value: nil
+            )}}
+        else
+          {:cont, {:ok, inputs}}
+        end
+      else
+        value = calc_arg_default(argument.default)
+
+        if is_nil(value) && !argument.allow_nil? do
+          {:halt,
+           {:error,
+            InvalidCalculationArgument.exception(
+              field: argument.name,
+              calculation: calculation.name,
+              message: "is required",
+              value: value
+            )}}
+        else
+          {:cont, {:ok, Map.put(inputs, argument.name, value)}}
+        end
+      end
+    end)
+  end
+
+  defp set_defaults(inputs, _), do: inputs
+
+  defp calc_arg_default({module, function, args}), do: apply(module, function, args)
+  defp calc_arg_default(value) when is_function(value, 0), do: value.()
+  defp calc_arg_default(value), do: value
 
   @doc """
   Sets a specific context key to a specific value
