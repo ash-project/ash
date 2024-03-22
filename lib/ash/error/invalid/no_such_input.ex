@@ -1,8 +1,23 @@
 defmodule Ash.Error.Invalid.NoSuchInput do
-  @moduledoc "Used when an input is provided to an action that is not accepted"
+  @moduledoc "Used when an input is provided to an action or calculation that is not accepted"
   use Ash.Error.Exception
 
-  use Splode.Error, fields: [:resource, :action, :input, :inputs], class: :invalid
+  use Splode.Error, fields: [:calculation, :resource, :action, :input, :inputs], class: :invalid
+
+  def message(%{calculation: calculation} = error) when not is_nil(calculation) do
+    calculation =
+      if is_atom(calculation) do
+        calculation
+      else
+        inspect(calculation)
+      end
+
+    """
+    No such input `#{error.input}` for calculation #{calculation}
+
+    #{valid_inputs(error)}
+    """
+  end
 
   def message(error) do
     """
