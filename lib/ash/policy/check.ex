@@ -30,7 +30,8 @@ defmodule Ash.Policy.Check do
   It should return `{:ok, true}` if it can tell that the request is authorized, and `{:ok, false}` if
   it can tell that it is not. If unsure, it should return `{:ok, :unknown}`
   """
-  @callback strict_check(actor(), authorizer(), options) :: {:ok, boolean | :unknown}
+  @callback strict_check(actor(), authorizer(), options()) ::
+              {:ok, boolean | :unknown} | {:error, term}
   @doc """
   An optional callback, that allows the check to work with policies set to `access_type :filter`
 
