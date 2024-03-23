@@ -48,12 +48,12 @@ defmodule Ash.Api.Functions do
     update!: 1,
     destroy: 1,
     destroy!: 1,
-    reload: 1
+    reload: 1,
+    reload!: 1
   ]
 
   @no_opts_functions [
-    :page,
-    :reload
+    :page
   ]
 
   def functions, do: @functions

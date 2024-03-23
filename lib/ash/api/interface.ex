@@ -391,7 +391,6 @@ defmodule Ash.Api.Interface do
       def reload!(%resource{} = record, params \\ []) do
         id = record |> Map.take(Ash.Resource.Info.primary_key(resource)) |> Enum.to_list()
         params = Keyword.put_new(params, :tenant, Map.get(record.__metadata__, :tenant))
-
         get!(resource, id, params)
       end
 
