@@ -149,10 +149,23 @@ defmodule Ash.EmbeddableType do
       def storage_type(_), do: :map
 
       def cast_atomic(value, constraints) do
-        if Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__)) ||
-             constraints[:on_update] == :replace do
+        if Ash.Expr.expr?(value) do
+          if Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__)) ||
+               constraints[:on_update] == :replace do
+            case cast_input(value, constraints) do
+              {:ok, value} ->
+                {:atomic, value}
+
+              {:error, error} ->
+                {:error, error}
+            end
+          else
+            {:not_atomic,
+             "Embedded attributes do not support atomic updates unless they have no primary key, or `constraints[:on_update]` is set to `:replace`."}
+          end
         else
-          {:not_atomic, "Embedded attributes do not support atomic updates"}
+          {:not_atomic,
+           "Embedded attributes do not support atomic updates with expressions, only literal values."}
         end
       end
 
@@ -472,8 +485,25 @@ defmodule Ash.EmbeddableType do
     quote location: :keep do
       alias Ash.EmbeddableType.ShadowDomain
 
-      def cast_atomic_array(_, _) do
-        {:not_atomic, "Embedded attributes do not support atomic updates"}
+      def cast_atomic_array(value, constraints) do
+        if Ash.Expr.expr?(value) do
+          if Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__)) ||
+               constraints[:on_update] == :replace do
+            case cast_input_array(value, constraints) do
+              {:ok, value} ->
+                {:atomic, value}
+
+              {:error, error} ->
+                {:error, error}
+            end
+          else
+            {:not_atomic,
+             "Embedded attributes do not support atomic updates unless they have no primary key, or `constraints[:on_update]` is set to `:replace`."}
+          end
+        else
+          {:not_atomic,
+           "Embedded attributes do not support atomic updates with expressions, only literal values."}
+        end
       end
 
       def loaded?(record, path_to_load, _constraints, opts) do
