@@ -19,7 +19,8 @@ defmodule Ash.Actions.Create do
          action_type: :create
        )}
     else
-      {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
+      {changeset, opts} = Helpers.add_process_context(api, changeset, opts)
+      changeset = Helpers.apply_opts_load(changeset, opts)
 
       Ash.Tracer.span :action,
                       Ash.Api.Info.span_name(
@@ -189,7 +190,7 @@ defmodule Ash.Actions.Create do
     if return_notifications? do
       {:ok, result, Map.get(instructions, :notifications, [])}
     else
-      Ash.Actions.Helpers.warn_missed!(resource, action, instructions)
+      Helpers.warn_missed!(resource, action, instructions)
 
       {:ok, result}
     end
@@ -349,7 +350,7 @@ defmodule Ash.Actions.Create do
                         opts[:upsert?] ->
                           changeset.resource
                           |> Ash.DataLayer.upsert(changeset, upsert_keys)
-                          |> Ash.Actions.Helpers.rollback_if_in_transaction(
+                          |> Helpers.rollback_if_in_transaction(
                             changeset.resource,
                             changeset
                           )
@@ -363,7 +364,7 @@ defmodule Ash.Actions.Create do
                         true ->
                           changeset.resource
                           |> Ash.DataLayer.create(changeset)
-                          |> Ash.Actions.Helpers.rollback_if_in_transaction(
+                          |> Helpers.rollback_if_in_transaction(
                             changeset.resource,
                             changeset
                           )

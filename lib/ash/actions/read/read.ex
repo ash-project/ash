@@ -25,7 +25,8 @@ defmodule Ash.Actions.Read do
   end
 
   def run(query, action, opts) do
-    {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
+    {query, opts} = Helpers.add_process_context(query.api, query, opts)
+    query = Helpers.apply_opts_load(query, opts)
 
     action = get_action(query.resource, action || query.action)
 
@@ -98,13 +99,6 @@ defmodule Ash.Actions.Read do
 
     opts = sanitize_opts(opts, query)
     action = get_action(query.resource, query.action || action)
-
-    query =
-      if opts[:load] do
-        Ash.Query.load(query, opts[:load])
-      else
-        query
-      end
 
     query =
       for_read(
@@ -413,7 +407,7 @@ defmodule Ash.Actions.Read do
                },
                !Keyword.has_key?(opts, :initial_data)
              )
-             |> Ash.Actions.Helpers.rollback_if_in_transaction(
+             |> Helpers.rollback_if_in_transaction(
                query.resource,
                query
              ),

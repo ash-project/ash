@@ -88,8 +88,8 @@ defmodule Ash.Actions.Update do
             |> Map.put(:select, changeset.select)
             |> Ash.Changeset.set_context(changeset.context)
 
-          {atomic_changeset, opts} =
-            Ash.Actions.Helpers.add_process_context(api, atomic_changeset, opts)
+          {atomic_changeset, opts} = Helpers.add_process_context(api, atomic_changeset, opts)
+          atomic_changeset = Helpers.apply_opts_load(atomic_changeset, opts)
 
           opts =
             Keyword.merge(opts,
@@ -163,7 +163,8 @@ defmodule Ash.Actions.Update do
                reason: reason
              )}
           else
-            {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
+            {changeset, opts} = Helpers.add_process_context(api, changeset, opts)
+            changeset = Helpers.apply_opts_load(changeset, opts)
 
             Ash.Tracer.span :action,
                             Ash.Api.Info.span_name(
@@ -316,7 +317,7 @@ defmodule Ash.Actions.Update do
         {:ok, result, Map.get(instructions, :notifications, [])}
       end
     else
-      Ash.Actions.Helpers.warn_missed!(resource, action, instructions)
+      Helpers.warn_missed!(resource, action, instructions)
 
       if changeset.action_type == :destroy do
         :ok
@@ -439,7 +440,7 @@ defmodule Ash.Actions.Update do
                           {:error, error} ->
                             {:error, error}
                         end
-                        |> Ash.Actions.Helpers.rollback_if_in_transaction(
+                        |> Helpers.rollback_if_in_transaction(
                           changeset.resource,
                           changeset
                         )

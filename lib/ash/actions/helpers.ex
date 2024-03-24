@@ -536,6 +536,22 @@ defmodule Ash.Actions.Helpers do
     end
   end
 
+  def apply_opts_load(%Ash.Changeset{} = changeset, opts) do
+    if opts[:load] do
+      Ash.Changeset.load(changeset, opts[:load])
+    else
+      changeset
+    end
+  end
+
+  def apply_opts_load(%Ash.Query{} = query, opts) do
+    if opts[:load] do
+      Ash.Query.load(query, opts[:load])
+    else
+      query
+    end
+  end
+
   def load({:ok, result, instructions}, changeset, api, opts) do
     if changeset.load in [nil, []] do
       {:ok, result, instructions}
