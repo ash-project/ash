@@ -483,7 +483,7 @@ defmodule Ash.Actions.Read.Calculations do
                  select: []
              }}
 
-          {:error, _} ->
+          _ ->
             :error
         end
 
