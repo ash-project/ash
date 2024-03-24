@@ -83,7 +83,7 @@ defmodule Ash.Query.BooleanExpression do
   def optimized_new(
         :or,
         %Eq{left: left, right: value} = left_op,
-        %In{left: left, right: %{__struct__: MapSet} = mapset} = right
+        %In{left: left, right: %MapSet{} = mapset} = right
       ) do
     if can_optimize?(value) do
       %{right | right: MapSet.put(mapset, value)}
@@ -95,7 +95,7 @@ defmodule Ash.Query.BooleanExpression do
   def optimized_new(
         :and,
         %Eq{left: left, right: value} = left_expr,
-        %In{left: left, right: %{__struct__: MapSet} = mapset} = right
+        %In{left: left, right: %MapSet{} = mapset} = right
       ) do
     if can_optimize?(value) do
       if MapSet.member?(mapset, value) do
@@ -111,7 +111,7 @@ defmodule Ash.Query.BooleanExpression do
   def optimized_new(
         :and,
         %NotEq{left: left, right: value} = left_op,
-        %In{left: left, right: %{__struct__: MapSet} = mapset} = right_expr
+        %In{left: left, right: %MapSet{} = mapset} = right_expr
       ) do
     if can_optimize?(value) do
       %{right_expr | right: MapSet.delete(mapset, value)}
@@ -166,8 +166,8 @@ defmodule Ash.Query.BooleanExpression do
 
   def optimized_new(
         :or,
-        %In{left: left, right: %{__struct__: MapSet} = left_values},
-        %In{left: left, right: %{__struct__: MapSet} = right_values} = right_expr
+        %In{left: left, right: %MapSet{} = left_values},
+        %In{left: left, right: %MapSet{} = right_values} = right_expr
       ) do
     %{right_expr | right: MapSet.union(left_values, right_values)}
   end
@@ -318,7 +318,7 @@ defmodule Ash.Query.BooleanExpression do
     end)
   end
 
-  defp can_optimize?(%{__struct__: MapSet} = mapset) do
+  defp can_optimize?(%MapSet{} = mapset) do
     Enum.all?(mapset, &can_optimize?/1)
   end
 
