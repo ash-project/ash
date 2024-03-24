@@ -611,8 +611,8 @@ defmodule Ash.SatSolver do
   def split_in_expressions(other, _), do: other
 
   def overlap?(
-        %Ash.Query.Operator.In{left: left, right: %{__struct__: MapSet} = left_right},
-        %Ash.Query.Operator.In{left: left, right: %{__struct__: MapSet} = right_right}
+        %Ash.Query.Operator.In{left: left, right: %MapSet{} = left_right},
+        %Ash.Query.Operator.In{left: left, right: %MapSet{} = right_right}
       ) do
     if MapSet.equal?(left_right, right_right) do
       false
@@ -639,7 +639,7 @@ defmodule Ash.SatSolver do
 
   def overlap?(
         %Ash.Query.Operator.Eq{left: left, right: left_right},
-        %Ash.Query.Operator.In{left: left, right: %{__struct__: MapSet} = right_right}
+        %Ash.Query.Operator.In{left: left, right: %MapSet{} = right_right}
       ) do
     MapSet.member?(right_right, left_right)
   end

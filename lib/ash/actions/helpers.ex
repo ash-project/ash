@@ -26,7 +26,7 @@ defmodule Ash.Actions.Helpers do
 
   def rollback_if_in_transaction(success, _, _), do: success
 
-  def validate_calculation_load!(%{__struct__: Ash.Query}, module) do
+  def validate_calculation_load!(%Ash.Query{}, module) do
     raise """
     `#{inspect(module)}.load/3` returned a query.
 
@@ -39,13 +39,13 @@ defmodule Ash.Actions.Helpers do
 
   def validate_calculation_load!(other, _), do: other
 
-  defp set_context(%{__struct__: Ash.Changeset} = changeset, context),
+  defp set_context(%Ash.Changeset{} = changeset, context),
     do: Ash.Changeset.set_context(changeset, context)
 
-  defp set_context(%{__struct__: Ash.Query} = query, context),
+  defp set_context(%Ash.Query{} = query, context),
     do: Ash.Query.set_context(query, context)
 
-  defp set_context(%{__struct__: Ash.ActionInput} = action_input, context),
+  defp set_context(%Ash.ActionInput{} = action_input, context),
     do: Ash.ActionInput.set_context(action_input, context)
 
   def add_process_context(api, query_or_changeset, opts) do
@@ -117,19 +117,19 @@ defmodule Ash.Actions.Helpers do
       |> Map.put_new(:authorize?, false)
 
     case query_or_changeset do
-      %{__struct__: Ash.ActionInput} ->
+      %Ash.ActionInput{} ->
         query_or_changeset
         |> Ash.ActionInput.set_context(context)
         |> Ash.ActionInput.set_context(%{private: private_context})
         |> Ash.ActionInput.set_tenant(query_or_changeset.tenant || opts[:tenant])
 
-      %{__struct__: Ash.Query} ->
+      %Ash.Query{} ->
         query_or_changeset
         |> Ash.Query.set_context(context)
         |> Ash.Query.set_context(%{private: private_context})
         |> Ash.Query.set_tenant(query_or_changeset.tenant || opts[:tenant])
 
-      %{__struct__: Ash.Changeset} ->
+      %Ash.Changeset{} ->
         query_or_changeset
         |> Ash.Changeset.set_context(context)
         |> Ash.Changeset.set_context(%{
