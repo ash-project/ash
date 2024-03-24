@@ -329,7 +329,7 @@ defmodule Ash.Api do
                           Whether or not to reselect all attributes depended on by loads.
                           By default, we only reselect fields that weren't already selected.
                           """
-                        ],
+                        ]
                       ],
                       @global_opts,
                       "Global Options"
