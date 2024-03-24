@@ -5,6 +5,47 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.21.0](https://github.com/ash-project/ash/compare/v2.20.3...v2.21.0) (2024-03-24)
+
+
+
+
+### Features:
+
+* add less_than, greater_than constraints to float, decimal (#936)
+
+* allow providing descriptions to Ash.Type.Enum values (#940)
+
+### Bug Fixes:
+
+* convert `%{__struct__: T}` into `%T{}` (#947)
+
+* corrections for `reload`/`reload!` (#942)
+
+* show that `Policy.Check.strict_check` can return an error tuple (#945)
+
+* remove unnecessary function
+
+* fully expand calculation and aggregate references for applying authorization
+
+* batch_change/3 is never called for updates (#938)
+
+* bulk updates for streams ignore :batch_size
+
+* don't double-encode vector data (#934)
+
+* update set/get/update_context function specs to use maps (#935)
+
+### Improvements:
+
+* support `load` option for create/update/destroy (#946)
+
+* restore old behavior of leveraging in memory values for calculations
+
+* simplify inspect for aggregates
+
+* add `matches` built-in policy check (#937)
+
 ## [v2.20.3](https://github.com/ash-project/ash/compare/v2.20.2...v2.20.3) (2024-03-20)
 
 
