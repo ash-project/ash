@@ -374,6 +374,10 @@ defmodule Ash.Api do
                    |> merge_schemas(@global_opts, "Global Options")
 
   @shared_created_update_and_destroy_opts_schema [
+    load: [
+      type: :any,
+      doc: "A load statement to add onto the changeset"
+    ],
     return_notifications?: [
       type: :boolean,
       default: false,
@@ -406,8 +410,6 @@ defmodule Ash.Api do
     ]
   ]
 
-  @create_update_opts_schema []
-
   @create_opts_schema [
                         upsert?: [
                           type: :boolean,
@@ -434,10 +436,6 @@ defmodule Ash.Api do
                         ]
                       ]
                       |> merge_schemas(@global_opts, "Global Options")
-                      |> merge_schemas(
-                        @create_update_opts_schema,
-                        "Shared create/update Options"
-                      )
                       |> merge_schemas(
                         @shared_created_update_and_destroy_opts_schema,
                         "Shared create/update/destroy Options"
@@ -572,11 +570,6 @@ defmodule Ash.Api do
                                doc:
                                  "If a query is given, determines whether or not authorization is run on that query."
                              ],
-                             load: [
-                               type: :any,
-                               doc:
-                                 "A load statement to apply to records. Ignored if `return_records?` is not true."
-                             ],
                              select: [
                                type: {:list, :atom},
                                doc:
@@ -666,11 +659,6 @@ defmodule Ash.Api do
                                doc:
                                  "The identity to use when detecting conflicts for `upsert?`, e.g. `upsert_identity: :full_name`. By default, the primary key is used. Has no effect if `upsert?: true` is not provided"
                              ],
-                             load: [
-                               type: :any,
-                               doc:
-                                 "A load statement to apply to records. Ignored if `return_records?` is not true."
-                             ],
                              select: [
                                type: {:list, :atom},
                                doc:
@@ -714,10 +702,6 @@ defmodule Ash.Api do
                         ]
                       ]
                       |> merge_schemas(@global_opts, "Global Options")
-                      |> merge_schemas(
-                        @create_update_opts_schema,
-                        "Shared create/update Options"
-                      )
                       |> merge_schemas(
                         @shared_created_update_and_destroy_opts_schema,
                         "Shared create/update/destroy Options"

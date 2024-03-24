@@ -311,6 +311,8 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp do_atomic_update(query, atomic_changeset, has_after_action_hooks?, input, opts) do
+    atomic_changeset = Ash.Actions.Helpers.apply_opts_load(atomic_changeset, opts)
+
     atomic_changeset =
       if opts[:select] do
         Ash.Changeset.select(atomic_changeset, opts[:select])
@@ -326,13 +328,6 @@ defmodule Ash.Actions.Update.Bulk do
           atomic_changeset
           | data: %Ash.Changeset.OriginalDataNotAvailable{reason: :atomic_query_update}
         }
-      end
-
-    atomic_changeset =
-      if opts[:load] do
-        Ash.Changeset.load(atomic_changeset, opts[:load])
-      else
-        atomic_changeset
       end
 
     with {:ok, query} <-

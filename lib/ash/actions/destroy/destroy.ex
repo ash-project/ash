@@ -24,7 +24,8 @@ defmodule Ash.Actions.Destroy do
   end
 
   def run(api, changeset, action, opts) do
-    {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
+    {changeset, opts} = Helpers.add_process_context(api, changeset, opts)
+    changeset = Helpers.apply_opts_load(changeset, opts)
 
     Ash.Tracer.span :action,
                     Ash.Api.Info.span_name(
@@ -80,8 +81,6 @@ defmodule Ash.Actions.Destroy do
   end
 
   def do_run(api, changeset, action, opts) do
-    {changeset, opts} = Ash.Actions.Helpers.add_process_context(api, changeset, opts)
-
     return_destroyed? = opts[:return_destroyed?]
     changeset = %{changeset | api: api}
 
@@ -194,7 +193,7 @@ defmodule Ash.Actions.Destroy do
                 else
                   changeset.resource
                   |> Ash.DataLayer.destroy(changeset)
-                  |> Ash.Actions.Helpers.rollback_if_in_transaction(changeset.resource, changeset)
+                  |> Helpers.rollback_if_in_transaction(changeset.resource, changeset)
                   |> case do
                     :ok ->
                       {:ok, data} = Ash.Changeset.apply_attributes(changeset, force?: true)
@@ -304,7 +303,7 @@ defmodule Ash.Actions.Destroy do
     if return_notifications? do
       {:ok, Map.get(instructions, :notifications, [])}
     else
-      Ash.Actions.Helpers.warn_missed!(resource, action, instructions)
+      Helpers.warn_missed!(resource, action, instructions)
       :ok
     end
   end
