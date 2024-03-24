@@ -945,6 +945,19 @@ defmodule Ash.Test.CalculationTest do
     assert ci_full_names == ["bob", "brian cranston", "zach daniel"]
   end
 
+  test "simple expression calculations will be run in memory" do
+    user =
+      User
+      |> Ash.Changeset.new(%{first_name: "bob", last_name: "sagat"})
+      |> Api.create!()
+
+    assert "george sagat" ==
+             user
+             |> Map.put(:first_name, "george")
+             |> Api.load!(:string_join_full_name)
+             |> Map.get(:string_join_full_name)
+  end
+
   test "loading calculations with different relationship dependencies won't collide", %{
     user1: %{id: user1_id} = user1
   } do

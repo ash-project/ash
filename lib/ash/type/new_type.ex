@@ -96,16 +96,19 @@ defmodule Ash.Type.NewType do
         unquote(subtype_of)
       end
 
-      if Ash.Type.can_load?(subtype_of, subtype_constraints) do
-        @impl Ash.Type
-        def load(values, load, constraints, context) do
-          unquote(subtype_of).load(
-            values,
-            load,
-            constraints,
-            context
-          )
-        end
+      @impl Ash.Type
+      def load(values, load, constraints, context) do
+        apply(unquote(subtype_of), :load, [
+          values,
+          load,
+          constraints,
+          context
+        ])
+      end
+
+      @impl Ash.Type
+      def can_load?(constraints) do
+        unquote(subtype_of).can_load?(constraints)
       end
 
       if function_exported?(subtype_of, :merge_load, 4) do

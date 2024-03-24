@@ -178,7 +178,8 @@ defmodule Ash.Type do
           calc_name: term(),
           calc_load: term(),
           calc_path: list(atom),
-          relationship_path: list(atom)
+          relationship_path: list(atom),
+          initial_data: {:ok, list(Ash.Resource.record())} | :error
         }
 
   @callback storage_type() :: Ecto.Type.t()
@@ -262,6 +263,13 @@ defmodule Ash.Type do
               context :: load_context()
             ) ::
               {:ok, list(term)} | {:error, Ash.Error.t()}
+
+  @callback loaded?(
+              value_or_values :: term,
+              path_to_load :: list(atom),
+              constraints :: Keyword.t(),
+              opts :: Keyword.t()
+            ) :: boolean
 
   @callback merge_load(
               left :: term,
@@ -932,6 +940,34 @@ defmodule Ash.Type do
     type.merge_load(left, right, constraints, context)
   end
 
+  @spec loaded?(
+          type :: Ash.Type.t(),
+          value_or_values :: term,
+          path_to_load :: list(atom),
+          constraints :: Keyword.t(),
+          opts :: Keyword.t()
+        ) :: boolean
+  def loaded?(type, values, load, constraints, opts \\ [])
+
+  def loaded?({:array, type}, values, loads, constraints, opts) do
+    loaded?(type, values, loads, constraints, opts)
+  end
+
+  def loaded?(type, values, loads, constraints, opts) when is_list(values) do
+    case Keyword.get(opts, :lists, :all) do
+      :all ->
+        Enum.all?(values, &loaded?(type, &1, loads, constraints, opts))
+
+      :any ->
+        Enum.any?(values, &loaded?(type, &1, loads, constraints, opts))
+    end
+  end
+
+  def loaded?(type, value, load_path, constraints, opts) do
+    type = get_type(type)
+    type.loaded?(value, load_path, constraints, opts)
+  end
+
   @spec load(
           type :: Ash.Type.t(),
           values :: list(term),
@@ -1191,6 +1227,9 @@ defmodule Ash.Type do
       def dump_to_embedded(value, constraints) do
         dump_to_native(value, constraints)
       end
+
+      @impl true
+      def loaded?(_, _, _, _), do: false
 
       @impl true
       def cast_input_array(nil, _), do: {:ok, nil}

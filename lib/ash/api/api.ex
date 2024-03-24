@@ -319,7 +319,7 @@ defmodule Ash.Api do
                         lazy?: [
                           type: :boolean,
                           doc:
-                            "If set to true, values will only be loaded if the related value isn't currently loaded.",
+                            "If set to true, values will only be loaded if they aren't currently loaded.",
                           default: false
                         ],
                         reselect_all?: [
@@ -329,7 +329,7 @@ defmodule Ash.Api do
                           Whether or not to reselect all attributes depended on by loads.
                           By default, we only reselect fields that weren't already selected.
                           """
-                        ]
+                        ],
                       ],
                       @global_opts,
                       "Global Options"

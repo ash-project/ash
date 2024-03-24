@@ -36,29 +36,12 @@ defmodule Ash.Filter.Runtime do
           resource
       end
 
-    {refs_to_load, refs} =
-      filter
-      |> Ash.Filter.list_refs()
-      |> Enum.split_with(&(&1.relationship_path == []))
-
     refs_to_load =
-      refs_to_load
-      |> Enum.map(fn
-        %{attribute: %struct{} = attr}
-        when struct in [Ash.Query.Calculation, Ash.Query.Aggregate] ->
-          attr
-
-        %{attribute: %{name: name}} ->
-          name
-
-        %{attribute: name} when is_atom(name) ->
-          name
-
-        _ ->
-          nil
-      end)
-      |> Enum.filter(& &1)
+      filter
+      |> Ash.Filter.list_refs(false, false, true)
+      |> Enum.map(&(&1.relationship_path ++ [&1.attribute]))
       |> Enum.reject(&Ash.Resource.loaded?(records, &1))
+      |> Enum.map(&path_to_load(resource, &1))
 
     records =
       case refs_to_load do
@@ -68,55 +51,32 @@ defmodule Ash.Filter.Runtime do
         refs_to_load ->
           load =
             resource
-            |> Ash.Query.load(refs_to_load)
+            |> load_all(refs_to_load)
             |> Ash.Query.set_context(%{private: %{internal?: true}})
 
           api.load!(records, load, authorize?: false)
       end
 
-    filter
-    |> Ash.Filter.relationship_paths(true)
-    |> Enum.reject(&(&1 == []))
-    |> Enum.uniq()
-    |> Enum.reject(&Ash.Resource.loaded?(records, &1))
-    |> Enum.map(&path_to_load(resource, &1, refs))
+    Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
+      matches = matches(record, filter, Keyword.put(opts, :parent_loaded?, true))
+
+      case matches do
+        {:ok, falsey} when falsey in [false, nil] ->
+          {:cont, {:ok, records}}
+
+        {:ok, _} ->
+          {:cont, {:ok, [record | records]}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
     |> case do
-      [] ->
-        Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
-          matches = matches(record, filter, Keyword.put(opts, :parent_loaded?, true))
+      {:ok, records} ->
+        {:ok, Enum.reverse(records)}
 
-          case matches do
-            {:ok, falsey} when falsey in [false, nil] ->
-              {:cont, {:ok, records}}
-
-            {:ok, _} ->
-              {:cont, {:ok, [record | records]}}
-
-            {:error, error} ->
-              {:halt, {:error, error}}
-          end
-        end)
-        |> case do
-          {:ok, records} ->
-            {:ok, Enum.reverse(records)}
-
-          other ->
-            other
-        end
-
-      need_to_load ->
-        query =
-          resource
-          |> Ash.Query.load(need_to_load)
-          |> Ash.Query.set_context(%{private: %{internal?: true}})
-
-        case api.load(records, query) do
-          {:ok, loaded} ->
-            filter_matches(api, loaded, filter, opts)
-
-          other ->
-            other
-        end
+      other ->
+        other
     end
   end
 
@@ -161,37 +121,28 @@ defmodule Ash.Filter.Runtime do
   #   end
   # end
 
-  defp matches(%resource{} = record, expression, opts) do
+  defp matches(record, expression, opts) do
     relationship_paths =
       expression
       |> Ash.Filter.relationship_paths(true)
-      |> Enum.uniq()
 
-    relationship_paths
-    |> Enum.reject(&Ash.Resource.loaded?(record, &1))
-    |> case do
-      [] ->
-        record
-        |> flatten_relationships(relationship_paths)
-        |> Enum.reduce_while({:ok, false}, fn scenario, {:ok, false} ->
-          case do_match(scenario, expression, opts[:parent], nil, opts[:unknown_on_unknown_refs?]) do
-            {:error, error} ->
-              {:halt, {:error, error}}
+    record
+    |> flatten_relationships(relationship_paths)
+    |> Enum.reduce_while({:ok, false}, fn scenario, {:ok, false} ->
+      case do_match(scenario, expression, opts[:parent], nil, opts[:unknown_on_unknown_refs?]) do
+        {:error, error} ->
+          {:halt, {:error, error}}
 
-            :unknown ->
-              {:halt, {:ok, false}}
+        :unknown ->
+          {:halt, {:ok, false}}
 
-            {:ok, val} when val ->
-              {:halt, {:ok, true}}
+        {:ok, val} when val not in [false, nil] ->
+          {:halt, {:ok, true}}
 
-            {:ok, _} ->
-              {:cont, {:ok, false}}
-          end
-        end)
-
-      need_to_load ->
-        {:load, Enum.map(need_to_load, &path_to_load(resource, &1, []))}
-    end
+        {:ok, _} ->
+          {:cont, {:ok, false}}
+      end
+    end)
   end
 
   defp flatten_relationships(record, relationship_paths) do
@@ -246,31 +197,12 @@ defmodule Ash.Filter.Runtime do
         unknown_on_unknown_refs? \\ false
       ) do
     if api && record do
-      {refs_to_load, refs} =
-        expression
-        |> Ash.Filter.list_refs()
-        |> Enum.split_with(&(&1.relationship_path == []))
-
-      # TODO: this currently does not handle the same calculation with
-      # different inputs. This is problematic.
       refs_to_load =
-        refs_to_load
-        |> Enum.map(fn
-          %{attribute: %struct{} = attr}
-          when struct in [Ash.Query.Calculation, Ash.Query.Aggregate] ->
-            attr
-
-          %{attribute: %{name: name}} ->
-            name
-
-          %{attribute: name} when is_atom(name) ->
-            name
-
-          _ ->
-            nil
-        end)
-        |> Enum.filter(& &1)
+        expression
+        |> Ash.Filter.list_refs(false, false, true)
+        |> Enum.map(&(&1.relationship_path ++ [&1.attribute]))
         |> Enum.reject(&Ash.Resource.loaded?(record, &1))
+        |> Enum.map(&path_to_load(resource, &1))
 
       record =
         case refs_to_load do
@@ -280,36 +212,13 @@ defmodule Ash.Filter.Runtime do
           refs ->
             load =
               resource
-              |> Ash.Query.load(refs)
+              |> load_all(refs)
               |> Ash.Query.set_context(%{private: %{internal?: true}})
 
             api.load!(record, load, authorize?: false)
         end
 
-      expression
-      |> Ash.Filter.relationship_paths(true)
-      |> Enum.reject(&(&1 == []))
-      |> Enum.uniq()
-      |> Enum.reject(&Ash.Resource.loaded?(record, &1))
-      |> Enum.map(&path_to_load(resource, &1, refs))
-      |> case do
-        [] ->
-          do_match(record, expression, parent, resource, unknown_on_unknown_refs?)
-
-        need_to_load ->
-          query =
-            resource
-            |> Ash.Query.load(need_to_load)
-            |> Ash.Query.set_context(%{private: %{internal?: true}})
-
-          case api.load(record, query, authorize?: false) do
-            {:ok, loaded} ->
-              do_match(loaded, expression, parent, resource, unknown_on_unknown_refs?)
-
-            other ->
-              other
-          end
-      end
+      do_match(record, expression, parent, resource, unknown_on_unknown_refs?)
     else
       do_match(record, expression, parent, resource, unknown_on_unknown_refs?)
     end
@@ -375,6 +284,10 @@ defmodule Ash.Filter.Runtime do
           other
       end
     end
+  end
+
+  defp load_all(query, paths) do
+    Enum.reduce(paths, query, &Ash.Query.load(&2, &1))
   end
 
   defp load_unflattened(record, []), do: record
@@ -964,53 +877,23 @@ defmodule Ash.Filter.Runtime do
 
   defp or_default(other, _), do: other
 
-  defp path_to_load(resource, [first], refs) do
-    to_load =
-      refs
-      |> Enum.filter(&(&1.relationship_path == [first]))
-      |> Enum.map(fn
-        %{attribute: %Ash.Resource.Calculation{load: nil} = calc} ->
-          {calc.name, calc}
-
-        %{attribute: %{name: name}} ->
-          name
-      end)
-
-    query =
-      resource
-      |> Ash.Resource.Info.related(first)
-      |> Ash.Query.set_context(%{private: %{internal?: true}})
-      |> Ash.Query.load(to_load)
-
-    {first, query}
+  defp path_to_load(_resource, [%struct{name: name}])
+       when struct in [
+              Ash.Resource.Attribute,
+              Ash.Resource.Aggregate,
+              Ash.Resource.Calculation
+            ] do
+    [name]
   end
 
-  defp path_to_load(resource, [first | rest], refs) do
-    related = Ash.Resource.Info.related(resource, first)
+  defp path_to_load(_, []), do: []
 
-    to_load =
-      refs
-      |> Enum.filter(&(&1.relationship_path == [first]))
-      |> Enum.map(fn
-        %{attribute: %Ash.Resource.Calculation{load: nil} = calc} ->
-          {calc.name, calc}
+  defp path_to_load(_resource, [other]) do
+    [other]
+  end
 
-        %{attribute: %{name: name}} ->
-          name
-      end)
-
-    further_refs =
-      refs
-      |> Enum.filter(fn ref ->
-        ref.relationship_path
-        |> Enum.at(0)
-        |> Kernel.==(first)
-      end)
-      |> Enum.map(fn ref ->
-        %{ref | relationship_path: Enum.drop(ref.relationship_path, 1)}
-      end)
-
-    {first, [path_to_load(related, rest, further_refs)] ++ to_load}
+  defp path_to_load(resource, [first | rest]) do
+    [{first, path_to_load(resource, rest)}]
   end
 
   @doc false

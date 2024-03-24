@@ -2294,6 +2294,7 @@ defmodule Ash.Filter do
              join_filters: Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
            ) do
         {:ok, query_aggregate} ->
+          query_aggregate = %{query_aggregate | load: aggregate.name}
           field_to_ref(resource, query_aggregate)
 
         {:error, error} ->
@@ -2904,6 +2905,8 @@ defmodule Ash.Filter do
                  authorize?: aggregate.authorize?,
                  join_filters: Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
                ) do
+          query_aggregate = %{query_aggregate | load: aggregate.name}
+
           case parse_predicates(nested_statement, query_aggregate, context) do
             {:ok, nested_statement} ->
               {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
@@ -3506,6 +3509,8 @@ defmodule Ash.Filter do
                      join_filters:
                        Map.new(aggregate.join_filters, &{&1.relationship_path, &1.filter})
                    ) do
+              query_aggregate = %{query_aggregate | load: aggregate.name}
+
               {:ok, %{ref | attribute: query_aggregate, resource: related}}
             else
               %{valid?: false, errors: errors} ->

@@ -355,6 +355,7 @@ defmodule Ash.Resource do
 
   - `lists`: set to `:any` to have this return true if any record in a list that appears has the value loaded. Default is `:all`.
   - `unknown`: set to `true` to have unknown paths (like nil values or non-resources) return true. Defaults to `false`
+  - `strict?`: set to `true` to return false if a calculation with arguments is being checked
   """
   @spec loaded?(
           nil | list(Ash.Resource.record()) | Ash.Resource.record() | Ash.Page.page(),
@@ -388,33 +389,172 @@ defmodule Ash.Resource do
     end
   end
 
-  def loaded?(record, [%Ash.Query.Calculation{} = calculation], _opts) do
-    if calculation.load do
-      Map.get(record, calculation.load) != %Ash.NotLoaded{}
+  def loaded?(%resource{} = record, [%Ash.Query.Calculation{} = calculation | rest], opts) do
+    if calculation.calc_name do
+      resource_calculation = Ash.Resource.Info.calculation(resource, calculation.calc_name)
+
+      # we can't say for sure if the original arguments provided
+      # were the same as these, so this is always false
+      if opts[:strict?] && Enum.any?(resource_calculation.arguments) do
+        false
+      else
+        if calculation.load do
+          loaded_on_type?(
+            Map.get(record, calculation.load),
+            rest,
+            calculation.type,
+            calculation.constraints,
+            opts
+          )
+        else
+          case Map.fetch(record.calculations, calculation.name) do
+            {:ok, value} ->
+              loaded_on_type?(
+                value,
+                rest,
+                calculation.type,
+                calculation.constraints,
+                opts
+              )
+
+            :error ->
+              false
+          end
+        end
+      end
     else
-      Map.has_key?(record.calculations, calculation.name)
+      if calculation.load do
+        loaded_on_type?(
+          Map.get(record, calculation.load),
+          rest,
+          calculation.type,
+          calculation.constraints,
+          opts
+        )
+      else
+        case Map.fetch(record.calculations, calculation.name) do
+          {:ok, value} ->
+            loaded_on_type?(
+              value,
+              rest,
+              calculation.type,
+              calculation.constraints,
+              opts
+            )
+
+          :error ->
+            false
+        end
+      end
     end
   end
 
-  def loaded?(record, [%Ash.Query.Aggregate{} = aggregate], _opts) do
+  def loaded?(record, [%Ash.Query.Aggregate{} = aggregate | rest], opts) do
     if aggregate.load do
-      Map.get(record, aggregate.load) != %Ash.NotLoaded{}
+      loaded_on_type?(
+        Map.get(record, aggregate.load),
+        rest,
+        aggregate.type,
+        aggregate.constraints,
+        opts
+      )
     else
-      Map.has_key?(record.aggregates, aggregate.name)
+      case Map.fetch(record.aggregates, aggregate.name) do
+        {:ok, value} ->
+          loaded_on_type?(
+            value,
+            rest,
+            aggregate.type,
+            aggregate.constraints,
+            opts
+          )
+
+        _ ->
+          false
+      end
     end
   end
 
-  def loaded?(%resource{} = record, [key | rest], opts) do
-    if Ash.Resource.Info.resource?(resource) do
-      record
-      |> Map.get(key)
-      |> loaded?(rest, opts)
+  def loaded?(record, [%Ash.Resource.Aggregate{} = aggregate | rest], opts) do
+    loaded_on_type?(
+      Map.get(record, aggregate.name),
+      rest,
+      aggregate.type,
+      aggregate.constraints,
+      opts
+    )
+  end
+
+  def loaded?(record, [%Ash.Resource.Calculation{} = resource_calculation | rest], opts) do
+    if opts[:strict?] && Enum.any?(resource_calculation.arguments) do
+      false
     else
-      Keyword.get(opts, :unknown, false)
+      loaded_on_type?(
+        Map.get(record, resource_calculation.name),
+        rest,
+        resource_calculation.type,
+        resource_calculation.constraints,
+        opts
+      )
     end
   end
 
-  def loaded?(_other, _, opts), do: Keyword.get(opts, :unknown, false)
+  def loaded?(record, [%Ash.Resource.Attribute{} = attribute | rest], opts) do
+    selected?(record, attribute.name) &&
+      loaded_on_type?(
+        Map.get(record, attribute.name),
+        rest,
+        attribute.type,
+        attribute.constraints,
+        opts
+      )
+  end
+
+  def loaded?(%resource{} = record, [key | rest], opts) when is_atom(key) do
+    loaded?(record, [Ash.Resource.Info.field(resource, key) | rest], opts)
+  end
+
+  def loaded?(record, [%rel{name: name} | rest], opts)
+      when rel in [
+             Ash.Resource.Relationships.HasOne,
+             Ash.Resource.Relationships.HasMany,
+             Ash.Resource.Relationships.BelongsTo,
+             Ash.Resource.Relationships.ManyToMany
+           ] do
+    record
+    |> Map.get(name)
+    |> loaded?(rest, opts)
+  end
+
+  def loaded?(_, _, opts), do: Keyword.get(opts, :unknown, false)
+
+  defp loaded_on_type?(
+         %Ash.NotLoaded{},
+         _rest,
+         _type,
+         _constraints,
+         _opts
+       ) do
+    false
+  end
+
+  defp loaded_on_type?(
+         _,
+         [],
+         _type,
+         _constraints,
+         _opts
+       ) do
+    true
+  end
+
+  defp loaded_on_type?(empty, _, _, _, opts) when empty in [[], nil] do
+    Keyword.get(opts, :unknown, false)
+  end
+
+  defp loaded_on_type?(value, path, type, constraints, opts) do
+    Ash.Type.loaded?(type, value, path, constraints, opts)
+  end
 
   @spec get_metadata(Ash.Resource.record(), atom | list(atom)) :: term
   def get_metadata(record, key_or_path) do

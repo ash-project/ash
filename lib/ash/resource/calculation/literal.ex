@@ -3,7 +3,11 @@ defmodule Ash.Resource.Calculation.Literal do
   use Ash.Calculation
 
   def calculate(records, opts, _context) do
-    Enum.map(records, fn _ -> opts[:value] end)
+    if opts[:precomputed?] do
+      opts[:value]
+    else
+      Enum.map(records, fn _ -> opts[:value] end)
+    end
   end
 
   def expression(_records, opts, _context) do

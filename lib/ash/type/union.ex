@@ -908,6 +908,13 @@ defmodule Ash.Type.Union do
     end
   end
 
+  @impl true
+  def can_load?(constraints) do
+    Enum.any?(constraints[:types], fn {_key, config} ->
+      Ash.Type.can_load?(config[:type], config[:constraints])
+    end)
+  end
+
   defp do_prepare_change(type_name, old_value, new_value, constraints) do
     with {:ok, type_configs} <- Keyword.fetch(constraints, :types),
          {:ok, type_config} <- Keyword.fetch(type_configs, type_name),

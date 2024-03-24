@@ -175,7 +175,12 @@ defmodule Ash.Actions.Read do
         end)
 
     {calculations_in_query, calculations_at_runtime, query} =
-      Ash.Actions.Read.Calculations.split_and_load_calculations(query.api, query, missing_pkeys?)
+      Ash.Actions.Read.Calculations.split_and_load_calculations(
+        query.api,
+        query,
+        missing_pkeys?,
+        Keyword.fetch(opts, :initial_data)
+      )
 
     query =
       add_calc_context_to_query(

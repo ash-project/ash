@@ -1450,6 +1450,10 @@ defmodule Ash.Query do
     end
   end
 
+  defp do_load(query, field) when is_list(field) do
+    Enum.reduce(field, query, &do_load(&2, &1))
+  end
+
   defp do_load(query, field) do
     cond do
       match?(%Ash.Query.Calculation{}, field) ->
