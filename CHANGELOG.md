@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.21.1](https://github.com/ash-project/ash/compare/v2.21.0...v2.21.1) (2024-03-25)
+
+
+
+
+### Improvements:
+
+* detect loaded-through types
+
 ## [v2.21.0](https://github.com/ash-project/ash/compare/v2.20.3...v2.21.0) (2024-03-24)
 
 
