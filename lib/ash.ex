@@ -63,7 +63,7 @@ defmodule Ash do
         "For Ash errors, whether or not each error has a stacktrace. See the error_handling guide for more."
     ],
     tenant: [
-      type: :any,
+      type: {:protocol, Ash.ToTenant},
       doc: "A tenant to set on the query or changeset"
     ],
     actor: [
@@ -233,7 +233,7 @@ defmodule Ash do
                        doc: "A lock statement to add onto the query"
                      ],
                      tenant: [
-                       type: :any,
+                       type: {:protocol, Ash.ToTenant},
                        doc: "The tenant to set on the query being run"
                      ],
                      action: [
@@ -628,7 +628,7 @@ defmodule Ash do
       """
     ],
     tenant: [
-      type: :any,
+      type: {:protocol, Ash.ToTenant},
       doc: """
       The tenant, supplied to calculation context.
       """
@@ -668,7 +668,7 @@ defmodule Ash do
       """
     ],
     tenant: [
-      type: :any,
+      type: {:protocol, Ash.ToTenant},
       doc: """
       The tenant, supplied to calculation context.
       """
@@ -713,7 +713,7 @@ defmodule Ash do
       doc: "The record or records specifically attempting to be acted upon."
     ],
     tenant: [
-      type: :any,
+      type: {:protocol, Ash.ToTenant},
       doc: "The tenant to use for authorization"
     ],
     alter_source?: [

@@ -89,7 +89,7 @@ defmodule Ash.Actions.Update do
             |> Ash.Changeset.set_context(changeset.context)
 
           {atomic_changeset, opts} =
-            Ash.Actions.Helpers.add_process_context(domain, atomic_changeset, opts)
+            Ash.Actions.Helpers.set_context_and_get_opts(domain, atomic_changeset, opts)
 
           atomic_changeset = Helpers.apply_opts_load(atomic_changeset, opts)
 
@@ -165,7 +165,9 @@ defmodule Ash.Actions.Update do
                reason: reason
              )}
           else
-            {changeset, opts} = Ash.Actions.Helpers.add_process_context(domain, changeset, opts)
+            {changeset, opts} =
+              Ash.Actions.Helpers.set_context_and_get_opts(domain, changeset, opts)
+
             changeset = Helpers.apply_opts_load(changeset, opts)
 
             Ash.Tracer.span :action,

@@ -34,7 +34,7 @@ defmodule Ash.Actions.Read do
       raise Ash.Error.Framework.AssumptionFailed, message: "got a query without a domain"
     end
 
-    {query, opts} = Ash.Actions.Helpers.add_process_context(domain, query, opts)
+    {query, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, query, opts)
     query = Helpers.apply_opts_load(query, opts)
 
     query = %{query | domain: domain}

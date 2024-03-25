@@ -497,7 +497,7 @@ defmodule Ash.DataLayer do
     end
   end
 
-  @spec set_tenant(Ash.Resource.t(), data_layer_query(), term) ::
+  @spec set_tenant(Ash.Resource.t(), data_layer_query(), String.t()) ::
           {:ok, data_layer_query()} | {:error, term}
   def set_tenant(resource, query, term) do
     Ash.DataLayer.data_layer(resource).set_tenant(resource, query, term)
