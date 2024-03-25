@@ -128,4 +128,79 @@ defmodule Ash.Test.Resource.AggregatesTest do
       end
     end
   end
+
+  test "it can load aggregates on resources which require an explicit domain" do
+    defmodule Leg do
+      @moduledoc false
+      use Ash.Resource,
+        domain: nil,
+        data_layer: Ash.DataLayer.Ets,
+        validate_domain_inclusion?: false
+
+      attributes do
+        uuid_primary_key :id
+        attribute :side, :string, allow_nil?: false, public?: true
+      end
+
+      relationships do
+        belongs_to :pants, Pants do
+          attribute_writable? true
+          public? true
+        end
+      end
+
+      actions do
+        defaults [:create, :read]
+        default_accept :*
+      end
+    end
+
+    defmodule Pants do
+      @moduledoc false
+      use Ash.Resource,
+        domain: nil,
+        data_layer: Ash.DataLayer.Ets,
+        validate_domain_inclusion?: false
+
+      attributes do
+        uuid_primary_key :id
+      end
+
+      relationships do
+        has_many :legs, Leg
+      end
+
+      aggregates do
+        count :leg_count, :legs
+      end
+
+      actions do
+        defaults [:create, :read]
+        default_accept :*
+      end
+    end
+
+    defmodule Clothing do
+      @moduledoc false
+      use Ash.Domain, validate_config_inclusion?: false
+
+      resources do
+        allow_unregistered? true
+      end
+    end
+
+    pants =
+      Pants
+      |> Ash.Changeset.for_create(:create, %{}, domain: Clothing)
+      |> Ash.create!(domain: Clothing)
+
+    ~w[left right]
+    |> Enum.map(fn side ->
+      Leg
+      |> Ash.Changeset.for_create(:create, %{pants_id: pants.id, side: side}, domain: Clothing)
+      |> Ash.create!(domain: Clothing)
+    end)
+
+    Ash.load!(pants, :leg_count, domain: Clothing)
+  end
 end
