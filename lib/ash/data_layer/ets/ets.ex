@@ -550,7 +550,8 @@ defmodule Ash.DataLayer.Ets do
                 calculation.context.actor,
                 calculation.context.authorize?,
                 calculation.context.tenant,
-                calculation.context.tracer
+                calculation.context.tracer,
+                domain
               )
 
             case Ash.Expr.eval_hydrated(expression,

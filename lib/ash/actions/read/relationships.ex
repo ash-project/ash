@@ -96,7 +96,10 @@ defmodule Ash.Actions.Read.Relationships do
         {relationship,
          {:lazy,
           related_query
-          |> Map.put(:domain, query.domain)
+          |> Map.put(
+            :domain,
+            Ash.Domain.Info.related_domain(related_query, relationship, query.domain)
+          )
           |> Ash.Query.set_context(%{
             private: %{async_limiter: query.context[:private][:async_limiter]}
           })}}
@@ -113,15 +116,10 @@ defmodule Ash.Actions.Read.Relationships do
       relationship.read_action ||
         Ash.Resource.Info.primary_action!(relationship.destination, :read).name
 
+    domain = Ash.Domain.Info.related_domain(related_query, relationship, query.domain)
+
     related_query =
       related_query
-      |> case do
-        %Ash.Query{} = related_query ->
-          related_query
-
-        [] ->
-          Ash.Query.new(relationship.destination)
-      end
       |> Ash.Query.set_context(%{
         private: %{async_limiter: query.context[:private][:async_limiter]}
       })
@@ -129,13 +127,10 @@ defmodule Ash.Actions.Read.Relationships do
       |> Ash.Query.for_read(
         read_action_name,
         %{},
+        domain: domain,
         authorize?: query.context[:private][:authorize?],
         actor: query.context[:private][:actor],
         tracer: query.context[:private][:tracer]
-      )
-      |> Map.put(
-        :domain,
-        Ash.Domain.Info.related_domain(related_query, relationship, related_query.domain)
       )
       |> Ash.Query.sort(relationship.sort)
       |> Ash.Query.do_filter(relationship.filter)

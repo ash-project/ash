@@ -37,10 +37,47 @@ defmodule Ash.Domain.Info do
   """
   @spec related_domain(
           Ash.Resource.t() | Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t(),
-          atom | Ash.Resource.Relationships.relationship(),
+          atom
+          | Ash.Resource.Relationships.relationship()
+          | [atom | Ash.Resource.Relationships.relationship()],
           Ash.Domain.t() | nil
         ) :: Ash.Domain.t()
-  def related_domain(subject, relationship, default \\ nil) do
+  def related_domain(subject, relationship, default \\ nil)
+
+  def related_domain(subject, [relationship], default) do
+    related_domain(subject, relationship, default)
+  end
+
+  def related_domain(subject, [relationship | relationships], default) do
+    resource =
+      if is_atom(subject) do
+        subject
+      else
+        subject.resource
+      end
+
+    relationship =
+      if is_atom(relationship) do
+        Ash.Resource.Info.relationship(resource, relationship)
+      else
+        relationship
+      end
+
+    subject_domain =
+      case subject do
+        %{domain: domain} -> domain
+        _ -> nil
+      end
+
+    related_domain(
+      relationship.destination,
+      relationships,
+      relationship.domain || Ash.Resource.Info.domain(resource) ||
+        subject_domain || default
+    )
+  end
+
+  def related_domain(subject, relationship, default) do
     resource =
       if is_atom(subject) do
         subject

@@ -531,7 +531,8 @@ defmodule Ash.Actions.Read.Calculations do
             calculation.context.actor,
             calculation.context.authorize?,
             calculation.context.tenant,
-            calculation.context.tracer
+            calculation.context.tracer,
+            domain
           )
 
         case try_evaluate(
@@ -663,7 +664,8 @@ defmodule Ash.Actions.Read.Calculations do
           calculation.context.actor,
           calculation.context.authorize?,
           calculation.context.tenant,
-          calculation.context.tracer
+          calculation.context.tracer,
+          ash_query.domain
         )
 
     case Map.fetch(calculation.context, :all_referenced_calcs_support_expressions?) do
