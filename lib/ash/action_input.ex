@@ -64,16 +64,16 @@ defmodule Ash.ActionInput do
 
     input = %{input | domain: domain}
 
-    {input, _opts} = Ash.Actions.Helpers.add_process_context(input.domain, input, opts)
+    {input, _opts} = Ash.Actions.Helpers.set_context_and_get_opts(input.domain, input, opts)
 
     input
     |> cast_params(params)
     |> require_arguments()
   end
 
-  @spec set_tenant(t(), term()) :: t()
+  @spec set_tenant(t(), Ash.ToTenant.t()) :: t()
   def set_tenant(input, tenant) do
-    %{input | tenant: tenant}
+    %{input | tenant: Ash.ToTenant.to_tenant(tenant)}
   end
 
   defp require_arguments(input) do

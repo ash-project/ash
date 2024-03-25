@@ -19,7 +19,7 @@ defmodule Ash.Actions.Create do
          action_type: :create
        )}
     else
-      {changeset, opts} = Ash.Actions.Helpers.add_process_context(domain, changeset, opts)
+      {changeset, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, changeset, opts)
       changeset = Helpers.apply_opts_load(changeset, opts)
 
       Ash.Tracer.span :action,

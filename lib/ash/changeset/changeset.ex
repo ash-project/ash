@@ -513,7 +513,7 @@ defmodule Ash.Changeset do
         |> Ash.Changeset.set_tenant(opts[:tenant])
 
       {changeset, _opts} =
-        Ash.Actions.Helpers.add_process_context(
+        Ash.Actions.Helpers.set_context_and_get_opts(
           opts[:domain] || Ash.Resource.Info.domain(resource),
           changeset,
           opts
@@ -908,7 +908,7 @@ defmodule Ash.Changeset do
         "A tracer to use. Will be carried over to the action. For more information see `Ash.Tracer`."
     ],
     tenant: [
-      type: :any,
+      type: {:protocol, Ash.ToTenant},
       doc: "set the tenant on the changeset"
     ]
   ]
@@ -1070,7 +1070,7 @@ defmodule Ash.Changeset do
           do_for_action(%{changeset | action_type: :destroy}, action, params, opts)
         else
           {changeset, opts} =
-            Ash.Actions.Helpers.add_process_context(
+            Ash.Actions.Helpers.set_context_and_get_opts(
               domain,
               changeset,
               opts
@@ -1308,7 +1308,7 @@ defmodule Ash.Changeset do
             "Could not determine domain for changeset. Provide the `domain` option or configure a domain in the resource directly."
 
     {changeset, opts} =
-      Ash.Actions.Helpers.add_process_context(
+      Ash.Actions.Helpers.set_context_and_get_opts(
         domain,
         changeset,
         opts
@@ -3202,9 +3202,9 @@ defmodule Ash.Changeset do
     set_context(changeset, %{key => value})
   end
 
-  @spec set_tenant(t(), term()) :: t()
+  @spec set_tenant(t(), Ash.ToTenant.t()) :: t()
   def set_tenant(changeset, tenant) do
-    %{changeset | tenant: tenant}
+    %{changeset | tenant: Ash.ToTenant.to_tenant(tenant)}
   end
 
   @spec timeout(t(), nil | pos_integer, nil | pos_integer) :: t()

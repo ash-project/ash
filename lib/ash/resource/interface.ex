@@ -26,7 +26,7 @@ defmodule Ash.Resource.Interface do
   def interface_options(action_type) do
     [
       tenant: [
-        type: :any,
+        type: {:protocol, Ash.ToTenant},
         doc: "Set the tenant of the query/changeset"
       ],
       context: [

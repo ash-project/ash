@@ -5,7 +5,7 @@ defmodule Ash.Actions.Aggregate do
   def run(domain, query, aggregates, opts) do
     query = Ash.Query.new(query)
     query = %{query | domain: domain}
-    {query, opts} = Ash.Actions.Helpers.add_process_context(query.domain, query, opts)
+    {query, opts} = Ash.Actions.Helpers.set_context_and_get_opts(query.domain, query, opts)
 
     with %{valid?: true} = query <- Ash.Actions.Read.handle_attribute_multitenancy(query) do
       aggregates

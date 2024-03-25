@@ -25,7 +25,7 @@ defmodule Ash.Actions.Update.Bulk do
             Ash.Resource.Info.primary_action!(query.resource, :read).name
           )
 
-        {query, _opts} = Ash.Actions.Helpers.add_process_context(domain, query, opts)
+        {query, _opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, query, opts)
 
         query
       end
@@ -110,7 +110,7 @@ defmodule Ash.Actions.Update.Bulk do
 
       atomic_changeset ->
         {atomic_changeset, opts} =
-          Ash.Actions.Helpers.add_process_context(domain, atomic_changeset, opts)
+          Ash.Actions.Helpers.set_context_and_get_opts(domain, atomic_changeset, opts)
 
         atomic_changeset = %{atomic_changeset | domain: domain}
 
@@ -524,7 +524,8 @@ defmodule Ash.Actions.Update.Bulk do
     resource = opts[:resource]
     opts = Ash.Actions.Helpers.set_opts(opts, domain)
 
-    {_, opts} = Ash.Actions.Helpers.add_process_context(domain, Ash.Changeset.new(resource), opts)
+    {_, opts} =
+      Ash.Actions.Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
 
     fully_atomic_changeset =
       cond do

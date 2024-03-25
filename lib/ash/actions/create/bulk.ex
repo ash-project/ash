@@ -92,7 +92,8 @@ defmodule Ash.Actions.Create.Bulk do
             "For bulk actions, `upsert_fields` must be specified if upsert? is set to true`"
     end
 
-    {_, opts} = Ash.Actions.Helpers.add_process_context(domain, Ash.Changeset.new(resource), opts)
+    {_, opts} =
+      Ash.Actions.Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
 
     manual_action_can_bulk? =
       case action.manual do

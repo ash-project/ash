@@ -50,7 +50,8 @@ defmodule Ash.Actions.Helpers do
   defp set_context(%Ash.ActionInput{} = action_input, context),
     do: Ash.ActionInput.set_context(action_input, context)
 
-  def add_process_context(domain, query_or_changeset, opts) do
+  def set_context_and_get_opts(domain, query_or_changeset, opts) do
+    opts = transform_tenant(opts)
     query_or_changeset = set_context(query_or_changeset, opts[:context] || %{})
     domain = domain || opts[:domain] || query_or_changeset.domain
 
@@ -140,6 +141,16 @@ defmodule Ash.Actions.Helpers do
           private: private_context
         })
         |> Ash.Changeset.set_tenant(query_or_changeset.tenant || opts[:tenant])
+    end
+  end
+
+  defp transform_tenant(opts) do
+    case Keyword.fetch(opts, :tenant) do
+      {:ok, tenant} ->
+        Keyword.put(opts, :tenant, Ash.ToTenant.to_tenant(tenant))
+
+      :error ->
+        opts
     end
   end
 

@@ -8,7 +8,7 @@ defmodule Ash.Actions.Action do
   end
 
   def run(domain, input, opts) do
-    {input, opts} = Ash.Actions.Helpers.add_process_context(domain, input, opts)
+    {input, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, input, opts)
 
     context =
       %Ash.Resource.Actions.Implementation.Context{

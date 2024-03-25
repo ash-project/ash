@@ -436,7 +436,7 @@ defmodule Ash.Query do
         "A tracer to use. Will be carried over to the action. For more information see `Ash.Tracer`."
     ],
     tenant: [
-      type: :any,
+      type: {:protocol, Ash.ToTenant},
       doc: "set the tenant on the query"
     ]
   ]
@@ -467,7 +467,7 @@ defmodule Ash.Query do
               "Could not determine domain for query. Provide the `domain` option or configure a domain in the resource directly."
 
     {query, opts} =
-      Ash.Actions.Helpers.add_process_context(
+      Ash.Actions.Helpers.set_context_and_get_opts(
         domain,
         query,
         opts
@@ -1891,10 +1891,10 @@ defmodule Ash.Query do
   def struct?(%_{}), do: true
   def struct?(_), do: false
 
-  @spec set_tenant(t() | Ash.Resource.t(), term()) :: t()
+  @spec set_tenant(t() | Ash.Resource.t(), Ash.ToTenant.t()) :: t()
   def set_tenant(query, tenant) do
     query = new(query)
-    %{query | tenant: tenant}
+    %{query | tenant: Ash.ToTenant.to_tenant(tenant)}
   end
 
   @doc "Removes a field from the list of fields to load"
