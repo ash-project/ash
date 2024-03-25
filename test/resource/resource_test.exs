@@ -110,4 +110,76 @@ defmodule Ash.Test.Resource.ResourceTest do
       end
     )
   end
+
+  test "relationships can be loaded" do
+    defmodule Leg do
+      @moduledoc false
+      use Ash.Resource,
+        domain: nil,
+        data_layer: Ash.DataLayer.Ets,
+        validate_domain_inclusion?: false
+
+      attributes do
+        uuid_primary_key :id
+        attribute :side, :string, allow_nil?: false, public?: true
+      end
+
+      relationships do
+        belongs_to :pants, Ash.Test.Resource.ResourceTest.Pants do
+          attribute_writable? true
+          public? true
+        end
+      end
+
+      actions do
+        defaults [:create, :read]
+        default_accept :*
+      end
+    end
+
+    defmodule Pants do
+      @moduledoc false
+      use Ash.Resource,
+        domain: nil,
+        data_layer: Ash.DataLayer.Ets,
+        validate_domain_inclusion?: false
+
+      attributes do
+        uuid_primary_key :id
+      end
+
+      relationships do
+        has_many :legs, Leg
+      end
+
+      actions do
+        defaults [:create, :read]
+        default_accept :*
+      end
+    end
+
+    defmodule Clothing do
+      @moduledoc false
+      use Ash.Domain, validate_config_inclusion?: false
+
+      resources do
+        allow_unregistered? true
+      end
+    end
+
+    pants =
+      Pants
+      |> Ash.Changeset.for_create(:create, %{}, domain: Clothing)
+      |> Ash.create!(domain: Clothing)
+
+    [left, _right] =
+      ~w[left right]
+      |> Enum.map(fn side ->
+        Leg
+        |> Ash.Changeset.for_create(:create, %{pants_id: pants.id, side: side}, domain: Clothing)
+        |> Ash.create!(domain: Clothing)
+      end)
+
+    Ash.load!(left, [pants: [:legs]], domain: Clothing)
+  end
 end
