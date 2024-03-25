@@ -8,7 +8,7 @@ defmodule Ash.Policy.FilterCheck do
   fields of an actor to their values, like `[id: 1]`. If the actor is not present `{:_actor, field}`
   becomes `nil`, and `{:_actor, :_primary_key}` becomes `false`.
 
-  You can customize what the "negative" filter looks like by defining `c:reject/1`. This is important for
+  You can customize what the "negative" filter looks like by defining `c:reject/3`. This is important for
   filters over related data. For example, given an `owner` relationship and a data layer like `ash_postgres`
   where `column != NULL` does *not* evaluate to true (see postgres docs on NULL for more):
 
@@ -26,9 +26,18 @@ defmodule Ash.Policy.FilterCheck do
   they will likely have undesired effects.
   """
   @type options :: Keyword.t()
-  @callback filter(options()) :: Keyword.t() | Ash.Expr.t()
-  @callback reject(options()) :: Keyword.t() | Ash.Expr.t()
-  @optional_callbacks [filter: 1, reject: 1]
+  @type context :: %{
+          required(:action) => Ash.Resource.Actions.action(),
+          required(:resource) => Ash.Resource.t(),
+          required(:domain) => Ash.Domain.t(),
+          optional(:query) => Ash.Query.t(),
+          optional(:changeset) => Ash.Changeset.t(),
+          optional(any) => any
+        }
+
+  @callback filter(actor :: term, context(), options()) :: Keyword.t() | Ash.Expr.t()
+  @callback reject(actor :: term, context(), options()) :: Keyword.t() | Ash.Expr.t()
+  @optional_callbacks [reject: 3]
 
   defmacro __using__(_) do
     quote do
@@ -40,18 +49,16 @@ defmodule Ash.Policy.FilterCheck do
 
       def type, do: :filter
 
-      def describe(opts) do
-        inspect(filter(opts))
-      end
+      def requires_original_data?(_, _), do: false
 
       def strict_check_context(opts) do
         []
       end
 
-      def requires_original_data?(_, _), do: false
-
       def strict_check(nil, authorizer, opts) do
-        if Ash.Expr.template_references_actor?(filter(opts)) do
+        opts = Keyword.put_new(opts, :resource, authorizer.resource)
+
+        if Ash.Expr.template_references_actor?(filter(nil, authorizer, opts)) do
           {:ok, false}
         else
           try_strict_check(nil, authorizer, opts)
@@ -65,8 +72,8 @@ defmodule Ash.Policy.FilterCheck do
       defp try_strict_check(actor, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
 
-        opts
-        |> filter()
+        actor
+        |> filter(authorizer, opts)
         |> Ash.Expr.fill_template(actor, Ash.Policy.FilterCheck.args(authorizer))
         |> try_eval(authorizer)
         |> case do
@@ -84,21 +91,18 @@ defmodule Ash.Policy.FilterCheck do
         end
       end
 
-      defp try_eval(expression, %{query: %Ash.Query{} = query}) do
+      defp try_eval(expression, %{resource: resource, query: %Ash.Query{} = query}) do
         case Ash.Filter.hydrate_refs(expression, %{
-               resource: query.resource,
+               resource: resource,
                aggregates: query.aggregates,
                calculations: query.calculations,
                public?: false
              }) do
           {:ok, hydrated} ->
-            Ash.Expr.eval_hydrated(hydrated,
-              resource: query.resource,
-              unknown_on_unknown_refs?: true
-            )
+            Ash.Expr.eval_hydrated(hydrated, resource: resource, unknown_on_unknown_refs?: true)
 
           {:error, error} ->
-            {:halt, {:error, error}}
+            {:error, error}
         end
       end
 
@@ -108,6 +112,7 @@ defmodule Ash.Policy.FilterCheck do
            }) do
         case Ash.Filter.hydrate_refs(expression, %{
                resource: resource,
+               unknown_on_unknown_refs?: true,
                aggregates: %{},
                calculations: %{},
                public?: false
@@ -148,7 +153,7 @@ defmodule Ash.Policy.FilterCheck do
             )
 
           {:error, error} ->
-            {:halt, {:error, error}}
+            {:error, error}
         end
       end
 
@@ -160,14 +165,10 @@ defmodule Ash.Policy.FilterCheck do
                public?: false
              }) do
           {:ok, hydrated} ->
-            Ash.Expr.eval_hydrated(hydrated,
-              resource: resource,
-              resource: resource,
-              unknown_on_unknown_refs?: true
-            )
+            Ash.Expr.eval_hydrated(hydrated, resource: resource, unknown_on_unknown_refs?: true)
 
           {:error, error} ->
-            {:halt, {:error, error}}
+            {:error, error}
         end
       end
 
@@ -181,7 +182,7 @@ defmodule Ash.Policy.FilterCheck do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
 
         Ash.Expr.fill_template(
-          filter(opts),
+          filter(actor, authorizer, opts),
           actor,
           Ash.Policy.FilterCheck.args(authorizer)
         )
@@ -191,14 +192,15 @@ defmodule Ash.Policy.FilterCheck do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
 
         Ash.Expr.fill_template(
-          reject(opts),
+          reject(actor, authorizer, opts),
           actor,
           Ash.Policy.FilterCheck.args(authorizer)
         )
       end
 
-      def reject(opts) do
-        [not: filter(opts)]
+      def reject(actor, authorizer, opts) do
+        opts = Keyword.put_new(opts, :resource, authorizer.resource)
+        [not: filter(actor, authorizer, opts)]
       end
 
       def check(actor, data, authorizer, opts) do
@@ -212,7 +214,7 @@ defmodule Ash.Policy.FilterCheck do
 
         authorizer.resource
         |> Ash.Query.filter(^filter)
-        |> Ash.Query.filter(^auto_filter(authorizer.actor, authorizer, opts))
+        |> Ash.Query.filter(^auto_filter(actor, authorizer, opts))
         |> Ash.read(domain: authorizer.domain)
         |> case do
           {:ok, authorized_data} ->
@@ -227,7 +229,7 @@ defmodule Ash.Policy.FilterCheck do
         end
       end
 
-      defoverridable reject: 1, describe: 1
+      defoverridable reject: 3, requires_original_data?: 2
     end
   end
 

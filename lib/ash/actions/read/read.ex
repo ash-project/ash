@@ -180,7 +180,7 @@ defmodule Ash.Actions.Read do
           Enum.any?(Map.take(record, pkey), fn {_, v} -> is_nil(v) end)
         end)
 
-    reuse_values? = !Keyword.get(opts, :reselect_all?, false)
+    reuse_values? = Keyword.get(opts, :reuse_values?, false)
 
     {calculations_in_query, calculations_at_runtime, query} =
       Ash.Actions.Read.Calculations.split_and_load_calculations(
@@ -682,6 +682,7 @@ defmodule Ash.Actions.Read do
            ])
            |> Ash.Query.load(calculations_in_query)
            |> Ash.Query.select(must_be_reselected)
+           |> Ash.DataLayer.Simple.set_data(initial_data)
            |> Ash.Query.do_filter(filter),
          {:ok, data_layer_calculations} <-
            hydrate_calculations(

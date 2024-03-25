@@ -224,14 +224,12 @@ There are two ways to write a filter check - by creating a module and using the 
 defmodule MyApp.Checks.ActorOverAgeLimit do
   use Ash.Policy.FilterCheck
 
-  require Ash.Query
-
   # A description is not necessary, as it will be derived from the filter, but one could be added
   # def describe(_opts), do: "actor is over the age limit"
 
   # Filter checks don't have a `context` available to them
   def filter(_options) do
-    Ash.Query.expr(age_limit <= ^actor(:age))
+    expr(age_limit <= ^actor(:age))
   end
 end
 ```

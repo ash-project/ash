@@ -1816,19 +1816,25 @@ defmodule Ash.Actions.Update.Bulk do
         resource |> Ash.Resource.Info.public_attributes() |> Enum.map(& &1.name)
       end
 
-    case List.wrap(changeset.load) ++ select do
-      [] ->
-        {:ok, records}
-
-      load ->
+    case Ash.load(records, select,
+           reuse_values?: true,
+           domain: domain,
+           actor: opts[:actor],
+           authorize?: opts[:authorize?],
+           tracer: opts[:tracer]
+         ) do
+      {:ok, records} ->
         Ash.load(
           records,
-          load,
+          List.wrap(changeset.load),
           domain: domain,
           actor: opts[:actor],
           authorize?: opts[:authorize?],
           tracer: opts[:tracer]
         )
+
+      other ->
+        other
     end
   end
 

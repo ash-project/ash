@@ -372,13 +372,6 @@ defmodule Ash.Actions.Create.Bulk do
               data_layer_can_bulk?,
               ref
             )
-            |> case do
-              {:error, error} ->
-                Ash.DataLayer.rollback(resource, error)
-
-              other ->
-                other
-            end
           end,
           opts[:timeout],
           %{
@@ -1185,31 +1178,41 @@ defmodule Ash.Actions.Create.Bulk do
     changes
     |> run_bulk_after_changes(all_changes, results, changesets_by_index, opts, ref)
     |> then(fn records ->
-      if opts[:select] || opts[:load] do
-        select =
-          if opts[:select] do
-            List.wrap(opts[:select])
-          else
-            resource |> Ash.Resource.Info.public_attributes() |> Enum.map(& &1.name)
+      select =
+        if opts[:select] do
+          List.wrap(opts[:select])
+        else
+          resource |> Ash.Resource.Info.public_attributes() |> Enum.map(& &1.name)
+        end
+
+      case Ash.load(
+             records,
+             select,
+             reuse_values?: true,
+             domain: domain,
+             actor: opts[:actor],
+             authorize?: opts[:authorize?],
+             tracer: opts[:tracer]
+           ) do
+        {:ok, records} ->
+          Ash.load(
+            records,
+            List.wrap(opts[:load]),
+            domain: domain,
+            actor: opts[:actor],
+            authorize?: opts[:authorize?],
+            tracer: opts[:tracer]
+          )
+          |> case do
+            {:ok, records} ->
+              {:ok, Enum.reject(records, & &1.__metadata__[:private][:missing_from_data_layer])}
+
+            {:error, error} ->
+              {:error, error}
           end
 
-        Ash.load(
-          records,
-          List.wrap(opts[:load]) ++ select,
-          domain: domain,
-          actor: opts[:actor],
-          authorize?: opts[:authorize?],
-          tracer: opts[:tracer]
-        )
-        |> case do
-          {:ok, records} ->
-            {:ok, Enum.reject(records, & &1.__metadata__[:private][:missing_from_data_layer])}
-
-          {:error, error} ->
-            {:error, error}
-        end
-      else
-        {:ok, records}
+        other ->
+          other
       end
     end)
     |> case do

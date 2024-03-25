@@ -1044,13 +1044,13 @@ defmodule Ash.Test.CalculationTest do
   test "simple expression calculations will be run in memory" do
     user =
       User
-      |> Ash.Changeset.new(%{first_name: "bob", last_name: "sagat"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{first_name: "bob", last_name: "sagat"})
+      |> Ash.create!()
 
     assert "george sagat" ==
              user
              |> Map.put(:first_name, "george")
-             |> Api.load!(:string_join_full_name)
+             |> Ash.load!(:string_join_full_name, reuse_values?: true)
              |> Map.get(:string_join_full_name)
   end
 
@@ -1255,7 +1255,7 @@ defmodule Ash.Test.CalculationTest do
       |> Map.update!(:bio, fn bio ->
         %{bio | greeting: "A new value it definitely wasn't before!"}
       end)
-      |> Api.load!([:bio_greeting])
+      |> Ash.load!([:bio_greeting], reuse_values?: true)
       |> Map.get(:bio_greeting)
 
     assert greeting == "A new value it definitely wasn't before!"
@@ -1265,22 +1265,22 @@ defmodule Ash.Test.CalculationTest do
       |> Map.update!(:bio, fn bio ->
         %{bio | greeting: %Ash.NotLoaded{}}
       end)
-      |> Api.load!([:bio_greeting])
+      |> Ash.load!([:bio_greeting], reuse_values?: true)
       |> Map.get(:bio_greeting)
 
     assert greeting == "Yo!"
   end
 
-  test "calculation dependencies are refetched if `reselect_all?` is `true`", %{user1: user1} do
+  test "calculation dependencies are reused if `reuse_values?` is `true`", %{user1: user1} do
     greeting =
       user1
       |> Map.update!(:bio, fn bio ->
         %{bio | greeting: "A new value it definitely wasn't before!"}
       end)
-      |> Api.load!([:bio_greeting], reselect_all?: true)
+      |> Ash.load!([:bio_greeting], reuse_values?: true)
       |> Map.get(:bio_greeting)
 
-    assert greeting == "Yo!"
+    assert greeting == "A new value it definitely wasn't before!"
   end
 
   test "expression calculations that depend on runtime calculations work", %{user1: user1} do

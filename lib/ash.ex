@@ -104,13 +104,11 @@ defmodule Ash do
                           """,
                           default: false
                         ],
-                        reselect_all?: [
+                        reuse_values?: [
                           type: :boolean,
                           default: false,
-                          doc: """
-                          Whether or not to reselect all attributes depended on by loads.
-                          By default, we only reselect fields that weren't already selected.
-                          """
+                          doc:
+                            "Whether calculations are allowed to reuse values that have already been loaded, or must refetch them from the data layer."
                         ]
                       ],
                       @global_opts,
@@ -208,13 +206,11 @@ defmodule Ash do
                             "If set to true, values will only be loaded if the related value isn't currently loaded.",
                           default: false
                         ],
-                        reselect_all?: [
+                        reuse_values?: [
                           type: :boolean,
                           default: false,
-                          doc: """
-                          Whether or not to reselect all attributes depended on by loads.
-                          By default, we only reselect fields that weren't already selected.
-                          """
+                          doc:
+                            "Whether calculations are allowed to reuse values that have already been loaded, or must refetch them from the data layer."
                         ]
                       ],
                       @global_opts,
@@ -248,13 +244,11 @@ defmodule Ash do
                        type: :any,
                        doc: "Context to be set on the query being run"
                      ],
-                     reselect_all?: [
+                     reuse_values?: [
                        type: :boolean,
                        default: false,
-                       doc: """
-                       Whether or not to reselect all attributes depended on by loads.
-                       By default, we only reselect fields that weren't already selected.
-                       """
+                       doc:
+                         "Whether calculations are allowed to reuse values that have already been loaded, or must refetch them from the data layer."
                      ]
                    ]
                    |> Spark.Options.merge(@global_opts, "Global Options")

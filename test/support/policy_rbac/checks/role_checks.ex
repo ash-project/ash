@@ -57,15 +57,13 @@ defmodule Ash.Test.Support.PolicyRbac.Checks.RoleChecks do
     # :create | :update | :destroy | :read
     action_type = authorizer.action.type
 
-    Ash.Query.expr(
-      memberships.role in ^roles_that_can(action_type) and memberships.user_id == ^actor.id
-    )
+    expr(memberships.role in ^roles_that_can(action_type) and memberships.user_id == ^actor.id)
   end
 
   def auto_filter(actor, authorizer, opts) do
     # We're asking for specific roles
     if opts[:roles] do
-      Ash.Query.expr(
+      expr(
         organization.memberships.role in ^opts[:roles] and
           organization.memberships.user_id == ^actor.id and
           organization.memberships.resource == ^opts[:resource] and
@@ -76,7 +74,7 @@ defmodule Ash.Test.Support.PolicyRbac.Checks.RoleChecks do
       # :create | :update | :destroy | :read
       action_type = authorizer.action.type
 
-      Ash.Query.expr(
+      expr(
         organization.memberships.role in ^roles_that_can(action_type) and
           organization.memberships.user_id == ^actor.id and
           organization.memberships.resource == ^opts[:resource] and

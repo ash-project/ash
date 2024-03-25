@@ -545,6 +545,7 @@ defmodule Ash.Actions.Helpers do
     end
   end
 
+  def apply_opts_load(%Ash.Changeset{} = changeset, opts) do
     if opts[:load] do
       Ash.Changeset.load(changeset, opts[:load])
     else

@@ -785,145 +785,99 @@ defmodule Ash.Actions.Read.Calculations do
           match?(%Ash.Query.Aggregate{}, load) ->
             aggregate = load
 
-            if loaded?(initial_data, relationship_path ++ load) do
-              query
-            else
-              case find_equivalent_aggregate(query, aggregate) do
-                {:ok, equivalent_aggregate} ->
-                  if equivalent_aggregate.load == aggregate.load and
-                       equivalent_aggregate.name == aggregate.name do
-                    query
-                  else
-                    new_calc_name =
-                      {:__calc_dep__,
-                       [
-                         {calc_path, {:agg, equivalent_aggregate.name, equivalent_aggregate.load},
-                          calc_name, calc_load}
-                       ]}
+            case find_equivalent_aggregate(query, aggregate) do
+              {:ok, equivalent_aggregate} ->
+                if equivalent_aggregate.load == aggregate.load and
+                     equivalent_aggregate.name == aggregate.name do
+                  query
+                else
+                  new_calc_name =
+                    {:__calc_dep__,
+                     [
+                       {calc_path, {:agg, equivalent_aggregate.name, equivalent_aggregate.load},
+                        calc_name, calc_load}
+                     ]}
 
-                    Ash.Query.calculate(
-                      query,
-                      new_calc_name,
-                      {Ash.Resource.Calculation.FetchAgg,
-                       load: equivalent_aggregate.name, name: equivalent_aggregate.load},
-                      equivalent_aggregate.type,
-                      %{},
-                      equivalent_aggregate.constraints,
-                      equivalent_aggregate.context
-                    )
-                    |> add_calculation_dependency(calc_name, new_calc_name)
+                  Ash.Query.calculate(
+                    query,
+                    new_calc_name,
+                    {Ash.Resource.Calculation.FetchAgg,
+                     load: equivalent_aggregate.name, name: equivalent_aggregate.load},
+                    equivalent_aggregate.type,
+                    %{},
+                    equivalent_aggregate.constraints,
+                    equivalent_aggregate.context
+                  )
+                  |> add_calculation_dependency(calc_name, new_calc_name)
+                end
+
+              :error ->
+                new_agg =
+                  if query.aggregates[aggregate.name] do
+                    %{
+                      aggregate
+                      | name:
+                          {:__calc_dep__,
+                           [
+                             {calc_path, {:agg, aggregate.name, aggregate.load}, calc_name,
+                              calc_load}
+                           ]},
+                        load: nil
+                    }
+                  else
+                    aggregate
                   end
 
-                :error ->
-                  new_agg =
-                    if query.aggregates[aggregate.name] do
-                      %{
-                        aggregate
-                        | name:
-                            {:__calc_dep__,
-                             [
-                               {calc_path, {:agg, aggregate.name, aggregate.load}, calc_name,
-                                calc_load}
-                             ]},
-                          load: nil
-                      }
-                    else
-                      new_calc_name =
-                        {:__calc_dep__,
-                         [
-                           {calc_path,
-                            {:agg, equivalent_aggregate.name, equivalent_aggregate.load},
-                            calc_name, calc_load}
-                         ]}
-
-                      Ash.Query.calculate(
-                        query,
-                        new_calc_name,
-                        {Ash.Resource.Calculation.FetchAgg,
-                         load: equivalent_aggregate.name, name: equivalent_aggregate.load},
-                        equivalent_aggregate.type,
-                        equivalent_aggregate.context,
-                        equivalent_aggregate.constraints
-                      )
-                      |> add_calculation_dependency(calc_name, new_calc_name)
-                    end
-
-                :error ->
-                  new_agg =
-                    if query.aggregates[aggregate.name] do
-                      %{
-                        aggregate
-                        | name:
-                            {:__calc_dep__,
-                             [
-                               {calc_path, {:agg, aggregate.name, aggregate.load}, calc_name,
-                                calc_load}
-                             ]},
-                          load: nil
-                      }
-                    else
-                      aggregate
-                    end
-
-                  Ash.Query.load(query, new_agg)
-              end
+                Ash.Query.load(query, new_agg)
             end
 
           attr = Ash.Resource.Info.attribute(query.resource, load) ->
-            if loaded?(initial_data, relationship_path ++ load) do
-              query
-            else
-              case Map.fetch(query.load_through[:attribute] || %{}, attr.name) do
-                :error ->
-                  query =
-                    Ash.Query.ensure_selected(query, attr.name)
+            case Map.fetch(query.load_through[:attribute] || %{}, attr.name) do
+              :error ->
+                query =
+                  Ash.Query.ensure_selected(query, attr.name)
 
-                  if further in [nil, []] do
-                    query
-                  else
-                    load_through =
-                      query.load_through
-                      |> Map.put_new(:attribute, %{})
-                      |> Map.update!(:attribute, &Map.put(&1, attr.name, further))
-
-                    %{query | load_through: load_through}
-                  end
-
-                {:ok, value} ->
+                if further in [nil, []] do
+                  query
+                else
                   load_through =
-                    Map.update!(query.load_through, :attribute, fn attributes_load_through ->
-                      Map.put(
-                        attributes_load_through,
-                        attr.name,
-                        merge_load_through(
-                          value || [],
-                          further || [],
-                          attr.type,
-                          attr.constraints,
-                          wdomainpi,
-                          calc_name,
-                          calc_load,
-                          calc_path,
-                          relationship_path,
-                          initial_data
-                        )
-                      )
-                    end)
+                    query.load_through
+                    |> Map.put_new(:attribute, %{})
+                    |> Map.update!(:attribute, &Map.put(&1, attr.name, further))
 
-                  %{
-                    query
-                    | load_through: load_through
-                  }
-                  |> Ash.Query.ensure_selected(attr.name)
-              end
+                  %{query | load_through: load_through}
+                end
+
+              {:ok, value} ->
+                load_through =
+                  Map.update!(query.load_through, :attribute, fn attributes_load_through ->
+                    Map.put(
+                      attributes_load_through,
+                      attr.name,
+                      merge_load_through(
+                        value || [],
+                        further || [],
+                        attr.type,
+                        attr.constraints,
+                        domain,
+                        calc_name,
+                        calc_load,
+                        calc_path,
+                        relationship_path,
+                        initial_data
+                      )
+                    )
+                  end)
+
+                %{
+                  query
+                  | load_through: load_through
+                }
+                |> Ash.Query.ensure_selected(attr.name)
             end
 
           agg = Ash.Resource.Info.aggregate(query.resource, load) ->
-            if loaded?(initial_data, relationship_path ++ load) do
-              query
-            else
-              Ash.Query.load(query, agg.name)
-            end
+            Ash.Query.load(query, agg.name)
 
           resource_calculation = Ash.Resource.Info.calculation(query.resource, load) ->
             {args, load_through} =
@@ -1106,12 +1060,6 @@ defmodule Ash.Actions.Read.Calculations do
         end
     end)
   end
-
-  defp loaded?({:ok, initial_data}, path) do
-    Ash.Resource.loaded?(initial_data, path, strict?: true, type: :request)
-  end
-
-  defp loaded?(_, _), do: false
 
   defp rename_and_replace_calculation(query, current_key, new_calc) do
     new_calculations =
