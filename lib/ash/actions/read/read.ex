@@ -139,7 +139,8 @@ defmodule Ash.Actions.Read do
         opts[:actor],
         opts[:authorize?],
         query.tenant,
-        opts[:tracer]
+        opts[:tracer],
+        query.domain
       )
 
     page_opts = page_opts(action, opts)
@@ -197,7 +198,8 @@ defmodule Ash.Actions.Read do
         opts[:actor],
         opts[:authorize?],
         query.tenant,
-        opts[:tracer]
+        opts[:tracer],
+        query.domain
       )
 
     query =
@@ -335,7 +337,8 @@ defmodule Ash.Actions.Read do
                    opts[:actor],
                    opts[:authorize?],
                    query.tenant,
-                   opts[:tracer]
+                   opts[:tracer],
+                   query.domain
                  )
            },
            pre_authorization_query <- query,
@@ -364,7 +367,8 @@ defmodule Ash.Actions.Read do
                relationship_path_filters,
                opts[:actor],
                query.tenant,
-               opts[:tracer]
+               opts[:tracer],
+               query.domain
              ),
            query <-
              authorize_loaded_aggregates(
@@ -394,7 +398,8 @@ defmodule Ash.Actions.Read do
                opts[:actor],
                opts[:authorize?],
                query.tenant,
-               opts[:tracer]
+               opts[:tracer],
+               query.domain
              ),
            filter <-
              update_aggregate_filters(
@@ -404,7 +409,8 @@ defmodule Ash.Actions.Read do
                relationship_path_filters,
                opts[:actor],
                query.tenant,
-               opts[:tracer]
+               opts[:tracer],
+               query.domain
              ),
            query <- Map.put(query, :filter, filter),
            query <- Ash.Query.unset(query, :calculations),
@@ -707,7 +713,8 @@ defmodule Ash.Actions.Read do
              relationship_path_filters,
              opts[:actor],
              query.tenant,
-             opts[:tracer]
+             opts[:tracer],
+             query.domain
            ),
          query <-
            authorize_loaded_aggregates(
@@ -1062,18 +1069,20 @@ defmodule Ash.Actions.Read do
   end
 
   @doc false
-  def add_calc_context_to_filter(filter, actor, authorize?, tenant, tracer) do
+  def add_calc_context_to_filter(filter, actor, authorize?, tenant, tracer, domain) do
     Ash.Filter.map(filter, fn
       %Ash.Query.Parent{} = parent ->
         %{
           parent
-          | expr: add_calc_context_to_filter(parent.expr, actor, authorize?, tenant, tracer)
+          | expr:
+              add_calc_context_to_filter(parent.expr, actor, authorize?, tenant, tracer, domain)
         }
 
       %Ash.Query.Exists{} = exists ->
         %{
           exists
-          | expr: add_calc_context_to_filter(exists.expr, actor, authorize?, tenant, tracer)
+          | expr:
+              add_calc_context_to_filter(exists.expr, actor, authorize?, tenant, tracer, domain)
         }
 
       %Ash.Query.Ref{attribute: %Ash.Resource.Calculation{}} = ref ->
@@ -1088,7 +1097,7 @@ defmodule Ash.Actions.Read do
         attribute: %Ash.Query.Calculation{} = calc,
         relationship_path: relationship_path
       } = ref ->
-        calc = add_calc_context(calc, actor, authorize?, tenant, tracer)
+        calc = add_calc_context(calc, actor, authorize?, tenant, tracer, domain)
 
         if calc.module.has_expression?() do
           expr =
@@ -1118,7 +1127,8 @@ defmodule Ash.Actions.Read do
             actor,
             authorize?,
             tenant,
-            tracer
+            tracer,
+            domain
           )
         else
           %{ref | attribute: calc}
@@ -1127,7 +1137,7 @@ defmodule Ash.Actions.Read do
       %Ash.Query.Ref{attribute: %Ash.Query.Aggregate{} = agg} = ref ->
         %{
           ref
-          | attribute: add_calc_context(agg, actor, authorize?, tenant, tracer)
+          | attribute: add_calc_context(agg, actor, authorize?, tenant, tracer, domain)
         }
 
       other ->
@@ -1387,14 +1397,22 @@ defmodule Ash.Actions.Read do
 
   defp validate_get(_, _, _), do: :ok
 
-  defp add_calc_context_to_query(query, actor, authorize?, tenant, tracer) do
+  defp add_calc_context_to_query(query, actor, authorize?, tenant, tracer, domain) do
     %{
       query
       | load:
           Keyword.new(query.load, fn {key, related_query} ->
             case related_query do
               %Ash.Query{} = related_query ->
-                {key, add_calc_context_to_query(related_query, actor, authorize?, tenant, tracer)}
+                {key,
+                 add_calc_context_to_query(
+                   related_query,
+                   actor,
+                   authorize?,
+                   tenant,
+                   tracer,
+                   domain
+                 )}
 
               other ->
                 load =
@@ -1402,25 +1420,46 @@ defmodule Ash.Actions.Read do
                   |> Ash.Resource.Info.related(key)
                   |> Ash.Query.new(domain: query.domain)
                   |> Ash.Query.load(other)
-                  |> add_calc_context_to_query(actor, authorize?, tenant, tracer)
+                  |> add_calc_context_to_query(actor, authorize?, tenant, tracer, domain)
 
                 {key, load}
             end
           end),
         aggregates:
           Map.new(query.aggregates, fn {key, agg} ->
-            {key, add_calc_context(agg, actor, agg.authorize? && authorize?, tenant, tracer)}
+            {key,
+             add_calc_context(agg, actor, agg.authorize? && authorize?, tenant, tracer, domain)}
           end),
         calculations:
           Map.new(query.calculations, fn {key, calc} ->
-            {key, add_calc_context(calc, actor, authorize?, tenant, tracer)}
+            {key, add_calc_context(calc, actor, authorize?, tenant, tracer, domain)}
           end),
-        filter: add_calc_context_to_filter(query.filter, actor, authorize?, tenant, tracer)
+        filter:
+          add_calc_context_to_filter(query.filter, actor, authorize?, tenant, tracer, domain)
     }
   end
 
   @doc false
-  def add_calc_context(%Ash.Query.Aggregate{} = agg, actor, authorize?, tenant, tracer) do
+  def add_calc_context(%Ash.Query.Aggregate{} = agg, actor, authorize?, tenant, tracer, domain) do
+    read_action =
+      agg.read_action || Ash.Resource.Info.primary_action!(agg.query.resource, :read).name
+
+    query =
+      if agg.query.__validated_for_action__ != read_action do
+        domain =
+          if agg.query.domain do
+            agg.query.domain
+          else
+            Ash.Domain.Info.related_domain(agg.resource, agg.relationship_path, domain)
+          end
+
+        agg.query
+        |> Ash.Query.set_context(%{private: %{require_actor?: false}})
+        |> Ash.Query.for_read(read_action, %{}, domain: domain)
+      else
+        agg.query
+      end
+
     %{
       agg
       | context:
@@ -1433,15 +1472,15 @@ defmodule Ash.Actions.Read do
             },
             agg.context
           ),
-        query: add_calc_context_to_query(agg.query, actor, authorize?, tenant, tracer),
+        query: add_calc_context_to_query(query, actor, authorize?, tenant, tracer, domain),
         join_filters:
           Map.new(agg.join_filters, fn {key, filter} ->
-            {key, add_calc_context_to_filter(filter, actor, authorize?, tenant, tracer)}
+            {key, add_calc_context_to_filter(filter, actor, authorize?, tenant, tracer, domain)}
           end)
     }
   end
 
-  def add_calc_context(calc, actor, authorize?, tenant, tracer) do
+  def add_calc_context(calc, actor, authorize?, tenant, tracer, _domain) do
     %{
       calc
       | context: %{
@@ -1455,17 +1494,15 @@ defmodule Ash.Actions.Read do
   end
 
   @doc false
-  def add_calc_context(calc, context) do
-    %{
-      calc
-      | context: %{
-          calc.context
-          | actor: context.actor,
-            authorize?: context.authorize?,
-            tenant: context.tenant,
-            tracer: context.tracer
-        }
-    }
+  def add_calc_context(calc, context, domain) do
+    add_calc_context(
+      calc,
+      context.actor,
+      context.authorize?,
+      context.tenant,
+      context.tracer,
+      domain
+    )
   end
 
   @doc false
@@ -1476,7 +1513,8 @@ defmodule Ash.Actions.Read do
         relationship_path_filters,
         actor,
         tenant,
-        tracer
+        tracer,
+        domain
       ) do
     if authorize? do
       Filter.update_aggregates(filter, fn aggregate, _ref ->
@@ -1487,7 +1525,8 @@ defmodule Ash.Actions.Read do
             actor,
             authorize?,
             tenant,
-            tracer
+            tracer,
+            domain
           )
         else
           aggregate
@@ -2088,7 +2127,8 @@ defmodule Ash.Actions.Read do
          relationship_path_filters,
          actor,
          tenant,
-         tracer
+         tracer,
+         domain
        ) do
     Enum.map(hydrated_calculations, fn {calculation, expression} ->
       {calculation,
@@ -2099,28 +2139,35 @@ defmodule Ash.Actions.Read do
          relationship_path_filters,
          actor,
          tenant,
-         tracer
+         tracer,
+         domain
        )}
     end)
   end
 
   defp authorize_loaded_aggregates(query, path_filters, actor, authorize?, tenant, tracer) do
     Enum.reduce(query.aggregates, query, fn {name, aggregate}, query ->
-      aggregate = add_calc_context(aggregate, actor, authorize?, tenant, tracer)
-
       aggregate =
         if authorize? && aggregate.authorize? do
-          authorize_aggregate(aggregate, path_filters, actor, authorize?, tenant, tracer)
+          authorize_aggregate(
+            aggregate,
+            path_filters,
+            actor,
+            authorize?,
+            tenant,
+            tracer,
+            query.domain
+          )
         else
-          aggregate
+          add_calc_context(aggregate, actor, authorize?, tenant, tracer, query.domain)
         end
 
       %{query | aggregates: Map.put(query.aggregates, name, aggregate)}
     end)
   end
 
-  defp authorize_aggregate(aggregate, path_filters, actor, authorize?, tenant, tracer) do
-    aggregate = add_calc_context(aggregate, actor, authorize?, tenant, tracer)
+  defp authorize_aggregate(aggregate, path_filters, actor, authorize?, tenant, tracer, domain) do
+    aggregate = add_calc_context(aggregate, actor, authorize?, tenant, tracer, domain)
     last_relationship = last_relationship(aggregate.resource, aggregate.relationship_path)
 
     additional_filter =
@@ -2145,7 +2192,8 @@ defmodule Ash.Actions.Read do
              path_filters,
              actor,
              tenant,
-             tracer
+             tracer,
+             domain
            ),
          {:ok, field} <-
            aggregate_field_with_related_filters(
@@ -2154,7 +2202,8 @@ defmodule Ash.Actions.Read do
              actor,
              authorize?,
              tenant,
-             tracer
+             tracer,
+             domain
            ) do
       %{
         aggregate
@@ -2180,7 +2229,8 @@ defmodule Ash.Actions.Read do
          _actor,
          _authorize?,
          _tenant,
-         _tracer
+         _tracer,
+         _domain
        ),
        do: {:ok, nil}
 
@@ -2190,9 +2240,10 @@ defmodule Ash.Actions.Read do
          actor,
          authorize?,
          tenant,
-         tracer
+         tracer,
+         domain
        ) do
-    calc = add_calc_context(field, actor, authorize?, tenant, tracer)
+    calc = add_calc_context(field, actor, authorize?, tenant, tracer, domain)
 
     related_resource = Ash.Resource.Info.related(agg.resource, agg.relationship_path)
 
@@ -2222,7 +2273,8 @@ defmodule Ash.Actions.Read do
           actor,
           authorize?,
           tenant,
-          tracer
+          tracer,
+          domain
         )
 
       case do_filter_with_related(related_resource, expr, path_filters, []) do
@@ -2243,12 +2295,13 @@ defmodule Ash.Actions.Read do
          actor,
          authorize?,
          tenant,
-         tracer
+         tracer,
+         domain
        ) do
-    field = add_calc_context(field, actor, authorize?, tenant, tracer)
+    field = add_calc_context(field, actor, authorize?, tenant, tracer, domain)
 
     if authorize? && field.authorize? do
-      authorize_aggregate(field, path_filters, actor, authorize?, tenant, tracer)
+      authorize_aggregate(field, path_filters, actor, authorize?, tenant, tracer, domain)
     else
       {:ok, agg}
     end
@@ -2260,7 +2313,8 @@ defmodule Ash.Actions.Read do
          actor,
          authorize?,
          tenant,
-         tracer
+         tracer,
+         domain
        )
        when is_atom(aggregate.field) do
     related_resource = Ash.Resource.Info.related(aggregate.resource, aggregate.relationship_path)
@@ -2287,7 +2341,8 @@ defmodule Ash.Actions.Read do
               actor,
               authorize?,
               tenant,
-              tracer
+              tracer,
+              domain
             )
 
           {:error, error} ->
@@ -2331,7 +2386,8 @@ defmodule Ash.Actions.Read do
             actor,
             authorize?,
             tenant,
-            tracer
+            tracer,
+            domain
           )
         else
           {:error, error} ->
@@ -2352,7 +2408,8 @@ defmodule Ash.Actions.Read do
          _actor,
          _authorize?,
          _tenant,
-         _tracer
+         _tracer,
+         _domain
        )
        when is_atom(aggregate.field) do
     {:ok, aggregate.field}

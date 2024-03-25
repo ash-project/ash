@@ -163,17 +163,6 @@ defmodule Ash.Query.Aggregate do
           build_opts -> build_query(related, build_opts)
         end
 
-      read_action = opts[:read_action] || Ash.Resource.Info.primary_action!(related, :read).name
-
-      query =
-        if query.__validated_for_action__ != read_action do
-          query
-          |> Ash.Query.set_context(%{private: %{require_actor?: false}})
-          |> Ash.Query.for_read(read_action, %{})
-        else
-          query
-        end
-
       opts[:join_filters]
       |> Kernel.||(%{})
       |> Enum.reduce_while({:ok, %{}}, fn {path, filter}, {:ok, acc} ->

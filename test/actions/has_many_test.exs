@@ -89,6 +89,7 @@ defmodule Ash.Test.Actions.HasManyTest do
 
     resources do
       resource Post
+      resource Comment
     end
   end
 
