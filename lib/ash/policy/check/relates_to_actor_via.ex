@@ -1,6 +1,6 @@
 defmodule Ash.Policy.Check.RelatesToActorVia do
   @moduledoc "This check passes if the data relates to the actor via the specified relationship or path of relationships."
-  use Ash.Policy.FilterCheckWithContext
+  use Ash.Policy.FilterCheck
 
   @impl true
   def describe(opts) do

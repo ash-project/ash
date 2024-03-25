@@ -126,7 +126,7 @@ defmodule Ash.Query do
   alias Ash.Query.{Aggregate, Calculation}
 
   require Ash.Tracer
-  import Ash.Expr, only: [expr?: 1]
+  import Ash.Expr, only: [expr: 1, expr?: 1]
 
   defimpl Inspect do
     import Inspect.Algebra
@@ -763,16 +763,6 @@ defmodule Ash.Query do
         )
 
       do_filter(query, built_filter)
-    end
-  end
-
-  @doc """
-  Creates an Ash expression for evaluation later.
-  """
-  defmacro expr(body) do
-    quote location: :keep do
-      require Ash.Expr
-      Ash.Expr.expr(unquote(body))
     end
   end
 

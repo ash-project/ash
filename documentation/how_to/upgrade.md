@@ -77,6 +77,8 @@ This module has been renamed to `Ash.Resource.Calculation`. You will need to ren
 
 Ash.Query.to_query has been removed. Use `Ash.Query.new` instead.
 
+Ash.Query.expr has been removed. Use `Ash.Expr.expr` instead.
+
 #### Aggregates
 
 `first` and `list` aggregates have a new option called `include_nil?`, which _defaults to false_. You may need to add `include_nil?: true` to your resource aggregates if you wish to retain the old behavior.
@@ -92,6 +94,10 @@ Ash.Changeset.new/2 has been removed. `Ash.Changeset.new/1` is still available f
 `Ash.Changeset.manage_relationship/4` no longer uses `:all` to signal that all changes will be sent to the join relationship. Instead, use `:*`.
 
 `Ash.Changeset.filter` now accepts expressions. The value of the filter is no longer a simple equality map, but rather a regular Ash expression. We add to it on successive calls to `Ash.Changeset.filter`. Additionally, this value is stored in `changeset.filter` instead of `changeset.filters`.
+
+#### Ash.Policy.FilterCheckWithContext
+
+`Ash.Policy.FilterCheck` and `Ash.Policy.FilterCheckWithContext` have been combined. The name is `Ash.Policy.FilterCheck`, but the callbacks take the extra arguments present in  `Ash.Policy.FilterCheckWithContext`.
 
 #### Builtin Changes
 
@@ -557,4 +563,26 @@ case record.attribute do
   value ->
     handle_present_attribute(...)
 end
+```
+
+---
+
+### Calculations do not reuse values by default
+
+When loading data in 2.0 the option `reselect_all?` defaulted to `false`. What this would mean is that existing values for attributes would be reused, instead of visiting the data layer, by default. This can be an extremely valuable piece of behavior, but *defaulting* to it often means accidentally using data as a cache that you did not intent to use as a cache. Take the following example:
+
+```elixir
+user = %User{first_name: "fred", last_name: "weasley"}
+
+Ash.update!(user, first_name: "george")
+
+user |> Ash.load!(:full_name)
+# in 2.0 -> fred weasley
+# in 3.0 -> george weasley
+```
+
+To opt into the old behavior, which we recommend doing on a case-by-case basis, you can pass `reuse_values?: true`. For example:
+
+```elixir
+user |> Ash.load!(:full_name, reuse_values?: true)
 ```

@@ -88,9 +88,9 @@ defmodule Ash.Actions.Update do
             |> Map.put(:select, changeset.select)
             |> Ash.Changeset.set_context(changeset.context)
 
-======
           {atomic_changeset, opts} =
             Ash.Actions.Helpers.add_process_context(domain, atomic_changeset, opts)
+
           atomic_changeset = Helpers.apply_opts_load(atomic_changeset, opts)
 
           opts =

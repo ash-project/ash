@@ -22,12 +22,12 @@ defmodule Ash.Resource.Calculation.Concat do
     Enum.reduce(opts[:keys], nil, fn key, expr ->
       if expr do
         if opts[:separator] do
-          Ash.Query.expr(^expr <> ^opts[:separator] <> ^ref(key))
+          expr(^expr <> ^opts[:separator] <> ^ref(key))
         else
-          Ash.Query.expr(^expr <> ^ref(key))
+          expr(^expr <> ^ref(key))
         end
       else
-        Ash.Query.expr(^ref(key))
+        expr(^ref(key))
       end
     end)
   end

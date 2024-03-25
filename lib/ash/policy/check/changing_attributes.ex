@@ -1,6 +1,6 @@
 defmodule Ash.Policy.Check.ChangingAttributes do
   @moduledoc "This check is true when attribute changes correspond to the provided options."
-  use Ash.Policy.FilterCheckWithContext
+  use Ash.Policy.FilterCheck
 
   @impl true
   def describe(opts) do

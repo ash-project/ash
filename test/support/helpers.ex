@@ -21,7 +21,9 @@ defmodule Ash.Test.Helpers do
 
   defmacro hydrated_expr(resource, expr) do
     quote do
-      Ash.Query.expr(unquote(expr))
+      require Ash.Expr
+
+      Ash.Expr.expr(unquote(expr))
       |> Ash.Filter.hydrate_refs(%{
         resource: unquote(resource),
         aggregates: %{},
