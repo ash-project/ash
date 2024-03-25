@@ -121,6 +121,41 @@ defmodule Ash.Type.Union do
   @impl true
   def storage_type(_), do: :map
 
+  def loaded?(%Ash.Union{type: type, value: value}, path_to_load, constraints, opts) do
+    config = constraints[:types][type]
+
+    if opts[:type] == :request do
+      case path_to_load do
+        [:* | rest] ->
+          Ash.Type.loaded?(config[:type], value, rest, config[:constraints], opts)
+
+        [^type | rest] ->
+          Ash.Type.loaded?(config[:type], value, rest, config[:constraints], opts)
+
+        [first | _rest] ->
+          if Enum.any?(constraints[:types], fn {key, _} -> key == first end) do
+            true
+          else
+            false
+          end
+
+        [] ->
+          true
+      end
+    else
+      case path_to_load do
+        [:value | rest] ->
+          Ash.Type.loaded?(config[:type], value, rest, config[:constraints], opts)
+
+        [] ->
+          true
+
+        _ ->
+          false
+      end
+    end
+  end
+
   @impl true
   def load(unions, [], _, _), do: {:ok, unions}
 

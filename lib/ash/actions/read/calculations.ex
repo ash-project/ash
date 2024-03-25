@@ -380,7 +380,7 @@ defmodule Ash.Actions.Read.Calculations do
     end)
   end
 
-  def split_and_load_calculations(api, ash_query, missing_pkeys?, initial_data) do
+  def split_and_load_calculations(api, ash_query, missing_pkeys?, initial_data, reuse_values?) do
     can_expression_calculation? =
       !missing_pkeys? &&
         Ash.DataLayer.data_layer_can?(ash_query.resource, :expression_calculation)
@@ -415,7 +415,13 @@ defmodule Ash.Actions.Read.Calculations do
             calculation.context[:tracer]
           )
 
-        case try_evaluate(expression, ash_query.resource, calculation, initial_data) do
+        case try_evaluate(
+               expression,
+               ash_query.resource,
+               calculation,
+               initial_data,
+               reuse_values?
+             ) do
           {:ok, new_calculation} ->
             {in_query, [new_calculation | at_runtime], ash_query}
 
@@ -450,12 +456,25 @@ defmodule Ash.Actions.Read.Calculations do
     end)
   end
 
-  defp try_evaluate(expression, resource, calculation, {:ok, initial_data}) do
+  defp try_evaluate(expression, resource, calculation, {:ok, initial_data}, reuse_values?) do
     expression
-    |> Ash.Filter.list_refs(false, false, true)
-    |> Enum.all?(fn ref ->
-      # consider doing `lists: :any`?
-      Ash.Resource.loaded?(initial_data, ref.relationship_path ++ [ref.attribute], strict?: true)
+    |> Ash.Filter.list_refs(false, false, true, true)
+    |> then(fn refs ->
+      if refs == [] do
+        true
+      else
+        if reuse_values? do
+          Enum.all?(refs, fn ref ->
+            # consider doing `lists: :any`?
+            Ash.Resource.loaded?(initial_data, ref.relationship_path ++ [ref.attribute],
+              strict?: true,
+              type: :request
+            )
+          end)
+        else
+          false
+        end
+      end
     end)
     |> case do
       true ->
@@ -492,7 +511,7 @@ defmodule Ash.Actions.Read.Calculations do
     end
   end
 
-  defp try_evaluate(expression, resource, calculation, _) do
+  defp try_evaluate(expression, resource, calculation, _, _) do
     case Ash.Expr.eval(expression,
            resource: resource,
            unknown_on_unknown_refs?: true
@@ -924,7 +943,7 @@ defmodule Ash.Actions.Read.Calculations do
   end
 
   defp loaded?({:ok, initial_data}, path) do
-    Ash.Resource.loaded?(initial_data, path, strict?: true)
+    Ash.Resource.loaded?(initial_data, path, strict?: true, type: :request)
   end
 
   defp loaded?(_, _), do: false

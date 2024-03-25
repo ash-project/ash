@@ -168,12 +168,15 @@ defmodule Ash.Actions.Read do
           Enum.any?(Map.take(record, pkey), fn {_, v} -> is_nil(v) end)
         end)
 
+    reuse_values? = !Keyword.get(opts, :reselect_all?, false)
+
     {calculations_in_query, calculations_at_runtime, query} =
       Ash.Actions.Read.Calculations.split_and_load_calculations(
         query.api,
         query,
         missing_pkeys?,
-        Keyword.fetch(opts, :initial_data)
+        Keyword.fetch(opts, :initial_data),
+        reuse_values?
       )
 
     query =
@@ -190,10 +193,10 @@ defmodule Ash.Actions.Read do
         select = source_fields(query) ++ (query.select || [])
 
         select =
-          if opts[:reselect_all?] do
-            select
-          else
+          if reuse_values? do
             remove_already_selected(select, opts[:initial_data])
+          else
+            select
           end
 
         query = %{query | select: select}

@@ -390,6 +390,12 @@ defmodule Ash.Test.CalculationTest do
         load bio: [say_hello: %{to: "Fred"}]
       end
 
+      calculate :bio_greeting, :string, expr(bio[:greeting])
+
+      calculate :say_hello_to_fred_expr, :string, expr(record.bio.say_hello(to: "Fred"))
+
+      calculate :say_hello_to_george_expr, :string, expr(record.bio.say_hello(to: "George"))
+
       calculate :say_hello_to_george, :string do
         calculation fn record, _ ->
           record.bio.say_hello
@@ -1143,6 +1149,40 @@ defmodule Ash.Test.CalculationTest do
        %{user1: user1} do
     user1
     |> Api.load!([:say_hello_to_fred, :say_hello_to_george])
+  end
+
+  test "calculation dependencies can detect non-loaded nested values", %{user1: user1} do
+    greeting =
+      user1
+      |> Map.update!(:bio, fn bio ->
+        %{bio | greeting: "A new value it definitely wasn't before!"}
+      end)
+      |> Api.load!([:bio_greeting])
+      |> Map.get(:bio_greeting)
+
+    assert greeting == "A new value it definitely wasn't before!"
+
+    greeting =
+      user1
+      |> Map.update!(:bio, fn bio ->
+        %{bio | greeting: %Ash.NotLoaded{}}
+      end)
+      |> Api.load!([:bio_greeting])
+      |> Map.get(:bio_greeting)
+
+    assert greeting == "Yo!"
+  end
+
+  test "calculation dependencies are refetched if `reselect_all?` is `true`", %{user1: user1} do
+    greeting =
+      user1
+      |> Map.update!(:bio, fn bio ->
+        %{bio | greeting: "A new value it definitely wasn't before!"}
+      end)
+      |> Api.load!([:bio_greeting], reselect_all?: true)
+      |> Map.get(:bio_greeting)
+
+    assert greeting == "Yo!"
   end
 
   test "expression calculations that depend on runtime calculations work", %{user1: user1} do

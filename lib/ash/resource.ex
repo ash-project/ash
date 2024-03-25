@@ -510,7 +510,7 @@ defmodule Ash.Resource do
       )
   end
 
-  def loaded?(%resource{} = record, [key | rest], opts) when is_atom(key) do
+  def loaded?(%resource{} = record, [key | rest], opts) when is_atom(key) and not is_nil(key) do
     loaded?(record, [Ash.Resource.Info.field(resource, key) | rest], opts)
   end
 

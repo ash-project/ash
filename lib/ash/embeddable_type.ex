@@ -458,6 +458,10 @@ defmodule Ash.EmbeddableType do
         {:not_atomic, "Embedded attributes do not support atomic updates"}
       end
 
+      def loaded?(record, path_to_load, _constraints, opts) do
+        Ash.Resource.loaded?(record, path_to_load, opts)
+      end
+
       def load(record, load, _constraints, %{api: api} = context) do
         opts = Ash.context_to_opts(context)
 

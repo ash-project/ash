@@ -315,6 +315,7 @@ defmodule Ash.Actions.Sort do
     else
       query =
         resource
+        |> Ash.Query.select([])
         |> Ash.Query.load(field)
         |> Ash.Query.set_context(%{private: %{internal?: true}})
 

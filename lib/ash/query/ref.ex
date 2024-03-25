@@ -49,7 +49,18 @@ defmodule Ash.Query.Ref do
           name
 
         path ->
-          Enum.join(path, ".") <> "." <> "#{name}"
+          Enum.map_join(path, ".", fn item ->
+            case item do
+              %struct{} when struct in [Ash.Query.Aggregate, Ash.Query.Calculation] ->
+                inspect(item)
+
+              %{name: name} ->
+                name
+
+              name ->
+                name
+            end
+          end) <> "." <> "#{name}"
       end
     end
   end

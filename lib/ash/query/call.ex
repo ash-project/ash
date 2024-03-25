@@ -88,7 +88,18 @@ defmodule Ash.Query.Call do
           if call.relationship_path == [] do
             ""
           else
-            Enum.map_join(call.relationship_path, ".", &to_string/1) <> "."
+            Enum.map_join(call.relationship_path, ".", fn item ->
+              case item do
+                %struct{} when struct in [Ash.Query.Aggregate, Ash.Query.Calculation] ->
+                  inspect(item)
+
+                %{name: name} ->
+                  name
+
+                name ->
+                  name
+              end
+            end) <> "."
           end
 
         args =

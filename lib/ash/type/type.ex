@@ -265,7 +265,7 @@ defmodule Ash.Type do
               {:ok, list(term)} | {:error, Ash.Error.t()}
 
   @callback loaded?(
-              value_or_values :: term,
+              value :: term,
               path_to_load :: list(atom),
               constraints :: Keyword.t(),
               opts :: Keyword.t()
@@ -1396,6 +1396,7 @@ defmodule Ash.Type do
                      apply_constraints: 2,
                      cast_stored_array: 2,
                      handle_change: 3,
+                     loaded?: 4,
                      composite?: 1,
                      composite_types: 1,
                      prepare_change: 3,
