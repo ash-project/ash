@@ -257,6 +257,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`initial`](#reactor-create-initial){: #reactor-create-initial } | `nil \| module \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The initial value passed into the action. |
 | [`upsert_identity`](#reactor-create-upsert_identity){: #reactor-create-upsert_identity } | `atom` |  | The identity to use for the upsert |
 | [`upsert?`](#reactor-create-upsert?){: #reactor-create-upsert? } | `boolean` | `false` | Whether or not this action should be executed as an upsert. |
 | [`api`](#reactor-create-api){: #reactor-create-api } | `module` |  | The API to use when calling the action.  Defaults to the API set on the resource or in the `ash` section. |

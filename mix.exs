@@ -336,7 +336,7 @@ defmodule Ash.MixProject do
       {:telemetry, "~> 1.1"},
       {:plug, ">= 0.0.0", optional: true},
       {:earmark, "~> 1.4"},
-      {:reactor, "~> 0.6"},
+      {:reactor, "~> 0.7"},
 
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},
