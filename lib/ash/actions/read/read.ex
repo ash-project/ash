@@ -688,7 +688,7 @@ defmodule Ash.Actions.Read do
            ])
            |> Ash.Query.load(calculations_in_query)
            |> Ash.Query.select(must_be_reselected)
-           |> Ash.DataLayer.Simple.set_data(IO.inspect(initial_data))
+           |> Ash.DataLayer.Simple.set_data(initial_data)
            |> Ash.Query.do_filter(filter),
          {:ok, data_layer_calculations} <-
            hydrate_calculations(
