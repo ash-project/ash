@@ -97,7 +97,8 @@ defmodule Ash.Actions.ManagedRelationships do
           if changeset.action.type == :update do
             case changeset.api.load(changeset.data, relationship.name,
                    authorize?: opts[:authorize?],
-                   actor: actor
+                   actor: actor,
+                   tenant: engine_opts[:tenant]
                  ) do
               {:ok, result} ->
                 {:ok, %{changeset | data: result}}
