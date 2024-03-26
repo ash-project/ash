@@ -2047,7 +2047,18 @@ defmodule Ash.Query do
   """
   @spec build(Ash.Resource.t(), Ash.Domain.t() | nil, Keyword.t()) :: t()
   def build(resource, domain \\ nil, keyword) do
-    Enum.reduce(keyword, new(resource, domain), fn
+    query =
+      resource
+      |> new()
+      |> then(fn query ->
+        if domain do
+          set_domain(query, domain)
+        else
+          query
+        end
+      end)
+
+    Enum.reduce(keyword, query, fn
       {:filter, value}, query ->
         do_filter(query, value)
 
