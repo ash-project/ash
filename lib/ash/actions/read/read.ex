@@ -614,8 +614,9 @@ defmodule Ash.Actions.Read do
         calculations_at_runtime ++ calculations_in_query
       )
 
-    if Enum.empty?(must_be_reselected) && Enum.empty?(query.aggregates) &&
-         Enum.empty?(calculations_in_query) do
+    if missing_pkeys? ||
+         (Enum.empty?(must_be_reselected) && Enum.empty?(query.aggregates) &&
+            Enum.empty?(calculations_in_query)) do
       {:ok, initial_data}
     else
       reselect_and_load(
@@ -623,7 +624,6 @@ defmodule Ash.Actions.Read do
         query,
         must_be_reselected,
         calculations_in_query,
-        missing_pkeys?,
         opts
       )
     end
@@ -634,7 +634,6 @@ defmodule Ash.Actions.Read do
          query,
          must_be_reselected,
          calculations_in_query,
-         missing_pkeys?,
          opts
        ) do
     primary_key = Ash.Resource.Info.primary_key(query.resource)
@@ -727,7 +726,7 @@ defmodule Ash.Actions.Read do
              true
            ) do
       results
-      |> attach_fields(initial_data, query, missing_pkeys?)
+      |> attach_fields(initial_data, query, false)
       |> compute_expression_at_runtime_for_missing_records(query, data_layer_calculations)
       |> case do
         {:ok, result} ->
