@@ -325,7 +325,7 @@ defmodule Ash.MixProject do
 
       # SAT Solvers
       {:picosat_elixir, "~> 0.2", optional: true},
-      {:simple_sat, "~> 0.1", optional: true},
+      {:simple_sat, "~> 0.1 and >= 0.1.1", optional: true},
 
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},
