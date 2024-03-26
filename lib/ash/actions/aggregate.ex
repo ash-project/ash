@@ -72,6 +72,7 @@ defmodule Ash.Actions.Aggregate do
                        resource: query.resource,
                        limit: query.limit,
                        offset: query.offset,
+                       tenant: query.tenant,
                        api: query.api
                      }),
                    {:ok, result} <-
