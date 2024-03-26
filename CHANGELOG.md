@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.21.2](https://github.com/ash-project/ash/compare/v2.21.1...v2.21.2) (2024-03-26)
+
+
+
+
+### Bug Fixes:
+
+* don't try to reselect fields when pkeys are missing
+
 ## [v2.21.1](https://github.com/ash-project/ash/compare/v2.21.0...v2.21.1) (2024-03-25)
 
 
