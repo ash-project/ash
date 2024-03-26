@@ -636,8 +636,9 @@ defmodule Ash.Actions.Read do
         calculations_at_runtime ++ calculations_in_query
       )
 
-    if Enum.empty?(must_be_reselected) && Enum.empty?(query.aggregates) &&
-         Enum.empty?(calculations_in_query) do
+    if missing_pkeys? ||
+         (Enum.empty?(must_be_reselected) && Enum.empty?(query.aggregates) &&
+            Enum.empty?(calculations_in_query)) do
       {:ok, initial_data}
     else
       reselect_and_load(
@@ -645,7 +646,6 @@ defmodule Ash.Actions.Read do
         query,
         must_be_reselected,
         calculations_in_query,
-        missing_pkeys?,
         opts
       )
     end
@@ -656,7 +656,6 @@ defmodule Ash.Actions.Read do
          query,
          must_be_reselected,
          calculations_in_query,
-         missing_pkeys?,
          opts
        ) do
     primary_key = Ash.Resource.Info.primary_key(query.resource)
@@ -689,7 +688,7 @@ defmodule Ash.Actions.Read do
            ])
            |> Ash.Query.load(calculations_in_query)
            |> Ash.Query.select(must_be_reselected)
-           |> Ash.DataLayer.Simple.set_data(initial_data)
+           |> Ash.DataLayer.Simple.set_data(IO.inspect(initial_data))
            |> Ash.Query.do_filter(filter),
          {:ok, data_layer_calculations} <-
            hydrate_calculations(
@@ -751,7 +750,7 @@ defmodule Ash.Actions.Read do
              true
            ) do
       results
-      |> attach_fields(initial_data, query, missing_pkeys?)
+      |> attach_fields(initial_data, query, false)
       |> compute_expression_at_runtime_for_missing_records(query, data_layer_calculations)
       |> case do
         {:ok, result} ->
@@ -860,18 +859,16 @@ defmodule Ash.Actions.Read do
          authorize?,
          attrs? \\ true
        ) do
-    load_through =
-      query.resource
-      |> Ash.Resource.Info.attributes()
-      |> Enum.filter(fn %{name: name, type: type, constraints: constraints} ->
-        Ash.Type.can_load?(type, constraints) && Ash.Query.selecting?(query, name)
-      end)
-      |> Enum.map(& &1.name)
-      |> Enum.reduce(query.load_through, fn name, load_through ->
-        Map.update(load_through, :attribute, %{name => []}, &Map.put_new(&1, name, []))
-      end)
-
-    Enum.reduce_while(load_through, {:ok, results}, fn
+    query.resource
+    |> Ash.Resource.Info.attributes()
+    |> Enum.filter(fn %{name: name, type: type, constraints: constraints} ->
+      Ash.Type.can_load?(type, constraints) && Ash.Query.selecting?(query, name)
+    end)
+    |> Enum.map(& &1.name)
+    |> Enum.reduce(query.load_through, fn name, load_through ->
+      Map.update(load_through, :attribute, %{name => []}, &Map.put_new(&1, name, []))
+    end)
+    |> Enum.reduce_while({:ok, results}, fn
       {:calculation, load_through}, {:ok, results} ->
         load_through
         |> Map.take(Map.keys(query.calculations))
