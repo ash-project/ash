@@ -184,14 +184,14 @@ defmodule Ash.Api.Interface do
         def unquote(:"#{kind}!")(query, field, opts \\ []) do
           query = Ash.Query.to_query(query)
 
-          {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
-
           opts =
             if query.action do
               Keyword.put(opts, :read_action, query.action.name)
             else
               opts
             end
+
+          {aggregate_opts, opts} = Ash.Query.Aggregate.split_aggregate_opts(opts)
 
           case Api.aggregate(
                  __MODULE__,
