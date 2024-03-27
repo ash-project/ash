@@ -4,15 +4,18 @@ defmodule Ash.Test.Sort.SortTest do
 
   require Ash.Query
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     actions do
+      default_accept :*
       read :read
 
       create :create
@@ -22,27 +25,16 @@ defmodule Ash.Test.Sort.SortTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
-      attribute :contents, :string
-      attribute :points, :integer, private?: true
-    end
-  end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
+      attribute :title, :string do
+        public?(true)
+      end
 
-    entries do
-      entry Post
-    end
-  end
+      attribute :contents, :string do
+        public?(true)
+      end
 
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
+      attribute :points, :integer
     end
   end
 
@@ -53,7 +45,7 @@ defmodule Ash.Test.Sort.SortTest do
     end
 
     test "private attributes cannot be used" do
-      assert {:error, %Ash.Error.Query.NoSuchAttribute{}} = Ash.Sort.parse_input(Post, "points")
+      assert {:error, %Ash.Error.Query.NoSuchField{}} = Ash.Sort.parse_input(Post, "points")
     end
 
     test "a list sort parses properly" do

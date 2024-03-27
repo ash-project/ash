@@ -2,13 +2,15 @@ defmodule Ash.Test.Filter.ParentTest do
   use ExUnit.Case, async: false
 
   require Ash.Query
+  alias Ash.Test.Domain, as: Domain
 
   defmodule User do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     ets do
@@ -17,81 +19,65 @@ defmodule Ash.Test.Filter.ParentTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:name, :string)
+      attribute(:name, :string, public?: true)
     end
 
     relationships do
-      has_many(:posts, Ash.Test.Filter.ParentTest.Post, destination_attribute: :author_id)
+      has_many(:posts, Ash.Test.Filter.ParentTest.Post,
+        destination_attribute: :author_id,
+        public?: true
+      )
     end
   end
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
-      attribute(:title, :string)
-      attribute(:contents, :string)
-      attribute(:points, :integer)
+      attribute(:title, :string, public?: true)
+      attribute(:contents, :string, public?: true)
+      attribute(:points, :integer, public?: true)
     end
 
     relationships do
       belongs_to(:author, User,
+        public?: true,
         destination_attribute: :id,
         source_attribute: :author_id
       )
     end
   end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Post)
-      entry(User)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
-    end
-  end
-
-  import Ash.Changeset
-
   test "exists/2 can use `parent` to refer to the root record" do
     author =
       User
-      |> new(%{name: "best"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{name: "best"})
+      |> Ash.create!()
 
     Post
-    |> new(%{title: "best"})
-    |> manage_relationship(:author, author, type: :append_and_remove)
-    |> Api.create!()
+    |> Ash.Changeset.for_create(:create, %{title: "best"})
+    |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+    |> Ash.create!()
 
     assert [_] =
              User
              |> Ash.Query.filter(exists(posts, title == parent(name)))
-             |> Api.read!()
+             |> Ash.read!()
 
     assert [] =
              User
              |> Ash.Query.filter(exists(posts, title == parent(name <> "foo")))
-             |> Api.read!()
+             |> Ash.read!()
   end
 end

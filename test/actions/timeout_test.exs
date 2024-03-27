@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.TimeoutTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule Sleep do
     @moduledoc false
     use Ash.Resource.Change
@@ -17,10 +19,11 @@ defmodule Ash.Test.Actions.TimeoutTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
-      defaults [:read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, update: :*]
 
       create :create do
         primary? true
@@ -30,26 +33,8 @@ defmodule Ash.Test.Actions.TimeoutTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:name, :string)
-      attribute(:bio, :string)
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Author)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
+      attribute(:name, :string, public?: true)
+      attribute(:bio, :string, public?: true)
     end
   end
 
@@ -58,7 +43,7 @@ defmodule Ash.Test.Actions.TimeoutTest do
       assert_raise Ash.Error.Invalid,
                    ~r/Ash.Test.Actions.TimeoutTest.Author.create timed out after 1ms/,
                    fn ->
-                     Api.create!(Ash.Changeset.for_create(Author, :create, %{name: "Fred"}),
+                     Ash.create!(Ash.Changeset.for_create(Author, :create, %{name: "Fred"}),
                        timeout: 1
                      )
                    end

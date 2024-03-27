@@ -2,9 +2,11 @@ defmodule Ash.Test.ReactorReadTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, api: Ash.Test.AnyApi
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Domain
 
     ets do
       private? true
@@ -12,11 +14,12 @@ defmodule Ash.Test.ReactorReadTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string, allow_nil?: false
+      attribute :title, :string, allow_nil?: false, public?: true
     end
 
     actions do
-      defaults [:create, :read]
+      default_accept :*
+      defaults [:read, create: :*]
     end
 
     code_interface do
@@ -29,7 +32,7 @@ defmodule Ash.Test.ReactorReadTest do
     use Reactor, extensions: [Ash.Reactor]
 
     ash do
-      default_api Ash.Test.AnyApi
+      default_domain(Domain)
     end
 
     read :read_posts, Ash.Test.ReactorReadTest.Post

@@ -3,10 +3,12 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
 
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule ActorAndAuthorizeMustBeInContext do
     use Ash.Resource.Validation
 
-    def validate(changeset, _opts) do
+    def validate(changeset, _opts, _) do
       case changeset.context do
         %{private: %{actor: _, authorize?: _}} ->
           :ok
@@ -20,7 +22,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   defmodule ActorAndAuthorizeMustBeInSourceContext do
     use Ash.Resource.Validation
 
-    def validate(changeset, _opts) do
+    def validate(changeset, _opts, _) do
       case changeset.context do
         %{__source__: %{data: %{name: _}, context: %{private: %{actor: _, authorize?: _}}}} ->
           :ok
@@ -32,11 +34,11 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   end
 
   defmodule SubSubEmbeddedResource do
-    use Ash.Resource, data_layer: :embedded
+    use Ash.Resource, domain: Domain, data_layer: :embedded
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string, allow_nil?: true
+      attribute :name, :string, allow_nil?: true, public?: true
     end
 
     validations do
@@ -57,12 +59,12 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   end
 
   defmodule SubEmbeddedResource do
-    use Ash.Resource, data_layer: :embedded
+    use Ash.Resource, domain: Domain, data_layer: :embedded
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string, allow_nil?: true
-      attribute :sub_sub_embedded_resource, SubSubEmbeddedResource
+      attribute :name, :string, allow_nil?: true, public?: true
+      attribute :sub_sub_embedded_resource, SubSubEmbeddedResource, public?: true
     end
 
     validations do
@@ -83,12 +85,15 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   end
 
   defmodule EmbeddedResource do
-    use Ash.Resource, data_layer: :embedded
+    use Ash.Resource, domain: Domain, data_layer: :embedded
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string, allow_nil?: true
-      attribute :sub_embedded_resources, {:array, SubEmbeddedResource}, allow_nil?: true
+      attribute :name, :string, allow_nil?: true, public?: true
+
+      attribute :sub_embedded_resources, {:array, SubEmbeddedResource},
+        allow_nil?: true,
+        public?: true
     end
 
     validations do
@@ -109,16 +114,22 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   end
 
   defmodule Resource do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
 
-      attribute :embedded_resource, EmbeddedResource
-      attribute :name, :string
+      attribute :embedded_resource, EmbeddedResource do
+        public?(true)
+      end
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
 
     actions do
+      default_accept :*
       defaults [:read, :create]
       default_accept [:embedded_resource]
 
@@ -129,23 +140,6 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
 
     validations do
       validate {ActorAndAuthorizeMustBeInContext, []}
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Resource
-    end
-  end
-
-  defmodule Api do
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 
@@ -164,7 +158,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
       authorize?: true,
       tenant: "one"
     )
-    |> Api.create!()
+    |> Ash.create!()
   end
 
   test "changeset during validation and changes includes actor, authorize and tenant for an embedded resource used as an argument" do
@@ -183,6 +177,6 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
                authorize?: true,
                tenant: "one"
              )
-             |> Api.update()
+             |> Ash.update()
   end
 end

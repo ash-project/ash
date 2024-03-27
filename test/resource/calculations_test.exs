@@ -3,24 +3,35 @@ defmodule Ash.Test.Resource.CalculationsTest do
   use ExUnit.Case, async: true
 
   alias Ash.Resource.Calculation
-  alias Ash.Test.Support.PolicySimple.Api
+  alias Ash.Test.Support.PolicySimple.Domain
   alias Ash.Test.Support.PolicySimple.Post
 
+  alias Ash.Test.Domain, as: Domain
+
   defmacrop defposts(do: body) do
+    module = Module.concat(["rand#{System.unique_integer([:positive])}", Post])
+
     quote do
-      defmodule Post do
+      defmodule unquote(module) do
         @moduledoc false
-        use Ash.Resource
+        use Ash.Resource, domain: Domain
 
         attributes do
           uuid_primary_key :id
 
-          attribute :name, :string
-          attribute :contents, :string
+          attribute :name, :string do
+            public?(true)
+          end
+
+          attribute :contents, :string do
+            public?(true)
+          end
         end
 
         unquote(body)
       end
+
+      alias unquote(module), as: Post
     end
   end
 
@@ -28,8 +39,11 @@ defmodule Ash.Test.Resource.CalculationsTest do
     test "calculations are persisted on the resource properly" do
       defposts do
         calculations do
-          calculate :name_and_contents, :string, concat([:name, :context])
-          calculate(:another_cal_but_private, :string, concat([:name, :context]), private?: true)
+          calculate :name_and_contents, :string, concat([:name, :context]) do
+            public?(true)
+          end
+
+          calculate :another_cal_but_private, :string, concat([:name, :context])
         end
       end
 
@@ -37,12 +51,12 @@ defmodule Ash.Test.Resource.CalculationsTest do
                %Calculation{
                  name: :name_and_contents,
                  calculation: {Calculation.Concat, [keys: [:name, :context], separator: ""]},
-                 private?: false
+                 public?: true
                },
                %Calculation{
                  name: :another_cal_but_private,
                  calculation: {Calculation.Concat, [keys: [:name, :context], separator: ""]},
-                 private?: true
+                 public?: false
                }
              ] = Ash.Resource.Info.calculations(Post)
 
@@ -60,9 +74,9 @@ defmodule Ash.Test.Resource.CalculationsTest do
     test "Calculation descriptions are allowed" do
       defposts do
         calculations do
-          calculate(:name_and_contents, :string, concat([:name, :context]),
+          calculate :name_and_contents, :string, concat([:name, :context]),
+            public?: true,
             description: "require one of name/contents"
-          )
         end
       end
 
@@ -74,30 +88,39 @@ defmodule Ash.Test.Resource.CalculationsTest do
 
   describe "relationships" do
     test "calculations can access attributes of parent" do
-      defmodule Post do
+      defmodule Post1 do
         @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
         attributes do
           uuid_primary_key :id
 
-          attribute :name, :string
-          attribute :contents, :string
+          attribute :name, :string do
+            public?(true)
+          end
+
+          attribute :contents, :string do
+            public?(true)
+          end
         end
 
         actions do
-          defaults [:read, :update, :destroy, :create]
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
         end
       end
 
-      defmodule PostName do
+      defmodule PostName1 do
         @moduledoc """
         Calculates the name of the post, from the child comment.
         """
-        use Ash.Calculation
+        use Ash.Resource.Calculation
 
         @impl true
         def load(_query, _opts, _context), do: [:post]
+
+        @impl true
+        def strict_loads?, do: false
 
         @impl true
         def calculate(records, _opts, _) do
@@ -108,69 +131,56 @@ defmodule Ash.Test.Resource.CalculationsTest do
         end
       end
 
-      defmodule Comment do
+      defmodule Comment1 do
         @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
         attributes do
           uuid_primary_key :id
 
           attribute :post_id, :uuid do
             allow_nil?(false)
+            public? true
           end
         end
 
         actions do
-          defaults [:read, :update, :destroy, :create]
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
         end
 
         relationships do
-          belongs_to :post, Post
+          belongs_to :post, Post1 do
+            public?(true)
+          end
         end
 
         calculations do
-          calculate(:post_name, :string, PostName)
-        end
-      end
-
-      defmodule Registry do
-        @moduledoc false
-        use Ash.Registry
-
-        entries do
-          entry(Post)
-          entry(Comment)
-        end
-      end
-
-      defmodule MyApi do
-        @moduledoc false
-        use Ash.Api
-
-        resources do
-          registry Registry
+          calculate :post_name, :string, PostName1 do
+            public?(true)
+          end
         end
       end
 
       post =
-        Post
+        Post1
         |> Ash.Changeset.for_create(:create, %{name: "Post 1", contents: "Contents 1"})
-        |> MyApi.create!()
+        |> Ash.create!()
 
       comment =
-        Comment
+        Comment1
         |> Ash.Changeset.for_create(:create, %{post_id: post.id})
-        |> MyApi.create!()
+        |> Ash.create!()
 
       # assert true == true
-      comment_with_post_name = Api.load!(comment, :post_name)
+      comment_with_post_name = Ash.load!(comment, :post_name)
       assert comment_with_post_name.post_name == post.name
     end
 
     test "calculations can access attributes of parent in multitenant context" do
-      defmodule Post do
+      defmodule Post2 do
         @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
         multitenancy do
           strategy(:context)
@@ -179,23 +189,32 @@ defmodule Ash.Test.Resource.CalculationsTest do
         attributes do
           uuid_primary_key :id
 
-          attribute :name, :string
-          attribute :contents, :string
+          attribute :name, :string do
+            public?(true)
+          end
+
+          attribute :contents, :string do
+            public?(true)
+          end
         end
 
         actions do
-          defaults [:read, :update, :destroy, :create]
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
         end
       end
 
-      defmodule PostName do
+      defmodule PostName2 do
         @moduledoc """
         Calculates the name of the post, from the child comment.
         """
-        use Ash.Calculation
+        use Ash.Resource.Calculation
 
         @impl true
         def load(_query, _opts, _context), do: [:post]
+
+        @impl true
+        def strict_loads?, do: false
 
         @impl true
         def calculate(records, _opts, _) do
@@ -206,9 +225,9 @@ defmodule Ash.Test.Resource.CalculationsTest do
         end
       end
 
-      defmodule Comment do
+      defmodule Comment2 do
         @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
         multitenancy do
           strategy(:context)
@@ -218,57 +237,44 @@ defmodule Ash.Test.Resource.CalculationsTest do
           uuid_primary_key :id
 
           attribute :post_id, :uuid do
-            allow_nil?(false)
+            public?(true)
+            allow_nil?(true)
           end
         end
 
         actions do
-          defaults [:read, :update, :destroy, :create]
+          default_accept :*
+          defaults [:read, :destroy, update: :*, create: :*]
         end
 
         relationships do
-          belongs_to :post, Post
+          belongs_to :post, Post2 do
+            public?(true)
+          end
         end
 
         calculations do
-          calculate(:post_name, :string, PostName)
-        end
-      end
-
-      defmodule Registry do
-        @moduledoc false
-        use Ash.Registry
-
-        entries do
-          entry(Post)
-          entry(Comment)
-        end
-      end
-
-      defmodule MyApi do
-        @moduledoc false
-        use Ash.Api
-
-        resources do
-          registry Registry
+          calculate :post_name, :string, PostName2 do
+            public?(true)
+          end
         end
       end
 
       tenant_id = "tenant1"
 
       post =
-        Post
+        Post2
         |> Ash.Changeset.for_create(:create, %{name: "Post 1", contents: "Contents 1"},
           tenant: tenant_id
         )
-        |> MyApi.create!()
+        |> Ash.create!()
 
       comment =
-        Comment
+        Comment2
         |> Ash.Changeset.for_create(:create, %{post_id: post.id}, tenant: tenant_id)
-        |> MyApi.create!()
+        |> Ash.create!()
 
-      comment_with_post_name = Api.load!(comment, :post_name, tenant: tenant_id)
+      comment_with_post_name = Ash.load!(comment, :post_name, tenant: tenant_id)
       assert comment_with_post_name.post_name == post.name
     end
   end

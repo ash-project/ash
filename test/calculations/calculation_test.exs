@@ -3,9 +3,11 @@ defmodule Ash.Test.CalculationTest do
   use ExUnit.Case, async: true
 
   require Ash.Query
+  alias Ash.Test.Domain, as: Domain
 
   defmodule FriendLink do
     use Ash.Resource,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -13,16 +15,19 @@ defmodule Ash.Test.CalculationTest do
     end
 
     actions do
-      defaults([:create, :read, :update, :destroy])
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
     end
 
     relationships do
       belongs_to :source, Ash.Test.CalculationTest.User do
+        public?(true)
         allow_nil?(false)
         primary_key?(true)
       end
 
       belongs_to :target, Ash.Test.CalculationTest.User do
+        public?(true)
         allow_nil?(false)
         primary_key?(true)
       end
@@ -30,9 +35,9 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule FullNameWithSelect do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
-    def select(_, _, _) do
+    def load(_, _, _) do
       [:first_name, :last_name]
     end
 
@@ -44,7 +49,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule Metadata do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def calculate(records, _opts, _context) do
       Enum.map(records, &Ash.Resource.get_metadata(&1, :example_metadata))
@@ -53,7 +58,7 @@ defmodule Ash.Test.CalculationTest do
 
   defmodule Concat do
     # An example concatenation calculation, that accepts the delimiter as an argument
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def init(opts) do
       if opts[:keys] && is_list(opts[:keys]) && Enum.all?(opts[:keys], &is_atom/1) do
@@ -63,18 +68,22 @@ defmodule Ash.Test.CalculationTest do
       end
     end
 
-    def calculate(records, opts, %{separator: separator}) do
+    def calculate(records, opts, %{arguments: %{separator: separator}}) do
       Enum.map(records, fn record ->
         Enum.map_join(opts[:keys], separator, fn key ->
           to_string(Map.get(record, key))
         end)
       end)
     end
+
+    def expression(opts, context) do
+      expr(string_join(^Enum.map(opts[:keys], &ref/1), ^context.arguments.separator))
+    end
   end
 
   defmodule NameWithUsersName do
     # Don't do this kind of thing in real life
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_, _, _) do
       [:full_name]
@@ -89,7 +98,7 @@ defmodule Ash.Test.CalculationTest do
 
   defmodule ConcatWithLoad do
     # An example concatenation calculation, that accepts the delimiter as an argument
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def init(opts) do
       if opts[:keys] && is_list(opts[:keys]) && Enum.all?(opts[:keys], &is_atom/1) do
@@ -103,10 +112,6 @@ defmodule Ash.Test.CalculationTest do
       opts[:keys]
     end
 
-    def select(_query, opts, _) do
-      opts[:keys]
-    end
-
     def calculate(records, opts, _) do
       Enum.map(records, fn record ->
         Enum.map_join(opts[:keys], " ", fn key ->
@@ -117,7 +122,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule BestFriendsName do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_query, _opts, _) do
       [best_friend: :full_name]
@@ -130,10 +135,24 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
-  defmodule NamesOfBestFriendsOfMe do
-    use Ash.Calculation
+  defmodule BestFriendsFirstNameThatFails do
+    use Ash.Resource.Calculation
 
-    def load(_query, _opts, args) do
+    def load(_query, _opts, _) do
+      [:best_friend]
+    end
+
+    def calculate(records, _opts, _) do
+      Enum.map(records, fn record ->
+        record.best_friend && record.best_friend.first_name
+      end)
+    end
+  end
+
+  defmodule NamesOfBestFriendsOfMe do
+    use Ash.Resource.Calculation
+
+    def load(_query, _opts, %{arguments: args}) do
       if args[:only_special] do
         query =
           Ash.Test.CalculationTest.User
@@ -157,7 +176,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule BestFriendsFirstNamePlusStuff do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_query, _opts, _) do
       [:best_friends_first_name]
@@ -171,7 +190,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule BestFriendsBestFriendsFirstName do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_query, _opts, _) do
       [best_friend: :best_friends_first_name]
@@ -185,14 +204,10 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule FullNamePlusFirstName do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_, _, _) do
-      [:full_name_with_select]
-    end
-
-    def select(_, _, _) do
-      [:first_name]
+      [:first_name, :full_name_with_select]
     end
 
     def calculate(records, _, _) do
@@ -203,7 +218,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule FriendsNames do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_query, _opts, _) do
       [
@@ -231,7 +246,7 @@ defmodule Ash.Test.CalculationTest do
   defmodule RoleHasUser do
     @moduledoc "never do this, this is done for testing only"
 
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_, _, _) do
       [:user]
@@ -243,7 +258,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule RolesHaveUser do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_, _, _) do
       [roles: [:has_user]]
@@ -257,10 +272,11 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule Role do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
-      defaults([:create, :read, :update, :destroy])
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
 
       read :by_user_name do
         argument :user_name, :string, allow_nil?: false
@@ -274,17 +290,21 @@ defmodule Ash.Test.CalculationTest do
 
     aggregates do
       first :user_is_active, :user, :is_active do
+        public? true
         default(false)
       end
 
-      list :names, :user, :first_name
+      list :names, :user, :first_name do
+        public? true
+      end
     end
 
     attributes do
       uuid_primary_key(:id)
-      attribute(:name, :string)
+      attribute(:name, :string, public?: true)
 
       attribute :is_active, :boolean do
+        public?(true)
         allow_nil?(false)
         default(false)
       end
@@ -292,6 +312,7 @@ defmodule Ash.Test.CalculationTest do
 
     calculations do
       calculate :active, :boolean do
+        public?(true)
         calculation(expr(is_active && user_is_active))
         load([:user_is_active])
       end
@@ -321,20 +342,23 @@ defmodule Ash.Test.CalculationTest do
 
     relationships do
       belongs_to(:user, Ash.Test.CalculationTest.User) do
-        attribute_writable?(true)
+        public?(true)
       end
     end
   end
 
   defmodule Bio do
-    use Ash.Resource, data_layer: :embedded
+    use Ash.Resource, domain: Domain, data_layer: :embedded
 
     attributes do
-      attribute :greeting, :string
+      attribute :greeting, :string do
+        public?(true)
+      end
     end
 
     calculations do
       calculate :say_hello, :string, expr(greeting <> " " <> ^arg(:to)) do
+        public?(true)
         argument :to, :string, allow_nil?: false
       end
     end
@@ -342,14 +366,15 @@ defmodule Ash.Test.CalculationTest do
 
   defmodule User do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults([:create, :read, :update, :destroy])
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
 
       read :paginated do
         pagination do
@@ -361,12 +386,12 @@ defmodule Ash.Test.CalculationTest do
 
     attributes do
       uuid_primary_key(:id)
-      attribute(:first_name, :string)
-      attribute(:last_name, :string)
-      attribute(:prefix, :string)
-      attribute(:special, :boolean)
-      attribute(:is_active, :boolean)
-      attribute(:bio, Bio)
+      attribute(:first_name, :string, public?: true)
+      attribute(:last_name, :string, public?: true)
+      attribute(:prefix, :string, public?: true)
+      attribute(:special, :boolean, public?: true)
+      attribute(:is_active, :boolean, public?: true)
+      attribute(:bio, Bio, public?: true)
     end
 
     changes do
@@ -383,8 +408,12 @@ defmodule Ash.Test.CalculationTest do
 
     calculations do
       calculate :say_hello_to_fred, :string do
-        calculation fn record, _ ->
-          record.bio.say_hello
+        public?(true)
+
+        calculation fn records, _ ->
+          Enum.map(records, fn record ->
+            record.bio.say_hello
+          end)
         end
 
         load bio: [say_hello: %{to: "Fred"}]
@@ -397,30 +426,45 @@ defmodule Ash.Test.CalculationTest do
       calculate :say_hello_to_george_expr, :string, expr(record.bio.say_hello(to: "George"))
 
       calculate :say_hello_to_george, :string do
-        calculation fn record, _ ->
-          record.bio.say_hello
+        public?(true)
+
+        calculation fn records, _ ->
+          Enum.map(records, fn record ->
+            record.bio.say_hello
+          end)
         end
 
         load bio: [say_hello: %{to: "George"}]
       end
 
-      calculate :example_metadata, :string, Metadata
+      calculate :example_metadata, :string, Metadata do
+        public?(true)
+      end
 
-      calculate :metadata_plus_metadata, :string, concat([:example_metadata, :example_metadata])
+      calculate :metadata_plus_metadata,
+                :string,
+                concat([:example_metadata, :example_metadata]) do
+        public?(true)
+      end
 
-      calculate(:active, :boolean, expr(is_active))
+      calculate :active, :boolean, expr(is_active) do
+        public?(true)
+      end
 
       calculate :full_name, :string, {Concat, keys: [:first_name, :last_name]} do
-        select([:first_name, :last_name])
+        public?(true)
+        load([:first_name, :last_name])
         # We currently need to use the [allow_empty?: true, trim?: false] constraints here.
         # As it's an empty string, the separator would otherwise be trimmed and set to `nil`.
         argument(:separator, :string,
           default: " ",
+          allow_expr?: true,
           constraints: [allow_empty?: true, trim?: false]
         )
       end
 
       calculate :full_name_with_select, :string, FullNameWithSelect do
+        public?(true)
         # We currently need to use the [allow_empty?: true, trim?: false] constraints here.
         # As it's an empty string, the separator would otherwise be trimmed and set to `nil`.
         argument(:separator, :string,
@@ -431,123 +475,163 @@ defmodule Ash.Test.CalculationTest do
 
       calculate :full_name_with_select_plus_something,
                 :string,
-                expr(full_name_with_select <> "_something")
+                expr(full_name_with_select <> "_something") do
+        public?(true)
+      end
 
-      calculate(:best_friends_best_friends_first_name, :string, BestFriendsBestFriendsFirstName)
+      calculate :best_friends_best_friends_first_name, :string, BestFriendsBestFriendsFirstName do
+        public?(true)
+      end
 
-      calculate(
-        :best_friends_first_name_plus_stuff,
-        :string,
-        BestFriendsFirstNamePlusStuff
-      )
+      calculate :best_friends_first_name_plus_stuff,
+                :string,
+                BestFriendsFirstNamePlusStuff do
+        public?(true)
+      end
 
-      calculate(:full_name_plus_first_name, :string, FullNamePlusFirstName)
+      calculate :best_friends_first_name_that_fails,
+                :string,
+                BestFriendsFirstNameThatFails do
+        public?(true)
+      end
 
-      calculate(
-        :full_name_plus_full_name,
-        :string,
-        {ConcatWithLoad, keys: [:full_name, :full_name]}
-      )
+      calculate :full_name_plus_first_name, :string, FullNamePlusFirstName do
+        public?(true)
+      end
 
-      calculate(
-        :full_name_plus_full_name_plus_full_name,
-        :string,
-        {ConcatWithLoad, keys: [:full_name, :full_name_plus_full_name]}
-      )
+      calculate :full_name_plus_full_name,
+                :string,
+                {ConcatWithLoad, keys: [:full_name, :full_name]} do
+        public?(true)
+      end
 
-      calculate(:slug, :string, expr(full_name <> "123"))
-      calculate(:friends_names, :string, FriendsNames)
+      calculate :full_name_plus_full_name_plus_full_name,
+                :string,
+                {ConcatWithLoad, keys: [:full_name, :full_name_plus_full_name]} do
+        public?(true)
+      end
 
-      calculate(:expr_full_name, :string, expr(first_name <> " " <> last_name))
+      calculate :slug, :string, expr(full_name <> "123") do
+        public?(true)
+      end
 
-      calculate(
-        :string_join_full_name,
-        :string,
-        expr(string_join([first_name, last_name], " "))
-      )
+      calculate :friends_names, :string, FriendsNames do
+        public?(true)
+      end
 
-      calculate(
-        :string_join_full_name_ci,
-        :ci_string,
-        expr(string_join([first_name, last_name], ~i" "))
-      )
+      calculate :expr_full_name, :string, expr(first_name <> " " <> last_name) do
+        public?(true)
+      end
 
-      calculate(:best_friends_name, :string, BestFriendsName)
+      calculate :string_join_full_name,
+                :string,
+                expr(string_join([first_name, last_name], " ")) do
+        public?(true)
+      end
+
+      calculate :string_join_full_name_ci,
+                :ci_string,
+                expr(string_join([first_name, last_name], ~i" ")) do
+        public?(true)
+      end
+
+      calculate :best_friends_name, :string, BestFriendsName do
+        public?(true)
+      end
 
       calculate :names_of_best_friends_of_me, :string, NamesOfBestFriendsOfMe do
+        public?(true)
         argument(:only_special, :boolean, default: false)
       end
 
-      calculate(:name_with_users_name, :string, NameWithUsersName)
+      calculate :name_with_users_name, :string, NameWithUsersName do
+        public?(true)
+      end
 
       calculate :full_name_with_salutation,
                 :string,
                 expr(^arg(:salutation) <> " " <> conditional_full_name) do
         argument(:salutation, :string, allow_nil?: false)
         load([:conditional_full_name])
+        public?(true)
       end
 
-      calculate(
-        :conditional_full_name,
-        :string,
-        expr(
-          if(
-            not is_nil(first_name) and not is_nil(last_name),
-            first_name <> " " <> last_name,
-            "(none)"
-          )
-        )
-      )
+      calculate :conditional_full_name,
+                :string,
+                expr(
+                  if(
+                    not is_nil(first_name) and not is_nil(last_name),
+                    first_name <> " " <> last_name,
+                    "(none)"
+                  )
+                ) do
+        public?(true)
+      end
 
-      calculate(
-        :conditional_full_name_block,
-        :string,
-        expr(
-          if not is_nil(first_name) and not is_nil(last_name) do
-            first_name <> " " <> last_name
-          else
-            "(none)"
-          end
-        )
-      )
+      calculate :conditional_full_name_block,
+                :string,
+                expr(
+                  if not is_nil(first_name) and not is_nil(last_name) do
+                    first_name <> " " <> last_name
+                  else
+                    "(none)"
+                  end
+                ) do
+        public?(true)
+      end
 
-      calculate(
-        :conditional_full_name_cond,
-        :string,
-        expr(
-          cond do
-            not is_nil(first_name) and not is_nil(last_name) ->
-              first_name <> " " <> last_name
+      calculate :conditional_full_name_cond,
+                :string,
+                expr(
+                  cond do
+                    not is_nil(first_name) and not is_nil(last_name) ->
+                      first_name <> " " <> last_name
 
-            not is_nil(first_name) ->
-              first_name
+                    not is_nil(first_name) ->
+                      first_name
 
-            true ->
-              "(none)"
-          end
-        )
-      )
+                    true ->
+                      "(none)"
+                  end
+                ) do
+        public?(true)
+      end
 
-      calculate :role_user_name_from_agg, :string, expr(role_user_name)
-      calculate :roles_have_user, :boolean, RolesHaveUser
+      calculate :role_user_name_from_agg, :string, expr(role_user_name) do
+        public?(true)
+      end
+
+      calculate :roles_have_user, :boolean, RolesHaveUser do
+        public?(true)
+      end
     end
 
     aggregates do
-      first(:best_friends_first_name, :best_friend, :first_name)
+      first :best_friends_first_name, :best_friend, :first_name do
+        public? true
+      end
 
-      first(:role_user_name, :roles, :user_name)
+      first :role_user_name, :roles, :user_name do
+        public? true
+      end
     end
 
     relationships do
-      belongs_to(:best_friend, __MODULE__)
+      belongs_to :best_friend, __MODULE__ do
+        public?(true)
+      end
 
       has_many :best_friends_of_me, __MODULE__ do
+        public?(true)
         destination_attribute(:best_friend_id)
       end
 
-      has_many :roles, Ash.Test.CalculationTest.Role
+      has_many :roles, Ash.Test.CalculationTest.Role do
+        public?(true)
+      end
 
       many_to_many :friends, __MODULE__ do
+        public?(true)
         through(FriendLink)
         destination_attribute_on_join_resource(:target_id)
         source_attribute_on_join_resource(:source_id)
@@ -556,7 +640,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule ActorActive do
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def load(_, _, _) do
       [user: [:active], role: [:active]]
@@ -575,10 +659,12 @@ defmodule Ash.Test.CalculationTest do
 
   defmodule Actor do
     use Ash.Resource,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     actions do
-      defaults([:create, :read, :update, :destroy])
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
     end
 
     ets do
@@ -590,64 +676,58 @@ defmodule Ash.Test.CalculationTest do
     end
 
     calculations do
-      calculate(:active, :boolean, ActorActive)
+      calculate :active, :boolean, ActorActive do
+        public?(true)
+      end
     end
 
     relationships do
       belongs_to :user, User do
-        attribute_writable?(true)
+        public?(true)
       end
 
       belongs_to :role, Role do
-        attribute_writable?(true)
+        public?(true)
       end
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      resource(User)
-      resource(FriendLink)
-      resource(Role)
-      resource(Actor)
     end
   end
 
   setup do
     user1 =
       User
-      |> Ash.Changeset.new(%{first_name: "zach", last_name: "daniel", bio: %{greeting: "Yo! "}})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{
+        first_name: "zach",
+        last_name: "daniel",
+        bio: %{greeting: "Yo! "}
+      })
+      |> Ash.create!()
 
     admin_role =
       Role
       |> Ash.Changeset.for_create(:create, %{name: "admin"})
-      |> Api.create!()
+      |> Ash.create!()
 
     normie_role =
       Role
       |> Ash.Changeset.for_create(:create, %{name: "normie"})
-      |> Api.create!()
+      |> Ash.create!()
 
     actor1 =
       Actor
       |> Ash.Changeset.for_create(:create, %{user_id: user1.id, role_id: admin_role.id})
-      |> Api.create!()
+      |> Ash.create!()
 
     user2 =
       User
-      |> Ash.Changeset.new(%{first_name: "brian", last_name: "cranston"})
+      |> Ash.Changeset.for_create(:create, %{first_name: "brian", last_name: "cranston"})
       |> Ash.Changeset.manage_relationship(:best_friend, user1, type: :append_and_remove)
       |> Ash.Changeset.manage_relationship(:friends, user1, type: :append_and_remove)
-      |> Api.create!()
+      |> Ash.create!()
 
     actor2 =
       Actor
       |> Ash.Changeset.for_create(:create, %{user_id: user2.id, role_id: normie_role.id})
-      |> Api.create!()
+      |> Ash.create!()
 
     %{
       user1: user1,
@@ -662,14 +742,14 @@ defmodule Ash.Test.CalculationTest do
   test "calculations can refer to `to_one` relationships in filters" do
     Role
     |> Ash.Query.filter(user_is_active_with_calc == true)
-    |> Api.read!()
+    |> Ash.read!()
   end
 
   test "it uses default arguments" do
     full_names =
       User
       |> Ash.Query.load(:full_name)
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.full_name)
       |> Enum.sort()
 
@@ -677,30 +757,30 @@ defmodule Ash.Test.CalculationTest do
   end
 
   test "loads dependencies", %{user1: user} do
-    assert %{slug: "zach daniel123"} = Api.load!(user, [:slug])
+    assert %{slug: "zach daniel123"} = Ash.load!(user, [:slug])
   end
 
   test "calculations can depend on relationships directly" do
     Role
     |> Ash.Query.load(:has_user)
-    |> Api.read!()
+    |> Ash.read!()
   end
 
   test "read actions can load calculations that use the actor", %{actor1: actor} do
     user =
       User
       |> Ash.Changeset.for_create(:create, %{first_name: "zach"})
-      |> Api.create!()
+      |> Ash.create!()
 
     Role
     |> Ash.Changeset.for_create(:create, %{user_id: user.id})
-    |> Api.create!()
+    |> Ash.create!()
 
     assert [%{user_name: "zach"}] =
              Role
              |> Ash.Query.for_read(:by_user_name, %{user_name: "zach"}, actor: actor)
              |> Ash.Query.load(:user_name)
-             |> Api.read!()
+             |> Ash.read!()
   end
 
   test "calculations that depend on relationships directly can be loaded from elsewhere", %{
@@ -708,13 +788,13 @@ defmodule Ash.Test.CalculationTest do
     admin_role: role
   } do
     role
-    |> Ash.Changeset.for_update(:update, %{user_id: user1.id})
+    |> Ash.Changeset.for_update(:update)
     |> Ash.Changeset.manage_relationship(:user, user1, type: :append)
-    |> Api.update!()
+    |> Ash.update!()
 
     User
     |> Ash.Query.load(roles: :has_user)
-    |> Api.read!()
+    |> Ash.read!()
   end
 
   test "calculations can depend on calculations that depend on relationships directly", %{
@@ -722,13 +802,13 @@ defmodule Ash.Test.CalculationTest do
     admin_role: role
   } do
     role
-    |> Ash.Changeset.for_update(:update, %{user_id: user1.id})
+    |> Ash.Changeset.for_update(:update, %{})
     |> Ash.Changeset.manage_relationship(:user, user1, type: :append)
-    |> Api.update!()
+    |> Ash.update!()
 
     User
     |> Ash.Query.load(:roles_have_user)
-    |> Api.read!()
+    |> Ash.read!()
   end
 
   test "calculations can access the actor", %{user1: user1, user2: user2} do
@@ -736,14 +816,14 @@ defmodule Ash.Test.CalculationTest do
              name_with_users_name: "zach daniel brian cranston"
            } =
              user1
-             |> Api.load!(:name_with_users_name, actor: user2)
+             |> Ash.load!(:name_with_users_name, actor: user2)
   end
 
   test "it loads anything specified by the load callback" do
     full_names =
       User
       |> Ash.Query.load(:full_name_plus_full_name)
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.full_name_plus_full_name)
       |> Enum.sort()
 
@@ -754,7 +834,7 @@ defmodule Ash.Test.CalculationTest do
     full_names =
       User
       |> Ash.Query.load(:full_name_plus_full_name_plus_full_name)
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.full_name_plus_full_name_plus_full_name)
       |> Enum.sort()
 
@@ -768,9 +848,9 @@ defmodule Ash.Test.CalculationTest do
     full_names =
       User
       |> Ash.Query.load([:full_name, :full_name_plus_full_name])
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(&%{&1 | full_name: &1.full_name <> " more"})
-      |> Api.load!(:full_name_plus_full_name)
+      |> Ash.load!(:full_name_plus_full_name)
       |> Enum.map(& &1.full_name_plus_full_name)
       |> Enum.sort()
 
@@ -784,18 +864,28 @@ defmodule Ash.Test.CalculationTest do
     best_friends_names =
       User
       |> Ash.Query.load([:best_friends_name])
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.best_friends_name)
       |> Enum.sort()
 
     assert best_friends_names == [nil, "zach daniel"]
   end
 
+  test "calculations must specify required fields by default" do
+    assert_raise RuntimeError,
+                 ~r/Invalid return from calculation, expected a value, got \`%Ash.NotLoaded{}\`/,
+                 fn ->
+                   User
+                   |> Ash.Query.load([:best_friends_first_name_that_fails])
+                   |> Ash.read!()
+                 end
+  end
+
   test "nested aggregates are loaded if necessary" do
     best_friends_first_names_plus_stuff =
       User
       |> Ash.Query.load([:best_friends_first_name_plus_stuff])
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.best_friends_first_name_plus_stuff)
       |> Enum.sort()
 
@@ -806,7 +896,7 @@ defmodule Ash.Test.CalculationTest do
     full_names =
       User
       |> Ash.Query.load(full_name: %{separator: " - "})
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.full_name)
       |> Enum.sort()
 
@@ -818,7 +908,7 @@ defmodule Ash.Test.CalculationTest do
       User
       |> Ash.Query.select(:first_name)
       |> Ash.Query.load(full_name: %{separator: " - "})
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.full_name)
       |> Enum.sort()
 
@@ -831,7 +921,7 @@ defmodule Ash.Test.CalculationTest do
       |> Ash.Query.calculate(:full_name, {Concat, keys: [:first_name, :last_name]}, :string, %{
         separator: " \o.o/ "
       })
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.calculations.full_name)
       |> Enum.sort()
 
@@ -842,7 +932,7 @@ defmodule Ash.Test.CalculationTest do
     full_names =
       User
       |> Ash.Query.load(:expr_full_name)
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.expr_full_name)
       |> Enum.sort()
 
@@ -854,7 +944,7 @@ defmodule Ash.Test.CalculationTest do
       User
       |> Ash.Query.load(:expr_full_name)
       |> Ash.Query.sort(:expr_full_name)
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.expr_full_name)
 
     assert full_names == ["brian cranston", "zach daniel"]
@@ -863,7 +953,7 @@ defmodule Ash.Test.CalculationTest do
       User
       |> Ash.Query.load(:expr_full_name)
       |> Ash.Query.sort(expr_full_name: :desc)
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.expr_full_name)
 
     assert full_names == ["zach daniel", "brian cranston"]
@@ -874,8 +964,8 @@ defmodule Ash.Test.CalculationTest do
       User
       |> Ash.Query.for_read(:paginated)
       |> Ash.Query.load(full_name_with_salutation: [salutation: "Mr"])
-      |> Ash.Query.sort(full_name_with_salutation: {:asc, %{salutation: "Mr"}})
-      |> Api.read!()
+      |> Ash.Query.sort(full_name_with_salutation: {%{salutation: "Mr"}, :asc})
+      |> Ash.read!()
       |> Map.get(:results)
       |> Enum.map(& &1.full_name_with_salutation)
 
@@ -884,13 +974,13 @@ defmodule Ash.Test.CalculationTest do
 
   test "the `if` calculation resolves the first expr when true, and the second when false" do
     User
-    |> Ash.Changeset.new(%{first_name: "bob"})
-    |> Api.create!()
+    |> Ash.Changeset.for_create(:create, %{first_name: "bob"})
+    |> Ash.create!()
 
     full_names =
       User
       |> Ash.Query.load(:conditional_full_name)
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.conditional_full_name)
       |> Enum.sort()
 
@@ -899,13 +989,13 @@ defmodule Ash.Test.CalculationTest do
 
   test "the `if` calculation can use the `do` style syntax" do
     User
-    |> Ash.Changeset.new(%{first_name: "bob"})
-    |> Api.create!()
+    |> Ash.Changeset.for_create(:create, %{first_name: "bob"})
+    |> Ash.create!()
 
     full_names =
       User
       |> Ash.Query.load(:conditional_full_name_block)
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.conditional_full_name_block)
       |> Enum.sort()
 
@@ -914,13 +1004,13 @@ defmodule Ash.Test.CalculationTest do
 
   test "the `if` calculation can use the `cond` style syntax" do
     User
-    |> Ash.Changeset.new(%{first_name: "bob"})
-    |> Api.create!()
+    |> Ash.Changeset.for_create(:create, %{first_name: "bob"})
+    |> Ash.create!()
 
     full_names =
       User
       |> Ash.Query.load(:conditional_full_name_cond)
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.conditional_full_name_cond)
       |> Enum.sort()
 
@@ -929,13 +1019,13 @@ defmodule Ash.Test.CalculationTest do
 
   test "expression based calculations can handle lists of fields" do
     User
-    |> Ash.Changeset.new(%{first_name: "bob"})
-    |> Api.create!()
+    |> Ash.Changeset.for_create(:create, %{first_name: "bob"})
+    |> Ash.create!()
 
     full_names =
       User
       |> Ash.Query.load(:string_join_full_name)
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.string_join_full_name)
       |> Enum.sort()
 
@@ -944,7 +1034,7 @@ defmodule Ash.Test.CalculationTest do
     ci_full_names =
       User
       |> Ash.Query.load(:string_join_full_name_ci)
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(&Ash.CiString.value(&1.string_join_full_name_ci))
       |> Enum.sort()
 
@@ -954,13 +1044,13 @@ defmodule Ash.Test.CalculationTest do
   test "simple expression calculations will be run in memory" do
     user =
       User
-      |> Ash.Changeset.new(%{first_name: "bob", last_name: "sagat"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{first_name: "bob", last_name: "sagat"})
+      |> Ash.create!()
 
     assert "george sagat" ==
              user
              |> Map.put(:first_name, "george")
-             |> Api.load!(:string_join_full_name)
+             |> Ash.load!(:string_join_full_name, reuse_values?: true)
              |> Map.get(:string_join_full_name)
   end
 
@@ -968,9 +1058,13 @@ defmodule Ash.Test.CalculationTest do
     user1: %{id: user1_id} = user1
   } do
     User
-    |> Ash.Changeset.new(%{first_name: "chidi", last_name: "anagonye", special: true})
+    |> Ash.Changeset.for_create(:create, %{
+      first_name: "chidi",
+      last_name: "anagonye",
+      special: true
+    })
     |> Ash.Changeset.manage_relationship(:best_friend, user1, type: :append_and_remove)
-    |> Api.create!()
+    |> Ash.create!()
 
     assert %{
              calculations: %{
@@ -991,7 +1085,7 @@ defmodule Ash.Test.CalculationTest do
                :names_of_best_friends_of_me,
                :names_of_best_friends_of_me
              )
-             |> Api.read_one!()
+             |> Ash.read_one!()
   end
 
   test "loading calculations with different relationship dependencies won't collide, when manually loading one of the deps",
@@ -999,9 +1093,13 @@ defmodule Ash.Test.CalculationTest do
          user1: %{id: user1_id} = user1
        } do
     User
-    |> Ash.Changeset.new(%{first_name: "chidi", last_name: "anagonye", special: true})
+    |> Ash.Changeset.for_create(:create, %{
+      first_name: "chidi",
+      last_name: "anagonye",
+      special: true
+    })
     |> Ash.Changeset.manage_relationship(:best_friend, user1, type: :append_and_remove)
-    |> Api.create!()
+    |> Ash.create!()
 
     assert %{
              calculations: %{
@@ -1023,7 +1121,7 @@ defmodule Ash.Test.CalculationTest do
                :names_of_best_friends_of_me,
                :names_of_best_friends_of_me
              )
-             |> Api.read_one!()
+             |> Ash.read_one!()
   end
 
   test "calculations that depend on many to many relationships will load", %{user2: user2} do
@@ -1033,14 +1131,14 @@ defmodule Ash.Test.CalculationTest do
              User
              |> Ash.Query.filter(id == ^user2.id)
              |> Ash.Query.load(:friends_names)
-             |> Api.read_one!()
+             |> Ash.read_one!()
   end
 
   test "when already loading a calculation's dependency it is used" do
     full_names =
       User
       |> Ash.Query.load([:full_name, :full_name_plus_full_name])
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.full_name_plus_full_name)
       |> Enum.sort()
 
@@ -1051,7 +1149,7 @@ defmodule Ash.Test.CalculationTest do
     best_friends_names =
       User
       |> Ash.Query.load([:best_friends_name, best_friend: [:full_name]])
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.best_friends_name)
       |> Enum.sort()
 
@@ -1062,7 +1160,7 @@ defmodule Ash.Test.CalculationTest do
     best_friends_best_friends_first_names =
       User
       |> Ash.Query.load(:best_friends_best_friends_first_name)
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.best_friends_best_friends_first_name)
       |> Enum.sort()
 
@@ -1076,7 +1174,7 @@ defmodule Ash.Test.CalculationTest do
         :best_friends_best_friends_first_name,
         best_friend: [best_friend: [:first_name]]
       ])
-      |> Api.read!()
+      |> Ash.read!()
       |> Enum.map(& &1.best_friends_best_friends_first_name)
       |> Enum.sort()
 
@@ -1090,7 +1188,7 @@ defmodule Ash.Test.CalculationTest do
              |> Ash.Query.load([
                :full_name_plus_first_name
              ])
-             |> Api.read!()
+             |> Ash.read!()
              |> Enum.map(& &1.full_name_plus_first_name)
              |> Enum.sort()
   end
@@ -1099,7 +1197,7 @@ defmodule Ash.Test.CalculationTest do
     assert [false, false] =
              Actor
              |> Ash.Query.load(:active)
-             |> Api.read!(authorize?: true)
+             |> Ash.read!(authorize?: true)
              |> Enum.map(& &1.active)
   end
 
@@ -1111,11 +1209,11 @@ defmodule Ash.Test.CalculationTest do
     user1 = user
 
     role
-    |> Ash.Changeset.for_update(:update, %{user_id: user1.id}, actor: actor)
+    |> Ash.Changeset.for_update(:update, %{}, actor: actor)
     |> Ash.Changeset.manage_relationship(:user, user1, type: :append)
-    |> Api.update!(actor: actor)
+    |> Ash.update!(actor: actor)
 
-    roles = Role |> Ash.Query.load(:user_name) |> Api.read!(actor: actor)
+    roles = Role |> Ash.Query.load(:user_name) |> Ash.read!(actor: actor)
 
     zach_role =
       Enum.find(roles, fn role ->
@@ -1128,7 +1226,7 @@ defmodule Ash.Test.CalculationTest do
       User
       |> Ash.Query.select([])
       |> Ash.Query.load([:role_user_name, :role_user_name_from_agg])
-      |> Api.read!(actor: actor)
+      |> Ash.read!(actor: actor)
 
     zach_user =
       Enum.find(users, fn user ->
@@ -1148,7 +1246,7 @@ defmodule Ash.Test.CalculationTest do
   test "calculation dependencies with conflicting load throughs still receive the appropriate values",
        %{user1: user1} do
     user1
-    |> Api.load!([:say_hello_to_fred, :say_hello_to_george])
+    |> Ash.load!([:say_hello_to_fred, :say_hello_to_george])
   end
 
   test "calculation dependencies can detect non-loaded nested values", %{user1: user1} do
@@ -1157,7 +1255,7 @@ defmodule Ash.Test.CalculationTest do
       |> Map.update!(:bio, fn bio ->
         %{bio | greeting: "A new value it definitely wasn't before!"}
       end)
-      |> Api.load!([:bio_greeting])
+      |> Ash.load!([:bio_greeting], reuse_values?: true)
       |> Map.get(:bio_greeting)
 
     assert greeting == "A new value it definitely wasn't before!"
@@ -1167,22 +1265,22 @@ defmodule Ash.Test.CalculationTest do
       |> Map.update!(:bio, fn bio ->
         %{bio | greeting: %Ash.NotLoaded{}}
       end)
-      |> Api.load!([:bio_greeting])
+      |> Ash.load!([:bio_greeting], reuse_values?: true)
       |> Map.get(:bio_greeting)
 
     assert greeting == "Yo!"
   end
 
-  test "calculation dependencies are refetched if `reselect_all?` is `true`", %{user1: user1} do
+  test "calculation dependencies are reused if `reuse_values?` is `true`", %{user1: user1} do
     greeting =
       user1
       |> Map.update!(:bio, fn bio ->
         %{bio | greeting: "A new value it definitely wasn't before!"}
       end)
-      |> Api.load!([:bio_greeting], reselect_all?: true)
+      |> Ash.load!([:bio_greeting], reuse_values?: true)
       |> Map.get(:bio_greeting)
 
-    assert greeting == "Yo!"
+    assert greeting == "A new value it definitely wasn't before!"
   end
 
   test "expression calculations that depend on runtime calculations work", %{user1: user1} do
@@ -1190,14 +1288,14 @@ defmodule Ash.Test.CalculationTest do
              User
              |> Ash.Query.filter(id == ^user1.id)
              |> Ash.Query.load(:full_name_with_select_plus_something)
-             |> Api.read!()
+             |> Ash.read!()
   end
 
   test "calculations that extract metadata will be loaded as a dependency of the concat calculation",
        %{user1: user1} do
     assert "example metadataexample metadata" ==
              user1
-             |> Api.load!(:metadata_plus_metadata)
+             |> Ash.load!(:metadata_plus_metadata)
              |> Map.get(:metadata_plus_metadata)
   end
 
@@ -1208,7 +1306,16 @@ defmodule Ash.Test.CalculationTest do
     assert %{example_metadata: "example metadata"} =
              user1
              |> Ash.Changeset.for_update(:update, %{first_name: "something new"})
-             |> Api.update!()
+             |> Ash.update!()
              |> Map.get(:__metadata__)
+  end
+
+  test "arguments can be referenced in calculations", %{user1: user1} do
+    user1_id = user1.id
+
+    assert [%{id: ^user1_id}] =
+             User
+             |> Ash.Query.filter(full_name(separator: first_name) == "zachzachdaniel")
+             |> Ash.read!()
   end
 end

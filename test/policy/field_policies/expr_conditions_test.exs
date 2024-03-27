@@ -1,26 +1,28 @@
 defmodule Ash.Test.Policy.FieldPolicy.ExpressionConditionTest do
   use ExUnit.Case, async: true
 
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      allow_unregistered? true
-    end
-  end
+  alias Ash.Test.Domain, as: Domain
 
   defmodule ResourceWithMultiplePoliciesForOneField do
     use Ash.Resource,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
     attributes do
       uuid_primary_key :id
 
-      attribute :name, :string
-      attribute :other_name, :string
-      attribute :other_other_name, :string
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :other_name, :string do
+        public?(true)
+      end
+
+      attribute :other_other_name, :string do
+        public?(true)
+      end
     end
 
     field_policies do
@@ -57,14 +59,13 @@ defmodule Ash.Test.Policy.FieldPolicy.ExpressionConditionTest do
     end
 
     code_interface do
-      define_for Api
-
       define :create
       define :read
     end
 
     actions do
-      defaults [:create, :read]
+      default_accept :*
+      defaults [:read, create: :*]
     end
   end
 

@@ -3,26 +3,11 @@ defmodule Ash.Resource.Info do
 
   alias Spark.Dsl.Extension
 
-  @deprecated "Use `Ash.Resource.set_metadata/2` instead"
-  defdelegate set_metadata(record, map), to: Ash.Resource
-
-  @deprecated "Use `Ash.Resource.put_metadata/3` instead"
-  defdelegate put_metadata(record, key, term), to: Ash.Resource
-
-  @deprecated "Use `Ash.Resource.unload_many/2` instead"
-  defdelegate unload_many(record, loads), to: Ash.Resource
-
-  @deprecated "Use `Ash.Resource.unload/2` instead"
-  defdelegate unload(record, key_or_path), to: Ash.Resource
-
-  @deprecated "Use `Ash.Resource.get_metadata/2` instead"
-  defdelegate get_metadata(record, key_or_path), to: Ash.Resource
-
-  @deprecated "Use `Ash.Resource.selected?/2` instead"
-  defdelegate selected?(record, field), to: Ash.Resource
-
-  def api(resource) do
-    Spark.Dsl.Extension.get_persisted(resource, :api)
+  @doc """
+  Returns the statically configured domain for the resource.
+  """
+  def domain(resource) do
+    Spark.Dsl.Extension.get_persisted(resource, :domain)
   end
 
   @doc """
@@ -126,11 +111,19 @@ defmodule Ash.Resource.Info do
   end
 
   @doc """
-  The Api to define the interface for, when defining it in the resource
+  The domain to define the interface for, when defining it in the resource
   """
-  @spec define_interface_for(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
-  def define_interface_for(resource) do
-    Extension.get_opt(resource, [:code_interface], :define_for, nil)
+  @spec code_interface_domain(Spark.Dsl.t() | Ash.Resource.t()) :: atom | nil
+  def code_interface_domain(resource) do
+    Extension.get_opt(resource, [:code_interface], :domain, nil)
+  end
+
+  @doc """
+  Whether or not to define the interface on the resource
+  """
+  @spec define_interface?(Spark.Dsl.t() | Ash.Resource.t()) :: boolean
+  def define_interface?(resource) do
+    Extension.get_opt(resource, [:code_interface], :define?, true)
   end
 
   @doc """
@@ -154,7 +147,7 @@ defmodule Ash.Resource.Info do
   """
   @spec simple_notifiers(Spark.Dsl.t() | Ash.Resource.t()) :: list(module)
   def simple_notifiers(resource) do
-    Extension.get_opt(resource, [:resource], :simple_notifiers) || []
+    Extension.get_persisted(resource, :simple_notifiers, [])
   end
 
   @doc """
@@ -345,7 +338,7 @@ defmodule Ash.Resource.Info do
   def public_relationships(resource) do
     resource
     |> relationships()
-    |> Enum.reject(& &1.private?)
+    |> Enum.filter(& &1.public?)
   end
 
   @doc "The required belongs_to relationships"
@@ -370,7 +363,7 @@ defmodule Ash.Resource.Info do
 
   def public_relationship(resource, relationship_name) do
     case relationship(resource, relationship_name) do
-      %{private?: false} = relationship -> relationship
+      %{public?: true} = relationship -> relationship
       _ -> nil
     end
   end
@@ -440,7 +433,7 @@ defmodule Ash.Resource.Info do
   def public_calculations(resource) do
     resource
     |> Extension.get_entities([:calculations])
-    |> Enum.reject(& &1.private?)
+    |> Enum.filter(& &1.public?)
   end
 
   @doc "Get a public calculation by name"
@@ -449,13 +442,13 @@ defmodule Ash.Resource.Info do
   def public_calculation(resource, name) when is_binary(name) do
     resource
     |> calculations()
-    |> Enum.find(&(to_string(&1.name) == name && !&1.private?))
+    |> Enum.find(&(to_string(&1.name) == name && &1.public?))
   end
 
   def public_calculation(resource, name) do
     resource
     |> calculations()
-    |> Enum.find(&(&1.name == name && !&1.private?))
+    |> Enum.find(&(&1.name == name && &1.public?))
   end
 
   @doc """
@@ -485,7 +478,6 @@ defmodule Ash.Resource.Info do
       end
 
     case Ash.Query.Aggregate.kind_to_type(aggregate.kind, attribute_type, attribute_constraints) do
-      # TODO: pass this back up somehow, maybe optionally.
       {:ok, type, _constraints} ->
         {:ok, type}
 
@@ -520,7 +512,7 @@ defmodule Ash.Resource.Info do
   def public_aggregates(resource) do
     resource
     |> Extension.get_entities([:aggregates])
-    |> Enum.reject(& &1.private?)
+    |> Enum.filter(& &1.public?)
   end
 
   @doc "Get an aggregate by name"
@@ -529,13 +521,13 @@ defmodule Ash.Resource.Info do
   def public_aggregate(resource, name) when is_binary(name) do
     resource
     |> aggregates()
-    |> Enum.find(&(to_string(&1.name) == name && !&1.private?))
+    |> Enum.find(&(to_string(&1.name) == name && &1.public?))
   end
 
   def public_aggregate(resource, name) do
     resource
     |> aggregates()
-    |> Enum.find(&(&1.name == name && !&1.private?))
+    |> Enum.find(&(&1.name == name && &1.public?))
   end
 
   @doc "Returns the primary action of the given type"
@@ -606,7 +598,7 @@ defmodule Ash.Resource.Info do
           raise ArgumentError, """
           Found an action of type #{found_type} while looking for an action of type #{type}
 
-          Perhaps you passed a changeset with the incorrect action type into your Api?
+          Perhaps you've passed a changeset with the incorrect action type?
           """
       end
     else
@@ -614,6 +606,23 @@ defmodule Ash.Resource.Info do
       |> actions()
       |> Enum.find(&(&1.name == name))
     end
+  end
+
+  @doc "Returns true or false if the input is accepted by the action, as an argument or an attribute"
+  @spec action_input?(Ash.Resource.t(), action :: atom(), input :: atom() | String.t()) ::
+          boolean()
+  def action_input?(resource, action, input) do
+    case Extension.get_persisted(resource, {:action_inputs, action}) do
+      nil -> false
+      map_set -> input in map_set
+    end
+  end
+
+  @doc "Returns the list of possible accepted keys by an action"
+  @spec action_inputs(Ash.Resource.t(), action :: atom()) ::
+          MapSet.t()
+  def action_inputs(resource, action) do
+    Extension.get_persisted(resource, {:action_inputs, action}) || MapSet.new()
   end
 
   @doc "Returns all attributes of a resource"
@@ -716,7 +725,7 @@ defmodule Ash.Resource.Info do
   def public_attributes(resource) do
     resource
     |> attributes()
-    |> Enum.reject(& &1.private?)
+    |> Enum.filter(& &1.public?)
   end
 
   @doc "Get a public attribute name from the resource"
@@ -724,7 +733,7 @@ defmodule Ash.Resource.Info do
           Ash.Resource.Attribute.t() | nil
   def public_attribute(resource, name) do
     case attribute(resource, name) do
-      %{private?: false} = attr -> attr
+      %{public?: true} = attr -> attr
       _ -> nil
     end
   end
@@ -782,7 +791,7 @@ defmodule Ash.Resource.Info do
   def public_fields(resource) do
     resource
     |> fields()
-    |> Enum.reject(& &1.private?)
+    |> Enum.filter(& &1.public?)
   end
 
   @doc "Get a public field from a resource by name"

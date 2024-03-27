@@ -41,16 +41,16 @@ defmodule Ash.DataLayer.Mnesia do
   alias :mnesia, as: Mnesia
 
   @doc """
-  Creates the table for each mnesia resource in an api
+  Creates the table for each mnesia resource in a domain
   """
-  def start(api, resources \\ []) do
+  def start(domain, resources \\ []) do
     Mnesia.create_schema([node()])
     Mnesia.start()
 
-    Code.ensure_compiled(api)
+    Code.ensure_compiled(domain)
 
-    api
-    |> Ash.Api.Info.resources()
+    domain
+    |> Ash.Domain.Info.resources()
     |> Enum.concat(resources)
     |> Enum.filter(&(__MODULE__ in Spark.extensions(&1)))
     |> Enum.flat_map(fn resource ->
@@ -64,7 +64,7 @@ defmodule Ash.DataLayer.Mnesia do
   defmodule Query do
     @moduledoc false
     defstruct [
-      :api,
+      :domain,
       :resource,
       :filter,
       :limit,
@@ -75,9 +75,6 @@ defmodule Ash.DataLayer.Mnesia do
       calculations: []
     ]
   end
-
-  @deprecated "use Ash.DataLayer.Mnesia.Info.table/1 instead"
-  defdelegate table(resource), to: Ash.DataLayer.Mnesia.Info
 
   @doc false
   @impl true
@@ -111,6 +108,7 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, {:aggregate, :min}), do: true
   def can?(_, {:aggregate, :avg}), do: true
   def can?(_, {:aggregate, :exists}), do: true
+  def can?(resource, {:query_aggregate, kind}), do: can?(resource, {:aggregate, kind})
 
   def can?(_, {:join, resource}) do
     # This is to ensure that these can't join, which is necessary for testing
@@ -128,10 +126,10 @@ defmodule Ash.DataLayer.Mnesia do
 
   @doc false
   @impl true
-  def resource_to_query(resource, api) do
+  def resource_to_query(resource, domain) do
     %Query{
       resource: resource,
-      api: api
+      domain: domain
     }
   end
 
@@ -175,7 +173,7 @@ defmodule Ash.DataLayer.Mnesia do
 
   @doc false
   @impl true
-  def run_aggregate_query(%{api: api} = query, aggregates, resource) do
+  def run_aggregate_query(%{domain: domain} = query, aggregates, resource) do
     case run_query(query, resource) do
       {:ok, results} ->
         Enum.reduce_while(aggregates, {:ok, %{}}, fn
@@ -186,17 +184,25 @@ defmodule Ash.DataLayer.Mnesia do
             field: field,
             resource: resource,
             uniq?: uniq?,
+            include_nil?: include_nil?,
             default_value: default_value
           },
           {:ok, acc} ->
             results
-            |> filter_matches(Map.get(query || %{}, :filter), api)
+            |> filter_matches(Map.get(query || %{}, :filter), domain)
             |> case do
               {:ok, matches} ->
                 field = field || Enum.at(Ash.Resource.Info.primary_key(resource), 0)
 
                 value =
-                  Ash.DataLayer.Ets.aggregate_value(matches, kind, field, uniq?, default_value)
+                  Ash.DataLayer.Ets.aggregate_value(
+                    matches,
+                    kind,
+                    field,
+                    uniq?,
+                    include_nil?,
+                    default_value
+                  )
 
                 {:cont, {:ok, Map.put(acc, name, value)}}
 
@@ -221,7 +227,7 @@ defmodule Ash.DataLayer.Mnesia do
   @impl true
   def run_query(
         %Query{
-          api: api,
+          domain: domain,
           resource: resource,
           filter: filter,
           offset: offset,
@@ -234,18 +240,18 @@ defmodule Ash.DataLayer.Mnesia do
       ) do
     with {:atomic, records} <-
            Mnesia.transaction(fn ->
-             Mnesia.select(table(resource), [{:_, [], [:"$_"]}])
+             Mnesia.select(Ash.DataLayer.Ets.Info.table(resource), [{:_, [], [:"$_"]}])
            end),
          {:ok, records} <-
            records |> Enum.map(&elem(&1, 2)) |> Ash.DataLayer.Ets.cast_records(resource),
-         {:ok, filtered} <- filter_matches(records, filter, api),
+         {:ok, filtered} <- filter_matches(records, filter, domain),
          offset_records <-
-           filtered |> Sort.runtime_sort(sort, api: api) |> Enum.drop(offset || 0),
+           filtered |> Sort.runtime_sort(sort, domain: domain) |> Enum.drop(offset || 0),
          limited_records <- do_limit(offset_records, limit),
          {:ok, records} <-
            Ash.DataLayer.Ets.do_add_aggregates(
              limited_records,
-             api,
+             domain,
              resource,
              aggregates
            ),
@@ -254,7 +260,7 @@ defmodule Ash.DataLayer.Mnesia do
              records,
              resource,
              calculations,
-             api
+             domain
            ) do
       {:ok, records}
     else
@@ -269,10 +275,10 @@ defmodule Ash.DataLayer.Mnesia do
   defp do_limit(records, nil), do: records
   defp do_limit(records, limit), do: Enum.take(records, limit)
 
-  defp filter_matches(records, nil, _api), do: {:ok, records}
+  defp filter_matches(records, nil, _domain), do: {:ok, records}
 
-  defp filter_matches(records, filter, api) do
-    Ash.Filter.Runtime.filter_matches(api, records, filter)
+  defp filter_matches(records, filter, domain) do
+    Ash.Filter.Runtime.filter_matches(domain, records, filter)
   end
 
   @doc false
@@ -294,7 +300,7 @@ defmodule Ash.DataLayer.Mnesia do
     |> case do
       {:ok, values} ->
         case Mnesia.transaction(fn ->
-               Mnesia.write({table(resource), pkey, values})
+               Mnesia.write({Ash.DataLayer.Ets.Info.table(resource), pkey, values})
              end) do
           {:atomic, _} ->
             {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
@@ -318,7 +324,7 @@ defmodule Ash.DataLayer.Mnesia do
 
     result =
       Mnesia.transaction(fn ->
-        Mnesia.delete({table(resource), pkey})
+        Mnesia.delete({Ash.DataLayer.Ets.Info.table(resource), pkey})
       end)
 
     case result do
@@ -335,7 +341,8 @@ defmodule Ash.DataLayer.Mnesia do
     result =
       Mnesia.transaction(fn ->
         with {:ok, record} <- Ash.Changeset.apply_attributes(%{changeset | action_type: :update}),
-             {:ok, record} <- do_update(table(resource), {pkey, record}, resource),
+             {:ok, record} <-
+               do_update(Ash.DataLayer.Ets.Info.table(resource), {pkey, record}, resource),
              {:ok, record} <- Ash.DataLayer.Ets.cast_record(record, resource) do
           new_pkey = pkey_list(resource, record)
 
@@ -383,7 +390,7 @@ defmodule Ash.DataLayer.Mnesia do
 
     case Ash.DataLayer.Ets.dump_to_native(record, attributes) do
       {:ok, casted} ->
-        case Mnesia.read({table(resource), pkey}) do
+        case Mnesia.read({Ash.DataLayer.Ets.Info.table(resource), pkey}) do
           [] ->
             {:error, "Record not found matching: #{inspect(pkey)}"}
 
@@ -414,7 +421,7 @@ defmodule Ash.DataLayer.Mnesia do
       query = Ash.Query.do_filter(resource, and: [key_filters])
 
       resource
-      |> resource_to_query(changeset.api)
+      |> resource_to_query(changeset.domain)
       |> Map.put(:filter, query.filter)
       |> Map.put(:tenant, changeset.tenant)
       |> run_query(resource)

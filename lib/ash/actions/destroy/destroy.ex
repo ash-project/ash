@@ -5,12 +5,12 @@ defmodule Ash.Actions.Destroy do
 
   require Ash.Tracer
 
-  @spec run(Ash.Api.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
+  @spec run(Ash.Domain.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
           {:ok, list(Ash.Notifier.Notification.t())}
           | :ok
           | {:error, Ash.Changeset.t()}
           | {:error, term}
-  def run(api, changeset, %{soft?: true} = action, opts) do
+  def run(domain, changeset, %{soft?: true} = action, opts) do
     changeset =
       if changeset.__validated_for_action__ == action.name do
         %{changeset | action_type: :destroy}
@@ -20,22 +20,22 @@ defmodule Ash.Actions.Destroy do
         )
       end
 
-    Ash.Actions.Update.run(api, changeset, action, opts)
+    Ash.Actions.Update.run(domain, changeset, action, opts)
   end
 
-  def run(api, changeset, action, opts) do
-    {changeset, opts} = Helpers.add_process_context(api, changeset, opts)
+  def run(domain, changeset, action, opts) do
+    {changeset, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, changeset, opts)
     changeset = Helpers.apply_opts_load(changeset, opts)
 
     Ash.Tracer.span :action,
-                    Ash.Api.Info.span_name(
-                      api,
+                    Ash.Domain.Info.span_name(
+                      domain,
                       changeset.resource,
                       action.name
                     ),
                     opts[:tracer] do
       metadata = %{
-        api: api,
+        domain: domain,
         resource: changeset.resource,
         resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
         actor: opts[:actor],
@@ -46,8 +46,8 @@ defmodule Ash.Actions.Destroy do
 
       Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
-      Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(api), :destroy], metadata do
-        case do_run(api, changeset, action, opts) do
+      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :destroy], metadata do
+        case do_run(domain, changeset, action, opts) do
           {:error, error} ->
             if opts[:tracer] do
               stacktrace =
@@ -80,9 +80,11 @@ defmodule Ash.Actions.Destroy do
               __STACKTRACE__
   end
 
-  def do_run(api, changeset, action, opts) do
+  def do_run(domain, changeset, action, opts) do
+    {changeset, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, changeset, opts)
+
     return_destroyed? = opts[:return_destroyed?]
-    changeset = %{changeset | api: api}
+    changeset = %{changeset | domain: domain}
 
     changeset =
       if opts[:tenant] do
@@ -92,9 +94,9 @@ defmodule Ash.Actions.Destroy do
       end
 
     with %{valid?: true} = changeset <- Ash.Changeset.validate_multitenancy(changeset),
-         %{valid?: true} = changeset <- changeset(changeset, api, action, opts),
-         %{valid?: true} = changeset <- authorize(changeset, api, opts),
-         {:commit, {:ok, result, instructions}} <- {:commit, commit(changeset, api, opts)} do
+         %{valid?: true} = changeset <- changeset(changeset, domain, action, opts),
+         %{valid?: true} = changeset <- authorize(changeset, opts),
+         {:ok, result, instructions} <- commit(changeset, domain, opts) do
       changeset.resource
       |> add_notifications(
         changeset.action,
@@ -123,21 +125,13 @@ defmodule Ash.Actions.Destroy do
 
       {:error, error} ->
         errors = Helpers.process_errors(changeset, List.wrap(error))
-
-        Ash.Changeset.run_after_transactions(
-          {:error, Ash.Error.to_error_class(errors, changeset: changeset)},
-          changeset
-        )
-
-      {:commit, {:error, error}} ->
-        errors = Helpers.process_errors(changeset, List.wrap(error))
         {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
     end
   end
 
-  defp authorize(changeset, api, opts) do
+  defp authorize(changeset, opts) do
     if opts[:authorize?] do
-      case api.can(changeset, opts[:actor],
+      case Ash.can(changeset, opts[:actor],
              alter_source?: true,
              return_forbidden_error?: true,
              maybe_is: false
@@ -156,7 +150,7 @@ defmodule Ash.Actions.Destroy do
     end
   end
 
-  defp commit(changeset, api, opts) do
+  defp commit(changeset, domain, opts) do
     changeset
     |> Ash.Changeset.put_context(:private, %{actor: opts[:actor], authorize?: opts[:authorize?]})
     |> Ash.Changeset.with_hooks(
@@ -165,7 +159,7 @@ defmodule Ash.Actions.Destroy do
           {:error, changeset}
 
         changeset ->
-          case Helpers.load({:ok, changeset.data, %{}}, changeset, api,
+          case Helpers.load({:ok, changeset.data, %{}}, changeset, domain,
                  actor: opts[:actor],
                  authorize?: opts[:authorize?],
                  tracer: opts[:tracer]
@@ -179,11 +173,12 @@ defmodule Ash.Actions.Destroy do
                 if result = changeset.context[:private][:action_result] do
                   result
                 else
-                  mod.destroy(changeset, action_opts, %{
+                  mod.destroy(changeset, action_opts, %Ash.Resource.ManualDestroy.Context{
+                    select: changeset.select,
                     actor: opts[:actor],
                     tenant: changeset.tenant,
                     authorize?: opts[:authorize?],
-                    api: changeset.api
+                    domain: changeset.domain
                   })
                   |> validate_manual_action_return_result!(changeset.resource, changeset.action)
                 end
@@ -320,8 +315,8 @@ defmodule Ash.Actions.Destroy do
     result
   end
 
-  defp changeset(changeset, api, action, opts) do
-    changeset = %{changeset | api: api}
+  defp changeset(changeset, domain, action, opts) do
+    changeset = %{changeset | domain: domain}
 
     if changeset.__validated_for_action__ == action.name do
       changeset

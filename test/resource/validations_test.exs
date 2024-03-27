@@ -3,20 +3,29 @@ defmodule Ash.Test.Resource.ValidationsTest do
   use ExUnit.Case, async: true
 
   defmacrop defposts(do: body) do
+    module = Module.concat(["rand#{System.unique_integer([:positive])}", Post])
+
     quote do
-      defmodule Post do
+      defmodule unquote(module) do
         @moduledoc false
-        use Ash.Resource
+        use Ash.Resource, domain: Ash.Test.Domain
 
         attributes do
           uuid_primary_key :id
 
-          attribute :name, :string
-          attribute :contents, :string
+          attribute :name, :string do
+            public?(true)
+          end
+
+          attribute :contents, :string do
+            public?(true)
+          end
         end
 
         unquote(body)
       end
+
+      alias unquote(module), as: Post
     end
   end
 

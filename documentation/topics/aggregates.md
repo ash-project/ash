@@ -25,7 +25,7 @@ See the docs on `d:Ash.Resource.Dsl.aggregates` for more information.
 
 The aggregates declared on a resource allow for declaring a set of named aggregates that can be used by extensions.
 
-As an escape hatch, they can also be loaded in the query using `Ash.Query.load/2`, or after the fact using `c:Ash.Api.load/3`. Aggregates declared on the resource will be keys in the resource's struct.
+As an escape hatch, they can also be loaded in the query using `Ash.Query.load/2`, or after the fact using `Ash.load/3`. Aggregates declared on the resource will be keys in the resource's struct.
 
 ## Custom aggregates in the query
 
@@ -35,7 +35,6 @@ Example:
 
 ```elixir
 User
-|> Ash.Query.new()
 |> Ash.Query.aggregate(
   :count_of_posts, 
   :count, 

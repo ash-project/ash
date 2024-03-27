@@ -2,16 +2,19 @@ defmodule Ash.Test.Actions.StreamTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
     end
 
     actions do
-      defaults [:create, :update, :destroy]
+      default_accept :*
+      defaults [:destroy, create: :*, update: :*]
 
       read :read do
         primary? true
@@ -23,38 +26,20 @@ defmodule Ash.Test.Actions.StreamTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string, allow_nil?: false
+      attribute :title, :string, allow_nil?: false, public?: true
 
       timestamps()
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Post
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 
   test "records can be streamed" do
     1..10
     |> Stream.map(&%{title: "title#{&1}"})
-    |> Api.bulk_create!(Post, :create)
+    |> Ash.bulk_create!(Post, :create)
 
     count =
       Post
-      |> Api.stream!(batch_size: 100_000)
+      |> Ash.stream!(batch_size: 100_000)
       |> Enum.count()
 
     assert count == 10
@@ -63,11 +48,11 @@ defmodule Ash.Test.Actions.StreamTest do
   test "records can be streamed using limit/offset strategy" do
     1..10
     |> Stream.map(&%{title: "title#{&1}"})
-    |> Api.bulk_create!(Post, :create)
+    |> Ash.bulk_create!(Post, :create)
 
     count =
       Post
-      |> Api.stream!(batch_size: 5, stream_with: :offset)
+      |> Ash.stream!(batch_size: 5, stream_with: :offset)
       |> Enum.count()
 
     assert count == 10
@@ -76,11 +61,11 @@ defmodule Ash.Test.Actions.StreamTest do
   test "records can be streamed using full_read strategy" do
     1..10
     |> Stream.map(&%{title: "title#{&1}"})
-    |> Api.bulk_create!(Post, :create)
+    |> Ash.bulk_create!(Post, :create)
 
     count =
       Post
-      |> Api.stream!(batch_size: 5, stream_with: :full_read)
+      |> Ash.stream!(batch_size: 5, stream_with: :full_read)
       |> Enum.count()
 
     assert count == 10
@@ -89,12 +74,12 @@ defmodule Ash.Test.Actions.StreamTest do
   test "records can be streamed, and the overall limit will be honored" do
     1..10
     |> Stream.map(&%{title: "title#{&1}"})
-    |> Api.bulk_create!(Post, :create)
+    |> Ash.bulk_create!(Post, :create)
 
     count =
       Post
       |> Ash.Query.limit(7)
-      |> Api.stream!(batch_size: 5)
+      |> Ash.stream!(batch_size: 5)
       |> Enum.count()
 
     assert count == 7

@@ -8,7 +8,7 @@ defmodule Ash.Policy.SimpleCheck do
   @type context :: %{
           required(:action) => Ash.Resource.Actions.action(),
           required(:resource) => Ash.Resource.t(),
-          required(:api) => Ash.Api.t(),
+          required(:domain) => Ash.Domain.t(),
           optional(:query) => Ash.Query.t(),
           optional(:changeset) => Ash.Changeset.t(),
           optional(any) => any
@@ -25,7 +25,7 @@ defmodule Ash.Policy.SimpleCheck do
 
       def type, do: :simple
 
-      def requires_original_data?(_, _), do: true
+      def requires_original_data?(_, _), do: false
 
       def strict_check(actor, context, opts) do
         {:ok, match?(actor, context, opts)}

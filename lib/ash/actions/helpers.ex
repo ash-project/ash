@@ -4,6 +4,8 @@ defmodule Ash.Actions.Helpers do
   require Ash.Flags
 
   def rollback_if_in_transaction({:error, error}, resource, changeset) do
+    error = Ash.Error.to_ash_error(error)
+
     if Ash.DataLayer.in_transaction?(resource) do
       case changeset do
         %Ash.Changeset{} = changeset ->
@@ -48,9 +50,10 @@ defmodule Ash.Actions.Helpers do
   defp set_context(%Ash.ActionInput{} = action_input, context),
     do: Ash.ActionInput.set_context(action_input, context)
 
-  def add_process_context(api, query_or_changeset, opts) do
+  def set_context_and_get_opts(domain, query_or_changeset, opts) do
+    opts = transform_tenant(opts)
     query_or_changeset = set_context(query_or_changeset, opts[:context] || %{})
-    api = api || query_or_changeset.api
+    domain = domain || opts[:domain] || query_or_changeset.domain
 
     opts =
       case query_or_changeset.context do
@@ -91,17 +94,19 @@ defmodule Ash.Actions.Helpers do
           opts
       end
 
-    opts = set_opts(opts, api, query_or_changeset)
+    opts = set_opts(opts, domain, query_or_changeset)
 
     query_or_changeset = add_context(query_or_changeset, opts)
+
+    query_or_changeset = %{query_or_changeset | domain: domain}
 
     {query_or_changeset, opts}
   end
 
-  def set_opts(opts, api, query_or_changeset \\ nil) do
+  def set_opts(opts, domain, query_or_changeset \\ nil) do
     opts
-    |> add_actor(query_or_changeset, api)
-    |> add_authorize?(query_or_changeset, api)
+    |> add_actor(query_or_changeset, domain)
+    |> add_authorize?(query_or_changeset, domain)
     |> add_tenant()
     |> add_tracer()
   end
@@ -139,7 +144,17 @@ defmodule Ash.Actions.Helpers do
     end
   end
 
-  defp add_actor(opts, query_or_changeset, api) do
+  defp transform_tenant(opts) do
+    case Keyword.fetch(opts, :tenant) do
+      {:ok, tenant} ->
+        Keyword.put(opts, :tenant, tenant)
+
+      :error ->
+        opts
+    end
+  end
+
+  defp add_actor(opts, query_or_changeset, domain) do
     opts =
       if Keyword.has_key?(opts, :actor) do
         opts
@@ -153,19 +168,20 @@ defmodule Ash.Actions.Helpers do
         end
       end
 
-    if api do
-      if !skip_requiring_actor?(query_or_changeset) && !internal?(query_or_changeset) &&
-           !Keyword.has_key?(opts, :actor) &&
-           Ash.Api.Info.require_actor?(api) do
-        raise Ash.Error.to_error_class(Ash.Error.Forbidden.ApiRequiresActor.exception(api: api))
-      end
-
-      opts
-    else
-      # The only time api would be nil here is when we call this helper inside of `Changeset.for_*` and `Query.for_read`
-      # meaning this will be run again later with the api, so we skip the validations on the api
-      opts
+    if !domain do
+      raise Ash.Error.Framework.AssumptionFailed,
+        message: "Could not determine domain for action."
     end
+
+    if !skip_requiring_actor?(query_or_changeset) && !internal?(query_or_changeset) &&
+         !Keyword.has_key?(opts, :actor) &&
+         Ash.Domain.Info.require_actor?(domain) do
+      raise Ash.Error.to_error_class(
+              Ash.Error.Forbidden.DomainRequiresActor.exception(domain: domain)
+            )
+    end
+
+    opts
   end
 
   defp internal?(%{context: %{private: %{internal?: true}}}), do: true
@@ -174,7 +190,7 @@ defmodule Ash.Actions.Helpers do
   defp skip_requiring_actor?(%{context: %{private: %{require_actor?: false}}}), do: true
   defp skip_requiring_actor?(_), do: false
 
-  defp add_authorize?(opts, query_or_changeset, api) do
+  defp add_authorize?(opts, query_or_changeset, domain) do
     opts =
       if Keyword.has_key?(opts, :authorize?) do
         opts
@@ -188,29 +204,32 @@ defmodule Ash.Actions.Helpers do
         end
       end
 
-    if api do
-      case Ash.Api.Info.authorize(api) do
-        :always ->
-          if opts[:authorize?] == false && internal?(query_or_changeset) do
-            opts
-          else
-            Keyword.put(opts, :authorize?, true)
+    if !domain do
+      raise Ash.Error.Framework.AssumptionFailed,
+        message: "Could not determine domain for action."
+    end
+
+    case Ash.Domain.Info.authorize(domain) do
+      :always ->
+        if opts[:authorize?] == false && internal?(query_or_changeset) do
+          opts
+        else
+          if opts[:authorize?] == false do
+            raise Ash.Error.Forbidden.DomainRequiresAuthorization, domain: domain
           end
 
-        :by_default ->
+          Keyword.put(opts, :authorize?, true)
+        end
+
+      :by_default ->
+        Keyword.put_new(opts, :authorize?, true)
+
+      :when_requested ->
+        if Keyword.has_key?(opts, :actor) do
           Keyword.put_new(opts, :authorize?, true)
-
-        :when_requested ->
-          if Keyword.has_key?(opts, :actor) do
-            Keyword.put_new(opts, :authorize?, true)
-          else
-            Keyword.put(opts, :authorize?, opts[:authorize?] || Keyword.has_key?(opts, :actor))
-          end
-      end
-    else
-      # The only time api would be nil here is when we call this helper inside of `Changeset.for_*` and `Query.for_read`
-      # meaning this will be run again later with the api, so we skip the validations on the api
-      opts
+        else
+          Keyword.put(opts, :authorize?, opts[:authorize?] || Keyword.has_key?(opts, :actor))
+        end
     end
   end
 
@@ -300,9 +319,10 @@ defmodule Ash.Actions.Helpers do
   defp resource_notification(changeset, result, opts) do
     %Ash.Notifier.Notification{
       resource: changeset.resource,
-      api: changeset.api,
+      domain: changeset.domain,
       actor: changeset.context[:private][:actor],
       action: changeset.action,
+      for: Ash.Resource.Info.notifiers(changeset.resource) ++ changeset.action.notifiers,
       data: result,
       changeset: changeset,
       from: self(),
@@ -552,7 +572,7 @@ defmodule Ash.Actions.Helpers do
     end
   end
 
-  def load({:ok, result, instructions}, changeset, api, opts) do
+  def load({:ok, result, instructions}, changeset, domain, opts) do
     if changeset.load in [nil, []] do
       {:ok, result, instructions}
     else
@@ -561,7 +581,7 @@ defmodule Ash.Actions.Helpers do
         |> Ash.Query.load(changeset.load)
         |> select_selected(result)
 
-      case api.load(result, query, opts) do
+      case Ash.load(result, query, Keyword.put(opts, :domain, domain)) do
         {:ok, result} ->
           {:ok, result, instructions}
 
@@ -571,7 +591,7 @@ defmodule Ash.Actions.Helpers do
     end
   end
 
-  def load({:ok, result}, changeset, api, opts) do
+  def load({:ok, result}, changeset, domain, opts) do
     if changeset.load in [nil, []] do
       {:ok, result, %{}}
     else
@@ -580,7 +600,7 @@ defmodule Ash.Actions.Helpers do
         |> Ash.Query.load(changeset.load)
         |> select_selected(result)
 
-      case api.load(result, query, opts) do
+      case Ash.load(result, query, Keyword.put(opts, :domain, domain)) do
         {:ok, result} ->
           {:ok, result, %{}}
 
@@ -717,17 +737,17 @@ defmodule Ash.Actions.Helpers do
     {:error, error}
   end
 
-  def select(results, query) when is_list(results) do
-    Enum.map(results, &select(&1, query))
-  end
-
   def select(nil, _), do: nil
 
   def select(result, %{select: nil}) do
     result
   end
 
-  def select(result, %{resource: resource, select: select}) do
+  def select(result, nil) do
+    result
+  end
+
+  def select(%resource{} = result, %{resource: resource, select: select}) do
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.flat_map(fn attribute ->
@@ -738,16 +758,19 @@ defmodule Ash.Actions.Helpers do
       end
     end)
     |> Enum.reduce(result, fn key, record ->
-      default_field_value =
-        if Ash.Flags.ash_three?() do
-          %Ash.NotSelected{field: key}
-        else
-          nil
-        end
-
-      Map.put(record, key, default_field_value)
+      record
+      |> Map.put(key, %Ash.NotLoaded{field: key, type: :attribute})
     end)
     |> Ash.Resource.put_metadata(:selected, select)
+  end
+
+  def select(:ok, _query), do: :ok
+
+  def select(results, query) do
+    if Enumerable.impl_for(results) do
+      Enum.map(results, &select(&1, query))
+    else
+    end
   end
 
   def attributes_to_select(%{select: nil, resource: resource}) do

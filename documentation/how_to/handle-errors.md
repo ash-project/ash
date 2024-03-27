@@ -16,12 +16,11 @@ An example of a single error being raised, representing multiple underlying erro
 
 ```elixir
 AshExample.Representative
-|> Ash.Changeset.new(%{employee_id: "the best"})
-|> AshExample.Api.create!()
- ** (Ash.Error.Invalid) Input Invalid
+|> Ash.Changeset.for_create(:create, %{employee_id: "the best"})
+|> Ash.create!()
+ ** (Ash.Error.Invalid) Invalid Error
  * employee_id: must be absent.
  * first_name, last_name: at least 1 must be present.
-    (ash 1.3.0) lib/ash/api/api.ex:534: Ash.Api.unwrap_or_raise!/1
 ```
 
 This allows easy rescuing of the major error classes, as well as inspection of the underlying cases
@@ -29,8 +28,8 @@ This allows easy rescuing of the major error classes, as well as inspection of t
 ```elixir
 try do
   AshExample.Representative
-  |> Ash.Changeset.new(%{employee_id: "dabes"})
-  |> AshExample.Api.create!()
+  |> Ash.Changeset.for_create(:create, %{employee_id: "dabes"})
+  |> Ash.create!()
 rescue
   e in Ash.Error.Invalid ->
     "Encountered #{Enum.count(e.errors)} errors"
@@ -44,8 +43,8 @@ This pattern does add some additional overhead when you want to rescue specific 
 ```elixir
 try do
   AshExample.Representative
-  |> Ash.Changeset.new(%{employee_id: "dabes"})
-  |> AshExample.Api.create!()
+  |> Ash.Changeset.for_create(:create, %{employee_id: "dabes"})
+  |> Ash.create!()
 rescue
   e in Ash.Error.Invalid ->
     case Enum.find(e.errors, &(&1.__struct__ == A.Specific.Error)) do
@@ -91,6 +90,7 @@ end
 These are all modules under `Ash.Error.*`. You can create a new one with `error.exception(options)`, and the options are documented in each exception. This documentation is missing in some cases. Go to the source code of the exception to see its special options. All of them support the `vars` option, which are values to be interpolated into the message, useful for things like translation.
 
 For example:
+
 ```elixir
 def change(changeset, _, _) do
   if some_condition(changeset) do
@@ -114,31 +114,14 @@ You can create a custom exception like so. This is an example of a builtin excep
 ```elixir
 defmodule Ash.Error.Action.InvalidArgument do
   @moduledoc "Used when an invalid value is provided for an action argument"
-  use Ash.Error.Exception
+  use Splode.Error, fields: [:field, :message, :value], class: :invalid
 
-  def_ash_error([:field, :message, :value], class: :invalid)
+  def message(error) do
+    """
+    Invalid value provided#{for_field(error)}#{do_message(error)}
 
-  defimpl Ash.ErrorKind do
-    def id(_), do: Ash.UUID.generate()
-
-    def code(_), do: "invalid_argument"
-
-    def message(error) do
-      """
-      Invalid value provided#{for_field(error)}#{do_message(error)}
-
-      #{inspect(error.value)}
-      """
-    end
-
-    defp for_field(%{field: field}) when not is_nil(field), do: " for #{field}"
-    defp for_field(_), do: ""
-
-    defp do_message(%{message: message}) when not is_nil(message) do
-      ": #{message}."
-    end
-
-    defp do_message(_), do: "."
+    #{inspect(error.value)}
+    """
   end
 end
 ```

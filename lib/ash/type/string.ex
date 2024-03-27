@@ -34,7 +34,7 @@ defmodule Ash.Type.String do
 
   ### Constraints
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
 
@@ -43,7 +43,7 @@ defmodule Ash.Type.String do
   @impl true
   def storage_type(_), do: :string
 
-  def cast_atomic_update(expr, constraints) when is_binary(expr) do
+  def cast_atomic(expr, constraints) when is_binary(expr) do
     case cast_input(expr, constraints) do
       {:ok, value} -> {:atomic, value}
       {:error, other} -> {:error, other}
@@ -51,7 +51,7 @@ defmodule Ash.Type.String do
   end
 
   @impl true
-  def cast_atomic_update(expr, constraints) do
+  def cast_atomic(expr, constraints) do
     # We can't support `match` currently, as we don't have a multi-target regex
     if constraints[:match] do
       {:not_atomic, "cannot use the `match` string constraint atomically"}

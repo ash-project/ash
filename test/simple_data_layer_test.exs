@@ -1,15 +1,22 @@
 defmodule Ash.Test.SimpleDataLayerTest do
   use ExUnit.Case
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule Person do
-    use Ash.Resource
+    use Ash.Resource, domain: Domain
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
 
     actions do
+      default_accept :*
+
       read :read do
         primary? true
 
@@ -50,20 +57,12 @@ defmodule Ash.Test.SimpleDataLayerTest do
     defp offset(list, value), do: Enum.drop(list, value)
   end
 
-  defmodule Api do
-    use Ash.Api
-
-    resources do
-      allow_unregistered? true
-    end
-  end
-
   test "set_data can be used in a before_action callback" do
-    assert [%{name: "Fred"}] = Api.read!(Person)
+    assert [%{name: "Fred"}] = Ash.read!(Person)
   end
 
   test "pagination works" do
     assert %Ash.Page.Offset{results: [%{name: "Fred"}]} =
-             Api.read!(Person, action: :paginated, page: [limit: 1])
+             Ash.read!(Person, action: :paginated, page: [limit: 1])
   end
 end

@@ -17,8 +17,11 @@ defmodule Ash.Query.Aggregate do
     join_filters: %{},
     context: %{},
     authorize?: true,
+    include_nil?: false,
     uniq?: false,
-    filterable?: true
+    filterable?: true,
+    sortable?: true,
+    sensitive?: false
   ]
 
   @type t :: %__MODULE__{}
@@ -72,6 +75,10 @@ defmodule Ash.Query.Aggregate do
       type: :boolean,
       doc: "Whether or not this aggregate may be used in filters."
     ],
+    sortable?: [
+      type: :boolean,
+      doc: "Whether or not this aggregate may be used in sorts."
+    ],
     type: [
       type: :any,
       doc: "A type to use for the aggregate."
@@ -94,12 +101,23 @@ defmodule Ash.Query.Aggregate do
       doc:
         "Whether or not to only consider unique values. Only relevant for `count` and `list` aggregates."
     ],
+    include_nil?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Whether or not to include `nil` values in the aggregate. Only relevant for `list` and `first` aggregates."
+    ],
     join_filters: [
       type: {:map, {:wrap_list, :atom}, :any},
       default: %{},
       doc: """
       A map of relationship paths (an atom or list of atoms), to an expression to apply when fetching the aggregate data. See the aggregates guide for more.
       """
+    ],
+    sensitive?: [
+      type: :boolean,
+      doc: "Whether or not references to this aggregate will be considered sensitive",
+      default: true
     ],
     authorize?: [
       type: :boolean,
@@ -120,11 +138,11 @@ defmodule Ash.Query.Aggregate do
   end
 
   @doc """
-  Create a new aggregate, used with `Query.aggregate` or `Api.aggregate`
+  Create a new aggregate, used with `Query.aggregate` or `Ash.aggregate`
 
   Options:
 
-  #{Spark.OptionsHelpers.docs(@schema)}
+  #{Spark.Options.docs(@schema)}
   """
   def new(resource, name, kind, opts \\ []) do
     opts =
@@ -136,24 +154,13 @@ defmodule Ash.Query.Aggregate do
           false
       end)
 
-    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @schema) do
+    with {:ok, opts} <- Spark.Options.validate(opts, @schema) do
       related = Ash.Resource.Info.related(resource, opts[:path] || [])
 
       query =
         case opts[:query] || Ash.Query.new(related) do
           %Ash.Query{} = query -> query
           build_opts -> build_query(related, build_opts)
-        end
-
-      read_action = opts[:read_action] || Ash.Resource.Info.primary_action!(related, :read).name
-
-      query =
-        if query.__validated_for_action__ != read_action do
-          query
-          |> Ash.Query.set_context(%{private: %{require_actor?: false}})
-          |> Ash.Query.for_read(read_action, %{})
-        else
-          query
         end
 
       opts[:join_filters]
@@ -169,109 +176,85 @@ defmodule Ash.Query.Aggregate do
       end)
       |> case do
         {:ok, join_filters} ->
-          new(
-            resource,
-            name,
-            kind,
-            opts[:path] || [],
-            query,
-            opts[:field],
-            opts[:default],
-            Keyword.get(opts, :filterable?, true),
-            opts[:type],
-            Keyword.get(opts, :constraints, []),
-            opts[:implementation],
-            opts[:uniq?],
-            opts[:read_action],
-            Keyword.get(opts, :authorize?, true),
-            join_filters
-          )
+          relationship = opts[:path] || []
+          field = opts[:field]
+          default = opts[:default]
+          filterable? = Keyword.get(opts, :filterable?, true)
+          sortable? = Keyword.get(opts, :sortable?, true)
+          type = opts[:type]
+          constraints = Keyword.get(opts, :constraints, [])
+          implementation = opts[:implementation]
+          uniq? = opts[:uniq?]
+          read_action = opts[:read_action]
+          authorize? = opts[:authorize?]
+
+          if kind == :custom && !type do
+            raise ArgumentError, "Must supply type when building a `custom` aggregate"
+          end
+
+          if kind == :custom && !implementation do
+            raise ArgumentError, "Must supply implementation when building a `custom` aggregate"
+          end
+
+          related = Ash.Resource.Info.related(resource, relationship)
+
+          attribute_type =
+            if field do
+              case Ash.Resource.Info.field(related, field) do
+                %{type: type, constraints: constraints} ->
+                  {:ok, type, constraints}
+
+                _ ->
+                  {:error, "No such field for #{inspect(related)}: #{inspect(field)}"}
+              end
+            else
+              {:ok, nil, constraints}
+            end
+
+          default =
+            if is_function(default) do
+              default.()
+            else
+              default
+            end
+
+          with :ok <- validate_uniq(uniq?, kind),
+               {:ok, attribute_type, attribute_constraints} <- attribute_type,
+               :ok <- validate_path(resource, List.wrap(relationship)),
+               {:ok, type, constraints} <-
+                 get_type(kind, type, attribute_type, attribute_constraints, constraints),
+               %{valid?: true} = query <- build_query(related, query) do
+            {:ok,
+             %__MODULE__{
+               name: name,
+               agg_name: name,
+               resource: resource,
+               constraints: constraints,
+               default_value: default || default_value(kind),
+               relationship_path: List.wrap(relationship),
+               implementation: implementation,
+               field: field,
+               kind: kind,
+               type: type,
+               uniq?: uniq?,
+               query: query,
+               filterable?: filterable?,
+               sortable?: sortable?,
+               authorize?: authorize?,
+               read_action: read_action,
+               join_filters: Map.new(join_filters, fn {key, value} -> {List.wrap(key), value} end)
+             }}
+          else
+            %{valid?: false} = query ->
+              {:error, query.errors}
+
+            {:error, error} ->
+              {:error, error}
+          end
 
         {:error, error} ->
           {:error, error}
       end
-    end
-  end
-
-  @deprecated "Use `new/4` instead."
-  def new(
-        resource,
-        name,
-        kind,
-        relationship,
-        query,
-        field,
-        default \\ nil,
-        filterable? \\ true,
-        type \\ nil,
-        constraints \\ [],
-        implementation \\ nil,
-        uniq? \\ false,
-        read_action \\ nil,
-        authorize? \\ true,
-        join_filters \\ %{}
-      ) do
-    if kind == :custom && !type do
-      raise ArgumentError, "Must supply type when building a `custom` aggregate"
-    end
-
-    if kind == :custom && !implementation do
-      raise ArgumentError, "Must supply implementation when building a `custom` aggregate"
-    end
-
-    related = Ash.Resource.Info.related(resource, relationship)
-
-    attribute_type =
-      if field do
-        case Ash.Resource.Info.field(related, field) do
-          %{type: type, constraints: constraints} ->
-            {:ok, type, constraints}
-
-          _ ->
-            {:error, "No such field for #{inspect(related)}: #{inspect(field)}"}
-        end
-      else
-        {:ok, nil, constraints}
-      end
-
-    default =
-      if is_function(default) do
-        default.()
-      else
-        default
-      end
-
-    with :ok <- validate_uniq(uniq?, kind),
-         {:ok, attribute_type, attribute_constraints} <- attribute_type,
-         :ok <- validate_path(resource, List.wrap(relationship)),
-         {:ok, type, constraints} <-
-           get_type(kind, type, attribute_type, attribute_constraints, constraints),
-         %{valid?: true} = query <- build_query(related, query) do
-      {:ok,
-       %__MODULE__{
-         name: name,
-         agg_name: name,
-         resource: resource,
-         constraints: constraints,
-         default_value: default || default_value(kind),
-         relationship_path: List.wrap(relationship),
-         implementation: implementation,
-         field: field,
-         kind: kind,
-         type: type,
-         uniq?: uniq?,
-         query: query,
-         filterable?: filterable?,
-         authorize?: authorize?,
-         read_action: read_action,
-         join_filters: Map.new(join_filters, fn {key, value} -> {List.wrap(key), value} end)
-       }}
-    else
-      %{valid?: false} = query ->
-        {:error, query.errors}
-
-      {:error, error} ->
-        {:error, error}
     end
   end
 
@@ -284,7 +267,7 @@ defmodule Ash.Query.Aggregate do
     parent_resources =
       relationships |> Enum.map(& &1.destination) |> Enum.concat([top_parent_resource])
 
-    Ash.Filter.parse(last_relationship.destination, filter, %{}, %{}, %{
+    Ash.Filter.parse(last_relationship.destination, filter, %{
       parent_stack: parent_resources
     })
   end
@@ -325,7 +308,7 @@ defmodule Ash.Query.Aggregate do
   defp validate_path(resource, [relationship | rest]) do
     case Ash.Resource.Info.relationship(resource, relationship) do
       nil ->
-        {:error, NoSuchRelationship.exception(resource: resource, name: relationship)}
+        {:error, NoSuchRelationship.exception(resource: resource, relationship: relationship)}
 
       %{type: :many_to_many, through: through, destination: destination} ->
         cond do
@@ -440,18 +423,17 @@ defmodule Ash.Query.Aggregate do
     end
   end
 
-  @deprecated "use kind to type/3 instead"
-  def kind_to_type({:custom, type}, _attribute_type), do: {:ok, type}
-  def kind_to_type(:count, _attribute_type), do: {:ok, Ash.Type.Integer}
-  def kind_to_type(:exists, _attribute_type), do: {:ok, Ash.Type.Boolean}
-  def kind_to_type(kind, nil), do: {:error, "Must provide field type for #{kind}"}
-  def kind_to_type(:avg, _attribute_type), do: {:ok, :float}
+  defp kind_to_type({:custom, type}, _attribute_type), do: {:ok, type}
+  defp kind_to_type(:count, _attribute_type), do: {:ok, Ash.Type.Integer}
+  defp kind_to_type(:exists, _attribute_type), do: {:ok, Ash.Type.Boolean}
+  defp kind_to_type(kind, nil), do: {:error, "Must provide field type for #{kind}"}
+  defp kind_to_type(:avg, _attribute_type), do: {:ok, :float}
 
-  def kind_to_type(kind, attribute_type) when kind in [:first, :sum, :max, :min],
+  defp kind_to_type(kind, attribute_type) when kind in [:first, :sum, :max, :min],
     do: {:ok, attribute_type}
 
-  def kind_to_type(:list, attribute_type), do: {:ok, {:array, attribute_type}}
-  def kind_to_type(kind, _attribute_type), do: {:error, "Invalid aggregate kind: #{kind}"}
+  defp kind_to_type(:list, attribute_type), do: {:ok, {:array, attribute_type}}
+  defp kind_to_type(kind, _attribute_type), do: {:error, "Invalid aggregate kind: #{kind}"}
 
   defimpl Inspect do
     import Inspect.Algebra

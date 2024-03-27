@@ -24,6 +24,11 @@ defmodule Ash.EmbeddableType do
       Aggregates are not supported on embedded resources.
       """
     ],
+    domain: [
+      type: {:spark, Ash.Domain},
+      doc:
+        "The domain to use when interacting with the resource. Defaults to the domain of the source changeset."
+    ],
     min_length: [
       type: :non_neg_integer,
       doc: "A minimum length for the items"
@@ -59,9 +64,9 @@ defmodule Ash.EmbeddableType do
     ]
   ]
 
-  defmodule ShadowApi do
+  defmodule ShadowDomain do
     @moduledoc false
-    use Ash.Api, validate_config_inclusion?: false
+    use Ash.Domain, validate_config_inclusion?: false
 
     resources do
       allow_unregistered?(true)
@@ -80,7 +85,7 @@ defmodule Ash.EmbeddableType do
     errors
     |> do_handle_errors()
     |> List.wrap()
-    |> Ash.Error.flatten_preserving_keywords()
+    |> Ash.Helpers.flatten_preserving_keywords()
   end
 
   defp do_handle_errors(errors) when is_list(errors) do
@@ -139,12 +144,29 @@ defmodule Ash.EmbeddableType do
   defmacro single_embed_implementation(opts) do
     # credo:disable-for-next-line Credo.Check.Refactor.LongQuoteBlocks
     quote generated: true, location: :keep, bind_quoted: [opts: opts] do
-      alias Ash.EmbeddableType.ShadowApi
+      alias Ash.EmbeddableType.ShadowDomain
 
       def storage_type(_), do: :map
 
-      def cast_atomic_update(_, _) do
-        {:not_atomic, "Embedded attributes do not support atomic updates"}
+      def cast_atomic(value, constraints) do
+        if Ash.Expr.expr?(value) do
+          if Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__)) ||
+               constraints[:on_update] == :replace do
+            case cast_input(value, constraints) do
+              {:ok, value} ->
+                {:atomic, value}
+
+              {:error, error} ->
+                {:error, error}
+            end
+          else
+            {:not_atomic,
+             "Embedded attributes do not support atomic updates unless they have no primary key, or `constraints[:on_update]` is set to `:replace`."}
+          end
+        else
+          {:not_atomic,
+           "Embedded attributes do not support atomic updates with expressions, only literal values."}
+        end
       end
 
       def cast_input(%{__struct__: __MODULE__} = input, _constraints), do: {:ok, input}
@@ -156,9 +178,9 @@ defmodule Ash.EmbeddableType do
 
         __MODULE__
         |> Ash.Changeset.new()
-        |> Ash.EmbeddableType.copy_source(constraints[:__source__])
-        |> Ash.Changeset.for_create(action, value)
-        |> ShadowApi.create()
+        |> Ash.EmbeddableType.copy_source(constraints)
+        |> Ash.Changeset.for_create(action, value, domain: ShadowDomain)
+        |> Ash.create()
         |> case do
           {:ok, result} ->
             {:ok, result}
@@ -183,17 +205,18 @@ defmodule Ash.EmbeddableType do
           case constraints[:__source__] do
             %Ash.Changeset{context: context} = source ->
               {Map.put(context, :__source__, source),
-               Ash.context_to_opts(context[:private] || %{})}
+               Ash.Context.to_opts(context[:private] || %{})}
 
             _ ->
               {%{}, []}
           end
 
         values
-        |> ShadowApi.bulk_create(
+        |> Ash.bulk_create(
           __MODULE__,
           action,
           Keyword.merge(opts,
+            domain: ShadowDomain,
             context: context,
             sorted?: true,
             return_records?: true,
@@ -252,8 +275,8 @@ defmodule Ash.EmbeddableType do
                 __MODULE__
                 |> Ash.DataLayer.Simple.set_data([casted])
                 |> Ash.Query.load(load)
-                |> Ash.Query.for_read(action)
-                |> ShadowApi.read()
+                |> Ash.Query.for_read(action, %{}, domain: ShadowDomain)
+                |> Ash.read()
                 |> case do
                   {:ok, [casted]} ->
                     {:ok, casted}
@@ -314,20 +337,28 @@ defmodule Ash.EmbeddableType do
       def dump_to_native(nil, _), do: {:ok, nil}
       def dump_to_native(_, _), do: :error
 
-      def constraints,
-        do:
-          Keyword.take(array_constraints(), [
-            :load,
-            :create_action,
-            :destroy_action,
-            :update_action,
-            :__source__
-          ])
+      def constraints do
+        array_constraints()
+        |> Keyword.take([
+          :load,
+          :create_action,
+          :destroy_action,
+          :update_action,
+          :domain,
+          :__source__
+        ])
+        |> Keyword.put(:on_update,
+          type: {:one_of, [:update, :replace, :update_on_match]},
+          default: :update_on_match,
+          doc:
+            "Whether or not setting the value should update the existing value, replace it, or update it if the primary key's match. If there is no primary key, `update_on_match` is the same as `replace`."
+        )
+      end
 
       def apply_constraints(nil, _), do: {:ok, nil}
 
       def apply_constraints(term, constraints) do
-        ShadowApi.load(term, constraints[:load] || [], lazy?: true)
+        Ash.load(term, constraints[:load] || [], lazy?: true, domain: ShadowDomain)
       end
 
       def handle_change(nil, new_value, _constraints) do
@@ -339,7 +370,7 @@ defmodule Ash.EmbeddableType do
           constraints[:destroy_action] ||
             Ash.Resource.Info.primary_action!(__MODULE__, :destroy).name
 
-        case ShadowApi.destroy(old_value, action: action) do
+        case Ash.destroy(old_value, action: action, domain: ShadowDomain) do
           :ok -> {:ok, nil}
           {:error, error} -> {:error, Ash.EmbeddableType.handle_errors(error)}
         end
@@ -349,7 +380,7 @@ defmodule Ash.EmbeddableType do
         pkey_fields = Ash.Resource.Info.primary_key(__MODULE__)
 
         if Enum.all?(pkey_fields, fn pkey_field ->
-             Ash.Resource.Info.attribute(__MODULE__, pkey_field).private?
+             !Ash.Resource.Info.attribute(__MODULE__, pkey_field).public?
            end) do
           {:ok, new_value}
         else
@@ -362,7 +393,7 @@ defmodule Ash.EmbeddableType do
               constraints[:destroy_action] ||
                 Ash.Resource.Info.primary_action!(__MODULE__, :destroy).name
 
-            case ShadowApi.destroy(old_value, action: action) do
+            case Ash.destroy(old_value, action: action, domain: ShadowDomain) do
               :ok ->
                 {:ok, new_value}
 
@@ -393,7 +424,7 @@ defmodule Ash.EmbeddableType do
         pkey_fields = Ash.Resource.Info.primary_key(__MODULE__)
 
         if Enum.all?(pkey_fields, fn pkey_field ->
-             Ash.Resource.Info.attribute(__MODULE__, pkey_field).private?
+             !Ash.Resource.Info.attribute(__MODULE__, pkey_field).public?
            end) do
           action =
             constraints[:update_action] ||
@@ -401,9 +432,9 @@ defmodule Ash.EmbeddableType do
 
           old_value
           |> Ash.Changeset.new()
-          |> Ash.EmbeddableType.copy_source(constraints[:__source__])
-          |> Ash.Changeset.for_update(action, new_uncasted_value)
-          |> ShadowApi.update()
+          |> Ash.EmbeddableType.copy_source(constraints)
+          |> Ash.Changeset.for_update(action, new_uncasted_value, domain: ShadowDomain)
+          |> Ash.update()
           |> case do
             {:ok, value} -> {:ok, value}
             {:error, error} -> {:error, Ash.EmbeddableType.handle_errors(error)}
@@ -433,9 +464,9 @@ defmodule Ash.EmbeddableType do
 
               old_value
               |> Ash.Changeset.new()
-              |> Ash.EmbeddableType.copy_source(constraints[:__source__])
-              |> Ash.Changeset.for_update(action, new_uncasted_value)
-              |> ShadowApi.update()
+              |> Ash.EmbeddableType.copy_source(constraints)
+              |> Ash.Changeset.for_update(action, new_uncasted_value, domain: ShadowDomain)
+              |> Ash.update()
               |> case do
                 {:ok, value} -> {:ok, value}
                 {:error, error} -> {:error, Ash.EmbeddableType.handle_errors(error)}
@@ -452,18 +483,35 @@ defmodule Ash.EmbeddableType do
   defmacro array_embed_implementation do
     # credo:disable-for-next-line Credo.Check.Refactor.LongQuoteBlocks
     quote location: :keep do
-      alias Ash.EmbeddableType.ShadowApi
+      alias Ash.EmbeddableType.ShadowDomain
 
-      def cast_atomic_update_array(_, _) do
-        {:not_atomic, "Embedded attributes do not support atomic updates"}
+      def cast_atomic_array(value, constraints) do
+        if Ash.Expr.expr?(value) do
+          if Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__)) ||
+               constraints[:on_update] == :replace do
+            case cast_input_array(value, constraints) do
+              {:ok, value} ->
+                {:atomic, value}
+
+              {:error, error} ->
+                {:error, error}
+            end
+          else
+            {:not_atomic,
+             "Embedded attributes do not support atomic updates unless they have no primary key, or `constraints[:on_update]` is set to `:replace`."}
+          end
+        else
+          {:not_atomic,
+           "Embedded attributes do not support atomic updates with expressions, only literal values."}
+        end
       end
 
       def loaded?(record, path_to_load, _constraints, opts) do
         Ash.Resource.loaded?(record, path_to_load, opts)
       end
 
-      def load(record, load, _constraints, %{api: api} = context) do
-        opts = Ash.context_to_opts(context)
+      def load(record, load, _constraints, %{domain: domain} = context) do
+        opts = Ash.Context.to_opts(context, domain: domain)
 
         attribute_loads = __MODULE__ |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
 
@@ -473,7 +521,7 @@ defmodule Ash.EmbeddableType do
             load_statement -> attribute_loads ++ List.wrap(load_statement)
           end
 
-        api.load(record, load, opts)
+        Ash.load(record, load, opts)
       end
 
       def merge_load(left, right, constraints, context) do
@@ -512,7 +560,7 @@ defmodule Ash.EmbeddableType do
               query =
                 __MODULE__
                 |> Ash.DataLayer.Simple.set_data(term)
-                |> Ash.EmbeddableType.copy_source(constraints[:__source__])
+                |> Ash.EmbeddableType.copy_source(constraints)
                 |> Ash.Query.load(constraints[:load] || [])
 
               query =
@@ -522,7 +570,7 @@ defmodule Ash.EmbeddableType do
                   query
                 end
 
-              case ShadowApi.read(query) do
+              case Ash.read(query, domain: ShadowDomain) do
                 {:ok, result} ->
                   case Ash.Type.list_constraint_errors(result, constraints) do
                     [] ->
@@ -537,10 +585,10 @@ defmodule Ash.EmbeddableType do
                 query =
                   __MODULE__
                   |> Ash.DataLayer.Simple.set_data(term)
-                  |> Ash.EmbeddableType.copy_source(constraints[:__source__])
+                  |> Ash.EmbeddableType.copy_source(constraints)
                   |> Ash.Query.load(constraints[:load] || [])
 
-                ShadowApi.load(term, query)
+                Ash.load(term, query, domain: ShadowDomain)
               else
                 {:ok, term}
               end
@@ -635,7 +683,7 @@ defmodule Ash.EmbeddableType do
           end)
         end)
         |> Enum.reduce_while(:ok, fn {record, index}, :ok ->
-          case ShadowApi.destroy(record, action: destroy_action) do
+          case Ash.destroy(record, action: destroy_action, domain: ShadowDomain) do
             :ok ->
               {:cont, :ok}
 
@@ -671,7 +719,7 @@ defmodule Ash.EmbeddableType do
         pkey_fields = Ash.Resource.Info.primary_key(__MODULE__)
 
         if Enum.all?(pkey_fields, fn pkey_field ->
-             Ash.Resource.Info.attribute(__MODULE__, pkey_field).private?
+             !Ash.Resource.Info.attribute(__MODULE__, pkey_field).public?
            end) do
           {:ok, new_uncasted_values}
         else
@@ -724,9 +772,9 @@ defmodule Ash.EmbeddableType do
                   if value_updating_from do
                     value_updating_from
                     |> Ash.Changeset.new()
-                    |> Ash.EmbeddableType.copy_source(constraints[:__source__])
-                    |> Ash.Changeset.for_update(action, new)
-                    |> ShadowApi.update()
+                    |> Ash.EmbeddableType.copy_source(constraints)
+                    |> Ash.Changeset.for_update(action, new, domain: ShadowDomain)
+                    |> Ash.update()
                     |> case do
                       {:ok, value} ->
                         {:cont, {:ok, [value | new_uncasted_values]}}
@@ -776,12 +824,22 @@ defmodule Ash.EmbeddableType do
     end
   end
 
-  def copy_source(changeset, %Ash.Changeset{} = source) do
-    changeset
-    |> Ash.Changeset.set_tenant(source.tenant)
-    |> Ash.Changeset.set_context(source.context)
-    |> Ash.Changeset.set_context(%{__source__: source})
-  end
+  def copy_source(changeset, opts) do
+    changeset =
+      if source = opts[:__source__] do
+        changeset
+        |> Ash.Changeset.set_tenant(source.tenant)
+        |> Ash.Changeset.set_context(source.context)
+        |> Ash.Changeset.set_context(%{__source__: source})
+        |> Map.put(:domain, source.domain)
+      else
+        changeset
+      end
 
-  def copy_source(changeset, _), do: changeset
+    if domain = opts[:domain] do
+      Map.put(changeset, :domain, domain)
+    else
+      changeset
+    end
+  end
 end

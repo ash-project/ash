@@ -16,7 +16,7 @@ defmodule Ash.Type.Integer do
 
   ### Constraints
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
 
@@ -24,14 +24,7 @@ defmodule Ash.Type.Integer do
 
   @impl true
 
-  def cast_atomic_update(new_value, constraints) when is_integer(new_value) do
-    case cast_input(new_value, constraints) do
-      {:ok, value} -> {:atomic, value}
-      {:error, other} -> {:error, other}
-    end
-  end
-
-  def cast_atomic_update(expr, constraints) do
+  def cast_atomic(expr, constraints) do
     expr =
       case {constraints[:max], constraints[:max]} do
         {nil, nil} ->

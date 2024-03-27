@@ -3,12 +3,15 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   use ExUnit.Case, async: true
 
   alias Ash.Resource.Relationships.BelongsTo
+  alias Ash.Test.Domain, as: Domain
 
   defmacrop defposts(do: body) do
+    module = Module.concat(["rand#{System.unique_integer([:positive])}", Post])
+
     quote do
-      defmodule Post do
+      defmodule unquote(module) do
         @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, domain: Domain
 
         attributes do
           uuid_primary_key :id
@@ -16,6 +19,8 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
 
         unquote(body)
       end
+
+      alias unquote(module), as: Post
     end
   end
 
@@ -23,7 +28,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "it creates an attribute" do
       defposts do
         relationships do
-          belongs_to(:foobar, FooBar)
+          belongs_to :foobar, FooBar
         end
       end
 
@@ -33,25 +38,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  name: :foobar_id,
                  primary_key?: false,
                  type: Ash.Type.UUID,
-                 private?: true
-               }
-             ] = Ash.Resource.Info.attributes(Post)
-    end
-
-    test "it creates an attribute that honors private?" do
-      defposts do
-        relationships do
-          belongs_to(:foobar, FooBar, private?: true)
-        end
-      end
-
-      assert [
-               _,
-               %Ash.Resource.Attribute{
-                 name: :foobar_id,
-                 primary_key?: false,
-                 type: Ash.Type.UUID,
-                 private?: true
+                 public?: false
                }
              ] = Ash.Resource.Info.attributes(Post)
     end
@@ -59,7 +46,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "it creates an attribute that honors attribute_writable?" do
       defposts do
         relationships do
-          belongs_to(:foobar, FooBar, attribute_writable?: true)
+          belongs_to :foobar, FooBar, attribute_writable?: true, public?: true
         end
       end
 
@@ -69,6 +56,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  name: :foobar_id,
                  primary_key?: false,
                  type: Ash.Type.UUID,
+                 public?: true,
                  writable?: true
                }
              ] = Ash.Resource.Info.attributes(Post)
@@ -77,8 +65,8 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "it creates a relationship" do
       defposts do
         relationships do
-          belongs_to(:foo, Foo)
-          belongs_to(:bar, Bar, source_attribute: :bazz, private?: true)
+          belongs_to(:foo, Foo, public?: true)
+          belongs_to(:bar, Bar, source_attribute: :bazz)
         end
       end
 
@@ -93,7 +81,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  primary_key?: false,
                  source_attribute: :foo_id,
                  type: :belongs_to,
-                 private?: false
+                 public?: true
                },
                %BelongsTo{
                  cardinality: :one,
@@ -105,7 +93,7 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
                  primary_key?: false,
                  source_attribute: :bazz,
                  type: :belongs_to,
-                 private?: true
+                 public?: false
                }
              ] = Ash.Resource.Info.relationships(Post)
 
@@ -123,11 +111,11 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if destination_attribute is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :destination_attribute option: expected atom, got: \"foo\"",
+        ~r/invalid value for :destination_attribute option: expected atom, got: \"foo\"/,
         fn ->
           defposts do
             relationships do
-              belongs_to(:foobar, FooBar, destination_attribute: "foo")
+              belongs_to(:foobar, FooBar, destination_attribute: "foo", public?: true)
             end
           end
         end
@@ -137,11 +125,11 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if source_attribute is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :source_attribute option: expected atom, got: \"foo\"",
+        ~r/invalid value for :source_attribute option: expected atom, got: \"foo\"/,
         fn ->
           defposts do
             relationships do
-              belongs_to(:foobar, FooBar, source_attribute: "foo")
+              belongs_to(:foobar, FooBar, source_attribute: "foo", public?: true)
             end
           end
         end
@@ -151,11 +139,11 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if the destination is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :destination option: expected atom, got: \"foobar\"",
+        ~r/expected module in :destination option, got: \"foobar\"/,
         fn ->
           defposts do
             relationships do
-              belongs_to(:foobar, "foobar")
+              belongs_to(:foobar, "foobar", public?: true)
             end
           end
         end
@@ -165,11 +153,11 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if the relationship name is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :name option: expected atom, got: \"foobar\"",
+        ~r/invalid value for :name option: expected atom, got: \"foobar\"/,
         fn ->
           defposts do
             relationships do
-              belongs_to("foobar", Foobar)
+              belongs_to("foobar", Foobar, public?: true)
             end
           end
         end
@@ -179,25 +167,25 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
     test "fails if `primary_key?` is not a boolean" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :primary_key? option: expected boolean, got: \"blah\"",
+        ~r/invalid value for :primary_key\? option: expected boolean, got: \"blah\"/,
         fn ->
           defposts do
             relationships do
-              belongs_to(:foobar, Foobar, primary_key?: "blah")
+              belongs_to(:foobar, Foobar, primary_key?: "blah", public?: true)
             end
           end
         end
       )
     end
 
-    test "fails if `private?` is not a boolean" do
+    test "fails if `public?` is not a boolean" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :private? option: expected boolean, got: \"blah\"",
+        ~r/invalid value for :public\? option: expected boolean, got: "blah"/,
         fn ->
           defposts do
             relationships do
-              belongs_to(:foobar, Foobar, private?: "blah")
+              belongs_to(:foobar, Foobar, public?: "blah")
             end
           end
         end
@@ -208,42 +196,33 @@ defmodule Ash.Test.Resource.Relationships.BelongsToTest do
   test "fails if `define_attribute?` is not a boolean" do
     assert_raise(
       Spark.Error.DslError,
-      "[Ash.Test.Resource.Relationships.BelongsToTest.Post]\n relationships -> belongs_to -> foobar:\n  invalid value for :define_attribute? option: expected boolean, got: \"blah\"",
+      ~r/invalid value for :define_attribute\? option: expected boolean, got: \"blah\"/,
       fn ->
         defposts do
           relationships do
-            belongs_to(:foobar, Foobar, define_attribute?: "blah")
+            belongs_to(:foobar, Foobar, define_attribute?: "blah", public?: true)
           end
         end
       end
     )
   end
 
-  test "fails in api initialization if the destination resource doesn't have the correct field" do
+  test "fails in domain initialization if the destination resource doesn't have the correct field" do
     assert_raise(
       Spark.Error.DslError,
       ~r/Relationship `post` expects source attribute `post_id` to be defined/,
       fn ->
         defposts do
           relationships do
-            belongs_to(:post, __MODULE__, define_attribute?: false)
+            belongs_to(:post, __MODULE__, define_attribute?: false, public?: true)
           end
         end
 
-        defmodule Registry do
-          @moduledoc false
-          use Ash.Registry
-
-          entries do
-            entry Post
-          end
-        end
-
-        defmodule Api do
-          use Ash.Api
+        defmodule Domain do
+          use Ash.Domain
 
           resources do
-            registry Registry
+            resource Post
           end
         end
       end

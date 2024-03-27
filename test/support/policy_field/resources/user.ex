@@ -1,6 +1,7 @@
 defmodule Ash.Test.Support.PolicyField.User do
   @moduledoc false
   use Ash.Resource,
+    domain: Ash.Test.Support.PolicyField.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -9,30 +10,36 @@ defmodule Ash.Test.Support.PolicyField.User do
   end
 
   actions do
-    defaults [:create, :read, :update, :destroy]
+    default_accept :*
+    defaults [:read, :destroy, create: :*, update: :*]
   end
 
   attributes do
     uuid_primary_key :id
 
     attribute :role, :atom do
+      public?(true)
       constraints one_of: [:user, :representative, :admin]
     end
 
     attribute :points, :integer do
+      public?(true)
       # only you can see your own points
     end
   end
 
   relationships do
     has_many :tickets, Ash.Test.Support.PolicyField.Ticket do
+      public?(true)
       source_attribute :id
       destination_attribute :reporter_id
     end
   end
 
   aggregates do
-    count :ticket_count, :tickets
+    count :ticket_count, :tickets do
+      public? true
+    end
   end
 
   policies do

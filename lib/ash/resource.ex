@@ -18,15 +18,25 @@ defmodule Ash.Resource do
       data_layer: Ash.DataLayer.Simple,
       extensions: [Ash.Resource.Dsl]
     ],
+    extension_kind_types: [
+      authorizers: {:wrap_list, {:behaviour, Ash.Authorizer}},
+      data_layer: {:behaviour, Ash.DataLayer},
+      notifiers: {:wrap_list, {:behaviour, Ash.Notifier}}
+    ],
     opt_schema: [
-      validate_api_inclusion?: [
+      simple_notifiers: [
+        type: {:list, {:behaviour, Ash.Notifier}},
+        doc: "Notifiers with no DSL."
+      ],
+      validate_domain_inclusion?: [
         type: :boolean,
+        doc: "Whether or not to validate that this resource is included in a domain.",
         default: true
       ],
-      api: [
+      domain: [
         type: :atom,
         doc:
-          "The api to use when interacting with this resource. Also sets defaults for various options that ask for an api."
+          "The domain to use when interacting with this resource. Also sets defaults for various options that ask for a domain."
       ],
       embed_nil_values?: [
         type: :boolean,
@@ -51,34 +61,35 @@ defmodule Ash.Resource do
 
   @impl true
   def verify(module, opts) do
-    if Application.get_env(:ash, :validate_api_resource_inclusion?, true) &&
-         Keyword.get(opts, :validate_api_inclusion?, true) && !Ash.Resource.Info.embedded?(module) &&
+    if Application.get_env(:ash, :validate_domain_resource_inclusion?, true) &&
+         Keyword.get(opts, :validate_domain_inclusion?, true) &&
+         !Ash.Resource.Info.embedded?(module) &&
          Code.ensure_loaded?(Mix.Project) do
       otp_app = Mix.Project.config()[:app]
 
-      apis =
-        Application.get_env(otp_app, :ash_apis, [])
+      domains =
+        Application.get_env(otp_app, :ash_domains, [])
 
-      contained_in_api =
-        apis
-        |> Enum.flat_map(&Ash.Api.Info.resources/1)
+      contained_in_domain =
+        domains
+        |> Enum.flat_map(&Ash.Domain.Info.resources/1)
         |> Enum.any?(&(&1 == module))
 
-      if !contained_in_api do
+      if !contained_in_domain do
         IO.warn("""
-        Resource #{inspect(module)} is not present in any known Ash.Api module.
+        Resource #{inspect(module)} is not present in any known Ash.Domain module.
 
-        Api modules checked: #{inspect(apis)}
+        Domain modules checked: #{inspect(domains)}
 
-        We check the following configuration for api modules:
+        We check the following configuration for domain modules:
 
-           config :#{otp_app}, ash_apis: #{inspect(apis)}
+           config :#{otp_app}, ash_domains: #{inspect(domains)}
 
         To resolve this warning, do one of the following.
 
-        1. Add the resource to one of your configured api modules.
-        2. Add the option `validate_api_inclusion?: false` to `use Ash.Resource`
-        3. Configure all resources not to warn, with `config :ash, :validate_api_resource_inclusion?, false`
+        1. Add the resource to one of your configured domain modules.
+        2. Add the option `validate_domain_inclusion?: false` to `use Ash.Resource`
+        3. Configure all resources not to warn, with `config :ash, :validate_domain_resource_inclusion?, false`
         """)
       end
     end
@@ -88,12 +99,28 @@ defmodule Ash.Resource do
   @impl Spark.Dsl
   def handle_opts(opts) do
     quote bind_quoted: [
+            opts: opts,
             embedded?: opts[:embedded?],
-            api: opts[:api],
+            domain: opts[:domain],
+            has_domain?: Keyword.has_key?(opts, :domain),
             embed_nil_values?: opts[:embed_nil_values?]
           ] do
-      if api do
-        @persist {:api, api}
+      unless has_domain? || embedded? do
+        IO.warn("""
+        Configuration Error:
+
+        `domain` option missing for #{inspect(__MODULE__)}
+
+        If you wish to make a resource compatible with multiple domains, set the domain to `nil` explicitly.
+
+        Example configuration:
+
+        use Ash.Resource, #{String.trim_trailing(String.trim_leading(inspect([{:domain, YourDomain} | opts], pretty: true), "["), "]")}
+        """)
+      end
+
+      if domain do
+        @persist {:domain, domain}
       end
 
       if embedded? do
@@ -102,40 +129,6 @@ defmodule Ash.Resource do
         require Ash.EmbeddableType
 
         Ash.EmbeddableType.define_embeddable_type(embed_nil_values?: embed_nil_values?)
-      else
-        # TODO: remove this in 3.0
-        use Ash.Type
-
-        @impl true
-        def storage_type(_), do: :map
-
-        @impl Ash.Type
-        def cast_input(nil, _), do: {:ok, nil}
-        def cast_input(%struct{} = value, _) when struct == __MODULE__, do: {:ok, value}
-
-        @impl Ash.Type
-        def load(records, load, _constraints, %{api: api} = context) do
-          opts = Ash.context_to_opts(context)
-          attribute_loads = __MODULE__ |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
-
-          api.load(records, List.wrap(load), opts)
-        end
-
-        @impl Ash.Type
-        def cast_stored(nil, _), do: {:ok, nil}
-
-        def cast_stored(_, _),
-          do:
-            {:error,
-             "Cannot cast a non embedded resource from storage. A non-embedded resource may only be used as an argument type."}
-
-        @impl Ash.Type
-        def dump_to_native(nil, _), do: {:ok, nil}
-
-        def dump_to_native(_, _),
-          do:
-            {:error,
-             "Cannot dump a non embedded resource to native. A non-embedded resource may only be used as an argument type."}
       end
     end
   end
@@ -179,13 +172,17 @@ defmodule Ash.Resource do
         """
       end
 
-      if api = Ash.Resource.Info.define_interface_for(__MODULE__) do
-        if api == __MODULE__ do
-          raise "code_interface.define_for should be set to the API module you want it to call, not the resource."
-        end
+      if Ash.Resource.Info.define_interface?(__MODULE__) do
+        if domain =
+             Ash.Resource.Info.code_interface_domain(__MODULE__) ||
+               Ash.Resource.Info.domain(__MODULE__) do
+          if domain == __MODULE__ do
+            raise "code_interface.domain should be set to a Domain module, not the resource."
+          end
 
-        require Ash.CodeInterface
-        Ash.CodeInterface.define_interface(api, __MODULE__)
+          require Ash.CodeInterface
+          Ash.CodeInterface.define_interface(domain, __MODULE__)
+        end
       end
 
       @default_short_name __MODULE__
@@ -205,39 +202,41 @@ defmodule Ash.Resource do
 
       @primary_key @primary_key_with_types |> Enum.map(&elem(&1, 0))
 
-      if Ash.Resource.Info.primary_key_simple_equality?(__MODULE__) do
-        def primary_key_matches?(left, right) do
-          left_taken = Map.take(left, @primary_key)
-          left_taken == Map.take(right, @primary_key) && Enum.all?(Map.values(left_taken))
-        end
-      else
-        case @primary_key_with_types do
-          [{field, type}] ->
-            @pkey_field field
-            @pkey_type type
+      if !Enum.empty?(@primary_key) do
+        if Ash.Resource.Info.primary_key_simple_equality?(__MODULE__) do
+          def primary_key_matches?(left, right) do
+            left_taken = Map.take(left, @primary_key)
+            left_taken == Map.take(right, @primary_key) && Enum.all?(Map.values(left_taken))
+          end
+        else
+          case @primary_key_with_types do
+            [{field, type}] ->
+              @pkey_field field
+              @pkey_type type
 
-            def primary_key_matches?(left, right) when not is_nil(left) and not is_nil(right) do
-              Ash.Type.equal?(
-                @pkey_type,
-                Map.fetch!(left, @pkey_field),
-                Map.fetch!(right, @pkey_field)
-              )
-            end
+              def primary_key_matches?(left, right) when not is_nil(left) and not is_nil(right) do
+                Ash.Type.equal?(
+                  @pkey_type,
+                  Map.fetch!(left, @pkey_field),
+                  Map.fetch!(right, @pkey_field)
+                )
+              end
 
-            def primary_key_matches?(_left, _right), do: false
+              def primary_key_matches?(_left, _right), do: false
 
-          _ ->
-            def primary_key_matches?(left, right) do
-              Enum.all?(@primary_key_with_types, fn {name, type} ->
-                with {:ok, left_value} when not is_nil(left_value) <- Map.fetch(left, name),
-                     {:ok, right_value} when not is_nil(right_value) <- Map.fetch(right, name) do
-                  Ash.Type.equal?(type, left_value, right_value)
-                else
-                  _ ->
-                    false
-                end
-              end)
-            end
+            _ ->
+              def primary_key_matches?(left, right) do
+                Enum.all?(@primary_key_with_types, fn {name, type} ->
+                  with {:ok, left_value} when not is_nil(left_value) <- Map.fetch(left, name),
+                       {:ok, right_value} when not is_nil(right_value) <- Map.fetch(right, name) do
+                    Ash.Type.equal?(type, left_value, right_value)
+                  else
+                    _ ->
+                      false
+                  end
+                end)
+              end
+          end
         end
       end
 
@@ -252,7 +251,7 @@ defmodule Ash.Resource do
       ```elixir
       Resource
       |> Ash.Changeset.for_create(:create, %{embedded: EmbeddedResource.input(foo: 1, bar: 2)})
-      |> MyApp.Api.create()
+      |> Ash.create()
       ```
       """
       @spec input(values :: map | Keyword.t()) :: map | no_return

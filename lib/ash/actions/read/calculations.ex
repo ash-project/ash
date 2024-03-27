@@ -1,5 +1,105 @@
 defmodule Ash.Actions.Read.Calculations do
   @moduledoc false
+
+  def calculate(resource_or_record, calculation, opts) do
+    {resource, record} =
+      case resource_or_record do
+        %resource{} = record -> {resource, record}
+        resource -> {resource, opts[:record]}
+      end
+
+    with {:calc,
+          %{
+            arguments: calc_arguments,
+            calculation: {module, calc_opts},
+            type: type,
+            constraints: constraints
+          }} <- {:calc, Ash.Resource.Info.calculation(resource, calculation)},
+         record <- struct(record || resource, opts[:refs] || %{}) do
+      args = opts[:args] || %{}
+
+      arguments =
+        Enum.reduce(calc_arguments, %{}, fn arg, arguments ->
+          if Map.has_key?(args, arg.name) do
+            Map.put(arguments, arg.name, args[arg.name])
+          else
+            if is_nil(arg.default) do
+              arguments
+            else
+              Map.put(arguments, arg.name, arg.default)
+            end
+          end
+        end)
+
+      calc_context =
+        %Ash.Resource.Calculation.Context{
+          actor: opts[:actor],
+          domain: opts[:domain],
+          tenant: opts[:tenant],
+          authorize?: opts[:authorize?],
+          tracer: opts[:tracer],
+          resource: opts[:resource],
+          arguments: arguments,
+          type: type,
+          constraints: constraints
+        }
+
+      if module.has_expression?() do
+        expr =
+          case module.expression(calc_opts, calc_context) do
+            {:ok, result} -> {:ok, result}
+            {:error, error} -> {:error, error}
+            result -> {:ok, result}
+          end
+
+        with {:ok, expr} <- expr do
+          case Ash.Expr.eval(expr, record: record, resource: resource) do
+            {:ok, result} ->
+              {:ok, result}
+
+            :unknown ->
+              case module.calculate([record], calc_opts, calc_context) do
+                [result] ->
+                  result
+
+                {:ok, [result]} ->
+                  {:ok, result}
+
+                {:ok, _} ->
+                  {:error, "Invalid calculation return"}
+
+                {:error, error} ->
+                  {:error, error}
+              end
+
+            {:error, error} ->
+              {:error, error}
+          end
+        end
+      else
+        case module.calculate([record], calc_opts, calc_context) do
+          [result] ->
+            {:ok, result}
+
+          {:ok, [result]} ->
+            {:ok, result}
+
+          {:ok, _} ->
+            {:error, "Invalid calculation return"}
+
+          {:error, error} ->
+            {:error, error}
+        end
+      end
+    else
+      {:calc, nil} ->
+        {:error, "No such calculation"}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
   def run([], _, _, _calculations_in_query), do: {:ok, []}
 
   def run(records, ash_query, calculations_at_runtime, calculations_in_query) do
@@ -35,7 +135,7 @@ defmodule Ash.Actions.Read.Calculations do
       |> Enum.map(fn calculation ->
         Ash.Actions.Read.AsyncLimiter.async_or_inline(
           ash_query,
-          Ash.context_to_opts(calculation.context),
+          Ash.Context.to_opts(calculation.context),
           fn ->
             {calculation.name, calculation, run_calculation(calculation, ash_query, records)}
           end
@@ -140,18 +240,36 @@ defmodule Ash.Actions.Read.Calculations do
 
   defp attach_calculation_results(calculation, records, values) do
     if calculation.load do
-      Enum.zip_with([records, values], fn [record, value] ->
-        Map.put(record, calculation.load, value)
+      Enum.zip_with([records, values], fn
+        [record, %Ash.NotLoaded{}] ->
+          raise """
+          Invalid return from calculation, expected a value, got `%Ash.NotLoaded{}`
+
+          Calculation: #{inspect(calculation.name)}
+          Record: #{inspect(record)}
+          """
+
+        [record, value] ->
+          Map.put(record, calculation.load, value)
       end)
     else
-      Enum.zip_with([records, values], fn [record, value] ->
-        Map.update!(record, :calculations, &Map.put(&1, calculation.name, value))
+      Enum.zip_with([records, values], fn
+        [record, %Ash.NotLoaded{}] ->
+          raise """
+          Invalid return from calculation, expected a value, got `%Ash.NotLoaded{}`
+
+          Calculation: #{inspect(calculation.name)}
+          Record: #{inspect(record)}
+          """
+
+        [record, value] ->
+          Map.update!(record, :calculations, &Map.put(&1, calculation.name, value))
       end)
     end
   end
 
   defp run_calculation(calculation, ash_query, records) do
-    context = Map.put(calculation.context, :api, ash_query.api)
+    context = Map.put(calculation.context, :domain, ash_query.domain)
 
     records
     |> apply_transient_calculation_values(calculation, ash_query, [])
@@ -235,9 +353,6 @@ defmodule Ash.Actions.Read.Calculations do
     end)
   end
 
-  # TODO: might consider grouping them by the first item in their path
-  # so they can be applied at once? Even then, we iterate the whole thing multiple
-  # times, so probably not an issue.
   defp rewrite_at_path(
          records,
          {{[{:attr, type, constraints, name} | rest], data, calc_name, calc_load}, source}
@@ -337,9 +452,13 @@ defmodule Ash.Actions.Read.Calculations do
       {name, []} ->
         relationship = Ash.Resource.Info.relationship(ash_query.resource, name)
 
-        relationship.destination
-        |> Ash.Query.new()
-        |> get_all_rewrites(calculation, path ++ [name])
+        if calculation.module.strict_loads? do
+          []
+        else
+          relationship.destination
+          |> Ash.Query.new()
+          |> get_all_rewrites(calculation, path ++ [name])
+        end
 
       {name, query} ->
         get_all_rewrites(query, calculation, path ++ [name])
@@ -380,7 +499,7 @@ defmodule Ash.Actions.Read.Calculations do
     end)
   end
 
-  def split_and_load_calculations(api, ash_query, missing_pkeys?, initial_data, reuse_values?) do
+  def split_and_load_calculations(domain, ash_query, missing_pkeys?, initial_data, reuse_values?) do
     can_expression_calculation? =
       !missing_pkeys? &&
         Ash.DataLayer.data_layer_can?(ash_query.resource, :expression_calculation)
@@ -388,7 +507,7 @@ defmodule Ash.Actions.Read.Calculations do
     ash_query =
       Enum.reduce(ash_query.calculations, ash_query, fn {_name, calc}, ash_query ->
         load_calculation_requirements(
-          api,
+          domain,
           ash_query,
           calc,
           can_expression_calculation?,
@@ -403,16 +522,17 @@ defmodule Ash.Actions.Read.Calculations do
         expression =
           calculation.opts
           |> calculation.module.expression(calculation.context)
-          |> Ash.Filter.build_filter_from_template(
-            calculation.context[:actor],
-            calculation.context,
-            calculation.context
+          |> Ash.Expr.fill_template(
+            calculation.context.actor,
+            calculation.context.arguments,
+            calculation.context.source_context
           )
           |> Ash.Actions.Read.add_calc_context_to_filter(
-            calculation.context[:actor],
-            calculation.context[:authorize?],
-            calculation.context[:tenant],
-            calculation.context[:tracer]
+            calculation.context.actor,
+            calculation.context.authorize?,
+            calculation.context.tenant,
+            calculation.context.tracer,
+            domain
           )
 
         case try_evaluate(
@@ -535,16 +655,17 @@ defmodule Ash.Actions.Read.Calculations do
       expression ||
         calculation.opts
         |> calculation.module.expression(calculation.context)
-        |> Ash.Filter.build_filter_from_template(
-          calculation.context[:actor],
-          calculation.context,
-          calculation.context
+        |> Ash.Expr.fill_template(
+          calculation.context.actor,
+          calculation.context.arguments,
+          calculation.context.source_context
         )
         |> Ash.Actions.Read.add_calc_context_to_filter(
-          calculation.context[:actor],
-          calculation.context[:authorize?],
-          calculation.context[:tenant],
-          calculation.context[:tracer]
+          calculation.context.actor,
+          calculation.context.authorize?,
+          calculation.context.tenant,
+          calculation.context.tracer,
+          ash_query.domain
         )
 
     case Map.fetch(calculation.context, :all_referenced_calcs_support_expressions?) do
@@ -569,7 +690,7 @@ defmodule Ash.Actions.Read.Calculations do
   end
 
   defp load_calculation_requirements(
-         api,
+         domain,
          query,
          calculation,
          can_expression_calculation?,
@@ -609,11 +730,12 @@ defmodule Ash.Actions.Read.Calculations do
         |> List.wrap()
         |> Enum.concat(List.wrap(calculation.select))
         |> do_load_calculation_requirements(
-          api,
+          domain,
           query,
           calculation.name,
           calculation.load,
           calc_path,
+          calculation.module.strict_loads?(),
           relationship_path,
           can_expression_calculation?,
           [{calculation.module, calculation.opts} | checked_calculations],
@@ -625,11 +747,12 @@ defmodule Ash.Actions.Read.Calculations do
 
   defp do_load_calculation_requirements(
          requirements,
-         api,
+         domain,
          query,
          calc_name,
          calc_load,
          calc_path,
+         strict_loads?,
          relationship_path,
          can_expression_calculation?,
          checked_calculations,
@@ -651,7 +774,7 @@ defmodule Ash.Actions.Read.Calculations do
               query,
               load,
               further,
-              api,
+              domain,
               calc_name,
               calc_load,
               calc_path,
@@ -664,110 +787,99 @@ defmodule Ash.Actions.Read.Calculations do
           match?(%Ash.Query.Aggregate{}, load) ->
             aggregate = load
 
-            if loaded?(initial_data, relationship_path ++ load) do
-              query
-            else
-              case find_equivalent_aggregate(query, aggregate) do
-                {:ok, equivalent_aggregate} ->
-                  if equivalent_aggregate.load == aggregate.load and
-                       equivalent_aggregate.name == aggregate.name do
-                    query
-                  else
-                    new_calc_name =
-                      {:__calc_dep__,
-                       [
-                         {calc_path, {:agg, equivalent_aggregate.name, equivalent_aggregate.load},
-                          calc_name, calc_load}
-                       ]}
+            case find_equivalent_aggregate(query, aggregate) do
+              {:ok, equivalent_aggregate} ->
+                if equivalent_aggregate.load == aggregate.load and
+                     equivalent_aggregate.name == aggregate.name do
+                  query
+                else
+                  new_calc_name =
+                    {:__calc_dep__,
+                     [
+                       {calc_path, {:agg, equivalent_aggregate.name, equivalent_aggregate.load},
+                        calc_name, calc_load}
+                     ]}
 
-                    Ash.Query.calculate(
-                      query,
-                      new_calc_name,
-                      {Ash.Resource.Calculation.FetchAgg,
-                       load: equivalent_aggregate.name, name: equivalent_aggregate.load},
-                      equivalent_aggregate.type,
-                      equivalent_aggregate.context,
-                      equivalent_aggregate.constraints
-                    )
-                    |> add_calculation_dependency(calc_name, new_calc_name)
+                  Ash.Query.calculate(
+                    query,
+                    new_calc_name,
+                    {Ash.Resource.Calculation.FetchAgg,
+                     load: equivalent_aggregate.name, name: equivalent_aggregate.load},
+                    equivalent_aggregate.type,
+                    %{},
+                    equivalent_aggregate.constraints,
+                    equivalent_aggregate.context
+                  )
+                  |> add_calculation_dependency(calc_name, new_calc_name)
+                end
+
+              :error ->
+                new_agg =
+                  if query.aggregates[aggregate.name] do
+                    %{
+                      aggregate
+                      | name:
+                          {:__calc_dep__,
+                           [
+                             {calc_path, {:agg, aggregate.name, aggregate.load}, calc_name,
+                              calc_load}
+                           ]},
+                        load: nil
+                    }
+                  else
+                    aggregate
                   end
 
-                :error ->
-                  new_agg =
-                    if query.aggregates[aggregate.name] do
-                      %{
-                        aggregate
-                        | name:
-                            {:__calc_dep__,
-                             [
-                               {calc_path, {:agg, aggregate.name, aggregate.load}, calc_name,
-                                calc_load}
-                             ]},
-                          load: nil
-                      }
-                    else
-                      aggregate
-                    end
-
-                  Ash.Query.load(query, new_agg)
-              end
+                Ash.Query.load(query, new_agg)
             end
 
           attr = Ash.Resource.Info.attribute(query.resource, load) ->
-            if loaded?(initial_data, relationship_path ++ load) do
-              query
-            else
-              case Map.fetch(query.load_through[:attribute] || %{}, attr.name) do
-                :error ->
-                  query =
-                    Ash.Query.ensure_selected(query, attr.name)
+            case Map.fetch(query.load_through[:attribute] || %{}, attr.name) do
+              :error ->
+                query =
+                  Ash.Query.ensure_selected(query, attr.name)
 
-                  if further in [nil, []] do
-                    query
-                  else
-                    load_through =
-                      query.load_through
-                      |> Map.put_new(:attribute, %{})
-                      |> Map.update!(:attribute, &Map.put(&1, attr.name, further))
-
-                    %{query | load_through: load_through}
-                  end
-
-                {:ok, value} ->
+                if further in [nil, []] do
+                  query
+                else
                   load_through =
-                    Map.update!(query.load_through, :attribute, fn attributes_load_through ->
-                      Map.put(
-                        attributes_load_through,
-                        attr.name,
-                        merge_load_through(
-                          value || [],
-                          further || [],
-                          attr.type,
-                          attr.constraints,
-                          api,
-                          calc_name,
-                          calc_load,
-                          calc_path,
-                          relationship_path,
-                          initial_data
-                        )
-                      )
-                    end)
+                    query.load_through
+                    |> Map.put_new(:attribute, %{})
+                    |> Map.update!(:attribute, &Map.put(&1, attr.name, further))
 
-                  %{
-                    query
-                    | load_through: load_through
-                  }
-                  |> Ash.Query.ensure_selected(attr.name)
-              end
+                  %{query | load_through: load_through}
+                end
+
+              {:ok, value} ->
+                load_through =
+                  Map.update!(query.load_through, :attribute, fn attributes_load_through ->
+                    Map.put(
+                      attributes_load_through,
+                      attr.name,
+                      merge_load_through(
+                        value || [],
+                        further || [],
+                        attr.type,
+                        attr.constraints,
+                        domain,
+                        calc_name,
+                        calc_load,
+                        calc_path,
+                        relationship_path,
+                        initial_data
+                      )
+                    )
+                  end)
+
+                %{
+                  query
+                  | load_through: load_through
+                }
+                |> Ash.Query.ensure_selected(attr.name)
             end
 
           agg = Ash.Resource.Info.aggregate(query.resource, load) ->
-            if loaded?(initial_data, relationship_path ++ load) do
-              query
-            else
-              Ash.Query.load(query, agg.name)
-            end
+            Ash.Query.load(query, agg.name)
 
           resource_calculation = Ash.Resource.Info.calculation(query.resource, load) ->
             {args, load_through} =
@@ -812,10 +924,14 @@ defmodule Ash.Actions.Read.Calculations do
                      name,
                      module,
                      opts,
-                     {resource_calculation.type, resource_calculation.constraints},
-                     Map.put(args, :context, query.context),
-                     resource_calculation.filterable?,
-                     resource_calculation.load
+                     resource_calculation.type,
+                     resource_calculation.constraints,
+                     arguments: args,
+                     filterable?: resource_calculation.filterable?,
+                     sortable?: resource_calculation.sortable?,
+                     sensitive?: resource_calculation.sensitive?,
+                     load: resource_calculation.load,
+                     source_context: query.context
                    ) do
               calculation =
                 Ash.Query.select_and_load_calc(
@@ -828,7 +944,7 @@ defmodule Ash.Actions.Read.Calculations do
                 query,
                 calculation,
                 load_through || [],
-                api,
+                domain,
                 calc_name,
                 calc_load,
                 calc_path,
@@ -844,14 +960,17 @@ defmodule Ash.Actions.Read.Calculations do
 
           relationship = Ash.Resource.Info.relationship(query.resource, load) ->
             query = Ash.Query.ensure_selected(query, relationship.source_attribute)
+            further = to_loaded_query(relationship.destination, further, strict_loads?)
 
             case query.load[relationship.name] do
               nil ->
-                Ash.Query.load(query, [{relationship.name, further}])
+                if strict_loads? do
+                  Ash.Query.load(query, [{relationship.name, further}])
+                else
+                  Ash.Query.load(query, [{relationship.name, further}])
+                end
 
               current_load ->
-                further = to_loaded_query(relationship.destination, further)
-
                 if compatible_relationships?(current_load, further) do
                   %{
                     query
@@ -862,12 +981,13 @@ defmodule Ash.Actions.Read.Calculations do
                           merge_query_load(
                             current_load,
                             further,
-                            relationship.api || api,
+                            relationship.domain || domain,
                             calc_path,
                             calc_name,
                             calc_load,
                             relationship_path ++ [relationship.name],
-                            initial_data
+                            initial_data,
+                            strict_loads?
                           )
                         )
                   }
@@ -897,7 +1017,7 @@ defmodule Ash.Actions.Read.Calculations do
                         {Ash.Resource.Calculation.LoadRelationship,
                          relationship: relationship.name,
                          query: further,
-                         api: relationship.api || api},
+                         domain: relationship.domain || domain},
                         type,
                         %{},
                         constraints
@@ -915,12 +1035,13 @@ defmodule Ash.Actions.Read.Calculations do
                             &merge_query_load(
                               &1,
                               further,
-                              relationship.api || api,
+                              relationship.domain || domain,
                               calc_path,
                               calc_name,
                               calc_load,
                               relationship_path ++ [relationship.name],
-                              initial_data
+                              initial_data,
+                              strict_loads?
                             )
                           )
                         end)
@@ -941,12 +1062,6 @@ defmodule Ash.Actions.Read.Calculations do
         end
     end)
   end
-
-  defp loaded?({:ok, initial_data}, path) do
-    Ash.Resource.loaded?(initial_data, path, strict?: true, type: :request)
-  end
-
-  defp loaded?(_, _), do: false
 
   defp rename_and_replace_calculation(query, current_key, new_calc) do
     new_calculations =
@@ -993,7 +1108,7 @@ defmodule Ash.Actions.Read.Calculations do
          query,
          calculation,
          further,
-         api,
+         domain,
          calc_name,
          calc_load,
          calc_path,
@@ -1039,7 +1154,7 @@ defmodule Ash.Actions.Read.Calculations do
                         further || [],
                         calculation.type,
                         calculation.constraints,
-                        api,
+                        domain,
                         calc_name,
                         calc_load,
                         calc_path,
@@ -1068,8 +1183,9 @@ defmodule Ash.Actions.Read.Calculations do
             {Ash.Resource.Calculation.FetchCalc,
              load: equivalent_calculation.name, name: equivalent_calculation.load},
             equivalent_calculation.type,
-            equivalent_calculation.context,
-            equivalent_calculation.constraints
+            equivalent_calculation.context.arguments,
+            equivalent_calculation.constraints,
+            equivalent_calculation.context
           )
           |> add_calculation_dependency(calc_name, new_calc_name)
           |> add_calculation_dependency(new_calc_name, equivalent_calculation.name)
@@ -1095,7 +1211,7 @@ defmodule Ash.Actions.Read.Calculations do
         query =
           Ash.Query.load(query, new_calculation)
 
-        api
+        domain
         |> load_calculation_requirements(
           query,
           new_calculation,
@@ -1150,7 +1266,7 @@ defmodule Ash.Actions.Read.Calculations do
          new,
          type,
          constraints,
-         api,
+         domain,
          calc_name,
          calc_load,
          calc_path,
@@ -1158,7 +1274,7 @@ defmodule Ash.Actions.Read.Calculations do
          initial_data
        ) do
     case Ash.Type.merge_load(type, old, new, constraints, %{
-           api: api,
+           domain: domain,
            calc_name: calc_name,
            calc_load: calc_load,
            calc_path: calc_path,
@@ -1185,24 +1301,27 @@ defmodule Ash.Actions.Read.Calculations do
   def merge_query_load(
         left,
         right,
-        api,
+        domain,
         calc_path,
         calc_name,
         calc_load,
         relationship_path,
-        initial_data \\ :error
+        initial_data \\ :error,
+        strict_loads? \\ false
       ) do
     can_expression_calculation? =
       Ash.DataLayer.data_layer_can?(left.resource, :expression_calculation)
 
     do_load_calculation_requirements(
       right.load ++
-        Map.values(right.calculations) ++ Map.values(right.aggregates) ++ query_select(right),
-      api,
+        Map.values(right.calculations) ++
+        Map.values(right.aggregates) ++ query_select(right, strict_loads?),
+      domain,
       left,
       calc_name,
       calc_load,
       calc_path,
+      strict_loads?,
       relationship_path,
       can_expression_calculation?,
       [],
@@ -1210,20 +1329,31 @@ defmodule Ash.Actions.Read.Calculations do
     )
   end
 
-  defp query_select(%{resource: resource, select: nil}) do
+  defp query_select(%{resource: resource, select: nil}, false) do
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.map(& &1.name)
   end
 
-  defp query_select(%{select: select}), do: select
+  defp query_select(%{select: select}, _), do: List.wrap(select)
 
-  defp to_loaded_query(resource, %Ash.Query{resource: resource} = query) do
-    query
+  defp to_loaded_query(resource, %Ash.Query{resource: resource} = query, strict_loads?) do
+    if strict_loads? do
+      Ash.Query.select(query, [])
+    else
+      query
+    end
   end
 
-  defp to_loaded_query(resource, loads) do
-    Ash.Query.load(resource, loads)
+  defp to_loaded_query(resource, loads, strict_loads?) do
+    if strict_loads? do
+      resource
+      |> Ash.Query.select([])
+      |> Ash.Query.load(loads)
+    else
+      resource
+      |> Ash.Query.load(loads)
+    end
   end
 
   # Deselect fields that we know statically cannot be seen

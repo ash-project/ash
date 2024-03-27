@@ -7,6 +7,7 @@ defmodule Ash.Resource.Actions.Create do
     :error_handler,
     accept: nil,
     manual: nil,
+    notifiers: [],
     touches_resources: [],
     require_attributes: [],
     delay_global_validations?: false,
@@ -29,6 +30,7 @@ defmodule Ash.Resource.Actions.Create do
           accept: list(atom),
           manual: module | nil,
           upsert?: boolean,
+          notifiers: [module()],
           delay_global_validations?: boolean,
           skip_global_validations?: boolean,
           upsert_identity: atom | nil,
@@ -92,11 +94,11 @@ defmodule Ash.Resource.Actions.Create do
                   """
                 ]
               ]
-              |> Spark.OptionsHelpers.merge_schemas(
+              |> Spark.Options.merge(
                 @global_opts,
                 "Action Options"
               )
-              |> Spark.OptionsHelpers.merge_schemas(
+              |> Spark.Options.merge(
                 @create_update_opts,
                 "Create/Update Options"
               )

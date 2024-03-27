@@ -6,7 +6,7 @@ defmodule Ash.Test.Helpers do
       {:module, mod, _, _} =
         defmodule Module.concat(["rand#{System.unique_integer([:positive])}", Post]) do
           @moduledoc false
-          use Ash.Resource, data_layer: Ash.DataLayer.Ets
+          use Ash.Resource, domain: Ash.Test.Domain, data_layer: Ash.DataLayer.Ets
 
           attributes do
             uuid_primary_key :id
@@ -21,7 +21,9 @@ defmodule Ash.Test.Helpers do
 
   defmacro hydrated_expr(resource, expr) do
     quote do
-      Ash.Query.expr(unquote(expr))
+      require Ash.Expr
+
+      Ash.Expr.expr(unquote(expr))
       |> Ash.Filter.hydrate_refs(%{
         resource: unquote(resource),
         aggregates: %{},

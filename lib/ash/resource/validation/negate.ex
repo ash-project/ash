@@ -16,7 +16,7 @@ defmodule Ash.Resource.Validation.Negate do
 
   @impl true
   def init(opts) do
-    with {:ok, opts} <- Spark.OptionsHelpers.validate(opts, @opt_schema),
+    with {:ok, opts} <- Spark.Options.validate(opts, @opt_schema),
          {validation, validation_opts} = opts[:validation],
          {:module, validation} <- Code.ensure_compiled(validation),
          true <- function_exported?(validation, :describe, 1),
@@ -60,8 +60,8 @@ defmodule Ash.Resource.Validation.Negate do
     {validation, validation_opts} = opts[:validation]
 
     {message, vars} =
-      if context[:message] do
-        {context[:message], []}
+      if context.message do
+        {context.message, []}
       else
         case validation.describe(validation_opts) do
           message when is_binary(message) ->
@@ -72,7 +72,7 @@ defmodule Ash.Resource.Validation.Negate do
         end
       end
 
-    case validation.atomic(changeset, validation_opts) do
+    case validation.atomic(changeset, validation_opts, context) do
       list when is_list(list) ->
         Enum.map(list, &negate_atomic(&1, message, vars))
 

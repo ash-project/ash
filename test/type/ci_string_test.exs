@@ -2,19 +2,21 @@ defmodule Ash.Test.Type.CiString do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  import Ash.Changeset
   require Ash.Query
+
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -27,44 +29,32 @@ defmodule Ash.Test.Type.CiString do
       # c. [allow_empty?: true, trim?: true]
       # d. [allow_empty?: true, trim?: false]
       #
-      attribute :string_a, :ci_string
-      attribute :string_b, :ci_string, constraints: [trim?: false]
-      attribute :string_c, :ci_string, constraints: [allow_empty?: true]
-      attribute :string_d, :ci_string, constraints: [allow_empty?: true, trim?: false]
+      attribute :string_a, :ci_string, public?: true
+      attribute :string_b, :ci_string, constraints: [trim?: false], public?: true
+      attribute :string_c, :ci_string, constraints: [allow_empty?: true], public?: true
 
-      attribute :string_e, :ci_string, constraints: [min_length: 3, max_length: 6]
-      attribute :string_f, :ci_string, constraints: [min_length: 3, max_length: 6, trim?: false]
-    end
-  end
+      attribute :string_d, :ci_string,
+        constraints: [allow_empty?: true, trim?: false],
+        public?: true
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
+      attribute :string_e, :ci_string, constraints: [min_length: 3, max_length: 6], public?: true
 
-    entries do
-      entry Post
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
+      attribute :string_f, :ci_string,
+        constraints: [min_length: 3, max_length: 6, trim?: false],
+        public?: true
     end
   end
 
   test "it handles non-empty values" do
     post =
       Post
-      |> new(%{
+      |> Ash.Changeset.for_create(:create, %{
         string_a: "  Foo  ",
         string_b: "  fOo  ",
         string_c: "  baR  ",
         string_d: "  BaR  "
       })
-      |> Api.create!()
+      |> Ash.create!()
 
     assert Comp.equal?(post.string_a, "foo")
     assert Comp.equal?(post.string_b, "  foo  ")
@@ -75,13 +65,13 @@ defmodule Ash.Test.Type.CiString do
   test "it handles empty values" do
     post =
       Post
-      |> new(%{
+      |> Ash.Changeset.for_create(:create, %{
         string_a: " ",
         string_b: " ",
         string_c: " ",
         string_d: " "
       })
-      |> Api.create!()
+      |> Ash.create!()
 
     assert post.string_a == nil
     assert post.string_b == nil
@@ -97,47 +87,47 @@ defmodule Ash.Test.Type.CiString do
 
     Enum.each(allowed_values, fn {e_val, f_val} ->
       Post
-      |> new(%{string_e: e_val, string_f: f_val})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{string_e: e_val, string_f: f_val})
+      |> Ash.create!()
     end)
   end
 
   test "it handles too short values with length constraints" do
     assert_raise(Ash.Error.Invalid, ~r/string_e: length must be greater/, fn ->
       Post
-      |> new(%{string_e: "   45   "})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{string_e: "   45   "})
+      |> Ash.create!()
     end)
 
     assert_raise(Ash.Error.Invalid, ~r/string_f: length must be greater/, fn ->
       Post
-      |> new(%{string_f: "12"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{string_f: "12"})
+      |> Ash.create!()
     end)
   end
 
   test "it handles too long values with length constraints" do
     assert_raise(Ash.Error.Invalid, ~r/string_e: length must be less/, fn ->
       Post
-      |> new(%{string_e: "1234567"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{string_e: "1234567"})
+      |> Ash.create!()
     end)
 
     assert_raise(Ash.Error.Invalid, ~r/string_f: length must be less/, fn ->
       Post
-      |> new(%{string_f: "   45   "})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{string_f: "   45   "})
+      |> Ash.create!()
     end)
   end
 
   test "filters are case insensitive" do
     Post
-    |> new(%{string_f: "foobar"})
-    |> Api.create!()
+    |> Ash.Changeset.for_create(:create, %{string_f: "foobar"})
+    |> Ash.create!()
 
     assert [_] =
              Post
              |> Ash.Query.filter(string_f == "FoObAr")
-             |> Api.read!()
+             |> Ash.read!()
   end
 end

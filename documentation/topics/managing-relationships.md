@@ -29,7 +29,7 @@ With this, those arguments can be used in action input:
 ```elixir
 post
 |> Ash.Changeset.for_update(:update, tags: [tag1.id, tag2.id], add_comment: %{text: "comment text"})
-|> MyApi.update!()
+|> Ash.update!()
 ```
 
 ## Argument Types
@@ -48,7 +48,7 @@ And then you could use it like so:
 ```elixir
 post
 |> Ash.Changeset.for_update(:update, tags: [tag1.id, tag2.id], add_comment: "comment text")
-|> MyApi.update!()
+|> Ash.update!()
 ```
 
 ## Derived behavior

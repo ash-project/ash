@@ -1,6 +1,7 @@
 defmodule Ash.Test.Support.PolicyRbac.File do
   @moduledoc false
   use Ash.Resource,
+    domain: Ash.Test.Support.PolicyRbac.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -24,16 +25,17 @@ defmodule Ash.Test.Support.PolicyRbac.File do
   end
 
   actions do
-    defaults [:create, :read, :update, :destroy]
+    default_accept :*
+    defaults [:read, :destroy, create: :*, update: :*]
   end
 
   attributes do
     uuid_primary_key(:id)
-    attribute(:name, :string)
-    attribute(:forbidden, :string)
+    attribute(:name, :string, public?: true)
+    attribute(:forbidden, :string, public?: true)
   end
 
   relationships do
-    belongs_to(:organization, Ash.Test.Support.PolicyRbac.Organization)
+    belongs_to(:organization, Ash.Test.Support.PolicyRbac.Organization, public?: true)
   end
 end

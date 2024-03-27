@@ -16,13 +16,13 @@ defmodule Ash.Sort do
           | {atom, sort_order}
           | %Ash.Query.Calculation{}
           | {%Ash.Query.Calculation{}, sort_order}
-          | {atom, {sort_order, Keyword.t() | map}}
+          | {atom, {Keyword.t() | map, sort_order}}
 
   @type t ::
           list(sort_item)
           | sort_item
 
-  alias Ash.Error.Query.{InvalidSortOrder, NoSuchAttribute}
+  alias Ash.Error.Query.{InvalidSortOrder, NoSuchField}
 
   @doc """
   Builds an expression to be used in a sort statement.
@@ -41,11 +41,29 @@ defmodule Ash.Sort do
       require Ash.Expr
       type = unquote(type)
 
+      {type, constraints} =
+        case type do
+          {:array, _} ->
+            {type, []}
+
+          {type, constraints} ->
+            {type, constraints}
+
+          type ->
+            {type, []}
+
+          nil ->
+            {nil, []}
+        end
+
+      type = type && Ash.Type.get_type(type)
+
       case Ash.Query.Calculation.new(
-             :expr_sort,
+             :__expr_sort__,
              Ash.Resource.Calculation.Expression,
              [expr: Ash.Expr.expr(unquote(expression))],
-             type && Ash.Type.get_type(type)
+             type,
+             constraints
            ) do
         {:ok, calc} -> calc
         {:error, term} -> raise Ash.Error.to_ash_error(term)
@@ -156,7 +174,7 @@ defmodule Ash.Sort do
              :desc_nils_last
            ] do
     case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
+      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
       field -> {:ok, {field, direction}}
     end
   end
@@ -167,35 +185,35 @@ defmodule Ash.Sort do
 
   def parse_sort(resource, "++" <> field, handler) do
     case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
+      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
       field -> {:ok, add_order(field, :asc_nils_first)}
     end
   end
 
   def parse_sort(resource, "--" <> field, handler) do
     case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
+      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
       field -> {:ok, add_order(field, :desc_nils_last)}
     end
   end
 
   def parse_sort(resource, "+" <> field, handler) do
     case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
+      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
       field -> {:ok, add_order(field, :asc)}
     end
   end
 
   def parse_sort(resource, "-" <> field, handler) do
     case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
+      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
       field -> {:ok, add_order(field, :desc)}
     end
   end
 
   def parse_sort(resource, field, handler) do
     case get_field(resource, field, handler) do
-      nil -> {:error, NoSuchAttribute.exception(resource: resource, name: field)}
+      nil -> {:error, NoSuchField.exception(resource: resource, field: field)}
       field -> {:ok, add_order(field, :asc)}
     end
   end
@@ -269,5 +287,5 @@ defmodule Ash.Sort do
   collation that affects their sorting, making it unpredictable from the perspective
   of a tool using the database: https://www.postgresql.org/docs/current/collation.html
   """
-  defdelegate runtime_sort(results, sort, api \\ nil), to: Ash.Actions.Sort
+  defdelegate runtime_sort(results, sort, domain \\ nil), to: Ash.Actions.Sort
 end

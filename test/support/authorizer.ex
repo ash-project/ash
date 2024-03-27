@@ -23,7 +23,7 @@ defmodule Ash.Test.Authorizer do
   defp maybe_forbidden(:forbidden), do: {:error, Ash.Error.Forbidden.exception([])}
   defp maybe_forbidden(other), do: other
 
-  def initial_state(_, _, _, _), do: %{}
+  def initial_state(_, _, _), do: %{}
   def strict_check_context(_), do: get(:strict_check_context, [])
 
   def strict_check(state, _),

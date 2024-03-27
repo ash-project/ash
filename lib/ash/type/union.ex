@@ -29,16 +29,22 @@ defmodule Ash.Type.Union do
             ],
             object: [
               type: MyObjectType,
+              # The default value is `true`
+              # this passes the tag key/value to the nested type
+              # when casting input
+              cast_tag?: true,
               tag: :type,
               tag_value: "my_object"
             ],
             other_object: [
               type: MyOtherObjectType,
+              cast_tag?: true,
               tag: :type,
               tag_value: "my_other_object"
             ],
             other_object_without_type: [
               type: MyOtherObjectTypeWithoutType,
+              cast_tag?: false,
               tag: :type,
               tag_value: nil
             ]
@@ -96,7 +102,7 @@ defmodule Ash.Type.Union do
        end
 
        schema = Ash.Type.constraints(type)
-       constraints = Spark.OptionsHelpers.validate!(config[:constraints] || [], schema)
+       constraints = Spark.Options.validate!(config[:constraints] || [], schema)
 
        {key, config |> Keyword.put(:constraints, constraints) |> Keyword.put(:type, type)}
      end)}
@@ -110,7 +116,7 @@ defmodule Ash.Type.Union do
 
   ## Constraints
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
 
@@ -343,12 +349,7 @@ defmodule Ash.Type.Union do
   end
 
   @impl true
-  def cast_atomic_update(_new_value, _constraints) do
-    {:not_atomic, "Unions do not support atomic updates"}
-  end
-
-  @impl true
-  def cast_atomic_update_array(_new_value, _constraints) do
+  def cast_atomic(_new_value, _constraints) do
     {:not_atomic, "Unions do not support atomic updates"}
   end
 
@@ -372,8 +373,6 @@ defmodule Ash.Type.Union do
     types = constraints[:types] || []
 
     types
-    |> Enum.sort_by(fn {_type_name, config} -> config[:tag] end)
-    |> Enum.reverse()
     |> Enum.reduce_while({:error, []}, fn {type_name, config}, {:error, errors} ->
       type = config[:type]
 
@@ -406,9 +405,27 @@ defmodule Ash.Type.Union do
         tags_equal? = tags_equal?(tag_value, their_tag_value)
 
         if tags_equal? do
-          case Ash.Type.cast_input(type, value, config[:constraints] || []) do
+          value =
+            if Keyword.get(config, :cast_tag?, true) do
+              value
+            else
+              Map.drop(value, [config[:tag], to_string(config[:tag])])
+            end
+
+          constraints_with_source =
+            Ash.Type.include_source(
+              config[:type],
+              constraints[:__source__],
+              config[:constraints] || []
+            )
+
+          case Ash.Type.cast_input(
+                 type,
+                 value,
+                 constraints_with_source
+               ) do
             {:ok, value} ->
-              case Ash.Type.apply_constraints(type, value, config[:constraints] || []) do
+              case Ash.Type.apply_constraints(type, value, constraints_with_source) do
                 {:ok, value} ->
                   {:halt,
                    {:ok,
@@ -729,20 +746,37 @@ defmodule Ash.Type.Union do
           new_values =
             Enum.map(new_values, fn
               {:union_value, value, _} ->
-                value
+                case value do
+                  %{__index__: _} = value ->
+                    Map.delete(value, :__index__)
 
-              other ->
-                other
+                  value ->
+                    value
+                end
+
+              value ->
+                case value do
+                  %{__index__: _} = value ->
+                    Map.delete(value, :__index__)
+
+                  value ->
+                    value
+                end
             end)
 
           type = constraints[:types][name][:type]
+
+          item_constraints =
+            Ash.Type.include_source({:array, type}, constraints[:__source__],
+              items: constraints[:types][name][:constraints] || []
+            )
 
           result =
             Ash.Type.prepare_change(
               {:array, type},
               old_values_by_type[name] || [],
               new_values,
-              items: constraints[:types][name][:constraints]
+              item_constraints
             )
 
           case result do
@@ -790,6 +824,11 @@ defmodule Ash.Type.Union do
     else
       {:ok, new_values}
     end
+  end
+
+  @impl true
+  def include_source(constraints, changeset) do
+    Keyword.put(constraints || [], :__source__, changeset)
   end
 
   @impl true

@@ -2,22 +2,28 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule TimeMachine do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
 
     actions do
-      defaults [:read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, update: :*]
 
       create :create_with_before_action do
         argument :caller, :term
 
-        change before_action(fn changeset ->
+        change before_action(fn changeset, _context ->
                  send(changeset.arguments.caller, changeset.phase)
                  changeset
                end)
@@ -26,7 +32,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
       create :create_with_before_transaction do
         argument :caller, :term
 
-        change before_transaction(fn changeset ->
+        change before_transaction(fn changeset, _context ->
                  send(changeset.arguments.caller, changeset.phase)
 
                  changeset
@@ -36,7 +42,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
       create :create_with_after_action do
         argument :caller, :term
 
-        change after_action(fn changeset, record ->
+        change after_action(fn changeset, record, _context ->
                  send(changeset.arguments.caller, changeset.phase)
 
                  {:ok, record}
@@ -46,30 +52,12 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
       create :create_with_after_transaction do
         argument :caller, :term
 
-        change after_transaction(fn changeset, {:ok, record} ->
+        change after_transaction(fn changeset, {:ok, record}, _context ->
                  send(changeset.arguments.caller, changeset.phase)
 
                  {:ok, record}
                end)
       end
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry TimeMachine
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
     end
   end
 
@@ -80,7 +68,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
         name: "Delorean DMC-12",
         caller: self()
       )
-      |> Api.create!()
+      |> Ash.create!()
 
       assert_received :before_action
     end
@@ -93,7 +81,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
         name: "Delorean DMC-12",
         caller: self()
       )
-      |> Api.create!()
+      |> Ash.create!()
 
       assert_received :before_transaction
     end
@@ -106,7 +94,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
         name: "Delorean DMC-12",
         caller: self()
       )
-      |> Api.create!()
+      |> Ash.create!()
 
       assert_received :after_action
     end
@@ -119,7 +107,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
         name: "Delorean DMC-12",
         caller: self()
       )
-      |> Api.create!()
+      |> Ash.create!()
 
       assert_received :after_transaction
     end

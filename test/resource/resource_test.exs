@@ -2,14 +2,19 @@ defmodule Ash.Test.Resource.ResourceTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmacrop defposts(do: body) do
+    module = Module.concat(["rand#{System.unique_integer([:positive])}", Post])
+
     quote do
-      defmodule Post do
+      defmodule unquote(module) do
         @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
         actions do
-          defaults [:create, :read, :update, :destroy]
+          default_accept :*
+          defaults [:read, :destroy, create: :*, update: :*]
         end
 
         attributes do
@@ -18,12 +23,14 @@ defmodule Ash.Test.Resource.ResourceTest do
 
         unquote(body)
       end
+
+      alias unquote(module), as: Post
     end
   end
 
   defmodule Concat do
     # An example concatenation calculation, that accepts the delimiter as an argument
-    use Ash.Calculation
+    use Ash.Resource.Calculation
 
     def init(opts) do
       if opts[:keys] && is_list(opts[:keys]) && Enum.all?(opts[:keys], &is_atom/1) do
@@ -33,7 +40,9 @@ defmodule Ash.Test.Resource.ResourceTest do
       end
     end
 
-    def calculate(records, opts, %{separator: separator}) do
+    def calculate(records, opts, %Ash.Resource.Calculation.Context{
+          arguments: %{separator: separator}
+        }) do
       Enum.map(records, fn record ->
         Enum.map_join(opts[:keys], separator, fn key ->
           to_string(Map.get(record, key))
@@ -44,42 +53,28 @@ defmodule Ash.Test.Resource.ResourceTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource
+    use Ash.Resource, domain: Domain
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
-    end
-  end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Post)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
+      attribute :name, :string do
+        public?(true)
+      end
     end
   end
 
   test "it returns the correct error when doing a read with no data layer setup" do
     Post
-    |> Ash.Changeset.new(%{name: "foo"})
-    |> Api.create()
+    |> Ash.Changeset.for_create(:create, %{name: "foo"})
+    |> Ash.create()
 
-    {_, error} = Api.read(Post)
+    {_, error} = Ash.read(Post)
     [%Ash.Error.SimpleDataLayer.NoDataProvided{message: message} | _] = error.errors
     assert message != nil
   end
@@ -91,23 +86,100 @@ defmodule Ash.Test.Resource.ResourceTest do
       fn ->
         defposts do
           attributes do
-            attribute(:foobar, :string)
+            attribute(:foobar, :string, public?: true)
           end
 
           relationships do
-            belongs_to(:foobar, Foobar)
+            belongs_to :foobar, Foobar do
+              public?(true)
+            end
           end
 
           calculations do
             calculate :foobar, :integer, {Concat, keys: [:foo, :bar]} do
+              public?(true)
             end
           end
 
           aggregates do
-            count :foobar, :baz
+            count :foobar, :baz do
+              public? true
+            end
           end
         end
       end
     )
+  end
+
+  test "relationships can be loaded" do
+    defmodule Leg do
+      @moduledoc false
+      use Ash.Resource,
+        domain: nil,
+        data_layer: Ash.DataLayer.Ets,
+        validate_domain_inclusion?: false
+
+      attributes do
+        uuid_primary_key :id
+        attribute :side, :string, allow_nil?: false, public?: true
+      end
+
+      relationships do
+        belongs_to :pants, Ash.Test.Resource.ResourceTest.Pants do
+          attribute_writable? true
+          public? true
+        end
+      end
+
+      actions do
+        defaults [:create, :read]
+        default_accept :*
+      end
+    end
+
+    defmodule Pants do
+      @moduledoc false
+      use Ash.Resource,
+        domain: nil,
+        data_layer: Ash.DataLayer.Ets,
+        validate_domain_inclusion?: false
+
+      attributes do
+        uuid_primary_key :id
+      end
+
+      relationships do
+        has_many :legs, Leg
+      end
+
+      actions do
+        defaults [:create, :read]
+        default_accept :*
+      end
+    end
+
+    defmodule Clothing do
+      @moduledoc false
+      use Ash.Domain, validate_config_inclusion?: false
+
+      resources do
+        allow_unregistered? true
+      end
+    end
+
+    pants =
+      Pants
+      |> Ash.Changeset.for_create(:create, %{}, domain: Clothing)
+      |> Ash.create!(domain: Clothing)
+
+    [left, _right] =
+      ~w[left right]
+      |> Enum.map(fn side ->
+        Leg
+        |> Ash.Changeset.for_create(:create, %{pants_id: pants.id, side: side}, domain: Clothing)
+        |> Ash.create!(domain: Clothing)
+      end)
+
+    Ash.load!(left, [pants: [:legs]], domain: Clothing)
   end
 end

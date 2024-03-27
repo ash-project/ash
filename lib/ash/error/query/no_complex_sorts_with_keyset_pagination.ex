@@ -11,21 +11,15 @@ defmodule Ash.Error.Query.NoComplexSortsWithKeysetPagination do
   """
   use Ash.Error.Exception
 
-  def_ash_error([:resource, :sort], class: :framework)
+  use Splode.Error, fields: [:resource, :sort], class: :framework
 
-  defimpl Ash.ErrorKind do
-    def id(_), do: Ash.UUID.generate()
+  def message(%{resource: resource, sort: sort}) do
+    """
+    Attempted to sort by a calculation or aggregate while using keyset pagination with #{inspect(resource)}
 
-    def code(_), do: "no_complex_sorts_with_keyset_pagination"
+    This is not currently supported.
 
-    def message(%{resource: resource, sort: sort}) do
-      """
-      Attempted to sort by a calculation or aggregate while using keyset pagination with #{inspect(resource)}
-
-      This is not currently supported.
-
-      Sort: #{inspect(sort)}
-      """
-    end
+    Sort: #{inspect(sort)}
+    """
   end
 end

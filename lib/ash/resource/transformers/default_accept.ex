@@ -9,15 +9,25 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
     public_attribute_names =
       dsl_state
       |> Transformer.get_entities([:attributes])
-      |> Enum.reject(& &1.private?)
+      |> Enum.filter(&(&1.public? && &1.writable?))
       |> Enum.map(& &1.name)
+
+    default_default_accept =
+      if Ash.Resource.Info.embedded?(dsl_state) do
+        :*
+      else
+        []
+      end
 
     default_accept =
       Transformer.get_option(
         dsl_state,
         [:actions],
         :default_accept
-      ) || public_attribute_names
+      ) || default_default_accept
+
+    dsl_state =
+      Transformer.set_option(dsl_state, [:actions], :default_accept, default_accept)
 
     dsl_state
     |> Transformer.get_entities([:actions])
@@ -26,48 +36,69 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
       %{type: :read}, {:ok, _dsl_state} = acc ->
         acc
 
+      %{type: :destroy, soft?: false} = action, {:ok, dsl_state} ->
+        new_dsl_state =
+          Transformer.replace_entity(
+            dsl_state,
+            [:actions],
+            %{action | accept: []},
+            &(&1.name == action.name && &1.type == action.type)
+          )
+
+        {:ok, new_dsl_state}
+
       action, {:ok, dsl_state} ->
-        if is_list(action.accept) && is_list(action.reject) &&
-             !MapSet.disjoint?(MapSet.new(action.accept), MapSet.new(action.reject)) do
-          raise Spark.Error.DslError,
-            path: [:actions, action.name],
-            message: "accept and reject keys cannot overlap"
-        end
-
-        {accept, reject} =
-          case {action.accept, action.reject} do
-            {_, :all} ->
-              {[], public_attribute_names}
-
-            {nil, reject} ->
-              {reject(if(action.type != :destroy, do: default_accept, else: []), reject), reject}
-
-            {:all, reject} ->
-              {reject(public_attribute_names, reject), reject}
-
-            {accept, reject} ->
-              {reject(accept, reject), reject}
+        accept =
+          case List.wrap(action.accept || default_accept) do
+            [:*] -> public_attribute_names
+            list -> list
           end
 
+        argument_names = Enum.map(action.arguments, & &1.name)
+
+        accept
+        |> Enum.reject(&Ash.Resource.Info.attribute(dsl_state, &1))
+        |> case do
+          [] ->
+            :ok
+
+          invalid_attrs ->
+            raise Spark.Error.DslError,
+              module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
+              path: [:actions, action.name, :accept],
+              message: """
+              Cannot accept #{inspect(invalid_attrs)}, because they are not attributes."
+              """
+        end
+
+        accept
+        |> Enum.reject(&(&1 in public_attribute_names))
+        |> case do
+          [] ->
+            :ok
+
+          invalid_attrs ->
+            raise Spark.Error.DslError,
+              module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
+              path: [:actions, action.name, :accept],
+              message: """
+              Cannot accept #{inspect(invalid_attrs)}, because they are private attributes.
+              """
+        end
+
         accept =
-          Enum.reject(accept, fn attr ->
-            Enum.any?(action.arguments, &(&1.name == attr))
-          end)
+          Enum.reject(accept, &(&1 in argument_names))
 
         new_dsl_state =
           Transformer.replace_entity(
             dsl_state,
             [:actions],
-            %{action | accept: accept, reject: reject},
+            %{action | accept: accept},
             &(&1.name == action.name && &1.type == action.type)
           )
 
         {:ok, new_dsl_state}
     end)
-  end
-
-  defp reject(list, reject) do
-    Enum.reject(list, &(&1 in reject))
   end
 
   def after?(Ash.Resource.Transformers.BelongsToAttribute), do: true

@@ -29,7 +29,7 @@ For example
 Or
 
 ```elixir
-  Api.read(:resource, bar: 10) # <- Adding `bar` here would cause <x>
+  Ash.read(:resource, bar: 10) # <- Adding `bar` here would cause <x>
 ```
 
 **Additional context**

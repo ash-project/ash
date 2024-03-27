@@ -45,7 +45,6 @@ defmodule Ash.Resource.Transformers.GetByReadActions do
   end
 
   defp transform_action(dsl_state, action) do
-    import Ash.Filter.TemplateHelpers, only: [arg: 1]
     import Ash.Expr
 
     action =
@@ -68,8 +67,8 @@ defmodule Ash.Resource.Transformers.GetByReadActions do
 
         filter =
           case action.filter do
-            nil -> expr(ref(^field) == ^arg(field))
-            filter -> where(^filter, ref(^field) == ^arg(field))
+            nil -> expr(^ref(field) == ^arg(field))
+            filter -> where(^filter, ^ref(field) == ^arg(field))
           end
 
         %{action | arguments: arguments, filter: filter}

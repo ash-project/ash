@@ -1,6 +1,7 @@
 defmodule Ash.Test.Support.PolicyComplex.User do
   @moduledoc false
   use Ash.Resource,
+    domain: Ash.Test.Support.PolicyComplex.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [
       Ash.Policy.Authorizer
@@ -30,14 +31,20 @@ defmodule Ash.Test.Support.PolicyComplex.User do
     uuid_primary_key(:id)
 
     attribute :name, :string do
+      public?(true)
       allow_nil? false
     end
 
-    attribute :private_email, :string
+    attribute :private_email, :string do
+      public?(true)
+    end
+
+    attribute :forbidden_by_domain, :boolean, default: false
   end
 
   actions do
-    defaults [:read, :update, :destroy]
+    default_accept :*
+    defaults [:read, :destroy, update: :*]
 
     create :create do
       primary? true
@@ -68,27 +75,35 @@ defmodule Ash.Test.Support.PolicyComplex.User do
   end
 
   code_interface do
-    define_for Ash.Test.Support.PolicyComplex.Api
     define :create, args: [:name]
     define :add_friend, args: [:friend_id]
     define :set_bio, args: [:bio]
   end
 
   aggregates do
-    first :bio_text, :bio, :text
+    first :bio_text, :bio, :text do
+      public? true
+    end
   end
 
   relationships do
-    has_many(:posts, Ash.Test.Support.PolicyComplex.Post, destination_attribute: :author_id)
+    has_many(:posts, Ash.Test.Support.PolicyComplex.Post,
+      destination_attribute: :author_id,
+      public?: true
+    )
 
     has_many :friends, Ash.Test.Support.PolicyComplex.User do
+      public?(true)
       manual Ash.Test.Support.PolicyComplex.User.Relationships.Friends
     end
 
     has_one :best_friend, Ash.Test.Support.PolicyComplex.User do
+      public?(true)
       manual Ash.Test.Support.PolicyComplex.User.Relationships.BestFriend
     end
 
-    has_one :bio, Ash.Test.Support.PolicyComplex.Bio
+    has_one :bio, Ash.Test.Support.PolicyComplex.Bio do
+      public?(true)
+    end
   end
 end

@@ -7,12 +7,13 @@ defmodule Embed do
   end
 
   actions do
-    defaults [:create, :update, :destroy, :read]
+    default_accept :*
+    defaults [:read, :destroy, create: :*, update: :*]
   end
 end
 
 defmodule Resource do
-  use Ash.Resource
+  use Ash.Resource, domain: Domain
 
   attributes do
     uuid_primary_key :id
@@ -21,12 +22,13 @@ defmodule Resource do
   end
 
   actions do
-    defaults [:create, :update, :destroy, :read]
+    default_accept :*
+    defaults [:read, :destroy, create: :*, update: :*]
   end
 end
 
-defmodule Api do
-  use Ash.Api
+defmodule Domain do
+  use Ash.Domain
 
   resources do
     resource Resource
@@ -37,19 +39,19 @@ embeds_input = 1..100 |> Enum.map(&%{name: "Embed #{&1}"})
 
 Resource
 |> Ash.Changeset.for_create(:create, %{embeds: embeds_input, maps: embeds_input})
-|> Api.create!()
+|> Ash.create!()
 
 Benchee.run(
   %{
     embeds: fn ->
       Resource
       |> Ash.Changeset.for_create(:create, %{embeds: embeds_input})
-      |> Api.create!()
+      |> Ash.create!()
     end,
     maps: fn ->
       Resource
       |> Ash.Changeset.for_create(:create, %{maps: embeds_input})
-      |> Api.create!()
+      |> Ash.create!()
     end
   }
 )

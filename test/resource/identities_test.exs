@@ -2,21 +2,32 @@ defmodule Ash.Test.Resource.IdentitiesTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmacrop defposts(do: body) do
+    module = Module.concat(["rand#{System.unique_integer([:positive])}", Post])
+
     quote do
-      defmodule Post do
+      defmodule unquote(module) do
         @moduledoc false
-        use Ash.Resource
+        use Ash.Resource, domain: Domain
 
         attributes do
           uuid_primary_key :id
 
-          attribute :name, :string
-          attribute :contents, :string
+          attribute :name, :string do
+            public?(true)
+          end
+
+          attribute :contents, :string do
+            public?(true)
+          end
         end
 
         unquote(body)
       end
+
+      alias unquote(module), as: Post
     end
   end
 
@@ -24,13 +35,15 @@ defmodule Ash.Test.Resource.IdentitiesTest do
     test "identities are persisted on the resource properly" do
       defposts do
         actions do
+          default_accept :*
+
           read :read do
             primary? true
           end
         end
 
         identities do
-          identity :foobar, [:name, :contents], pre_check_with: Api
+          identity :foobar, [:name, :contents], pre_check_with: Domain
         end
       end
 
@@ -44,7 +57,9 @@ defmodule Ash.Test.Resource.IdentitiesTest do
                    fn ->
                      defposts do
                        identities do
-                         identity :foobar, [:name], eager_check_with: Api, pre_check_with: Api
+                         identity :foobar, [:name],
+                           eager_check_with: Domain,
+                           pre_check_with: Domain
                        end
                      end
                    end
@@ -53,6 +68,8 @@ defmodule Ash.Test.Resource.IdentitiesTest do
     test "Identity descriptions are allowed" do
       defposts do
         actions do
+          default_accept :*
+
           read :read do
             primary? true
           end
@@ -61,7 +78,7 @@ defmodule Ash.Test.Resource.IdentitiesTest do
         identities do
           identity :foobar, [:name, :contents],
             description: "require one of name/contents",
-            pre_check_with: Api
+            pre_check_with: Domain
         end
       end
 
@@ -76,16 +93,21 @@ defmodule Ash.Test.Resource.IdentitiesTest do
                    fn ->
                      defmodule Site do
                        @moduledoc false
-                       use Ash.Resource
+                       use Ash.Resource, domain: Domain
 
                        attributes do
                          uuid_primary_key :id
-                         attribute :url, :string
+
+                         attribute :url, :string do
+                           public?(true)
+                         end
                        end
                      end
 
                      defposts do
                        actions do
+                         default_accept :*
+
                          read :read do
                            primary? true
                          end
@@ -96,7 +118,9 @@ defmodule Ash.Test.Resource.IdentitiesTest do
                        end
 
                        relationships do
-                         belongs_to :site, Site
+                         belongs_to :site, Site do
+                           public?(true)
+                         end
                        end
                      end
                    end

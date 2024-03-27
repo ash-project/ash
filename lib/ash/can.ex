@@ -1,0 +1,618 @@
+defmodule Ash.Can do
+  @moduledoc false
+
+  require Ash.Query
+
+  def can?(action_or_query_or_changeset, domain, actor, opts \\ []) do
+    opts =
+      opts
+      |> Keyword.put_new(:maybe_is, true)
+      |> Keyword.put_new(:filter_with, :filter)
+
+    case can(action_or_query_or_changeset, domain, actor, opts) do
+      {:ok, :maybe} -> opts[:maybe_is]
+      {:ok, result} -> result
+      {:ok, true, _} -> {:ok, true}
+      {:error, error} -> raise Ash.Error.to_ash_error(error)
+    end
+  end
+
+  def can(action_or_query_or_changeset, domain, actor, opts \\ []) do
+    opts = Keyword.put_new(opts, :maybe_is, :maybe)
+    opts = Keyword.put_new(opts, :run_queries?, true)
+    opts = Keyword.put_new(opts, :filter_with, :filter)
+
+    {resource, action_or_query_or_changeset, input} =
+      case action_or_query_or_changeset do
+        %Ash.Query{} = query ->
+          {query.resource, query, nil}
+
+        %Ash.Changeset{} = changeset ->
+          {changeset.resource, changeset, nil}
+
+        %Ash.ActionInput{} = input ->
+          {input.resource, input, nil}
+
+        {resource, %struct{}} = action
+        when struct in [
+               Ash.Resource.Actions.Create,
+               Ash.Resource.Actions.Read,
+               Ash.Resource.Actions.Update,
+               Ash.Resource.Actions.Destroy,
+               Ash.Resource.Actions.Action
+             ] ->
+          {resource, action, %{}}
+
+        {resource, name} when is_atom(name) ->
+          {resource, Ash.Resource.Info.action(resource, name), %{}}
+
+        {resource, %struct{}, input} = action
+        when struct in [
+               Ash.Resource.Actions.Create,
+               Ash.Resource.Actions.Read,
+               Ash.Resource.Actions.Update,
+               Ash.Resource.Actions.Destroy,
+               Ash.Resource.Actions.Action
+             ] ->
+          {resource, action, input}
+
+        {resource, name, input} when is_atom(name) ->
+          {resource, Ash.Resource.Info.action(resource, name), input}
+      end
+
+    subject =
+      case action_or_query_or_changeset do
+        %{type: :update, name: name} ->
+          if opts[:data] do
+            Ash.Changeset.for_update(opts[:data], name, input,
+              actor: actor,
+              tenant: opts[:tenant]
+            )
+          else
+            resource
+            |> struct()
+            |> Ash.Changeset.for_update(name, input, actor: actor, tenant: opts[:tenant])
+          end
+
+        %{type: :create, name: name} ->
+          Ash.Changeset.for_create(resource, name, input, actor: actor, tenant: opts[:tenant])
+
+        %{type: :read, name: name} ->
+          Ash.Query.for_read(resource, name, input, actor: actor, tenant: opts[:tenant])
+
+        %{type: :destroy, name: name} ->
+          if opts[:data] do
+            Ash.Changeset.for_destroy(opts[:data], name, input,
+              actor: actor,
+              tenant: opts[:tenant]
+            )
+          else
+            resource
+            |> struct()
+            |> Ash.Changeset.for_destroy(name, input, actor: actor, tenant: opts[:tenant])
+          end
+
+        %{type: :action, name: name} ->
+          Ash.ActionInput.for_action(resource, name, input, actor: actor)
+
+        %Ash.ActionInput{} = action_input ->
+          action_input
+
+        %Ash.Query{} = query ->
+          if opts[:tenant] do
+            Ash.Query.set_tenant(query, opts[:tenant])
+          else
+            query
+          end
+
+        %Ash.Changeset{} = changeset ->
+          if opts[:tenant] do
+            Ash.Changeset.set_tenant(changeset, opts[:tenant])
+          else
+            changeset
+          end
+
+        _ ->
+          raise ArgumentError,
+            message: "Invalid action/query/changeset \"#{inspect(action_or_query_or_changeset)}\""
+      end
+
+    subject = %{subject | domain: domain}
+
+    case Ash.Domain.Info.resource(domain, resource) do
+      {:ok, _} ->
+        domain
+        |> run_check(actor, subject, opts)
+        |> alter_source(domain, actor, subject, opts)
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp alter_source({:ok, true, query}, domain, actor, %Ash.Changeset{} = subject, opts) do
+    case alter_source({:ok, true}, domain, actor, subject, Keyword.put(opts, :base_query, query)) do
+      {:ok, true, new_subject} -> {:ok, true, new_subject, query}
+      other -> other
+    end
+  end
+
+  defp alter_source({:ok, true, query}, domain, actor, _subject, opts) do
+    alter_source({:ok, true}, domain, actor, query, opts)
+  end
+
+  defp alter_source({:ok, true}, domain, actor, subject, opts) do
+    if opts[:alter_source?] do
+      subject.resource
+      |> Ash.Resource.Info.authorizers()
+      |> case do
+        [] ->
+          {:ok, true, subject}
+
+        authorizers ->
+          authorizers
+          |> Enum.reduce(
+            {:ok, true, subject},
+            fn authorizer, {:ok, true, subject} ->
+              authorizer_state =
+                authorizer.initial_state(
+                  actor,
+                  subject.resource,
+                  subject.action
+                )
+
+              context = %{domain: domain, query: nil, changeset: nil, action_input: nil}
+
+              case subject do
+                %Ash.Query{} = query ->
+                  alter_query(query, authorizer, authorizer_state, context)
+
+                %Ash.Changeset{} = changeset ->
+                  context = Map.put(context, :changeset, changeset)
+
+                  with {:ok, changeset, authorizer_state} <-
+                         Ash.Authorizer.add_calculations(
+                           authorizer,
+                           changeset,
+                           authorizer_state,
+                           context
+                         ) do
+                    if opts[:base_query] do
+                      case alter_query(opts[:base_query], authorizer, authorizer_state, context) do
+                        {:ok, true, query} ->
+                          {:ok, true, changeset, query}
+
+                        other ->
+                          other
+                      end
+                    else
+                      {:ok, true, changeset}
+                    end
+                  end
+
+                %Ash.ActionInput{} = subject ->
+                  {:ok, true, subject}
+              end
+            end
+          )
+      end
+    else
+      {:ok, true}
+    end
+  end
+
+  defp alter_source(other, _, _, _, _), do: other
+
+  defp alter_query(query, authorizer, authorizer_state, context) do
+    context = Map.put(context, :query, query)
+
+    with {:ok, query, _} <-
+           Ash.Authorizer.add_calculations(
+             authorizer,
+             query,
+             authorizer_state,
+             context
+           ),
+         {:ok, new_filter} <-
+           Ash.Authorizer.alter_filter(
+             authorizer,
+             authorizer_state,
+             query.filter,
+             context
+           ),
+         {:ok, hydrated} <-
+           Ash.Filter.hydrate_refs(new_filter, %{
+             resource: query.resource,
+             public?: false
+           }),
+         {:ok, new_sort} <-
+           Ash.Authorizer.alter_sort(
+             authorizer,
+             authorizer_state,
+             query.sort,
+             context
+           ) do
+      {:ok, true, %{query | filter: hydrated, sort: new_sort}}
+    end
+  end
+
+  defp run_check(domain, actor, subject, opts) do
+    authorizers =
+      Ash.Resource.Info.authorizers(subject.resource)
+      |> Enum.map(fn authorizer ->
+        authorizer_state =
+          authorizer.initial_state(
+            actor,
+            subject.resource,
+            subject.action
+          )
+
+        context = %{domain: domain, query: nil, changeset: nil, action_input: nil}
+
+        context =
+          case subject do
+            %Ash.Query{} -> Map.put(context, :query, subject)
+            %Ash.Changeset{} -> Map.put(context, :changeset, subject)
+            %Ash.ActionInput{} -> Map.put(context, :action_input, subject)
+          end
+
+        {authorizer, authorizer_state, context}
+      end)
+
+    base_query =
+      case subject do
+        %Ash.Query{} = query ->
+          opts[:base_query] || query
+
+        _ ->
+          opts[:base_query]
+      end
+
+    case authorizers do
+      [] ->
+        {:ok, true}
+
+      authorizers ->
+        authorizers
+        |> Enum.reduce_while(
+          {false, base_query},
+          fn {authorizer, authorizer_state, context}, {_authorized?, query} ->
+            case authorizer.strict_check(authorizer_state, context) do
+              {:error, %{class: :forbidden} = e} when is_exception(e) ->
+                {:halt, {false, e}}
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+
+              {:authorized, _} ->
+                {:cont, {true, query}}
+
+              :forbidden ->
+                {:halt,
+                 {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+
+              _ when not is_nil(context.action_input) ->
+                raise """
+                Cannot use filter or runtime checks with generic actions
+
+                Failed when authorizing #{inspect(subject.resource)}.#{subject.action.name}
+                """
+
+              {:filter, _authorizer, filter} ->
+                filter =
+                  if opts[:atomic_changeset] do
+                    Ash.Expr.fill_template(
+                      filter,
+                      actor,
+                      %{},
+                      %{},
+                      opts[:atomic_changeset]
+                    )
+                  else
+                    filter
+                  end
+
+                {:cont,
+                 {true,
+                  apply_filter(
+                    query,
+                    subject.resource,
+                    domain,
+                    filter,
+                    authorizer,
+                    authorizer_state,
+                    opts
+                  )}}
+
+              {:filter, filter} ->
+                filter =
+                  if opts[:atomic_changeset] do
+                    Ash.Expr.fill_template(
+                      filter,
+                      actor,
+                      %{},
+                      %{},
+                      opts[:atomic_changeset]
+                    )
+                  else
+                    filter
+                  end
+
+                {:cont,
+                 {true,
+                  apply_filter(
+                    query,
+                    subject.resource,
+                    domain,
+                    filter,
+                    authorizer,
+                    authorizer_state,
+                    opts
+                  )}}
+
+              {:continue, authorizer_state} ->
+                if opts[:no_check?] do
+                  Ash.Authorizer.exception(authorizer, :must_pass_strict_check, authorizer_state)
+                else
+                  if opts[:alter_source?] || !match?(%Ash.Query{}, subject) do
+                    query_with_hook =
+                      Ash.Query.authorize_results(
+                        or_query(query, subject.resource, domain),
+                        fn query, results ->
+                          context = Map.merge(context, %{data: results, query: query})
+
+                          case authorizer.check(authorizer_state, context) do
+                            :authorized -> {:ok, results}
+                            {:error, :forbidden, error} -> {:error, error}
+                            {:error, error} -> {:error, error}
+                            {:data, data} -> {:ok, data}
+                          end
+                        end
+                      )
+
+                    {:cont, {true, query_with_hook}}
+                  else
+                    if opts[:maybe_is] == false do
+                      {:halt,
+                       {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                    else
+                      {:halt, {:maybe, nil}}
+                    end
+                  end
+                end
+
+              {:filter_and_continue, filter, authorizer_state} ->
+                filter =
+                  if opts[:atomic_changeset] do
+                    Ash.Expr.fill_template(
+                      filter,
+                      actor,
+                      %{},
+                      %{},
+                      opts[:atomic_changeset]
+                    )
+                  else
+                    filter
+                  end
+
+                if opts[:no_check?] || !match?(%Ash.Query{}, subject) do
+                  Ash.Authorizer.exception(authorizer, :must_pass_strict_check, authorizer_state)
+                else
+                  if opts[:alter_source?] do
+                    query_with_hook =
+                      query
+                      |> apply_filter(
+                        subject.resource,
+                        domain,
+                        filter,
+                        authorizer,
+                        authorizer_state,
+                        opts
+                      )
+                      |> Ash.Query.authorize_results(fn query, results ->
+                        context = Map.merge(context, %{data: results, query: query})
+
+                        case authorizer.check(authorizer_state, context) do
+                          :authorized -> {:ok, results}
+                          {:error, error} -> {:error, error}
+                          {:data, data} -> {:ok, data}
+                        end
+                      end)
+
+                    {:cont, {true, query_with_hook}}
+                  else
+                    if opts[:maybe_is] == false do
+                      {:halt,
+                       {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                    else
+                      {:halt, {:maybe, nil}}
+                    end
+                  end
+                end
+            end
+          end
+        )
+        |> case do
+          {:error, error} ->
+            {:error, error}
+
+          {true, query} when not is_nil(query) ->
+            if opts[:run_queries?] do
+              run_queries(subject, opts, authorizers, query)
+            else
+              if opts[:alter_source?] do
+                {:ok, true, query}
+              else
+                {:ok, :maybe}
+              end
+            end
+
+          {false, error} ->
+            if opts[:return_forbidden_error?] do
+              {:ok, false, error || authorizer_exception(authorizers)}
+            else
+              {:ok, false}
+            end
+
+          {other, _} ->
+            {:ok, other}
+        end
+        |> case do
+          {:ok, :maybe} ->
+            if opts[:maybe_is] == false && opts[:return_forbidden_error?] do
+              {:ok, false, authorizer_exception(authorizers)}
+            else
+              {:ok, opts[:maybe_is]}
+            end
+
+          other ->
+            other
+        end
+    end
+  end
+
+  defp apply_filter(query, resource, domain, filter, authorizer, authorizer_state, opts) do
+    case opts[:filter_with] || :filter do
+      :filter ->
+        Ash.Query.filter(or_query(query, resource, domain), ^filter)
+
+      :error ->
+        Ash.Query.filter(
+          or_query(query, resource, domain),
+          if ^filter do
+            true
+          else
+            error(Ash.Error.Forbidden.Placeholder, %{
+              authorizer: ^inspect(authorizer)
+            })
+          end
+        )
+        |> Ash.Query.set_context(%{
+          private: %{authorizer_state: %{authorizer => authorizer_state}}
+        })
+    end
+  end
+
+  defp run_queries(subject, opts, authorizers, query) do
+    case subject do
+      %Ash.Query{} ->
+        if opts[:data] do
+          data = List.wrap(opts[:data])
+
+          pkey = Ash.Resource.Info.primary_key(query.resource)
+          pkey_values = Enum.map(data, &Map.take(&1, pkey))
+
+          if Enum.any?(pkey_values, fn pkey_value ->
+               pkey_value |> Map.values() |> Enum.any?(&is_nil/1)
+             end) do
+            {:ok, :maybe}
+          else
+            query
+            |> Ash.Query.do_filter(or: pkey_values)
+            |> Ash.Query.data_layer_query()
+            |> case do
+              {:ok, data_layer_query} ->
+                data_layer_query
+                |> Ash.DataLayer.run_query(query.resource)
+                |> Ash.Actions.Helpers.rollback_if_in_transaction(query.resource, query)
+                |> case do
+                  {:ok, results} ->
+                    case Ash.Actions.Read.run_authorize_results(query, results) do
+                      {:ok, results} ->
+                        if Enum.count(results) == Enum.count(data) do
+                          {:ok, true}
+                        else
+                          if opts[:return_forbidden_error?] do
+                            {:ok, false, authorizer_exception(authorizers)}
+                          else
+                            {:ok, false}
+                          end
+                        end
+
+                      {:error, error} ->
+                        {:error, error}
+                    end
+
+                  {:error, error} ->
+                    {:error, error}
+                end
+            end
+          end
+        else
+          {:ok, true}
+        end
+
+      %Ash.Changeset{data: data, action_type: type, resource: resource, tenant: tenant}
+      when type in [:update, :destroy] ->
+        pkey = Ash.Resource.Info.primary_key(resource)
+        pkey_value = Map.take(data, pkey)
+
+        if pkey_value |> Map.values() |> Enum.any?(&is_nil/1) do
+          {:ok, :maybe}
+        else
+          query
+          |> Ash.Query.do_filter(pkey_value)
+          |> Ash.Query.set_tenant(tenant)
+          |> Ash.Query.data_layer_query()
+          |> case do
+            {:ok, data_layer_query} ->
+              data_layer_query
+              |> Ash.DataLayer.run_query(resource)
+              |> Ash.Actions.Helpers.rollback_if_in_transaction(query.resource, query)
+              |> case do
+                {:ok, results} ->
+                  case Ash.Actions.Read.run_authorize_results(query, results) do
+                    {:ok, []} ->
+                      if opts[:return_forbidden_error?] do
+                        {:ok, false, authorizer_exception(authorizers)}
+                      else
+                        {:ok, false}
+                      end
+
+                    {:ok, [_]} ->
+                      {:ok, true}
+
+                    {:error, error} ->
+                      if opts[:return_forbidden_error?] do
+                        {:ok, false, error}
+                      else
+                        {:ok, false}
+                      end
+                  end
+
+                {:error, error} ->
+                  {:error, error}
+
+                _ ->
+                  if opts[:return_forbidden_error?] do
+                    {:ok, false, authorizer_exception(authorizers)}
+                  else
+                    {:ok, false}
+                  end
+              end
+          end
+        end
+
+      %Ash.Changeset{} ->
+        if opts[:return_forbidden_error?] do
+          {:ok, false, authorizer_exception(authorizers)}
+        else
+          {:ok, false}
+        end
+    end
+  end
+
+  defp or_query(query, resource, domain) do
+    query || Ash.Query.new(resource, domain: domain)
+  end
+
+  defp authorizer_exception([{authorizer, authorizer_state, _context}]) do
+    Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)
+  end
+
+  defp authorizer_exception(authorizers) do
+    authorizers
+    |> Enum.map(&authorizer_exception([&1]))
+    |> Ash.Error.to_error_class()
+  end
+end

@@ -1,6 +1,7 @@
 defmodule Ash.Test.Support.PolicySimple.Post do
   @moduledoc false
   use Ash.Resource,
+    domain: Ash.Test.Support.PolicySimple.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [
       Ash.Policy.Authorizer
@@ -28,12 +29,14 @@ defmodule Ash.Test.Support.PolicySimple.Post do
     uuid_primary_key(:id)
 
     attribute :text, :string do
+      public?(true)
       allow_nil?(false)
     end
   end
 
   actions do
-    defaults [:read, :update, :destroy]
+    default_accept :*
+    defaults [:read, :destroy, update: :*]
 
     create :create do
       primary? true
@@ -46,7 +49,12 @@ defmodule Ash.Test.Support.PolicySimple.Post do
   end
 
   relationships do
-    belongs_to :organization, Ash.Test.Support.PolicySimple.Organization
-    belongs_to :author, Ash.Test.Support.PolicySimple.User
+    belongs_to :organization, Ash.Test.Support.PolicySimple.Organization do
+      public?(true)
+    end
+
+    belongs_to :author, Ash.Test.Support.PolicySimple.User do
+      public?(true)
+    end
   end
 end

@@ -2,18 +2,19 @@ defmodule Ash.Test.CodeInterfaceTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule User do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     code_interface do
-      define_for Ash.Test.CodeInterfaceTest.Api
-      define :get_user, action: :read, get?: true, args: [:id]
-      define :get_user_safely, action: :read, get?: true, args: [:id], not_found_error?: false
+      define :get_user, action: :read, get?: true
+      define :get_user_safely, action: :read, get?: true, not_found_error?: false
       define :read_users, action: :read
       define :get_by_id, action: :read, get_by: [:id]
       define :create, args: [{:optional, :first_name}]
@@ -32,6 +33,8 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
 
     actions do
+      default_accept :*
+
       read :read do
         primary? true
       end
@@ -57,6 +60,7 @@ defmodule Ash.Test.CodeInterfaceTest do
 
     calculations do
       calculate :full_name, :string, expr(first_name <> ^arg(:separator) <> last_name) do
+        public?(true)
         argument :separator, :string, default: " ", allow_nil?: false
       end
     end
@@ -65,28 +69,25 @@ defmodule Ash.Test.CodeInterfaceTest do
       uuid_primary_key :id
 
       attribute :first_name, :string do
+        public?(true)
         default "fred"
       end
 
-      attribute :last_name, :string
+      attribute :last_name, :string do
+        public?(true)
+      end
     end
   end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(User)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
+  defmodule Domain do
+    use Ash.Domain
 
     resources do
-      registry Registry
+      resource User do
+        define :get_user, action: :read, get?: true
+
+        define_calculation(:full_name, args: [:first_name, :last_name])
+      end
     end
   end
 
@@ -119,20 +120,16 @@ defmodule Ash.Test.CodeInterfaceTest do
       assert User.can_read_users?(nil)
       assert User.can_get_by_id?(nil, "some uuid")
     end
-
-    test "code interface-generated functions should check the type of their first argument and return an expressive error" do
-      assert_raise ArgumentError,
-                   ~r/^Initial must be a changeset with the action type of.+/i,
-                   fn ->
-                     User.update([], %{first_name: "Zack3", last_name: "Daniel3"})
-                   end
-    end
   end
 
   describe "read get actions" do
     test "raise on not found by default" do
       assert_raise Ash.Error.Query.NotFound, fn ->
         User.get_user!(Ash.UUID.generate())
+      end
+
+      assert_raise Ash.Error.Query.NotFound, fn ->
+        Domain.get_user!(Ash.UUID.generate())
       end
     end
 
@@ -142,6 +139,7 @@ defmodule Ash.Test.CodeInterfaceTest do
 
     test "do not raise on not found if option `not_found_error?: false` is passed" do
       assert nil == User.get_user!(Ash.UUID.generate(), not_found_error?: false)
+      assert nil == Domain.get_user!(Ash.UUID.generate(), not_found_error?: false)
       assert nil == User.get_user_safely!(Ash.UUID.generate(), not_found_error?: false)
     end
 
@@ -172,11 +170,12 @@ defmodule Ash.Test.CodeInterfaceTest do
   describe "calculations" do
     test "calculation value can be fetched dynamically" do
       assert {:ok, "Zach Daniel"} =
-               Api.calculate(User, :full_name, refs: %{first_name: "Zach", last_name: "Daniel"})
+               Ash.calculate(User, :full_name, refs: %{first_name: "Zach", last_name: "Daniel"})
     end
 
     test "the same calculation can be fetched with the calculation interface" do
       assert "Zach Daniel" = User.full_name!("Zach", "Daniel")
+      assert "Zach Daniel" = Domain.full_name!("Zach", "Daniel")
     end
 
     test "the same calculation can be fetched with the calculation interface with optional" do
@@ -188,7 +187,7 @@ defmodule Ash.Test.CodeInterfaceTest do
       user =
         User
         |> Ash.Changeset.for_create(:create, %{first_name: "Zach", last_name: "Daniel"})
-        |> Api.create!()
+        |> Ash.create!()
 
       assert "Zach Daniel" = User.full_name_record!(user)
     end
@@ -198,7 +197,7 @@ defmodule Ash.Test.CodeInterfaceTest do
     user =
       User
       |> Ash.Changeset.for_create(:create, %{first_name: "ted", last_name: "Danson"})
-      |> Api.create!()
+      |> Ash.create!()
 
     assert User.get_by_id!(user.id).id == user.id
   end

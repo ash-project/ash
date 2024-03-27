@@ -3,10 +3,10 @@ defmodule Ash.Resource.Transformers.SetDefineFor do
   use Spark.Dsl.Transformer
 
   def transform(dsl) do
-    api = Spark.Dsl.Transformer.get_persisted(dsl, :api)
+    domain = Spark.Dsl.Transformer.get_persisted(dsl, :domain)
 
-    if api && !Ash.Resource.Info.define_interface_for(dsl) do
-      {:ok, Spark.Dsl.Transformer.set_option(dsl, [:code_interface], :define_for, api)}
+    if domain && !Ash.Resource.Info.code_interface_domain(dsl) do
+      {:ok, Spark.Dsl.Transformer.set_option(dsl, [:code_interface], :domain, domain)}
     else
       {:ok, dsl}
     end

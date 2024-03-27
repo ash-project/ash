@@ -6,10 +6,12 @@ defmodule Ash.Test.Actions.HasManyTest do
 
   defmodule Comment do
     use Ash.Resource,
+      domain: Ash.Test.Actions.HasManyTest.OtherDomain,
       data_layer: Ash.DataLayer.Ets
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     ets do
@@ -18,30 +20,29 @@ defmodule Ash.Test.Actions.HasManyTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :post_id, :uuid
-      attribute :content, :string
+
+      attribute :post_id, :uuid do
+        public?(true)
+      end
+
+      attribute :content, :string do
+        public?(true)
+      end
     end
   end
 
-  defmodule OtherRegistry do
-    use Ash.Registry
-
-    entries do
-      entry Comment
-    end
-  end
-
-  defmodule OtherApi do
-    use Ash.Api
+  defmodule OtherDomain do
+    use Ash.Domain
 
     resources do
-      registry OtherRegistry
+      resource Comment
     end
   end
 
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
+      domain: Ash.Test.Actions.HasManyTest.Domain,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -49,7 +50,8 @@ defmodule Ash.Test.Actions.HasManyTest do
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
 
       update :add_comment do
         accept []
@@ -66,32 +68,28 @@ defmodule Ash.Test.Actions.HasManyTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
+
+      attribute :title, :string do
+        public?(true)
+      end
     end
 
     relationships do
       has_many :comments, Comment do
         destination_attribute :post_id
-        api OtherApi
+        public?(true)
+        domain(OtherDomain)
       end
     end
   end
 
-  defmodule Registry do
+  defmodule Domain do
     @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Post)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
+    use Ash.Domain
 
     resources do
-      registry Registry
+      resource Post
+      resource Comment
     end
   end
 
@@ -101,14 +99,14 @@ defmodule Ash.Test.Actions.HasManyTest do
       |> Ash.Changeset.for_create(:create, %{
         title: "buz"
       })
-      |> Api.create!()
+      |> Ash.create!()
 
     post =
       post
       |> Ash.Changeset.for_update(:add_comment, %{
         comment: %{content: "foo"}
       })
-      |> Api.update!()
+      |> Ash.update!()
 
     assert length(post.comments) == 1
 
@@ -117,7 +115,7 @@ defmodule Ash.Test.Actions.HasManyTest do
       |> Ash.Changeset.for_update(:add_comment, %{
         comment: %{content: "bar"}
       })
-      |> Api.update!()
+      |> Ash.update!()
 
     assert length(post.comments) == 2
 
@@ -126,7 +124,7 @@ defmodule Ash.Test.Actions.HasManyTest do
       |> Ash.Changeset.for_update(:delete_comment, %{
         comment: Enum.at(post.comments, 0)
       })
-      |> Api.update!()
+      |> Ash.update!()
 
     assert length(post.comments) == 1
   end

@@ -4,15 +4,19 @@ defmodule Ash.Test.QueryTest do
 
   require Ash.Query
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule User do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     actions do
+      default_accept :*
+
       read :read do
         primary? true
       end
@@ -29,29 +33,18 @@ defmodule Ash.Test.QueryTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
-      attribute :email, :string, sensitive?: true
+
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :email, :string, sensitive?: true, public?: true
     end
 
     relationships do
-      belongs_to :best_friend, __MODULE__
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(User)
-    end
-  end
-
-  defmodule Api do
-    use Ash.Api
-
-    resources do
-      registry Registry
+      belongs_to :best_friend, __MODULE__ do
+        public?(true)
+      end
     end
   end
 

@@ -1,6 +1,7 @@
 defmodule Ash.Test.Support.PolicySimple.Car do
   @moduledoc false
   use Ash.Resource,
+    domain: Ash.Test.Support.PolicySimple.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -9,7 +10,8 @@ defmodule Ash.Test.Support.PolicySimple.Car do
   end
 
   actions do
-    defaults [:read, :update, :destroy]
+    default_accept :*
+    defaults [:read, :destroy, update: :*]
 
     create :create do
       primary? true
@@ -22,7 +24,7 @@ defmodule Ash.Test.Support.PolicySimple.Car do
 
   attributes do
     uuid_primary_key(:id)
-    attribute :active, :boolean, default: true
+    attribute :active, :boolean, default: true, public?: true
     timestamps()
   end
 
@@ -44,6 +46,7 @@ defmodule Ash.Test.Support.PolicySimple.Car do
 
   relationships do
     many_to_many :users, Ash.Test.Support.PolicySimple.User do
+      public?(true)
       through(Ash.Test.Support.PolicySimple.CarUser)
       source_attribute_on_join_resource(:car_id)
       destination_attribute_on_join_resource(:user_id)

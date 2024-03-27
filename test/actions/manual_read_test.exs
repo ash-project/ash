@@ -15,6 +15,7 @@ defmodule Ash.Test.Actions.ManualReadTest do
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
+      domain: Ash.Test.Actions.ManualReadTest.Domain,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -22,7 +23,8 @@ defmodule Ash.Test.Actions.ManualReadTest do
     end
 
     actions do
-      defaults [:create, :update, :destroy]
+      default_accept :*
+      defaults [:destroy, create: :*, update: :*]
 
       read :read do
         primary? true
@@ -34,41 +36,35 @@ defmodule Ash.Test.Actions.ManualReadTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
   end
 
-  defmodule Registry do
+  defmodule Domain do
     @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Author
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
+    use Ash.Domain
 
     resources do
-      registry Registry
+      resource Author
     end
   end
 
   test "reading works" do
     Author
     |> Ash.Changeset.for_create(:create, %{name: "name"})
-    |> Api.create!()
+    |> Ash.create!()
 
     assert [] =
              Author
              |> Ash.Query.for_read(:read)
-             |> Api.read!()
+             |> Ash.read!()
 
     assert [_] =
              Author
              |> Ash.Query.for_read(:all)
-             |> Api.read!()
+             |> Ash.read!()
   end
 end

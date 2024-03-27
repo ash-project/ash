@@ -7,8 +7,13 @@ defmodule Ash.Query.Function.StringLength do
 
   def args,
     do: [
-      [:string]
+      [:string],
+      [:ci_string]
     ]
+
+  def evaluate(%{arguments: [%Ash.CiString{string: value}]}) do
+    {:known, String.length(value)}
+  end
 
   def evaluate(%{arguments: [value]}) do
     {:known, String.length(value)}

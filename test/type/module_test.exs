@@ -4,6 +4,8 @@ defmodule Ash.Test.Type.ModuleTest do
 
   require Ash.Query
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule StinkyBehaviour do
     @moduledoc false
     @callback stinky? :: boolean
@@ -35,39 +37,44 @@ defmodule Ash.Test.Type.ModuleTest do
 
   defmodule ModuleAttr do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
-    end
-
-    attributes do
-      uuid_primary_key :id
-
-      attribute :module, :module
-    end
-  end
-
-  defmodule ModuleAttrWithBehaviourConstraint do
-    @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
-
-    ets do
-      private? true
-    end
-
-    actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
 
       attribute :module, :module do
+        public?(true)
+      end
+    end
+  end
+
+  defmodule ModuleAttrWithBehaviourConstraint do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :module, :module do
+        public?(true)
         constraints behaviour: StinkyBehaviour
       end
     end
@@ -75,78 +82,58 @@ defmodule Ash.Test.Type.ModuleTest do
 
   defmodule ModuleAttrWithProtocolConstraint do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
 
       attribute :module, :module do
+        public?(true)
         constraints protocol: StinkyProtocol
       end
     end
   end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry ModuleAttr
-      entry ModuleAttrWithBehaviourConstraint
-      entry ModuleAttrWithProtocolConstraint
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
-    end
-  end
-
-  import Ash.Changeset
-
   test "module attribute with no constraints" do
     ModuleAttr
-    |> new(%{module: GenericModule})
-    |> Api.create!()
+    |> Ash.Changeset.for_create(:create, %{module: GenericModule})
+    |> Ash.create!()
   end
 
   test "module attribute with behaviour constraint when the module complies" do
     ModuleAttrWithBehaviourConstraint
-    |> new(%{module: StinkyModule})
-    |> Api.create!()
+    |> Ash.Changeset.for_create(:create, %{module: StinkyModule})
+    |> Ash.create!()
   end
 
   test "module attribute with behaviour constraint when the module is not compliant" do
     assert_raise Ash.Error.Invalid, fn ->
       ModuleAttrWithBehaviourConstraint
-      |> new(%{module: GenericModule})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{module: GenericModule})
+      |> Ash.create!()
     end
   end
 
   test "module attribute with protocol constraint when the module complies" do
     ModuleAttrWithProtocolConstraint
-    |> new(%{module: StinkyStruct})
-    |> Api.create!()
+    |> Ash.Changeset.for_create(:create, %{module: StinkyStruct})
+    |> Ash.create!()
   end
 
   test "module attribute with protocol constraint when the module is not compliant" do
     assert_raise Ash.Error.Invalid, fn ->
       ModuleAttrWithProtocolConstraint
-      |> new(%{module: GenericModule})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{module: GenericModule})
+      |> Ash.create!()
     end
   end
 end

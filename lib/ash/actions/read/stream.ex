@@ -1,8 +1,8 @@
 defmodule Ash.Actions.Read.Stream do
   @moduledoc false
 
-  def run!(api, query, opts) do
-    query = Ash.Query.to_query(query)
+  def run!(domain, query, opts) do
+    query = Ash.Query.new(query)
 
     query =
       if query.action do
@@ -16,10 +16,10 @@ defmodule Ash.Actions.Read.Stream do
 
     query
     |> stream_strategy!(opts[:stream_with], opts[:allow_stream_with])
-    |> do_stream(query, api, Keyword.drop(opts, [:stream_with, :allow_stream_with]))
+    |> do_stream(query, domain, Keyword.drop(opts, [:stream_with, :allow_stream_with]))
   end
 
-  defp do_stream(:keyset, query, api, opts) do
+  defp do_stream(:keyset, query, domain, opts) do
     {batch_size, opts} =
       Keyword.pop(
         opts,
@@ -40,9 +40,9 @@ defmodule Ash.Actions.Read.Stream do
           page_opts = Keyword.merge(keyset, limit: batch_size)
 
           opts =
-            Keyword.put(opts, :page, page_opts)
+            Keyword.merge(opts, page: page_opts, domain: domain)
 
-          case api.read!(query, opts) do
+          case Ash.read!(query, opts) do
             %{more?: true, results: results} ->
               {results, List.last(results).__metadata__.keyset}
 
@@ -55,15 +55,15 @@ defmodule Ash.Actions.Read.Stream do
     |> take_query_limit(query)
   end
 
-  defp do_stream(:offset, query, api, opts) do
+  defp do_stream(:offset, query, domain, opts) do
     if can_pagination_offset?(query) do
-      stream_with_offset_pagination(query, api, opts)
+      stream_with_offset_pagination(query, domain, opts)
     else
-      stream_with_limit_offset(query, api, opts)
+      stream_with_limit_offset(query, domain, opts)
     end
   end
 
-  defp do_stream(:full_read, query, api, opts) do
+  defp do_stream(:full_read, query, domain, opts) do
     opts = Keyword.drop(opts, [:batch_size])
 
     Stream.resource(
@@ -73,13 +73,13 @@ defmodule Ash.Actions.Read.Stream do
           {:halt, false}
 
         true ->
-          {api.read!(query, opts), false}
+          {Ash.read!(query, Keyword.put(opts, :domain, domain)), false}
       end,
       & &1
     )
   end
 
-  defp stream_with_offset_pagination(query, api, opts) do
+  defp stream_with_offset_pagination(query, domain, opts) do
     {limit, opts} =
       Keyword.pop(
         opts,
@@ -101,7 +101,7 @@ defmodule Ash.Actions.Read.Stream do
           opts =
             Keyword.put(opts, :page, page_opts)
 
-          case api.read!(query, opts) do
+          case Ash.read!(query, Keyword.put(opts, :domain, domain)) do
             %{more?: true, results: results} ->
               {results, offset + limit}
 
@@ -114,7 +114,7 @@ defmodule Ash.Actions.Read.Stream do
     |> take_query_limit(query)
   end
 
-  defp stream_with_limit_offset(query, api, opts) do
+  defp stream_with_limit_offset(query, domain, opts) do
     {limit, opts} =
       Keyword.pop(
         opts,
@@ -136,7 +136,7 @@ defmodule Ash.Actions.Read.Stream do
             |> Ash.Query.limit(limit)
             |> Ash.Query.offset(offset)
 
-          results = api.read!(query, opts)
+          results = Ash.read!(query, Keyword.put(opts, :domain, domain))
 
           if Enum.count(results) == limit do
             {results, false}

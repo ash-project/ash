@@ -23,7 +23,7 @@ The intent behind Ash is _not_ to have you building simple CRUD style applicatio
 
 ```elixir
 actions do
-  defaults [:create, :read, :update, :destroy]
+  defaults [:read, :destroy, create: :*, update: :*]
 end
 ```
 
@@ -37,7 +37,7 @@ A simple example where a primary action would be used:
 
 ```elixir
 # No action is specified, so we look for a primary read.
-Api.get!(Resource, "8ba0ab56-c6e3-4ab0-9c9c-df70e9945281")
+Ash.get!(Resource, "8ba0ab56-c6e3-4ab0-9c9c-df70e9945281")
 ```
 
 To mark an action as primary, add the option, i.e
@@ -75,8 +75,6 @@ And here is the "right way", where the rules about getting the top tickets have 
 # in the resource
 
 code_interface do
-  define_for Helpdesk.Support
-
   define :top, args: [:user_id]
 end
 
@@ -91,7 +89,7 @@ read :top do
 end
 ```
 
-Now, whatever code I had that would have called `top_tickets/1` can now call `Helpdesk.Support.Ticket.top(user.id)`. By doing it this way, you get the primary benefit of getting a nice simple Api to call into, but you _also_ have a way to modify how the action is invoked in any way necessary, by going back to the old way of building the query manually. For example, if I also only want to see top tickets that were opened in the last 10 minutes:
+Now, whatever code I had that would have called `top_tickets/1` can now call `Helpdesk.Support.Ticket.top(user.id)`. By doing it this way, you get the primary benefit of getting a nice simple interface to call into, but you _also_ have a way to modify how the action is invoked in any way necessary, by going back to the old way of building the query manually. For example, if I also only want to see top tickets that were opened in the last 10 minutes:
 
 ```elixir
 Ticket
@@ -282,7 +280,7 @@ end
 
 The benefit of using generic actions instead of defining normal functions:
 
-- They can be used with api extensions
+- They can be used with api extensions like `ash_json_api` and `ash_graphql`
 - They support Ash authorization patterns (i.e policies)
 - They be included in the code interface of a resource
 - They can be made transactional with a single option (`transaction? true`)

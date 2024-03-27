@@ -10,72 +10,78 @@ defmodule Ash.ProcessHelpers do
   """
   @spec get_context_for_transfer(opts :: Keyword.t()) :: term
   def get_context_for_transfer(opts \\ []) do
-    context = Ash.get_context()
-    actor = Process.get(:ash_actor)
-    authorize? = Process.get(:ash_authorize?)
-    tenant = Process.get(:ash_tenant)
-    tracer = Process.get(:ash_tracer)
-
-    tracer_context =
-      opts[:tracer]
-      |> List.wrap()
-      |> Enum.concat(List.wrap(tracer))
-      |> Map.new(fn tracer ->
-        {tracer, Ash.Tracer.get_span_context(tracer)}
-      end)
-
-    %{
-      context: context,
-      actor: actor,
-      tenant: tenant,
-      authorize?: authorize?,
-      tracer: tracer,
-      tracer_context: tracer_context
-    }
+    opts[:tracer]
+    |> List.wrap()
+    |> Map.new(fn tracer ->
+      {tracer, Ash.Tracer.get_span_context(tracer)}
+    end)
   end
 
   @spec transfer_context(term, opts :: Keyword.t()) :: :ok
-  def transfer_context(
-        %{
-          context: context,
-          actor: actor,
-          tenant: tenant,
-          authorize?: authorize?,
-          tracer: tracer,
-          tracer_context: tracer_context
-        },
-        _opts \\ []
-      ) do
-    case actor do
-      {:actor, actor} ->
-        Ash.set_actor(actor)
-
-      _ ->
-        :ok
-    end
-
-    case tenant do
-      {:tenant, tenant} ->
-        Ash.set_tenant(tenant)
-
-      _ ->
-        :ok
-    end
-
-    case authorize? do
-      {:authorize?, authorize?} ->
-        Ash.set_authorize?(authorize?)
-
-      _ ->
-        :ok
-    end
-
-    Ash.set_tracer(tracer)
-
+  def transfer_context(tracer_context, _opts \\ []) do
     Enum.each(tracer_context || %{}, fn {tracer, tracer_context} ->
       Ash.Tracer.set_span_context(tracer, tracer_context)
     end)
+  end
 
-    Ash.set_context(context)
+  @doc """
+  Creates a task that will properly transfer the ash context to the new process
+  """
+  def async(func, opts) do
+    ash_context = Ash.ProcessHelpers.get_context_for_transfer(opts)
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+
+    Task.async(fn ->
+      try do
+        Ash.ProcessHelpers.transfer_context(ash_context, opts)
+
+        func.()
+      rescue
+        e ->
+          e =
+            if Ash.Error.ash_error?(e) do
+              if e.stacktrace && e.stacktrace.stacktrace do
+                update_in(e.stacktrace.stacktrace, &(&1 ++ Enum.drop(stacktrace, 1)))
+              else
+                e
+              end
+            else
+              e
+            end
+
+          {:__exception__, e, __STACKTRACE__ ++ Enum.drop(stacktrace, 1)}
+      end
+    end)
+  end
+
+  @doc """
+  Creates a task that will properly transfer the ash context to the new process, and timeout if it takes longer than the given timeout
+  """
+  def task_with_timeout(fun, resource, timeout, name, tracer) do
+    if !Application.get_env(:ash, :disable_async?) &&
+         (is_nil(resource) ||
+            Ash.DataLayer.data_layer_can?(resource, :async_engine)) && timeout &&
+         timeout != :infinity && !Ash.DataLayer.in_transaction?(resource) do
+      task =
+        async(
+          fun,
+          tracer: tracer
+        )
+
+      try do
+        case Task.await(task, timeout) do
+          {:__exception__, e, stacktrace} ->
+            reraise e, stacktrace
+
+          other ->
+            other
+        end
+      catch
+        :exit, {:timeout, {Task, :await, [^task, timeout]}} ->
+          {:error, Ash.Error.Invalid.Timeout.exception(timeout: timeout, name: name)}
+      end
+    else
+      fun.()
+    end
   end
 end

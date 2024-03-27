@@ -1,9 +1,6 @@
 defmodule Ash.Policy.Check.ChangingAttributes do
   @moduledoc "This check is true when attribute changes correspond to the provided options."
-  use Ash.Policy.FilterCheckWithContext
-
-  import Ash.Filter.TemplateHelpers
-  require Ash.Expr
+  use Ash.Policy.FilterCheck
 
   @impl true
   def describe(opts) do
@@ -41,27 +38,24 @@ defmodule Ash.Policy.Check.ChangingAttributes do
 
             {{:ok, from}, {:ok, to}} ->
               if expr == true do
-                {:cont,
-                 Ash.Expr.expr(not (^ref(attribute) == ^from and ^atomic_ref(attribute) == ^to))}
+                {:cont, expr(not (^ref(attribute) == ^from and ^atomic_ref(attribute) == ^to))}
               else
                 {:cont,
-                 Ash.Expr.expr(
-                   ^expr and not (^ref(attribute) == ^from and ^atomic_ref(attribute) == ^to)
-                 )}
+                 expr(^expr and not (^ref(attribute) == ^from and ^atomic_ref(attribute) == ^to))}
               end
 
             {{:ok, from}, :error} ->
               if expr == true do
-                {:cont, Ash.Expr.expr(^ref(attribute) != ^from)}
+                {:cont, expr(^ref(attribute) != ^from)}
               else
-                {:cont, Ash.Expr.expr(^expr and ref(attribute) != ^from)}
+                {:cont, expr(^expr and ^ref(attribute) != ^from)}
               end
 
             {:error, {:ok, to}} ->
               if expr == true do
-                {:cont, Ash.Expr.expr(^atomic_ref(attribute) != ^to)}
+                {:cont, expr(^atomic_ref(attribute) != ^to)}
               else
-                {:cont, Ash.Expr.expr(^expr and ^atomic_ref(attribute) != ^to)}
+                {:cont, expr(^expr and ^atomic_ref(attribute) != ^to)}
               end
           end
         else

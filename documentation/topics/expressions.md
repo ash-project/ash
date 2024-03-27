@@ -1,14 +1,14 @@
 # Expressions
 
-Ash expressions are used in various places like calculations, filters, and policies, and are meant to be portable representations of elixir expressions. You can create an expression using the `Ash.Query.expr/1` macro, like so:
+Ash expressions are used in various places like calculations, filters, and policies, and are meant to be portable representations of elixir expressions. You can create an expression using the `Ash.Expr.expr/1` macro, like so:
 
 ```elixir
-Ash.Query.expr(1 + 2)
-Ash.Query.expr(x + y)
-Ash.Query.expr(post.title <> " | " <> post.subtitle)
+Ash.Expr.expr(1 + 2)
+Ash.Expr.expr(x + y)
+Ash.Expr.expr(post.title <> " | " <> post.subtitle)
 ```
 
-Ash expressions have some interesting properties in their evaluation, primarily because they are made to be portable, i.e executable in some data layer (like SQL) or executable in Elixir. In general, these expressions will behave the same way they do in Elixir. The primary difference is how `nil` values work. They behave the way that `NULL` values behave in SQL. This is primarily because this pattern is easier to replicate to various popular data layers, and is generally safer when using expressions for things like authentication. The practical implications of this are that `nil` values will "poison" many expressions, and cause them to return `nil`. For example, `x + nil` would always evaluate to `nil`. Additionally, `true and nil` will always result in `nil`, *this is also true with or and not*, i.e `true or nil` will return `nil`, and `not nil` will return `nil`.
+Ash expressions have some interesting properties in their evaluation, primarily because they are made to be portable, i.e executable in some data layer (like SQL) or executable in Elixir. In general, these expressions will behave the same way they do in Elixir. The primary difference is how `nil` values work. They behave the way that `NULL` values behave in SQL. This is primarily because this pattern is easier to replicate to various popular data layers, and is generally safer when using expressions for things like authentication. The practical implications of this are that `nil` values will "poison" many expressions, and cause them to return `nil`. For example, `x + nil` would always evaluate to `nil`. Additionally, `true and nil` will always result in `nil`, _this is also true with or and not_, i.e `true or nil` will return `nil`, and `not nil` will return `nil`.
 
 ## Operators
 
@@ -31,7 +31,7 @@ The following operators are available and they behave the same as they do in Eli
 
 ## Functions
 
-The following functions are built in. Data Layers can add their own functions to expressions. For example, `AshPostgres` adds a `fragment` function that allows you to provide SQL directly.
+The following functions are built in. Data Layers can add their own functions to expressions. For example, `AshPostgres` adds `trigram_similarity` function.
 
 The following functions are built in:
 
@@ -41,6 +41,7 @@ The following functions are built in:
 - `contains/2` | if one string contains another string, i.e `contains("fred", "red")`
 - `length/1` | the length of a list, i.e. `length([:foo, :bar])`
 - `type/2` | Cast a given value to a specific type, i.e `type(^arg(:id), :uuid)` or `type(integer_field, :string)`
+- `string_downcase/1` | Downcases a string
 - `string_join/1` | Concatenates a list of strings, and ignores any nil values
 - `string_join/2` | As above, but with a joiner
 - `string_split/1` | Splits a string on spaces
@@ -51,6 +52,20 @@ The following functions are built in:
 - `at/2` | Get an element from a list, i.e `at(list, 1)`
 - `round/1` | Round a float, decimal or int to 0 precision, i.e `round(num)`
 - `round/2` | Round a float, decimal or int to the provided precision or less, i.e `round(1.1234, 3) == 1.1234` and `round(1.12, 3) == 1.12`
+- String interpolation | `"#{first_name} #{last_name}"`, is remapped to the equivalent usage of `<>`
+- `fragment/*` | Creates a fragment of a data layer expression. See the section on fragments below.
+
+## Fragments
+
+Fragments come in two forms.
+
+## String Fragments
+
+For SQL/query-backed data layers, they will be a string with question marks for interpolation. For example: `fragment("(? + ?)", foo, bar)`.
+
+## Function Fragments
+
+For elixir-backed data layers, they will be a function or an MFA that will be called with the provided arguments. For example: `fragment(&Module.add/2, foo, bar)` or `fragment({Module, :add, []}, foo, bar)`. When using anonymous functions, you can _only_ use the format `&Module.function/arity`. `&Module.add/2` is okay, but `fn a, b -> Module.add(a, b) end` is not.
 
 ## Sub-expressions
 
@@ -74,7 +89,7 @@ The following functions are built in:
 
 ## Escape Hatches
 
-- `lazy/1` - Takes an MFA and evaluates it just before running the query. This is important for calculations, because the `expression/2` callback should be *stable* (returns the same value given the same input). For example `lazy({ULID, :generate, [timestamp_input]})`
+- `lazy/1` - Takes an MFA and evaluates it just before running the query. This is important for calculations, because the `expression/2` callback should be _stable_ (returns the same value given the same input). For example `lazy({ULID, :generate, [timestamp_input]})`
 
 ## Inline Aggregates
 
@@ -91,7 +106,7 @@ The available aggregate kinds can also be seen in the `Ash.Query.Aggregate` modu
 
 ## Templates
 
-Most of the time, when you are using an expression, you will actually be creating a `template`. In this template, you have a few references that can be used, which will be replaced when before the expression is evaluated. The following references are available. The ones that start with `^` must be imported from `Ash.Filter.TemplateHelpers`.
+Most of the time, when you are using an expression, you will actually be creating a `template`. In this template, you have a few references that can be used, which will be replaced when before the expression is evaluated. The following references are available.
 
 ```elixir
 ^actor(:key) # equivalent to `get_in(actor || %{}, [:key])`
@@ -99,9 +114,25 @@ Most of the time, when you are using an expression, you will actually be creatin
 ^arg(:arg_name) # equivalent to `Map.get(arguments, :arg_name)`
 ^context(:key) # equivalent to `get_in(context, :key)`
 ^context([:key1, :key2]) # equivalent to `get_in(context, [:key1, :key2])`
-ref(:key) # equivalent to referring to `key`. Allows for dynamic references
-ref(:key, [:path]) # equivalent to referring to `path.key`. Allows for dynamic references with dynamic (or static) paths.
+^ref(:key) # equivalent to referring to `key`. Allows for dynamic references
+^ref(:key, [:path]) # equivalent to referring to `path.key`. Allows for dynamic references with dynamic (or static) paths.
 ```
+
+## Custom Expressions
+
+Custom expressions allow you to extend Ash's expression language with your own expressions. To see more, see `Ash.CustomExpression`. To add a custom expression, configure it and recompile ash. For example:
+
+```elixir
+config :ash, :custom_expressions, [
+  MyApp.CustomExpression
+]
+```
+
+```
+mix deps.compile ash --force
+```
+
+These expressions will be available across all usages of Ash expressions within your application.
 
 ## Use cases for expressions
 
@@ -125,7 +156,7 @@ Given a filter like the following:
 Ash.Query.filter(Post, comments.points > 10 and comments.tag.name == "elixir")
 ```
 
-The filter refers to a *single post/comment/tag combination*. So in english, this is "posts where they have a comment with more than 10 points and *that same comment* has a tag with the name `elixir`". What this also means is that filters like the above do not compose nicely when new filters are added. For example:
+The filter refers to a _single post/comment/tag combination_. So in english, this is "posts where they have a comment with more than 10 points and _that same comment_ has a tag with the name `elixir`". What this also means is that filters like the above do not compose nicely when new filters are added. For example:
 
 ```elixir
 def has_comment_with_more_points_than(query, score) do
@@ -141,11 +172,12 @@ Post
 |> has_comment_tagged("elixir")
 ```
 
-That code *seems* like it ought to produce a filter over `Post` that would give us any post with a comment having more than 10 points, *and* with a comment tagged `elixir`. That is not the same thing as having a *single* comment that meets both those criteria. So how do we make this better?
+That code _seems_ like it ought to produce a filter over `Post` that would give us any post with a comment having more than 10 points, _and_ with a comment tagged `elixir`. That is not the same thing as having a _single_ comment that meets both those criteria. So how do we make this better?
 
 ##### Exists
 
 Lets rewrite the above using exists:
+
 ```elixir
 def has_comment_with_more_points_than(query, score) do
   Ash.Query.filter(Post, exists(comments, points > ^score))
@@ -160,7 +192,7 @@ Post
 |> has_comment_tagged("elixir")
 ```
 
-Now, they will compose properly!  Generally speaking, you should use exists when you are filtering across any relationships that are `to_many` relationships *even if you don't expect your filter to be composed. Currently, the filter syntax does not minimize(combine) these `exists/2` statements, but doing so is not complex and can be added. While unlikely, please lodge an issue if you see any performance issues with `exists`.
+Now, they will compose properly! Generally speaking, you should use exists when you are filtering across any relationships that are `to_many` relationships \*even if you don't expect your filter to be composed. Currently, the filter syntax does not minimize(combine) these `exists/2` statements, but doing so is not complex and can be added. While unlikely, please lodge an issue if you see any performance issues with `exists`.
 
 ##### Exists at path
 

@@ -8,7 +8,7 @@ defmodule Ash.Policy.Check.Expression do
   end
 
   @impl true
-  def filter(opts) do
+  def filter(_, _, opts) do
     opts[:expr]
   end
 end

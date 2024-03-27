@@ -1,6 +1,7 @@
 defmodule Ash.Test.Support.PolicySimple.Tweet do
   @moduledoc false
   use Ash.Resource,
+    domain: Ash.Test.Support.PolicySimple.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -9,7 +10,8 @@ defmodule Ash.Test.Support.PolicySimple.Tweet do
   end
 
   actions do
-    defaults [:create, :read, :update, :destroy]
+    default_accept :*
+    defaults [:read, :destroy, create: :*, update: :*]
 
     create :create_foo do
       argument :foo, :string
@@ -38,7 +40,7 @@ defmodule Ash.Test.Support.PolicySimple.Tweet do
     end
 
     policy action(:create_foo) do
-      authorize_if expr(is_foo(foo: arg(:foo)))
+      authorize_if expr(is_foo(foo: ^arg(:foo)))
     end
 
     policy action(:create_bar) do
@@ -52,13 +54,14 @@ defmodule Ash.Test.Support.PolicySimple.Tweet do
 
   calculations do
     calculate :is_foo, :boolean, expr(^arg(:foo) == "foo") do
+      public?(true)
       argument :foo, :string, allow_nil?: false
     end
   end
 
   relationships do
     belongs_to :user, Ash.Test.Support.PolicySimple.User do
-      attribute_writable? true
+      public?(true)
     end
   end
 

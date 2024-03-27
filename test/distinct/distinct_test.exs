@@ -4,63 +4,65 @@ defmodule Ash.Test.Sort.DistinctTest do
 
   require Ash.Query
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:read, :create, :update]
+      default_accept :*
+      defaults [:read, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
+
+      attribute :title, :string do
+        public?(true)
+      end
     end
 
     calculations do
-      calculate :first_title_word, :string, expr(at(string_split(title, " ", trim?: true), 0))
-      calculate :second_title_word, :string, expr(at(string_split(title, " ", trim?: true), 1))
-    end
-  end
+      calculate :first_title_word, :string, expr(at(string_split(title, " ", trim?: true), 0)) do
+        public?(true)
+      end
 
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      allow_unregistered? true
+      calculate :second_title_word, :string, expr(at(string_split(title, " ", trim?: true), 1)) do
+        public?(true)
+      end
     end
   end
 
   setup do
     Post
     |> Ash.Changeset.for_create(:create, %{title: "fred armisen"})
-    |> Api.create!()
+    |> Ash.create!()
 
     Post
     |> Ash.Changeset.for_create(:create, %{title: "fred armisen"})
-    |> Api.create!()
+    |> Ash.create!()
 
     Post
     |> Ash.Changeset.for_create(:create, %{title: "fred weasley"})
-    |> Api.create!()
+    |> Ash.create!()
 
     :ok
   end
 
   test "distinct by attribute works" do
-    assert [_, _] = Post |> Ash.Query.distinct(:title) |> Api.read!()
+    assert [_, _] = Post |> Ash.Query.distinct(:title) |> Ash.read!()
   end
 
   test "distinct by calculation works" do
     assert [_] =
              Post
              |> Ash.Query.distinct(:first_title_word)
-             |> Api.read!()
+             |> Ash.read!()
   end
 
   test "distinct_sort calculation works" do
@@ -68,12 +70,12 @@ defmodule Ash.Test.Sort.DistinctTest do
              Post
              |> Ash.Query.distinct(:first_title_word)
              |> Ash.Query.distinct_sort(:second_title_word)
-             |> Api.read!()
+             |> Ash.read!()
 
     assert [%{title: "fred weasley"}] =
              Post
              |> Ash.Query.distinct(:first_title_word)
              |> Ash.Query.distinct_sort(second_title_word: :desc)
-             |> Api.read!()
+             |> Ash.read!()
   end
 end

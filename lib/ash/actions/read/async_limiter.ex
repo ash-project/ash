@@ -33,7 +33,7 @@ defmodule Ash.Actions.Read.AsyncLimiter do
 
       if claimed? do
         try do
-          Ash.Engine.async(
+          Ash.ProcessHelpers.async(
             fn ->
               func.()
             end,

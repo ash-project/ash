@@ -2,15 +2,17 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  alias __MODULE__
   alias Ash.Resource.Relationships.HasMany
   alias Ash.Resource.Relationships.ManyToMany
+  alias Ash.Test.Domain, as: Domain
 
   defmacrop defposts(do: body) do
+    module = Module.concat(["rand#{System.unique_integer([:positive])}", Post])
+
     quote do
-      defmodule Post do
+      defmodule unquote(module) do
         @moduledoc false
-        use Ash.Resource, data_layer: Ash.DataLayer.Ets
+        use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
         attributes do
           uuid_primary_key :id
@@ -18,6 +20,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
 
         unquote(body)
       end
+
+      alias unquote(module), as: Post
     end
   end
 
@@ -25,16 +29,16 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it creates a relationship and a join relationship" do
       defposts do
         relationships do
-          many_to_many :related_posts, Post,
+          many_to_many :related_posts, __MODULE__,
             through: SomeResource,
             source_attribute_on_join_resource: :post_id,
-            destination_attribute_on_join_resource: :related_post_id
+            destination_attribute_on_join_resource: :related_post_id,
+            public?: true
 
-          many_to_many :unrelated_posts, Post,
+          many_to_many :unrelated_posts, __MODULE__,
             through: Tabloid,
             source_attribute_on_join_resource: :post_id,
-            destination_attribute_on_join_resource: :unrelated_post_id,
-            private?: true
+            destination_attribute_on_join_resource: :unrelated_post_id
         end
       end
 
@@ -44,46 +48,46 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                  destination: Tabloid,
                  destination_attribute: :post_id,
                  name: :unrelated_posts_join_assoc,
-                 source: ManyToManyTest.Post,
+                 source: Post,
                  source_attribute: :id,
                  type: :has_many,
-                 private?: true
+                 public?: false
                },
                %HasMany{
                  cardinality: :many,
                  destination: SomeResource,
                  destination_attribute: :post_id,
                  name: :related_posts_join_assoc,
-                 source: ManyToManyTest.Post,
+                 source: Post,
                  source_attribute: :id,
                  type: :has_many,
-                 private?: true
+                 public?: false
                },
                %ManyToMany{
                  cardinality: :many,
-                 destination: ManyToManyTest.Post,
+                 destination: Post,
                  destination_attribute: :id,
                  destination_attribute_on_join_resource: :related_post_id,
                  name: :related_posts,
-                 source: ManyToManyTest.Post,
+                 source: Post,
                  source_attribute: :id,
                  source_attribute_on_join_resource: :post_id,
                  through: SomeResource,
                  type: :many_to_many,
-                 private?: false
+                 public?: true
                },
                %ManyToMany{
                  cardinality: :many,
-                 destination: ManyToManyTest.Post,
+                 destination: Post,
                  destination_attribute: :id,
                  destination_attribute_on_join_resource: :unrelated_post_id,
                  name: :unrelated_posts,
-                 source: ManyToManyTest.Post,
+                 source: Post,
                  source_attribute: :id,
                  source_attribute_on_join_resource: :post_id,
                  through: Tabloid,
                  type: :many_to_many,
-                 private?: true
+                 public?: false
                }
              ] = Ash.Resource.Info.relationships(Post)
 
@@ -102,14 +106,15 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you pass a string to `through`" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  invalid value for :through option: expected atom, got: \"some_table\"",
+        ~r/expected module in :through option, got: "some_table"/,
         fn ->
           defposts do
             relationships do
               many_to_many :foobars, Foobar,
                 through: "some_table",
                 source_attribute_on_join_resource: :source_post_id,
-                destination_attribute_on_join_resource: :destination_post_id
+                destination_attribute_on_join_resource: :destination_post_id,
+                public?: true
             end
           end
         end
@@ -122,7 +127,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
           many_to_many :foobars, Foobar,
             through: FooBars,
             source_attribute_on_join_resource: :source_post_id,
-            destination_attribute_on_join_resource: :destination_post_id
+            destination_attribute_on_join_resource: :destination_post_id,
+            public?: true
         end
       end
     end
@@ -133,6 +139,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
           many_to_many :authors, Author do
             through PostsJoinArticlesAuthors
             destination_attribute_on_join_resource :manager_id
+            public?(true)
           end
         end
       end
@@ -154,6 +161,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
           many_to_many :authors, ArticleAuthor do
             through PostsJoinArticlesAuthors
             source_attribute_on_join_resource :article_id
+            public?(true)
           end
         end
       end
@@ -172,14 +180,15 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you dont pass an atom for `source_attribute_on_join_resource`" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  invalid value for :source_attribute_on_join_resource option: expected atom, got: \"what\"",
+        ~r/invalid value for :source_attribute_on_join_resource option: expected atom, got: "what"/,
         fn ->
           defposts do
             relationships do
               many_to_many :foobars, Foobar,
                 through: FooBars,
                 source_attribute_on_join_resource: "what",
-                destination_attribute_on_join_resource: :destination_post_id
+                destination_attribute_on_join_resource: :destination_post_id,
+                public?: true
             end
           end
         end
@@ -189,14 +198,15 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you dont pass an atom for `destination_attribute_on_join_resource`" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  invalid value for :destination_attribute_on_join_resource option: expected atom, got: \"what\"",
+        ~r/invalid value for :destination_attribute_on_join_resource option: expected atom, got: "what"/,
         fn ->
           defposts do
             relationships do
               many_to_many :foobars, Foobar,
                 through: FooBar,
                 destination_attribute_on_join_resource: "what",
-                source_attribute_on_join_resource: :source_post_id
+                source_attribute_on_join_resource: :source_post_id,
+                public?: true
             end
           end
         end
@@ -206,7 +216,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you dont pass an atom for `source_attribute`" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  invalid value for :source_attribute option: expected atom, got: \"what\"",
+        ~r/invalid value for :source_attribute option: expected atom, got: "what"/,
         fn ->
           defposts do
             relationships do
@@ -214,7 +224,8 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                 through: FooBar,
                 source_attribute: "what",
                 source_attribute_on_join_resource: :source_post_id,
-                destination_attribute_on_join_resource: :destination_post_id
+                destination_attribute_on_join_resource: :destination_post_id,
+                public?: true
             end
           end
         end
@@ -224,7 +235,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
     test "it fails if you dont pass an atom for `destination_attribute`" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  invalid value for :destination_attribute option: expected atom, got: \"what\"",
+        ~r/invalid value for :destination_attribute option: expected atom, got: "what"/,
         fn ->
           defposts do
             relationships do
@@ -232,17 +243,18 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                 through: FooBars,
                 destination_attribute: "what",
                 source_attribute_on_join_resource: :source_post_id,
-                destination_attribute_on_join_resource: :destination_post_id
+                destination_attribute_on_join_resource: :destination_post_id,
+                public?: true
             end
           end
         end
       )
     end
 
-    test "fails if private? is not an boolean" do
+    test "fails if public? is not an boolean" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.Relationships.ManyToManyTest.Post]\n relationships -> many_to_many -> foobars:\n  invalid value for :private? option: expected boolean, got: \"an_invalid_field\"",
+        ~r/invalid value for :public\? option: expected boolean, got: "an_invalid_field"/,
         fn ->
           defposts do
             relationships do
@@ -250,7 +262,7 @@ defmodule Ash.Test.Resource.Relationships.ManyToManyTest do
                 through: FooBars,
                 source_attribute_on_join_resource: :source_post_id,
                 destination_attribute_on_join_resource: :destination_post_id,
-                private?: "an_invalid_field"
+                public?: "an_invalid_field"
             end
           end
         end

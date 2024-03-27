@@ -7,10 +7,10 @@ defmodule Ash.Reactor.Dsl.Action do
             action_step?: true,
             action: nil,
             actor: [],
-            api: nil,
             async?: true,
             authorize?: nil,
             description: nil,
+            domain: nil,
             inputs: [],
             name: nil,
             resource: nil,
@@ -26,10 +26,10 @@ defmodule Ash.Reactor.Dsl.Action do
           action_step?: true,
           action: atom,
           actor: [Ash.Reactor.Dsl.Actor.t()],
-          api: Ash.Api.t(),
           async?: boolean,
           authorize?: boolean | nil,
           description: String.t() | nil,
+          domain: Ash.Domain.t(),
           inputs: [Ash.Reactor.Dsl.Inputs.t()],
           name: atom,
           resource: module,
@@ -45,7 +45,7 @@ defmodule Ash.Reactor.Dsl.Action do
     do: %Spark.Dsl.Entity{
       name: :action,
       describe: "Declares a step that will call a generic action on a resource.",
-      no_depend_modules: [:api, :resource],
+      no_depend_modules: [:domain, :resource],
       target: __MODULE__,
       args: [:name, :resource, {:optional, :action}],
       identifier: :name,
@@ -71,11 +71,11 @@ defmodule Ash.Reactor.Dsl.Action do
         The name of the action to call on the resource.
         """
       ],
-      api: [
-        type: {:spark, Ash.Api},
+      domain: [
+        type: {:spark, Ash.Domain},
         required: false,
         doc:
-          "The API to use when calling the action.  Defaults to the API set on the resource or in the `ash` section."
+          "The Domain to use when calling the action.  Defaults to the Domain set on the resource or in the `ash` section."
       ],
       async?: [
         type: :boolean,

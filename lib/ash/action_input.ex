@@ -9,7 +9,7 @@ defmodule Ash.ActionInput do
 
   defstruct [
     :action,
-    :api,
+    :domain,
     :resource,
     :tenant,
     invalid_keys: MapSet.new(),
@@ -28,11 +28,11 @@ defmodule Ash.ActionInput do
           resource: Ash.Resource.t(),
           invalid_keys: MapSet.t(),
           context: map(),
-          api: Ash.Api.t(),
+          domain: Ash.Domain.t(),
           valid?: boolean()
         }
-  def new(resource, api \\ nil) do
-    %__MODULE__{resource: resource, api: api}
+  def new(resource, domain \\ nil) do
+    %__MODULE__{resource: resource, domain: domain}
   end
 
   @doc """
@@ -56,14 +56,22 @@ defmodule Ash.ActionInput do
           %{input | action: action}
       end
 
-    {input, _opts} = Ash.Actions.Helpers.add_process_context(input.api, input, opts)
+    domain =
+      input.domain || opts[:domain] || Ash.Resource.Info.domain(input.resource) ||
+        raise ArgumentError,
+          message:
+            "Could not determine domain for action. Provide the `domain` option or configure a domain in the resource directly."
+
+    input = %{input | domain: domain}
+
+    {input, _opts} = Ash.Actions.Helpers.set_context_and_get_opts(input.domain, input, opts)
 
     input
     |> cast_params(params)
     |> require_arguments()
   end
 
-  @spec set_tenant(t(), term()) :: t()
+  @spec set_tenant(t(), Ash.ToTenant.t()) :: t()
   def set_tenant(input, tenant) do
     %{input | tenant: tenant}
   end
@@ -121,11 +129,12 @@ defmodule Ash.ActionInput do
         )
 
       if argument do
-        with {:ok, casted} <-
-               Ash.Type.Helpers.cast_input(argument.type, value, argument.constraints, input),
+        with value <- Ash.Type.Helpers.handle_indexed_maps(argument.type, value),
+             constraints <- Ash.Type.include_source(argument.type, input, argument.constraints),
+             {:ok, casted} <-
+               Ash.Type.cast_input(argument.type, value, constraints),
              {:constrained, {:ok, casted}, argument} when not is_nil(casted) <-
-               {:constrained,
-                Ash.Type.apply_constraints(argument.type, casted, argument.constraints),
+               {:constrained, Ash.Type.apply_constraints(argument.type, casted, constraints),
                 argument} do
           %{input | arguments: Map.put(input.arguments, argument.name, casted)}
         else
@@ -178,25 +187,25 @@ defmodule Ash.ActionInput do
       if has_argument?(input.action, name) do
         set_argument(input, name, value)
       else
-        if Ash.Flags.ash_three?() do
-          error =
-            InvalidArgument.exception(field: name, value: value, message: "Unknown argument")
+        error =
+          Ash.Error.Invalid.NoSuchInput.exception(
+            resource: input.resource,
+            action: input.action.name,
+            input: name,
+            inputs: Enum.map(input.action.arguments, & &1.name)
+          )
 
-          input = %{input | invalid_keys: MapSet.put(input.invalid_keys, name)}
-          add_error(input, Ash.Error.set_path(error, name))
-        else
-          input
-        end
+        add_error(input, Ash.Error.set_path(error, name))
       end
     end)
   end
 
   defp has_argument?(action, name) when is_atom(name) do
-    Enum.any?(action.arguments, &(&1.private? == false && &1.name == name))
+    Enum.any?(action.arguments, &(&1.public? && &1.name == name))
   end
 
   defp has_argument?(action, name) when is_binary(name) do
-    Enum.any?(action.arguments, &(&1.private? == false && to_string(&1.name) == name))
+    Enum.any?(action.arguments, &(&1.public? && to_string(&1.name) == name))
   end
 
   defp add_invalid_errors(value, input, attribute, message) do

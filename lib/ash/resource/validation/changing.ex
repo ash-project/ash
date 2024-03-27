@@ -4,8 +4,7 @@ defmodule Ash.Resource.Validation.Changing do
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.InvalidAttribute
-  require Ash.Expr
-  import Ash.Filter.TemplateHelpers
+  import Ash.Expr
 
   @opt_schema [
     field: [
@@ -17,7 +16,7 @@ defmodule Ash.Resource.Validation.Changing do
 
   @impl true
   def init(opts) do
-    case Spark.OptionsHelpers.validate(opts, @opt_schema) do
+    case Spark.Options.validate(opts, @opt_schema) do
       {:ok, opts} ->
         {:ok, opts}
 
@@ -27,7 +26,7 @@ defmodule Ash.Resource.Validation.Changing do
   end
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, _context) do
     case Ash.Resource.Info.relationship(changeset.resource, opts[:field]) do
       nil ->
         if Ash.Changeset.changing_attribute?(changeset, opts[:field]) do
@@ -55,13 +54,12 @@ defmodule Ash.Resource.Validation.Changing do
 
   @impl true
   def atomic(_changeset, opts, context) do
-    {:atomic, [opts[:field]],
-     Ash.Expr.expr(^atomic_ref(opts[:attribute]) != ^ref(opts[:attribute])),
-     Ash.Expr.expr(
+    {:atomic, [opts[:field]], expr(^atomic_ref(opts[:attribute]) != ^ref(opts[:attribute])),
+     expr(
        error(^InvalidAttribute, %{
          field: ^opts[:field],
          value: ^atomic_ref(opts[:attribute]),
-         message: ^(context[:message] || "must be changing"),
+         message: ^(context.message || "must be changing"),
          vars: %{field: ^opts[:field]}
        })
      )}

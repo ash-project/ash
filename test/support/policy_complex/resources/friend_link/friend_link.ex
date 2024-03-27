@@ -1,6 +1,7 @@
 defmodule Ash.Test.Support.PolicyComplex.FriendLink do
   @moduledoc false
   use Ash.Resource,
+    domain: Ash.Test.Support.PolicyComplex.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -22,6 +23,8 @@ defmodule Ash.Test.Support.PolicyComplex.FriendLink do
   end
 
   actions do
+    default_accept :*
+
     read :read do
       primary? true
     end
@@ -33,15 +36,15 @@ defmodule Ash.Test.Support.PolicyComplex.FriendLink do
 
   relationships do
     belongs_to :source, Ash.Test.Support.PolicyComplex.User do
+      public?(true)
       allow_nil? false
       primary_key? true
-      attribute_writable? true
     end
 
     belongs_to :destination, Ash.Test.Support.PolicyComplex.User do
+      public?(true)
       allow_nil? false
       primary_key? true
-      attribute_writable? true
     end
   end
 end

@@ -52,14 +52,14 @@ end
 If you manually supply instances of the embedded structs, the structs you provide are used with no validation. For example:
 
 ```elixir
-Ash.Changeset.new(user, %{profile: %MyApp.Profile{first_name: "first_name", last_name: "last_name}})
+Ash.Changeset.for_update(user, :update, %{profile: %MyApp.Profile{first_name: "first_name", last_name: "last_name}})
 ```
 
 However, you can also treat embedded resources like regular resources that can be "created", "updated", and "destroyed".
 To do this, provide maps as the input, instead of structs. In the example above, if you just wanted to change the `first_name`, you'd provide:
 
 ```elixir
-Ash.Changeset.new(user, %{profile: %{first_name: "first_name"}})
+Ash.Changeset.for_update(user, :update, %{profile: %{first_name: "first_name"}})
 ```
 
 This will call the primary `update` action on the resource. This allows you to define an action on the embed, and add validations to it. For example, you might have something like this:

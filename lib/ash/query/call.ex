@@ -111,11 +111,29 @@ defmodule Ash.Query.Call do
               call.args
           end
 
-        concat([
-          prefix,
-          to_string(call.name),
-          container_doc("(", args, ")", inspect_opts, &to_doc/2, separator: ", ")
-        ])
+        case args do
+          [arg] ->
+            if Keyword.keyword?(arg) do
+              concat([
+                prefix,
+                to_string(call.name),
+                container_doc("(", args, ")", inspect_opts, &to_doc/2, separator: ", ")
+              ])
+            else
+              concat([
+                prefix,
+                to_string(call.name),
+                container_doc("(", args, ")", inspect_opts, &to_doc/2, separator: ", ")
+              ])
+            end
+
+          args ->
+            concat([
+              prefix,
+              to_string(call.name),
+              container_doc("(", args, ")", inspect_opts, &to_doc/2, separator: ", ")
+            ])
+        end
       end
     end
   end

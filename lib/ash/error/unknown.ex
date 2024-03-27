@@ -2,7 +2,7 @@ defmodule Ash.Error.Unknown do
   @moduledoc "The top level unknown error container"
   use Ash.Error.Exception
 
-  def_ash_error([:errors], class: :unknown)
+  use Splode.Error, fields: [:errors, :changeset, :query, :action_input], class: :unknown
 
   @type t :: %__MODULE__{}
 
@@ -14,13 +14,7 @@ defmodule Ash.Error.Unknown do
     end
   end
 
-  defimpl Ash.ErrorKind do
-    def id(_), do: Ash.UUID.generate()
-
-    def code(_), do: "unknown"
-
-    def message(%{errors: errors}) do
-      Ash.Error.error_messages(errors, nil)
-    end
+  def message(%{errors: errors}) do
+    Splode.ErrorClass.error_messages(errors)
   end
 end

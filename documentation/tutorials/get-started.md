@@ -87,10 +87,30 @@ defp deps do
   [
     # {:dep_from_hexpm, "~> 0.3.0"},
     # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
-    {:ash, "~> 2.21.2"} # <-- add this line
+    {:ash, "~> 3.0"}, # <-- add this line
+    {:picosat_elixir, "~> 0.2"} # <- and this line
   ]
 end
 ```
+
+### Picosat Installation Issues
+
+In rare cases, users have trouble installing picosat (usually on windows)
+if that is the case, use `simple_sat` instead. We _highly recommend_ that you
+get `picosat_elixir` working before shipping to production if you intend to use
+Ash policies. We've provided `simple_sat` to get you up and running more easily
+and to allow you to explore Ash without roadblocks.
+
+```elixir
+defp deps do
+  [
+    # {:picosat_elixir, "~> 0.2"} # instead of this
+    {:simple_sat, "~> 0.1"} # <- use this
+  ]
+end
+```
+
+### Formatting
 
 To ensure that your code stays formatted like the examples here, you can add `:ash` as an import dependency in your `.formatter.exs`:
 
@@ -108,17 +128,15 @@ To ensure that your code stays formatted like the examples here, you can add `:a
 
 And run `mix deps.get`, to install the dependency.
 
-### Building your first Ash API
+### Building your first Ash Domain
 
-The basic building blocks of an Ash application are Ash resources. They are tied together by an API module (not to be confused with a web API), which will allow you to interact with those resources.
-
-It might be helpful to think of an Ash API as a Bounded Context (in the Domain Driven Design sense), or as a Service (in the microservice sense).
+The basic building blocks of an Ash application are Ash resources. They are tied together by a domain module, which will allow you to interact with those resources.
 
 ### Creating our first resource
 
-Let's start by creating our first resource along with our first API. We will create the following files:
+Let's start by creating our first resource along with our first domain. We will create the following files:
 
-- The API [Helpdesk.Support] - `lib/helpdesk/support.ex`
+- The domain [Helpdesk.Support] - `lib/helpdesk/support.ex`
 - Our Ticket resource [Helpdesk.Support.Ticket] - `lib/helpdesk/support/ticket.ex`.
 
 To create the required folders and files, you can use the following command in your terminal:
@@ -141,15 +159,27 @@ lib/
 Add the following to the files we created
 
 ```elixir
+# lib/helpdesk/support.ex
+
+defmodule Helpdesk.Support do
+  use Ash.Domain
+
+  resources do
+    resource Helpdesk.Support.Ticket
+  end
+end
+```
+
+```elixir
 # lib/helpdesk/support/ticket.ex
 
 defmodule Helpdesk.Support.Ticket do
   # This turns this module into a resource
-  use Ash.Resource
+  use Ash.Resource, domain: Helpdesk.Support
 
   actions do
     # Add a set of simple actions. You'll customize these later.
-    defaults [:create, :read, :update, :destroy]
+    defaults [:read, :destroy, create: :*, update: :*]
   end
 
   # Attributes are the simple pieces of data that exist on your resource
@@ -163,19 +193,7 @@ defmodule Helpdesk.Support.Ticket do
 end
 ```
 
-```elixir
-# lib/helpdesk/support.ex
-
-defmodule Helpdesk.Support do
-  use Ash.Api
-
-  resources do
-    resource Helpdesk.Support.Ticket
-  end
-end
-```
-
-Next, add your api to your `config.exs`
+Next, add your domain to your `config.exs`
 
 Run the following to create your `config.exs` if it doesn't already exist
 
@@ -190,19 +208,19 @@ and add the following contents to it (if the file already exists, just make sure
 # in config/config.exs
 import Config
 
-config :helpdesk, :ash_apis, [Helpdesk.Support]
+config :helpdesk, :ash_domains, [Helpdesk.Support]
 ```
 
 ### Try our first resource out
 
 Run `iex -S mix` in your project and try it out.
 
-To create a ticket, we first make an `Ash.Changeset` for the `:create` action of the `Helpdesk.Support.Ticket` resource. Then we pass it to the `create!/1` function on our API module `Helpdesk.Support`.
+To create a ticket, we first make an `Ash.Changeset` for the `:create` action of the `Helpdesk.Support.Ticket` resource. Then we pass it to the `Ash.create!/1` function.
 
 ```elixir
 Helpdesk.Support.Ticket
 |> Ash.Changeset.for_create(:create)
-|> Helpdesk.Support.create!()
+|> Ash.create!()
 ```
 
 This returns what we call a `record` which is an instance of a resource.
@@ -293,7 +311,7 @@ And we can see our newly created ticket with a subject and a status.
 If we didn't include a subject, or left off the arguments completely, we would see an error instead
 
 ```text
-** (Ash.Error.Invalid) Input Invalid
+** (Ash.Error.Invalid) Invalid Error
 
 * attribute subject is required
 ```
@@ -467,7 +485,7 @@ defmodule Helpdesk.Support.Representative do
 
   actions do
     # Add the default simple actions
-    defaults [:create, :read, :update, :destroy]
+    defaults [:read, :destroy, create: :*, update: :*]
   end
 
   # Attributes are the simple pieces of data that exist on your resource
@@ -502,7 +520,7 @@ relationships do
 end
 ```
 
-Finally, let's add our new Representative resource to our Api module
+Finally, let's add our new Representative resource to our domain module
 
 ```elixir
 # lib/helpdesk/support.ex
@@ -513,7 +531,7 @@ resources do
 end
 ```
 
-You may notice that if you don't add the resource to your api, or if you don't add the `belongs_to` relationship, that you'll get helpful errors at compile time. Helpful compile time validations are a core concept of Ash as we really want to ensure that your application is valid.
+You may notice that if you don't add the resource to your domain, or if you don't add the `belongs_to` relationship, that you'll get helpful errors at compile time. Helpful compile time validations are a core concept of Ash as we really want to ensure that your application is valid.
 
 ## Working with relationships
 
@@ -579,36 +597,6 @@ ticket
 |> Helpdesk.Support.update!()
 ```
 
-### Assigning the Representative to a Ticket during its creation
-
-With the current definition of the Ticket resource the following will execute without error, but the `representative_id` field of the newly generated ticket will still remain empty:
-
-```elixir
-Helpdesk.Support.Ticket
-|> Ash.Changeset.for_create(:open, %{subject: "My spoon is too big!", representative_id: representative.id})
-|> Helpdesk.Support.create!()
-```
-
-The reason is that `belongs_to` relationships are not marked as public and writable by default (refer to the [define_attribute?](https://ash-hq.org/docs/dsl/ash/latest/resource/relationships/belongs_to#attribute_writable?) option of `belongs_to`).
-
-With the following modification the attribute can be written to, during the `:create` action:
-
-```elixir
-# lib/helpdesk/support/ticket.ex
-...
-actions do
-  create :open do
-    accept([:subject, :representative_id])
-  end
-end
-...
-relationships do
-  belongs_to :representative, Helpdesk.Support.Representative do
-    attribute_writable? true
-  end
-end
-```
-
 ### What next?
 
 What you've seen above barely scratches the surface of what Ash can do. In a lot of ways, it will look very similar to other tools that you've seen. If all that you ever used was the above, then realistically you won't see much benefit to using Ash.
@@ -631,7 +619,7 @@ Check out the [Code Interface Guide](/documentation/topics/code-interface.md) to
 
 See [The AshPostgres getting started guide](https://hexdocs.pm/ash_postgres/get-started-with-postgres.html) to see how to back your resources with Postgres. This is highly recommended, as the Postgres data layer provides tons of advanced capabilities.
 
-#### Add an API
+#### Add a web API
 
 Check out the `AshJsonApi` and `AshGraphql` extensions to effortlessly build APIs around your resources
 

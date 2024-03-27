@@ -23,6 +23,7 @@ defmodule Mix.Tasks.Ash.GeneratePolicyCharts do
   @recursive true
 
   @shortdoc "Generates a Mermaid Flow Chart for a given resource's policies."
+  @doc @shortdoc
   def run(argv) do
     Mix.Task.run("compile")
 
@@ -68,7 +69,7 @@ defmodule Mix.Tasks.Ash.GeneratePolicyCharts do
 
   defp resources do
     Mix.Project.config()[:app]
-    |> Application.get_env(:ash_apis, [])
-    |> Enum.flat_map(&Ash.Api.Info.resources/1)
+    |> Application.get_env(:ash_domains, [])
+    |> Enum.flat_map(&Ash.Domain.Info.resources/1)
   end
 end

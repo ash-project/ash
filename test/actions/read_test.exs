@@ -2,12 +2,11 @@ defmodule Ash.Test.Actions.ReadTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  import Ash.Changeset
   import Ash.Test
 
   require Ash.Query
 
-  alias Ash.Test.AnyApi, as: Api
+  alias Ash.Test.Domain, as: Domain
   require Ash.Flags
 
   defmodule PostPreparation do
@@ -23,32 +22,36 @@ defmodule Ash.Test.Actions.ReadTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults([:read, :create, :update, :destroy])
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key(:id)
-      attribute(:name, :string)
+      attribute(:name, :string, public?: true)
     end
 
     relationships do
-      has_many(:posts, Ash.Test.Actions.ReadTest.Post, destination_attribute: :author1_id)
+      has_many(:posts, Ash.Test.Actions.ReadTest.Post,
+        destination_attribute: :author1_id,
+        public?: true
+      )
     end
   end
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     identities do
-      identity(:backup_id, [:uuid], pre_check_with: Api)
+      identity(:backup_id, [:uuid], pre_check_with: Domain)
     end
 
     ets do
@@ -56,7 +59,10 @@ defmodule Ash.Test.Actions.ReadTest do
     end
 
     actions do
-      defaults([:read, :create, :update, :destroy])
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+
+      read :not_paginatable
 
       read :read_with_after_action do
         prepare(PostPreparation)
@@ -77,75 +83,80 @@ defmodule Ash.Test.Actions.ReadTest do
 
     attributes do
       uuid_primary_key(:id)
-      attribute(:uuid, :uuid, default: &Ash.UUID.generate/0)
-      attribute(:title, :string)
-      attribute(:contents, :string)
+      attribute(:uuid, :uuid, default: &Ash.UUID.generate/0, public?: true)
+      attribute(:title, :string, public?: true)
+      attribute(:contents, :string, public?: true)
     end
 
     relationships do
-      belongs_to(:author1, Ash.Test.Actions.ReadTest.Author)
-      belongs_to(:author2, Ash.Test.Actions.ReadTest.Author)
+      belongs_to :author1, Ash.Test.Actions.ReadTest.Author do
+        public?(true)
+      end
+
+      belongs_to :author2, Ash.Test.Actions.ReadTest.Author do
+        public?(true)
+      end
     end
   end
 
-  describe "api.get/3" do
+  describe "Ash.get/3" do
     setup do
       post =
         Post
-        |> new(%{title: "test", contents: "yeet"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
+        |> Ash.create!()
         |> strip_metadata()
 
       %{post: post}
     end
 
     test "it returns a matching record", %{post: post} do
-      assert {:ok, fetched_post} = Api.get(Post, post.id)
+      assert {:ok, fetched_post} = Ash.get(Post, post.id)
 
       assert strip_metadata(fetched_post) == post
     end
 
     test "it returns an error when there is no matching record" do
       assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
-               Api.get(Post, Ash.UUID.generate())
+               Ash.get(Post, Ash.UUID.generate())
     end
 
     test "it uses identities if they exist", %{post: post} do
-      assert {:ok, fetched_post} = Api.get(Post, uuid: post.uuid)
+      assert {:ok, fetched_post} = Ash.get(Post, uuid: post.uuid)
 
       assert strip_metadata(fetched_post) == post
     end
 
     test "raises an error when the first argument is not a module" do
-      res = assert_raise Ash.Error.Invalid.NoSuchResource, fn -> Api.get("bogus", 1, []) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.get\/3/
-      assert res.message =~ ~r/expected an Ash Resource but instead got "bogus"/
+      assert_raise ArgumentError,
+                   "Expected an `Ash.Resource` in `Ash.get/3`, got: \"bogus\"",
+                   fn -> Ash.get("bogus", 1, []) end
     end
 
     test "raises an error when the first argument is a module that is not an ash resource" do
-      res = assert_raise Ash.Error.Invalid.NoSuchResource, fn -> Api.get(BadModuleName, []) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.get\/3/
-      assert res.message =~ ~r/expected an Ash Resource but instead got BadModuleName/
+      assert_raise ArgumentError,
+                   "Expected an `Ash.Resource` in `Ash.get/3`, got: BadModuleName",
+                   fn -> Ash.get(BadModuleName, []) end
     end
 
     test "raises an error when the third argument is not a list" do
-      res = assert_raise RuntimeError, fn -> Api.get(Post, "id", 1) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.get\/3/
-      assert res.message =~ ~r/expected a keyword list, but instead got 1/
+      assert_raise ArgumentError, "Expected a keyword list in `Ash.get/3`, got: 1", fn ->
+        Ash.get(Post, "id", 1)
+      end
     end
 
     test "raises an error when the third argument is not a valid keyword list" do
-      res = assert_raise RuntimeError, fn -> Api.get(Post, "id", [1]) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.get\/3/
-      assert res.message =~ ~r/expected a keyword list, but instead got \[1\]/
+      assert_raise ArgumentError, "Expected a keyword list in `Ash.get/3`, got: [1]", fn ->
+        Ash.get(Post, "id", [1])
+      end
     end
   end
 
   describe "around_transaction/2" do
     test "it runs around the action" do
       Post
-      |> new(%{title: "test", contents: "yeet"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
+      |> Ash.create!()
       |> strip_metadata()
 
       assert {:ok, [_]} =
@@ -160,185 +171,176 @@ defmodule Ash.Test.Actions.ReadTest do
                  send(self(), :before_action)
                  query
                end)
-               |> Api.read()
+               |> Ash.read()
 
       assert {:messages, [:around_transaction_start, :before_action, :around_transaction_end]} =
                :erlang.process_info(self(), :messages)
     end
   end
 
-  describe "api.get! with action" do
+  describe "Ash.get! with action" do
     setup do
       author1 =
         Author
-        |> new(%{name: "bruh"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{name: "bruh"})
+        |> Ash.create!()
         |> strip_metadata()
 
       post =
         Post
-        |> new(%{title: "test", contents: "yeet"})
-        |> manage_relationship(:author1, author1, type: :append_and_remove)
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
+        |> Ash.Changeset.manage_relationship(:author1, author1, type: :append_and_remove)
+        |> Ash.create!()
 
       %{post: post, author1: author1}
     end
 
     test "it uses the action provided", %{post: post, author1: author1} do
-      fetched_post = Api.get!(Post, post.id, action: :read_with_authors)
+      fetched_post = Ash.get!(Post, post.id, action: :read_with_authors)
       assert ^author1 = strip_metadata(fetched_post.author1)
     end
   end
 
-  describe "api.get!/3" do
+  describe "Ash.get!/3" do
     setup do
       post =
         Post
-        |> new(%{title: "test", contents: "yeet"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
+        |> Ash.create!()
         |> strip_metadata()
 
       %{post: post}
     end
 
     test "it returns a matching record", %{post: post} do
-      assert ^post = strip_metadata(Api.get!(Post, post.id))
+      assert ^post = strip_metadata(Ash.get!(Post, post.id))
     end
 
     test "it gives an invalid primary key error when invalid input is provided" do
       assert_raise Ash.Error.Invalid, ~r/invalid primary key "not good"/, fn ->
-        Api.get!(Post, "not good")
+        Ash.get!(Post, "not good")
       end
     end
 
     test "it raises when there is no matching record" do
       res =
         assert_raise Ash.Error.Invalid, fn ->
-          Api.get!(Post, Ash.UUID.generate())
+          Ash.get!(Post, Ash.UUID.generate())
         end
 
       assert [%Ash.Error.Query.NotFound{}] = res.errors
     end
 
     test "raises an error when the first argument is not a module", %{post: post} do
-      res = assert_raise Ash.Error.Invalid.NoSuchResource, fn -> Api.get("bogus", post.id, []) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.get\/3/
-      assert res.message =~ ~r/expected an Ash Resource but instead got "bogus"/
+      assert_raise ArgumentError,
+                   "Expected an `Ash.Resource` in `Ash.get/3`, got: \"bogus\"",
+                   fn -> Ash.get("bogus", post.id, []) end
     end
 
     test "raises an error when the first argument is a module that is not an ash resource", %{
       post: post
     } do
-      res =
-        assert_raise Ash.Error.Invalid.NoSuchResource, fn ->
-          Api.get(BadModuleName, post.id, [])
-        end
-
-      assert res.message =~ ~r/Ash.Test.AnyApi.get\/3/
-      assert res.message =~ ~r/expected an Ash Resource but instead got BadModuleName/
+      assert_raise ArgumentError,
+                   "Expected an `Ash.Resource` in `Ash.get/3`, got: BadModuleName",
+                   fn ->
+                     Ash.get(BadModuleName, post.id, [])
+                   end
     end
 
     test "raises an error when the third argument is not a list", %{post: post} do
-      res = assert_raise RuntimeError, fn -> Api.get(Post, post.id, 1) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.get\/3/
-      assert res.message =~ ~r/expected a keyword list, but instead got 1/
+      assert_raise ArgumentError, "Expected a keyword list in `Ash.get\/3`, got: 1", fn ->
+        Ash.get(Post, post.id, 1)
+      end
     end
 
     test "raises an error when the third argument is not a valid keyword list", %{post: post} do
-      res = assert_raise RuntimeError, fn -> Api.get(Post, post.id, [1]) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.get\/3/
-      assert res.message =~ ~r/expected a keyword list, but instead got \[1\]/
+      assert_raise ArgumentError, "Expected a keyword list in `Ash.get/3`, got: [1]", fn ->
+        Ash.get(Post, post.id, [1])
+      end
     end
   end
 
-  describe "Api.read/2 with no records" do
+  describe "Ash.read/2 with no records" do
     test "returns an empty result" do
-      assert {:ok, []} = Api.read(Post)
+      assert {:ok, []} = Ash.read(Post)
     end
 
     test "raises an error when the first argument is not a module" do
-      res = assert_raise RuntimeError, fn -> Api.read("bogus", []) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.read\/2/
-
-      assert res.message =~
-               ~r/expected an %Ash.Query{} or an Ash Resource but instead got "bogus"/
+      assert_raise ArgumentError,
+                   "Expected an `%Ash.Query{}` or an `Ash.Resource` in `Ash.read/2`, got: \"bogus\"",
+                   fn -> Ash.read("bogus", []) end
     end
 
     test "raises an error when the first argument is a module that is not an ash resource" do
-      res = assert_raise RuntimeError, fn -> Api.read(BadModuleName, []) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.read\/2/
-
-      assert res.message =~
-               ~r/expected an %Ash.Query{} or an Ash Resource but instead got BadModuleName/
+      assert_raise ArgumentError,
+                   "Expected an `%Ash.Query{}` or an `Ash.Resource` in `Ash.read\/2`, got: BadModuleName",
+                   fn -> Ash.read(BadModuleName, []) end
     end
 
     test "raises an error when the second argument is not a list" do
-      res = assert_raise RuntimeError, fn -> Api.read(Post, 1) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.read\/2/
-      assert res.message =~ ~r/expected a keyword list, but instead got 1/
+      assert_raise ArgumentError, "Expected a keyword list in `Ash.read\/2`, got: 1", fn ->
+        Ash.read(Post, 1)
+      end
     end
 
     test "raises an error when the second argument is not a valid keyword list" do
-      res = assert_raise RuntimeError, fn -> Api.read(Post, [1]) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.read\/2/
-      assert res.message =~ ~r/expected a keyword list, but instead got \[1\]/
+      assert_raise ArgumentError, "Expected a keyword list in `Ash.read\/2`, got: \[1\]", fn ->
+        Ash.read(Post, [1])
+      end
     end
   end
 
-  describe "Api.read!/2 with no records" do
+  describe "Ash.read!/2 with no records" do
     test "returns an empty result" do
-      assert [] = Api.read!(Post)
+      assert [] = Ash.read!(Post)
     end
 
     test "raises an error when the first argument is not a module" do
-      res = assert_raise RuntimeError, fn -> Api.read!("bogus", []) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.read!\/2/
-
-      assert res.message =~
-               ~r/expected an %Ash.Query{} or an Ash Resource but instead got "bogus"/
+      assert_raise ArgumentError,
+                   "Expected an `%Ash.Query{}` or an `Ash.Resource` in `Ash.read!/2`, got: \"bogus\"",
+                   fn -> Ash.read!("bogus", []) end
     end
 
     test "raises an error when the first argument is a module that is not an ash resource" do
-      res = assert_raise RuntimeError, fn -> Api.read!(BadModuleName, []) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.read!\/2/
-
-      assert res.message =~
-               ~r/expected an %Ash.Query{} or an Ash Resource but instead got BadModuleName/
+      assert_raise ArgumentError,
+                   "Expected an `%Ash.Query{}` or an `Ash.Resource` in `Ash.read!/2`, got: BadModuleName",
+                   fn -> Ash.read!(BadModuleName, []) end
     end
 
     test "raises an error when the second argument is not a list" do
-      res = assert_raise RuntimeError, fn -> Api.read!(Post, 1) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.read!\/2/
-      assert res.message =~ ~r/expected a keyword list, but instead got 1/
+      assert_raise ArgumentError, "Expected a keyword list in `Ash.read!/2`, got: 1", fn ->
+        Ash.read!(Post, 1)
+      end
     end
 
     test "raises an error when the second argument is not a valid keyword list" do
-      res = assert_raise RuntimeError, fn -> Api.read!(Post, [1]) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.read!\/2/
-      assert res.message =~ ~r/expected a keyword list, but instead got \[1\]/
+      assert_raise ArgumentError, "Expected a keyword list in `Ash.read!/2`, got: [1]", fn ->
+        Ash.read!(Post, [1])
+      end
     end
 
     test "raises an error when page is sent but pagination is not enabled on a resource" do
       res =
         assert_raise Ash.Error.Invalid, fn ->
-          Api.read!(Post, page: [limit: 10])
+          Ash.read!(Post, action: :not_paginatable, page: [limit: 10])
         end
 
-      assert %Ash.Error.Invalid.PageRequiresPagination{resource: Post, action: _} = hd(res.errors)
+      assert %Ash.Error.Invalid.ActionRequiresPagination{resource: Post, action: _} =
+               hd(res.errors)
     end
   end
 
-  describe "Api.read/2" do
+  describe "Ash.read/2" do
     setup do
       post1 =
         Post
-        |> new(%{title: "test", contents: "yeet"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
+        |> Ash.create!()
 
       post2 =
         Post
-        |> new(%{title: "test1", contents: "yeet2"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "test1", contents: "yeet2"})
+        |> Ash.create!()
 
       %{post1: post1, post2: post2}
     end
@@ -347,19 +349,19 @@ defmodule Ash.Test.Actions.ReadTest do
       assert {:ok, [_post]} =
                Post
                |> Ash.Query.limit(1)
-               |> Api.read()
+               |> Ash.read()
     end
 
     test "after action hooks are run" do
       assert [%{__metadata__: %{prepared?: true}}, %{__metadata__: %{prepared?: true}}] =
-               Api.read!(Post, action: :read_with_after_action)
+               Ash.read!(Post, action: :read_with_after_action)
     end
 
     test "with a limit size of 2, returns 2 records" do
       assert {:ok, [_, _]} =
                Post
                |> Ash.Query.limit(2)
-               |> Api.read()
+               |> Ash.read()
     end
 
     test "with a limit of 1 and an offset of 1, it returns 1 record" do
@@ -367,94 +369,86 @@ defmodule Ash.Test.Actions.ReadTest do
                Post
                |> Ash.Query.limit(1)
                |> Ash.Query.offset(1)
-               |> Api.read()
+               |> Ash.read()
     end
   end
 
-  describe "Api.read!/2" do
+  describe "Ash.read!/2" do
     setup do
       post1 =
         Post
-        |> new(%{title: "test", contents: "yeet"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
+        |> Ash.create!()
 
       post2 =
         Post
-        |> new(%{title: "test1", contents: "yeet2"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "test1", contents: "yeet2"})
+        |> Ash.create!()
 
       %{post1: post1, post2: post2}
     end
 
     test "it returns the records not in a tuple" do
-      assert [_, _] = Api.read!(Post)
+      assert [_, _] = Ash.read!(Post)
     end
   end
 
-  describe "Api.read_one/2" do
+  describe "Ash.read_one/2" do
     test "raises an error when the first argument is not a module" do
-      res = assert_raise RuntimeError, fn -> Api.read_one("bogus", []) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.read_one\/2/
-
-      assert res.message =~
-               ~r/expected an %Ash.Query{} or an Ash Resource but instead got "bogus"/
+      assert_raise ArgumentError,
+                   "Expected an `%Ash.Query{}` or an `Ash.Resource` in `Ash.read_one/2`, got: \"bogus\"",
+                   fn -> Ash.read_one("bogus", []) end
     end
 
     test "raises an error when the first argument is a module that is not an ash resource" do
-      res = assert_raise RuntimeError, fn -> Api.read_one(BadModuleName, []) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.read_one\/2/
-
-      assert res.message =~
-               ~r/expected an %Ash.Query{} or an Ash Resource but instead got BadModuleName/
+      assert_raise ArgumentError,
+                   "Expected an `%Ash.Query{}` or an `Ash.Resource` in `Ash.read_one/2`, got: BadModuleName",
+                   fn -> Ash.read_one(BadModuleName, []) end
     end
 
     test "raises an error when the second argument is not a list" do
-      res = assert_raise RuntimeError, fn -> Api.read_one(Post, 1) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.read_one\/2/
-      assert res.message =~ ~r/expected a keyword list, but instead got 1/
+      assert_raise ArgumentError, "Expected a keyword list in `Ash.read_one/2`, got: 1", fn ->
+        Ash.read_one(Post, 1)
+      end
     end
 
     test "raises an error when the second argument is not a valid keyword list" do
-      res = assert_raise RuntimeError, fn -> Api.read_one(Post, [1]) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.read_one\/2/
-      assert res.message =~ ~r/expected a keyword list, but instead got \[1\]/
+      assert_raise ArgumentError, "Expected a keyword list in `Ash.read_one/2`, got: [1]", fn ->
+        Ash.read_one(Post, [1])
+      end
     end
 
     test "it applies a limit" do
-      Api.create!(Ash.Changeset.for_create(Post, :create, %{}, authorize?: false))
-      Api.create!(Ash.Changeset.for_create(Post, :create, %{}, authorize?: false))
-      Api.create!(Ash.Changeset.for_create(Post, :create, %{}, authorize?: false))
-      assert %Post{} = Api.read_one!(Post |> Ash.Query.limit(1))
+      Ash.create!(Ash.Changeset.for_create(Post, :create, %{}, authorize?: false))
+      Ash.create!(Ash.Changeset.for_create(Post, :create, %{}, authorize?: false))
+      Ash.create!(Ash.Changeset.for_create(Post, :create, %{}, authorize?: false))
+      assert %Post{} = Ash.read_one!(Post |> Ash.Query.limit(1))
     end
   end
 
-  describe "Api.read_one!/2" do
+  describe "Ash.read_one!/2" do
     test "raises an error when the first argument is not a module" do
-      res = assert_raise RuntimeError, fn -> Api.read_one!("bogus", []) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.read_one!\/2/
-
-      assert res.message =~
-               ~r/expected an %Ash.Query{} or an Ash Resource but instead got "bogus"/
+      assert_raise ArgumentError,
+                   "Expected an `%Ash.Query{}` or an `Ash.Resource` in `Ash.read_one!\/2`, got: \"bogus\"",
+                   fn -> Ash.read_one!("bogus", []) end
     end
 
     test "raises an error when the first argument is a module that is not an ash resource" do
-      res = assert_raise RuntimeError, fn -> Api.read_one!(BadModuleName, []) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.read_one!\/2/
-
-      assert res.message =~
-               ~r/expected an %Ash.Query{} or an Ash Resource but instead got BadModuleName/
+      assert_raise ArgumentError,
+                   "Expected an `%Ash.Query{}` or an `Ash.Resource` in `Ash.read_one!\/2`, got: BadModuleName",
+                   fn -> Ash.read_one!(BadModuleName, []) end
     end
 
     test "raises an error when the second argument is not a list" do
-      res = assert_raise RuntimeError, fn -> Api.read_one!(Post, 1) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.read_one!\/2/
-      assert res.message =~ ~r/expected a keyword list, but instead got 1/
+      assert_raise ArgumentError, "Expected a keyword list in `Ash.read_one!/2`, got: 1", fn ->
+        Ash.read_one!(Post, 1)
+      end
     end
 
     test "raises an error when the second argument is not a valid keyword list" do
-      res = assert_raise RuntimeError, fn -> Api.read_one!(Post, [1]) end
-      assert res.message =~ ~r/Ash.Test.AnyApi.read_one!\/2/
-      assert res.message =~ ~r/expected a keyword list, but instead got \[1\]/
+      assert_raise ArgumentError, "Expected a keyword list in `Ash.read_one!/2`, got: [1]", fn ->
+        Ash.read_one!(Post, [1])
+      end
     end
   end
 
@@ -462,14 +456,14 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       post1 =
         Post
-        |> new(%{title: "test", contents: "yeet"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
+        |> Ash.create!()
         |> strip_metadata()
 
       post2 =
         Post
-        |> new(%{title: "test1", contents: "yeet"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "test1", contents: "yeet"})
+        |> Ash.create!()
         |> strip_metadata()
 
       %{post1: post1, post2: post2}
@@ -479,14 +473,14 @@ defmodule Ash.Test.Actions.ReadTest do
       assert {:ok, []} =
                Post
                |> Ash.Query.filter(contents == "not_yeet")
-               |> Api.read()
+               |> Ash.read()
     end
 
     test "a filter returns only matching records", %{post1: post1} do
       assert {:ok, [^post1]} =
                Post
                |> Ash.Query.filter(title == ^post1.title)
-               |> Api.read()
+               |> Ash.read()
                |> strip_metadata()
     end
 
@@ -494,7 +488,7 @@ defmodule Ash.Test.Actions.ReadTest do
       assert {:ok, [_, _] = results} =
                Post
                |> Ash.Query.filter(contents == "yeet")
-               |> Api.read()
+               |> Ash.read()
                |> strip_metadata()
 
       assert post1 in results
@@ -506,8 +500,8 @@ defmodule Ash.Test.Actions.ReadTest do
     test "it automatically selects all fields" do
       author =
         Author
-        |> new(%{name: "bruh"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{name: "bruh"})
+        |> Ash.create!()
 
       assert author.name
       assert author.id
@@ -515,36 +509,31 @@ defmodule Ash.Test.Actions.ReadTest do
 
     test "you can deselect a field" do
       Author
-      |> new(%{name: "bruh"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{name: "bruh"})
+      |> Ash.create!()
 
-      assert [%{name: "bruh"}] = Api.read!(Author)
+      assert [%{name: "bruh"}] = Ash.read!(Author)
 
-      if Ash.Flags.ash_three?() do
-        assert [%{name: %Ash.NotSelected{}}] = Api.read!(Ash.Query.deselect(Author, :name))
-      else
-        assert [%{name: nil}] = Api.read!(Ash.Query.deselect(Author, :name))
-      end
+      assert [%{name: %Ash.NotLoaded{}}] = Ash.read!(Ash.Query.deselect(Author, :name))
     end
 
-    @tag :ash_three
-    test "deselected fields don't return nil after Ash 3.0.0" do
+    test "deselected fields don't return nil" do
       Author
-      |> new(%{name: "bruh"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{name: "bruh"})
+      |> Ash.create!()
 
-      assert [%{name: "bruh"}] = Api.read!(Author)
+      assert [%{name: "bruh"}] = Ash.read!(Author)
 
-      assert [%{name: %Ash.NotSelected{field: :name}}] =
-               Api.read!(Ash.Query.deselect(Author, :name))
+      assert [%{name: %Ash.NotLoaded{field: :name}}] =
+               Ash.read!(Ash.Query.deselect(Author, :name))
     end
 
     test "you can select fields, but the primary key is always present" do
       Author
-      |> new(%{name: "bruh"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{name: "bruh"})
+      |> Ash.create!()
 
-      assert [%{name: "bruh", id: id}] = Api.read!(Ash.Query.select(Author, :name))
+      assert [%{name: "bruh", id: id}] = Ash.read!(Ash.Query.select(Author, :name))
       assert id
     end
   end
@@ -553,20 +542,20 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       author1 =
         Author
-        |> new(%{name: "bruh"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{name: "bruh"})
+        |> Ash.create!()
 
       author2 =
         Author
-        |> new(%{name: "bruh"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{name: "bruh"})
+        |> Ash.create!()
 
       post =
         Post
-        |> new(%{title: "test", contents: "yeet"})
-        |> manage_relationship(:author1, author1, type: :append_and_remove)
-        |> manage_relationship(:author2, author2, type: :append_and_remove)
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
+        |> Ash.Changeset.manage_relationship(:author1, author1, type: :append_and_remove)
+        |> Ash.Changeset.manage_relationship(:author2, author2, type: :append_and_remove)
+        |> Ash.create!()
 
       %{post: post, author1: author1, author2: author2}
     end
@@ -575,14 +564,14 @@ defmodule Ash.Test.Actions.ReadTest do
       assert [_] =
                Post
                |> Ash.Query.filter(author1: author1.id)
-               |> Api.read!()
+               |> Ash.read!()
     end
 
     test "you can filter on multiple related values", %{author1: author1, author2: author2} do
       assert [_] =
                Post
                |> Ash.Query.filter(author1: author1.id, author2: author2.id)
-               |> Api.read!()
+               |> Ash.read!()
     end
   end
 
@@ -590,14 +579,14 @@ defmodule Ash.Test.Actions.ReadTest do
     setup do
       post1 =
         Post
-        |> new(%{title: "abc", contents: "abc"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "abc", contents: "abc"})
+        |> Ash.create!()
         |> strip_metadata()
 
       post2 =
         Post
-        |> new(%{title: "xyz", contents: "abc"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "xyz", contents: "abc"})
+        |> Ash.create!()
         |> strip_metadata()
 
       %{post1: post1, post2: post2}
@@ -610,7 +599,7 @@ defmodule Ash.Test.Actions.ReadTest do
       assert {:ok, [^post1, ^post2]} =
                Post
                |> Ash.Query.sort(title: :asc)
-               |> Api.read()
+               |> Ash.read()
                |> strip_metadata()
     end
 
@@ -621,21 +610,21 @@ defmodule Ash.Test.Actions.ReadTest do
       assert {:ok, [^post2, ^post1]} =
                Post
                |> Ash.Query.sort(title: :desc)
-               |> Api.read()
+               |> Ash.read()
                |> strip_metadata()
     end
 
     test "a nested sort sorts accordingly", %{post1: post1, post2: post2} do
       middle_post =
         Post
-        |> new(%{title: "abc", contents: "xyz"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "abc", contents: "xyz"})
+        |> Ash.create!()
         |> strip_metadata()
 
       assert {:ok, [^post1, ^middle_post, ^post2]} =
                Post
                |> Ash.Query.sort(title: :asc, contents: :asc)
-               |> Api.read()
+               |> Ash.read()
                |> strip_metadata()
     end
 
@@ -644,7 +633,7 @@ defmodule Ash.Test.Actions.ReadTest do
 
       Post
       |> Ash.Query.sort([{Ash.Sort.expr_sort(title <> contents), :asc}])
-      |> Api.read!()
+      |> Ash.read!()
     end
   end
 
@@ -653,8 +642,8 @@ defmodule Ash.Test.Actions.ReadTest do
       post =
         Enum.map(0..2, fn _ ->
           Post
-          |> new(%{title: "test", contents: "yeet"})
-          |> Api.create!()
+          |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
+          |> Ash.create!()
           |> strip_metadata()
         end)
         |> Enum.random()
@@ -664,14 +653,14 @@ defmodule Ash.Test.Actions.ReadTest do
 
     test "it succeeds when the record exists", %{post_id: post_id} do
       assert {:ok, %{id: ^post_id}} =
-               Post |> Ash.Query.for_read(:get_by_id, %{id: post_id}) |> Api.read_one()
+               Post |> Ash.Query.for_read(:get_by_id, %{id: post_id}) |> Ash.read_one()
     end
 
     test "it fails when the record does not exist" do
       assert {:ok, nil} =
                Post
                |> Ash.Query.for_read(:get_by_id, %{id: Ash.UUID.generate()})
-               |> Api.read_one()
+               |> Ash.read_one()
     end
   end
 
@@ -680,8 +669,8 @@ defmodule Ash.Test.Actions.ReadTest do
       post =
         Enum.map(0..2, fn _ ->
           Post
-          |> new(%{title: "test", contents: "yeet"})
-          |> Api.create!()
+          |> Ash.Changeset.for_create(:create, %{title: "test", contents: "yeet"})
+          |> Ash.create!()
           |> strip_metadata()
         end)
         |> Enum.random()
@@ -693,7 +682,7 @@ defmodule Ash.Test.Actions.ReadTest do
       assert {:ok, %{id: ^post_id, uuid: ^post_uuid}} =
                Post
                |> Ash.Query.for_read(:get_by_id_and_uuid, %{id: post_id, uuid: post_uuid})
-               |> Api.read_one()
+               |> Ash.read_one()
     end
 
     test "it fails when the record does not exist" do
@@ -703,7 +692,7 @@ defmodule Ash.Test.Actions.ReadTest do
                  id: Ash.UUID.generate(),
                  uuid: Ash.UUID.generate()
                })
-               |> Api.read_one()
+               |> Ash.read_one()
     end
   end
 end

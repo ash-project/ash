@@ -2,13 +2,16 @@ defmodule Ash.Test.Type.UnionTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule Foo do
     use Ash.Resource, data_layer: :embedded
 
     attributes do
-      attribute :foo, :string, constraints: [match: ~r/foo/]
+      attribute :foo, :string, constraints: [match: ~r/foo/], public?: true
 
       attribute :type, :string do
+        public?(true)
         writable? false
         default "foo"
       end
@@ -19,9 +22,10 @@ defmodule Ash.Test.Type.UnionTest do
     use Ash.Resource, data_layer: :embedded
 
     attributes do
-      attribute :bar, :string, constraints: [match: ~r/bar/]
+      attribute :bar, :string, constraints: [match: ~r/bar/], public?: true
 
       attribute :type, :string do
+        public?(true)
         writable? false
         default "bar"
       end
@@ -35,11 +39,13 @@ defmodule Ash.Test.Type.UnionTest do
         types: [
           foo: [
             type: Foo,
+            cast_tag?: false,
             tag: :type,
             tag_value: :foo
           ],
           bar: [
             type: Bar,
+            cast_tag?: false,
             tag: :type,
             tag_value: :bar
           ]
@@ -48,20 +54,23 @@ defmodule Ash.Test.Type.UnionTest do
   end
 
   defmodule Example do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
 
       update :add_thing do
         argument :new_thing, FooBarUnion, allow_nil?: false
 
         change fn changeset, _ ->
-          new_thing = Ash.Changeset.get_argument(changeset, :new_thing)
+          new_thing =
+            Ash.Changeset.get_argument(changeset, :new_thing)
+
           things = Ash.Changeset.get_attribute(changeset, :things)
 
           Ash.Changeset.change_attribute(
@@ -77,15 +86,19 @@ defmodule Ash.Test.Type.UnionTest do
       uuid_primary_key :id
 
       attribute :things, {:array, :union} do
+        public?(true)
+
         constraints items: [
                       types: [
                         foo: [
                           type: Foo,
+                          cast_tag?: false,
                           tag: :type,
                           tag_value: :foo
                         ],
                         bar: [
                           type: Bar,
+                          cast_tag?: false,
                           tag: :type,
                           tag_value: :bar
                         ]
@@ -94,15 +107,18 @@ defmodule Ash.Test.Type.UnionTest do
       end
 
       attribute :thing, :union,
+        public?: true,
         constraints: [
           types: [
             foo: [
               type: Foo,
+              cast_tag?: false,
               tag: :type,
               tag_value: "foo"
             ],
             bar: [
               type: Bar,
+              cast_tag?: false,
               tag: :type,
               tag_value: "bar"
             ]
@@ -187,6 +203,8 @@ defmodule Ash.Test.Type.UnionTest do
       types: [
         foo: [
           type: Foo,
+          cast_tag?: false,
+          constraints: [domain: Domain],
           tag: :type,
           tag_value: :foo
         ],
@@ -246,11 +264,15 @@ defmodule Ash.Test.Type.UnionTest do
         types: [
           foo: [
             type: Foo,
+            cast_tag?: false,
+            constraints: [domain: Domain],
             tag: :type,
             tag_value: :foo
           ],
           bar: [
             type: Bar,
+            cast_tag?: false,
+            constraints: [domain: Domain],
             tag: :type,
             tag_value: :bar
           ]
@@ -287,17 +309,17 @@ defmodule Ash.Test.Type.UnionTest do
   test "it handles changing union attribute on a resource" do
     Example
     |> Ash.Changeset.for_create(:create, %{thing: %Foo{type: "foo", foo: "foo"}})
-    |> Ash.Test.AnyApi.create!()
+    |> Ash.create!()
     |> Ash.Changeset.new()
     |> Ash.Changeset.change_attribute(:thing, %Bar{type: "bar", bar: "bar"})
     |> Ash.Changeset.for_update(:update)
-    |> Ash.Test.AnyApi.update!()
+    |> Ash.update!()
   end
 
   test "it handles paths on a resource" do
     Example
     |> Ash.Changeset.for_create(:create, %{things: [%{type: :foo, foo: "bar"}]})
-    |> Ash.Test.AnyApi.create()
+    |> Ash.create()
   end
 
   test "it dumps to native as explicit maps by default" do
@@ -357,8 +379,8 @@ defmodule Ash.Test.Type.UnionTest do
     assert {:ok, _} =
              Example
              |> Ash.Changeset.for_create(:create, %{things: []})
-             |> Ash.Test.AnyApi.create!()
+             |> Ash.create!()
              |> Ash.Changeset.for_update(:add_thing, %{new_thing: %{type: :foo, foo: "foo"}})
-             |> Ash.Test.AnyApi.update()
+             |> Ash.update()
   end
 end

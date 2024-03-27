@@ -2,6 +2,8 @@ defmodule Ash.Test.Type.TypeTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule PostTitle do
     @moduledoc false
     use Ash.Type
@@ -46,7 +48,7 @@ defmodule Ash.Test.Type.TypeTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -54,40 +56,25 @@ defmodule Ash.Test.Type.TypeTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, PostTitle, constraints: [max_length: 10]
-      attribute :post_type, :atom, allow_nil?: false, constraints: [one_of: [:text, :video]]
+      attribute :title, PostTitle, constraints: [max_length: 10], public?: true
+
+      attribute :post_type, :atom,
+        allow_nil?: false,
+        constraints: [one_of: [:text, :video]],
+        public?: true
     end
 
     actions do
-      defaults [:create, :read]
+      default_accept :*
+      defaults [:read, create: :*]
     end
   end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Post
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
-    end
-  end
-
-  import Ash.Changeset
 
   test "it accepts valid data" do
     post =
       Post
-      |> new(%{title: "foobar", post_type: :text})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{title: "foobar", post_type: :text})
+      |> Ash.create!()
 
     assert post.title == "foobar"
   end
@@ -95,16 +82,16 @@ defmodule Ash.Test.Type.TypeTest do
   test "it rejects invalid title data" do
     assert_raise(Ash.Error.Invalid, ~r/is too long, max_length is 10/, fn ->
       Post
-      |> new(%{title: "foobarbazbuzbiz", post_type: :text})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{title: "foobarbazbuzbiz", post_type: :text})
+      |> Ash.create!()
     end)
   end
 
   test "it rejects invalid atom data" do
     assert_raise(Ash.Error.Invalid, ~r/atom must be one of/, fn ->
       Post
-      |> new(%{title: "foobar", post_type: :something_else})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{title: "foobar", post_type: :something_else})
+      |> Ash.create!()
     end)
   end
 end

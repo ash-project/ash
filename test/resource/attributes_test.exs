@@ -3,12 +3,15 @@ defmodule Ash.Test.Resource.AttributesTest do
   use ExUnit.Case, async: true
 
   alias Ash.Resource.Attribute
+  alias Ash.Test.Domain, as: Domain
 
   defmacrop defposts(do: body) do
+    module = Module.concat(["rand#{System.unique_integer([:positive])}", Post])
+
     quote do
-      defmodule Post do
+      defmodule unquote(module) do
         @moduledoc false
-        use Ash.Resource
+        use Ash.Resource, domain: Domain
 
         attributes do
           uuid_primary_key :id
@@ -16,6 +19,8 @@ defmodule Ash.Test.Resource.AttributesTest do
 
         unquote(body)
       end
+
+      alias unquote(module), as: Post
     end
   end
 
@@ -23,8 +28,8 @@ defmodule Ash.Test.Resource.AttributesTest do
     test "attributes are persisted on the resource properly" do
       defposts do
         attributes do
-          attribute :foo, :string
-          attribute :bar, :boolean, private?: true
+          attribute :foo, :string, public?: true
+          attribute :bar, :boolean
         end
       end
 
@@ -34,8 +39,7 @@ defmodule Ash.Test.Resource.AttributesTest do
                %Attribute{
                  name: :bar,
                  type: Ash.Type.Boolean,
-                 primary_key?: false,
-                 private?: true
+                 primary_key?: false
                }
              ] = Ash.Resource.Info.attributes(Post)
 
@@ -53,7 +57,7 @@ defmodule Ash.Test.Resource.AttributesTest do
     test "raises if the attribute name is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.AttributesTest.Post]\n attributes -> attribute -> 10:\n  invalid value for :name option: expected atom, got: 10",
+        ~r/expected atom, got: 10/,
         fn ->
           defposts do
             attributes do
@@ -67,25 +71,25 @@ defmodule Ash.Test.Resource.AttributesTest do
     test "raises if you pass an invalid value for `primary_key?`" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.AttributesTest.Post]\n attributes -> attribute -> foo:\n  invalid value for :primary_key? option: expected boolean, got: 10",
+        ~r/expected boolean, got: 10/,
         fn ->
           defposts do
             attributes do
-              attribute :foo, :string, primary_key?: 10
+              attribute :foo, :string, primary_key?: 10, public?: true
             end
           end
         end
       )
     end
 
-    test "raises if you pass an invalid value for `private?`" do
+    test "raises if you pass an invalid value for `public?`" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Resource.AttributesTest.Post]\n attributes -> attribute -> foo:\n  invalid value for :private? option: expected boolean, got: \"an_invalid_value\"",
+        ~r/expected boolean, got: "an_invalid_value"/,
         fn ->
           defposts do
             attributes do
-              attribute :foo, :string, private?: "an_invalid_value"
+              attribute :foo, :string, public?: "an_invalid_value"
             end
           end
         end
@@ -100,7 +104,7 @@ defmodule Ash.Test.Resource.AttributesTest do
           fn ->
             defmodule :"Elixir.Resource#{name}" do
               @moduledoc false
-              use Ash.Resource
+              use Ash.Resource, domain: Domain
 
               attributes do
                 uuid_primary_key :id

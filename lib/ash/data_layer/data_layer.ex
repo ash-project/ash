@@ -138,7 +138,7 @@ defmodule Ash.DataLayer do
             ) :: {:ok, data_layer_query()} | {:error, term}
   @callback set_tenant(Ash.Resource.t(), data_layer_query(), term) ::
               {:ok, data_layer_query()} | {:error, term}
-  @callback resource_to_query(Ash.Resource.t(), Ash.Api.t()) :: data_layer_query()
+  @callback resource_to_query(Ash.Resource.t(), Ash.Domain.t()) :: data_layer_query()
   @callback transform_query(Ash.Query.t()) :: Ash.Query.t()
   @callback run_query(data_layer_query(), Ash.Resource.t()) ::
               {:ok, list(Ash.Resource.record())} | {:error, term} | {:error, :no_rollback, term}
@@ -174,6 +174,7 @@ defmodule Ash.DataLayer do
           return_records?: boolean,
           upsert?: boolean,
           upsert_keys: nil | list(atom),
+          select: list(atom),
           upsert_fields:
             nil
             | list(atom)
@@ -185,6 +186,7 @@ defmodule Ash.DataLayer do
 
   @type bulk_update_options :: %{
           return_records?: boolean,
+          select: list(atom),
           tenant: term()
         }
 
@@ -406,9 +408,9 @@ defmodule Ash.DataLayer do
     data_layer(resource).rollback(resource, term)
   end
 
-  @spec resource_to_query(Ash.Resource.t(), Ash.Api.t()) :: data_layer_query()
-  def resource_to_query(resource, api) do
-    Ash.DataLayer.data_layer(resource).resource_to_query(resource, api)
+  @spec resource_to_query(Ash.Resource.t(), Ash.Domain.t()) :: data_layer_query()
+  def resource_to_query(resource, domain) do
+    Ash.DataLayer.data_layer(resource).resource_to_query(resource, domain)
   end
 
   @spec update(Ash.Resource.t(), Ash.Changeset.t()) ::
@@ -495,9 +497,10 @@ defmodule Ash.DataLayer do
     end
   end
 
-  @spec set_tenant(Ash.Resource.t(), data_layer_query(), term) ::
+  @spec set_tenant(Ash.Resource.t(), data_layer_query(), String.t()) ::
           {:ok, data_layer_query()} | {:error, term}
   def set_tenant(resource, query, term) do
+    term = Ash.ToTenant.to_tenant(resource, term)
     Ash.DataLayer.data_layer(resource).set_tenant(resource, query, term)
   end
 

@@ -1,6 +1,7 @@
 defmodule Ash.Test.Support.PolicyRbac.User do
   @moduledoc false
   use Ash.Resource,
+    domain: Ash.Test.Support.PolicyRbac.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [
       Ash.Policy.Authorizer
@@ -15,14 +16,16 @@ defmodule Ash.Test.Support.PolicyRbac.User do
   end
 
   actions do
-    defaults [:create, :read, :update, :destroy]
+    default_accept :*
+    defaults [:read, :destroy, create: :*, update: :*]
   end
 
   relationships do
     has_many(:memberships, Ash.Test.Support.PolicyRbac.Membership,
-      destination_attribute: :user_id
+      destination_attribute: :user_id,
+      public?: true
     )
 
-    belongs_to(:organization, Ash.Test.Support.PolicyRbac.Organization)
+    belongs_to(:organization, Ash.Test.Support.PolicyRbac.Organization, public?: true)
   end
 end

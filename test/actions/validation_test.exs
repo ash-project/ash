@@ -2,9 +2,12 @@ defmodule Ash.Test.Actions.ValidationTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule Profile do
     @moduledoc false
     use Ash.Resource,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -12,7 +15,8 @@ defmodule Ash.Test.Actions.ValidationTest do
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     validations do
@@ -32,93 +36,88 @@ defmodule Ash.Test.Actions.ValidationTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :bio, :string
-      attribute :date, :date
-      attribute :status, :string
-      attribute :foo, :boolean
-    end
-  end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
+      attribute :bio, :string do
+        public?(true)
+      end
 
-    entries do
-      entry Profile
-    end
-  end
+      attribute :date, :date do
+        public?(true)
+      end
 
-  defmodule Api do
-    use Ash.Api
+      attribute :status, :string do
+        public?(true)
+      end
 
-    resources do
-      registry Registry
+      attribute :foo, :boolean do
+        public?(true)
+      end
     end
   end
 
   test "validations run on create" do
     assert_raise(Ash.Error.Invalid, ~r/bio, date: must be absent/, fn ->
       Profile
-      |> Ash.Changeset.new(%{bio: "foobar"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{bio: "foobar"})
+      |> Ash.create!()
     end)
   end
 
   test "validations only run when their when conditions validate properly" do
     Profile
-    |> Ash.Changeset.new(%{foo: false, status: "bar"})
-    |> Api.create!()
+    |> Ash.Changeset.for_create(:create, %{foo: false, status: "bar"})
+    |> Ash.create!()
 
     Profile
-    |> Ash.Changeset.new(%{foo: true, status: "foo"})
-    |> Api.create!()
+    |> Ash.Changeset.for_create(:create, %{foo: true, status: "foo"})
+    |> Ash.create!()
 
     assert_raise(Ash.Error.Invalid, ~r/status: must not equal foo/, fn ->
       Profile
-      |> Ash.Changeset.new(%{foo: false, status: "foo"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{foo: false, status: "foo"})
+      |> Ash.create!()
     end)
 
     assert_raise(Ash.Error.Invalid, ~r/status: must equal foo/, fn ->
       Profile
-      |> Ash.Changeset.new(%{foo: true, status: "bar"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{foo: true, status: "bar"})
+      |> Ash.create!()
     end)
   end
 
   test "validations run on update" do
     assert_raise(Ash.Error.Invalid, ~r/bio: must be present/, fn ->
       Profile
-      |> Ash.Changeset.new(%{})
-      |> Api.create!()
-      |> Ash.Changeset.new(%{})
-      |> Api.update!()
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+      |> Ash.Changeset.for_update(:update, %{})
+      |> Ash.update!()
     end)
   end
 
   test "validations run on destroy" do
     assert_raise(Ash.Error.Invalid, ~r/date: must be absent/, fn ->
       Profile
-      |> Ash.Changeset.new(%{})
-      |> Api.create!()
-      |> Ash.Changeset.new(%{bio: "foo", date: Date.utc_today()})
-      |> Api.update!()
-      |> Api.destroy!()
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+      |> Ash.Changeset.for_update(:update, %{bio: "foo", date: Date.utc_today()})
+      |> Ash.update!()
+      |> Ash.destroy!()
     end)
   end
 
   describe "one_of" do
     test "it succeeds if the value is in the list" do
       Profile
-      |> Ash.Changeset.new(%{status: "foo"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{status: "foo"})
+      |> Ash.create!()
     end
 
     test "it fails if the value is not in the list" do
       assert_raise(Ash.Error.Invalid, ~r/expected one of foo, bar/, fn ->
         Profile
-        |> Ash.Changeset.new(%{status: "blart"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{status: "blart"})
+        |> Ash.create!()
       end)
     end
   end

@@ -1,10 +1,11 @@
 defmodule Mix.Tasks.Ash.Codegen do
   @moduledoc """
-  Runs all codegen tasks for any extension on any resource/api in your application.
+  Runs all codegen tasks for any extension on any resource/domain in your application.
   """
   use Mix.Task
 
-  @shortdoc "Runs all codegen tasks for any extension on any resource/api in your application."
+  @shortdoc "Runs all codegen tasks for any extension on any resource/domain in your application."
+  @doc @shortdoc
   def run(argv) do
     {name, argv} =
       case argv do

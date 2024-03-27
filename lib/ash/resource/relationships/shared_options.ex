@@ -37,11 +37,11 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       Context to be set on any queries or changesets generated for managing or querying this relationship.
       """
     ],
-    private?: [
+    public?: [
       type: :boolean,
       default: false,
       doc: """
-      Whether or not the relationship will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql See the [security guide](/documentation/topics/security.md) for more.
+      Whether or not the relationship will appear in public interfaces
       """
     ],
     not_found_message: [
@@ -63,19 +63,18 @@ defmodule Ash.Resource.Relationships.SharedOptions do
       The read action on the destination resource to use when loading data and filtering.
       """
     ],
-    api: [
+    domain: [
       type: :atom,
       doc: """
-      The API module to use when working with the related entity.
-      """
-    ],
-    filter: [
-      type: :any,
-      doc: """
-      A filter to be applied when reading the relationship.
+      The domain module to use when working with the related entity.
       """
     ],
     filterable?: [
+      type: :boolean,
+      default: true,
+      doc: "If set to `false`, the relationship will not be usable in filters."
+    ],
+    sortable?: [
       type: :boolean,
       default: true,
       doc: "If set to `false`, the relationship will not be usable in filters."

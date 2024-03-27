@@ -3,23 +3,26 @@ defmodule Ash.Test.Reactor.TransactionTest do
   use ExUnit.Case, async: false
   use Mimic
 
+  alias Ash.Test.Domain
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Mnesia, api: Ash.Test.AnyApi
+    use Ash.Resource, data_layer: Ash.DataLayer.Mnesia, domain: Domain
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string, allow_nil?: false
+      attribute :title, :string, allow_nil?: false, public?: true
     end
 
     actions do
-      defaults [:create, :destroy]
+      default_accept :*
+      defaults [:destroy, create: :*]
     end
   end
 
   setup do
     ExUnit.CaptureLog.capture_log(fn ->
-      Ash.DataLayer.Mnesia.start(Ash.Test.AnyApi, [Post])
+      Ash.DataLayer.Mnesia.start(Domain, [Post])
     end)
 
     on_exit(fn ->
@@ -36,7 +39,7 @@ defmodule Ash.Test.Reactor.TransactionTest do
       use Ash.Reactor
 
       ash do
-        default_api(Ash.Test.AnyApi)
+        default_domain(Domain)
       end
 
       transaction :create_posts, Post do
@@ -59,7 +62,7 @@ defmodule Ash.Test.Reactor.TransactionTest do
       use Ash.Reactor
 
       ash do
-        default_api(Ash.Test.AnyApi)
+        default_domain(Domain)
       end
 
       transaction :create_posts, Post do
@@ -85,7 +88,7 @@ defmodule Ash.Test.Reactor.TransactionTest do
       use Ash.Reactor
 
       ash do
-        default_api(Ash.Test.AnyApi)
+        default_domain(Domain)
       end
 
       transaction :create_posts, Post do
@@ -111,9 +114,14 @@ defmodule Ash.Test.Reactor.TransactionTest do
       raise reason
     end)
 
-    assert {:error, [error]} =
-             Reactor.run(FailAndRollBackTransactionReactor, %{}, %{}, async?: false)
+    FailAndRollBackTransactionReactor
+    |> Reactor.run(%{}, %{}, async?: false)
+    |> Ash.Test.assert_has_error(fn
+      %Reactor.Error.Invalid.RunStepError{error: error} ->
+        Exception.message(error) =~ "hell"
 
-    assert Exception.message(error) =~ "hell"
+      _ ->
+        false
+    end)
   end
 end

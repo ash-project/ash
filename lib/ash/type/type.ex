@@ -62,10 +62,7 @@ defmodule Ash.Type do
                              "Constraints for the elements of the list. See the contained type's docs for more."
                          )
   @moduledoc """
-  Describes how to convert data to `Ecto.Type` and eventually into the database.
-
-  This behaviour is a superset of the `Ecto.Type` behaviour, that also contains
-  API level information, like what kinds of filters are allowed.
+  The `Ash.Type` behaviour is used to define a value type in Ash.
 
   ## Built in types
 
@@ -75,7 +72,7 @@ defmodule Ash.Type do
 
   To specify a list of values, use `{:array, Type}`. Arrays are special, and have special constraints:
 
-  #{Spark.OptionsHelpers.docs(@doc_array_constraints)}
+  #{Spark.Options.docs(@doc_array_constraints)}
 
   ## Defining Custom Types
 
@@ -166,7 +163,7 @@ defmodule Ash.Type do
   @type error :: :error | {:error, String.t() | Keyword.t()}
 
   @type load_context :: %{
-          api: Ash.Api.t(),
+          domain: Ash.Domain.t(),
           actor: term() | nil,
           tenant: term(),
           tracer: list(Ash.Tracer.t()) | Ash.Tracer.t() | nil,
@@ -174,7 +171,7 @@ defmodule Ash.Type do
         }
 
   @type merge_load_context :: %{
-          api: Ash.Api.t(),
+          domain: Ash.Domain.t(),
           calc_name: term(),
           calc_load: term(),
           calc_path: list(atom),
@@ -251,9 +248,9 @@ defmodule Ash.Type do
   @callback embedded?() :: boolean
   @callback generator(constraints) :: Enumerable.t()
   @callback simple_equality?() :: boolean
-  @callback cast_atomic_update(new_value :: Ash.Expr.t(), constraints) ::
+  @callback cast_atomic(new_value :: Ash.Expr.t(), constraints) ::
               {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
-  @callback cast_atomic_update_array(new_value :: Ash.Expr.t(), constraints) ::
+  @callback cast_atomic_array(new_value :: Ash.Expr.t(), constraints) ::
               {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
   @callback custom_apply_constraints_array?() :: boolean
   @callback load(
@@ -323,11 +320,14 @@ defmodule Ash.Type do
     @builtin_types
   end
 
+  @doc "Returns the list of available type short names"
   def short_names, do: @short_names
 
+  @doc "Returns true if the type is an ash builtin type"
   def builtin?(type) when type in @builtin_types, do: true
   def builtin?(_), do: false
 
+  @doc "Returns true if the type is an embedded resource"
   def embedded_type?({:array, type}) do
     embedded_type?(type)
   end
@@ -337,16 +337,18 @@ defmodule Ash.Type do
     type.embedded?()
   end
 
+  @doc "Calls the type's `describe` function with the given constraints"
   def describe(type, constraints) do
     case get_type(type) do
       {:array, type} ->
-        type.describe(constraints)
+        "#{type.describe(constraints)}[]"
 
       type ->
         type.describe(constraints)
     end
   end
 
+  @doc "Gets the array constraints for a type"
   def array_constraints({:array, type}) do
     [items: array_constraints(type)]
   end
@@ -357,6 +359,7 @@ defmodule Ash.Type do
 
   @spec get_type(atom | module | {:array, atom | module}) ::
           atom | module | {:array, atom | module}
+  @doc "Gets the type module for a given short name or module"
   def get_type({:array, value}) do
     {:array, get_type(value)}
   end
@@ -373,6 +376,7 @@ defmodule Ash.Type do
     value
   end
 
+  @doc "Returns true if the type is a composite type"
   @spec composite?(
           t(),
           constraints
@@ -382,6 +386,7 @@ defmodule Ash.Type do
     type.composite?(constraints)
   end
 
+  @doc "Returns the wrapped composite types"
   @spec composite_types(
           t(),
           constraints
@@ -400,6 +405,7 @@ defmodule Ash.Type do
     end
   end
 
+  @doc "Returns the StreamData generator for a given type"
   @spec generator(
           module | {:array, module},
           constraints
@@ -442,7 +448,6 @@ defmodule Ash.Type do
   This is leveraged by embedded types to know if something is being updated
   or destroyed. This is not called on creates.
   """
-  # Callback does not currently support this
   def handle_change({:array, {:array, _type}}, _, new_value, _) do
     {:ok, new_value}
   end
@@ -528,22 +533,12 @@ defmodule Ash.Type do
     end
   end
 
-  def ash_type_option(type) do
-    type = get_type(type)
-
-    if ash_type?(type) do
-      {:ok, type}
-    else
-      {:error, "Attribute type must be a built in type or a type module, got: #{inspect(type)}"}
-    end
-  end
-
   @spec ash_type?(term) :: boolean
   @doc "Returns true if the value is a builtin type or adopts the `Ash.Type` behaviour"
   def ash_type?({:array, value}), do: ash_type?(value)
 
   def ash_type?(module) when is_atom(module) do
-    ash_type_module?(module) || Ash.Resource.Info.resource?(module)
+    ash_type_module?(module)
   end
 
   def ash_type?(_), do: false
@@ -562,7 +557,7 @@ defmodule Ash.Type do
   end
 
   def cast_input(type, term, nil) do
-    with {:ok, constraints} <- Spark.OptionsHelpers.validate([], Ash.Type.constraints(type)),
+    with {:ok, constraints} <- Spark.Options.validate([], Ash.Type.constraints(type)),
          {:ok, constraints} <- Ash.Type.init(type, constraints) do
       cast_input(type, term, constraints)
     end
@@ -716,7 +711,7 @@ defmodule Ash.Type do
                   new_errors =
                     new_errors
                     |> List.wrap()
-                    |> Ash.Error.flatten_preserving_keywords()
+                    |> Ash.Helpers.flatten_preserving_keywords()
                     |> Enum.map(fn
                       string when is_binary(string) ->
                         [message: string, index: index]
@@ -796,6 +791,7 @@ defmodule Ash.Type do
     end)
   end
 
+  @doc "Returns the constraint schema for a type"
   @spec constraints(t()) :: constraints()
   def constraints({:array, _type}) do
     @array_constraints
@@ -806,6 +802,7 @@ defmodule Ash.Type do
     type.constraints()
   end
 
+  @doc "Returns `true` if the type should be cast in underlying queries"
   def cast_in_query?(type, constraints \\ [])
 
   def cast_in_query?({:array, type}, constraints) do
@@ -841,22 +838,33 @@ defmodule Ash.Type do
     type.dump_to_native(term, constraints)
   end
 
-  @spec cast_atomic_update(t(), term, constraints()) ::
+  @spec cast_atomic(t(), term, constraints()) ::
           {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
-  # not currently supported
-  def cast_atomic_update({:array, {:array, _}}, _term, _constraints),
+  def cast_atomic({:array, {:array, _}}, _term, _constraints),
     do: {:not_atomic, "cannot currently atomically update doubly nested arrays"}
 
-  def cast_atomic_update({:array, type}, term, constraints) do
+  def cast_atomic({:array, type}, term, constraints) do
     type = get_type(type)
 
-    type.cast_atomic_update_array(term, item_constraints(constraints))
+    with {:ok, value} <- maybe_cast_input({:array, type}, term, constraints) do
+      type.cast_atomic_array(value, item_constraints(constraints))
+    end
   end
 
-  def cast_atomic_update(type, term, constraints) do
+  def cast_atomic(type, term, constraints) do
     type = get_type(type)
 
-    type.cast_atomic_update(term, constraints)
+    with {:ok, value} <- maybe_cast_input(type, term, constraints) do
+      type.cast_atomic(value, constraints)
+    end
+  end
+
+  defp maybe_cast_input(type, term, constraints) do
+    if Ash.Expr.expr?(term) do
+      {:ok, term}
+    else
+      Ash.Type.cast_input(type, term, constraints)
+    end
   end
 
   @doc """
@@ -903,7 +911,11 @@ defmodule Ash.Type do
     type.equal?(left, right)
   end
 
-  @spec include_source(t(), Ash.Changeset.t() | Ash.Query.t(), constraints()) :: constraints()
+  @spec include_source(
+          t(),
+          Ash.Changeset.t() | Ash.Query.t() | Ash.ActionInput.t(),
+          constraints()
+        ) :: constraints()
   def include_source({:array, type}, changeset_or_query, constraints) do
     Keyword.put(
       constraints,
@@ -1002,6 +1014,13 @@ defmodule Ash.Type do
     end)
   end
 
+  @doc """
+  Gets the load rewrites for a given type, load, calculation and path.
+
+  This is used for defining types that support a nested load statement.
+  See the embedded type and union type implementations for examples of how
+  to use this.
+  """
   def get_rewrites({:array, type}, merged_load, calculation, path, constraints) do
     get_rewrites(type, merged_load, calculation, path, constraints[:items] || [])
   end
@@ -1011,6 +1030,13 @@ defmodule Ash.Type do
     type.get_rewrites(merged_load, calculation, path, constraints)
   end
 
+  @doc """
+  Applies rewrites to a given value.
+
+  This is used for defining types that support a nested load statement.
+  See the embedded type and union type implementations for examples of how
+  to use this.
+  """
   def rewrite(_type, nil, _rewrites, _constraints), do: nil
   def rewrite(_type, [], _rewrites, _constraints), do: []
 
@@ -1060,6 +1086,7 @@ defmodule Ash.Type do
 
   def splicing_nil_values(value, callback), do: callback.(value)
 
+  @doc "Returns true if the type supports nested loads"
   @spec can_load?(t(), Keyword.t()) :: boolean
   def can_load?(type, constraints \\ [])
   def can_load?({:array, type}, constraints), do: can_load?(type, item_constraints(constraints))
@@ -1069,8 +1096,8 @@ defmodule Ash.Type do
     type.can_load?(constraints)
   end
 
+  @doc "Prepares a given array of values for an attribute change. Runs before casting."
   @spec prepare_change_array?(t()) :: boolean
-
   def prepare_change_array?({:array, type}),
     do: prepare_change_array?(type)
 
@@ -1079,6 +1106,7 @@ defmodule Ash.Type do
     type.prepare_change_array?()
   end
 
+  @doc "Handles the change of a given array of values for an attribute change. Runs after casting."
   @spec handle_change_array?(t()) :: boolean
   def handle_change_array?({:array, type}),
     do: handle_change_array?(type)
@@ -1089,7 +1117,7 @@ defmodule Ash.Type do
   end
 
   @doc """
-  Determines if a type can be compared using ==
+  Determines if a type can be compared using the `==` operator.
   """
   @spec simple_equality?(t()) :: boolean
   def simple_equality?({:array, type}), do: simple_equality?(type)
@@ -1246,7 +1274,7 @@ defmodule Ash.Type do
               errors =
                 keyword
                 |> List.wrap()
-                |> Ash.Error.flatten_preserving_keywords()
+                |> Ash.Helpers.flatten_preserving_keywords()
                 |> Enum.map(fn
                   message when is_binary(message) ->
                     [message: message, index: index, path: [index]]
@@ -1294,7 +1322,7 @@ defmodule Ash.Type do
                 errors =
                   keyword
                   |> List.wrap()
-                  |> Ash.Error.flatten_preserving_keywords()
+                  |> Ash.Helpers.flatten_preserving_keywords()
                   |> Enum.map(fn
                     string when is_binary(string) ->
                       [message: string, index: index]
@@ -1351,15 +1379,15 @@ defmodule Ash.Type do
       end
 
       @impl true
-      def cast_atomic_update(new_value, constraints) do
-        {:atomic, new_value}
+      def cast_atomic(_new_value, _constraints) do
+        {:not_atomic, "Type `#{inspect(__MODULE__)}` does not support atomic updates"}
       end
 
       @impl true
-      def cast_atomic_update_array(new_value, constraints) do
+      def cast_atomic_array(new_value, constraints) do
         new_value
         |> Enum.reduce_while({:atomic, []}, fn val, {:atomic, vals} ->
-          case cast_atomic_update(val, constraints) do
+          case cast_atomic(val, constraints) do
             {:atomic, atomic} ->
               {:cont, {:atomic, [atomic | vals]}}
 
@@ -1383,8 +1411,8 @@ defmodule Ash.Type do
                      include_source: 2,
                      describe: 1,
                      generator: 1,
-                     cast_atomic_update: 2,
-                     cast_atomic_update_array: 2,
+                     cast_atomic: 2,
+                     cast_atomic_array: 2,
                      cast_input_array: 2,
                      dump_to_native_array: 2,
                      dump_to_embedded: 2,
@@ -1588,7 +1616,7 @@ defmodule Ash.Type do
         array_constraints = array_constraints(type)
 
         with {:ok, new_constraints} <-
-               Spark.OptionsHelpers.validate(
+               Spark.Options.validate(
                  Keyword.delete(constraints || [], :items),
                  Keyword.delete(array_constraints, :items)
                ),
@@ -1599,7 +1627,7 @@ defmodule Ash.Type do
       type ->
         schema = constraints(type)
 
-        case Spark.OptionsHelpers.validate(constraints, schema) do
+        case Spark.Options.validate(constraints, schema) do
           {:ok, constraints} ->
             validate_none_reserved(constraints, type)
 

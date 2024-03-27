@@ -1,6 +1,7 @@
 defmodule Ash.Test.Support.PolicyComplex.Post do
   @moduledoc false
   use Ash.Resource,
+    domain: Ash.Test.Support.PolicyComplex.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [
       Ash.Policy.Authorizer
@@ -29,12 +30,14 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
     uuid_primary_key(:id)
 
     attribute :text, :string do
+      public?(true)
       allow_nil?(false)
     end
   end
 
   actions do
-    defaults [:update, :destroy]
+    default_accept :*
+    defaults [:destroy, update: :*]
 
     read :read do
       primary? true
@@ -47,24 +50,33 @@ defmodule Ash.Test.Support.PolicyComplex.Post do
   end
 
   aggregates do
-    count :count_of_comments, :comments
+    count :count_of_comments, :comments do
+      public? true
+    end
 
     count :count_of_commenters, [:comments, :author] do
+      public? true
       uniq? true
     end
   end
 
   calculations do
-    calculate :count_of_comments_calc, :integer, expr(count_of_comments)
+    calculate :count_of_comments_calc, :integer, expr(count_of_comments) do
+      public?(true)
+    end
   end
 
   code_interface do
-    define_for Ash.Test.Support.PolicyComplex.Api
     define :create, args: [:text]
   end
 
   relationships do
-    belongs_to(:author, Ash.Test.Support.PolicyComplex.User)
-    has_many :comments, Ash.Test.Support.PolicyComplex.Comment
+    belongs_to :author, Ash.Test.Support.PolicyComplex.User do
+      public?(true)
+    end
+
+    has_many :comments, Ash.Test.Support.PolicyComplex.Comment do
+      public?(true)
+    end
   end
 end

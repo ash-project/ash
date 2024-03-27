@@ -2,6 +2,8 @@ defmodule Ash.Test.Notifier.PubSubTest do
   @moduledoc false
   use ExUnit.Case, async: false
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule PubSub do
     def broadcast(topic, event, notification) do
       send(
@@ -14,6 +16,7 @@ defmodule Ash.Test.Notifier.PubSubTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       notifiers: [
         Ash.Notifier.PubSub
@@ -24,9 +27,9 @@ defmodule Ash.Test.Notifier.PubSubTest do
       prefix "post"
 
       publish :destroy, ["foo", :id]
-      publish :update, ["foo", :id]
-      publish :update, ["bar", :name], event: "name_change"
-      publish :update_pkey, ["foo", :_pkey]
+      publish :update, ["foo", :id], previous_values?: true
+      publish :update, ["bar", :name], event: "name_change", previous_values?: true
+      publish :update_pkey, ["foo", :_pkey], previous_values?: true
     end
 
     ets do
@@ -34,20 +37,24 @@ defmodule Ash.Test.Notifier.PubSubTest do
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
       update :update_pkey
     end
 
     attributes do
       uuid_primary_key :id, writable?: true
 
-      attribute :name, :string
+      attribute :name, :string do
+        public?(true)
+      end
     end
   end
 
   defmodule User do
     @moduledoc false
     use Ash.Resource,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       notifiers: [
         Ash.Notifier.PubSub
@@ -66,31 +73,16 @@ defmodule Ash.Test.Notifier.PubSubTest do
     end
 
     actions do
-      defaults [:create]
+      default_accept :*
+      defaults create: :*
     end
 
     attributes do
       uuid_primary_key :id
 
-      attribute :name, :string
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Post
-      entry User
-    end
-  end
-
-  defmodule Api do
-    use Ash.Api
-
-    resources do
-      registry Registry
+      attribute :name, :string do
+        public?(true)
+      end
     end
   end
 
@@ -103,10 +95,10 @@ defmodule Ash.Test.Notifier.PubSubTest do
   test "publishing a message with a change value" do
     post =
       Post
-      |> Ash.Changeset.new(%{})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
 
-    Api.destroy!(post)
+    Ash.destroy!(post)
 
     message = "post:foo:#{post.id}"
     assert_receive {:broadcast, ^message, "destroy", %Ash.Notifier.Notification{}}
@@ -115,10 +107,10 @@ defmodule Ash.Test.Notifier.PubSubTest do
   test "from is the pid that sent the message" do
     post =
       Post
-      |> Ash.Changeset.new(%{})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
 
-    Api.destroy!(post)
+    Ash.destroy!(post)
 
     message = "post:foo:#{post.id}"
     pid = self()
@@ -128,10 +120,10 @@ defmodule Ash.Test.Notifier.PubSubTest do
   test "notification_metadata is included" do
     post =
       Post
-      |> Ash.Changeset.new(%{})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
 
-    Api.destroy!(post, notification_metadata: %{foo: :bar})
+    Ash.destroy!(post, notification_metadata: %{foo: :bar})
 
     message = "post:foo:#{post.id}"
 
@@ -142,12 +134,12 @@ defmodule Ash.Test.Notifier.PubSubTest do
   test "publishing a message with multiple matches/changes" do
     post =
       Post
-      |> Ash.Changeset.new(%{name: "ted"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{name: "ted"})
+      |> Ash.create!()
 
     post
-    |> Ash.Changeset.new(%{name: "joe"})
-    |> Api.update!()
+    |> Ash.Changeset.for_update(:update, %{name: "joe"})
+    |> Ash.update!()
 
     message = "post:foo:#{post.id}"
     assert_receive {:broadcast, ^message, "update", %Ash.Notifier.Notification{}}
@@ -161,14 +153,14 @@ defmodule Ash.Test.Notifier.PubSubTest do
   test "publishing a message with a pkey matcher" do
     post =
       Post
-      |> Ash.Changeset.new(%{name: "ted"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{name: "ted"})
+      |> Ash.create!()
 
     new_id = Ash.UUID.generate()
 
     post
-    |> Ash.Changeset.new(%{id: new_id})
-    |> Api.update!(action: :update_pkey)
+    |> Ash.Changeset.for_update(:update, %{id: new_id})
+    |> Ash.update!(action: :update_pkey)
 
     message = "post:foo:#{post.id}"
     assert_receive {:broadcast, ^message, "update_pkey", %Ash.Notifier.Notification{}}
@@ -180,8 +172,8 @@ defmodule Ash.Test.Notifier.PubSubTest do
   test "publishing a message with a different delimiter" do
     user =
       User
-      |> Ash.Changeset.new(%{name: "Dave"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{name: "Dave"})
+      |> Ash.create!()
 
     message = "users.#{user.id}.created"
     assert_receive {:broadcast, ^message, "create", %Ash.Notifier.Notification{}}

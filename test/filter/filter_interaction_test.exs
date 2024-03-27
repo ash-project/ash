@@ -5,69 +5,79 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
   import Ash.Test
 
   alias Ash.DataLayer.Mnesia
+  alias Ash.Test.Domain, as: Domain
 
   require Ash.Query
 
   defmodule Profile do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
-      attribute(:bio, :string)
+      attribute(:bio, :string, public?: true)
     end
 
     relationships do
-      belongs_to(:user, Ash.Test.Filter.FilterInteractionTest.User)
+      belongs_to :user, Ash.Test.Filter.FilterInteractionTest.User do
+        public?(true)
+      end
     end
   end
 
   defmodule User do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
-      attribute(:name, :string)
-      attribute(:allow_second_author, :boolean)
+      attribute(:name, :string, public?: true)
+      attribute(:allow_second_author, :boolean, public?: true)
     end
 
     relationships do
       has_many(:posts, Ash.Test.Filter.FilterInteractionTest.Post,
+        public?: true,
         destination_attribute: :author_id
       )
 
       has_many(:second_posts, Ash.Test.Filter.FilterInteractionTest.Post,
+        public?: true,
         destination_attribute: :author_id
       )
 
-      has_one(:profile, Profile, destination_attribute: :user_id)
+      has_one(:profile, Profile, public?: true, destination_attribute: :user_id)
     end
   end
 
   defmodule PostLink do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     relationships do
       belongs_to(:source_post, Ash.Test.Filter.FilterInteractionTest.Post,
+        public?: true,
         primary_key?: true,
         allow_nil?: false
       )
 
       belongs_to(:destination_post, Ash.Test.Filter.FilterInteractionTest.Post,
+        public?: true,
         primary_key?: true,
         allow_nil?: false
       )
@@ -76,26 +86,29 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Mnesia
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
-      attribute(:title, :string)
-      attribute(:contents, :string)
-      attribute(:points, :integer)
+      attribute(:title, :string, public?: true)
+      attribute(:contents, :string, public?: true)
+      attribute(:points, :integer, public?: true)
     end
 
     relationships do
       belongs_to(:author, User,
+        public?: true,
         destination_attribute: :id,
         source_attribute: :author_id
       )
 
       many_to_many(:related_posts, __MODULE__,
+        public?: true,
         through: PostLink,
         source_attribute_on_join_resource: :source_post_id,
         destination_attribute_on_join_resource: :destination_post_id
@@ -103,32 +116,9 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
     end
   end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Post)
-      entry(User)
-      entry(Profile)
-      entry(PostLink)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
-    end
-  end
-
-  import Ash.Changeset
-
   setup do
     capture_log(fn ->
-      Mnesia.start(Api)
+      Mnesia.start(Domain, [Post, PostLink])
     end)
 
     on_exit(fn ->
@@ -142,64 +132,64 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
   test "mnesia data layer sanity test" do
     post =
       Post
-      |> new(%{title: "best"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{title: "best"})
+      |> Ash.create!()
       |> strip_metadata()
 
-    assert [^post] = strip_metadata(Api.read!(Post))
+    assert [^post] = strip_metadata(Ash.read!(Post))
 
-    post |> new(%{title: "worst"}) |> Api.update!()
+    post |> Ash.Changeset.for_update(:update, %{title: "worst"}) |> Ash.update!()
 
     new_post = %{post | title: "worst"}
 
-    assert [^new_post] = strip_metadata(Api.read!(Post))
+    assert [^new_post] = strip_metadata(Ash.read!(Post))
 
-    Api.destroy!(post)
+    Ash.destroy!(post)
 
-    assert [] = Api.read!(Post)
+    assert [] = Ash.read!(Post)
   end
 
   describe "cross data layer filtering" do
     test "it properly filters with a simple filter" do
       author =
         User
-        |> new(%{name: "best author"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{name: "best author"})
+        |> Ash.create!()
 
       post1 =
         Post
-        |> new(%{title: "best"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "best"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.create!()
 
       post1_id = post1.id
 
       Post
-      |> new(%{title: "worst"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{title: "worst"})
+      |> Ash.create!()
 
       query =
         Post
         |> Ash.Query.filter(author.name == "best author")
 
-      assert [%{id: ^post1_id}] = Api.read!(query)
+      assert [%{id: ^post1_id}] = Ash.read!(query)
     end
 
     test "parallelizable filtering of related resources with a data layer that cannot join" do
       post2 =
         Post
-        |> new(%{title: "two"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "two"})
+        |> Ash.create!()
 
       Post
-      |> new(%{title: "three"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{title: "three"})
+      |> Ash.create!()
 
       post1 =
         Post
-        |> new(%{title: "one"})
-        |> manage_relationship(:related_posts, [post2], type: :append_and_remove)
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "one"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [post2], type: :append_and_remove)
+        |> Ash.create!()
 
       query =
         Post
@@ -207,28 +197,30 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
       post1_id = post1.id
 
-      assert [%{id: ^post1_id}] = Api.read!(query)
+      assert [%{id: ^post1_id}] = Ash.read!(query)
     end
 
     test "parallelizable filter with filtered loads" do
       post2 =
         Post
-        |> new(%{title: "two"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "two"})
+        |> Ash.create!()
 
       post3 =
         Post
-        |> new(%{title: "three"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "three"})
+        |> Ash.create!()
 
       post1 =
         Post
-        |> new(%{title: "one"})
-        |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "one"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [post2, post3],
+          type: :append_and_remove
+        )
+        |> Ash.create!()
 
       post2
-      |> Api.load!(:related_posts)
+      |> Ash.load!(:related_posts)
 
       posts_query =
         Post
@@ -243,33 +235,35 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
       post3_id = post3.id
 
-      assert [%{id: ^post1_id, related_posts: [%{id: ^post3_id}]}] = Api.read!(query)
+      assert [%{id: ^post1_id, related_posts: [%{id: ^post3_id}]}] = Ash.read!(query)
     end
 
     test "exists/2 in the same data layer" do
       post2 =
         Post
-        |> new(%{title: "two"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "two"})
+        |> Ash.create!()
 
       post3 =
         Post
-        |> new(%{title: "three"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "three"})
+        |> Ash.create!()
 
       post1 =
         Post
-        |> new(%{title: "one"})
-        |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "one"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [post2, post3],
+          type: :append_and_remove
+        )
+        |> Ash.create!()
 
       Post
-      |> new(%{title: "four"})
-      |> manage_relationship(:related_posts, [post3], type: :append_and_remove)
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{title: "four"})
+      |> Ash.Changeset.manage_relationship(:related_posts, [post3], type: :append_and_remove)
+      |> Ash.create!()
 
       post2
-      |> Api.load!(:related_posts)
+      |> Ash.load!(:related_posts)
 
       query =
         Post
@@ -277,36 +271,36 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
 
       post1_id = post1.id
 
-      assert [%{id: ^post1_id}] = Api.read!(query)
+      assert [%{id: ^post1_id}] = Ash.read!(query)
     end
 
     test "exists/2 across data layers" do
       author =
         User
-        |> new(%{name: "best author"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{name: "best author"})
+        |> Ash.create!()
 
       author2 =
         User
-        |> new(%{name: "worst author"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{name: "worst author"})
+        |> Ash.create!()
 
       post1 =
         Post
-        |> new(%{title: "best"})
-        |> manage_relationship(:author, author, type: :append_and_remove)
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "best"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.create!()
 
       post1_id = post1.id
 
       Post
-      |> new(%{title: "worst"})
-      |> manage_relationship(:author, author2, type: :append_and_remove)
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{title: "worst"})
+      |> Ash.Changeset.manage_relationship(:author, author2, type: :append_and_remove)
+      |> Ash.create!()
 
       query = Ash.Query.filter(Post, exists(author, contains(name, "best")))
 
-      assert [%{id: ^post1_id}] = Api.read!(query)
+      assert [%{id: ^post1_id}] = Ash.read!(query)
     end
   end
 end

@@ -2,16 +2,27 @@ defmodule Ash.Test.ErrorTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule TestError do
-    use Ash.Error.Exception
-    def_ash_error([:some_field])
+    use Splode.Error, fields: [:some_field], class: :unknown
+
+    def message(_), do: "WHAT"
+  end
+
+  defmodule SpecialError do
+    @moduledoc "Used when a flow has been halted for some reason"
+    use Splode.Error, fields: [], class: :special
+
+    def message(_), do: "Special error"
   end
 
   defmodule TestResource do
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -21,17 +32,19 @@ defmodule Ash.Test.ErrorTest do
 
   describe "to_error_class" do
     test "returns exception if it is a map/struct with class: :special" do
-      assert Ash.Error.to_error_class(%{class: :special}, []) == %{class: :special}
+      assert %{class: :special} =
+               Ash.Error.to_error_class(SpecialError.exception([]), [])
     end
 
     test "returns exception if it is a map/struct with class: :special wrapped in a list" do
-      assert Ash.Error.to_error_class([%{class: :special}], []) == %{class: :special}
+      assert [%{class: :special}] =
+               Ash.Error.to_error_class([SpecialError.exception([])], [])
     end
 
     test "returns exception if it is a map/struct with class: :special wrapped in an Invalid error" do
-      err = Ash.Error.Invalid.exception(errors: [%{class: :special}])
+      err = Ash.Error.Invalid.exception(errors: [SpecialError.exception([])])
 
-      assert Ash.Error.to_error_class(err, []) == %{class: :special}
+      assert %{class: :special} = Ash.Error.to_error_class(err, [])
     end
 
     test "returns chosen error if the value argument is a list of values" do
@@ -55,7 +68,7 @@ defmodule Ash.Test.ErrorTest do
     end
 
     test "returns chosen error if the value argument is a list of errors" do
-      err1 = Ash.Error.Unknown.UnknownError.exception(error: :an_error)
+      err1 = Ash.Error.Unknown.UnknownError.exception(error: :an_error, splode: Ash.Error)
       err2 = Ash.Error.Invalid.exception(errors: [:more, :errors])
 
       result = Ash.Error.to_error_class([err1, err2], [])
@@ -70,72 +83,72 @@ defmodule Ash.Test.ErrorTest do
     test "has a context field populated when there is a single error" do
       test_error = TestError.exception([])
 
-      err = Ash.Error.to_error_class(test_error, error_context: "some context")
+      err = Ash.Error.to_error_class(test_error, bread_crumbs: "some context")
 
-      assert err.error_context == ["some context"]
+      assert err.bread_crumbs == ["some context"]
     end
 
     test "has a context field populated when there is a list of errors" do
       test_error1 = TestError.exception(some_field: :a)
       test_error2 = TestError.exception(some_field: :b)
 
-      err = Ash.Error.to_error_class([test_error1, test_error2], error_context: "some context")
+      err = Ash.Error.to_error_class([test_error1, test_error2], bread_crumbs: "some context")
 
-      assert err.error_context == ["some context"]
+      assert err.bread_crumbs == ["some context"]
     end
 
-    test "accumulates error_context field in child errors" do
-      error1 = Ash.Error.to_ash_error("whoops!", nil, error_context: "some context")
-      error2 = Ash.Error.to_ash_error("whoops, again!!", nil, error_context: "some other context")
+    test "accumulates bread_crumbs field in child errors" do
+      error1 = Ash.Error.to_ash_error("whoops!", nil, bread_crumbs: "some context")
+      error2 = Ash.Error.to_ash_error("whoops, again!!", nil, bread_crumbs: "some other context")
 
       error_class =
-        Ash.Error.to_error_class([error1, error2], error_context: "some higher context")
+        Ash.Error.to_error_class([error1, error2], bread_crumbs: "some higher context")
 
       child_error_1 = Enum.find(error_class.errors, fn err -> err.error == "whoops!" end)
-      assert child_error_1.error_context == ["some higher context", "some context"]
+      assert child_error_1.bread_crumbs == ["some higher context", "some context"]
 
       child_error_2 = Enum.find(error_class.errors, fn err -> err.error == "whoops, again!!" end)
-      assert child_error_2.error_context == ["some higher context", "some other context"]
+      assert child_error_2.bread_crumbs == ["some higher context", "some other context"]
     end
 
-    test "accumulates error_context field in child errors who have no error_context of their own" do
-      error1 = Ash.Error.to_ash_error("whoops!", nil, error_context: "some context")
+    test "accumulates bread_crumbs field in child errors who have no bread_crumbs of their own" do
+      error1 = Ash.Error.to_ash_error("whoops!", nil, bread_crumbs: "some context")
       error2 = Ash.Error.to_ash_error("whoops, again!!", nil)
 
       error_class =
-        Ash.Error.to_error_class([error1, error2], error_context: "some higher context")
+        Ash.Error.to_error_class([error1, error2], bread_crumbs: "some higher context")
 
       child_error_1 = Enum.find(error_class.errors, fn err -> err.error == "whoops!" end)
-      assert child_error_1.error_context == ["some higher context", "some context"]
+      assert child_error_1.bread_crumbs == ["some higher context", "some context"]
 
       child_error_2 = Enum.find(error_class.errors, fn err -> err.error == "whoops, again!!" end)
-      assert child_error_2.error_context == ["some higher context"]
+      assert child_error_2.bread_crumbs == ["some higher context"]
     end
 
-    test "leaves child error contexts unchanged if no error_context field provided" do
-      error1 = Ash.Error.to_ash_error("whoops!", nil, error_context: "some context")
-      error2 = Ash.Error.to_ash_error("whoops, again!!", nil, error_context: "some other context")
+    test "leaves child error contexts unchanged if no bread_crumbs field provided" do
+      error1 = Ash.Error.to_ash_error("whoops!", nil, bread_crumbs: "some context")
+      error2 = Ash.Error.to_ash_error("whoops, again!!", nil, bread_crumbs: "some other context")
 
       error_class = Ash.Error.to_error_class([error1, error2])
 
       child_error_1 = Enum.find(error_class.errors, fn err -> err.error == "whoops!" end)
-      assert child_error_1.error_context == ["some context"]
+      assert child_error_1.bread_crumbs == ["some context"]
 
       child_error_2 = Enum.find(error_class.errors, fn err -> err.error == "whoops, again!!" end)
-      assert child_error_2.error_context == ["some other context"]
+      assert child_error_2.bread_crumbs == ["some other context"]
     end
 
     test "error message contains error context breadcrumbs" do
-      error1 = Ash.Error.to_ash_error("whoops!", nil, error_context: "some context")
-      error2 = Ash.Error.to_ash_error("whoops, again!!", nil, error_context: "some other context")
+      error1 = Ash.Error.to_ash_error("whoops!", nil, bread_crumbs: "some context")
+      error2 = Ash.Error.to_ash_error("whoops, again!!", nil, bread_crumbs: "some other context")
 
       error_class =
-        Ash.Error.to_error_class([error1, error2], error_context: "some higher context")
+        Ash.Error.to_error_class([error1, error2], bread_crumbs: "some higher context")
 
       error_message = Ash.Error.Unknown.message(error_class)
 
-      assert error_message =~ "Context: some higher context > some context"
-      assert error_message =~ "Context: some higher context > some other context"
+      assert error_message =~ "Bread Crumbs: some higher context > some context"
+      assert error_message =~ "Bread Crumbs: some higher context > some other context"
     end
 
     test "error message still renders when there's no error context" do
@@ -154,19 +167,19 @@ defmodule Ash.Test.ErrorTest do
 
       cs = Ash.Changeset.for_create(TestResource, :create)
 
-      err = Ash.Error.to_error_class(test_error, changeset: cs, error_context: "some context")
+      err = Ash.Error.to_error_class(test_error, changeset: cs, bread_crumbs: "some context")
 
-      assert err.error_context == ["some context"]
+      assert err.bread_crumbs == ["some context"]
 
       [cs_error] = err.changeset.errors
-      assert cs_error.error_context == ["some context"]
+      assert cs_error.bread_crumbs == ["some context"]
     end
 
     test "a changeset can be passed in directly" do
-      error1 = Ash.Error.to_ash_error("whoops!", nil, error_context: "some context")
+      error1 = Ash.Error.to_ash_error("whoops!", nil, bread_crumbs: "some context")
 
       error2 =
-        Ash.Error.to_ash_error("whoops, again!!", nil, error_context: "some other context")
+        Ash.Error.to_ash_error("whoops, again!!", nil, bread_crumbs: "some other context")
 
       cs = Ash.Changeset.for_create(TestResource, :create) |> Map.put(:errors, [error1, error2])
 
@@ -182,16 +195,16 @@ defmodule Ash.Test.ErrorTest do
                clean(Ash.Error.to_error_class([error1, error2], changeset: cs))
     end
 
-    test "accumulates error_context field in changeset's copy of error hierarchy" do
-      error1 = Ash.Error.to_ash_error("whoops!", nil, error_context: "some context")
-      error2 = Ash.Error.to_ash_error("whoops, again!!", nil, error_context: "some other context")
+    test "accumulates bread_crumbs field in changeset's copy of error hierarchy" do
+      error1 = Ash.Error.to_ash_error("whoops!", nil, bread_crumbs: "some context")
+      error2 = Ash.Error.to_ash_error("whoops, again!!", nil, bread_crumbs: "some other context")
 
       cs = Ash.Changeset.for_create(TestResource, :create)
 
       error_class =
         Ash.Error.to_error_class([error1, error2],
           changeset: cs,
-          error_context: "some higher context"
+          bread_crumbs: "some higher context"
         )
 
       cs_child_error_1 =
@@ -200,16 +213,16 @@ defmodule Ash.Test.ErrorTest do
       cs_child_error_2 =
         Enum.find(error_class.changeset.errors, fn err -> err.error == "whoops, again!!" end)
 
-      assert cs_child_error_1.error_context == ["some higher context", "some context"]
-      assert cs_child_error_2.error_context == ["some higher context", "some other context"]
+      assert cs_child_error_1.bread_crumbs == ["some higher context", "some context"]
+      assert cs_child_error_2.bread_crumbs == ["some higher context", "some other context"]
     end
   end
 
   describe "to_ash_error" do
-    test "populates error_context field" do
-      error = Ash.Error.to_ash_error("whoops!", nil, error_context: "some context")
+    test "populates bread_crumbs field" do
+      error = Ash.Error.to_ash_error("whoops!", nil, bread_crumbs: "some context")
 
-      assert error.error_context == ["some context"]
+      assert error.bread_crumbs == ["some context"]
     end
   end
 

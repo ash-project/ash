@@ -59,7 +59,7 @@ defmodule Ash.Type.Keyword do
 
   A builtin type that can be referenced via `:keyword_list`
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
 
@@ -115,6 +115,15 @@ defmodule Ash.Type.Keyword do
       {:ok, Keyword.new(value)}
     else
       :error
+    end
+  end
+
+  @impl true
+  def cast_atomic(new_value, constraints) do
+    if constraints[:keys] do
+      {:not_atomic, "Keywords do not support atomic updates when using the `keys` constraint"}
+    else
+      {:atomic, new_value}
     end
   end
 

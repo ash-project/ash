@@ -15,6 +15,7 @@ defmodule Ash.Resource.Actions.Destroy do
     touches_resources: [],
     delay_global_validations?: false,
     skip_global_validations?: false,
+    notifiers: [],
     accept: nil,
     changes: [],
     reject: [],
@@ -28,6 +29,7 @@ defmodule Ash.Resource.Actions.Destroy do
           type: :destroy,
           name: atom,
           manual: module | nil,
+          notifiers: list(module),
           arguments: list(Ash.Resource.Actions.Argument.t()),
           require_atomic?: boolean,
           delay_global_validations?: boolean,
@@ -60,14 +62,14 @@ defmodule Ash.Resource.Actions.Destroy do
                   doc: """
                   Require that the update be atomic. Only relevant if `soft?` is set to `true`. This means that all changes and validations implement the `atomic` callback. See the guide on atomic updates for more.
                   """,
-                  default: false
+                  default: true
                 ]
               ]
-              |> Spark.OptionsHelpers.merge_schemas(
+              |> Spark.Options.merge(
                 @global_opts,
                 "Action Options"
               )
-              |> Spark.OptionsHelpers.merge_schemas(
+              |> Spark.Options.merge(
                 @create_update_opts,
                 "Create/Update Options (for soft destroys)"
               )

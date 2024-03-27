@@ -2,8 +2,11 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule Author do
     use Ash.Resource,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     attributes do
@@ -11,7 +14,8 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     end
 
     actions do
-      defaults [:create, :read]
+      default_accept :*
+      defaults [:read, create: :*]
 
       create :create_with_account do
         argument :account, :map
@@ -20,12 +24,15 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     end
 
     relationships do
-      belongs_to :account, Ash.Test.Resource.Changes.RelateActorTest.Account
+      belongs_to :account, Ash.Test.Resource.Changes.RelateActorTest.Account do
+        public?(true)
+      end
     end
   end
 
   defmodule Account do
     use Ash.Resource,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     attributes do
@@ -33,30 +40,39 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     end
 
     actions do
-      defaults [:create, :read]
+      default_accept :*
+      defaults [:read, create: :*]
     end
   end
 
   defmodule Post do
     use Ash.Resource,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     attributes do
       uuid_primary_key :id
-      attribute :text, :string
+
+      attribute :text, :string do
+        public?(true)
+      end
     end
 
     relationships do
       belongs_to :author, Ash.Test.Resource.Changes.RelateActorTest.Author do
+        public?(true)
         allow_nil? true
       end
 
       belongs_to :account, Ash.Test.Resource.Changes.RelateActorTest.Account do
+        public?(true)
         allow_nil? true
       end
     end
 
     actions do
+      default_accept :*
+
       create :create_with_actor do
         change relate_actor(:author)
       end
@@ -71,44 +87,25 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     end
   end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Account
-      entry Author
-      entry Post
-    end
-  end
-
-  defmodule Api do
-    use Ash.Api
-
-    resources do
-      registry Registry
-    end
-  end
-
   test "relate_actor change with defaults work" do
     actor =
       Author
       |> Ash.Changeset.for_create(:create)
-      |> Api.create!()
+      |> Ash.create!()
 
     params = [text: "foo"]
 
     post_with =
       Post
       |> Ash.Changeset.for_create(:create_with_actor, params, actor: actor)
-      |> Api.create!()
+      |> Ash.create!()
 
     assert post_with.author_id == actor.id
 
     {:error, changeset} =
       Post
       |> Ash.Changeset.for_create(:create_with_actor, params, actor: nil)
-      |> Api.create()
+      |> Ash.create()
 
     assert changeset.errors |> Enum.count() == 1
   end
@@ -117,17 +114,17 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     account =
       Account
       |> Ash.Changeset.for_create(:create, %{})
-      |> Api.create!()
+      |> Ash.create!()
 
     actor =
       Author
       |> Ash.Changeset.for_create(:create_with_account, %{account: account})
-      |> Api.create!()
+      |> Ash.create!()
 
     post =
       Post
       |> Ash.Changeset.for_create(:create_with_actor_field, %{text: "foo"}, actor: actor)
-      |> Api.create!()
+      |> Ash.create!()
 
     assert post.account_id == account.id
   end
@@ -136,13 +133,13 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     actor =
       Author
       |> Ash.Changeset.for_create(:create)
-      |> Api.create!()
-      |> Api.load!(:account)
+      |> Ash.create!()
+      |> Ash.load!(:account)
 
     {:error, changeset} =
       Post
       |> Ash.Changeset.for_create(:create_with_actor_field, %{text: "foo"}, actor: actor)
-      |> Api.create()
+      |> Ash.create()
 
     assert changeset.errors |> Enum.count() == 1
   end
@@ -151,21 +148,21 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     actor =
       Author
       |> Ash.Changeset.for_create(:create)
-      |> Api.create!()
+      |> Ash.create!()
 
     params = [text: "foo"]
 
     post_with =
       Post
       |> Ash.Changeset.for_create(:create_possibly_without_actor, params, actor: actor)
-      |> Api.create!()
+      |> Ash.create!()
 
     assert post_with.author_id == actor.id
 
     post_without =
       Post
       |> Ash.Changeset.for_create(:create_possibly_without_actor, params, actor: nil)
-      |> Api.create!()
+      |> Ash.create!()
 
     assert is_nil(post_without.author_id)
   end

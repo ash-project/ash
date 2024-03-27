@@ -1,10 +1,10 @@
 defmodule Ash.NotLoaded do
-  @moduledoc "Used when an aggregate or relationship hasn't been loaded."
+  @moduledoc "Used when a field hasn't been loaded or selected."
   defstruct [:field, :type]
 
   @type t :: %__MODULE__{
           field: atom,
-          type: :relationship | :calculation | :aggregate
+          type: :relationship | :calculation | :aggregate | :attribute
         }
 
   defimpl Inspect do

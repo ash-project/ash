@@ -51,13 +51,21 @@ defmodule Ash.Policy.Check.Builtins do
   end
 
   @doc """
-  This check is true when the action name matches the provided action name.
+  This check is true when the action name matches the provided action name or names.
 
   This is a very common pattern, allowing action-specific policies.
   """
   @spec action(atom | list(atom)) :: Ash.Policy.Check.ref()
   def action(action) do
     {Ash.Policy.Check.Action, action: action}
+  end
+
+  @doc """
+  This check is true when the resource name matches the provided resource name or names.
+  """
+  @spec resource(atom | list(atom)) :: Ash.Policy.Check.ref()
+  def resource(resource) do
+    {Ash.Policy.Check.Resource, resource: resource}
   end
 
   @doc """
@@ -193,15 +201,6 @@ defmodule Ash.Policy.Check.Builtins do
       Ash.Policy.Check.RelatesToActorVia,
       relationship_path: List.wrap(relationship_path), field: field
     }
-  end
-
-  @doc """
-  This check is true when a field on the record matches a specific filter.
-  """
-  @deprecated "Use an `expr/1` check instead, i.e `expr(attribute == value)`"
-  @spec attribute(atom, any()) :: Ash.Policy.Check.ref()
-  def attribute(attribute, filter) do
-    {Ash.Policy.Check.Attribute, attribute: attribute, filter: filter}
   end
 
   @doc """

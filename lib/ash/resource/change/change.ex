@@ -84,16 +84,27 @@ defmodule Ash.Resource.Change do
     {:error, "Expected a module and opts, got: #{inspect(other)}"}
   end
 
-  @type context :: %{
-          optional(:actor) => Ash.Resource.record() | nil,
-          optional(:tenant) => term(),
-          optional(:authorize?) => boolean() | nil,
-          optional(:tracer) => Ash.Tracer.t() | [Ash.Tracer.t()] | nil,
-          optional(any) => any
-        }
+  defmodule Context do
+    @moduledoc """
+    The context for a change.
+
+    This is passed into various callbacks for `Ash.Resource.Change`.
+    """
+    defstruct [:actor, :tenant, :authorize?, :tracer, bulk?: false]
+
+    @type t :: %__MODULE__{
+            actor: Ash.Resource.record() | nil,
+            tenant: term(),
+            authorize?: boolean() | nil,
+            tracer: Ash.Tracer.t() | [Ash.Tracer.t()] | nil,
+            bulk?: boolean
+          }
+  end
+
+  @type context :: Context.t()
 
   @callback init(opts :: Keyword.t()) :: {:ok, Keyword.t()} | {:error, term}
-  @callback change(changeset :: Ash.Changeset.t(), opts :: Keyword.t(), context :: context) ::
+  @callback change(changeset :: Ash.Changeset.t(), opts :: Keyword.t(), context :: Context.t()) ::
               Ash.Changeset.t()
 
   @doc """
@@ -102,7 +113,7 @@ defmodule Ash.Resource.Change do
   @callback batch_change(
               changesets :: [Ash.Changeset.t()],
               opts :: Keyword.t(),
-              context :: context
+              context :: Context.t()
             ) ::
               Enumerable.t(Ash.Changeset.t() | Ash.Notifier.Notification.t())
 
@@ -112,7 +123,7 @@ defmodule Ash.Resource.Change do
   @callback before_batch(
               changesets :: [Ash.Changeset.t()],
               opts :: Keyword.t(),
-              context :: context
+              context :: Context.t()
             ) ::
               Enumerable.t(Ash.Changeset.t() | Ash.Notifier.Notification.t())
 
@@ -122,7 +133,7 @@ defmodule Ash.Resource.Change do
   @callback after_batch(
               changesets_and_results :: [{Ash.Changeset.t(), Ash.Resource.record()}],
               opts :: Keyword.t(),
-              context :: context
+              context :: Context.t()
             ) ::
               Enumerable.t(
                 {:ok, Ash.Resource.record()}
@@ -130,9 +141,9 @@ defmodule Ash.Resource.Change do
                 | Ash.Notifier.Notification.t()
               )
 
-  @callback atomic(Ash.Changeset.t(), Keyword.t(), context()) ::
+  @callback atomic(Ash.Changeset.t(), Keyword.t(), Context.t()) ::
               {:ok, Ash.Changeset.t()}
-              | {:atomic, %{optional(atom()) => Ash.Expr.t()}}
+              | {:atomic, %{optional(atom()) => Ash.Expr.t() | {:atomic, Ash.Expr.t()}}}
               | {:atomic, Ash.Changeset.t(), %{optional(atom()) => Ash.Expr.t()}}
               | {:not_atomic, String.t()}
               | :ok
@@ -140,7 +151,7 @@ defmodule Ash.Resource.Change do
 
   @callback atomic?() :: boolean
 
-  @callback after_atomic(Ash.Changeset.t(), Keyword.t(), Ash.Resource.record(), context()) ::
+  @callback after_atomic(Ash.Changeset.t(), Keyword.t(), Ash.Resource.record(), Context.t()) ::
               {:ok, Ash.Resource.record()} | {:error, term()}
   @callback has_change?() :: boolean
 
@@ -155,7 +166,9 @@ defmodule Ash.Resource.Change do
     quote do
       @behaviour Ash.Resource.Change
       @before_compile Ash.Resource.Change
-      require Ash.Expr
+
+      import Ash.Expr
+      require Ash.Query
 
       @impl true
       def init(opts), do: {:ok, opts}

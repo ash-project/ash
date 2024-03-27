@@ -1,11 +1,11 @@
 defmodule Ash.Actions.Create.Bulk do
   @moduledoc false
-  @spec run(Ash.Api.t(), Ash.Resource.t(), atom(), Enumerable.t(map), Keyword.t()) ::
+  @spec run(Ash.Domain.t(), Ash.Resource.t(), atom(), Enumerable.t(map), Keyword.t()) ::
           :ok
           | {:ok, [Ash.Resource.record()]}
           | {:ok, [Ash.Resource.record()], [Ash.Notifier.Notification.t()]}
           | {:error, term}
-  def run(api, resource, action, inputs, opts) do
+  def run(domain, resource, action, inputs, opts) do
     action = Ash.Resource.Info.action(resource, action)
 
     if !action do
@@ -20,6 +20,11 @@ defmodule Ash.Actions.Create.Bulk do
     if opts[:return_stream?] && opts[:sorted?] do
       raise ArgumentError, "Cannot specify `sorted?: true` and `return_stream?: true` together"
     end
+
+    opts =
+      Keyword.put_new_lazy(opts, :select, fn ->
+        resource |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
+      end)
 
     if opts[:transaction] == :all &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
@@ -38,7 +43,7 @@ defmodule Ash.Actions.Create.Bulk do
       Ash.DataLayer.transaction(
         List.wrap(resource) ++ action.touches_resources,
         fn ->
-          do_run(api, resource, action, inputs, opts)
+          do_run(domain, resource, action, inputs, opts)
         end,
         opts[:timeout],
         %{
@@ -70,14 +75,14 @@ defmodule Ash.Actions.Create.Bulk do
           {:error, error}
       end
     else
-      api
+      domain
       |> do_run(resource, action, inputs, opts)
       |> handle_bulk_result(resource, action, opts)
     end
   end
 
-  def do_run(api, resource, action, inputs, opts) do
-    opts = Ash.Actions.Helpers.set_opts(opts, api)
+  def do_run(domain, resource, action, inputs, opts) do
+    opts = Ash.Actions.Helpers.set_opts(opts, domain)
 
     upsert? = opts[:upsert?] || action.upsert?
     upsert_fields = opts[:upsert_fields] || action.upsert_fields
@@ -87,7 +92,8 @@ defmodule Ash.Actions.Create.Bulk do
             "For bulk actions, `upsert_fields` must be specified if upsert? is set to true`"
     end
 
-    {_, opts} = Ash.Actions.Helpers.add_process_context(api, Ash.Changeset.new(resource), opts)
+    {_, opts} =
+      Ash.Actions.Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
 
     manual_action_can_bulk? =
       case action.manual do
@@ -110,7 +116,7 @@ defmodule Ash.Actions.Create.Bulk do
     ref = make_ref()
 
     lazy_matching_default_values = lazy_matching_default_values(resource)
-    base_changeset = base_changeset(resource, api, opts, action)
+    base_changeset = base_changeset(resource, domain, opts, action)
 
     all_changes =
       pre_template_all_changes(action, resource, action.type, base_changeset, opts[:actor])
@@ -140,7 +146,7 @@ defmodule Ash.Actions.Create.Bulk do
             )
             |> reject_and_maybe_store_errors(ref, opts)
             |> handle_batch(
-              api,
+              domain,
               resource,
               action,
               all_changes,
@@ -246,12 +252,12 @@ defmodule Ash.Actions.Create.Bulk do
   end
 
   defp pre_template(opts, changeset, actor) do
-    if Ash.Filter.template_references_argument?(opts) ||
-         Ash.Filter.template_references_context?(opts) do
+    if Ash.Expr.template_references_argument?(opts) ||
+         Ash.Expr.template_references_context?(opts) do
       opts
     else
       {:templated,
-       Ash.Filter.build_filter_from_template(
+       Ash.Expr.fill_template(
          opts,
          actor,
          %{},
@@ -260,10 +266,10 @@ defmodule Ash.Actions.Create.Bulk do
     end
   end
 
-  defp base_changeset(resource, api, opts, action) do
+  defp base_changeset(resource, domain, opts, action) do
     resource
     |> Ash.Changeset.new()
-    |> Map.put(:api, api)
+    |> Map.put(:domain, domain)
     |> Map.put(:context, %{
       private: %{
         upsert?: opts[:upsert?] || action.upsert? || false,
@@ -329,7 +335,7 @@ defmodule Ash.Actions.Create.Bulk do
 
   defp handle_batch(
          batch,
-         api,
+         domain,
          resource,
          action,
          all_changes,
@@ -359,7 +365,7 @@ defmodule Ash.Actions.Create.Bulk do
           fn ->
             do_handle_batch(
               batch,
-              api,
+              domain,
               resource,
               action,
               opts,
@@ -367,13 +373,6 @@ defmodule Ash.Actions.Create.Bulk do
               data_layer_can_bulk?,
               ref
             )
-            |> case do
-              {:error, error} ->
-                Ash.DataLayer.rollback(resource, error)
-
-              other ->
-                other
-            end
           end,
           opts[:timeout],
           %{
@@ -407,7 +406,7 @@ defmodule Ash.Actions.Create.Bulk do
     else
       do_handle_batch(
         batch,
-        api,
+        domain,
         resource,
         action,
         opts,
@@ -420,7 +419,7 @@ defmodule Ash.Actions.Create.Bulk do
 
   defp do_handle_batch(
          batch,
-         api,
+         domain,
          resource,
          action,
          opts,
@@ -451,7 +450,7 @@ defmodule Ash.Actions.Create.Bulk do
 
     batch =
       batch
-      |> authorize(api, opts)
+      |> authorize(opts)
       |> run_bulk_before_batches(
         changes,
         all_changes,
@@ -459,8 +458,6 @@ defmodule Ash.Actions.Create.Bulk do
         ref
       )
 
-    # TODO: We will likely need to store the changeset in record metadata after calling the
-    # data layer instead of passing this in, as this is a stale changeset
     changesets_by_index = index_changesets(batch)
 
     run_batch(
@@ -471,11 +468,11 @@ defmodule Ash.Actions.Create.Bulk do
       must_return_records?,
       must_return_records_for_changes?,
       data_layer_can_bulk?,
-      api,
+      domain,
       ref
     )
-    |> run_after_action_hooks(opts, api, ref, changesets_by_index)
-    |> process_results(changes, all_changes, opts, ref, changesets_by_index, api, resource)
+    |> run_after_action_hooks(opts, domain, ref, changesets_by_index)
+    |> process_results(changes, all_changes, opts, ref, changesets_by_index, domain, resource)
     |> then(fn stream ->
       if opts[:return_stream?] do
         stream
@@ -686,12 +683,17 @@ defmodule Ash.Actions.Create.Bulk do
     end)
     |> Enum.reduce(batch, fn {%{change: {module, change_opts}}, index}, batch ->
       if changes[index] == :all do
-        module.before_batch(batch, change_opts, %{
-          actor: opts[:actor],
-          tenant: opts[:tenant],
-          tracer: opts[:tracer],
-          authorize?: opts[:authorize?]
-        })
+        module.before_batch(
+          batch,
+          change_opts,
+          struct(Ash.Resource.Change.Context, %{
+            bulk?: true,
+            actor: opts[:actor],
+            tenant: opts[:tenant],
+            tracer: opts[:tracer],
+            authorize?: opts[:authorize?]
+          })
+        )
       else
         {matches, non_matches} =
           batch
@@ -704,12 +706,17 @@ defmodule Ash.Actions.Create.Bulk do
           end)
 
         before_batch_results =
-          module.before_batch(matches, change_opts, %{
-            actor: opts[:actor],
-            tenant: opts[:tenant],
-            tracer: opts[:tracer],
-            authorize?: opts[:authorize?]
-          })
+          module.before_batch(
+            matches,
+            change_opts,
+            struct(Ash.Resource.Change.Context, %{
+              bulk?: true,
+              actor: opts[:actor],
+              tenant: opts[:tenant],
+              tracer: opts[:tracer],
+              authorize?: opts[:authorize?]
+            })
+          )
 
         Enum.concat([before_batch_results, non_matches])
       end
@@ -781,11 +788,11 @@ defmodule Ash.Actions.Create.Bulk do
     end
   end
 
-  defp authorize(batch, api, opts) do
+  defp authorize(batch, opts) do
     if opts[:authorize?] do
       Enum.map(batch, fn changeset ->
         if changeset.valid? do
-          case api.can(changeset, opts[:actor],
+          case Ash.can(changeset, opts[:actor],
                  return_forbidden_error?: true,
                  run_queries?: false,
                  maybe_is: false,
@@ -856,7 +863,7 @@ defmodule Ash.Actions.Create.Bulk do
          must_return_records?,
          must_return_records_for_changes?,
          data_layer_can_bulk?,
-         api,
+         domain,
          ref
        ) do
     batch
@@ -934,18 +941,19 @@ defmodule Ash.Actions.Create.Bulk do
           end
 
         batch
-        |> Enum.group_by(&{&1.atomics, &1.filters})
+        |> Enum.group_by(&{&1.atomics, &1.filter})
         |> Enum.flat_map(fn {_atomics, batch} ->
           result =
             case action.manual do
               {mod, opts} ->
                 if function_exported?(mod, :bulk_create, 3) do
-                  mod.bulk_create(batch, opts, %{
+                  mod.bulk_create(batch, opts, %Ash.Resource.ManualCreate.Context{
                     actor: opts[:actor],
+                    select: opts[:select],
                     batch_size: opts[:batch_size],
                     authorize?: opts[:authorize?],
                     tracer: opts[:tracer],
-                    api: api,
+                    domain: domain,
                     upsert?: opts[:upsert?] || action.upsert?,
                     upsert_keys: upsert_keys,
                     upsert_fields:
@@ -959,9 +967,16 @@ defmodule Ash.Actions.Create.Bulk do
                     tenant: opts[:tenant]
                   })
                   |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
-                  |> Enum.flat_map(fn
-                    {:ok, result} ->
-                      [result]
+                  |> case do
+                    {:ok, results} ->
+                      results
+
+                    :ok ->
+                      if opts[:return_records?] do
+                        raise "`#{inspect(mod)}.bulk_create/3` returned :ok without a result when `return_records?` is true"
+                      else
+                        []
+                      end
 
                     {:error, error} ->
                       store_error(ref, error, opts)
@@ -970,17 +985,18 @@ defmodule Ash.Actions.Create.Bulk do
                     {:notifications, notifications} ->
                       store_notification(ref, notifications, opts)
                       []
-                  end)
+                  end
                 else
                   [changeset] = batch
 
                   result =
-                    mod.create(changeset, opts, %{
+                    mod.create(changeset, opts, %Ash.Resource.ManualCreate.Context{
+                      select: opts[:select],
                       actor: opts[:actor],
                       tenant: opts[:tenant],
                       authorize?: opts[:authorize?],
                       tracer: opts[:tracer],
-                      api: api
+                      domain: domain
                     })
                     |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
 
@@ -1006,6 +1022,7 @@ defmodule Ash.Actions.Create.Bulk do
                     resource,
                     batch,
                     %{
+                      select: opts[:select],
                       batch_size: opts[:batch_size],
                       return_records?:
                         opts[:return_records?] || must_return_records? ||
@@ -1070,9 +1087,9 @@ defmodule Ash.Actions.Create.Bulk do
     end
   end
 
-  defp manage_relationships(created, api, changeset, engine_opts) do
+  defp manage_relationships(created, domain, changeset, engine_opts) do
     with {:ok, loaded} <-
-           Ash.Actions.ManagedRelationships.load(api, created, changeset, engine_opts),
+           Ash.Actions.ManagedRelationships.load(domain, created, changeset, engine_opts),
          {:ok, with_relationships, new_notifications} <-
            Ash.Actions.ManagedRelationships.manage_relationships(
              loaded,
@@ -1087,14 +1104,14 @@ defmodule Ash.Actions.Create.Bulk do
   defp run_after_action_hooks(
          batch_results,
          opts,
-         api,
+         domain,
          ref,
          changesets_by_index
        ) do
     Enum.flat_map(batch_results, fn result ->
       changeset = changesets_by_index[result.__metadata__.bulk_create_index]
 
-      case manage_relationships(result, api, changeset,
+      case manage_relationships(result, domain, changeset,
              actor: opts[:actor],
              authorize?: opts[:authorize?]
            ) do
@@ -1125,7 +1142,7 @@ defmodule Ash.Actions.Create.Bulk do
          opts,
          ref,
          changesets_by_index,
-         api,
+         domain,
          resource
        ) do
     results =
@@ -1162,30 +1179,41 @@ defmodule Ash.Actions.Create.Bulk do
     changes
     |> run_bulk_after_changes(all_changes, results, changesets_by_index, opts, ref)
     |> then(fn records ->
-      if opts[:select] || opts[:load] do
-        select =
-          if opts[:select] do
-            List.wrap(opts[:select])
-          else
-            resource |> Ash.Resource.Info.public_attributes() |> Enum.map(& &1.name)
+      select =
+        if opts[:select] do
+          List.wrap(opts[:select])
+        else
+          resource |> Ash.Resource.Info.public_attributes() |> Enum.map(& &1.name)
+        end
+
+      case Ash.load(
+             records,
+             select,
+             reuse_values?: true,
+             domain: domain,
+             actor: opts[:actor],
+             authorize?: opts[:authorize?],
+             tracer: opts[:tracer]
+           ) do
+        {:ok, records} ->
+          Ash.load(
+            records,
+            List.wrap(opts[:load]),
+            domain: domain,
+            actor: opts[:actor],
+            authorize?: opts[:authorize?],
+            tracer: opts[:tracer]
+          )
+          |> case do
+            {:ok, records} ->
+              {:ok, Enum.reject(records, & &1.__metadata__[:private][:missing_from_data_layer])}
+
+            {:error, error} ->
+              {:error, error}
           end
 
-        api.load(
-          records,
-          List.wrap(opts[:load]) ++ select,
-          actor: opts[:actor],
-          authorize?: opts[:authorize?],
-          tracer: opts[:tracer]
-        )
-        |> case do
-          {:ok, records} ->
-            {:ok, Enum.reject(records, & &1.__metadata__[:private][:missing_from_data_layer])}
-
-          {:error, error} ->
-            {:error, error}
-        end
-      else
-        {:ok, records}
+        other ->
+          other
       end
     end)
     |> case do
@@ -1214,12 +1242,20 @@ defmodule Ash.Actions.Create.Bulk do
             {changesets_by_index[result.__metadata__.bulk_create_index], result}
           end)
 
-        module.after_batch(results, change_opts, %{
-          actor: opts[:actor],
-          tenant: opts[:tenant],
-          tracer: opts[:tracer],
-          authorize?: opts[:authorize?]
-        })
+        module.after_batch(
+          results,
+          change_opts,
+          struct(
+            Ash.Resource.Change.Context,
+            %{
+              bulk?: true,
+              actor: opts[:actor],
+              tenant: opts[:tenant],
+              tracer: opts[:tracer],
+              authorize?: opts[:authorize?]
+            }
+          )
+        )
         |> handle_after_batch_results(ref, opts)
       else
         {matches, non_matches} =
@@ -1238,12 +1274,20 @@ defmodule Ash.Actions.Create.Bulk do
           end)
 
         after_batch_results =
-          module.after_batch(matches, change_opts, %{
-            actor: opts[:actor],
-            tenant: opts[:tenant],
-            tracer: opts[:tracer],
-            authorize?: opts[:authorize?]
-          })
+          module.after_batch(
+            matches,
+            change_opts,
+            struct(
+              Ash.Resource.Change.Context,
+              %{
+                bulk?: true,
+                actor: opts[:actor],
+                tenant: opts[:tenant],
+                tracer: opts[:tracer],
+                authorize?: opts[:authorize?]
+              }
+            )
+          )
           |> handle_after_batch_results(ref, opts)
 
         Enum.concat([after_batch_results, non_matches])
@@ -1271,9 +1315,10 @@ defmodule Ash.Actions.Create.Bulk do
   defp notification(changeset, result, opts) do
     %Ash.Notifier.Notification{
       resource: changeset.resource,
-      api: changeset.api,
+      domain: changeset.domain,
       actor: opts[:actor],
       action: changeset.action,
+      for: Ash.Resource.Info.notifiers(changeset.resource) ++ changeset.action.notifiers,
       data: result,
       changeset: changeset
     }
@@ -1282,7 +1327,7 @@ defmodule Ash.Actions.Create.Bulk do
   defp templated_opts({:templated, opts}, _actor, _arguments, _context), do: opts
 
   defp templated_opts(opts, actor, arguments, context) do
-    Ash.Filter.build_filter_from_template(
+    Ash.Expr.fill_template(
       opts,
       actor,
       arguments,
@@ -1309,7 +1354,11 @@ defmodule Ash.Actions.Create.Bulk do
                    opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
                    {:ok, opts} = module.init(opts)
 
-                   module.validate(changeset, opts, context) == :ok
+                   module.validate(
+                     changeset,
+                     opts,
+                     struct(Ash.Resource.Validation.Context, context)
+                   ) == :ok
                  end) do
                 opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
 
@@ -1318,7 +1367,10 @@ defmodule Ash.Actions.Create.Bulk do
                 case module.validate(
                        changeset,
                        opts,
-                       Map.put(context, :message, validation.message)
+                       struct(
+                         Ash.Resource.Validation.Context,
+                         Map.put(context, :message, validation.message)
+                       )
                      ) do
                   :ok ->
                     changeset
@@ -1365,7 +1417,11 @@ defmodule Ash.Actions.Create.Bulk do
 
                     {:ok, opts} = module.init(opts)
 
-                    module.validate(changeset, opts, context) == :ok
+                    module.validate(
+                      changeset,
+                      opts,
+                      struct(Ash.Resource.Validation.Context, context)
+                    ) == :ok
                   end)
 
                 applies_from_only_when_valid? =
@@ -1415,12 +1471,21 @@ defmodule Ash.Actions.Create.Bulk do
     case change_opts do
       {:templated, change_opts} ->
         if function_exported?(module, :batch_change, 4) do
-          module.batch_change(batch, change_opts, context, actor)
+          module.batch_change(
+            batch,
+            change_opts,
+            struct(struct(Ash.Resource.Change.Context, context), bulk?: true),
+            actor
+          )
         else
           Enum.map(batch, fn changeset ->
             {:ok, change_opts} = module.init(change_opts)
 
-            module.change(changeset, change_opts, Map.put(context, :bulk?, true))
+            module.change(
+              changeset,
+              change_opts,
+              struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
+            )
           end)
         end
 
@@ -1430,7 +1495,11 @@ defmodule Ash.Actions.Create.Bulk do
 
           {:ok, change_opts} = module.init(change_opts)
 
-          module.change(changeset, change_opts, Map.put(context, :bulk?, true))
+          module.change(
+            changeset,
+            change_opts,
+            struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
+          )
         end)
     end
   end

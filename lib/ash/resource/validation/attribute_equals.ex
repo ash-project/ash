@@ -16,17 +16,16 @@ defmodule Ash.Resource.Validation.AttributeEquals do
 
   use Ash.Resource.Validation
   alias Ash.Error.Changes.InvalidAttribute
-  require Ash.Expr
-  import Ash.Filter.TemplateHelpers
+  import Ash.Expr
 
   @impl true
   def atomic(_changeset, opts, context) do
-    {:atomic, [opts[:attribute]], Ash.Expr.expr(^atomic_ref(opts[:attribute]) != ^opts[:value]),
-     Ash.Expr.expr(
+    {:atomic, [opts[:attribute]], expr(^atomic_ref(opts[:attribute]) != ^opts[:value]),
+     expr(
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
          value: ^atomic_ref(opts[:attribute]),
-         message: ^(context[:message] || "must equal %{value}"),
+         message: ^(context.message || "must equal %{value}"),
          vars: %{field: ^opts[:attribute], value: ^opts[:value]}
        })
      )}
@@ -34,7 +33,7 @@ defmodule Ash.Resource.Validation.AttributeEquals do
 
   @impl true
   def init(opts) do
-    case Spark.OptionsHelpers.validate(opts, @opt_schema) do
+    case Spark.Options.validate(opts, @opt_schema) do
       {:ok, opts} ->
         {:ok, opts}
 
@@ -44,7 +43,7 @@ defmodule Ash.Resource.Validation.AttributeEquals do
   end
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, _context) do
     value = Ash.Changeset.get_attribute(changeset, opts[:attribute])
 
     if value != opts[:value] do

@@ -4,12 +4,12 @@ defmodule Ash.Resource.Validation.Function do
   use Ash.Resource.Validation
 
   @impl true
-  def validate(changeset, [{:fun, {m, f, a}}]) do
+  def validate(changeset, [{:fun, {m, f, a}}], _context) do
     apply(m, f, [changeset | a])
   end
 
   @impl true
-  def validate(changeset, [{:fun, fun}]) do
+  def validate(changeset, [{:fun, fun}], _context) do
     fun.(changeset)
   end
 

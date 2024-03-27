@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.BelongsToTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule UpdateReviewFields do
     @moduledoc false
     use Ash.Resource.Change
@@ -25,14 +27,15 @@ defmodule Ash.Test.Actions.BelongsToTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults([:create, :read, :update, :destroy])
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
 
       create :create_with_reviewer do
         argument :reviewer_id, :uuid, allow_nil?: true
@@ -48,50 +51,34 @@ defmodule Ash.Test.Actions.BelongsToTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string, allow_nil?: false
-      attribute :requires_review, :boolean, allow_nil?: false, default: false
-      attribute :review_by_date, :date, allow_nil?: true
+      attribute :title, :string, allow_nil?: false, public?: true
+      attribute :requires_review, :boolean, allow_nil?: false, default: false, public?: true
+      attribute :review_by_date, :date, allow_nil?: true, public?: true
     end
 
     relationships do
-      belongs_to :reviewer, Ash.Test.Actions.BelongsToTest.Reviewer, allow_nil?: true
+      belongs_to :reviewer, Ash.Test.Actions.BelongsToTest.Reviewer,
+        allow_nil?: true,
+        public?: true
     end
   end
 
   defmodule Reviewer do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string, allow_nil?: false
-    end
-  end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Post)
-      entry(Reviewer)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
+      attribute :name, :string, allow_nil?: false, public?: true
     end
   end
 
@@ -99,7 +86,7 @@ defmodule Ash.Test.Actions.BelongsToTest do
     reviewer =
       Reviewer
       |> Ash.Changeset.for_create(:create, %{name: "Zach"})
-      |> Api.create!()
+      |> Ash.create!()
 
     post =
       Post
@@ -109,16 +96,16 @@ defmodule Ash.Test.Actions.BelongsToTest do
         reviewer_id: reviewer.id,
         review_by_date: DateTime.utc_now()
       })
-      |> Api.create!()
-      |> Api.load!(:reviewer)
+      |> Ash.create!()
+      |> Ash.load!(:reviewer)
 
     updated_post =
       post
       |> Ash.Changeset.for_update(:update_with_reviewer, %{
         requires_review: false
       })
-      |> Api.update!()
-      |> Api.load!(:reviewer)
+      |> Ash.update!()
+      |> Ash.load!(:reviewer)
 
     assert updated_post.requires_review == false
     assert updated_post.review_by_date == nil

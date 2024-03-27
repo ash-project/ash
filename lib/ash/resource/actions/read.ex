@@ -4,6 +4,7 @@ defmodule Ash.Resource.Actions.Read do
   defstruct arguments: [],
             description: nil,
             filter: nil,
+            filters: [],
             get_by: nil,
             get?: nil,
             manual: nil,
@@ -24,6 +25,7 @@ defmodule Ash.Resource.Actions.Read do
           filter: any,
           get_by: nil | atom | [atom],
           get?: nil | boolean,
+          filters: [any],
           manual: atom | {atom, Keyword.t()} | nil,
           metadata: [Ash.Resource.Actions.Metadata.t()],
           modify_query: nil | mfa,
@@ -40,13 +42,8 @@ defmodule Ash.Resource.Actions.Read do
 
   @global_opts shared_options()
 
-  @opt_schema Spark.OptionsHelpers.merge_schemas(
+  @opt_schema Spark.Options.merge(
                 [
-                  filter: [
-                    type: :any,
-                    doc:
-                      "A filter template that will be applied whenever the action is used. See `Ash.Filter` for more on templates"
-                  ],
                   manual: [
                     type:
                       {:spark_function_behaviour, Ash.Resource.ManualRead,
@@ -143,14 +140,39 @@ defmodule Ash.Resource.Actions.Read do
   end
 
   def transform(read) do
+    {:ok,
+     read
+     |> transform_pagination()
+     |> concat_filters()}
+  end
+
+  def concat_filters(%{filters: [filter]} = read) do
+    %{read | filter: filter.filter}
+  end
+
+  def concat_filters(%{filters: [first | rest]} = read) do
+    filter =
+      Enum.reduce(rest, first.filter, fn filter, acc ->
+        Ash.Query.BooleanExpression.new(:and, filter.filter, acc)
+      end)
+
+    %{read | filter: filter}
+  end
+
+  @doc false
+  def concat_filters(read) do
+    read
+  end
+
+  defp transform_pagination(read) do
     if read.pagination do
       if is_list(read.pagination) do
-        {:ok, %{read | pagination: List.last(read.pagination) || false}}
+        %{read | pagination: List.last(read.pagination) || false}
       else
-        {:ok, %{read | pagination: read.pagination}}
+        %{read | pagination: read.pagination}
       end
     else
-      {:ok, %{read | pagination: false}}
+      %{read | pagination: false}
     end
   end
 

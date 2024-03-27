@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule AddAfterToTitle do
     use Ash.Resource.Change
 
@@ -69,6 +71,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -77,7 +80,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
 
       update :update_with_change do
         change fn changeset, _ ->
@@ -95,7 +99,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       end
 
       update :update_with_after_action do
-        change after_action(fn _changeset, result ->
+        change after_action(fn _changeset, result, _context ->
                  {:ok, %{result | title: result.title <> "_stuff"}}
                end)
       end
@@ -110,7 +114,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       end
 
       update :update_with_after_transaction do
-        change after_transaction(fn _changeset, {:ok, result} ->
+        change after_transaction(fn _changeset, {:ok, result}, _context ->
                  {:ok, %{result | title: result.title <> "_stuff"}}
                end)
       end
@@ -124,12 +128,14 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
     identities do
       identity :unique_title, :title do
-        pre_check_with Ash.Test.Actions.BulkUpdateTest.Api
+        pre_check_with Ash.Test.Actions.BulkUpdateTest.Domain
       end
     end
 
     calculations do
-      calculate :hidden_calc, :string, expr("something")
+      calculate :hidden_calc, :string, expr("something") do
+        public?(true)
+      end
     end
 
     field_policies do
@@ -143,23 +149,21 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
 
     policies do
-      policy action(:create_with_policy) do
-        authorize_if context_equals(:authorize?, true)
-      end
-    end
-
-    policies do
       policy action(:update_with_policy) do
         authorize_if context_equals(:authorize?, true)
+      end
+
+      policy always() do
+        authorize_if always()
       end
     end
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string, allow_nil?: false
-      attribute :title2, :string
-      attribute :title3, :string
-      attribute :hidden_attribute, :string
+      attribute :title, :string, allow_nil?: false, public?: true
+      attribute :title2, :string, public?: true
+      attribute :title3, :string, public?: true
+      attribute :hidden_attribute, :string, public?: true
 
       attribute :before_batch_size, :integer
       attribute :after_batch_size, :integer
@@ -169,28 +173,21 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      resource Post
-    end
-  end
-
   test "returns updated records" do
     assert %Ash.BulkResult{records: [%{title2: "updated value"}, %{title2: "updated value"}]} =
-             Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_update!(:update, %{title2: "updated value"},
+             |> Ash.bulk_update!(:update, %{title2: "updated value"},
                resource: Post,
                return_records?: true,
-               return_errors?: true
+               return_errors?: true,
+               authorize?: false
              )
   end
 
@@ -201,17 +198,19 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                %{title: "title2_stuff", title2: "updated value"}
              ]
            } =
-             Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_update!(:update_with_change, %{title2: "updated value"},
+             |> Ash.bulk_update!(:update_with_change, %{title2: "updated value"},
                resource: Post,
                return_records?: true,
-               return_errors?: true
+               return_errors?: true,
+               authorize?: false
              )
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
@@ -225,17 +224,19 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                %{title: "title2", title2: "updated value"}
              ]
            } =
-             Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_update!(:update_with_argument, %{a_title: "updated value"},
+             |> Ash.bulk_update!(:update_with_argument, %{a_title: "updated value"},
                resource: Post,
                return_records?: true,
-               return_errors?: true
+               return_errors?: true,
+               authorize?: false
              )
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
@@ -249,17 +250,19 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                %{title: "before_title2_after", title2: "updated value"}
              ]
            } =
-             Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_update!(:update_with_after_batch, %{title2: "updated value"},
+             |> Ash.bulk_update!(:update_with_after_batch, %{title2: "updated value"},
                resource: Post,
                return_records?: true,
-               return_errors?: true
+               return_errors?: true,
+               authorize?: false
              )
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
@@ -270,14 +273,14 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     create_records = fn count ->
       Stream.iterate(1, &(&1 + 1))
       |> Stream.map(fn i -> %{title: "title#{i}"} end)
-      |> Api.bulk_create!(Post, :create, return_stream?: true, return_records?: true)
+      |> Ash.bulk_create!(Post, :create, return_stream?: true, return_records?: true)
       |> Stream.map(fn {:ok, result} -> result end)
       |> Stream.take(count)
     end
 
     update_records = fn records, opts ->
       opts = [resource: Post, return_records?: true] ++ opts
-      Api.bulk_update!(records, :update_with_batch_sizes, %{}, opts)
+      Ash.bulk_update!(records, :update_with_batch_sizes, %{}, opts)
     end
 
     batch_size_frequencies = fn %Ash.BulkResult{records: records} ->
@@ -305,16 +308,18 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     assert %Ash.BulkResult{
              error_count: 2
            } =
-             Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_update(:update, %{title2: %{invalid: :value}},
+             |> Ash.bulk_update(:update, %{title2: %{invalid: :value}},
                resource: Post,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
   end
 
@@ -323,16 +328,18 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              error_count: 1,
              errors: [%Ash.Changeset{}]
            } =
-             Api.bulk_create!([%{title: "title1"}], Post, :create,
+             Ash.bulk_create!([%{title: "title1"}], Post, :create,
                return_stream?: true,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_update(:update, %{title2: %{invalid: :value}},
+             |> Ash.bulk_update(:update, %{title2: %{invalid: :value}},
                resource: Post,
-               return_errors?: true
+               return_errors?: true,
+               authorize?: false
              )
   end
 
@@ -343,17 +350,19 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                %{title: "title2_stuff", title2: "updated value"}
              ]
            } =
-             Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_update!(:update_with_after_action, %{title2: "updated value"},
+             |> Ash.bulk_update!(:update_with_after_action, %{title2: "updated value"},
                resource: Post,
                return_records?: true,
-               return_errors?: true
+               return_errors?: true,
+               authorize?: false
              )
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
@@ -367,17 +376,19 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                %{title: "title2_stuff", title2: "updated value"}
              ]
            } =
-             Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                return_stream?: true,
-               return_records?: true
+               return_records?: true,
+               authorize?: false
              )
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Api.bulk_update!(:update_with_after_transaction, %{title2: "updated value"},
+             |> Ash.bulk_update!(:update_with_after_transaction, %{title2: "updated value"},
                resource: Post,
                return_records?: true,
-               return_errors?: true
+               return_errors?: true,
+               authorize?: false
              )
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
@@ -387,14 +398,15 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
   describe "authorization" do
     test "policy success results in successes" do
       assert %Ash.BulkResult{records: [_, _], errors: []} =
-               Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+               Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                  return_stream?: true,
-                 return_records?: true
+                 return_records?: true,
+                 authorize?: false
                )
                |> Stream.map(fn {:ok, result} ->
                  result
                end)
-               |> Api.bulk_update(
+               |> Ash.bulk_update(
                  :update_with_policy,
                  %{title2: "updated value", authorize?: true},
                  authorize?: true,
@@ -418,14 +430,15 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                ],
                errors: []
              } =
-               Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+               Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                  return_stream?: true,
-                 return_records?: true
+                 return_records?: true,
+                 authorize?: false
                )
                |> Stream.map(fn {:ok, result} ->
                  result
                end)
-               |> Api.bulk_update(
+               |> Ash.bulk_update(
                  :update_with_policy,
                  %{title2: "updated value", authorize?: true},
                  authorize?: true,
@@ -438,14 +451,15 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
     test "policy failure results in failures" do
       assert %Ash.BulkResult{errors: [_, _], records: []} =
-               Api.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+               Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                  return_stream?: true,
-                 return_records?: true
+                 return_records?: true,
+                 authorize?: false
                )
                |> Stream.map(fn {:ok, result} ->
                  result
                end)
-               |> Api.bulk_update(
+               |> Ash.bulk_update(
                  :update_with_policy,
                  %{title2: "updated value", authorize?: false},
                  authorize?: true,

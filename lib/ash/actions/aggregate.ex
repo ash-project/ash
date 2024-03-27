@@ -2,9 +2,10 @@ defmodule Ash.Actions.Aggregate do
   @moduledoc false
   require Ash.Tracer
 
-  def run(api, query, aggregates, opts) do
-    query = %{query | api: api}
-    {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
+  def run(domain, query, aggregates, opts) do
+    query = Ash.Query.new(query)
+    query = %{query | domain: domain}
+    {query, opts} = Ash.Actions.Helpers.set_context_and_get_opts(query.domain, query, opts)
 
     with %{valid?: true} = query <- Ash.Actions.Read.handle_attribute_multitenancy(query),
          :ok <- Ash.Actions.Read.validate_multitenancy(query) do
@@ -46,13 +47,13 @@ defmodule Ash.Actions.Aggregate do
               )
             end
 
-          query = %{query | api: api}
+          query = %{query | domain: domain}
 
           Ash.Tracer.span :action,
-                          Ash.Api.Info.span_name(query.api, query.resource, :aggregate),
+                          Ash.Domain.Info.span_name(query.domain, query.resource, :aggregate),
                           opts[:tracer] do
             metadata = %{
-              api: query.api,
+              domain: query.domain,
               resource: query.resource,
               resource_short_name: Ash.Resource.Info.short_name(query.resource),
               aggregates: List.wrap(aggregates),
@@ -62,7 +63,11 @@ defmodule Ash.Actions.Aggregate do
               authorize?: opts[:authorize?]
             }
 
-            Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(query.api), :aggregate],
+            Ash.Tracer.telemetry_span [
+                                        :ash,
+                                        Ash.Domain.Info.short_name(query.domain),
+                                        :aggregate
+                                      ],
                                       metadata do
               Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
@@ -73,8 +78,8 @@ defmodule Ash.Actions.Aggregate do
                        resource: query.resource,
                        limit: query.limit,
                        offset: query.offset,
-                       tenant: query.tenant,
-                       api: query.api
+                       domain: query.domain,
+                       tenant: query.tenant
                      }),
                    {:ok, result} <-
                      Ash.DataLayer.run_aggregate_query(
@@ -104,7 +109,7 @@ defmodule Ash.Actions.Aggregate do
 
   defp authorize_query(query, opts, agg_authorize?) do
     if agg_authorize? do
-      case query.api.can(query, opts[:actor],
+      case Ash.can(query, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,
              run_queries?: false,

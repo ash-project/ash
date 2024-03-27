@@ -3,55 +3,56 @@ defmodule Ash.Test.Policy.SimpleTest do
   use ExUnit.Case
   require Ash.Query
 
-  alias Ash.Test.Support.PolicySimple.{Api, Car, Organization, Post, Trip, Tweet, User}
+  alias Ash.Test.Support.PolicySimple.{Car, Domain, Organization, Post, Trip, Tweet, User}
 
   setup do
     [
-      user: Api.create!(Ash.Changeset.new(User)),
-      admin: Api.create!(Ash.Changeset.new(User, %{admin: true}))
+      user: Ash.create!(Ash.Changeset.for_create(User, :create), authorize?: false),
+      admin:
+        Ash.create!(Ash.Changeset.for_create(User, :create, %{admin: true}), authorize?: false)
     ]
   end
 
   test "bypass with condition does not apply subsequent filters", %{admin: admin, user: user} do
-    Api.create!(Ash.Changeset.new(Tweet))
+    Ash.create!(Ash.Changeset.for_create(Tweet, :create), authorize?: false)
 
-    assert [_] = Api.read!(Tweet, actor: admin)
-    assert [] = Api.read!(Tweet, actor: user)
+    assert [_] = Ash.read!(Tweet, actor: admin)
+    assert [] = Ash.read!(Tweet, actor: user)
   end
 
   test "arguments can be referenced in expression policies", %{admin: admin, user: user} do
     Tweet
     |> Ash.Changeset.for_create(:create_foo, %{foo: "foo", user_id: admin.id}, actor: user)
-    |> Api.create!()
+    |> Ash.create!()
 
     assert_raise Ash.Error.Forbidden, fn ->
       Tweet
       |> Ash.Changeset.for_create(:create_foo, %{foo: "bar", user_id: admin.id}, actor: user)
-      |> Api.create!()
+      |> Ash.create!()
     end
   end
 
   test "functions can be used as checks through `matches`", %{user: user} do
     Tweet
     |> Ash.Changeset.for_create(:create_bar, %{bar: 2}, actor: user)
-    |> Api.create!()
+    |> Ash.create!()
 
     Tweet
     |> Ash.Changeset.for_create(:create_bar, %{bar: 9}, actor: user)
-    |> Api.create!()
+    |> Ash.create!()
 
     assert_raise Ash.Error.Forbidden, fn ->
       Tweet
       |> Ash.Changeset.for_create(:create_bar, %{bar: 1}, actor: user)
-      |> Api.create!()
+      |> Ash.create!()
     end
   end
 
   test "filter checks work on create/update/destroy actions", %{user: user} do
-    user2 = Api.create!(Ash.Changeset.new(User))
+    user2 = Ash.create!(Ash.Changeset.for_create(User, :create), authorize?: false)
 
     assert_raise Ash.Error.Forbidden, fn ->
-      Api.update!(Ash.Changeset.new(user), actor: user2)
+      Ash.update!(Ash.Changeset.for_update(user, :update), actor: user2)
     end
   end
 
@@ -60,27 +61,27 @@ defmodule Ash.Test.Policy.SimpleTest do
       Tweet
       |> Ash.Changeset.for_create(:create)
       |> Ash.Changeset.manage_relationship(:user, user, type: :append_and_remove)
-      |> Api.create!()
+      |> Ash.create!(authorize?: false)
 
     changeset = Ash.Changeset.for_update(tweet, :update)
 
-    assert Ash.Policy.Info.strict_check(user, changeset, Api) == true
+    assert Ash.Policy.Info.strict_check(user, changeset, Domain) == true
 
     tweet =
       Tweet
       |> Ash.Changeset.for_create(:create)
-      |> Api.create!()
+      |> Ash.create!(authorize?: false)
 
     changeset = Ash.Changeset.for_update(tweet, :update)
 
-    assert Ash.Policy.Info.strict_check(%{user | id: nil}, changeset, Api) == false
+    assert Ash.Policy.Info.strict_check(%{user | id: nil}, changeset, Domain) == false
   end
 
   test "non-filter checks work on create/update/destroy actions" do
-    user = Api.create!(Ash.Changeset.new(User))
+    user = Ash.create!(Ash.Changeset.for_create(User, :create), authorize?: false)
 
     assert_raise Ash.Error.Forbidden, fn ->
-      Api.create!(Ash.Changeset.new(Post, %{text: "foo"}), actor: user)
+      Ash.create!(Ash.Changeset.for_create(Post, :create, %{text: "foo"}), actor: user)
     end
   end
 
@@ -88,25 +89,25 @@ defmodule Ash.Test.Policy.SimpleTest do
     organization =
       Organization
       |> Ash.Changeset.for_create(:create, %{owner: user.id})
-      |> Api.create!()
+      |> Ash.create!(authorize?: false)
 
     post1 =
       Post
       |> Ash.Changeset.for_create(:create, %{author: user.id, text: "aaa"})
-      |> Api.create!()
+      |> Ash.create!(authorize?: false)
 
     post2 =
       Post
       |> Ash.Changeset.for_create(:create, %{organization: organization.id, text: "bbb"})
-      |> Api.create!()
+      |> Ash.create!(authorize?: false)
 
     Post
     |> Ash.Changeset.for_create(:create, %{text: "invalid"})
-    |> Api.create!()
+    |> Ash.create!(authorize?: false)
 
     ids =
       Post
-      |> Api.read!(actor: user)
+      |> Ash.read!(actor: user)
       |> Enum.map(& &1.id)
       |> Enum.sort()
 
@@ -115,32 +116,32 @@ defmodule Ash.Test.Policy.SimpleTest do
 
   test "authorize_unless properly combines", %{user: user} do
     Car
-    |> Ash.Changeset.for_create(:authorize_unless, %{users: [user.id]})
-    |> Api.create!(actor: user)
+    |> Ash.Changeset.for_create(:authorize_unless, %{})
+    |> Ash.create!(actor: user)
   end
 
   test "filter checks work with many to many related data and a filter", %{user: user} do
     car1 =
       Car
       |> Ash.Changeset.for_create(:create, %{users: [user.id]})
-      |> Api.create!()
+      |> Ash.create!(authorize?: false)
 
     car2 =
       Car
       |> Ash.Changeset.for_create(:create, %{})
-      |> Api.create!()
+      |> Ash.create!(authorize?: false)
 
     results =
       Car
       |> Ash.Query.filter(id == ^car2.id)
-      |> Api.read!(actor: user)
+      |> Ash.read!(actor: user)
 
     assert results == []
 
     results =
       Car
       |> Ash.Query.filter(id == ^car1.id)
-      |> Api.read!(actor: user)
+      |> Ash.read!(actor: user)
       |> Enum.map(& &1.id)
 
     assert results == [car1.id]
@@ -148,23 +149,21 @@ defmodule Ash.Test.Policy.SimpleTest do
 
   test "calculations that reference aggregates are properly authorized", %{user: user} do
     Car
-    |> Ash.Changeset.for_create(:create, %{users: [user.id], active: false})
-    |> Api.create!()
-
-    :timer.sleep(2)
+    |> Ash.Changeset.for_create(:create, %{users: [user.id], active: false}, authorize?: false)
+    |> Ash.create!()
 
     assert %{restricted_from_driving: false, has_car: true} =
              user
-             |> Api.load!([:restricted_from_driving, :has_car], authorize?: false)
+             |> Ash.load!([:restricted_from_driving, :has_car], authorize?: false)
              |> Map.take([:restricted_from_driving, :has_car])
 
     assert %{restricted_from_driving: true, has_car: false} =
              user
-             |> Api.load!([:restricted_from_driving, :has_car], authorize?: true)
+             |> Ash.load!([:restricted_from_driving, :has_car], authorize?: true)
              |> Map.take([:restricted_from_driving, :has_car])
   end
 
   test "filter checks work via deeply related data", %{user: user} do
-    assert Api.read!(Trip, actor: user) == []
+    assert Ash.read!(Trip, actor: user) == []
   end
 end

@@ -1,6 +1,7 @@
 defmodule Ash.Test.Support.PolicyComplex.Bio do
   @moduledoc false
   use Ash.Resource,
+    domain: Ash.Test.Support.PolicyComplex.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [
       Ash.Policy.Authorizer
@@ -20,20 +21,23 @@ defmodule Ash.Test.Support.PolicyComplex.Bio do
     uuid_primary_key(:id)
 
     attribute :text, :string do
+      public?(true)
       allow_nil?(false)
     end
   end
 
   actions do
-    defaults [:create, :read, :update, :destroy]
+    default_accept :*
+    defaults [:read, :destroy, create: :*, update: :*]
   end
 
   code_interface do
-    define_for Ash.Test.Support.PolicyComplex.Api
     define :create, args: [:text]
   end
 
   relationships do
-    belongs_to :user, Ash.Test.Support.PolicyComplex.User
+    belongs_to :user, Ash.Test.Support.PolicyComplex.User do
+      public?(true)
+    end
   end
 end

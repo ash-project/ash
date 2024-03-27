@@ -3,19 +3,42 @@ defmodule Ash.Resource.ManualCreate do
   A module to implement manual create actions.
   """
 
-  @type context :: %{
-          optional(:actor) => term,
-          optional(:tenant) => term,
-          optional(:tracer) => term,
-          optional(:authorize?) => boolean,
-          optional(:api) => module,
-          optional(any) => any
-        }
+  defmodule Context do
+    @moduledoc "The context passed into manual update action functions"
+
+    defstruct [
+      :actor,
+      :select,
+      :tenant,
+      :tracer,
+      :authorize?,
+      :domain,
+      :upsert?,
+      :upsert_keys,
+      :upsert_fields,
+      :return_records?,
+      :batch_size
+    ]
+
+    @type t :: %__MODULE__{
+            actor: any(),
+            select: list(atom),
+            tenant: any(),
+            tracer: list(module),
+            authorize?: boolean(),
+            domain: Ash.Domain.t(),
+            upsert?: boolean(),
+            upsert_keys: list(atom),
+            upsert_fields: list(atom),
+            return_records?: boolean(),
+            batch_size: pos_integer()
+          }
+  end
 
   @callback create(
               changeset :: Ash.Changeset.t(),
               opts :: Keyword.t(),
-              context :: context()
+              context :: Context.t()
             ) ::
               {:ok, Ash.Resource.record()}
               | {:ok, Ash.Resource.record(), %{notifications: [Ash.Notifier.Notification.t()]}}
@@ -24,10 +47,11 @@ defmodule Ash.Resource.ManualCreate do
   @callback bulk_create(
               changesets :: Enumerable.t(Ash.Changeset.t()),
               opts :: Keyword.t(),
-              context :: context()
+              context :: Context.t()
             ) ::
               list(
-                {:ok, Ash.Resource.record()}
+                :ok
+                | {:ok, Ash.Resource.record()}
                 | {:error, Ash.Error.t()}
                 | {:notifications, list(Ash.Notifier.Notification.t())}
               )

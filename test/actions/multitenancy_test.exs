@@ -3,9 +3,11 @@ defmodule Ash.Actions.MultitenancyTest do
 
   require Ash.Query
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule User do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -17,26 +19,36 @@ defmodule Ash.Actions.MultitenancyTest do
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
-      attribute :org_id, :uuid
+
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :org_id, :uuid do
+        public?(true)
+      end
     end
 
     relationships do
-      has_many :posts, Ash.Actions.MultitenancyTest.Post, destination_attribute: :author_id
+      has_many :posts, Ash.Actions.MultitenancyTest.Post,
+        destination_attribute: :author_id,
+        public?: true
 
       has_many :comments, Ash.Actions.MultitenancyTest.Comment,
-        destination_attribute: :commenter_id
+        destination_attribute: :commenter_id,
+        public?: true
     end
   end
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -44,24 +56,36 @@ defmodule Ash.Actions.MultitenancyTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
-      attribute :org_id, :uuid
+
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :org_id, :uuid do
+        public?(true)
+      end
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     relationships do
-      has_many :comments, Ash.Actions.MultitenancyTest.Comment, destination_attribute: :post_id
-      belongs_to :author, User
+      has_many :comments, Ash.Actions.MultitenancyTest.Comment,
+        destination_attribute: :post_id,
+        public?: true
+
+      belongs_to :author, User do
+        public?(true)
+      end
     end
   end
 
   defmodule Comment do
     @doc false
 
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -73,38 +97,30 @@ defmodule Ash.Actions.MultitenancyTest do
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
-      attribute :org_id, :uuid
+
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :org_id, :uuid do
+        public?(true)
+      end
     end
 
     relationships do
-      belongs_to :commenter, User
-      belongs_to :post, Post
-    end
-  end
+      belongs_to :commenter, User do
+        public?(true)
+      end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Comment)
-      entry(Post)
-      entry(User)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
+      belongs_to :post, Post do
+        public?(true)
+      end
     end
   end
 
@@ -115,9 +131,8 @@ defmodule Ash.Actions.MultitenancyTest do
 
     test "a simple write works when a tenant is specified", %{tenant1: tenant1} do
       User
-      |> Ash.Changeset.new()
-      |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+      |> Ash.create!()
     end
 
     test "a record written to one tenant cannot be read from another", %{
@@ -125,11 +140,10 @@ defmodule Ash.Actions.MultitenancyTest do
       tenant2: tenant2
     } do
       User
-      |> Ash.Changeset.new()
-      |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+      |> Ash.create!()
 
-      assert User |> Ash.Query.set_tenant(tenant2) |> Api.read!() == []
+      assert User |> Ash.Query.set_tenant(tenant2) |> Ash.read!() == []
     end
 
     test "a record written to one tenant cannot be read from another with aggregate queries", %{
@@ -139,29 +153,27 @@ defmodule Ash.Actions.MultitenancyTest do
       User
       |> Ash.Changeset.new()
       |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Ash.create!()
 
-      assert User |> Ash.Query.set_tenant(tenant2) |> Api.list!(:name) == []
+      assert User |> Ash.Query.set_tenant(tenant2) |> Ash.list!(:name) == []
     end
 
     test "a record can be updated in a tenant", %{tenant1: tenant1, tenant2: tenant2} do
       User
-      |> Ash.Changeset.new()
-      |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
-      |> Ash.Changeset.new()
-      |> Api.update!()
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+      |> Ash.create!()
+      |> Ash.Changeset.for_update(:update, %{}, tenant: tenant1)
+      |> Ash.update!()
 
-      assert User |> Ash.Query.set_tenant(tenant2) |> Api.read!() == []
+      assert User |> Ash.Query.set_tenant(tenant2) |> Ash.read!() == []
     end
 
     test "a record can be destroyed in a tenant", %{tenant1: tenant1} do
       User
-      |> Ash.Changeset.new()
-      |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
-      |> Ash.Changeset.new()
-      |> Api.destroy!()
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+      |> Ash.create!()
+      |> Ash.Changeset.for_update(:update, %{}, tenant: tenant1)
+      |> Ash.destroy!()
     end
   end
 
@@ -172,9 +184,8 @@ defmodule Ash.Actions.MultitenancyTest do
 
     test "a simple write works when a tenant is specified", %{tenant1: tenant1} do
       Comment
-      |> Ash.Changeset.new()
-      |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+      |> Ash.create!()
     end
 
     test "a record written to one tenant cannot be read from another", %{
@@ -182,42 +193,39 @@ defmodule Ash.Actions.MultitenancyTest do
       tenant2: tenant2
     } do
       Comment
-      |> Ash.Changeset.new()
-      |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+      |> Ash.create!()
 
-      assert Comment |> Ash.Query.set_tenant(tenant2) |> Api.read!() == []
+      assert Comment |> Ash.Query.set_tenant(tenant2) |> Ash.read!() == []
     end
 
     test "a record can be updated in a tenant", %{tenant1: tenant1, tenant2: tenant2} do
       Comment
-      |> Ash.Changeset.new()
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
       |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
-      |> Ash.Changeset.new()
-      |> Api.update!()
+      |> Ash.create!()
+      |> Ash.Changeset.for_update(:update, %{}, tenant: tenant1)
+      |> Ash.update!()
 
-      assert Comment |> Ash.Query.set_tenant(tenant2) |> Api.read!() == []
+      assert Comment |> Ash.Query.set_tenant(tenant2) |> Ash.read!() == []
     end
 
     test "a record can be destroyed in a tenant", %{tenant1: tenant1} do
       Comment
-      |> Ash.Changeset.new()
-      |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
-      |> Ash.Changeset.new()
-      |> Api.destroy!()
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+      |> Ash.create!()
+      |> Ash.Changeset.for_update(:update, %{}, tenant: tenant1)
+      |> Ash.destroy!()
     end
 
     test "a record cannot be read without tenant specified", %{
       tenant1: tenant1
     } do
       Comment
-      |> Ash.Changeset.new()
-      |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+      |> Ash.create!()
 
-      result = Comment |> Api.read()
+      result = Comment |> Ash.read()
       assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.TenantRequired{}]}} = result
     end
 
@@ -227,9 +235,9 @@ defmodule Ash.Actions.MultitenancyTest do
       Comment
       |> Ash.Changeset.new()
       |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Ash.create!()
 
-      result = User |> Api.count()
+      result = User |> Ash.count()
       assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.TenantRequired{}]}} = result
     end
   end

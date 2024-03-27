@@ -8,6 +8,8 @@ defmodule Ash.DataLayer.Simple do
 
   use Spark.Dsl.Extension, transformers: [], sections: []
 
+  @behaviour Ash.DataLayer
+
   @doc false
   def can?(_, :create), do: true
   def can?(_, :bulk_create), do: true
@@ -26,20 +28,20 @@ defmodule Ash.DataLayer.Simple do
 
   defmodule Query do
     @moduledoc false
-    defstruct [:data, :resource, :filter, :api, :limit, sort: [], data_set?: false]
+    defstruct [:data, :resource, :filter, :domain, :limit, sort: [], data_set?: false]
   end
 
   @doc """
   Sets the data for a query against a data-layer-less resource
   """
   def set_data(query, data) do
-    query = Ash.Query.to_query(query)
+    query = Ash.Query.new(query)
     Ash.Query.set_context(query, %{data_layer: %{data: %{query.resource => data}}})
   end
 
   @doc false
-  def resource_to_query(resource, api) do
-    %Query{data: [], resource: resource, api: api}
+  def resource_to_query(resource, domain) do
+    %Query{data: [], resource: resource, domain: domain}
   end
 
   @doc false
@@ -56,14 +58,17 @@ defmodule Ash.DataLayer.Simple do
      )}
   end
 
-  def run_query(%{data: data, sort: sort, api: api, filter: filter, limit: limit}, _resource) do
+  def run_query(
+        %{data: data, sort: sort, domain: domain, filter: filter, limit: limit},
+        _resource
+      ) do
     data
-    |> do_filter_matches(filter, api)
+    |> do_filter_matches(filter, domain)
     |> case do
       {:ok, results} ->
         {:ok,
          results
-         |> Ash.Actions.Sort.runtime_sort(sort, api: api)
+         |> Ash.Actions.Sort.runtime_sort(sort, domain: domain)
          |> then(fn data ->
            if limit do
              Enum.take(data, limit)
@@ -77,8 +82,8 @@ defmodule Ash.DataLayer.Simple do
     end
   end
 
-  defp do_filter_matches(data, filter, api) do
-    Ash.Filter.Runtime.filter_matches(api, data, filter)
+  defp do_filter_matches(data, filter, domain) do
+    Ash.Filter.Runtime.filter_matches(domain, data, filter)
   end
 
   @doc false

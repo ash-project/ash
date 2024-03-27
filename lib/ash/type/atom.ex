@@ -12,7 +12,7 @@ defmodule Ash.Type.Atom do
 
   ### Constraints
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
 
@@ -53,6 +53,11 @@ defmodule Ash.Type.Atom do
       [] -> {:ok, value}
       errors -> {:error, errors}
     end
+  end
+
+  @impl true
+  def cast_atomic(new_value, _constraints) do
+    {:atomic, new_value}
   end
 
   @impl true

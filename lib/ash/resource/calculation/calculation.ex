@@ -1,5 +1,7 @@
 defmodule Ash.Resource.Calculation do
-  @moduledoc "Represents a named calculation on a resource"
+  @moduledoc """
+  The behaviour for defining a module calculation, and the struct for storing a defined calculation.
+  """
 
   defstruct allow_nil?: true,
             arguments: [],
@@ -7,10 +9,11 @@ defmodule Ash.Resource.Calculation do
             constraints: [],
             description: nil,
             filterable?: true,
+            sortable?: true,
             load: [],
             name: nil,
-            private?: false,
-            select: [],
+            public?: false,
+            sensitive?: false,
             type: nil
 
   @schema [
@@ -33,7 +36,8 @@ defmodule Ash.Resource.Calculation do
       type:
         {:or,
          [
-           {:spark_function_behaviour, Ash.Calculation, {Ash.Calculation.Function, 2}},
+           {:spark_function_behaviour, Ash.Resource.Calculation,
+            {Ash.Resource.Calculation.Function, 2}},
            {:custom, __MODULE__, :expr_calc, []}
          ]},
       required: true,
@@ -45,17 +49,19 @@ defmodule Ash.Resource.Calculation do
       type: :string,
       doc: "An optional description for the calculation"
     ],
-    private?: [
+    public?: [
       type: :boolean,
       default: false,
       doc: """
-      Whether or not the calculation will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql See the [security guide](/documentation/topics/security.md) for more.
+      Whether or not the calculation will appear in public interfaces.
       """
     ],
-    select: [
-      type: {:list, :atom},
-      default: [],
-      doc: "A list of fields to ensure selected if the calculation is used."
+    sensitive?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Whether or not references to the calculation will be considered sensitive.
+      """
     ],
     load: [
       type: :any,
@@ -71,8 +77,47 @@ defmodule Ash.Resource.Calculation do
       type: {:or, [:boolean, {:in, [:simple_equality]}]},
       default: true,
       doc: "Whether or not the calculation should be usable in filters."
+    ],
+    sortable?: [
+      type: :boolean,
+      default: true,
+      doc: """
+      Whether or not the calculation can be referenced in sorts.
+      """
     ]
   ]
+
+  defmodule Context do
+    @moduledoc """
+    The context and arguments of a calculation
+    """
+
+    defstruct [
+      :actor,
+      :tenant,
+      :authorize?,
+      :tracer,
+      :domain,
+      :resource,
+      :type,
+      :constraints,
+      :arguments,
+      source_context: %{}
+    ]
+
+    @type t :: %__MODULE__{
+            actor: term | nil,
+            tenant: term(),
+            authorize?: boolean,
+            tracer: module | nil,
+            source_context: map(),
+            resource: module(),
+            type: Ash.Type.t(),
+            constraints: Keyword.t(),
+            domain: module(),
+            arguments: map()
+          }
+  end
 
   @type t :: %__MODULE__{
           allow_nil?: boolean,
@@ -82,13 +127,65 @@ defmodule Ash.Resource.Calculation do
           description: nil | String.t(),
           filterable?: boolean,
           load: keyword,
+          sortable?: boolean,
           name: atom(),
-          private?: boolean,
-          select: keyword,
+          public?: boolean,
           type: nil | Ash.Type.t()
         }
 
   @type ref :: {module(), Keyword.t()} | module()
+  defmacro __using__(_) do
+    quote do
+      @behaviour Ash.Resource.Calculation
+
+      @before_compile Ash.Resource.Calculation
+
+      import Ash.Expr
+
+      def init(opts), do: {:ok, opts}
+
+      def describe(opts), do: "##{inspect(__MODULE__)}<#{inspect(opts)}>"
+
+      def load(_query, _opts, _context), do: []
+
+      defoverridable init: 1, describe: 1, load: 3
+    end
+  end
+
+  defmacro __before_compile__(_) do
+    quote do
+      if Module.defines?(__MODULE__, {:expression, 2}) do
+        def has_expression?, do: true
+      else
+        def has_expression?, do: false
+      end
+
+      if Module.defines?(__MODULE__, {:calculate, 3}) do
+        def has_calculate?, do: true
+      else
+        def has_calculate?, do: false
+      end
+
+      def strict_loads?, do: true
+
+      defoverridable strict_loads?: 0
+    end
+  end
+
+  @type opts :: Keyword.t()
+
+  @callback init(opts :: opts) :: {:ok, opts} | {:error, term}
+  @callback describe(opts :: opts) :: String.t()
+
+  @callback calculate(records :: [Ash.Resource.record()], opts :: opts, context :: Context.t()) ::
+              {:ok, [term]} | [term] | {:error, term} | :unknown
+  @callback expression(opts :: opts, context :: Context.t()) :: any
+  @callback load(query :: Ash.Query.t(), opts :: opts, context :: Context.t()) ::
+              atom | [atom] | Keyword.t()
+  @callback strict_loads?() :: boolean()
+  @callback has_expression?() :: boolean()
+
+  @optional_callbacks expression: 2, calculate: 3
 
   def schema, do: @schema
 

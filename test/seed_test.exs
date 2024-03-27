@@ -4,10 +4,12 @@ defmodule Ash.Test.SeedTest do
 
   import Ash.Seed
   require Ash.Query
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -15,51 +17,66 @@ defmodule Ash.Test.SeedTest do
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string, default: "Fred"
+      attribute :name, :string, default: "Fred", public?: true
     end
 
     relationships do
-      has_many :posts, Ash.Test.SeedTest.Post, destination_attribute: :author_id
+      has_many :posts, Ash.Test.SeedTest.Post, destination_attribute: :author_id, public?: true
 
       has_one :latest_post, Ash.Test.SeedTest.Post,
         destination_attribute: :author_id,
-        sort: [inserted_at: :desc]
+        sort: [inserted_at: :desc],
+        public?: true
     end
   end
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
-      attribute :contents, :string
-      attribute :category, :string
+
+      attribute :title, :string do
+        public?(true)
+      end
+
+      attribute :contents, :string do
+        public?(true)
+      end
+
+      attribute :category, :string do
+        public?(true)
+      end
+
       timestamps()
     end
 
     relationships do
-      belongs_to :author, Author
+      belongs_to :author, Author, public?: true
 
       has_many :ratings, Ash.Test.SeedTest.Rating do
-        api Ash.Test.SeedTest.Api2
+        public?(true)
+        domain(Ash.Test.SeedTest.Domain2)
       end
 
       many_to_many :categories, Ash.Test.SeedTest.Category,
+        public?: true,
         through: Ash.Test.SeedTest.PostCategory,
         destination_attribute_on_join_resource: :category_id,
         source_attribute_on_join_resource: :post_id
@@ -68,44 +85,51 @@ defmodule Ash.Test.SeedTest do
 
   defmodule PostCategory do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     relationships do
-      belongs_to :post, Post, primary_key?: true, allow_nil?: false
+      belongs_to :post, Post, primary_key?: true, allow_nil?: false, public?: true
 
       belongs_to :category, Ash.Test.SeedTest.Category,
         primary_key?: true,
-        allow_nil?: false
+        allow_nil?: false,
+        public?: true
     end
   end
 
   defmodule Category do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
 
     relationships do
       many_to_many :posts, Post,
+        public?: true,
         through: PostCategory,
         destination_attribute_on_join_resource: :post_id,
         source_attribute_on_join_resource: :category_id
@@ -114,6 +138,7 @@ defmodule Ash.Test.SeedTest do
 
   defmodule Rating do
     use Ash.Resource,
+      domain: Ash.Test.SeedTest.Domain2,
       data_layer: Ash.DataLayer.Ets
 
     ets do
@@ -122,56 +147,31 @@ defmodule Ash.Test.SeedTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :rating, :integer
+
+      attribute :rating, :integer do
+        public?(true)
+      end
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     relationships do
       belongs_to :post, Post do
-        api Ash.Test.SeedTest.Api
+        public?(true)
+        domain(Domain)
       end
     end
   end
 
-  defmodule Registry do
+  defmodule Domain2 do
     @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Author)
-      entry(Post)
-      entry(Category)
-      entry(PostCategory)
-    end
-  end
-
-  defmodule Registry2 do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Rating)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
+    use Ash.Domain
 
     resources do
-      registry Registry
-    end
-  end
-
-  defmodule Api2 do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry2
+      resource(Rating)
     end
   end
 
@@ -179,14 +179,14 @@ defmodule Ash.Test.SeedTest do
     test "it creates a single record with resource and input" do
       assert %Post{id: id, title: "seeded"} = seed!(Post, %{title: "seeded"})
 
-      assert post = Api.get!(Post, id)
+      assert post = Ash.get!(Post, id)
       assert post.title == "seeded"
     end
 
     test "it creates a single record with a struct" do
       assert %Post{id: id, title: "seeded"} = seed!(%Post{title: "seeded"})
 
-      assert post = Api.get!(Post, id)
+      assert post = Ash.get!(Post, id)
       assert post.title == "seeded"
     end
 
@@ -216,7 +216,7 @@ defmodule Ash.Test.SeedTest do
                categories: categories,
                author: %Author{name: "ted dansen"},
                ratings: ratings
-             } = Post |> Api.get!(id) |> Api.load!([:categories, :author, :ratings])
+             } = Post |> Ash.get!(id) |> Ash.load!([:categories, :author, :ratings])
 
       assert categories |> Enum.map(& &1.name) |> Enum.sort() == ["bar", "foo"]
       assert ratings |> Enum.map(& &1.rating) |> Enum.sort() == [1, 2]
@@ -243,7 +243,7 @@ defmodule Ash.Test.SeedTest do
                categories: categories,
                author: author,
                ratings: ratings
-             } = Post |> Api.get!(id) |> Api.load!([:categories, :author, :ratings])
+             } = Post |> Ash.get!(id) |> Ash.load!([:categories, :author, :ratings])
 
       assert %Post{id: id} =
                seed!(%Post{
@@ -259,15 +259,15 @@ defmodule Ash.Test.SeedTest do
                categories: categories,
                author: author,
                ratings: ratings
-             } = Post |> Api.get!(id) |> Api.load!([:categories, :author, :ratings])
+             } = Post |> Ash.get!(id) |> Ash.load!([:categories, :author, :ratings])
 
       assert categories |> Enum.map(& &1.name) |> Enum.sort() == ["bar", "foo"]
       assert ratings |> Enum.map(& &1.rating) |> Enum.sort() == [1, 2]
       assert author.name == "ted dansen"
 
-      assert Enum.count(Api.read!(Category)) == 2
-      assert Enum.count(Api.read!(Rating)) == 2
-      assert Enum.count(Api.read!(Author)) == 1
+      assert Enum.count(Ash.read!(Category)) == 2
+      assert Enum.count(Ash.read!(Rating)) == 2
+      assert Enum.count(Ash.read!(Author)) == 1
     end
   end
 end

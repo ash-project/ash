@@ -3,7 +3,7 @@ defmodule Ash.Test.Policy.ComplexTest do
   use ExUnit.Case, async?: false
   require Ash.Query
 
-  alias Ash.Test.Support.PolicyComplex.{Api, Bio, Comment, Post, User}
+  alias Ash.Test.Support.PolicyComplex.{Bio, Comment, Post, User}
 
   setup do
     Application.put_env(:ash, :policies, show_policy_breakdowns?: true)
@@ -12,25 +12,31 @@ defmodule Ash.Test.Policy.ComplexTest do
       Application.delete_env(:ash, :policies)
     end)
 
-    me = User.create!("me", %{email: "me@app.com", bio: "this is my bio"})
-    my_friend = User.create!("my friend", %{email: "my_friend@app.com"})
+    me = User.create!("me", %{email: "me@app.com", bio_text: "this is my bio"}, authorize?: false)
+    my_friend = User.create!("my friend", %{email: "my_friend@app.com"}, authorize?: false)
 
     a_friend_of_my_friend =
-      User.create!("a friend of my friend", %{email: "friends_friend@app.com"})
+      User.create!("a friend of my friend", %{email: "friends_friend@app.com"}, authorize?: false)
 
-    User.add_friend!(me, my_friend.id, actor: me)
-    User.add_friend!(my_friend, a_friend_of_my_friend.id, actor: my_friend)
-    post_by_me = Post.create!("post by me", actor: me)
-    post_by_my_friend = Post.create!("post by my friend", actor: my_friend)
+    User.add_friend!(me, my_friend.id, actor: me, authorize?: false)
+    User.add_friend!(my_friend, a_friend_of_my_friend.id, actor: my_friend, authorize?: false)
+    post_by_me = Post.create!("post by me", actor: me, authorize?: false)
+    post_by_my_friend = Post.create!("post by my friend", actor: my_friend, authorize?: false)
 
     post_by_a_friend_of_my_friend =
-      Post.create!("post by a friend of my friend", actor: a_friend_of_my_friend)
+      Post.create!("post by a friend of my friend",
+        actor: a_friend_of_my_friend,
+        authorize?: false
+      )
 
     comment_by_me_on_my_post =
-      Comment.create!(post_by_me.id, "comment by me on my own post", actor: me)
+      Comment.create!(post_by_me.id, "comment by me on my own post", actor: me, authorize?: false)
 
     comment_by_my_friend_on_my_post =
-      Comment.create!(post_by_me.id, "comment by my friend on my", actor: my_friend)
+      Comment.create!(post_by_me.id, "comment by my friend on my",
+        actor: my_friend,
+        authorize?: false
+      )
 
     # comment_by_a_friend_of_a_friend_on_my_post =
     Comment.create!(
@@ -44,14 +50,16 @@ defmodule Ash.Test.Policy.ComplexTest do
       Comment.create!(
         post_by_a_friend_of_my_friend.id,
         "comment by a friend of a friend on his own post",
-        actor: a_friend_of_my_friend
+        actor: a_friend_of_my_friend,
+        authorize?: false
       )
 
     comment_by_a_friend_of_a_friend_on_my_friends_post =
       Comment.create!(
         post_by_my_friend.id,
         "comment by a friend of a friend on my friend's post",
-        actor: a_friend_of_my_friend
+        actor: a_friend_of_my_friend,
+        authorize?: false
       )
 
     [
@@ -75,9 +83,17 @@ defmodule Ash.Test.Policy.ComplexTest do
   } do
     assert [post_by_me.id, post_by_my_friend.id] |> Enum.sort() ==
              Post
-             |> Api.read!(actor: me)
+             |> Ash.read!(actor: me)
              |> Enum.map(& &1.id)
              |> Enum.sort()
+  end
+
+  test "it applies policies from the domain", %{me: me} do
+    assert_raise Ash.Error.Forbidden,
+                 ~r/authorize unless: actor.forbidden_by_domain == true | ✓ |/,
+                 fn ->
+                   Ash.read!(Post, actor: %{me | forbidden_by_domain: true})
+                 end
   end
 
   test "it properly limits on reads of comments", %{
@@ -87,7 +103,7 @@ defmodule Ash.Test.Policy.ComplexTest do
   } do
     assert [comment_by_me_on_my_post.id, comment_by_my_friend_on_my_post.id] |> Enum.sort() ==
              Comment
-             |> Api.read!(actor: me)
+             |> Ash.read!(actor: me)
              |> Enum.map(& &1.id)
              |> Enum.sort()
   end
@@ -96,29 +112,30 @@ defmodule Ash.Test.Policy.ComplexTest do
     assert [_] =
              Post
              |> Ash.Query.filter(comments.text == "comment by a friend of a friend on my post")
-             |> Api.read!(actor: me, authorize?: false)
+             |> Ash.read!(actor: me, authorize?: false)
 
     assert [] =
              Post
              |> Ash.Query.filter_input(
                comments: [text: "comment by a friend of a friend on my post"]
              )
-             |> Api.read!(actor: me)
+             |> Ash.read!(actor: me)
   end
 
-  test "it properly scopes single loads" do
+  test "it properly scopes single loads", %{me: me} do
     assert [%{best_friend: %{name: "me"}}] =
              User
              |> Ash.Query.filter(best_friend.name == "me")
-             |> Api.read!()
-             |> Api.load!(:best_friend)
+             |> Ash.Query.deselect(:private_email)
+             |> Ash.read!(actor: me)
+             |> Ash.load!(:best_friend, actor: me)
   end
 
   test "aggregates can be loaded and filtered on", %{me: me} do
     Post
     |> Ash.Query.load(:count_of_comments)
     |> Ash.Query.filter(count_of_comments == 10)
-    |> Api.read!(actor: me)
+    |> Ash.read!(actor: me)
   end
 
   test "aggregates join paths are authorized", %{me: me, post_by_me: post_by_me} do
@@ -126,7 +143,7 @@ defmodule Ash.Test.Policy.ComplexTest do
       Post
       |> Ash.Query.load(:count_of_commenters)
       |> Ash.Query.filter(id == ^post_by_me.id)
-      |> Api.read_one!()
+      |> Ash.read_one!(authorize?: false)
       |> Map.get(:count_of_commenters)
 
     assert count_of_commenters_without_authorization == 3
@@ -135,7 +152,7 @@ defmodule Ash.Test.Policy.ComplexTest do
       Post
       |> Ash.Query.load(:count_of_commenters)
       |> Ash.Query.filter(id == ^post_by_me.id)
-      |> Api.read_one!(actor: me)
+      |> Ash.read_one!(actor: me)
       |> Map.get(:count_of_commenters)
 
     assert count_of_commenters_with_authorization == 2
@@ -144,32 +161,32 @@ defmodule Ash.Test.Policy.ComplexTest do
   test "aggregates in calculations are authorized", %{me: me} do
     Post
     |> Ash.Query.load([:count_of_comments_calc, :count_of_comments])
-    |> Api.read!(actor: me, authorize?: true)
+    |> Ash.read!(actor: me, authorize?: true)
   end
 
   test "data can be loaded without forbidden errors from selecting", %{me: me} do
     users =
       Ash.Test.Support.PolicyComplex.User
       |> Ash.Query.deselect(:private_email)
-      |> Api.read!(actor: me)
+      |> Ash.read!(actor: me)
 
     users
-    |> Api.load!([:posts], actor: me, authorize?: true)
+    |> Ash.load!([:posts], actor: me, authorize?: true)
   end
 
   test "loading data honors `accessing_from` policies", %{me: me} do
-    Api.load!(me, [:bio], authorize?: true, actor: me)
+    Ash.load!(me, [:bio], authorize?: true, actor: me)
     me |> User.set_bio!("New bio!", authorize?: true, actor: me)
 
     User
     |> Ash.Query.filter(bio == "New bio!")
     |> Ash.Query.deselect(:private_email)
-    |> Api.read_one!(authorize?: true, actor: me)
+    |> Ash.read_one!(authorize?: true, actor: me)
 
-    me |> Api.load!([:bio_text], authorize?: true, actor: me)
+    me |> Ash.load!([:bio_text], authorize?: true, actor: me)
 
     assert_raise Ash.Error.Forbidden, fn ->
-      Api.read!(Bio, actor: me, authorize?: true)
+      Ash.read!(Bio, actor: me, authorize?: true)
     end
   end
 end

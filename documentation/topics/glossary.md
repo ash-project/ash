@@ -29,11 +29,11 @@ If a Project resource has_many Ticket resources, an example of an aggregate on t
 
 See the [Aggregates guide](/documentation/topics/aggregates.md) for more information.
 
-## API
+## Domain
 
-A method of broadly separating resources into different [bounded contexts](https://martinfowler.com/bliki/BoundedContext.html). Small apps might only have one API, in which case you can set-and-forget it, but apps with larger domains can benefit from different contexts having different views of the same resource.
+A method of broadly separating resources into different [domains](<https://en.wikipedia.org/wiki/Domain_(software_engineering)>), A.K.A [bounded contexts](https://martinfowler.com/bliki/BoundedContext.html).
 
-See `d:Ash.Api` for more information.
+See `d:Ash.Domain` for more information.
 
 ## Attribute
 
@@ -69,12 +69,6 @@ The tools and functions used to reduce the amount of data returned when running 
 
 See `Ash.Filter` for more information.
 
-## Flow
-
-Flows combine actions together into a static workflow, somewhat similarly to [Ecto.Multi](https://hexdocs.pm/ecto/Ecto.Multi.html). The result of running one action in a flow can be used as input to another action, and flows can be halted and resumed on request. Flows also support transactions; steps can be grouped together into transactions or the whole flow can be run inside a single transaction.
-
-See the [Flows guide](/documentation/topics/flows.md) for more information.
-
 ## Identity
 
 A way to uniquely identify an instance of a resource. A primary key is an example of an identity that is automatically generated; you can manually add others such as a user's email address, or a URL slug for a post. If using AshPostgres, constraints will be created to enforce identities at the database level.
@@ -107,10 +101,6 @@ See `Ash.Query` for more information.
 Relationships (also known as _associations_) are named links between resources, that define how they relate to each other. Relationships can be used to signify ownership of a record, membership of a group, or can be used in filtering and querying data.
 
 See the [Relationships guide](/documentation/topics/relationships.md) for more information.
-
-## Registry
-
-A registry defines the set of resources available in your application, via listing entries. You'll probably never need to interact with one directly after setting it up, but it works efficiently for compile-time optimization.
 
 ## Resource
 

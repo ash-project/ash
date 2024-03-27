@@ -5,6 +5,8 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
   require Ash.Query
   require Ash.Expr
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule Atomic do
     use Ash.Resource.Change
 
@@ -23,14 +25,15 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
 
       update :only_allow_name do
         accept([:name])
@@ -57,38 +60,37 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
-      attribute :bio, :string
-      attribute :score, :integer
+
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :bio, :string do
+        public?(true)
+      end
+
+      attribute :score, :integer do
+        public?(true)
+      end
     end
 
     code_interface do
-      define_for Ash.Test.Actions.AtomicUpdateTest.Api
       define :increment_score
       define :sometimes_atomic
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      resource Author
     end
   end
 
   test "atomics can be added to a changeset" do
     author =
       Author
-      |> Ash.Changeset.new(%{name: "fred"})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{name: "fred"})
+      |> Ash.create!()
 
     author =
       author
       |> Ash.Changeset.for_update(:only_allow_name)
       |> Ash.Changeset.atomic_update(:name, Ash.Expr.expr(name <> " weasley"))
-      |> Api.update!()
+      |> Ash.update!()
 
     assert author.name == "fred weasley"
   end
@@ -100,7 +102,6 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
       )
 
     assert changeset.valid?
-    assert changeset.atomics[:name]
   end
 
   test "values are eagerly validated" do
@@ -113,51 +114,18 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
   test "policies that require original data" do
     author =
       Author
-      |> Ash.Changeset.new(%{name: "fred", score: 0})
-      |> Api.create!()
+      |> Ash.Changeset.for_create(:create, %{name: "fred", score: 0})
+      |> Ash.create!()
 
     assert Author.increment_score!(author, authorize?: true).score == 1
   end
-
-  # ets doesn't support atomics, so we can't do this here
-  # test "an action that cannot be done fully atomically raises an error at runtime" do
-  #   author =
-  #     Author
-  #     |> Ash.Changeset.new(%{name: "fred", score: 0})
-  #     |> Api.create!()
-
-  #   assert_raise Ash.Error.Framework, ~r/must be performed atomically/, fn ->
-  #     Author.sometimes_atomic!(author, %{atomic: false})
-  #   end
-  # end
-
-  # See the note in `Ash.Resource.Verifiers.VerifyActionsAtomic` for why we can't introduce
-  # this yet.
-  # test "resource compilation fails if an action is known to not be able to be made atomic" do
-  #   assert_raise Spark.Error.DslError, ~r/can never be done atomically/, fn ->
-  #     defmodule ExampleNonAtomic do
-  #       use Ash.Resource
-
-  #       attributes do
-  #         uuid_primary_key :id
-  #       end
-
-  #       actions do
-  #         update :update do
-  #           require_atomic? true
-  #           change NotAtomic
-  #         end
-  #       end
-  #     end
-  #   end
-  # end
 
   describe "increment/1" do
     test "it increments the value, honoring overflow" do
       author =
         Author
-        |> Ash.Changeset.new(%{name: "fred", score: 0})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{name: "fred", score: 0})
+        |> Ash.create!()
 
       assert Author.increment_score!(author).score == 1
       assert Author.increment_score!(author).score == 2

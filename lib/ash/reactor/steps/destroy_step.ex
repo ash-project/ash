@@ -26,7 +26,7 @@ defmodule Ash.Reactor.DestroyStep do
 
     arguments[:initial]
     |> Changeset.for_destroy(options[:action], arguments[:input], changeset_options)
-    |> options[:api].destroy(action_options)
+    |> options[:domain].destroy(action_options)
     |> case do
       :ok ->
         {:ok, :ok}
@@ -62,7 +62,7 @@ defmodule Ash.Reactor.DestroyStep do
 
     options[:resource]
     |> Changeset.for_create(options[:undo_action], %{record: record}, changeset_options)
-    |> options[:api].create(action_options)
+    |> options[:domain].create(action_options)
     |> case do
       {:ok, _record} -> :ok
       {:ok, _record, _notifications} -> :ok

@@ -19,7 +19,7 @@ defmodule Ash.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       package: package(),
       deps: deps(),
-      dialyzer: [plt_add_apps: [:mix, :mnesia, :earmark, :plug, :ex_unit]],
+      dialyzer: [plt_add_apps: [:mix, :mnesia, :plug, :ex_unit]],
       docs: docs(),
       aliases: aliases(),
       description: @description,
@@ -66,7 +66,6 @@ defmodule Ash.MixProject do
         "documentation/topics/development-utilities.md",
         "documentation/topics/embedded-resources.md",
         "documentation/topics/expressions.md",
-        "documentation/topics/flows.md",
         "documentation/topics/glossary.md",
         "documentation/topics/identities.md",
         "documentation/topics/managing-relationships.md",
@@ -86,14 +85,13 @@ defmodule Ash.MixProject do
         "documentation/topics/timeouts.md",
         "documentation/topics/validations.md",
         "documentation/dsls/DSL:-Ash.Resource.md",
-        "documentation/dsls/DSL:-Ash.Api.md",
+        "documentation/dsls/DSL:-Ash.Domain.md",
         "documentation/dsls/DSL:-Ash.Notifier.PubSub.md",
         "documentation/dsls/DSL:-Ash.Policy.Authorizer.md",
-        "documentation/dsls/DSL:-Ash.Flow.md",
         "documentation/dsls/DSL:-Ash.DataLayer.Ets.md",
         "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md",
-        "documentation/dsls/DSL:-Ash.Registry.md",
-        "documentation/dsls/DSL:-Ash.Reactor.md"
+        "documentation/dsls/DSL:-Ash.Reactor.md",
+        "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md"
       ],
       groups_for_extras: [
         Tutorials: ~r'documentation/tutorials',
@@ -103,14 +101,11 @@ defmodule Ash.MixProject do
       ],
       nest_modules_by_prefix: [
         Ash.Error,
-        Ash.Flow.Transformers,
         Ash.Policy.Authorizer,
-        Ash.Api.Transformers,
-        Ash.Api.Verifiers,
-        Ash.Registry.Transformers,
+        Ash.Domain.Transformers,
+        Ash.Domain.Verifiers,
         Ash.Resource.Transformers,
         Ash.Resource.Verifiers,
-        Ash.Registry.ResourceValidations,
         Ash.Query.Function,
         Ash.Query.Operator,
         Ash.Resource.Change,
@@ -134,8 +129,7 @@ defmodule Ash.MixProject do
       end,
       groups_for_modules: [
         Resources: [
-          Ash.Filter.TemplateHelpers,
-          Ash.Calculation,
+          Ash.Resource.Calculation,
           Ash.Resource.Calculation.Builtins,
           Ash.CodeInterface,
           Ash.DataLayer,
@@ -150,7 +144,7 @@ defmodule Ash.MixProject do
         ],
         "Action Input & Interface": [
           Ash,
-          Ash.Api,
+          Ash.Domain,
           Ash.Query,
           Ash.Changeset,
           Ash.ActionInput,
@@ -175,7 +169,6 @@ defmodule Ash.MixProject do
           Ash.Policy.Check,
           Ash.Policy.Check.Builtins,
           Ash.Policy.FilterCheck,
-          Ash.Policy.FilterCheckWithContext,
           Ash.Policy.SimpleCheck
         ],
         Extensions: [
@@ -185,19 +178,16 @@ defmodule Ash.MixProject do
           Ash.DataLayer.Simple,
           Ash.Notifier.PubSub,
           Ash.Policy.Authorizer,
-          Ash.Registry,
           Ash.Reactor
         ],
         Introspection: [
-          Ash.Api.Info,
-          Ash.Registry.Info,
+          Ash.Domain.Info,
           Ash.Resource.Info,
-          Ash.Flow.Info,
           Ash.Policy.Info,
           Ash.DataLayer.Ets.Info,
           Ash.DataLayer.Mnesia.Info,
           Ash.Notifier.PubSub.Info,
-          ~r/Ash.Api.Dsl.*/
+          ~r/Ash.Domain.Dsl.*/
         ],
         Utilities: [
           Ash.Expr,
@@ -213,7 +203,6 @@ defmodule Ash.MixProject do
           Ash.UUID,
           Ash.NotLoaded,
           Ash.ForbiddenField,
-          Ash.NotSelected,
           Ash.Changeset.ManagedRelationshipHelpers,
           Ash.DataLayer.Simple,
           Ash.Filter.Simple,
@@ -226,8 +215,8 @@ defmodule Ash.MixProject do
           Ash.SatSolver
         ],
         Visualizations: [
-          Ash.Api.Info.Diagram,
-          Ash.Api.Info.Livebook,
+          Ash.Domain.Info.Diagram,
+          Ash.Domain.Info.Livebook,
           Ash.Policy.Chart.Mermaid
         ],
         Testing: [
@@ -240,14 +229,6 @@ defmodule Ash.MixProject do
           Ash.Tracer.Simple,
           Ash.Tracer.Simple.Span
         ],
-        Flow: [
-          Ash.Flow,
-          Ash.Flow.Result,
-          Ash.Flow.Executor,
-          Ash.Flow.Step,
-          Ash.Flow.Chart.Mermaid,
-          Ash.Flow.StepHelpers
-        ],
         Types: [
           "Ash.Type",
           ~r/Ash.Type\./
@@ -258,8 +239,7 @@ defmodule Ash.MixProject do
         ],
         "DSL Transformers": [
           ~r/\.Transformers\./,
-          ~r/\.Verifiers\./,
-          Ash.Registry.ResourceValidations
+          ~r/\.Verifiers\./
         ],
         Expressions: [
           Ash.Filter.Predicate,
@@ -288,11 +268,8 @@ defmodule Ash.MixProject do
           ~r/Ash.Resource.Attribute/,
           ~r/Ash.Resource.Aggregate/,
           ~r/Ash.Resource.Actions/,
-          ~r/Ash.Flow.Step/,
-          ~r/Ash.Flow/,
           Ash.Mix.Tasks.Helpers,
           Ash.Policy.FieldPolicy,
-          ~r/Ash.Registry/,
           Ash.Policy.Policy,
           Ash.Notifier.PubSub.Publication
         ],
@@ -325,18 +302,30 @@ defmodule Ash.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:spark, "~> 1.1 and >= 1.1.55"},
+      # DSLs
+      {:spark, "~> 2.1 and >= 2.1.7"},
+      # Ash resources are backed by ecto scheams
       {:ecto, "~> 3.7"},
+      # Used by the ETS data layer
       {:ets, "~> 0.8"},
+      # Data & types
       {:decimal, "~> 2.0"},
-      {:picosat_elixir, "~> 0.2"},
       {:comparable, "~> 1.0"},
       {:jason, ">= 1.0.0"},
-      {:stream_data, "~> 0.6"},
+      # Observability
       {:telemetry, "~> 1.1"},
+      # Used for providing Ash.Reactor, will be used more in the future
+      {:reactor, "~> 0.8"},
+      # Used for Ash.PlugHelpers
       {:plug, ">= 0.0.0", optional: true},
-      {:earmark, "~> 1.4"},
-      {:reactor, "~> 0.6"},
+      # Used for aggregatable and standardized exceptions
+      {:splode, "~> 0.2"},
+      # Testing Utilities
+      {:stream_data, "~> 0.6"},
+
+      # SAT Solvers
+      {:picosat_elixir, "~> 0.2", optional: true},
+      {:simple_sat, "~> 0.1 and >= 0.1.1", optional: true},
 
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},
@@ -347,6 +336,7 @@ defmodule Ash.MixProject do
       {:mimic, "~> 1.7", only: [:test]},
       {:sobelow, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:git_ops, "~> 2.5", only: [:dev, :test]},
+      {:mix_audit, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},
       {:benchee, "~> 1.1", only: [:dev, :test]},
       {:doctor, "~> 0.21", only: [:dev, :test]}
@@ -364,11 +354,11 @@ defmodule Ash.MixProject do
         "spark.cheat_sheets_in_search"
       ],
       "spark.cheat_sheets_in_search":
-        "spark.cheat_sheets_in_search --extensions Ash.Resource.Dsl,Ash.Api.Dsl,Ash.Flow.Dsl,Ash.Registry.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor",
+        "spark.cheat_sheets_in_search --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor",
       "spark.formatter":
-        "spark.formatter --extensions Ash.Resource.Dsl,Ash.Api.Dsl,Ash.Flow.Dsl,Ash.Registry.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor",
+        "spark.formatter --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor",
       "spark.cheat_sheets":
-        "spark.cheat_sheets --extensions Ash.Resource.Dsl,Ash.Api.Dsl,Ash.Flow.Dsl,Ash.Registry.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor"
+        "spark.cheat_sheets --extensions Ash.Resource.Dsl,Ash.Domain.Dsl,Ash.DataLayer.Ets,Ash.DataLayer.Mnesia,Ash.Notifier.PubSub,Ash.Policy.Authorizer,Ash.Reactor"
     ]
   end
 end

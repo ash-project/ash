@@ -8,6 +8,11 @@ defmodule Ash.SatSolver do
 
   @dialyzer {:nowarn_function, overlap?: 2}
 
+  @doc """
+  Creates tuples of a boolean statement.
+
+  i.e `b(1 and 2) #=> {:and, 1, 2}`
+  """
   defmacro b(statement) do
     value =
       Macro.prewalk(
@@ -39,6 +44,7 @@ defmodule Ash.SatSolver do
     end
   end
 
+  @doc false
   def balance({op, left, right}) do
     left = balance(left)
     right = balance(right)
@@ -57,6 +63,7 @@ defmodule Ash.SatSolver do
 
   def balance(other), do: other
 
+  @doc "Returns true if the candidate filter returns the same or less data than the filter"
   def strict_filter_subset(filter, candidate) do
     case {filter, candidate} do
       {%{expression: nil}, %{expression: nil}} ->
@@ -123,7 +130,8 @@ defmodule Ash.SatSolver do
   defp filter_to_expr(%Filter{expression: expression}), do: filter_to_expr(expression)
   defp filter_to_expr(%{__predicate__?: _} = op_or_func), do: op_or_func
   defp filter_to_expr(%Ash.Query.Exists{} = exists), do: exists
-  defp filter_to_expr(%Ash.Query.Parent{} = exists), do: exists
+  defp filter_to_expr(%Ash.Query.Parent{} = parent), do: parent
+  defp filter_to_expr(%Ash.CustomExpression{expression: expression}), do: expression
   defp filter_to_expr(%Not{expression: expression}), do: b(not filter_to_expr(expression))
 
   defp filter_to_expr(%BooleanExpression{op: op, left: left, right: right}) do
@@ -134,6 +142,7 @@ defmodule Ash.SatSolver do
     raise ArgumentError, message: "Invalid filter expression #{inspect(expr)}"
   end
 
+  @doc "Prepares a filter for comparison"
   def transform(resource, expression) do
     expression
     |> consolidate_relationships(resource)
@@ -141,6 +150,7 @@ defmodule Ash.SatSolver do
     |> build_expr_with_predicate_information()
   end
 
+  @doc "Calls `transform/2` and solves the expression"
   def transform_and_solve(resource, expression) do
     resource
     |> transform(expression)
@@ -339,21 +349,7 @@ defmodule Ash.SatSolver do
     end)
   end
 
-  # def synonymous_relationship_paths?(_, [], []), do: true
-
-  # def synonymous_relationship_paths?(_resource, candidate_path, path)
-  #     when length(candidate_path) != length(path),
-  #     do: false
-
-  # def synonymous_relationship_paths?(resource, [candidate_first | candidate_rest], [first | rest])
-  #     when first == candidate_first do
-  #   synonymous_relationship_paths?(
-  #     Ash.Resource.Info.relationship(resource, candidate_first).destination,
-  #     candidate_rest,
-  #     rest
-  #   )
-  # end
-
+  @doc "Returns `true` if the relationship paths are synonymous from a data perspective"
   def synonymous_relationship_paths?(
         left_resource,
         candidate,
@@ -409,6 +405,7 @@ defmodule Ash.SatSolver do
           :destination_attribute_on_join_resource,
           :destination_attribute,
           :destination,
+          :manual,
           :sort,
           :filter
         ]
@@ -497,7 +494,7 @@ defmodule Ash.SatSolver do
     end)
   end
 
-  def fully_simplify(expression) do
+  defp fully_simplify(expression) do
     expression
     |> do_fully_simplify()
     |> lift_equals_out_of_in()
@@ -610,10 +607,10 @@ defmodule Ash.SatSolver do
 
   def split_in_expressions(other, _), do: other
 
-  def overlap?(
-        %Ash.Query.Operator.In{left: left, right: %MapSet{} = left_right},
-        %Ash.Query.Operator.In{left: left, right: %MapSet{} = right_right}
-      ) do
+  defp overlap?(
+         %Ash.Query.Operator.In{left: left, right: %MapSet{} = left_right},
+         %Ash.Query.Operator.In{left: left, right: %MapSet{} = right_right}
+       ) do
     if MapSet.equal?(left_right, right_right) do
       false
     else
@@ -631,23 +628,24 @@ defmodule Ash.SatSolver do
     end
   end
 
-  def overlap?(_, %Ash.Query.Operator.Eq{right: %Ref{}}),
+  defp overlap?(_, %Ash.Query.Operator.Eq{right: %Ref{}}),
     do: false
 
-  def overlap?(%Ash.Query.Operator.Eq{right: %Ref{}}, _),
+  defp overlap?(%Ash.Query.Operator.Eq{right: %Ref{}}, _),
     do: false
 
-  def overlap?(
-        %Ash.Query.Operator.Eq{left: left, right: left_right},
-        %Ash.Query.Operator.In{left: left, right: %MapSet{} = right_right}
-      ) do
+  defp overlap?(
+         %Ash.Query.Operator.Eq{left: left, right: left_right},
+         %Ash.Query.Operator.In{left: left, right: %MapSet{} = right_right}
+       ) do
     MapSet.member?(right_right, left_right)
   end
 
-  def overlap?(_left, _right) do
+  defp overlap?(_left, _right) do
     false
   end
 
+  @doc "Returns a statement expressing that the predicates are mutually exclusive."
   def mutually_exclusive(predicates, acc \\ [])
   def mutually_exclusive([], acc), do: acc
 
@@ -660,6 +658,7 @@ defmodule Ash.SatSolver do
     mutually_exclusive(rest, new_acc)
   end
 
+  @doc "Returns a statement expressing that the predicates are mutually exclusive and collectively exhaustive."
   def mutually_exclusive_and_collectively_exhaustive([]), do: []
 
   def mutually_exclusive_and_collectively_exhaustive([_]), do: []
@@ -685,14 +684,17 @@ defmodule Ash.SatSolver do
       end)
   end
 
+  @doc "Returns `b(not (left and right))`"
   def left_excludes_right(left, right) do
     b(not (left and right))
   end
 
+  @doc "Returns `b(not (right and left))`"
   def right_excludes_left(left, right) do
     b(not (right and left))
   end
 
+  @doc "Returns a statement expressing that the predicates are mutually inclusive"
   def mutually_inclusive(predicates, acc \\ [])
   def mutually_inclusive([], acc), do: acc
 
@@ -705,10 +707,12 @@ defmodule Ash.SatSolver do
     mutually_exclusive(rest, new_acc)
   end
 
+  @doc "Returns `b(not (right and not left))`"
   def right_implies_left(left, right) do
     b(not (right and not left))
   end
 
+  @doc "Returns `b(not (left and not right))`"
   def left_implies_right(left, right) do
     b(not (left and not right))
   end
@@ -755,6 +759,9 @@ defmodule Ash.SatSolver do
 
   defp simplify(other), do: other
 
+  @doc """
+  Transforms a statement to Conjunctive Normal Form(CNF), as lists of lists of integers.
+  """
   def to_cnf(expression) do
     expression_with_constants = b(true and not false and expression)
 
@@ -817,6 +824,7 @@ defmodule Ash.SatSolver do
     end
   end
 
+  @doc "Remaps integers back to clauses"
   def unbind(expression, %{temp_bindings: temp_bindings, old_bindings: old_bindings}) do
     expression =
       Enum.flat_map(expression, fn statement ->
@@ -846,7 +854,7 @@ defmodule Ash.SatSolver do
     {expression, old_bindings}
   end
 
-  def expand_groups(expression) do
+  defp expand_groups(expression) do
     do_expand_groups(expression)
   end
 
@@ -908,7 +916,7 @@ defmodule Ash.SatSolver do
     {expression, bindings_with_old_bindings}
   end
 
-  def can_be_used_as_group?(group, scenarios, bindings) do
+  defp can_be_used_as_group?(group, scenarios, bindings) do
     Map.has_key?(bindings[:groups] || %{}, group) ||
       Enum.all?(scenarios, fn scenario ->
         has_no_overlap?(scenario, group) || group_in_scenario?(scenario, group)
@@ -942,8 +950,33 @@ defmodule Ash.SatSolver do
     end
   end
 
-  def solve_expression(cnf) do
-    Picosat.solve(cnf)
+  cond do
+    Application.compile_env(:ash, :sat_testing) ->
+      def solve_expression(cnf) do
+        Module.concat([System.get_env("SAT_SOLVER") || "Picosat"]).solve(cnf)
+      end
+
+    Code.ensure_loaded?(Picosat) ->
+      def solve_expression(cnf) do
+        Picosat.solve(cnf)
+      end
+
+    Code.ensure_loaded?(SimpleSat) ->
+      def solve_expression(cnf) do
+        SimpleSat.solve(cnf)
+      end
+
+    true ->
+      def solve_expression(_cnf) do
+        raise """
+        No SAT solver available.
+
+        Please add one of the following dependencies to your application to use sat solver features:
+
+        * `:picosat_elixir` (recommended) - A NIF wrapper around the PicoSAT SAT solver. Fast, production ready, battle tested.
+        * `:simple_sat` - A pure Elixir SAT solver. Slower than PicoSAT, but no NIF dependency.
+        """
+      end
   end
 
   def contains?([], _), do: false

@@ -1,10 +1,5 @@
 import Config
 
-config :ash,
-  flags: [
-    ash_three?: System.get_env("ASH_THREE", "false") == "true"
-  ]
-
 if Mix.env() == :dev do
   config :git_ops,
     mix_project: Ash.MixProject,
@@ -20,13 +15,17 @@ if Mix.env() == :dev do
 end
 
 if Mix.env() == :test do
-  config :ash, :ash_apis, [
-    Ash.Test.Flow.Api,
-    Ash.Test.Support.PolicyRbac.Api,
-    Ash.Test.Support.PolicyComplex.Api,
-    Ash.Test.Support.PolicySimple.Api
+  config :ash, :ash_domains, [
+    Ash.Test.Flow.Domain,
+    Ash.Test.Support.PolicyRbac.Domain,
+    Ash.Test.Support.PolicyComplex.Domain,
+    Ash.Test.Support.PolicySimple.Domain
   ]
 
-  config :ash, :validate_api_resource_inclusion?, false
-  config :ash, :validate_api_config_inclusion?, false
+  config :ash, :custom_expressions, [Ash.Test.Expressions.JaroDistance]
+
+  config :ash, :sat_testing, true
+
+  config :ash, :validate_domain_resource_inclusion?, false
+  config :ash, :validate_domain_config_inclusion?, false
 end

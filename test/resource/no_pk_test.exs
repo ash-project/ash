@@ -2,10 +2,11 @@ defmodule Ash.Test.Resource.NoPkTest do
   @moduledoc false
   use ExUnit.Case, async: true
   alias Ash.Changeset
+  alias Ash.Test.Domain, as: Domain
 
   defmodule Temperature do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     resource do
       require_primary_key? false
@@ -16,46 +17,46 @@ defmodule Ash.Test.Resource.NoPkTest do
     end
 
     actions do
-      defaults [:create, :read]
+      default_accept :*
+      defaults [:read, create: :*]
     end
 
     attributes do
-      attribute :time, :utc_datetime_usec
-      attribute :temperature, :float
+      attribute :time, :utc_datetime_usec do
+        public?(true)
+      end
+
+      attribute :temperature, :float do
+        public?(true)
+      end
     end
 
     relationships do
       belongs_to :location, Ash.Test.Resource.NoPkTest.Location do
-        attribute_writable? true
+        public?(true)
       end
     end
   end
 
   defmodule Location do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private? true
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
-      attribute :location, :string
-    end
-  end
 
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      resource Temperature
-      resource Location
+      attribute :location, :string do
+        public?(true)
+      end
     end
   end
 
@@ -65,9 +66,9 @@ defmodule Ash.Test.Resource.NoPkTest do
              |> Changeset.for_action(:create, %{
                temperature: :rand.uniform()
              })
-             |> Api.create()
+             |> Ash.create()
 
-    assert {:ok, [actual]} = Api.read(Temperature)
+    assert {:ok, [actual]} = Ash.read(Temperature)
     assert expected.time == actual.time
     assert expected.temperature == actual.temperature
   end
@@ -79,7 +80,7 @@ defmodule Ash.Test.Resource.NoPkTest do
                location:
                  "Taumata­whakatangihanga­koauau­o­tamatea­turi­pukaka­piki­maunga­horo­nuku­pokai­whenua­ki­tana­tahu"
              })
-             |> Api.create()
+             |> Ash.create()
 
     assert {:ok, actual} =
              Temperature
@@ -87,7 +88,7 @@ defmodule Ash.Test.Resource.NoPkTest do
                temperature: :rand.uniform(),
                location_id: location.id
              })
-             |> Api.create()
+             |> Ash.create()
 
     assert actual.location_id == location.id
   end

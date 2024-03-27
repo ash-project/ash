@@ -52,7 +52,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Options
 
-  #{Spark.OptionsHelpers.docs(@relate_actor_opts)}
+  #{Spark.Options.docs(@relate_actor_opts)}
 
   ## Examples
 
@@ -159,7 +159,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Options
 
-  #{Spark.OptionsHelpers.docs(Keyword.drop(@set_attribute_opts, [:attribute, :value]))}
+  #{Spark.Options.docs(Keyword.drop(@set_attribute_opts, [:attribute, :value]))}
 
   ## Examples
 
@@ -185,10 +185,16 @@ defmodule Ash.Resource.Change.Builtins do
 
   @doc """
   Updates an attribute using an expression. See `Ash.Changeset.atomic_update/3` for more.
+
+  Options:
+
+  * `:cast_atomic?` - set to `false` to ignore atomic type casting logic. Defaults to `true`.
   """
-  @spec atomic_update(attribute :: atom, expr :: Ash.Expr.t()) :: Ash.Resource.Change.ref()
-  def atomic_update(attribute, expr) do
-    {Ash.Resource.Change.Atomic, attribute: attribute, expr: expr}
+  @spec atomic_update(attribute :: atom, expr :: Ash.Expr.t(), opts :: Keyword.t()) ::
+          Ash.Resource.Change.ref()
+  def atomic_update(attribute, expr, opts \\ []) do
+    {Ash.Resource.Change.Atomic,
+     attribute: attribute, expr: expr, cast_atomic?: Keyword.get(opts, :cast_atomic?, true)}
   end
 
   @doc """
@@ -269,7 +275,7 @@ defmodule Ash.Resource.Change.Builtins do
   end
 
   @doc """
-  Passes the provided value into `changeset.api.load()`, after the action has completed.
+  Passes the provided value into `Ash.load` after the action has completed.
 
   ## Example
 
@@ -323,7 +329,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Example
 
-      change after_action(fn changeset, record ->
+      change after_action(fn changeset, record, _context ->
         Logger.debug("Successfully executed action #{changeset.action.name} on #{inspect(changeset.resource)}")
         {:ok, record}
       end)
@@ -351,10 +357,10 @@ defmodule Ash.Resource.Change.Builtins do
   ## Example
 
       change after_transaction(fn
-        changeset, {:ok, record} ->
+        changeset, {:ok, record}, _context ->
           Logger.debug("Successfully executed transaction for action #{changeset.action.name} on #{inspect(changeset.resource)}")
           {:ok, record}
-        changeset, {:error, reason} ->
+        changeset, {:error, reason}, _context ->
           Logger.debug("Failed to execute transaction for action #{changeset.action.name} on #{inspect(changeset.resource)}, reason: #{inspect(reason)}")
           {:error, reason}
       end)
@@ -380,7 +386,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Example
 
-      change before_action(fn changeset ->
+      change before_action(fn changeset, _context ->
         Logger.debug("About to execute #{changeset.action.name} on #{inspect(changeset.resource)})
 
         changeset
@@ -407,7 +413,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Example
 
-      change before_transaction(fn changeset ->
+      change before_transaction(fn changeset, _context ->
         Logger.debug("About to execute transaction for #{changeset.action.name} on #{inspect(changeset.resource)})
 
         changeset

@@ -4,12 +4,11 @@ defmodule Ash.Resource.Validation.Compare do
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.InvalidAttribute
-  require Ash.Expr
-  import Ash.Filter.TemplateHelpers
+  import Ash.Expr
 
   @impl true
   def init(opts) do
-    case Spark.OptionsHelpers.validate(
+    case Spark.Options.validate(
            opts,
            Keyword.put(Ash.Resource.Validation.Builtins.compare_opts(), :attribute,
              type: :atom,
@@ -25,7 +24,7 @@ defmodule Ash.Resource.Validation.Compare do
   end
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, _context) do
     case Ash.Changeset.fetch_argument_or_change(changeset, opts[:attribute]) do
       {:ok, value} ->
         Enum.reduce(
@@ -83,37 +82,37 @@ defmodule Ash.Resource.Validation.Compare do
         |> Enum.map(fn
           {:greater_than, value} ->
             {:atomic, [opts[:attribute]],
-             Ash.Expr.expr(^atomic_ref(opts[:attribute]) <= ^atomic_value(value)),
-             Ash.Expr.expr(
+             expr(^atomic_ref(opts[:attribute]) <= ^atomic_value(value)),
+             expr(
                error(^InvalidAttribute, %{
                  field: ^opts[:attribute],
                  value: ^atomic_ref(opts[:attribute]),
-                 message: ^(context[:message] || "must be greater than %{greater_than}"),
+                 message: ^(context.message || "must be greater than %{greater_than}"),
                  vars: %{field: ^opts[:attribute], greater_than: ^atomic_value(value)}
                })
              )}
 
           {:less_than, value} ->
             {:atomic, [opts[:attribute]],
-             Ash.Expr.expr(^atomic_ref(opts[:attribute]) >= ^atomic_value(value)),
-             Ash.Expr.expr(
+             expr(^atomic_ref(opts[:attribute]) >= ^atomic_value(value)),
+             expr(
                error(^InvalidAttribute, %{
                  field: ^opts[:attribute],
                  value: ^atomic_ref(opts[:attribute]),
-                 message: ^(context[:message] || "must be less than %{less_than}"),
+                 message: ^(context.message || "must be less than %{less_than}"),
                  vars: %{field: ^opts[:attribute], less_than: ^atomic_value(value)}
                })
              )}
 
           {:greater_than_or_equal_to, value} ->
             {:atomic, [opts[:attribute]],
-             Ash.Expr.expr(^atomic_ref(opts[:attribute]) < ^atomic_value(value)),
-             Ash.Expr.expr(
+             expr(^atomic_ref(opts[:attribute]) < ^atomic_value(value)),
+             expr(
                error(^InvalidAttribute, %{
                  field: ^opts[:attribute],
                  value: ^atomic_ref(opts[:attribute]),
                  message:
-                   ^(context[:message] ||
+                   ^(context.message ||
                        "must be greater than or equal to %{greater_than_or_equal_to}"),
                  vars: %{field: ^opts[:attribute], greater_than_or_equal_to: ^atomic_value(value)}
                })
@@ -121,20 +120,20 @@ defmodule Ash.Resource.Validation.Compare do
 
           {:less_than_or_equal_to, value} ->
             {:atomic, [opts[:attribute]],
-             Ash.Expr.expr(^atomic_ref(opts[:attribute]) > ^atomic_value(value)),
-             Ash.Expr.expr(
+             expr(^atomic_ref(opts[:attribute]) > ^atomic_value(value)),
+             expr(
                error(^InvalidAttribute, %{
                  field: ^opts[:attribute],
                  value: ^atomic_ref(opts[:attribute]),
                  message:
-                   ^(context[:message] || "must be less than or equal to %{less_than_or_equal_to}"),
+                   ^(context.message || "must be less than or equal to %{less_than_or_equal_to}"),
                  vars: %{field: ^opts[:attribute], less_than_or_equal_to: ^atomic_value(value)}
                })
              )}
         end)
 
       {:ok, _} ->
-        validate(changeset, opts)
+        validate(changeset, opts, context)
     end
   end
 

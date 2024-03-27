@@ -1,7 +1,7 @@
 defmodule Ash.DataLayer.Ets do
   @behaviour Ash.DataLayer
   require Ash.Query
-  require Ash.Expr
+  import Ash.Expr
 
   @ets %Spark.Dsl.Section{
     name: :ets,
@@ -45,12 +45,6 @@ defmodule Ash.DataLayer.Ets do
 
   alias Ash.Actions.Sort
 
-  @deprecated "use Ash.DataLayer.Ets.Info.private?/1 instead"
-  defdelegate private?(resource), to: Ash.DataLayer.Ets.Info
-
-  @deprecated "use Ash.DataLayer.Ets.Info.table/1 instead"
-  defdelegate table(resource), to: Ash.DataLayer.Ets.Info
-
   defmodule Query do
     @moduledoc false
     defstruct [
@@ -59,7 +53,7 @@ defmodule Ash.DataLayer.Ets do
       :limit,
       :sort,
       :tenant,
-      :api,
+      :domain,
       :distinct,
       :distinct_sort,
       calculations: [],
@@ -178,7 +172,7 @@ defmodule Ash.DataLayer.Ets do
   @doc false
   @impl true
   def can?(_, :distinct_sort), do: true
-  def can?(resource, :async_engine), do: not private?(resource)
+  def can?(resource, :async_engine), do: not Ash.DataLayer.Ets.Info.private?(resource)
   def can?(_, {:lateral_join, _}), do: true
   def can?(_, :bulk_create), do: true
   def can?(_, :composite_primary_key), do: true
@@ -198,6 +192,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:aggregate, :min}), do: true
   def can?(_, {:aggregate, :avg}), do: true
   def can?(_, {:aggregate, :exists}), do: true
+  def can?(resource, {:query_aggregate, kind}), do: can?(resource, {:aggregate, kind})
 
   def can?(_, :create), do: true
   def can?(_, :read), do: true
@@ -219,7 +214,7 @@ defmodule Ash.DataLayer.Ets do
 
   def can?(resource, {:join, other_resource}) do
     # See the comment in can?/2 in mnesia data layer to explain this
-    not (private?(resource) and
+    not (Ash.DataLayer.Ets.Info.private?(resource) and
            Ash.DataLayer.data_layer(other_resource) == Ash.DataLayer.Mnesia)
   end
 
@@ -240,10 +235,10 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
-  def resource_to_query(resource, api) do
+  def resource_to_query(resource, domain) do
     %Query{
       resource: resource,
-      api: api
+      domain: domain
     }
   end
 
@@ -301,7 +296,7 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
-  def run_aggregate_query(%{api: api} = query, aggregates, resource) do
+  def run_aggregate_query(%{domain: domain} = query, aggregates, resource) do
     case run_query(query, resource) do
       {:ok, results} ->
         Enum.reduce_while(aggregates, {:ok, %{}}, fn
@@ -312,16 +307,17 @@ defmodule Ash.DataLayer.Ets do
             field: field,
             resource: resource,
             uniq?: uniq?,
+            include_nil?: include_nil?,
             default_value: default_value
           },
           {:ok, acc} ->
             results
-            |> filter_matches(Map.get(query || %{}, :filter), api)
+            |> filter_matches(Map.get(query || %{}, :filter), domain)
             |> case do
               {:ok, matches} ->
                 field = field || Enum.at(Ash.Resource.Info.primary_key(resource), 0)
 
-                value = aggregate_value(matches, kind, field, uniq?, default_value)
+                value = aggregate_value(matches, kind, field, uniq?, include_nil?, default_value)
                 {:cont, {:ok, Map.put(acc, name, value)}}
 
               {:error, error} ->
@@ -355,20 +351,20 @@ defmodule Ash.DataLayer.Ets do
           tenant: tenant,
           calculations: calculations,
           aggregates: aggregates,
-          api: api
+          domain: domain
         },
         _resource,
         parent \\ nil
       ) do
     with {:ok, records} <- get_records(resource, tenant),
-         {:ok, records} <- filter_matches(records, filter, api, parent),
-         records <- Sort.runtime_sort(records, distinct_sort || sort, api: api),
-         records <- Sort.runtime_distinct(records, distinct, api: api),
-         records <- Sort.runtime_sort(records, sort, api: api),
+         {:ok, records} <- filter_matches(records, filter, domain, parent),
+         records <- Sort.runtime_sort(records, distinct_sort || sort, domain: domain),
+         records <- Sort.runtime_distinct(records, distinct, domain: domain),
+         records <- Sort.runtime_sort(records, sort, domain: domain),
          records <- Enum.drop(records, offset || []),
          records <- do_limit(records, limit),
-         {:ok, records} <- do_add_aggregates(records, api, resource, aggregates),
-         {:ok, records} <- do_add_calculations(records, resource, calculations, api) do
+         {:ok, records} <- do_add_aggregates(records, domain, resource, aggregates),
+         {:ok, records} <- do_add_calculations(records, resource, calculations, domain) do
       {:ok, records}
     else
       {:error, error} ->
@@ -394,7 +390,7 @@ defmodule Ash.DataLayer.Ets do
     source_attributes = Enum.map(root_data, &Map.get(&1, source_attribute))
 
     source_query
-    |> Ash.Query.filter(ref(^source_attribute) in ^source_attributes)
+    |> Ash.Query.filter(^ref(source_attribute) in ^source_attributes)
     |> Ash.Query.set_context(%{private: %{internal?: true}})
     |> Ash.Query.unset(:load)
     |> Ash.Query.unset(:select)
@@ -427,7 +423,7 @@ defmodule Ash.DataLayer.Ets do
                 filter,
                 Ash.Filter.parse!(
                   query.resource,
-                  Ash.Expr.expr(ref(^destination_attribute) == ^Map.get(parent, source_attribute))
+                  Ash.Expr.expr(^ref(destination_attribute) == ^Map.get(parent, source_attribute))
                 )
               )
             end
@@ -460,9 +456,10 @@ defmodule Ash.DataLayer.Ets do
 
     source_query
     |> Ash.Query.unset(:load)
-    |> Ash.Query.filter(ref(^source_attribute) in ^source_attributes)
+    |> Ash.Query.filter(^ref(source_attribute) in ^source_attributes)
     |> Ash.Query.set_context(%{private: %{internal?: true}})
-    |> query.api.read(authorize?: false)
+    |> Ash.Query.set_domain(query.domain)
+    |> Ash.read(authorize?: false)
     |> case do
       {:error, error} ->
         {:error, error}
@@ -478,11 +475,12 @@ defmodule Ash.DataLayer.Ets do
         |> Enum.reduce_while({:ok, []}, fn parent, {:ok, results} ->
           through_query
           |> Ash.Query.filter(
-            ref(^source_attribute_on_join_resource) ==
+            ^ref(source_attribute_on_join_resource) ==
               ^Map.get(parent, source_attribute)
           )
           |> Ash.Query.set_context(%{private: %{internal?: true}})
-          |> query.api.read(authorize?: false)
+          |> Ash.Query.set_domain(query.domain)
+          |> Ash.read(authorize?: false)
           |> case do
             {:ok, join_data} ->
               join_attrs =
@@ -535,9 +533,9 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  def do_add_calculations(records, _resource, [], _api), do: {:ok, records}
+  def do_add_calculations(records, _resource, [], _domain), do: {:ok, records}
 
-  def do_add_calculations(records, resource, calculations, api) do
+  def do_add_calculations(records, resource, calculations, domain) do
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
       calculations
       |> Enum.reduce_while({:ok, record}, fn {calculation, expression}, {:ok, record} ->
@@ -549,13 +547,18 @@ defmodule Ash.DataLayer.Ets do
             expression =
               Ash.Actions.Read.add_calc_context_to_filter(
                 expression,
-                calculation.context[:actor],
-                calculation.context[:authorize?],
-                calculation.context[:tenant],
-                calculation.context[:tracer]
+                calculation.context.actor,
+                calculation.context.authorize?,
+                calculation.context.tenant,
+                calculation.context.tracer,
+                domain
               )
 
-            case Ash.Expr.eval_hydrated(expression, record: record, resource: resource, api: api) do
+            case Ash.Expr.eval_hydrated(expression,
+                   record: record,
+                   resource: resource,
+                   domain: domain
+                 ) do
               {:ok, value} ->
                 if calculation.load do
                   {:cont, {:ok, Map.put(record, calculation.load, value)}}
@@ -608,11 +611,9 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @doc false
-  def do_add_aggregates(records, _api, _resource, []), do: {:ok, records}
+  def do_add_aggregates(records, _domain, _resource, []), do: {:ok, records}
 
-  def do_add_aggregates(records, api, _resource, aggregates) do
-    # TODO support crossing apis by getting the destination api, and set destination query context.
-
+  def do_add_aggregates(records, domain, _resource, aggregates) do
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
       aggregates
       |> Enum.reduce_while(
@@ -626,17 +627,19 @@ defmodule Ash.DataLayer.Ets do
             name: name,
             load: load,
             uniq?: uniq?,
+            include_nil?: include_nil?,
             context: context,
             default_value: default_value,
             join_filters: join_filters
           },
           {:ok, record} ->
             with {:ok, loaded_record} <-
-                   api.load(
+                   Ash.load(
                      record,
                      record.__struct__
                      |> Ash.Query.load(relationship_path_to_load(relationship_path, field))
                      |> Ash.Query.set_context(%{private: %{internal?: true}}),
+                     domain: domain,
                      actor: context[:actor],
                      authorize?: false
                    ),
@@ -647,15 +650,14 @@ defmodule Ash.DataLayer.Ets do
                      false,
                      join_filters,
                      [record],
-                     api
+                     domain
                    ),
-                 {:ok, filtered} <-
-                   filter_matches(related, query.filter, api),
-                 sorted <- Sort.runtime_sort(filtered, query.sort, api: api) do
+                 {:ok, filtered} <- filter_matches(related, query.filter, domain),
+                 sorted <- Sort.runtime_sort(filtered, query.sort, domain: domain) do
               field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
 
               value =
-                aggregate_value(sorted, kind, field, uniq?, default_value)
+                aggregate_value(sorted, kind, field, uniq?, include_nil?, default_value)
 
               if load do
                 {:cont, {:ok, Map.put(record, load, value)}}
@@ -694,7 +696,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   @doc false
-  def aggregate_value(records, kind, field, uniq?, default) do
+  def aggregate_value(records, kind, field, uniq?, include_nil?, default) do
     case kind do
       :count ->
         if uniq? do
@@ -717,18 +719,41 @@ defmodule Ash.DataLayer.Ets do
         end
 
       :first ->
-        case records do
-          [] ->
-            default
+        if include_nil? do
+          case records do
+            [] ->
+              default
 
-          [record | _rest] ->
-            field_value(record, field)
+            [record | _rest] ->
+              field_value(record, field)
+          end
+        else
+          Enum.find_value(records, fn record ->
+            case field_value(record, field) do
+              nil ->
+                nil
+
+              value ->
+                {:value, value}
+            end
+          end)
+          |> case do
+            nil -> nil
+            {:value, value} -> value
+          end
         end
 
       :list ->
         records
         |> Enum.map(fn record ->
           field_value(record, field)
+        end)
+        |> then(fn values ->
+          if include_nil? do
+            values
+          else
+            Enum.reject(values, &is_nil/1)
+          end
         end)
         |> then(fn values ->
           if uniq? do
@@ -915,11 +940,11 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp filter_matches(records, filter, api, parent \\ nil)
-  defp filter_matches(records, nil, _api, _parent), do: {:ok, records}
+  defp filter_matches(records, filter, domain, parent \\ nil)
+  defp filter_matches(records, nil, _domain, _parent), do: {:ok, records}
 
-  defp filter_matches(records, filter, api, parent) do
-    Ash.Filter.Runtime.filter_matches(api, records, filter, parent: parent)
+  defp filter_matches(records, filter, domain, parent) do
+    Ash.Filter.Runtime.filter_matches(domain, records, filter, parent: parent)
   end
 
   @doc false
@@ -941,7 +966,7 @@ defmodule Ash.DataLayer.Ets do
       query = Ash.Query.do_filter(resource, and: [key_filters])
 
       resource
-      |> resource_to_query(changeset.api)
+      |> resource_to_query(changeset.domain)
       |> Map.put(:filter, query.filter)
       |> Map.put(:tenant, changeset.tenant)
       |> run_query(resource)

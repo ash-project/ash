@@ -1,6 +1,7 @@
 defmodule Ash.Test.Support.PolicySimple.Organization do
   @moduledoc false
   use Ash.Resource,
+    domain: Ash.Test.Support.PolicySimple.Domain,
     data_layer: Ash.DataLayer.Ets
 
   ets do
@@ -8,7 +9,8 @@ defmodule Ash.Test.Support.PolicySimple.Organization do
   end
 
   actions do
-    defaults [:read, :update, :destroy]
+    default_accept :*
+    defaults [:read, :destroy, update: :*]
 
     create(:create) do
       primary? true
@@ -22,8 +24,8 @@ defmodule Ash.Test.Support.PolicySimple.Organization do
   end
 
   relationships do
-    has_many(:users, Ash.Test.Support.PolicySimple.User)
-    has_many(:posts, Ash.Test.Support.PolicySimple.Post)
-    belongs_to(:owner, Ash.Test.Support.PolicySimple.User)
+    has_many(:users, Ash.Test.Support.PolicySimple.User, public?: true)
+    has_many(:posts, Ash.Test.Support.PolicySimple.Post, public?: true)
+    belongs_to(:owner, Ash.Test.Support.PolicySimple.User, public?: true)
   end
 end

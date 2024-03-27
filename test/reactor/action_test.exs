@@ -4,13 +4,15 @@ defmodule Ash.Test.ReactorActionTest do
 
   defmodule Wooter do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Simple, api: Ash.Test.AnyApi
+    use Ash.Resource, data_layer: Ash.DataLayer.Simple, domain: Ash.Test.Domain
 
     attributes do
       uuid_primary_key :id
     end
 
     actions do
+      default_accept :*
+
       action :celebrate, :string do
         argument :excitement_level, :integer, default: 3, allow_nil?: false
 
@@ -28,7 +30,7 @@ defmodule Ash.Test.ReactorActionTest do
     use Reactor, extensions: [Ash.Reactor]
 
     ash do
-      default_api(Ash.Test.AnyApi)
+      default_domain(Ash.Test.Domain)
     end
 
     input :excitement_level

@@ -2,9 +2,11 @@ defmodule Ash.Test.ReactorReadOneTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, api: Ash.Test.AnyApi
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Domain
 
     ets do
       private? true
@@ -12,11 +14,12 @@ defmodule Ash.Test.ReactorReadOneTest do
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string, allow_nil?: false
+      attribute :title, :string, allow_nil?: false, public?: true
     end
 
     actions do
-      defaults [:create, :read]
+      default_accept :*
+      defaults [:read, create: :*]
     end
 
     code_interface do
@@ -29,7 +32,7 @@ defmodule Ash.Test.ReactorReadOneTest do
     use Reactor, extensions: [Ash.Reactor]
 
     ash do
-      default_api(Ash.Test.AnyApi)
+      default_domain(Domain)
     end
 
     read_one(:read_one_post, Ash.Test.ReactorReadOneTest.Post, :read)
@@ -39,8 +42,15 @@ defmodule Ash.Test.ReactorReadOneTest do
     ~w[Marty Doc Einstein]
     |> Enum.each(&Post.create!(%{title: &1}))
 
-    assert {:error, [error]} = Reactor.run(SimpleReadOneReactor, %{}, %{}, async?: false)
-    assert Exception.message(error) =~ "expected at most one result"
+    SimpleReadOneReactor
+    |> Reactor.run(%{}, %{}, async?: false)
+    |> Ash.Test.assert_has_error(fn
+      %Reactor.Error.Invalid.RunStepError{error: error} ->
+        Exception.message(error) =~ "expected at most one result"
+
+      _ ->
+        false
+    end)
   end
 
   test "when no records are returned it returns nil" do
@@ -53,7 +63,7 @@ defmodule Ash.Test.ReactorReadOneTest do
       use Reactor, extensions: [Ash.Reactor]
 
       ash do
-        default_api(Ash.Test.AnyApi)
+        default_domain(Domain)
       end
 
       read_one :read_one_post, Ash.Test.ReactorReadOneTest.Post, :read do
@@ -61,8 +71,15 @@ defmodule Ash.Test.ReactorReadOneTest do
       end
     end
 
-    assert {:error, [error]} = Reactor.run(NotFoundReactor, %{}, %{}, async?: false)
-    assert Exception.message(error) =~ "not found"
+    NotFoundReactor
+    |> Reactor.run(%{}, %{}, async?: false)
+    |> Ash.Test.assert_has_error(fn
+      %Reactor.Error.Invalid.RunStepError{error: %Ash.Error.Query.NotFound{}} ->
+        true
+
+      _ ->
+        false
+    end)
   end
 
   test "when exactly one record is returned it returns it" do

@@ -60,7 +60,7 @@ defmodule Ash.Type.Map do
 
   A builtin type that can be referenced via `:map`
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
 
@@ -99,6 +99,15 @@ defmodule Ash.Type.Map do
   def dump_to_native(nil, _), do: {:ok, nil}
   def dump_to_native(value, _) when is_map(value), do: {:ok, value}
   def dump_to_native(_, _), do: :error
+
+  @impl true
+  def cast_atomic(new_value, constraints) do
+    if constraints[:keys] do
+      {:not_atomic, "Keywords do not support atomic updates when using the `keys` constraint"}
+    else
+      {:atomic, new_value}
+    end
+  end
 
   @impl true
   def apply_constraints(value, constraints) do

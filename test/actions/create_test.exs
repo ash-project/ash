@@ -10,7 +10,7 @@ defmodule Ash.Test.Actions.CreateTest do
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Test.Authorizer],
-      api: Ash.Test.AnyApi
+      domain: Ash.Test.Domain
 
     ets do
       private?(true)
@@ -18,11 +18,12 @@ defmodule Ash.Test.Actions.CreateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:name, :string)
+      attribute(:name, :string, public?: true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
   end
 
@@ -30,24 +31,27 @@ defmodule Ash.Test.Actions.CreateTest do
     @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
-      api: Ash.Test.AnyApi
+      domain: Ash.Test.Domain
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
-      attribute(:bio, :string)
-      attribute(:date, :date)
+      attribute(:bio, :string, public?: true)
+      attribute(:date, :date, public?: true)
     end
 
     relationships do
-      belongs_to(:author, Ash.Test.Actions.CreateTest.Author)
+      belongs_to :author, Ash.Test.Actions.CreateTest.Author do
+        public?(true)
+      end
     end
   end
 
@@ -55,24 +59,25 @@ defmodule Ash.Test.Actions.CreateTest do
     @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
-      api: Ash.Test.AnyApi
+      domain: Ash.Test.Domain
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
-      attribute(:bio, :string)
-      attribute(:date, :date)
+      attribute(:bio, :string, public?: true)
+      attribute(:date, :date, public?: true)
     end
 
     relationships do
-      belongs_to(:author, Ash.Test.Actions.CreateTest.Author, allow_nil?: false)
+      belongs_to :author, Ash.Test.Actions.CreateTest.Author, allow_nil?: false, public?: true
     end
   end
 
@@ -82,8 +87,11 @@ defmodule Ash.Test.Actions.CreateTest do
 
     def change(changeset, _, _) do
       case Ash.Changeset.fetch_change(changeset, :name) do
-        :error -> changeset
-        {:ok, name} -> Ash.Changeset.change_attribute(changeset, :name, name <> name)
+        :error ->
+          changeset
+
+        {:ok, name} ->
+          Ash.Changeset.change_attribute(changeset, :name, name <> name)
       end
     end
   end
@@ -119,14 +127,15 @@ defmodule Ash.Test.Actions.CreateTest do
 
   defmodule Author do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, api: Ash.Test.AnyApi
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Ash.Test.Domain
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
 
       create :only_allow_name do
         accept([:name])
@@ -148,27 +157,30 @@ defmodule Ash.Test.Actions.CreateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:name, :string)
-      attribute(:bio, :string)
+      attribute(:name, :string, public?: true)
+      attribute(:bio, :string, public?: true)
     end
 
     relationships do
-      has_one(:profile, Profile, destination_attribute: :author_id)
+      has_one :profile, Profile, destination_attribute: :author_id, public?: true
 
-      has_many(:posts, Ash.Test.Actions.CreateTest.Post, destination_attribute: :author_id)
+      has_many :posts, Ash.Test.Actions.CreateTest.Post,
+        destination_attribute: :author_id,
+        public?: true
     end
   end
 
   defmodule AuthorWithRequiredId do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, api: Ash.Test.AnyApi
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Ash.Test.Domain
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
 
       create :manual_create do
         accept []
@@ -185,8 +197,8 @@ defmodule Ash.Test.Actions.CreateTest do
 
     attributes do
       uuid_primary_key :id, generated?: false, default: nil
-      attribute(:name, :string, allow_nil?: false)
-      attribute(:bio, :string)
+      attribute(:name, :string, allow_nil?: false, public?: true)
+      attribute(:bio, :string, public?: true)
     end
   end
 
@@ -200,39 +212,43 @@ defmodule Ash.Test.Actions.CreateTest do
     @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
-      api: Ash.Test.AnyApi
+      domain: Ash.Test.Domain
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     relationships do
       belongs_to(:source_post, Ash.Test.Actions.CreateTest.Post,
         primary_key?: true,
-        allow_nil?: false
+        allow_nil?: false,
+        public?: true
       )
 
       belongs_to(:destination_post, Ash.Test.Actions.CreateTest.Post,
         primary_key?: true,
-        allow_nil?: false
+        allow_nil?: false,
+        public?: true
       )
     end
   end
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, api: Ash.Test.AnyApi
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Ash.Test.Domain
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
 
       create :create_with_required do
         require_attributes [:tag]
@@ -257,18 +273,29 @@ defmodule Ash.Test.Actions.CreateTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:title, :string, allow_nil?: false)
-      attribute(:contents, :string)
-      attribute(:tag, :string, default: "garbage")
-      attribute(:tag2, :string, default: &PostDefaults.garbage2/0)
-      attribute(:tag3, :string, default: {PostDefaults, :garbage3, []})
-      attribute(:list_attribute, {:array, :integer})
-      attribute(:date, :date)
-      attribute(:binary, :binary)
-      attribute(:required_with_default, :string, allow_nil?: false, default: "string")
-      attribute(:required_boolean_with_default, :boolean, allow_nil?: false, default: false)
+      attribute(:title, :string, allow_nil?: false, public?: true)
+      attribute(:contents, :string, public?: true)
+      attribute(:tag, :string, default: "garbage", public?: true)
+      attribute(:tag2, :string, default: &PostDefaults.garbage2/0, public?: true)
+      attribute(:tag3, :string, default: {PostDefaults, :garbage3, []}, public?: true)
+      attribute(:list_attribute, {:array, :integer}, public?: true)
+      attribute(:date, :date, public?: true)
+      attribute(:binary, :binary, public?: true)
+
+      attribute(:required_with_default, :string,
+        allow_nil?: false,
+        default: "string",
+        public?: true
+      )
+
+      attribute(:required_boolean_with_default, :boolean,
+        allow_nil?: false,
+        default: false,
+        public?: true
+      )
 
       attribute(:list_attribute_with_constraints, {:array, :integer},
+        public?: true,
         constraints: [
           min_length: 2,
           max_length: 10,
@@ -280,12 +307,13 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     relationships do
-      belongs_to(:author, Author)
+      belongs_to(:author, Author, public?: true)
 
       many_to_many(:related_posts, __MODULE__,
         through: PostLink,
         source_attribute_on_join_resource: :source_post_id,
-        destination_attribute_on_join_resource: :destination_post_id
+        destination_attribute_on_join_resource: :destination_post_id,
+        public?: true
       )
     end
   end
@@ -294,14 +322,15 @@ defmodule Ash.Test.Actions.CreateTest do
     @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
-      api: Ash.Test.AnyApi
+      domain: Ash.Test.Domain
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
@@ -313,14 +342,15 @@ defmodule Ash.Test.Actions.CreateTest do
     @moduledoc false
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
-      api: Ash.Test.AnyApi
+      domain: Ash.Test.Domain
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
 
       create :manual do
         skip_global_validations?(true)
@@ -339,19 +369,18 @@ defmodule Ash.Test.Actions.CreateTest do
       uuid_primary_key :id
 
       attribute :foo, :integer do
+        public?(true)
         allow_nil? false
       end
     end
   end
 
-  import Ash.Changeset
-
   describe "simple creates" do
     test "allows creating a record with valid attributes" do
       assert %Post{title: "foo", contents: "bar"} =
                Post
-               |> new()
-               |> change_attributes(%{
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.change_attributes(%{
                  title: "foo",
                  contents: "bar",
                  date: Date.utc_today(),
@@ -363,7 +392,7 @@ defmodule Ash.Test.Actions.CreateTest do
     test "timestamps will match each other" do
       post =
         Post
-        |> for_create(:create, %{title: "foobar"})
+        |> Ash.Changeset.for_create(:create, %{title: "foobar"})
         |> Ash.create!()
 
       assert post.inserted_at == post.updated_at
@@ -372,7 +401,7 @@ defmodule Ash.Test.Actions.CreateTest do
     test "allow_nil validation" do
       {:error, error} =
         Post
-        |> for_create(:create, %{})
+        |> Ash.Changeset.for_create(:create, %{})
         |> Ash.create()
 
       assert %Ash.Error.Invalid{} = error
@@ -380,7 +409,7 @@ defmodule Ash.Test.Actions.CreateTest do
 
     test "nested array arguments are accepted" do
       Post
-      |> for_create(:create_with_nested_array_argument, %{
+      |> Ash.Changeset.for_create(:create_with_nested_array_argument, %{
         title: "foobar",
         array_of_names: [["foo"], ["bar", "baz"]]
       })
@@ -390,7 +419,7 @@ defmodule Ash.Test.Actions.CreateTest do
     test "allow_nil validation when attribute provided" do
       {:error, error} =
         Post
-        |> for_create(:create, %{title: nil})
+        |> Ash.Changeset.for_create(:create, %{title: nil})
         |> Ash.create()
 
       assert %Ash.Error.Invalid{} = error
@@ -399,8 +428,8 @@ defmodule Ash.Test.Actions.CreateTest do
     test "return missing required attribute" do
       {:error, err} =
         Post
-        |> new()
-        |> change_attributes(%{
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attributes(%{
           contents: "bar",
           date: Date.utc_today()
         })
@@ -420,24 +449,24 @@ defmodule Ash.Test.Actions.CreateTest do
     test "generated fields are not required" do
       assert %GeneratedPkey{} =
                GeneratedPkey
-               |> new()
+               |> Ash.Changeset.new()
                |> Ash.create!()
     end
 
     test "constant default values are set properly" do
       assert %Post{tag: "garbage"} =
                Post
-               |> new()
-               |> change_attribute(:title, "foo")
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.change_attribute(:title, "foo")
                |> Ash.create!()
     end
 
     test "nil will override defaults" do
       post =
         Post
-        |> new()
-        |> change_attribute(:title, "foo")
-        |> change_attribute(:tag, nil)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:title, "foo")
+        |> Ash.Changeset.change_attribute(:tag, nil)
         |> Ash.create!()
 
       assert post.tag == nil
@@ -446,8 +475,8 @@ defmodule Ash.Test.Actions.CreateTest do
     test "a default being set will be annotated as a default" do
       changeset =
         Post
-        |> new()
-        |> change_attribute(:title, "foo")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:title, "foo")
         |> Ash.Changeset.for_create(:create)
 
       assert :tag in changeset.defaults
@@ -456,8 +485,8 @@ defmodule Ash.Test.Actions.CreateTest do
     test "a default being set and then overriden will no longer be annotated as a default" do
       changeset =
         Post
-        |> new()
-        |> change_attribute(:title, "foo")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:title, "foo")
         |> Ash.Changeset.for_create(:create)
 
       assert :tag in changeset.defaults
@@ -469,10 +498,10 @@ defmodule Ash.Test.Actions.CreateTest do
     test "nil will error on required attribute with default" do
       assert_raise Ash.Error.Invalid, ~r/required_with_default is required/, fn ->
         Post
-        |> new()
-        |> change_attribute(:title, "foo")
-        |> change_attribute(:tag, nil)
-        |> change_attribute(:required_with_default, nil)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:title, "foo")
+        |> Ash.Changeset.change_attribute(:tag, nil)
+        |> Ash.Changeset.change_attribute(:required_with_default, nil)
         |> Ash.create!()
       end
     end
@@ -480,25 +509,25 @@ defmodule Ash.Test.Actions.CreateTest do
     test "constant functions values are set properly" do
       assert %Post{tag2: "garbage2"} =
                Post
-               |> new()
-               |> change_attribute(:title, "foo")
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.change_attribute(:title, "foo")
                |> Ash.create!()
     end
 
     test "constant module/function values are set properly" do
       assert %Post{tag3: "garbage3"} =
                Post
-               |> new()
-               |> change_attribute(:title, "foo")
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.change_attribute(:title, "foo")
                |> Ash.create!()
     end
 
     test "binary values are set properly" do
       assert %Post{binary: <<0, 1, 2>>} =
                Post
-               |> new()
-               |> change_attribute(:title, "foo")
-               |> change_attribute(:binary, <<0, 1, 2>>)
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.change_attribute(:title, "foo")
+               |> Ash.Changeset.change_attribute(:binary, <<0, 1, 2>>)
                |> Ash.create!()
     end
   end
@@ -525,31 +554,31 @@ defmodule Ash.Test.Actions.CreateTest do
     test "it requires attributes that have a default" do
       assert_raise Ash.Error.Invalid, ~r/attribute tag is required/, fn ->
         Post
-        |> new(title: "foo")
-        |> Ash.create!(action: :create_with_required)
+        |> Ash.Changeset.for_create(:create_with_required, %{title: "foo"})
+        |> Ash.create!()
       end
     end
 
     test "it does not raise an error when those attributes have been set" do
       Post
-      |> new(title: "foo", tag: "foo")
-      |> Ash.create!(action: :create_with_required)
+      |> Ash.Changeset.for_create(:create_with_required, %{title: "foo", tag: "foo"})
+      |> Ash.create!()
     end
   end
 
   describe "accept" do
     test "allows using attributes in the list" do
       Author
-      |> new()
-      |> change_attribute(:name, "fred")
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.change_attribute(:name, "fred")
       |> Ash.create!(action: :only_allow_name)
     end
 
     test "it prevents using attributes not in the list" do
       assert_raise Ash.Error.Invalid, ~r/Invalid value provided for bio: cannot be changed/, fn ->
         Author
-        |> new()
-        |> change_attribute(:bio, "foo")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:bio, "foo")
         |> Ash.create!(action: :only_allow_name)
       end
     end
@@ -559,8 +588,8 @@ defmodule Ash.Test.Actions.CreateTest do
     test "changes are run properly" do
       author =
         Author
-        |> new(%{name: "fred"})
-        |> Ash.create!(action: :duplicate_name)
+        |> Ash.Changeset.for_create(:duplicate_name, %{name: "fred"})
+        |> Ash.create!()
 
       assert author.name == "fredfred"
     end
@@ -570,15 +599,11 @@ defmodule Ash.Test.Actions.CreateTest do
     test "allows selecting fields on the changeset" do
       author =
         Author
-        |> new(%{name: "fred"})
+        |> Ash.Changeset.for_create(:duplicate_name, %{name: "fred"})
         |> Ash.Changeset.select(:bio)
-        |> Ash.create!(action: :duplicate_name)
+        |> Ash.create!()
 
-      if Ash.Flags.ash_three?() do
-        assert %Ash.NotSelected{field: :name} = author.name
-      else
-        assert is_nil(author.name)
-      end
+      assert %Ash.NotLoaded{field: :name} = author.name
     end
   end
 
@@ -586,38 +611,43 @@ defmodule Ash.Test.Actions.CreateTest do
     test "allows creating with a many_to_many relationship" do
       post2 =
         Post
-        |> new()
-        |> change_attribute(:title, "title2")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:title, "title2")
         |> Ash.create!()
 
       post3 =
         Post
-        |> new()
-        |> change_attribute(:title, "title3")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:title, "title3")
         |> Ash.create!()
 
       Post
-      |> new(%{title: "cannot_be_missing"})
-      |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
+      |> Ash.Changeset.for_create(:create, %{title: "cannot_be_missing"})
+      |> Ash.Changeset.manage_relationship(:related_posts, [post2, post3],
+        type: :append_and_remove
+      )
       |> Ash.create!()
     end
 
     test "it updates the join resource properly" do
       post2 =
         Post
-        |> new()
-        |> change_attribute(:title, "title2")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:title, "title2")
+        |> Ash.Changeset.for_create(:create)
         |> Ash.create!()
 
       post3 =
         Post
-        |> new()
-        |> change_attribute(:title, "title3")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:title, "title3")
         |> Ash.create!()
 
       Post
-      |> new(%{title: "title4"})
-      |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
+      |> Ash.Changeset.for_create(:create, %{title: "title4"})
+      |> Ash.Changeset.manage_relationship(:related_posts, [post2, post3],
+        type: :append_and_remove
+      )
       |> Ash.create!()
 
       assert [_, _] =
@@ -629,22 +659,25 @@ defmodule Ash.Test.Actions.CreateTest do
     test "it responds with the relationship filled in" do
       post2 =
         Post
-        |> new()
-        |> change_attribute(:title, "title2")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:title, "title2")
         |> Ash.create!()
         |> strip_metadata()
 
       post3 =
         Post
-        |> new()
-        |> change_attribute(:title, "title3")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:title, "title3")
         |> Ash.create!()
         |> strip_metadata()
 
       post =
         Post
-        |> new(%{title: "cannot_be_missing"})
-        |> manage_relationship(:related_posts, [post2, post3], type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attributes(%{title: "cannot_be_missing"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [post2, post3],
+          type: :append_and_remove
+        )
         |> Ash.create!()
         |> strip_metadata()
 
@@ -661,28 +694,28 @@ defmodule Ash.Test.Actions.CreateTest do
     test "allows creating with has_one relationship" do
       profile =
         Profile
-        |> new()
-        |> change_attribute(:bio, "best dude")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:bio, "best dude")
         |> Ash.create!()
 
       Author
-      |> new()
-      |> change_attribute(:name, "fred")
-      |> manage_relationship(:profile, profile, type: :append_and_remove)
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.change_attribute(:name, "fred")
+      |> Ash.Changeset.manage_relationship(:profile, profile, type: :append_and_remove)
     end
 
     test "it sets the relationship on the destination record accordingly" do
       profile =
         Profile
-        |> new()
-        |> change_attribute(:bio, "best dude")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:bio, "best dude")
         |> Ash.create!()
 
       author =
         Author
-        |> new()
-        |> change_attribute(:name, "fred")
-        |> manage_relationship(:profile, profile, type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:name, "fred")
+        |> Ash.Changeset.manage_relationship(:profile, profile, type: :append_and_remove)
         |> Ash.create!()
 
       assert Ash.get!(Profile, profile.id).author_id == author.id
@@ -691,15 +724,15 @@ defmodule Ash.Test.Actions.CreateTest do
     test "it responds with the relationship filled in" do
       profile =
         Profile
-        |> new()
-        |> change_attribute(:bio, "best dude")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:bio, "best dude")
         |> Ash.create!()
 
       author =
         Author
-        |> new()
-        |> change_attribute(:name, "fred")
-        |> manage_relationship(:profile, profile, type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:name, "fred")
+        |> Ash.Changeset.manage_relationship(:profile, profile, type: :append_and_remove)
         |> Ash.create!()
 
       assert author.profile.author_id == author.id
@@ -710,14 +743,14 @@ defmodule Ash.Test.Actions.CreateTest do
     test "allows creating with a has_many relationship" do
       post =
         Post
-        |> new()
-        |> change_attribute(:title, "sup")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:title, "sup")
         |> Ash.create!()
 
       Author
-      |> new()
-      |> change_attribute(:name, "foobar")
-      |> manage_relationship(:posts, [post], type: :append_and_remove)
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.change_attribute(:name, "foobar")
+      |> Ash.Changeset.manage_relationship(:posts, [post], type: :append_and_remove)
       |> Ash.create!()
     end
   end
@@ -726,29 +759,29 @@ defmodule Ash.Test.Actions.CreateTest do
     test "allows creating with belongs_to relationship" do
       author =
         Author
-        |> new()
-        |> change_attribute(:bio, "best dude")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:bio, "best dude")
         |> Ash.create!()
 
       Post
-      |> new()
-      |> change_attribute(:title, "foobar")
-      |> manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.change_attribute(:title, "foobar")
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
       |> Ash.create!()
     end
 
     test "it sets the relationship on the destination record accordingly" do
       author =
         Author
-        |> new()
-        |> change_attribute(:bio, "best dude")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:bio, "best dude")
         |> Ash.create!()
 
       post =
         Post
-        |> new()
-        |> change_attribute(:title, "foobar")
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:title, "foobar")
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Ash.create!()
 
       assert Ash.get!(Post, post.id).author_id == author.id
@@ -757,15 +790,15 @@ defmodule Ash.Test.Actions.CreateTest do
     test "it responds with the relationship field filled in" do
       author =
         Author
-        |> new()
-        |> change_attribute(:bio, "best dude")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:bio, "best dude")
         |> Ash.create!()
 
       post =
         Post
-        |> new()
-        |> change_attribute(:title, "foobar")
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:title, "foobar")
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Ash.create!()
 
       assert post.author_id == author.id
@@ -774,15 +807,15 @@ defmodule Ash.Test.Actions.CreateTest do
     test "it responds with the relationship filled in" do
       author =
         Author
-        |> new()
-        |> change_attribute(:bio, "best dude")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:bio, "best dude")
         |> Ash.create!()
 
       post =
         Post
-        |> new()
-        |> change_attribute(:title, "foobar")
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:title, "foobar")
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Ash.create!()
 
       assert post.author.id == author.id
@@ -791,22 +824,22 @@ defmodule Ash.Test.Actions.CreateTest do
     test "it clears the relationship if replaced with nil" do
       author =
         Author
-        |> new()
-        |> change_attribute(:bio, "best dude")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:bio, "best dude")
         |> Ash.create!()
 
       post =
         Post
-        |> new()
-        |> change_attribute(:title, "foobar")
-        |> manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:title, "foobar")
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
         |> Ash.create!()
 
       post =
         post
-        |> new()
-        |> change_attribute(:title, "foobuz")
-        |> manage_relationship(:author, nil, type: :append_and_remove)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:title, "foobuz")
+        |> Ash.Changeset.manage_relationship(:author, nil, type: :append_and_remove)
         |> Ash.update!()
 
       assert post.author == nil
@@ -830,8 +863,9 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Ash.create!()
 
       ProfileWithBelongsTo
-      |> Ash.Changeset.for_create(:create)
+      |> Ash.Changeset.new()
       |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.Changeset.for_create(:create)
       |> Ash.create!()
     end
 
@@ -841,13 +875,14 @@ defmodule Ash.Test.Actions.CreateTest do
       |> Ash.create!()
 
       ProfileWithBelongsTo
-      |> Ash.Changeset.for_create(:create)
+      |> Ash.Changeset.new()
       |> Ash.Changeset.manage_relationship(:author, %{name: "author name"},
         type: :append_and_remove,
         on_no_match: :create,
         on_lookup: :relate,
         on_match: :ignore
       )
+      |> Ash.Changeset.for_create(:create)
       |> Ash.create!()
     end
   end
@@ -855,8 +890,9 @@ defmodule Ash.Test.Actions.CreateTest do
   describe "list type" do
     test "it can store a list" do
       assert Post
-             |> new(%{title: "cannot_be_missing"})
-             |> change_attribute(:list_attribute, [1, 2, 3, 4])
+             |> Ash.Changeset.new()
+             |> Ash.Changeset.change_attribute(:list_attribute, [1, 2, 3, 4])
+             |> Ash.Changeset.for_create(:create, %{title: "cannot_be_missing"})
              |> Ash.create!()
     end
   end
@@ -865,8 +901,8 @@ defmodule Ash.Test.Actions.CreateTest do
     test "it honors min_length" do
       assert_raise Ash.Error.Invalid, ~r/must have 2 or more items/, fn ->
         Post
-        |> new()
-        |> change_attribute(:list_attribute_with_constraints, [])
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:list_attribute_with_constraints, [])
         |> Ash.create!()
       end
     end
@@ -876,8 +912,8 @@ defmodule Ash.Test.Actions.CreateTest do
         list = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
         Post
-        |> new()
-        |> change_attribute(:list_attribute_with_constraints, list)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:list_attribute_with_constraints, list)
         |> Ash.create!()
       end
     end
@@ -887,8 +923,8 @@ defmodule Ash.Test.Actions.CreateTest do
         list = [28, 2, 4]
 
         Post
-        |> new()
-        |> change_attribute(:list_attribute_with_constraints, list)
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:list_attribute_with_constraints, list)
         |> Ash.create!()
       end
     end
@@ -900,12 +936,12 @@ defmodule Ash.Test.Actions.CreateTest do
 
       assert_raise(Ash.Error.Forbidden, fn ->
         Authorized
-        |> new()
-        |> change_attribute(:name, "foo")
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:name, "foo")
         |> Ash.create!(authorize?: true)
       end)
 
-      assert [] = Ash.read!(Authorized)
+      assert [] = Ash.read!(Authorized, authorize?: false)
     end
   end
 

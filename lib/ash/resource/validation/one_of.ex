@@ -4,8 +4,7 @@ defmodule Ash.Resource.Validation.OneOf do
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.InvalidAttribute
-  require Ash.Expr
-  import Ash.Filter.TemplateHelpers
+  import Ash.Expr
 
   @opt_schema [
     values: [
@@ -24,7 +23,7 @@ defmodule Ash.Resource.Validation.OneOf do
 
   @impl true
   def init(opts) do
-    case Spark.OptionsHelpers.validate(opts, @opt_schema) do
+    case Spark.Options.validate(opts, @opt_schema) do
       {:ok, opts} ->
         {:ok, opts}
 
@@ -65,15 +64,15 @@ defmodule Ash.Resource.Validation.OneOf do
           expr(^atomic_ref(opts[:attribute]))
       end
 
-    {:atomic, [opts[:attribute]], Ash.Expr.expr(^value not in ^opts[:values]),
-     Ash.Expr.expr(
+    {:atomic, [opts[:attribute]], expr(^value not in ^opts[:values]),
+     expr(
        error(
          Ash.Error.Changes.InvalidAttribute,
          %{
            field: ^opts[:attribute],
            value: ^value,
-           message: ^(context[:message] || "expected one of %{values}"),
-           vars: %{values: Enum.map_join(opts[:values], ", ", &to_string/1)}
+           message: ^(context.message || "expected one of %{values}"),
+           vars: %{values: ^Enum.map_join(opts[:values], ", ", &to_string/1)}
          }
        )
      )}

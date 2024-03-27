@@ -9,7 +9,7 @@ defmodule Ash.Notifier do
     quote do
       @behaviour Ash.Notifier
 
-      def requires_original_data?(_, _), do: true
+      def requires_original_data?(_, _), do: false
 
       defoverridable requires_original_data?: 2
     end
@@ -43,7 +43,7 @@ defmodule Ash.Notifier do
             end
 
           allowed_notifiers ->
-            for notifier <- List.wrap(allowed_notifiers) do
+            for notifier <- Enum.uniq(List.wrap(allowed_notifiers)) do
               notifier.notify(notification)
             end
         end

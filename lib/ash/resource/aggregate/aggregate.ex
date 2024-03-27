@@ -10,14 +10,17 @@ defmodule Ash.Resource.Aggregate do
     :constraints,
     :type,
     :description,
-    :private?,
+    :public?,
     :field,
     :sort,
     :default,
     :uniq?,
+    include_nil?: false,
     join_filters: [],
     authorize?: true,
-    filterable?: true
+    filterable?: true,
+    sortable?: true,
+    sensitive?: false
   ]
 
   defmodule JoinFilter do
@@ -75,16 +78,25 @@ defmodule Ash.Resource.Aggregate do
       type: :any,
       doc: "A default value to use in cases where nil would be used. Count defaults to `0`."
     ],
-    private?: [
+    public?: [
       type: :boolean,
       default: false,
-      doc:
-        "Whether or not the aggregate will appear in any interfaces created off of this resource, e.g AshJsonApi and AshGraphql"
+      doc: "Whether or not the aggregate will appear in public interfaces"
     ],
     filterable?: [
       type: {:or, [:boolean, {:in, [:simple_equality]}]},
       default: true,
       doc: "Whether or not the aggregate should be usable in filters."
+    ],
+    sortable?: [
+      type: :boolean,
+      default: true,
+      doc: "Whether or not the aggregate should be usable in sorts."
+    ],
+    sensitive?: [
+      type: :boolean,
+      default: false,
+      doc: "Whether or not the aggregate should be considered sensitive."
     ],
     authorize?: [
       type: :boolean,
@@ -102,11 +114,14 @@ defmodule Ash.Resource.Aggregate do
           field: atom,
           kind: Ash.Query.Aggregate.kind(),
           description: String.t() | nil,
-          private?: boolean,
+          public?: boolean,
           authorize?: boolean,
           read_action: atom | nil,
           default: term,
-          join_filters: %{list(atom) => term()}
+          join_filters: %{list(atom) => term()},
+          filterable?: boolean,
+          sortable?: boolean,
+          sensitive?: boolean
         }
 
   @doc false

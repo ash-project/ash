@@ -26,7 +26,7 @@ end
 
 In this case, if you were to try to run a query without specifying a tenant, you would get an error telling you that the tenant is required.
 
-Setting the tenant when using the code API is done via `Ash.Query.set_tenant/2` and `Ash.Changeset.set_tenant/2`. If you are using an extension, such as `AshJsonApi` or `AshGraphql` the method of setting tenant context is explained in that extension's documentation.
+Setting the tenant is done via `Ash.Query.set_tenant/2` and `Ash.Changeset.set_tenant/2`. If you are using an extension, such as `AshJsonMyDomain` or `AshGraphql` the method of setting tenant context is explained in that extension's documentation.
 
 Example usage of the above:
 
@@ -34,25 +34,25 @@ Example usage of the above:
 # Error when not setting a tenant
 MyApp.Users
 |> Ash.Query.filter(name == "fred")
-|> MyApi.read!()
+|> Ash.read!()
 ** (Ash.Error.Invalid)
 
 * "Queries against the Helpdesk.Accounts.User resource require a tenant to be specified"
-    (ash 1.22.0) lib/ash/api/api.ex:944: Ash.Api.unwrap_or_raise!/2
+    (ash 1.22.0) lib/ash/domain/domain.ex:944: Ash.Domain.unwrap_or_raise!/2
 
 # Automatically filtering by `organization_id == 1`
 MyApp.Users
 |> Ash.Query.filter(name == "fred")
 |> Ash.Query.set_tenant(1)
-|> MyApi.read!()
+|> Ash.read!()
 
 [...]
 
 # Automatically setting `organization_id` to `1`
 MyApp.Users
-|> Ash.Changeset.new(name: "fred")
+|> Ash.Changeset.for_create(:create, %{name: "fred"})
 |> Ash.Changeset.set_tenant(1)
-|> MyApi.create!()
+|> Ash.create!()
 
 %MyApp.User{organization_id: 1}
 ```
@@ -74,3 +74,30 @@ You can also provide the `parse_attribute?` option if the tenant being set doesn
 Context multitenancy allows for the data layer to dictate how multitenancy works. For example, a csv data layer might implement multitenancy via saving the file with different suffixes, or an API wrapping data layer might use different subdomains for the tenant.
 
 For `AshPostgres` context multitenancy, which uses postgres schemas and is referred to ash "Schema Based Multitenancy", see the [guide](https://hexdocs.pm/ash_postgres/schema-based-multitenancy.html)
+
+## Possible Values for tenant
+
+By default, the tenant value is passed directly to the relevant implementation. For example, if you are using schema multitenancy with `ash_postgres`, you might provide a schema like `organization.subdomain`. In Ash, a tenant should be identifiable by a single value, like an integer or a string.
+
+You can use the `Ash.ToTenant` protocol to automatically convert values into this simple value. The example below will allow you to use the same organization everywhere, and have it automatically converted into the correct schema for postgres, and the correct id for attribute-based multitenant resources. You can use this without looking up the relevant record as well, as long as the required fields used in your protocol are present.
+
+```elixir
+Ash.Changeset.for_create(..., tenant: %MyApp.Organization{id: id})
+```
+
+```elixir
+# in Organization resource
+
+defimpl Ash.ToTenant do
+  def to_tenant(resource, %MyApp.Accounts.Organization{id: id}) do
+    if Ash.Resource.Info.data_layer(resource) == AshPostgres.DataLayer
+      && Ash.Resource.Info.multitenancy_strategy(resource) == :context do
+      "org_#{id}"
+    else
+      id
+    end
+  end
+end
+```
+
+This allows you to pass an `%Organization{}` or an organization_id around, and have that `organization_id` properly used with attribute and context-based multitenancy.

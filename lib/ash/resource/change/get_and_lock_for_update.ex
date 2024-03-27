@@ -10,9 +10,10 @@ defmodule Ash.Resource.Change.GetAndLockForUpdate do
       primary_key = Ash.Resource.Info.primary_key(changeset.resource)
       pkey_values = changeset.data |> Map.take(primary_key) |> Map.to_list()
 
-      case changeset.api.get(
+      case Ash.get(
              changeset.resource,
              pkey_values,
+             domain: changeset.domain,
              tracer: context[:tracer],
              tenant: context[:tenant],
              authorize?: false,

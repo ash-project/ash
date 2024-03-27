@@ -1,6 +1,7 @@
 defmodule Ash.Actions.Read.Relationships do
   @moduledoc false
   require Ash.Query
+  import Ash.Expr
 
   def load([], _query, _lazy?) do
     {:ok, []}
@@ -72,8 +73,9 @@ defmodule Ash.Actions.Read.Relationships do
         |> Enum.map(&Ash.Resource.set_metadata(&1, %{lazy_join_source: record_pkey}))
       end)
 
-    related_query.api.load(related_records_with_lazy_join_source, related_query,
+    Ash.load(related_records_with_lazy_join_source, related_query,
       lazy?: true,
+      domain: related_query.domain,
       actor: related_query.context.private[:actor],
       tenant: related_query.tenant,
       authorize?: related_query.context.private[:authorize?]
@@ -94,7 +96,10 @@ defmodule Ash.Actions.Read.Relationships do
         {relationship,
          {:lazy,
           related_query
-          |> Map.put(:api, query.api)
+          |> Map.put(
+            :domain,
+            Ash.Domain.Info.related_domain(related_query, relationship, query.domain)
+          )
           |> Ash.Query.set_context(%{
             private: %{async_limiter: query.context[:private][:async_limiter]}
           })}}
@@ -111,15 +116,10 @@ defmodule Ash.Actions.Read.Relationships do
       relationship.read_action ||
         Ash.Resource.Info.primary_action!(relationship.destination, :read).name
 
+    domain = Ash.Domain.Info.related_domain(related_query, relationship, query.domain)
+
     related_query =
       related_query
-      |> case do
-        %Ash.Query{} = related_query ->
-          related_query
-
-        [] ->
-          Ash.Query.new(relationship.destination)
-      end
       |> Ash.Query.set_context(%{
         private: %{async_limiter: query.context[:private][:async_limiter]}
       })
@@ -127,11 +127,11 @@ defmodule Ash.Actions.Read.Relationships do
       |> Ash.Query.for_read(
         read_action_name,
         %{},
+        domain: domain,
         authorize?: query.context[:private][:authorize?],
         actor: query.context[:private][:actor],
         tracer: query.context[:private][:tracer]
       )
-      |> Map.put(:api, relationship.api || query.api)
       |> Ash.Query.sort(relationship.sort)
       |> Ash.Query.do_filter(relationship.filter)
       |> Ash.Query.set_context(relationship.context)
@@ -170,11 +170,11 @@ defmodule Ash.Actions.Read.Relationships do
               relationship.source_attribute_on_join_resource,
               relationship.destination_attribute_on_join_resource
             ])
-            |> Map.put(:api, join_relationship.api || related_query.api)
+            |> Map.put(:domain, join_relationship.domain || related_query.domain)
             |> hydrate_refs(relationship.source)
 
           if source_query.context[:private][:authorize?] do
-            case through_query.api.can(
+            case Ash.can(
                    through_query,
                    source_query.context[:private][:actor],
                    return_forbidden_error?: true,
@@ -267,10 +267,10 @@ defmodule Ash.Actions.Read.Relationships do
        ) do
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
-      Ash.context_to_opts(related_query.context),
+      Ash.Context.to_opts(related_query.context),
       fn ->
         result =
-          module.load(records, opts, %{
+          module.load(records, opts, %Ash.Resource.ManualRelationship.Context{
             relationship: relationship,
             query:
               related_query
@@ -282,7 +282,7 @@ defmodule Ash.Actions.Read.Relationships do
               }),
             actor: related_query.context[:private][:actor],
             authorize?: related_query.context[:private][:authorize?],
-            api: related_query.api,
+            domain: related_query.domain,
             tenant: related_query.tenant
           })
           |> case do
@@ -293,7 +293,8 @@ defmodule Ash.Actions.Read.Relationships do
                 |> List.wrap()
                 |> Enum.map(&Ash.Resource.put_metadata(&1, :manual_key, key))
               end)
-              |> related_query.api.load(related_query,
+              |> Ash.load(related_query,
+                domain: related_query.domain,
                 actor: related_query.context[:private][:actor],
                 authorize?: related_query.context[:private][:authorize?],
                 tenant: related_query.tenant
@@ -322,7 +323,7 @@ defmodule Ash.Actions.Read.Relationships do
        ) do
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
-      Ash.context_to_opts(related_query.context),
+      Ash.Context.to_opts(related_query.context),
       fn ->
         result =
           related_query
@@ -344,7 +345,7 @@ defmodule Ash.Actions.Read.Relationships do
        ) do
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
-      Ash.context_to_opts(related_query.context),
+      Ash.Context.to_opts(related_query.context),
       fn ->
         result =
           related_query
@@ -370,7 +371,7 @@ defmodule Ash.Actions.Read.Relationships do
 
     join_query =
       relationship.through
-      |> Ash.Query.filter(ref(^relationship.source_attribute_on_join_resource) in ^record_ids)
+      |> Ash.Query.filter(^ref(relationship.source_attribute_on_join_resource) in ^record_ids)
       |> Ash.Query.set_context(%{
         accessing_from: %{source: relationship.source, name: relationship.join_relationship}
       })
@@ -378,11 +379,14 @@ defmodule Ash.Actions.Read.Relationships do
         relationship.source_attribute_on_join_resource,
         relationship.destination_attribute_on_join_resource
       ])
-      |> Map.put(:api, join_relationship.api || related_query.api)
+      |> Map.put(
+        :domain,
+        Ash.Domain.Info.related_domain(related_query, join_relationship, related_query.domain)
+      )
 
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
-      Ash.context_to_opts(related_query.context),
+      Ash.Context.to_opts(related_query.context),
       fn ->
         case Ash.Actions.Read.unpaginated_read(join_query, nil,
                authorize?: related_query.context[:private][:authorize?],
@@ -419,7 +423,7 @@ defmodule Ash.Actions.Read.Relationships do
             |> select_destination_attribute(relationship)
             |> Ash.Query.sort(relationship.sort)
             |> Ash.Query.do_filter(relationship.filter)
-            |> Ash.Query.filter(ref(^relationship.destination_attribute) in ^destination_ids)
+            |> Ash.Query.filter(^ref(relationship.destination_attribute) in ^destination_ids)
             |> Ash.Actions.Read.unpaginated_read()
             |> case do
               {:ok, records} ->
@@ -454,12 +458,12 @@ defmodule Ash.Actions.Read.Relationships do
 
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
-      Ash.context_to_opts(related_query.context),
+      Ash.Context.to_opts(related_query.context),
       fn ->
         result =
           related_query
           |> select_destination_attribute(relationship)
-          |> Ash.Query.filter(ref(^relationship.destination_attribute) in ^destination_attributes)
+          |> Ash.Query.filter(^ref(relationship.destination_attribute) in ^destination_attributes)
           |> Ash.Query.unset([:limit, :offset, :distinct, :distinct_sort])
           |> Ash.Query.set_context(%{
             accessing_from: %{source: relationship.source, name: relationship.name}

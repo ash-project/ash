@@ -5,24 +5,39 @@ defmodule Ash.Test.Filter.SimplificationTest do
   require Ash.Query
   require Ash.Test.Helpers
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     actions do
+      default_accept :*
       read :read
     end
 
     attributes do
       uuid_primary_key :id
-      attribute :title, :string
-      attribute :contents, :string
-      attribute :points, :integer
-      attribute :post_date, :date
+
+      attribute :title, :string do
+        public?(true)
+      end
+
+      attribute :contents, :string do
+        public?(true)
+      end
+
+      attribute :points, :integer do
+        public?(true)
+      end
+
+      attribute :post_date, :date do
+        public?(true)
+      end
     end
   end
 

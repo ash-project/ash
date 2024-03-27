@@ -7,8 +7,12 @@ defmodule Ash.Test.Support.PolicyComplex.User.Changes.AddFriend do
       destination_id = Ash.Changeset.get_argument(changeset, :friend_id)
 
       Ash.Test.Support.PolicyComplex.FriendLink
-      |> Ash.Changeset.for_create(:create, %{source_id: result.id, destination_id: destination_id})
-      |> changeset.api.create!(Ash.context_to_opts(context))
+      |> Ash.Changeset.for_create(
+        :create,
+        %{source_id: result.id, destination_id: destination_id},
+        domain: changeset.domain
+      )
+      |> Ash.create!(Ash.Context.to_opts(context))
 
       {:ok, result}
     end)

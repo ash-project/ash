@@ -8,11 +8,11 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :define_attribute?,
     :attribute_type,
     :destination_attribute,
-    :private?,
+    :public?,
     :source_attribute,
     :source,
     :read_action,
-    :api,
+    :domain,
     :not_found_message,
     :violation_message,
     :allow_nil?,
@@ -22,7 +22,10 @@ defmodule Ash.Resource.Relationships.BelongsTo do
     :context,
     :description,
     :attribute_writable?,
+    :attribute_public?,
+    filters: [],
     filterable?: true,
+    sortable?: true,
     validate_destination_attribute?: true,
     cardinality: :one,
     type: :belongs_to
@@ -35,6 +38,7 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           name: atom,
           read_action: atom,
           filter: Ash.Filter.t() | nil,
+          filters: list(any()),
           source: Ash.Resource.t(),
           destination: Ash.Resource.t(),
           allow_nil?: boolean,
@@ -43,23 +47,23 @@ defmodule Ash.Resource.Relationships.BelongsTo do
           attribute_type: term,
           writable?: boolean,
           attribute_writable?: boolean,
+          attribute_public?: boolean,
           destination_attribute: atom,
-          private?: boolean,
+          public?: boolean,
           filterable?: boolean,
+          sortable?: boolean,
           source_attribute: atom | nil,
           description: String.t()
         }
 
   import Ash.Resource.Relationships.SharedOptions
 
-  alias Spark.OptionsHelpers
-
   @global_opts shared_options()
-               |> OptionsHelpers.set_default!(:destination_attribute, :id)
-               |> OptionsHelpers.append_doc!(:source_attribute, "Defaults to <name>_id")
+               |> Spark.Options.Helpers.set_default!(:destination_attribute, :id)
+               |> Spark.Options.Helpers.append_doc!(:source_attribute, "Defaults to <name>_id")
                |> Keyword.delete(:could_be_related_at_creation?)
 
-  @opt_schema Spark.OptionsHelpers.merge_schemas(
+  @opt_schema Spark.Options.merge(
                 [
                   primary_key?: [
                     type: :boolean,
@@ -75,9 +79,14 @@ defmodule Ash.Resource.Relationships.BelongsTo do
                   ],
                   attribute_writable?: [
                     type: :boolean,
-                    default: false,
                     doc: """
-                    Whether the generated attribute will be marked as public & writable.
+                    Whether the generated attribute will be marked as writable. If not set, it will default to the relationship's `writable?` setting.
+                    """
+                  ],
+                  attribute_public?: [
+                    type: :boolean,
+                    doc: """
+                    Whether or not the generated attribute will be public. If not set, it will default to the relationship's `public?` setting.
                     """
                   ],
                   define_attribute?: [
@@ -101,7 +110,37 @@ defmodule Ash.Resource.Relationships.BelongsTo do
 
   @doc false
   # sobelow_skip ["DOS.BinToAtom"]
-  def transform(%{source_attribute: source_attribute, name: name} = relationship) do
-    {:ok, %{relationship | source_attribute: source_attribute || :"#{name}_id"}}
+  def transform(
+        %{
+          source_attribute: source_attribute,
+          name: name,
+          attribute_public?: attribute_public?,
+          attribute_writable?: attribute_writable?,
+          writable?: writable?,
+          public?: public?
+        } = relationship
+      ) do
+    attribute_public? =
+      if is_nil(attribute_public?) do
+        public?
+      else
+        attribute_public?
+      end
+
+    attribute_writable? =
+      if is_nil(attribute_writable?) do
+        writable?
+      else
+        attribute_writable?
+      end
+
+    {:ok,
+     %{
+       relationship
+       | source_attribute: source_attribute || :"#{name}_id",
+         attribute_public?: attribute_public?,
+         attribute_writable?: attribute_writable?
+     }
+     |> Ash.Resource.Actions.Read.concat_filters()}
   end
 end

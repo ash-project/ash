@@ -1,10 +1,11 @@
 defmodule Mix.Tasks.Ash.Setup do
   @moduledoc """
-  Runs all setup tasks for any extension on any resource/api in your application.
+  Runs all setup tasks for any extension on any resource/domain in your application.
   """
   use Mix.Task
 
-  @shortdoc "Runs all setup tasks for any extension on any resource/api in your application."
+  @shortdoc "Runs all setup tasks for any extension on any resource/domain in your application."
+  @doc @shortdoc
   def run(argv) do
     Mix.Task.run("compile")
 

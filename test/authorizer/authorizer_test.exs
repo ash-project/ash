@@ -10,14 +10,15 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       authorizers: [
         Ash.Test.Authorizer
       ],
-      api: Ash.Test.Changeset.AuthorizerTest.Api
+      domain: Ash.Test.Changeset.AuthorizerTest.Domain
 
     ets do
       private? true
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
 
       create :title_is_authorization do
         accept []
@@ -31,36 +32,27 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
     attributes do
       uuid_primary_key :id
 
-      attribute :title, :string, allow_nil?: false
+      attribute :title, :string, allow_nil?: false, public?: true
     end
   end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Post
-    end
-  end
-
-  defmodule Api do
-    use Ash.Api, otp_app: :ash
+  defmodule Domain do
+    use Ash.Domain, otp_app: :ash
 
     resources do
-      registry Registry
+      resource Post
     end
   end
 
   describe "authorization options" do
     setup do
       on_exit(fn ->
-        Application.delete_env(:ash, Api)
+        Application.delete_env(:ash, Domain)
       end)
     end
 
     test "authorize :always authorizes automatically" do
-      Application.put_env(:ash, Api,
+      Application.put_env(:ash, Domain,
         authorization: [
           authorize: :by_default
         ]
@@ -71,12 +63,12 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       assert_raise Ash.Error.Forbidden, fn ->
         Post
         |> Ash.Changeset.for_create(:create, %{title: "test"})
-        |> Api.create!()
+        |> Ash.create!()
       end
     end
 
     test "authorize :by_default authorizes if actor is set" do
-      Application.put_env(:ash, Api,
+      Application.put_env(:ash, Domain,
         authorization: [
           authorize: :by_default
         ]
@@ -87,13 +79,13 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       post =
         Post
         |> Ash.Changeset.for_create(:title_is_authorization, %{}, actor: :an_actor)
-        |> Api.create!()
+        |> Ash.create!()
 
       assert post.title == "true"
     end
 
     test "require_actor? requires an actor for all requests" do
-      Application.put_env(:ash, Api,
+      Application.put_env(:ash, Domain,
         authorization: [
           require_actor?: true,
           authorize: :by_default
@@ -105,21 +97,19 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       assert_raise Ash.Error.Forbidden, fn ->
         Post
         |> Ash.Changeset.for_create(:create, %{title: "test"})
-        |> Api.create!()
+        |> Ash.create!()
       end
 
       assert_raise Ash.Error.Forbidden, fn ->
         Post
         |> Ash.Changeset.for_create(:create, %{title: "test"})
-        |> Api.create!(actor: nil)
+        |> Ash.create!(actor: nil)
       end
 
       assert_raise Ash.Error.Forbidden, fn ->
-        Ash.set_actor(nil)
-
         Post
-        |> Ash.Changeset.for_create(:create, %{title: "test"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "test"}, actor: nil)
+        |> Ash.create!()
       end
     end
   end
@@ -133,13 +123,13 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "test"})
-      |> Api.create!()
+      |> Ash.create!(authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "foo"})
-      |> Api.create!()
+      |> Ash.create!(authorize?: false)
 
-      assert [%Post{title: "foo"}] = Api.read!(Post, authorize?: true)
+      assert [%Post{title: "foo"}] = Ash.read!(Post, authorize?: true)
     end
 
     test "a filter cannot be applied to creates" do
@@ -152,29 +142,29 @@ defmodule Ash.Test.Changeset.AuthorizerTest do
       assert_raise Ash.Error.Forbidden, fn ->
         Post
         |> Ash.Changeset.for_create(:create, %{title: "test"}, authorize?: true)
-        |> Api.create!()
+        |> Ash.create!()
       end
 
       good_post =
         Post
-        |> Ash.Changeset.for_create(:create, %{title: "foo"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "foo"}, authorize?: false)
+        |> Ash.create!()
 
       bad_post =
         Post
-        |> Ash.Changeset.for_create(:create, %{title: "test"})
-        |> Api.create!()
+        |> Ash.Changeset.for_create(:create, %{title: "test"}, authorize?: false)
+        |> Ash.create!()
 
       # Filters apply to the base data
       assert_raise Ash.Error.Forbidden, fn ->
         bad_post
         |> Ash.Changeset.for_update(:update, %{title: "next"}, authorize?: true)
-        |> Api.update!()
+        |> Ash.update!()
       end
 
       good_post
       |> Ash.Changeset.for_update(:update, %{title: "next"}, authorize?: true)
-      |> Api.update!()
+      |> Ash.update!()
     end
   end
 end

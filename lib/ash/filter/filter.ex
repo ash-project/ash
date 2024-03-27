@@ -6,7 +6,7 @@ defmodule Ash.Filter do
 
   alias Ash.Error.Query.{
     InvalidFilterValue,
-    NoSuchAttributeOrRelationship,
+    NoSuchField,
     NoSuchFilterPredicate,
     NoSuchFunction,
     NoSuchOperator
@@ -23,6 +23,7 @@ defmodule Ash.Filter do
     DateAdd,
     DateTimeAdd,
     Error,
+    Fragment,
     FromNow,
     GetPath,
     If,
@@ -32,6 +33,7 @@ defmodule Ash.Filter do
     Minus,
     Now,
     Round,
+    StringDowncase,
     StringJoin,
     StringLength,
     StringSplit,
@@ -53,6 +55,8 @@ defmodule Ash.Filter do
   alias Ash.Query.{BooleanExpression, Call, Not, Ref}
   alias Ash.Query.{Aggregate, Calculation, Function, Operator}
 
+  @custom_expressions Application.compile_env(:ash, :custom_expressions) || []
+
   @functions [
     Ago,
     At,
@@ -61,6 +65,7 @@ defmodule Ash.Filter do
     CountNils,
     DateAdd,
     DateTimeAdd,
+    Fragment,
     FromNow,
     GetPath,
     IsNil,
@@ -73,6 +78,7 @@ defmodule Ash.Filter do
     Round,
     Today,
     Type,
+    StringDowncase,
     StringJoin,
     StringLength,
     StringSplit,
@@ -116,15 +122,6 @@ defmodule Ash.Filter do
   `Ash.Filter.parse_input/2`.  This ensures that the filter only uses public
   attributes, relationships, aggregates and calculations, honors field policies
   and any policies on related resources.
-
-  ## Filter Templates
-
-  To see the available templates, see `Ash.Filter.TemplateHelpers`.  You can
-  pass a filter template to `build_filter_from_template/2` with an actor, and it
-  will return the new result
-
-  Additionally, you can ask if the filter template contains an actor reference
-  via `template_references_actor?/1`
 
   ## Writing a filter
 
@@ -218,9 +215,9 @@ defmodule Ash.Filter do
   end
 
   # Used for fetching related data in filters, which will have already had authorization rules applied
-  defmodule ShadowApi do
+  defmodule ShadowDomain do
     @moduledoc false
-    use Ash.Api, validate_config_inclusion?: false
+    use Ash.Domain, validate_config_inclusion?: false
 
     resources do
       allow_unregistered?(true)
@@ -235,23 +232,16 @@ defmodule Ash.Filter do
   """
   def parse_input(
         resource,
-        statement,
-        _aggregates \\ %{},
-        _calculations \\ %{},
-        context \\ %{}
+        statement
       ) do
-    context =
-      Map.merge(
-        %{
-          resource: resource,
-          root_resource: resource,
-          relationship_path: [],
-          public?: true,
-          input?: true,
-          data_layer: Ash.DataLayer.data_layer(resource)
-        },
-        context
-      )
+    context = %{
+      resource: resource,
+      root_resource: resource,
+      relationship_path: [],
+      public?: true,
+      input?: true,
+      data_layer: Ash.DataLayer.data_layer(resource)
+    }
 
     with {:ok, expression} <- parse_expression(statement, context),
          {:ok, expression} <- hydrate_refs(expression, context),
@@ -266,8 +256,8 @@ defmodule Ash.Filter do
 
   See `parse_input/2` for more
   """
-  def parse_input!(resource, statement, aggregates \\ %{}, calculations \\ %{}, context \\ %{}) do
-    case parse_input(resource, statement, aggregates, calculations, context) do
+  def parse_input!(resource, statement) do
+    case parse_input(resource, statement) do
       {:ok, filter} ->
         filter
 
@@ -281,14 +271,14 @@ defmodule Ash.Filter do
 
   See `parse/2` for more
   """
-  def parse!(resource, statement, _aggregates \\ %{}, _calculations \\ %{}, context \\ %{}) do
-    case parse(resource, statement, %{}, %{}, context) do
+  def parse!(resource, statement, context \\ %{}) do
+    case parse(resource, statement, context) do
       {:ok, filter} ->
         filter
 
       {:error, error} ->
         raise Ash.Error.to_error_class(error,
-                error_context: parse_error_context(resource, statement, context)
+                bread_crumbs: parse_bread_crumbs(resource, statement, context)
               )
     end
   end
@@ -305,14 +295,13 @@ defmodule Ash.Filter do
   be sure to use `parse_input/2` instead! The only difference is that it only accepts
   filters over public attributes/relationships.
   """
-  # TODO: remove aggregates/calculation arguments. They are old and are no longer necessary (unused)
-  def parse(resource, statement, aggregates \\ %{}, calculations \\ %{}, context \\ %{})
+  def parse(resource, statement, context \\ %{})
 
-  def parse(_resource, nil, _aggregates, _calculations, _context) do
+  def parse(_resource, nil, _context) do
     {:ok, nil}
   end
 
-  def parse(resource, statement, _aggregates, _calculations, original_context) do
+  def parse(resource, statement, original_context) do
     context =
       Map.merge(
         %{
@@ -362,8 +351,8 @@ defmodule Ash.Filter do
         %{attribute: attribute, relationship_path: relationship_path}
         when is_atom(attribute) or is_binary(attribute) ->
           [
-            NoSuchAttributeOrRelationship.exception(
-              attribute_or_relationship: attribute,
+            NoSuchField.exception(
+              field: attribute,
               resource: Ash.Resource.Info.related(resource, relationship_path)
             )
           ]
@@ -563,272 +552,11 @@ defmodule Ash.Filter do
     - skip_invalid?:
   """
   def to_simple_filter(%{resource: resource, expression: expression}, opts \\ []) do
-    opts = NimbleOptions.validate!(opts, @to_simple_filter_options)
+    opts = Spark.Options.validate!(opts, @to_simple_filter_options)
     predicates = get_predicates(expression, opts[:skip_invalid?])
 
     %Simple{resource: resource, predicates: predicates}
   end
-
-  @doc "Replace any actor value references in a template with the values from a given actor"
-  def build_filter_from_template(
-        template,
-        actor \\ nil,
-        args \\ %{},
-        context \\ %{},
-        changeset \\ nil
-      ) do
-    walk_filter_template(template, fn
-      {:_actor, :_primary_key} ->
-        if actor do
-          Map.take(actor, Ash.Resource.Info.primary_key(actor.__struct__))
-        end
-
-      {:_actor, field} when is_atom(field) or is_binary(field) ->
-        Map.get(actor || %{}, field)
-
-      {:_actor, path} when is_list(path) ->
-        get_path(actor || %{}, path)
-
-      {:_arg, field} ->
-        case Map.fetch(args, field) do
-          :error ->
-            Map.get(args, to_string(field))
-
-          {:ok, value} ->
-            value
-        end
-
-      {:_atomic_ref, field} when is_atom(field) ->
-        if changeset do
-          Ash.Changeset.atomic_ref(changeset, field)
-        else
-          {:_atomic_ref, field}
-        end
-
-      {:_context, fields} when is_list(fields) ->
-        get_path(context, fields)
-
-      {:_context, field} ->
-        Map.get(context, field)
-
-      {:_ref, path, name} ->
-        %Ref{
-          attribute: build_filter_from_template(name, actor, args, context),
-          relationship_path: build_filter_from_template(path, actor, args, context)
-        }
-
-      %Call{name: :sigil_i, args: [%Call{name: :<<>>, args: [str]}, mods]} ->
-        Ash.CiString.sigil_i(str, mods)
-
-      other ->
-        other
-    end)
-  end
-
-  defp get_path(map, [key]) when is_struct(map) do
-    Map.get(map, key)
-  end
-
-  defp get_path(map, [key]) when is_map(map) do
-    Map.get(map, key)
-  end
-
-  defp get_path(map, [key | rest]) when is_map(map) do
-    get_path(get_path(map, [key]), rest)
-  end
-
-  defp get_path(_, _), do: nil
-
-  def template_references_actor?(template) do
-    template_references?(template, fn
-      {:_actor, _} -> true
-      _ -> false
-    end)
-  end
-
-  def template_references_argument?(template) do
-    template_references?(template, fn
-      {:_arg, _} -> true
-      _ -> false
-    end)
-  end
-
-  def template_references_context?(template) do
-    template_references?(template, fn
-      {:_context, _} -> true
-      _ -> false
-    end)
-  end
-
-  @doc "Whether or not a given template contains an actor reference"
-  def template_references?(%BooleanExpression{op: :and, left: left, right: right}, pred) do
-    template_references?(left, pred) || template_references?(right, pred)
-  end
-
-  def template_references?(%Not{expression: expression}, pred) do
-    template_references?(expression, pred)
-  end
-
-  def template_references?(%Ash.Query.Exists{expr: expr}, pred) do
-    template_references?(expr, pred)
-  end
-
-  def template_references?(%Ash.Query.Parent{expr: expr}, pred) do
-    template_references?(expr, pred)
-  end
-
-  def template_references?(%{left: left, right: right}, pred) do
-    template_references?(left, pred) || template_references?(right, pred)
-  end
-
-  def template_references?(%{arguments: args}, pred) do
-    Enum.any?(args, &template_references?(&1, pred))
-  end
-
-  def template_references?(%Ash.Query.Call{args: args}, pred) do
-    Enum.any?(args, &template_references?(&1, pred))
-  end
-
-  def template_references?(list, pred) when is_list(list) do
-    Enum.any?(list, &template_references?(&1, pred))
-  end
-
-  def template_references?(map, pred) when is_map(map) and not is_struct(map) do
-    Enum.any?(map, &template_references?(&1, pred))
-  end
-
-  def template_references?(tuple, pred) when is_tuple(tuple) do
-    pred.(tuple) ||
-      tuple
-      |> Tuple.to_list()
-      |> Enum.any?(&template_references?(&1, pred))
-  end
-
-  def template_references?(thing, pred), do: pred.(thing)
-
-  @doc false
-  def walk_filter_template(filter, mapper) when is_list(filter) do
-    case mapper.(filter) do
-      ^filter ->
-        Enum.map(filter, &walk_filter_template(&1, mapper))
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(%BooleanExpression{left: left, right: right} = expr, mapper) do
-    case mapper.(expr) do
-      ^expr ->
-        %{
-          expr
-          | left: walk_filter_template(left, mapper),
-            right: walk_filter_template(right, mapper)
-        }
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(%Not{expression: expression} = not_expr, mapper) do
-    case mapper.(not_expr) do
-      ^not_expr ->
-        %{not_expr | expression: walk_filter_template(expression, mapper)}
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(%Ash.Query.Parent{expr: expr} = this_expr, mapper) do
-    case mapper.(this_expr) do
-      ^this_expr ->
-        %{this_expr | expr: walk_filter_template(expr, mapper)}
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(%Ash.Query.Exists{expr: expr} = exists_expr, mapper) do
-    case mapper.(exists_expr) do
-      ^exists_expr ->
-        %{exists_expr | expr: walk_filter_template(expr, mapper)}
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(%{__predicate__?: _, left: left, right: right} = pred, mapper) do
-    case mapper.(pred) do
-      ^pred ->
-        %{
-          pred
-          | left: walk_filter_template(left, mapper),
-            right: walk_filter_template(right, mapper)
-        }
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(%{__predicate__?: _, arguments: arguments} = func, mapper) do
-    case mapper.(func) do
-      ^func ->
-        %{
-          func
-          | arguments: Enum.map(arguments, &walk_filter_template(&1, mapper))
-        }
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(%Call{args: args} = call, mapper) do
-    case mapper.(call) do
-      ^call ->
-        %{
-          call
-          | args: Enum.map(args, &walk_filter_template(&1, mapper))
-        }
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(filter, mapper) when is_map(filter) do
-    if Map.has_key?(filter, :__struct__) do
-      filter
-    else
-      case mapper.(filter) do
-        ^filter ->
-          Enum.into(filter, %{}, &walk_filter_template(&1, mapper))
-
-        other ->
-          walk_filter_template(other, mapper)
-      end
-    end
-  end
-
-  def walk_filter_template(tuple, mapper) when is_tuple(tuple) do
-    case mapper.(tuple) do
-      ^tuple ->
-        tuple
-        |> Tuple.to_list()
-        |> Enum.map(&walk_filter_template(&1, mapper))
-        |> List.to_tuple()
-
-      other ->
-        walk_filter_template(other, mapper)
-    end
-  end
-
-  def walk_filter_template(value, mapper), do: mapper.(value)
 
   @doc """
   Can be used to find a simple equality predicate on an attribute
@@ -845,7 +573,7 @@ defmodule Ash.Filter do
 
       %{right: right, left: left} ->
         Enum.find([right, left], fn value ->
-          !Ash.Filter.TemplateHelpers.expr?(value)
+          !Ash.Expr.expr?(value)
         end)
     end
   end
@@ -1009,7 +737,7 @@ defmodule Ash.Filter do
       |> list_refs(false, false, true)
       |> Enum.filter(fn
         %Ref{attribute: %Aggregate{}, relationship_path: ref_relationship_path} ->
-          relationship_path == :all ||
+          relationship_path == :* ||
             (relationship_path in [nil, []] and ref_relationship_path in [nil, []]) ||
             relationship_path == ref_relationship_path
 
@@ -1054,7 +782,7 @@ defmodule Ash.Filter do
 
       {:error, error} ->
         raise Ash.Error.to_ash_error(error, nil,
-                error_context: parse_error_context(base.resource, addition, context)
+                bread_crumbs: parse_bread_crumbs(base.resource, addition, context)
               )
     end
   end
@@ -1086,17 +814,17 @@ defmodule Ash.Filter do
   end
 
   def add_to_filter(%__MODULE__{} = base, statement, op, aggregates, calculations, context) do
-    case parse(base.resource, statement, %{}, %{}, context) do
+    case parse(base.resource, statement, context) do
       {:ok, filter} -> add_to_filter(base, filter, op, aggregates, calculations)
       {:error, error} -> {:error, error}
     end
   end
 
-  defp parse_error_context(%{resource: resource} = _filter, addition, context) do
-    parse_error_context(resource, addition, context)
+  defp parse_bread_crumbs(%{resource: resource} = _filter, addition, context) do
+    parse_bread_crumbs(resource, addition, context)
   end
 
-  defp parse_error_context(resource, addition, context) do
+  defp parse_bread_crumbs(resource, addition, context) do
     context_str = if context, do: ", given context: #{inspect(context)}", else: ""
 
     "parsing addition of filter statement: #{inspect(addition)}, to resource: #{inspect(resource)}" <>
@@ -1123,15 +851,7 @@ defmodule Ash.Filter do
   end
 
   @doc false
-  def relationship_filters(
-        api,
-        query,
-        actor,
-        tenant,
-        aggregates,
-        authorize?,
-        filters \\ %{}
-      ) do
+  def relationship_filters(domain, query, actor, tenant, aggregates, authorize?, filters \\ %{}) do
     if authorize? do
       paths_with_refs =
         query.filter
@@ -1149,10 +869,19 @@ defmodule Ash.Filter do
       |> Enum.map(&elem(&1, 0))
       |> Enum.reduce_while({:ok, filters}, fn path, {:ok, filters} ->
         last_relationship = last_relationship(query.resource, path)
-        add_authorization_path_filter(filters, last_relationship, api, query, actor, tenant, refs)
+
+        add_authorization_path_filter(
+          filters,
+          last_relationship,
+          domain,
+          query,
+          actor,
+          tenant,
+          refs
+        )
       end)
       |> add_aggregate_path_authorization(
-        api,
+        domain,
         refs,
         aggregates,
         query,
@@ -1169,7 +898,7 @@ defmodule Ash.Filter do
   defp add_authorization_path_filter(
          filters,
          last_relationship,
-         api,
+         domain,
          _query,
          actor,
          tenant,
@@ -1177,7 +906,7 @@ defmodule Ash.Filter do
          base_related_query \\ nil,
          _aggregate? \\ false
        ) do
-    case relationship_query(last_relationship, actor, tenant, base_related_query) do
+    case relationship_query(last_relationship, domain, actor, tenant, base_related_query) do
       %{errors: []} = related_query ->
         if filters[{last_relationship.source, last_relationship.name, related_query.action.name}] do
           {:cont, {:ok, filters}}
@@ -1190,7 +919,7 @@ defmodule Ash.Filter do
             }
           })
           |> Ash.Query.select([])
-          |> api.can(actor,
+          |> Ash.can(actor,
             run_queries?: false,
             alter_source?: true,
             no_check?: true,
@@ -1228,7 +957,7 @@ defmodule Ash.Filter do
 
   defp add_aggregate_path_authorization(
          {:ok, path_filters},
-         api,
+         domain,
          refs,
          aggregates,
          query,
@@ -1259,7 +988,7 @@ defmodule Ash.Filter do
         add_authorization_path_filter(
           filters,
           last_relationship,
-          api,
+          domain,
           query,
           actor,
           tenant,
@@ -1276,7 +1005,7 @@ defmodule Ash.Filter do
           last_relationship = last_relationship(aggregate.resource, aggregate.relationship_path)
 
           case relationship_filters(
-                 api,
+                 domain,
                  aggregate.query,
                  actor,
                  tenant,
@@ -1288,7 +1017,7 @@ defmodule Ash.Filter do
               add_authorization_path_filter(
                 filters,
                 last_relationship,
-                api,
+                domain,
                 query,
                 actor,
                 tenant,
@@ -1307,8 +1036,9 @@ defmodule Ash.Filter do
     end)
   end
 
-  defp relationship_query(relationship, actor, tenant, base) do
+  defp relationship_query(relationship, domain, actor, tenant, base) do
     base_query = base || Ash.Query.new(relationship.destination)
+    domain = relationship.domain || domain
 
     action =
       relationship.read_action || (base_query.action && base_query.action.name) ||
@@ -1326,7 +1056,8 @@ defmodule Ash.Filter do
       Ash.Query.for_read(query, action, %{},
         actor: actor,
         authorize?: true,
-        tenant: tenant
+        tenant: tenant,
+        domain: domain
       )
     end
   end
@@ -1386,6 +1117,14 @@ defmodule Ash.Filter do
         # you have to map over the internals of this yourself
         func.(this)
 
+      %Ash.CustomExpression{expression: expression, simple_expression: simple_expression} =
+          custom_expression ->
+        %{
+          custom_expression
+          | expression: map(expression, func),
+            simple_expression: map(simple_expression, func)
+        }
+
       %Ash.Query.Exists{} = expr ->
         # you have to map over the internals of exists yourself
         func.(expr)
@@ -1434,6 +1173,9 @@ defmodule Ash.Filter do
       %Ash.Query.Parent{} = this ->
         # you have to flat_map over the internals of this yourself
         func.(this)
+
+      %Ash.CustomExpression{expression: expression, simple_expression: simple_expression} ->
+        flat_map(expression, func) ++ flat_map(simple_expression, func)
 
       %Ash.Query.Exists{} = expr ->
         # you have to flat_map over the internals of exists yourself
@@ -1517,8 +1259,8 @@ defmodule Ash.Filter do
     end
   end
 
-  def run_other_data_layer_filters(api, resource, %{expression: expression} = filter, tenant) do
-    case do_run_other_data_layer_filters(expression, api, resource, tenant) do
+  def run_other_data_layer_filters(domain, resource, %{expression: expression} = filter, tenant) do
+    case do_run_other_data_layer_filters(expression, domain, resource, tenant) do
       {:ok, new_expression} -> {:ok, %{filter | expression: new_expression}}
       {:error, error} -> {:error, error}
     end
@@ -1529,12 +1271,12 @@ defmodule Ash.Filter do
 
   defp do_run_other_data_layer_filters(
          %BooleanExpression{op: op, left: left, right: right},
-         api,
+         domain,
          resource,
          tenant
        ) do
-    left_result = do_run_other_data_layer_filters(left, api, resource, tenant)
-    right_result = do_run_other_data_layer_filters(right, api, resource, tenant)
+    left_result = do_run_other_data_layer_filters(left, domain, resource, tenant)
+    right_result = do_run_other_data_layer_filters(right, domain, resource, tenant)
 
     case {left_result, right_result} do
       {{:ok, left}, {:ok, right}} ->
@@ -1548,8 +1290,8 @@ defmodule Ash.Filter do
     end
   end
 
-  defp do_run_other_data_layer_filters(%Not{expression: expression}, api, resource, tenant) do
-    case do_run_other_data_layer_filters(expression, api, resource, tenant) do
+  defp do_run_other_data_layer_filters(%Not{expression: expression}, domain, resource, tenant) do
+    case do_run_other_data_layer_filters(expression, domain, resource, tenant) do
       {:ok, expr} -> {:ok, Not.new(expr)}
       {:error, error} -> {:error, error}
     end
@@ -1557,7 +1299,7 @@ defmodule Ash.Filter do
 
   defp do_run_other_data_layer_filters(
          %Ash.Query.Exists{path: path, expr: expr, at_path: at_path} = exists,
-         api,
+         domain,
          resource,
          tenant
        ) do
@@ -1566,7 +1308,7 @@ defmodule Ash.Filter do
         related = Ash.Resource.Info.related(resource, shortest_path)
 
         # We should do these asynchronously in parallel
-        # We used to, but this was changed to happen in place as part
+        # We used to, but this was changed to happen synchronously as part
         # of an architecture simplification (removal of Ash.Engine)
         {relationship, context, _action} =
           last_relationship_context_and_action(resource, at_path ++ path)
@@ -1576,7 +1318,7 @@ defmodule Ash.Filter do
           |> Ash.Query.do_filter(expr)
           |> Ash.Query.set_context(context)
           |> Ash.Query.set_tenant(tenant)
-          |> Map.put(:api, api)
+          |> Map.put(:domain, domain)
           |> Ash.Query.set_context(%{private: %{internal?: true}})
 
         case Ash.Actions.Read.unpaginated_read(query, relationship.read_action) do
@@ -1622,7 +1364,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp do_run_other_data_layer_filters(%{__predicate__?: _} = predicate, api, resource, tenant) do
+  defp do_run_other_data_layer_filters(%{__predicate__?: _} = predicate, domain, resource, tenant) do
     predicate
     |> relationship_paths()
     |> filter_paths_that_change_data_layers(resource)
@@ -1642,11 +1384,11 @@ defmodule Ash.Filter do
       {path, new_predicate} ->
         relationship = Ash.Resource.Info.relationship(resource, path)
 
-        fetch_related_data(resource, path, new_predicate, api, relationship, tenant)
+        fetch_related_data(resource, path, new_predicate, domain, relationship, tenant)
     end
   end
 
-  defp do_run_other_data_layer_filters(other, _api, _resource, _data), do: {:ok, other}
+  defp do_run_other_data_layer_filters(other, _domain, _resource, _data), do: {:ok, other}
 
   defp last_relationship_context_and_action(resource, [name]) do
     relationship = Ash.Resource.Info.relationship(resource, name)
@@ -1784,7 +1526,7 @@ defmodule Ash.Filter do
          resource,
          path,
          new_predicate,
-         api,
+         domain,
          %{type: :many_to_many, join_relationship: join_relationship, through: through} =
            relationship,
          tenant
@@ -1797,12 +1539,12 @@ defmodule Ash.Filter do
       }
 
       relationship.destination
-      |> Ash.Query.new(api)
+      |> Ash.Query.new(domain: domain)
       |> Ash.Query.do_filter(filter)
       |> filter_related_in(
         relationship,
         :lists.droplast(path) ++ [join_relationship],
-        api,
+        domain,
         tenant
       )
     else
@@ -1812,7 +1554,7 @@ defmodule Ash.Filter do
       }
 
       relationship.destination
-      |> Ash.Query.new(ShadowApi)
+      |> Ash.Query.new(domain: ShadowDomain)
       |> Ash.Query.do_filter(filter)
       |> Ash.Query.do_filter(relationship.filter, parent_stack: [relationship.source])
       |> Ash.Query.sort(relationship.sort, prepend?: true)
@@ -1821,7 +1563,7 @@ defmodule Ash.Filter do
       |> case do
         {:ok, results} ->
           relationship.through
-          |> Ash.Query.new(api)
+          |> Ash.Query.new(domain: domain)
           |> Ash.Query.do_filter([
             {relationship.destination_attribute_on_join_resource,
              in: Enum.map(results, &Map.get(&1, relationship.destination_attribute))}
@@ -1829,7 +1571,7 @@ defmodule Ash.Filter do
           |> filter_related_in(
             Ash.Resource.Info.relationship(resource, join_relationship),
             :lists.droplast(path),
-            api,
+            domain,
             tenant
           )
 
@@ -1843,7 +1585,7 @@ defmodule Ash.Filter do
          _resource,
          path,
          new_predicate,
-         api,
+         domain,
          relationship,
          tenant
        ) do
@@ -1853,20 +1595,20 @@ defmodule Ash.Filter do
     }
 
     relationship.destination
-    |> Ash.Query.new(api)
+    |> Ash.Query.new(domain: domain)
     |> Ash.Query.do_filter(filter)
     |> Ash.Query.do_filter(relationship.filter, parent_stack: [relationship.source])
     |> Ash.Query.sort(relationship.sort, prepend?: true)
     |> Ash.Query.set_context(relationship.context)
     |> Ash.Query.set_context(%{private: %{internal?: true}})
-    |> filter_related_in(relationship, :lists.droplast(path), api, tenant)
+    |> filter_related_in(relationship, :lists.droplast(path), domain, tenant)
   end
 
   defp filter_related_in(
          query,
          relationship,
          path,
-         _api,
+         _domain,
          tenant
        ) do
     query = Ash.Query.set_tenant(query, tenant)
@@ -2313,10 +2055,11 @@ defmodule Ash.Filter do
            calc.name,
            module,
            opts,
-           {calc.type, calc.constraints},
-           %{},
-           calc.filterable?,
-           calc.load
+           calc.type,
+           calc.constraints,
+           filterable?: calc.filterable?,
+           sortable?: calc.sortable?,
+           sensitive?: calc.sensitive?
          ) do
       {:ok, calc} ->
         field_to_ref(resource, calc)
@@ -2509,7 +2252,7 @@ defmodule Ash.Filter do
         attribute: %Calculation{module: module, opts: opts, context: context},
         relationship_path: calc_relationship_path
       } = ref ->
-        if expand_calculations? && function_exported?(module, :expression, 2) do
+        if expand_calculations? && module.has_expression?() do
           expression = module.expression(opts, context)
 
           case hydrate_refs(expression, %{
@@ -2727,6 +2470,10 @@ defmodule Ash.Filter do
     end
   end
 
+  defp add_expression_part(%Ash.CustomExpression{} = custom, _context, expression) do
+    {:ok, BooleanExpression.optimized_new(:and, expression, custom)}
+  end
+
   defp add_expression_part(
          %Ash.Query.Exists{at_path: at_path, path: path, expr: exists_expression} = exists,
          context,
@@ -2776,8 +2523,8 @@ defmodule Ash.Filter do
     case related(context, ref.relationship_path) do
       nil ->
         {:error,
-         NoSuchAttributeOrRelationship.exception(
-           attribute_or_relationship: List.first(ref.relationship_path),
+         NoSuchField.exception(
+           field: List.first(ref.relationship_path),
            resource: context.resource
          )}
 
@@ -2860,10 +2607,13 @@ defmodule Ash.Filter do
                      resource_calculation.name,
                      module,
                      opts,
-                     {resource_calculation.type, resource_calculation.constraints},
-                     args,
-                     resource_calculation.filterable?,
-                     resource_calculation.load
+                     resource_calculation.type,
+                     resource_calculation.constraints,
+                     arguments: args,
+                     filterable?: resource_calculation.filterable?,
+                     sortable?: resource_calculation.sortable?,
+                     sensitive?: resource_calculation.sensitive?,
+                     load: resource_calculation.load
                    ) do
               case parse_predicates(nested_statement, calculation, context) do
                 {:ok, nested_statement} ->
@@ -2960,6 +2710,8 @@ defmodule Ash.Filter do
                  field: aggregate.field,
                  default: aggregate.default,
                  filterable?: aggregate.filterable?,
+                 sortable?: aggregate.sortable?,
+                 sensitive?: aggregate.sensitive?,
                  type: aggregate.type,
                  constraints: aggregate.constraints,
                  implementation: aggregate.implementation,
@@ -3011,10 +2763,13 @@ defmodule Ash.Filter do
                  resource_calculation.name,
                  module,
                  opts,
-                 {resource_calculation.type, resource_calculation.constraints},
-                 args,
-                 resource_calculation.filterable?,
-                 resource_calculation.load
+                 resource_calculation.type,
+                 resource_calculation.constraints,
+                 arguments: args,
+                 filterable?: resource_calculation.filterable?,
+                 sortable?: resource_calculation.sortable?,
+                 sensitive?: resource_calculation.sensitive?,
+                 load: resource_calculation.load
                ) do
           case parse_predicates(nested_statement, calculation, context) do
             {:ok, nested_statement} ->
@@ -3047,8 +2802,8 @@ defmodule Ash.Filter do
 
       true ->
         {:error,
-         NoSuchAttributeOrRelationship.exception(
-           attribute_or_relationship: field,
+         NoSuchField.exception(
+           field: field,
            resource: context.resource
          )}
     end
@@ -3236,7 +2991,7 @@ defmodule Ash.Filter do
       end
     else
       {:op, nil} ->
-        {:error, NoSuchOperator.exception(name: name)}
+        {:error, NoSuchOperator.exception(operator: name)}
 
       other ->
         other
@@ -3320,7 +3075,10 @@ defmodule Ash.Filter do
   defp resolve_call(%Call{name: name, args: args} = call, context) do
     could_be_calculation? = Enum.count_until(args, 2) == 1 && Keyword.keyword?(Enum.at(args, 0))
 
-    resource = Ash.Resource.Info.related(context.resource, call.relationship_path)
+    resource =
+      if context.resource do
+        Ash.Resource.Info.related(context.resource, call.relationship_path)
+      end
 
     context =
       Map.merge(context, %{
@@ -3328,8 +3086,13 @@ defmodule Ash.Filter do
         relationship_path: []
       })
 
-    case {calculation(%{context | resource: resource}, name), could_be_calculation?} do
-      {resource_calculation, true} when not is_nil(resource_calculation) ->
+    resource_calculation =
+      if could_be_calculation? do
+        calculation(%{context | resource: resource}, name)
+      end
+
+    cond do
+      resource_calculation ->
         {module, opts} = resource_calculation.calculation
 
         with {:ok, args} <-
@@ -3342,10 +3105,13 @@ defmodule Ash.Filter do
                  resource_calculation.name,
                  module,
                  opts,
-                 {resource_calculation.type, resource_calculation.constraints},
-                 args,
-                 resource_calculation.filterable?,
-                 resource_calculation.load
+                 resource_calculation.type,
+                 resource_calculation.constraints,
+                 arguments: args,
+                 filterable?: resource_calculation.filterable?,
+                 sortable?: resource_calculation.sortable?,
+                 sensitive?: resource_calculation.sensitive?,
+                 load: resource_calculation.load
                ) do
           {:ok,
            %Ref{
@@ -3359,7 +3125,58 @@ defmodule Ash.Filter do
             {:error, error}
         end
 
-      _ ->
+      custom_expression =
+          custom_expression(name, args) ->
+        {module, arguments} = custom_expression
+
+        data_layer =
+          if resource do
+            Ash.Resource.Info.data_layer(resource)
+          else
+            Ash.DataLayer.Simple
+          end
+
+        with {:ok, expr} <- module.expression(data_layer, arguments),
+             {:ok, expr} <- hydrate_refs(expr, context) do
+          if data_layer == Ash.DataLayer.Simple do
+            {:ok,
+             %Ash.CustomExpression{
+               arguments: arguments,
+               expression: expr,
+               simple_expression: {:ok, expr}
+             }}
+          else
+            with {:ok, simple_expr} <- module.expression(Ash.DataLayer.Simple, arguments),
+                 {:ok, simple_expr} <- hydrate_refs(simple_expr, context) do
+              {:ok,
+               %Ash.CustomExpression{
+                 arguments: arguments,
+                 expression: expr,
+                 simple_expression: {:ok, simple_expr}
+               }}
+            else
+              {:error, error} ->
+                {:error, error}
+
+              :unknown ->
+                {:ok,
+                 %Ash.CustomExpression{
+                   arguments: arguments,
+                   expression: expr,
+                   simple_expression: :unknown
+                 }}
+            end
+          end
+        else
+          {:error, error} ->
+            {:error, error}
+
+          :unknown ->
+            {:error,
+             "Custom expression: `#{inspect(module)}` returned `:unknown` for data layer `#{inspect(data_layer)}` for arguments `#{inspect(arguments)}`"}
+        end
+
+      true ->
         with :ok <- validate_datalayer_supports_nested_expressions(args, context.resource),
              {:ok, args} <- hydrate_refs(args, context),
              refs <- list_refs(args),
@@ -3367,7 +3184,7 @@ defmodule Ash.Filter do
              {:func, function_module} when not is_nil(function_module) <-
                {:func, get_function(name, context.resource, context.public?)},
              {:ok, function} <- Function.new(function_module, args) do
-          if Ash.Filter.TemplateHelpers.expr?(function) && !match?(%{__predicate__?: _}, function) do
+          if Ash.Expr.expr?(function) && !match?(%{__predicate__?: _}, function) do
             hydrate_refs(function, context)
           else
             if is_nil(context.resource) ||
@@ -3385,7 +3202,7 @@ defmodule Ash.Filter do
           end
         else
           {:func, nil} ->
-            {:error, NoSuchFunction.exception(name: name, resource: context.resource)}
+            {:error, NoSuchFunction.exception(function: name, resource: context.resource)}
 
           other ->
             other
@@ -3443,11 +3260,22 @@ defmodule Ash.Filter do
   defp refs_to_path(item), do: [item]
 
   defp validate_datalayer_supports_nested_expressions(args, resource) do
-    if resource && Enum.any?(args, &Ash.Filter.TemplateHelpers.expr?/1) &&
+    if resource && Enum.any?(args, &Ash.Expr.expr?/1) &&
          !Ash.DataLayer.data_layer_can?(resource, :nested_expressions) do
       {:error, "Datalayer does not support nested expressions"}
     else
       :ok
+    end
+  end
+
+  def custom_expression(name, args) do
+    with module when not is_nil(module) <- Enum.find(@custom_expressions, &(&1.name() == name)),
+         args when not is_nil(args) <-
+           Enum.find_value(
+             module.arguments(),
+             &Ash.Query.Function.try_cast_arguments(&1, args)
+           ) do
+      {module, args}
     end
   end
 
@@ -3461,12 +3289,24 @@ defmodule Ash.Filter do
     do_hydrate_refs(value, context)
   end
 
-  def do_hydrate_refs({:ref, value}, context) do
+  def do_hydrate_refs({:_ref, value}, context) do
     do_hydrate_refs(
       %Ash.Query.Ref{
         attribute: value,
         relationship_path: [],
-        input?: context.input?,
+        input?: Map.get(context, :input?, false),
+        resource: context.root_resource
+      },
+      context
+    )
+  end
+
+  def do_hydrate_refs({:_ref, path, value}, context) do
+    do_hydrate_refs(
+      %Ash.Query.Ref{
+        attribute: value,
+        relationship_path: path,
+        input?: Map.get(context, :input?, false),
         resource: context.root_resource
       },
       context
@@ -3529,10 +3369,13 @@ defmodule Ash.Filter do
                      resource_calculation.name,
                      module,
                      opts,
-                     {resource_calculation.type, resource_calculation.constraints},
-                     args,
-                     resource_calculation.filterable?,
-                     resource_calculation.load
+                     resource_calculation.type,
+                     resource_calculation.constraints,
+                     arguments: args,
+                     filterable?: resource_calculation.filterable?,
+                     sortable?: resource_calculation.sortable?,
+                     sensitive?: resource_calculation.sensitive?,
+                     load: resource_calculation.load
                    ) do
               {:ok, %{ref | attribute: calculation, resource: related}}
             else
@@ -3564,6 +3407,8 @@ defmodule Ash.Filter do
                      default: aggregate.default,
                      filterable?: aggregate.filterable?,
                      type: aggregate.type,
+                     sortable?: aggregate.sortable?,
+                     sensitive?: aggregate.sensitive?,
                      constraints: aggregate.constraints,
                      implementation: aggregate.implementation,
                      uniq?: aggregate.uniq?,
@@ -4162,30 +4007,14 @@ defmodule Ash.Filter do
       "**redacted**"
     end
 
-    defp refers_to_sensitive?(%BooleanExpression{left: left, right: right}) do
-      Enum.any?([left, right], &refers_to_sensitive?/1)
-    end
+    defp refers_to_sensitive?(expr) do
+      Ash.Filter.find(expr, fn
+        %Ref{attribute: %{sensitive?: true}} ->
+          true
 
-    defp refers_to_sensitive?(%Not{expression: expression}) do
-      refers_to_sensitive?(expression)
-    end
-
-    defp refers_to_sensitive?(%{__operator__?: true, left: left, right: right}) do
-      Enum.any?([left, right], &refers_to_sensitive?/1)
-    end
-
-    defp refers_to_sensitive?(%{__function__?: true, arguments: arguments}) do
-      Enum.any?(arguments, &refers_to_sensitive?/1)
-    end
-
-    defp refers_to_sensitive?(%Call{args: arguments}) do
-      Enum.any?(arguments, &refers_to_sensitive?/1)
-    end
-
-    defp refers_to_sensitive?(%Ref{attribute: %{sensitive?: true}}), do: true
-
-    defp refers_to_sensitive?(_other) do
-      false
+        _ ->
+          false
+      end)
     end
   end
 

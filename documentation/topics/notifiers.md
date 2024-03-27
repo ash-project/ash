@@ -29,7 +29,7 @@ end
 
 ### Including a notifier in a resource
 
-When you need your notifier to also be an extension:
+If the notifier is also an extension, include it in the `notifiers` key:
 
 ```elixir
 defmodule MyResource do
@@ -38,33 +38,37 @@ defmodule MyResource do
 end
 ```
 
-When your notifier is not an extension, include it this way to avoid a compile time dependency:
+Configuring a notifier for a specific action or actions can be a great way to avoid complexity in the implementation of a notifier. It allows you to avoid doing things like pattern matching on the action, and treat it more like a change module, that does its work whenever it is called.
+
+```elixir
+create :create do
+  notifiers [ExampleNotifier]
+end
+```
+
+When your notifier is not an extension, and you want it to run on all actions, include it this way to avoid a compile time dependency:
 
 ```elixir
 defmodule MyResource do
-  use Ash.Resource
-	
-	resource do
-	  simple_notifiers [ExampleNotifier]
-  end
+  use Ash.Resource,
+    simple_notifiers: [ExampleNotifier]
 end
-
 ```
 
 ## Transactions
 
-API calls involving resources who's datalayer supports transactions (like Postgres), notifications are saved up and sent after the transaction is closed. For example, the api call below ultimately results in many many database calls.
+Domain calls involving resources who's datalayer supports transactions (like Postgres), notifications are saved up and sent after the transaction is closed. For example, the domain call below ultimately results in many many database calls.
 
 ```elixir
 Post
-|> Ash.Changeset.new(%{})
+|> Ash.Changeset.for_update(:update, %{})
 |> Ash.Changeset.manage_relationship(:related_posts, [1, 2, 3], type: :append)
 |> Ash.Changeset.manage_relationship(:related_posts, [4, 5], type: :remove)
 |> Ash.Changeset.manage_relationship(:comments, [10], type: :append)
-|> Api.update!()
+|> Ash.update!()
 ```
 
-Ash doesn't support bulk database operations yet, so it performs the following operations:
+`Ash.Changeset.manage_relationship` doesn't leverage bulk operations yet, so it performs the following operations:
 
 - a read of the currently related posts
 - a read of the currently related comments
@@ -77,7 +81,7 @@ Ash doesn't support bulk database operations yet, so it performs the following o
 
 If all three of these resources have notifiers configured, we need to send a notification for each operation (notifications are not sent for reads). For data consistency reasons, if a data layer supports transactions, all writes are done in a transaction. However, if you try to read the record from the database that you have just received a notification about before the transaction has been closed, in a different process, the information will be wrong. For this reason, Ash accumulates notifications until they can be sent.
 
-If you need to perform multiple operations against your resources in your own transaction, you will have to handle that case yourself. To support this, `c:Ash.Api.create/2`, `c:Ash.Api.update/2` and `c:Ash.Api.destroy/2` support a `return_notifications?: true` option. This causes the api call to return `{:ok, result, notifications}` in the successful case. Here is an example of how you might use it.
+If you need to perform multiple operations against your resources in your own transaction, you will have to handle that case yourself. To support this, `Ash.create/2`, `Ash.update/2` and `Ash.destroy/2` support a `return_notifications?: true` option. This causes the domain call to return `{:ok, result, notifications}` in the successful case. Here is an example of how you might use it.
 
 ```elixir
 result =

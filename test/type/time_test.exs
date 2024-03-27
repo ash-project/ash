@@ -2,54 +2,40 @@ defmodule Ash.Test.Type.TimeTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
     end
 
     attributes do
       uuid_primary_key :id
 
-      attribute :time_a, :time
-      attribute :time_b, :time, allow_nil?: false
+      attribute :time_a, :time do
+        public?(true)
+      end
+
+      attribute :time_b, :time, allow_nil?: false, public?: true
     end
   end
-
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Post
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
-    end
-  end
-
-  import Ash.Changeset
 
   test "it handles non-empty values" do
     post =
       Post
-      |> new(%{
+      |> Ash.Changeset.for_create(:create, %{
         time_a: ~T[08:30:00],
         time_b: ~T[15:45:30]
       })
-      |> Api.create!()
+      |> Ash.create!()
 
     assert post.time_a == ~T[08:30:00]
     assert post.time_b == ~T[15:45:30]

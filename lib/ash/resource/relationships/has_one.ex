@@ -6,19 +6,20 @@ defmodule Ash.Resource.Relationships.HasOne do
     :source,
     :destination,
     :destination_attribute,
-    :private?,
+    :public?,
     :source_attribute,
     :allow_orphans?,
     :context,
     :description,
     :filter,
-    :api,
+    :domain,
     :sort,
     :read_action,
     :not_found_message,
     :violation_message,
     :manual,
     :writable?,
+    filters: [],
     from_many?: false,
     no_attributes?: false,
     could_be_related_at_creation?: false,
@@ -26,7 +27,8 @@ defmodule Ash.Resource.Relationships.HasOne do
     cardinality: :one,
     type: :has_one,
     allow_nil?: false,
-    filterable?: true
+    filterable?: true,
+    sortable?: true
   ]
 
   @type t :: %__MODULE__{
@@ -35,15 +37,17 @@ defmodule Ash.Resource.Relationships.HasOne do
           source: Ash.Resource.t(),
           name: atom,
           filterable?: boolean,
+          sortable?: boolean,
           from_many?: boolean,
           read_action: atom,
           no_attributes?: boolean,
           writable?: boolean,
           type: Ash.Type.t(),
           filter: Ash.Filter.t() | nil,
+          filters: [any],
           destination: Ash.Resource.t(),
           destination_attribute: atom,
-          private?: boolean,
+          public?: boolean,
           source_attribute: atom,
           allow_orphans?: boolean,
           description: String.t(),
@@ -51,12 +55,11 @@ defmodule Ash.Resource.Relationships.HasOne do
         }
 
   import Ash.Resource.Relationships.SharedOptions
-  alias Spark.OptionsHelpers
 
   @global_opts shared_options()
-               |> OptionsHelpers.set_default!(:source_attribute, :id)
+               |> Spark.Options.Helpers.set_default!(:source_attribute, :id)
 
-  @opt_schema Spark.OptionsHelpers.merge_schemas(
+  @opt_schema Spark.Options.merge(
                 [manual(), no_attributes()] ++
                   [
                     allow_nil?: [
@@ -80,4 +83,8 @@ defmodule Ash.Resource.Relationships.HasOne do
 
   @doc false
   def opt_schema, do: @opt_schema
+
+  def transform(relationship) do
+    {:ok, relationship |> Ash.Resource.Actions.Read.concat_filters()}
+  end
 end

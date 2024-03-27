@@ -12,15 +12,17 @@ defmodule Ash.Resource.Relationships.ManyToMany do
     :join_relationship,
     :not_found_message,
     :violation_message,
-    :api,
-    :private?,
+    :domain,
+    :public?,
     :sort,
     :read_action,
     :description,
     :context,
     :filter,
     :has_many,
+    filters: [],
     filterable?: true,
+    sortable?: true,
     could_be_related_at_creation?: false,
     validate_destination_attribute?: true,
     cardinality: :many,
@@ -32,13 +34,15 @@ defmodule Ash.Resource.Relationships.ManyToMany do
           cardinality: :many,
           source: Ash.Resource.t(),
           has_many: boolean,
-          private?: boolean,
+          public?: boolean,
           filter: Ash.Filter.t() | nil,
+          filters: list(any),
           read_action: atom,
           name: atom,
           through: Ash.Resource.t(),
           destination: Ash.Resource.t(),
           filterable?: boolean,
+          sortable?: boolean,
           join_relationship: atom,
           source_attribute: atom,
           destination_attribute: atom,
@@ -48,13 +52,12 @@ defmodule Ash.Resource.Relationships.ManyToMany do
         }
 
   import Ash.Resource.Relationships.SharedOptions
-  alias Spark.OptionsHelpers
 
   @global_opts shared_options()
-               |> OptionsHelpers.set_default!(:destination_attribute, :id)
-               |> OptionsHelpers.set_default!(:source_attribute, :id)
+               |> Spark.Options.Helpers.set_default!(:destination_attribute, :id)
+               |> Spark.Options.Helpers.set_default!(:source_attribute, :id)
 
-  @opt_schema Spark.OptionsHelpers.merge_schemas(
+  @opt_schema Spark.Options.merge(
                 [
                   source_attribute_on_join_resource: [
                     type: :atom,
@@ -86,6 +89,8 @@ defmodule Ash.Resource.Relationships.ManyToMany do
   @doc false
   # sobelow_skip ["DOS.BinToAtom"]
   def transform(%{join_relationship: join_relationship, name: name} = relationship) do
-    {:ok, %{relationship | join_relationship: join_relationship || :"#{name}_join_assoc"}}
+    {:ok,
+     %{relationship | join_relationship: join_relationship || :"#{name}_join_assoc"}
+     |> Ash.Resource.Actions.Read.concat_filters()}
   end
 end

@@ -17,6 +17,9 @@ defmodule Ash.Type.Decimal do
       doc: "Enforces a maximum on the value (exclusive)"
     ]
   ]
+
+  import Ash.Expr
+
   @moduledoc """
   Represents a decimal.
 
@@ -24,7 +27,7 @@ defmodule Ash.Type.Decimal do
 
   ### Constraints
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   require Decimal
   use Ash.Type
@@ -69,6 +72,65 @@ defmodule Ash.Type.Decimal do
       :error ->
         {:error, "cannot be casted to decimal"}
     end
+  end
+
+  def cast_atomic(expr, constraints) do
+    expr =
+      Enum.reduce(constraints, expr, fn
+        {:max, max}, expr ->
+          expr(
+            if ^expr > ^max do
+              error(
+                Ash.Error.Changes.InvalidChanges,
+                message: "must be less than or equal to %{max}",
+                vars: %{max: max}
+              )
+            else
+              ^expr
+            end
+          )
+
+        {:min, min}, expr ->
+          expr(
+            if ^expr < ^min do
+              error(
+                Ash.Error.Changes.InvalidChanges,
+                message: "must be greater than or equal to %{min}",
+                vars: %{min: min}
+              )
+            else
+              ^expr
+            end
+          )
+
+        {:less_than, less_than}, expr ->
+          expr(
+            if ^expr < ^less_than do
+              ^expr
+            else
+              error(
+                Ash.Error.Changes.InvalidChanges,
+                message: "must be greater than %{min}",
+                vars: %{min: min}
+              )
+            end
+          )
+
+        {:greater_than, greater_than}, expr ->
+          expr(
+            if ^expr > ^greater_than do
+              ^expr
+            else
+              error(
+                Ash.Error.Changes.InvalidChanges,
+                message: "must be greater than %{min}",
+                vars: %{min: min}
+              )
+            end
+          )
+      end)
+
+    {:atomic, expr}
   end
 
   @impl true

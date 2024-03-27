@@ -46,7 +46,7 @@ defmodule Ash.Type.CiString do
 
   ### Constraints
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
 
@@ -77,6 +77,11 @@ defmodule Ash.Type.CiString do
 
       Ash.CiString.new(value, constraints[:casing])
     end)
+  end
+
+  @impl true
+  def cast_atomic(new_value, _constraints) do
+    {:atomic, new_value}
   end
 
   def apply_constraints(%Ash.CiString{} = value, constraints) do
@@ -193,7 +198,6 @@ defmodule Ash.Type.CiString do
   end
 
   @impl true
-
   def dump_to_native(nil, _), do: {:ok, nil}
 
   def dump_to_native(%Ash.CiString{} = ci_string, _) do

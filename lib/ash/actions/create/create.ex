@@ -6,11 +6,11 @@ defmodule Ash.Actions.Create do
   require Ash.Tracer
   require Logger
 
-  @spec run(Ash.Api.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
+  @spec run(Ash.Domain.t(), Ash.Changeset.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
           {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:ok, Ash.Resource.record()}
           | {:error, term}
-  def run(api, changeset, action, opts) do
+  def run(domain, changeset, action, opts) do
     if changeset.atomics != [] &&
          !Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :upsert}) do
       {:error,
@@ -19,18 +19,18 @@ defmodule Ash.Actions.Create do
          action_type: :create
        )}
     else
-      {changeset, opts} = Helpers.add_process_context(api, changeset, opts)
+      {changeset, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, changeset, opts)
       changeset = Helpers.apply_opts_load(changeset, opts)
 
       Ash.Tracer.span :action,
-                      Ash.Api.Info.span_name(
-                        api,
+                      Ash.Domain.Info.span_name(
+                        domain,
                         changeset.resource,
                         action.name
                       ),
                       opts[:tracer] do
         metadata = %{
-          api: api,
+          domain: domain,
           resource: changeset.resource,
           resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
           actor: opts[:actor],
@@ -41,9 +41,9 @@ defmodule Ash.Actions.Create do
 
         Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
-        Ash.Tracer.telemetry_span [:ash, Ash.Api.Info.short_name(api), :create],
+        Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :create],
                                   metadata do
-          case do_run(api, changeset, action, opts) do
+          case do_run(domain, changeset, action, opts) do
             {:error, error} ->
               if opts[:tracer] do
                 stacktrace =
@@ -77,7 +77,7 @@ defmodule Ash.Actions.Create do
               __STACKTRACE__
   end
 
-  defp do_run(api, changeset, action, opts) do
+  defp do_run(domain, changeset, action, opts) do
     opts =
       opts
       |> Keyword.put(
@@ -102,10 +102,10 @@ defmodule Ash.Actions.Create do
         private: %{upsert?: true, upsert_identity: upsert_identity}
       })
 
-    with %{valid?: true} = changeset <- changeset(changeset, api, action, opts),
+    with %{valid?: true} = changeset <- changeset(changeset, domain, action, opts),
          %{valid?: true} = changeset <- check_upsert_support(changeset, opts),
-         %{valid?: true} = changeset <- authorize(changeset, api, opts),
-         {:commit, {:ok, result, instructions}} <- {:commit, commit(changeset, api, opts)} do
+         %{valid?: true} = changeset <- authorize(changeset, opts),
+         {:ok, result, instructions} <- commit(changeset, domain, opts) do
       add_notifications(
         changeset.resource,
         result,
@@ -134,22 +134,13 @@ defmodule Ash.Actions.Create do
 
       {:error, error} ->
         errors = Helpers.process_errors(changeset, List.wrap(error))
-
-        Ash.Changeset.run_after_transactions(
-          {:error, Ash.Error.to_error_class(errors, changeset: changeset)},
-          changeset
-        )
-
-      {:commit, {:error, error}} ->
-        errors = Helpers.process_errors(changeset, List.wrap(error))
         {:error, Ash.Error.to_error_class(errors, changeset: changeset)}
     end
   end
 
-  defp authorize(changeset, api, opts) do
+  defp authorize(changeset, opts) do
     if opts[:authorize?] do
-      case api.can(changeset, opts[:actor],
-             add_calculations?: true,
+      case Ash.can(changeset, opts[:actor],
              alter_source?: true,
              return_forbidden_error?: true,
              maybe_is: false
@@ -196,8 +187,8 @@ defmodule Ash.Actions.Create do
     end
   end
 
-  defp changeset(changeset, api, action, opts) do
-    changeset = %{changeset | api: api}
+  defp changeset(changeset, domain, action, opts) do
+    changeset = %{changeset | domain: domain}
 
     if changeset.__validated_for_action__ == action.name do
       changeset
@@ -208,7 +199,7 @@ defmodule Ash.Actions.Create do
     |> Ash.Changeset.timeout(opts[:timeout] || changeset.timeout)
   end
 
-  defp commit(changeset, api, opts) do
+  defp commit(changeset, domain, opts) do
     upsert_keys =
       case opts[:upsert_identity] do
         nil ->
@@ -285,11 +276,16 @@ defmodule Ash.Actions.Create do
                     if result = changeset.context[:private][:action_result] do
                       result
                     else
-                      mod.create(changeset, action_opts, %{
+                      mod.create(changeset, action_opts, %Ash.Resource.ManualCreate.Context{
+                        select: opts[:select],
                         actor: opts[:actor],
                         tenant: changeset.tenant,
+                        tracer: opts[:tracer],
                         authorize?: opts[:authorize?],
-                        api: changeset.api
+                        domain: changeset.domain,
+                        upsert?: opts[:upsert?],
+                        upsert_keys: upsert_keys,
+                        upsert_fields: changeset.context[:private][:upsert_fields]
                       })
                       |> validate_manual_action_return_result!(
                         changeset.resource,
@@ -297,7 +293,7 @@ defmodule Ash.Actions.Create do
                       )
                     end
                     |> add_tenant(changeset)
-                    |> manage_relationships(api, changeset,
+                    |> manage_relationships(domain, changeset,
                       actor: opts[:actor],
                       authorize?: opts[:authorize?],
                       upsert?: opts[:upsert?]
@@ -341,7 +337,7 @@ defmodule Ash.Actions.Create do
                         result = changeset.context[:private][:action_result] ->
                           result
                           |> add_tenant(changeset)
-                          |> manage_relationships(api, changeset,
+                          |> manage_relationships(domain, changeset,
                             actor: opts[:actor],
                             authorize?: opts[:authorize?],
                             upsert?: opts[:upsert?]
@@ -355,7 +351,7 @@ defmodule Ash.Actions.Create do
                             changeset
                           )
                           |> add_tenant(changeset)
-                          |> manage_relationships(api, changeset,
+                          |> manage_relationships(domain, changeset,
                             actor: opts[:actor],
                             authorize?: opts[:authorize?],
                             upsert?: opts[:upsert?]
@@ -369,7 +365,7 @@ defmodule Ash.Actions.Create do
                             changeset
                           )
                           |> add_tenant(changeset)
-                          |> manage_relationships(api, changeset,
+                          |> manage_relationships(domain, changeset,
                             actor: opts[:actor],
                             authorize?: opts[:authorize?],
                             upsert?: opts[:upsert?]
@@ -413,7 +409,7 @@ defmodule Ash.Actions.Create do
     case result do
       {:ok, created, changeset, instructions} ->
         {:ok, created, instructions}
-        |> Helpers.load(changeset, api,
+        |> Helpers.load(changeset, domain,
           actor: opts[:actor],
           authorize?: opts[:authorize?],
           tracer: opts[:tracer]
@@ -467,11 +463,11 @@ defmodule Ash.Actions.Create do
 
   defp manage_relationships(
          {:ok, created, %{notifications: notifications}},
-         api,
+         domain,
          changeset,
          engine_opts
        ) do
-    case manage_relationships({:ok, created}, api, changeset, engine_opts) do
+    case manage_relationships({:ok, created}, domain, changeset, engine_opts) do
       {:ok, created, info} ->
         {:ok, created, Map.update(info, :notifications, notifications, &(&1 ++ notifications))}
 
@@ -480,9 +476,9 @@ defmodule Ash.Actions.Create do
     end
   end
 
-  defp manage_relationships({:ok, created}, api, changeset, engine_opts) do
+  defp manage_relationships({:ok, created}, domain, changeset, engine_opts) do
     with {:ok, loaded} <-
-           Ash.Actions.ManagedRelationships.load(api, created, changeset, engine_opts),
+           Ash.Actions.ManagedRelationships.load(domain, created, changeset, engine_opts),
          {:ok, with_relationships, new_notifications} <-
            Ash.Actions.ManagedRelationships.manage_relationships(
              loaded,

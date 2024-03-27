@@ -17,7 +17,7 @@ defmodule Ash.Type.Module do
 
   ### Constraints
 
-  #{Spark.OptionsHelpers.docs(@constraints)}
+  #{Spark.Options.docs(@constraints)}
   """
   use Ash.Type
 
@@ -26,6 +26,11 @@ defmodule Ash.Type.Module do
 
   @impl true
   def constraints, do: @constraints
+
+  @impl true
+  def cast_atomic(new_value, _constraints) do
+    {:atomic, new_value}
+  end
 
   def apply_constraints(nil, _), do: :ok
 

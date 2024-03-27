@@ -3,8 +3,8 @@ defmodule Ash.Actions.Sort do
   alias Ash.Error.Query.{
     AggregatesNotSupported,
     InvalidSortOrder,
-    NoSuchAttribute,
-    UnsortableAttribute
+    NoSuchField,
+    UnsortableField
   }
 
   @sort_orders [:asc, :desc, :asc_nils_first, :asc_nils_last, :desc_nils_first, :desc_nils_last]
@@ -17,28 +17,31 @@ defmodule Ash.Actions.Sort do
     sort
     |> List.wrap()
     |> Enum.map(fn
-      {key, {order, context}} when is_atom(order) ->
-        {key, {order, context}}
+      {key, {context, order}} when is_atom(order) ->
+        {key, {context, order}}
 
       {key, val} ->
         if is_atom(val) do
           {key, val}
         else
-          {key, {:asc, val}}
+          {key, {val, :asc}}
         end
 
       val ->
         {val, :asc}
     end)
     |> Enum.reduce({[], []}, fn
-      {field, {inner_order, _} = order}, {sorts, errors} when inner_order in @sort_orders ->
+      {field, {_, inner_order} = order}, {sorts, errors} when inner_order in @sort_orders ->
         case Ash.Resource.Info.calculation(resource, field) do
           nil ->
             {sorts,
              [
-               "Cannot provide context to a non-calculation field while sorting"
+               "Cannot provide argumentsw to a non-calculation field while sorting"
                | errors
              ]}
+
+          %{name: name, sortable?: false} ->
+            {sorts, [UnsortableField.exception(resource: resource, field: name) | errors]}
 
           calc ->
             {module, opts} = calc.calculation
@@ -67,6 +70,56 @@ defmodule Ash.Actions.Sort do
             end
         end
 
+      {%Ash.Query.Calculation{sortable?: false} = calc, _order}, {sorts, errors} ->
+        {sorts, [UnsortableField.exception(resource: resource, field: calc) | errors]}
+
+      {%Ash.Query.Calculation{
+         name: :__expr_sort__,
+         module: Ash.Resource.Calculation.Expression,
+         opts: [{:expr, expr}]
+       } = calc, order},
+      {sorts, errors} ->
+        expr
+        |> Ash.Filter.list_refs()
+        |> Enum.reduce_while(:ok, fn %{relationship_path: path, attribute: attribute}, :ok ->
+          {ref_attribute, field_name} =
+            case attribute do
+              atom when is_atom(attribute) ->
+                {Ash.Resource.Info.field(Ash.Resource.Info.related(resource, path), attribute),
+                 atom}
+
+              %struct{} = attribute when struct in [Ash.Query.Aggregate, Ash.Query.Calculation] ->
+                {attribute, attribute}
+
+              other ->
+                {other, other.name}
+            end
+
+          if ref_attribute.sortable? do
+            case find_non_sortable_relationship(resource, path) do
+              nil ->
+                {:cont, :ok}
+
+              {resource, non_sortable_field} ->
+                {:halt, {:error, resource, non_sortable_field}}
+            end
+          else
+            {:halt, {:error, resource, field_name}}
+          end
+        end)
+        |> case do
+          :ok ->
+            if order in @sort_orders do
+              {sorts ++ [{calc, order}], errors}
+            else
+              {sorts, [InvalidSortOrder.exception(order: order) | errors]}
+            end
+
+          {:error, resource, non_sortable_field} ->
+            {sorts,
+             [UnsortableField.exception(resource: resource, field: non_sortable_field) | errors]}
+        end
+
       {%Ash.Query.Calculation{} = calc, order}, {sorts, errors} ->
         if order in @sort_orders do
           {sorts ++ [{calc, order}], errors}
@@ -79,38 +132,57 @@ defmodule Ash.Actions.Sort do
 
         cond do
           aggregate = Ash.Resource.Info.aggregate(resource, field) ->
-            aggregate_sort(aggregate, order, resource, sorts, errors)
+            if aggregate.sortable? do
+              aggregate_sort(aggregate, order, resource, sorts, errors)
+            else
+              {sorts, [UnsortableField.exception(resource: resource, field: field) | errors]}
+            end
 
           Map.has_key?(aggregates, field) ->
-            aggregate_sort(Map.get(aggregates, field), order, resource, sorts, errors)
+            if aggregates[field].sortable? do
+              aggregate_sort(Map.get(aggregates, field), order, resource, sorts, errors)
+            else
+              {sorts,
+               [
+                 UnsortableField.exception(resource: resource, field: Map.get(aggregates, field))
+                 | errors
+               ]}
+            end
 
           calc = Ash.Resource.Info.calculation(resource, field) ->
-            {module, opts} = calc.calculation
-            Code.ensure_compiled(module)
+            if calc.sortable? do
+              {module, opts} = calc.calculation
 
-            if :erlang.function_exported(module, :expression, 2) do
-              if Ash.DataLayer.data_layer_can?(resource, :expression_calculation_sort) do
-                calculation_sort(
-                  field,
-                  calc,
-                  module,
-                  opts,
-                  calc.type,
-                  calc.constraints,
-                  order,
-                  sorts,
-                  errors,
-                  context
-                )
+              if module.has_expression?() do
+                if Ash.DataLayer.data_layer_can?(resource, :expression_calculation_sort) do
+                  calculation_sort(
+                    field,
+                    calc,
+                    module,
+                    opts,
+                    calc.type,
+                    calc.constraints,
+                    order,
+                    sorts,
+                    errors,
+                    context
+                  )
+                else
+                  {sorts, ["Datalayer cannot sort on calculations"]}
+                end
               else
-                {sorts, ["Datalayer cannot sort on calculations"]}
+                {sorts, ["Calculations cannot be sorted on unless they define an expression"]}
               end
             else
-              {sorts, ["Calculations cannot be sorted on unless they define an expression"]}
+              {sorts, [UnsortableField.exception(resource: resource, field: field) | errors]}
             end
 
           !attribute ->
-            {sorts, [NoSuchAttribute.exception(name: field, resource: resource) | errors]}
+            {sorts, [NoSuchField.exception(attribute: field, resource: resource) | errors]}
+
+          !attribute.sortable? ->
+            {sorts,
+             [UnsortableField.exception(resource: resource, field: attribute.name) | errors]}
 
           Ash.Type.embedded_type?(attribute.type) ->
             {sorts, ["Cannot sort on embedded types" | errors]}
@@ -124,7 +196,7 @@ defmodule Ash.Actions.Sort do
           ) ->
             {sorts,
              [
-               UnsortableAttribute.exception(field: field)
+               UnsortableField.exception(resource: resource, field: field, reason: :type)
                | errors
              ]}
 
@@ -164,6 +236,20 @@ defmodule Ash.Actions.Sort do
         end)
       end)
     end)
+  end
+
+  defp find_non_sortable_relationship(_resource, []) do
+    nil
+  end
+
+  defp find_non_sortable_relationship(resource, [first | rest]) do
+    relationship = Ash.Resource.Info.relationship(resource, first)
+
+    if relationship.sortable? do
+      find_non_sortable_relationship(relationship.destination, [rest])
+    else
+      {relationship.source, relationship.name}
+    end
   end
 
   defp aggregate_sort(field, order, resource, sorts, errors) do
@@ -229,10 +315,10 @@ defmodule Ash.Actions.Sort do
         order when is_atom(order) ->
           {order, %{}}
 
-        {order, value} when is_list(value) ->
+        {value, order} when is_list(value) ->
           {order, Map.new(value)}
 
-        {order, value} when is_map(value) ->
+        {value, order} when is_map(value) ->
           {order, value}
 
         other ->
@@ -245,10 +331,14 @@ defmodule Ash.Actions.Sort do
              field,
              module,
              opts,
-             {type, constraints},
-             Map.put(input, :context, context),
-             calc.filterable?,
-             calc.load
+             type,
+             constraints,
+             arguments: input,
+             filterable?: calc.filterable?,
+             sortable?: calc.sortable?,
+             sensitive?: calc.sensitive?,
+             load: calc.load,
+             source_context: context
            ) do
       calc = Map.put(calc, :load, field)
       {sorts ++ [{calc, order}], errors}
@@ -263,7 +353,7 @@ defmodule Ash.Actions.Sort do
 
   Opts
 
-  * `:api` - The api to use if data needs to be loaded
+  * `:domain` - The domain to use if data needs to be loaded
   * `:lazy?` - Whether to use already loaded values or to re-load them when necessary. Defaults to `false`
   """
   def runtime_sort(results, sort, opts \\ [])
@@ -274,7 +364,7 @@ defmodule Ash.Actions.Sort do
   def runtime_sort([%resource{} | _] = results, [{field, direction} | rest], opts) do
     results
     |> load_field(field, resource, opts)
-    |> Enum.group_by(&resolve_field(&1, field, resource, api: opts))
+    |> Enum.group_by(&resolve_field(&1, field, resource, domain: opts))
     |> Enum.sort_by(fn {key, _value} -> key end, to_sort_by_fun(direction))
     |> Enum.flat_map(fn {_, records} ->
       runtime_sort(records, rest, Keyword.put(opts, :rekey?, false))
@@ -300,7 +390,7 @@ defmodule Ash.Actions.Sort do
   def runtime_distinct([%resource{} | _] = results, [{field, direction} | rest], opts) do
     results
     |> load_field(field, resource, opts)
-    |> Enum.group_by(&resolve_field(&1, field, resource, api: opts))
+    |> Enum.group_by(&resolve_field(&1, field, resource, domain: opts))
     |> Enum.sort_by(fn {key, _value} -> key end, to_sort_by_fun(direction))
     |> Enum.map(fn {_key, [first | _]} ->
       first
@@ -310,7 +400,7 @@ defmodule Ash.Actions.Sort do
   end
 
   defp load_field(records, field, resource, opts) do
-    if is_nil(opts[:api]) || (opts[:lazy?] && Ash.Resource.loaded?(records, field)) do
+    if is_nil(opts[:domain]) || (opts[:lazy?] && Ash.Resource.loaded?(records, field)) do
       records
     else
       query =
@@ -319,21 +409,21 @@ defmodule Ash.Actions.Sort do
         |> Ash.Query.load(field)
         |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-      opts[:api].load!(records, query)
+      opts[:domain].load!(records, query)
     end
   end
 
   defp resolve_field(record, %Ash.Query.Calculation{} = calc, resource, opts) do
     cond do
-      :erlang.function_exported(calc.module, :calculate, 3) ->
-        context = Map.put(calc.context, :api, opts[:api])
+      calc.module.has_calculate?() ->
+        context = Map.put(calc.context, :domain, opts[:domain])
 
         case calc.module.calculate([record], calc.opts, context) do
           {:ok, [value]} -> value
           _ -> nil
         end
 
-      :erlang.function_exported(calc.module, :expression, 2) ->
+      calc.module.has_expression?() ->
         expression = calc.module.expression(calc.opts, calc.context)
 
         case Ash.Filter.hydrate_refs(expression, %{

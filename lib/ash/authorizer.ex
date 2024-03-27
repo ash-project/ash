@@ -12,8 +12,7 @@ defmodule Ash.Authorizer do
   @callback initial_state(
               Ash.Resource.t(),
               Ash.Resource.record(),
-              Ash.Resource.Actions.action(),
-              boolean
+              Ash.Resource.Actions.action()
             ) :: state
   @callback strict_check_context(state) :: [atom]
   @callback strict_check(state, context) ::
@@ -36,8 +35,8 @@ defmodule Ash.Authorizer do
 
   @optional_callbacks [exception: 2, add_calculations: 3, alter_results: 3, alter_filter: 3]
 
-  def initial_state(module, actor, resource, action, verbose?) do
-    module.initial_state(actor, resource, action, verbose?)
+  def initial_state(module, actor, resource, action) do
+    module.initial_state(actor, resource, action)
   end
 
   def exception(module, reason, state) do

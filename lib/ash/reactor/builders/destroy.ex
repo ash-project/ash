@@ -23,12 +23,12 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Destroy do
         destroy
         |> Map.take([
           :action,
-          :api,
           :authorize?,
+          :domain,
           :resource,
           :return_destroyed?,
-          :undo,
-          :undo_action
+          :undo_action,
+          :undo
         ])
         |> Enum.to_list()
 

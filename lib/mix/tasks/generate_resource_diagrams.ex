@@ -1,6 +1,6 @@
 defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
   @moduledoc """
-  Generates a Mermaid Resource Diagram for each Ash API.
+  Generates a Mermaid Resource Diagram for each Ash domain.
 
   ## Prerequisites
 
@@ -11,7 +11,7 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
   ## Command line options
 
     * `--type` - `er` or `class` (defaults to `class`)
-    * `--only` - only generates the given API file
+    * `--only` - only generates for the given domain
     * `--format` - Can be set to one of either:
       * `plain` - Prints just the mermaid output as text. This is the default.
       * `md` - Prints the mermaid diagram in a markdown code block.
@@ -24,7 +24,8 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
 
   @recursive true
 
-  @shortdoc "Generates Mermaid Resource Diagrams for each Ash API"
+  @shortdoc "Generates Mermaid Resource Diagrams for each Ash domain"
+  @doc @shortdoc
   def run(argv) do
     Mix.Task.run("compile")
 
@@ -41,10 +42,10 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
 
     format = Keyword.get(opts, :format, "plain")
 
-    apis()
+    domains()
     |> Task.async_stream(
-      fn api ->
-        source = api.module_info(:compile)[:source]
+      fn domain ->
+        source = domain.module_info(:compile)[:source]
 
         if is_nil(only) || Path.expand(source) in only do
           case Keyword.get(opts, :type, "class") do
@@ -53,8 +54,8 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
                 source,
                 "mermaid-er-diagram",
                 format,
-                Ash.Api.Info.Diagram.mermaid_er_diagram(api),
-                "Generated ER Diagram for #{inspect(api)}"
+                Ash.Domain.Info.Diagram.mermaid_er_diagram(domain),
+                "Generated ER Diagram for #{inspect(domain)}"
               )
 
             "class" ->
@@ -62,8 +63,8 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
                 source,
                 "mermaid-class-diagram",
                 format,
-                Ash.Api.Info.Diagram.mermaid_class_diagram(api),
-                "Generated Class Diagram for #{inspect(api)}"
+                Ash.Domain.Info.Diagram.mermaid_class_diagram(domain),
+                "Generated Class Diagram for #{inspect(domain)}"
               )
 
             type ->
@@ -80,8 +81,8 @@ defmodule Mix.Tasks.Ash.GenerateResourceDiagrams do
     |> Stream.run()
   end
 
-  defp apis do
+  defp domains do
     Mix.Project.config()[:app]
-    |> Application.get_env(:ash_apis, [])
+    |> Application.get_env(:ash_domains, [])
   end
 end

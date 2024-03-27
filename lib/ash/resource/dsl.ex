@@ -1,4 +1,34 @@
 defmodule Ash.Resource.Dsl do
+  defmodule Filter do
+    @moduledoc "Introspection target for a filter for read actions and relationships"
+    defstruct [:filter]
+  end
+
+  @filter %Spark.Dsl.Entity{
+    name: :filter,
+    args: [:filter],
+    target: Filter,
+    describe:
+      "Applies a filter. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.",
+    examples: [
+      """
+      filter expr(first_name == "fred")
+      filter expr(last_name == "weasley" and magician == true)
+      """
+    ],
+    imports: [
+      Ash.Expr
+    ],
+    schema: [
+      filter: [
+        type: :any,
+        doc:
+          "The filter to apply. Can use `^arg/1`, `^context/1` and `^actor/1` teplates. Multiple filters are combined with *and*.",
+        required: true
+      ]
+    ]
+  }
+
   @attribute %Spark.Dsl.Entity{
     name: :attribute,
     describe: """
@@ -26,7 +56,6 @@ defmodule Ash.Resource.Dsl do
     the following different defaults:
 
         writable? false
-        private? true
         default &DateTime.utc_now/0
         match_other_defaults? true
         type Ash.Type.UTCDatetimeUsec
@@ -50,7 +79,6 @@ defmodule Ash.Resource.Dsl do
     the following different defaults:
 
         writable? false
-        private? true
         default &DateTime.utc_now/0
         match_other_defaults? true
         update_default &DateTime.utc_now/0
@@ -76,6 +104,7 @@ defmodule Ash.Resource.Dsl do
     Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except for `allow_nil?`, but it sets
     the following different defaults:
 
+        public? true
         writable? false
         primary_key? true
         generated? true
@@ -100,6 +129,7 @@ defmodule Ash.Resource.Dsl do
     the following different defaults:
 
         writable? false
+        public? true
         default &Ash.UUID.generate/0
         primary_key? true
         type :uuid
@@ -183,7 +213,11 @@ defmodule Ash.Resource.Dsl do
     no_depend_modules: [:destination, :manual],
     target: Ash.Resource.Relationships.HasOne,
     schema: Ash.Resource.Relationships.HasOne.opt_schema(),
-    args: [:name, :destination]
+    transform: {Ash.Resource.Relationships.HasOne, :transform, []},
+    args: [:name, :destination],
+    entities: [
+      filters: [@filter]
+    ]
   }
 
   @has_many %Spark.Dsl.Entity{
@@ -205,7 +239,11 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Relationships.HasMany,
     no_depend_modules: [:destination, :manual],
     schema: Ash.Resource.Relationships.HasMany.opt_schema(),
-    args: [:name, :destination]
+    args: [:name, :destination],
+    transform: {Ash.Resource.Relationships.HasMany, :transform, []},
+    entities: [
+      filters: [@filter]
+    ]
   }
 
   @many_to_many %Spark.Dsl.Entity{
@@ -237,7 +275,10 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Relationships.ManyToMany,
     schema: Ash.Resource.Relationships.ManyToMany.opt_schema(),
     transform: {Ash.Resource.Relationships.ManyToMany, :transform, []},
-    args: [:name, :destination]
+    args: [:name, :destination],
+    entities: [
+      filters: [@filter]
+    ]
   }
 
   @belongs_to %Spark.Dsl.Entity{
@@ -262,7 +303,10 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Relationships.BelongsTo,
     schema: Ash.Resource.Relationships.BelongsTo.opt_schema(),
     transform: {Ash.Resource.Relationships.BelongsTo, :transform, []},
-    args: [:name, :destination]
+    args: [:name, :destination],
+    entities: [
+      filters: [@filter]
+    ]
   }
 
   @relationships %Spark.Dsl.Section{
@@ -311,7 +355,7 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     imports: [
-      Ash.Filter.TemplateHelpers
+      Ash.Expr
     ],
     entities: [
       @has_one,
@@ -429,7 +473,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares a generic action. A combination of arguments, a return type and a run function.
 
-    For calling this action, see the `Ash.Api` documentation.
+    For calling this action, see the `Ash.Domain` documentation.
     """,
     examples: [
       """
@@ -457,7 +501,7 @@ defmodule Ash.Resource.Dsl do
   @create %Spark.Dsl.Entity{
     name: :create,
     describe: """
-    Declares a `create` action. For calling this action, see the `Ash.Api` documentation.
+    Declares a `create` action. For calling this action, see the `Ash.Domain` documentation.
     """,
     examples: [
       """
@@ -469,7 +513,7 @@ defmodule Ash.Resource.Dsl do
     imports: [
       Ash.Resource.Change.Builtins,
       Ash.Resource.Validation.Builtins,
-      Ash.Filter.TemplateHelpers
+      Ash.Expr
     ],
     target: Ash.Resource.Actions.Create,
     schema: Ash.Resource.Actions.Create.opt_schema(),
@@ -521,7 +565,7 @@ defmodule Ash.Resource.Dsl do
   @read %Spark.Dsl.Entity{
     name: :read,
     describe: """
-    Declares a `read` action. For calling this action, see the `Ash.Api` documentation.
+    Declares a `read` action. For calling this action, see the `Ash.Domain` documentation.
     """,
     examples: [
       """
@@ -532,7 +576,7 @@ defmodule Ash.Resource.Dsl do
     ],
     imports: [
       Ash.Resource.Preparation.Builtins,
-      Ash.Filter.TemplateHelpers
+      Ash.Expr
     ],
     target: Ash.Resource.Actions.Read,
     schema: Ash.Resource.Actions.Read.opt_schema(),
@@ -550,6 +594,9 @@ defmodule Ash.Resource.Dsl do
       ],
       metadata: [
         @metadata
+      ],
+      filters: [
+        @filter
       ]
     ],
     args: [:name]
@@ -558,12 +605,12 @@ defmodule Ash.Resource.Dsl do
   @update %Spark.Dsl.Entity{
     name: :update,
     describe: """
-    Declares a `update` action. For calling this action, see the `Ash.Api` documentation.
+    Declares a `update` action. For calling this action, see the `Ash.Domain` documentation.
     """,
     imports: [
       Ash.Resource.Change.Builtins,
       Ash.Resource.Validation.Builtins,
-      Ash.Filter.TemplateHelpers
+      Ash.Expr
     ],
     examples: [
       "update :flag_for_review, primary?: true"
@@ -592,7 +639,7 @@ defmodule Ash.Resource.Dsl do
   @destroy %Spark.Dsl.Entity{
     name: :destroy,
     describe: """
-    Declares a `destroy` action. For calling this action, see the `Ash.Api` documentation.
+    Declares a `destroy` action. For calling this action, see the `Ash.Domain` documentation.
     """,
     examples: [
       """
@@ -604,7 +651,7 @@ defmodule Ash.Resource.Dsl do
     imports: [
       Ash.Resource.Change.Builtins,
       Ash.Resource.Validation.Builtins,
-      Ash.Filter.TemplateHelpers
+      Ash.Expr
     ],
     deprecations: [
       manual?: "Use the `manual` option instead, and provide an implementation."
@@ -641,15 +688,22 @@ defmodule Ash.Resource.Dsl do
     """,
     schema: [
       defaults: [
-        type: {:list, {:in, [:create, :read, :update, :destroy]}},
+        type:
+          {:list,
+           {:or,
+            [
+              {:one_of, [:create, :read, :update, :destroy]},
+              {:tuple, [:atom, {:wrap_list, :atom}]}
+            ]}},
         doc: """
         Creates a simple action of each specified type, with the same name as the type. These will be `primary?` unless one already exists for that type. Embedded resources, however, have a default of all resource types.
-        """
+        """,
+        snippet: "[:read, :destroy, create: :*, update: :*]"
       ],
       default_accept: [
-        type: {:list, :atom},
+        type: {:or, [{:list, :atom}, {:literal, :*}]},
         doc:
-          "A default value for the `accept` option for each action. Defaults to all public attributes."
+          "A default value for the `accept` option for each action. Use `:*` to accept all public attributes."
       ]
     ],
     examples: [
@@ -739,8 +793,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    imports: [Ash.Filter.TemplateHelpers],
-    no_depend_modules: [:simple_notifiers],
+    imports: [Ash.Expr],
     schema: [
       description: [
         type: :string,
@@ -771,11 +824,6 @@ defmodule Ash.Resource.Dsl do
         doc: """
         A pluralized version of the resource short_name. May be used by generators or automated tooling.
         """
-      ],
-      simple_notifiers: [
-        type: {:list, :module},
-        doc:
-          "A list of notifiers that require no DSL. Can be used to avoid compile time dependencies on notifiers"
       ],
       require_primary_key?: [
         type: :boolean,
@@ -820,24 +868,27 @@ defmodule Ash.Resource.Dsl do
   @code_interface %Spark.Dsl.Section{
     name: :code_interface,
     describe: """
-    Functions that will be defined on the Api module to interact with this resource. See the [code interface guide](/documentation/topics/code-interface.md) for more.
+    Functions that will be defined on the resource. See the [code interface guide](/documentation/topics/code-interface.md) for more.
     """,
     examples: [
       """
       code_interface do
-        define_for MyApp.Api
         define :create_user, action: :create
         define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
       end
       """
     ],
-    no_depend_modules: [:define_for],
+    no_depend_modules: [:domain],
     schema: [
-      define_for: [
-        type: {:spark, Ash.Api},
+      domain: [
+        type: {:spark, Ash.Domain},
         doc:
-          "Defines the code interface on the resource module directly, using the provided Api.",
+          "Use the provided Domain instead of the resources configured domain when calling actions.",
         default: false
+      ],
+      define?: [
+        type: :boolean,
+        doc: "Whether or not to define the code interface in the resource."
       ]
     ],
     entities: [
@@ -875,7 +926,7 @@ defmodule Ash.Resource.Dsl do
     imports: [
       Ash.Resource.Validation.Builtins,
       Ash.Resource.Change.Builtins,
-      Ash.Filter.TemplateHelpers
+      Ash.Expr
     ],
     examples: [
       """
@@ -986,7 +1037,12 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
-    schema: Ash.Resource.Aggregate.schema(),
+    schema:
+      Keyword.put(Ash.Resource.Aggregate.schema(), :include_nil?,
+        type: :boolean,
+        doc:
+          "Whether or not to include `nil` values in the aggregate. Only relevant for `list` and `first` aggregates."
+      ),
     auto_set_fields: [kind: :first]
   }
 
@@ -1201,7 +1257,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    imports: [Ash.Filter.TemplateHelpers],
+    imports: [Ash.Expr],
     entities: [
       @count,
       @exists,
@@ -1245,7 +1301,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares a named calculation on the resource.
 
-    Takes a module that must adopt the `Ash.Calculation` behaviour. See that module
+    Takes a module that must adopt the `Ash.Resource.Calculation` behaviour. See that module
     for more information.
 
     To ensure that the necessary fields are selected:
@@ -1258,7 +1314,7 @@ defmodule Ash.Resource.Dsl do
     """,
     examples: [
       {
-        "`Ash.Calculation` implementation example:",
+        "`Ash.Resource.Calculation` implementation example:",
         "calculate :full_name, :string, {MyApp.FullName, keys: [:first_name, :last_name]}, select: [:first_name, :last_name]"
       },
       {
@@ -1293,7 +1349,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    imports: [Ash.Resource.Calculation.Builtins, Ash.Filter.TemplateHelpers],
+    imports: [Ash.Resource.Calculation.Builtins, Ash.Expr],
     entities: [
       @calculate
     ]
@@ -1335,7 +1391,7 @@ defmodule Ash.Resource.Dsl do
       global?: [
         type: :boolean,
         doc: """
-        Whether or not the data also exists outside of each tenant.
+        Whether or not the data may be accessed without setting a tenant. For example, with attribute multitenancy, this allows accessing without filtering by the tenant attribute.
         """,
         default: false
       ],
@@ -1384,7 +1440,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.CacheRelationships,
     Ash.Resource.Transformers.AttributesByName,
     Ash.Resource.Transformers.ValidationsAndChangesForType,
-    Ash.Resource.Transformers.CacheUniqueKeys
+    Ash.Resource.Transformers.CacheUniqueKeys,
+    Ash.Resource.Transformers.CacheActionInputs
   ]
 
   @verifiers [
@@ -1402,8 +1459,9 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.ValidateManagedRelationshipOpts,
     Ash.Resource.Verifiers.ValidateMultitenancy,
     Ash.Resource.Verifiers.ValidatePrimaryKey,
-    Ash.Resource.Verifiers.VerifyAcceptedByApi,
-    Ash.Resource.Verifiers.VerifyActionsAtomic
+    Ash.Resource.Verifiers.VerifyAcceptedByDomain,
+    Ash.Resource.Verifiers.VerifyActionsAtomic,
+    Ash.Resource.Verifiers.VerifyPrimaryKeyPresent
   ]
 
   @moduledoc false

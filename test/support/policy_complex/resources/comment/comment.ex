@@ -1,6 +1,7 @@
 defmodule Ash.Test.Support.PolicyComplex.Comment do
   @moduledoc false
   use Ash.Resource,
+    domain: Ash.Test.Support.PolicyComplex.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [
       Ash.Policy.Authorizer
@@ -28,12 +29,14 @@ defmodule Ash.Test.Support.PolicyComplex.Comment do
     uuid_primary_key(:id)
 
     attribute :text, :string do
+      public?(true)
       allow_nil?(false)
     end
   end
 
   actions do
-    defaults [:read, :update, :destroy]
+    default_accept :*
+    defaults [:read, :destroy, update: :*]
 
     create :create do
       accept [:text]
@@ -50,12 +53,16 @@ defmodule Ash.Test.Support.PolicyComplex.Comment do
   end
 
   code_interface do
-    define_for Ash.Test.Support.PolicyComplex.Api
     define :create, args: [:post_id, :text]
   end
 
   relationships do
-    belongs_to(:author, Ash.Test.Support.PolicyComplex.User)
-    belongs_to(:post, Ash.Test.Support.PolicyComplex.Post)
+    belongs_to :author, Ash.Test.Support.PolicyComplex.User do
+      public?(true)
+    end
+
+    belongs_to :post, Ash.Test.Support.PolicyComplex.Post do
+      public?(true)
+    end
   end
 end

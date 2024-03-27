@@ -7,7 +7,7 @@ defmodule Ash.Resource.Attribute do
     :allow_nil?,
     :generated?,
     :primary_key?,
-    :private?,
+    :public?,
     :writable?,
     :always_select?,
     :default,
@@ -17,6 +17,7 @@ defmodule Ash.Resource.Attribute do
     match_other_defaults?: false,
     sensitive?: false,
     filterable?: true,
+    sortable?: true,
     constraints: []
   ]
 
@@ -36,14 +37,13 @@ defmodule Ash.Resource.Attribute do
           constraints: Keyword.t(),
           type: Ash.Type.t(),
           primary_key?: boolean(),
-          private?: boolean(),
+          public?: boolean(),
+          sortable?: boolean(),
           default: nil | term | (-> term),
           update_default: nil | term | (-> term) | (Ash.Resource.record() -> term),
           sensitive?: boolean(),
           writable?: boolean()
         }
-
-  alias Spark.OptionsHelpers
 
   @schema [
     name: [
@@ -114,11 +114,11 @@ defmodule Ash.Resource.Attribute do
       Whether or not the value can be written to. Non-writable attributes can still be written with `Ash.Changeset.force_change_attribute/3`.
       """
     ],
-    private?: [
+    public?: [
       type: :boolean,
       default: false,
       doc: """
-      The attribute is not publically writable, and should not be exposed over any public interfaces. See the [security guide](/documentation/topics/security.md) for more.
+      Whether or not the attribute should be shown over public interfaces. See the [security guide](/documentation/topics/security.md) for more.
       """
     ],
     default: [
@@ -130,10 +130,17 @@ defmodule Ash.Resource.Attribute do
       doc: "A value to be set on all updates, unless a value is being provided already."
     ],
     filterable?: [
-      type: {:or, [:boolean, {:in, [:simple_equality]}]},
+      type: :boolean,
       default: true,
       doc: """
       Whether or not the attribute can be referenced in filters.
+      """
+    ],
+    sortable?: [
+      type: {:or, [:boolean, {:in, [:simple_equality]}]},
+      default: true,
+      doc: """
+      Whether or not the attribute can be referenced in sorts.
       """
     ],
     match_other_defaults?: [
@@ -146,40 +153,40 @@ defmodule Ash.Resource.Attribute do
   ]
 
   @create_timestamp_schema @schema
-                           |> OptionsHelpers.set_default!(:writable?, false)
-                           |> OptionsHelpers.set_default!(:private?, true)
-                           |> OptionsHelpers.set_default!(:default, &DateTime.utc_now/0)
-                           |> OptionsHelpers.set_default!(:match_other_defaults?, true)
-                           |> OptionsHelpers.set_default!(:type, Ash.Type.UtcDatetimeUsec)
-                           |> OptionsHelpers.set_default!(:allow_nil?, false)
+                           |> Spark.Options.Helpers.set_default!(:writable?, false)
+                           |> Spark.Options.Helpers.set_default!(:default, &DateTime.utc_now/0)
+                           |> Spark.Options.Helpers.set_default!(:match_other_defaults?, true)
+                           |> Spark.Options.Helpers.set_default!(:type, Ash.Type.UtcDatetimeUsec)
+                           |> Spark.Options.Helpers.set_default!(:allow_nil?, false)
                            |> Ash.OptionsHelpers.hide_all_except([:name])
 
   @update_timestamp_schema @schema
-                           |> OptionsHelpers.set_default!(:writable?, false)
-                           |> OptionsHelpers.set_default!(:private?, true)
-                           |> OptionsHelpers.set_default!(:match_other_defaults?, true)
-                           |> OptionsHelpers.set_default!(:default, &DateTime.utc_now/0)
-                           |> OptionsHelpers.set_default!(
+                           |> Spark.Options.Helpers.set_default!(:writable?, false)
+                           |> Spark.Options.Helpers.set_default!(:match_other_defaults?, true)
+                           |> Spark.Options.Helpers.set_default!(:default, &DateTime.utc_now/0)
+                           |> Spark.Options.Helpers.set_default!(
                              :update_default,
                              &DateTime.utc_now/0
                            )
-                           |> OptionsHelpers.set_default!(:type, Ash.Type.UtcDatetimeUsec)
-                           |> OptionsHelpers.set_default!(:allow_nil?, false)
+                           |> Spark.Options.Helpers.set_default!(:type, Ash.Type.UtcDatetimeUsec)
+                           |> Spark.Options.Helpers.set_default!(:allow_nil?, false)
                            |> Ash.OptionsHelpers.hide_all_except([:name])
 
   @uuid_primary_key_schema @schema
-                           |> OptionsHelpers.set_default!(:writable?, false)
-                           |> OptionsHelpers.set_default!(:default, &Ash.UUID.generate/0)
-                           |> OptionsHelpers.set_default!(:primary_key?, true)
-                           |> OptionsHelpers.set_default!(:type, :uuid)
+                           |> Spark.Options.Helpers.set_default!(:public?, true)
+                           |> Spark.Options.Helpers.set_default!(:writable?, false)
+                           |> Spark.Options.Helpers.set_default!(:default, &Ash.UUID.generate/0)
+                           |> Spark.Options.Helpers.set_default!(:primary_key?, true)
+                           |> Spark.Options.Helpers.set_default!(:type, :uuid)
                            |> Keyword.delete(:allow_nil?)
                            |> Ash.OptionsHelpers.hide_all_except([:name])
 
   @integer_primary_key_schema @schema
-                              |> OptionsHelpers.set_default!(:writable?, false)
-                              |> OptionsHelpers.set_default!(:primary_key?, true)
-                              |> OptionsHelpers.set_default!(:generated?, true)
-                              |> OptionsHelpers.set_default!(:type, :integer)
+                              |> Spark.Options.Helpers.set_default!(:public?, true)
+                              |> Spark.Options.Helpers.set_default!(:writable?, false)
+                              |> Spark.Options.Helpers.set_default!(:primary_key?, true)
+                              |> Spark.Options.Helpers.set_default!(:generated?, true)
+                              |> Spark.Options.Helpers.set_default!(:type, :integer)
                               |> Keyword.delete(:allow_nil?)
                               |> Ash.OptionsHelpers.hide_all_except([:name])
 

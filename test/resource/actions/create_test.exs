@@ -2,11 +2,16 @@ defmodule Ash.Test.Dsl.Resource.Actions.CreateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmacrop defposts(do: body) do
+    module = Module.concat(["rand#{System.unique_integer([:positive])}", Post])
+
     quote do
-      defmodule Post do
+      defmodule unquote(module) do
         @moduledoc false
         use Ash.Resource,
+          domain: Domain,
           data_layer: Ash.DataLayer.Ets
 
         attributes do
@@ -15,6 +20,8 @@ defmodule Ash.Test.Dsl.Resource.Actions.CreateTest do
 
         unquote(body)
       end
+
+      alias unquote(module), as: Post
     end
   end
 
@@ -22,6 +29,7 @@ defmodule Ash.Test.Dsl.Resource.Actions.CreateTest do
     test "it creates an action" do
       defposts do
         actions do
+          default_accept :*
           create :create
         end
       end
@@ -40,10 +48,11 @@ defmodule Ash.Test.Dsl.Resource.Actions.CreateTest do
     test "it fails if `name` is not an atom" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Dsl.Resource.Actions.CreateTest.Post]\n actions -> create -> default:\n  invalid value for :name option: expected atom, got: \"default\"",
+        ~r/expected atom, got: \"default\"/,
         fn ->
           defposts do
             actions do
+              default_accept :*
               create "default"
             end
           end
@@ -54,10 +63,11 @@ defmodule Ash.Test.Dsl.Resource.Actions.CreateTest do
     test "it fails if `primary?` is not a boolean" do
       assert_raise(
         Spark.Error.DslError,
-        "[Ash.Test.Dsl.Resource.Actions.CreateTest.Post]\n actions -> create -> create:\n  invalid value for :primary? option: expected boolean, got: 10",
+        ~r/expected boolean, got: 10/,
         fn ->
           defposts do
             actions do
+              default_accept :*
               create :create, primary?: 10
             end
           end

@@ -3,11 +3,11 @@ defmodule Ash.Resource.Validation.Present do
   use Ash.Resource.Validation
 
   alias Ash.Error.Changes.{InvalidAttribute, InvalidChanges}
-  import Ash.Filter.TemplateHelpers
+  import Ash.Expr
 
   @impl true
   def init(opts) do
-    case Spark.OptionsHelpers.validate(
+    case Spark.Options.validate(
            opts,
            Keyword.put(Ash.Resource.Validation.Builtins.present_opts(), :attributes,
              type: {:wrap_list, :atom},
@@ -96,8 +96,8 @@ defmodule Ash.Resource.Validation.Present do
 
         message =
           cond do
-            context[:message] ->
-              context[:message]
+            context.message ->
+              context.message
 
             exactly == 0 ->
               "must be absent"

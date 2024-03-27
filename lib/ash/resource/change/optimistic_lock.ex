@@ -5,13 +5,13 @@ defmodule Ash.Resource.Change.OptimisticLock do
   See `Ash.Resource.Change.Builtins.optimistic_lock/1` for more.
   """
   use Ash.Resource.Change
-  require Ash.Expr
 
   @impl true
   def change(changeset, opts, _context) do
-    Ash.Changeset.filter(changeset, %{
-      opts[:attribute] => Map.get(changeset.data, opts[:attribute])
-    })
+    Ash.Changeset.filter(
+      changeset,
+      {opts[:attribute], [eq: Map.get(changeset.data, opts[:attribute])]}
+    )
   end
 
   @impl true
@@ -25,9 +25,9 @@ defmodule Ash.Resource.Change.OptimisticLock do
         {:atomic,
          %{
            opts[:attribute] =>
-             Ash.Expr.expr(
-               if ref(^opts[:attribute]) == ^Map.get(data, opts[:attribute]) do
-                 ref(^opts[:attribute]) + 1
+             expr(
+               if ^ref(opts[:attribute]) == ^Map.get(data, opts[:attribute]) do
+                 ^ref(opts[:attribute]) + 1
                else
                  error(Ash.Error.Changes.StaleRecord, %{
                    resource: changeset.resource,

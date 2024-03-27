@@ -3,23 +3,15 @@ defmodule Ash.Test.Resource.UpsertTest do
   use ExUnit.Case, async: true
   import Ash.Expr
 
-  defmodule ProductCatalog do
-    use Ash.Api,
-      extensions: []
-
-    resources do
-      registry(ProductCatalog.Registry)
-    end
-  end
+  alias Ash.Test.Domain, as: Domain
 
   defmodule LazyLoadVariants do
     @moduledoc false
     use Ash.Resource.Change
-    alias ProductCatalog
 
     def change(changeset, _opts, _context) do
       Ash.Changeset.after_action(changeset, fn _changeset, record ->
-        ProductCatalog.load(record, :variants, lazy?: true)
+        Ash.load(record, :variants, lazy?: true)
       end)
     end
   end
@@ -30,11 +22,10 @@ defmodule Ash.Test.Resource.UpsertTest do
 
     use Ash.Resource,
       data_layer: Ash.DataLayer.Ets,
+      domain: Domain,
       extensions: []
 
     code_interface do
-      define_for(ProductCatalog)
-
       define(:create)
       define(:upsert_variants, args: [:variants])
       define :upsert
@@ -46,12 +37,13 @@ defmodule Ash.Test.Resource.UpsertTest do
 
     identities do
       identity :unique_name, [:name] do
-        pre_check_with ProductCatalog
+        pre_check_with Domain
       end
     end
 
     actions do
-      defaults([:create, :update, :read, :destroy])
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
 
       update :upsert_variants do
         transaction?(true)
@@ -79,12 +71,19 @@ defmodule Ash.Test.Resource.UpsertTest do
 
     attributes do
       uuid_primary_key(:id)
-      attribute :name, :string
-      attribute :other, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
+
+      attribute :other, :string do
+        public?(true)
+      end
     end
 
     relationships do
       has_many :variants, ProductCatalog.Variant do
+        public?(true)
         destination_attribute(:product_id)
       end
     end
@@ -95,44 +94,39 @@ defmodule Ash.Test.Resource.UpsertTest do
     alias ProductCatalog.Product, warn: false
 
     use Ash.Resource,
+      domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       extensions: []
 
     identities do
-      identity(:sku, [:sku], pre_check_with: ProductCatalog)
+      identity(:sku, [:sku], pre_check_with: Domain)
     end
 
     actions do
-      defaults([:create, :read, :update, :destroy])
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
     end
 
     attributes do
       uuid_primary_key(:id)
 
       attribute :product_id, :uuid do
+        public?(true)
         allow_nil?(false)
       end
 
       attribute :sku, :string do
+        public?(true)
         allow_nil?(false)
       end
 
-      attribute(:color, :string)
+      attribute(:color, :string, public?: true)
     end
 
     relationships do
       belongs_to :product, ProductCatalog.Product do
+        public?(true)
       end
-    end
-  end
-
-  defmodule ProductCatalog.Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(ProductCatalog.Product)
-      entry(ProductCatalog.Variant)
     end
   end
 
@@ -147,7 +141,7 @@ defmodule Ash.Test.Resource.UpsertTest do
           upsert_identity: :unique_name
         )
         |> Ash.Changeset.atomic_update(:name, expr(name <> " bar"))
-        |> ProductCatalog.create!()
+        |> Ash.create!()
 
       assert product.name == "foo"
 
@@ -158,7 +152,7 @@ defmodule Ash.Test.Resource.UpsertTest do
           upsert_identity: :unique_name
         )
         |> Ash.Changeset.atomic_update(:name, expr(name <> " bar"))
-        |> ProductCatalog.create!()
+        |> Ash.create!()
 
       assert updated.id == product.id
       assert updated.name == "foo bar"
@@ -192,16 +186,16 @@ defmodule Ash.Test.Resource.UpsertTest do
     end
 
     test "upsert with :replace_all" do
-      product = Product.upsert!(%{name: "fred", other: "george", other_2: "hagrid"})
+      product = Product.upsert!(%{name: "fred", other: "george"})
       assert product.name == "fred"
       assert product.other == "george"
 
       product =
         Product
-        |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy", other_2: "harry"},
+        |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy"},
           upsert_fields: :replace_all
         )
-        |> ProductCatalog.create!()
+        |> Ash.create!()
 
       assert product.other == "malfoy"
     end
@@ -216,7 +210,7 @@ defmodule Ash.Test.Resource.UpsertTest do
         |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy"},
           upsert_fields: [:name]
         )
-        |> ProductCatalog.create!()
+        |> Ash.create!()
 
       assert product.other == "george"
     end
@@ -231,7 +225,7 @@ defmodule Ash.Test.Resource.UpsertTest do
         |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy"},
           upsert_fields: {:replace, [:name]}
         )
-        |> ProductCatalog.create!()
+        |> Ash.create!()
 
       assert product.other == "george"
     end
@@ -246,7 +240,7 @@ defmodule Ash.Test.Resource.UpsertTest do
         |> Ash.Changeset.for_create(:upsert, %{name: "fred", other: "malfoy"},
           upsert_fields: {:replace_all_except, [:other]}
         )
-        |> ProductCatalog.create!()
+        |> Ash.create!()
 
       assert product.other == "george"
     end

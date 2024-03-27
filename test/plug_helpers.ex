@@ -16,22 +16,31 @@ defmodule Ash.Test.PlugHelpersTest do
     end
 
     actions do
+      default_accept :*
       read :read
       create :create
     end
 
     attributes do
       uuid_primary_key :id
-      attribute :email, :string
+
+      attribute :email, :string do
+        public?(true)
+      end
     end
 
     multitenancy do
       strategy :attribute
-      attribute :customer_id
+
+      attribute :customer_id do
+        public?(true)
+      end
     end
 
     relationships do
-      belongs_to :customer, Customer
+      belongs_to :customer, Customer do
+        public?(true)
+      end
     end
   end
 
@@ -44,36 +53,33 @@ defmodule Ash.Test.PlugHelpersTest do
     end
 
     actions do
+      default_accept :*
       read :read
       create :create
     end
 
     attributes do
       uuid_primary_key :id
-      attribute :name, :string
+
+      attribute :name, :string do
+        public?(true)
+      end
     end
 
     relationships do
-      has_many :users, User
+      has_many :users, User do
+        public?(true)
+      end
     end
   end
 
-  defmodule Registry do
+  defmodule Domain do
     @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry Customer
-      entry User
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
+    use Ash.Domain
 
     resources do
-      registry Registry
+      resource Customer
+      resource User
     end
   end
 
@@ -84,13 +90,13 @@ defmodule Ash.Test.PlugHelpersTest do
 
     User
     |> Changeset.for_create(:create, attrs, tenant: attrs.customer_id)
-    |> Api.create!()
+    |> Ash.create!()
   end
 
   def build_tenant(attrs) do
     Customer
     |> Changeset.for_create(:create, attrs)
-    |> Api.create!()
+    |> Ash.create!()
   end
 
   doctest Ash.PlugHelpers

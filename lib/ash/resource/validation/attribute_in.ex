@@ -16,12 +16,11 @@ defmodule Ash.Resource.Validation.AttributeIn do
 
   use Ash.Resource.Validation
   alias Ash.Error.Changes.InvalidAttribute
-  require Ash.Expr
-  import Ash.Filter.TemplateHelpers
+  import Ash.Expr
 
   @impl true
   def init(opts) do
-    case Spark.OptionsHelpers.validate(opts, @opt_schema) do
+    case Spark.Options.validate(opts, @opt_schema) do
       {:ok, opts} ->
         {:ok, opts}
 
@@ -31,7 +30,7 @@ defmodule Ash.Resource.Validation.AttributeIn do
   end
 
   @impl true
-  def validate(changeset, opts) do
+  def validate(changeset, opts, _context) do
     value = Ash.Changeset.get_attribute(changeset, opts[:attribute])
 
     if value in opts[:list] do
@@ -46,12 +45,12 @@ defmodule Ash.Resource.Validation.AttributeIn do
 
   @impl true
   def atomic(_changeset, opts, context) do
-    {:atomic, [opts[:attribute]], Ash.Expr.expr(^atomic_ref(opts[:attribute]) in ^opts[:list]),
-     Ash.Expr.expr(
+    {:atomic, [opts[:attribute]], expr(^atomic_ref(opts[:attribute]) in ^opts[:list]),
+     expr(
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
          value: ^atomic_ref(opts[:attribute]),
-         message: ^(context[:message] || "must be in %{list}"),
+         message: ^(context.message || "must be in %{list}"),
          vars: %{field: ^opts[:attribute], list: ^opts[:list]}
        })
      )}

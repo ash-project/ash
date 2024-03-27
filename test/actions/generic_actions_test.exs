@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.GenericActionsTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  alias Ash.Test.Domain, as: Domain
+
   defmodule PassingFredOrGeorge do
     use Ash.Policy.SimpleCheck
 
@@ -14,14 +16,18 @@ defmodule Ash.Test.Actions.GenericActionsTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, data_layer: Ash.DataLayer.Ets, authorizers: [Ash.Policy.Authorizer]
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
 
     ets do
       private?(true)
     end
 
     actions do
-      defaults [:create, :read, :update, :destroy]
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
 
       action :hello, :string do
         argument :name, :string, allow_nil?: false
@@ -34,7 +40,7 @@ defmodule Ash.Test.Actions.GenericActionsTest do
 
     attributes do
       uuid_primary_key :id
-      attribute(:title, :string, allow_nil?: false)
+      attribute(:title, :string, allow_nil?: false, public?: true)
 
       timestamps()
     end
@@ -46,56 +52,37 @@ defmodule Ash.Test.Actions.GenericActionsTest do
     end
   end
 
-  defmodule Registry do
-    @moduledoc false
-    use Ash.Registry
-
-    entries do
-      entry(Post)
-    end
-  end
-
-  defmodule Api do
-    @moduledoc false
-    use Ash.Api
-
-    resources do
-      registry Registry
-    end
-  end
-
   describe "generic actions can be called" do
     test "generic actions can be run" do
       assert "Hello fred" =
                Post
                |> Ash.ActionInput.for_action(:hello, %{name: "fred"})
-               |> Api.run_action!()
+               |> Ash.run_action!()
     end
 
     test "generic actions validate their input" do
       assert {:error, %Ash.Error.Invalid{}} =
                Post
                |> Ash.ActionInput.for_action(:hello, %{name: %{a: 10}})
-               |> Api.run_action()
+               |> Ash.run_action()
 
-      assert_raise Ash.Error.Invalid, ~r/Input Invalid/, fn ->
+      assert_raise Ash.Error.Invalid, ~r/Invalid Error/, fn ->
         Post
         |> Ash.ActionInput.for_action(:hello, %{name: %{a: 10}})
-        |> Api.run_action!()
+        |> Ash.run_action!()
       end
     end
 
-    @tag :ash_three
-    test "generic actions don't accept unknown keys in Ash 3.0" do
+    test "generic actions don't accept unknown keys" do
       assert {:error, %Ash.Error.Invalid{}} =
                Post
                |> Ash.ActionInput.for_action(:hello, %{name: "fred", one: 1})
-               |> Api.run_action()
+               |> Ash.run_action()
 
-      assert_raise Ash.Error.Invalid, ~r/Input Invalid/, fn ->
+      assert_raise Ash.Error.Invalid, ~r/Invalid Error/, fn ->
         Post
         |> Ash.ActionInput.for_action(:hello, %{name: "fred", one: 1})
-        |> Api.run_action!()
+        |> Ash.run_action!()
       end
     end
   end
@@ -105,12 +92,12 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       assert "Hello fred" =
                Post
                |> Ash.ActionInput.for_action(:hello, %{name: "fred"})
-               |> Api.run_action!(authorize?: true)
+               |> Ash.run_action!(authorize?: true)
 
       assert_raise Ash.Error.Forbidden, ~r/Forbidden/, fn ->
         Post
         |> Ash.ActionInput.for_action(:hello, %{name: "mike"})
-        |> Api.run_action!(authorize?: true)
+        |> Ash.run_action!(authorize?: true)
       end
     end
   end
