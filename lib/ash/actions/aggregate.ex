@@ -6,7 +6,8 @@ defmodule Ash.Actions.Aggregate do
     query = %{query | api: api}
     {query, opts} = Ash.Actions.Helpers.add_process_context(query.api, query, opts)
 
-    with %{valid?: true} = query <- Ash.Actions.Read.handle_attribute_multitenancy(query) do
+    with %{valid?: true} = query <- Ash.Actions.Read.handle_attribute_multitenancy(query),
+         :ok <- Ash.Actions.Read.validate_multitenancy(query) do
       aggregates
       |> Enum.group_by(fn
         %Ash.Query.Aggregate{} = aggregate ->

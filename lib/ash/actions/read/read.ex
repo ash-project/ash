@@ -1155,7 +1155,8 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp validate_multitenancy(query) do
+  @doc false
+  def validate_multitenancy(query) do
     if is_nil(Ash.Resource.Info.multitenancy_strategy(query.resource)) ||
          Ash.Resource.Info.multitenancy_global?(query.resource) || query.tenant do
       :ok

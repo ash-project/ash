@@ -132,6 +132,18 @@ defmodule Ash.Actions.MultitenancyTest do
       assert User |> Ash.Query.set_tenant(tenant2) |> Api.read!() == []
     end
 
+    test "a record written to one tenant cannot be read from another with aggregate queries", %{
+      tenant1: tenant1,
+      tenant2: tenant2
+    } do
+      User
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.set_tenant(tenant1)
+      |> Api.create!()
+
+      assert User |> Ash.Query.set_tenant(tenant2) |> Api.list!(:name) == []
+    end
+
     test "a record can be updated in a tenant", %{tenant1: tenant1, tenant2: tenant2} do
       User
       |> Ash.Changeset.new()
@@ -206,6 +218,18 @@ defmodule Ash.Actions.MultitenancyTest do
       |> Api.create!()
 
       result = Comment |> Api.read()
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.TenantRequired{}]}} = result
+    end
+
+    test "an aggregate cannot be used without tenant specified", %{
+      tenant1: tenant1
+    } do
+      Comment
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.set_tenant(tenant1)
+      |> Api.create!()
+
+      result = User |> Api.count()
       assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.TenantRequired{}]}} = result
     end
   end
