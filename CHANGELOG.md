@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.21.3](https://github.com/ash-project/ash/compare/v2.21.2...v2.21.3) (2024-03-27)
+
+
+
+
+### Bug Fixes:
+
+* properly handle transaction errors from bulk creates
+
 ## [v2.21.2](https://github.com/ash-project/ash/compare/v2.21.1...v2.21.2) (2024-03-26)
 
 
