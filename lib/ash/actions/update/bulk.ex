@@ -1065,7 +1065,9 @@ defmodule Ash.Actions.Update.Bulk do
             result
 
           {:error, error} ->
-            [{:error, error}]
+            store_error(ref, error, opts)
+
+            []
         end
       after
         if notify? do
