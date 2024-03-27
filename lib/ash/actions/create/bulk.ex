@@ -1386,12 +1386,6 @@ defmodule Ash.Actions.Create.Bulk do
                   changes: state.changes
               }
             else
-              context = %{
-                actor: actor,
-                authorize?: authorize? || false,
-                tracer: tracer
-              }
-
               matches = batch_change(module, matches, change_opts, context, actor)
 
               must_return_records? =
