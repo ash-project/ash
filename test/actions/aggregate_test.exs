@@ -53,6 +53,10 @@ defmodule Ash.Test.Actions.AggregateTest do
     actions do
       defaults [:create, :read, :update, :destroy]
       read :unpublic
+
+      read :with_foo do
+        prepare build(filter: [foo: true])
+      end
     end
 
     attributes do
@@ -65,6 +69,7 @@ defmodule Ash.Test.Actions.AggregateTest do
 
       attribute :tenant, :string
       attribute :thing, :string
+      attribute :foo, :boolean, default: false
     end
 
     multitenancy do
@@ -212,6 +217,31 @@ defmodule Ash.Test.Actions.AggregateTest do
 
       assert %{count: 1} = Api.aggregate!(Post, {:count, :count}, authorize?: true)
       assert 1 = Api.count!(Post, authorize?: true)
+    end
+
+    test "use custom actions from the query" do
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "without foo", foo: false})
+      |> Api.create!()
+
+      assert false ==
+               Post
+               |> Ash.Query.for_read(:with_foo)
+               |> Api.exists?()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "with foo", foo: true})
+      |> Api.create!()
+
+      assert 1 ==
+               Post
+               |> Ash.Query.for_read(:with_foo)
+               |> Api.count!()
+
+      assert ["with foo"] ==
+               Post
+               |> Ash.Query.for_read(:with_foo)
+               |> Api.list!(:title)
     end
   end
 
