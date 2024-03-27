@@ -174,8 +174,7 @@ defmodule Ash.Actions.Action do
           authorizer.initial_state(
             actor,
             input.resource,
-            input.action,
-            false
+            input.action
           )
 
         context = %{

@@ -23,69 +23,75 @@ defmodule Ash.Resource.Interface do
     ]
   end
 
-  def interface_options(action_type) do
-    [
-      tenant: [
-        type: {:protocol, Ash.ToTenant},
-        doc: "Set the tenant of the query/changeset"
-      ],
-      context: [
-        type: :any,
-        doc: "Set context on the query/changeset"
-      ],
-      actor: [
-        type: :any,
-        doc: "set the actor for authorization"
-      ],
-      tracer: [
-        type: :any,
-        doc: "set the tracer for the action"
-      ],
-      authorize?: [
-        type: :boolean,
-        doc: """
-        Whether or not to perform authorization. The default behavior depends on the domain configuration.
-        """
-      ],
-      verbose?: [
-        type: :boolean,
-        doc: "a flag to toggle verbose output from the internal Ash engine (for debugging)"
-      ],
-      timeout: [
-        type: :timeout,
-        doc: "A timeout to apply to the operation."
-      ]
-    ] ++ action_type_opts(action_type)
-  end
+  def interface_options(:create) do
+    opts = Ash.create_opts()
 
-  defp action_type_opts(:create) do
-    [
+    Keyword.merge(opts,
       changeset: [
         type: :any,
         doc: "A changeset to seed the action with."
+      ],
+      bulk_options: [
+        type: :keyword_list,
+        doc: "Options passed to `Ash.bulk_create`, if a list or stream of inputs is provided.",
+        keys: Keyword.drop(Ash.bulk_create_opts(), Keyword.keys(opts))
       ]
-    ]
+    )
   end
 
-  defp action_type_opts(:read) do
-    [
+  def interface_options(:update) do
+    opts = Ash.update_opts()
+
+    Keyword.merge(opts,
+      bulk_options: [
+        type: :keyword_list,
+        doc:
+          "Options passed to `Ash.bulk_create`, if a query, list, or stream of inputs is provided.",
+        keys: Keyword.drop(Ash.bulk_update_opts(), Keyword.keys(opts) ++ [:resource])
+      ]
+    )
+  end
+
+  def interface_options(:destroy) do
+    opts = Ash.destroy_opts()
+
+    Keyword.merge(opts,
+      bulk_options: [
+        type: :keyword_list,
+        doc:
+          "Options passed to `Ash.bulk_create`, if a query, list, or stream of inputs is provided.",
+        keys: Keyword.drop(Ash.bulk_destroy_opts(), Keyword.keys(opts) ++ [:resource])
+      ]
+    )
+  end
+
+  def interface_options(:read) do
+    opts = Ash.read_opts()
+
+    Keyword.merge(opts,
       query: [
         type: :any,
         doc: "A query to seed the action with."
       ],
-      load: [
-        type: :any,
-        doc: "Adds a load statement to the query before passing it to the action."
+      stream?: [
+        type: :boolean,
+        default: false,
+        doc: "If true, a stream of the results will be returned"
       ],
       not_found_error?: [
         type: :boolean,
         doc:
           "Whether or not to return or raise a `NotFound` error or to return `nil` when a get? action/interface is called."
+      ],
+      stream_options: [
+        type: :keyword_list,
+        doc: "Options passed to `Ash.stream!`, if `stream?: true` is given",
+        keys: Keyword.drop(Ash.stream_opts(), Keyword.keys(opts))
       ]
-    ]
+    )
   end
 
-  defp action_type_opts(_), do: []
+  def interface_options(_), do: []
 
   @schema [
     name: [

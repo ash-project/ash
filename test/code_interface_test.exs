@@ -120,14 +120,6 @@ defmodule Ash.Test.CodeInterfaceTest do
       assert User.can_read_users?(nil)
       assert User.can_get_by_id?(nil, "some uuid")
     end
-
-    test "code interface-generated functions should check the type of their first argument and return an expressive error" do
-      assert_raise ArgumentError,
-                   ~r/^Initial must be a changeset with the action type of.+/i,
-                   fn ->
-                     User.update([], %{first_name: "Zack3", last_name: "Daniel3"})
-                   end
-    end
   end
 
   describe "read get actions" do

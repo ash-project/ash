@@ -1894,7 +1894,7 @@ defmodule Ash.Query do
   @spec set_tenant(t() | Ash.Resource.t(), Ash.ToTenant.t()) :: t()
   def set_tenant(query, tenant) do
     query = new(query)
-    %{query | tenant: Ash.ToTenant.to_tenant(tenant)}
+    %{query | tenant: tenant}
   end
 
   @doc "Removes a field from the list of fields to load"

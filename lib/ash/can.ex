@@ -158,8 +158,7 @@ defmodule Ash.Can do
                 authorizer.initial_state(
                   actor,
                   subject.resource,
-                  subject.action,
-                  false
+                  subject.action
                 )
 
               context = %{domain: domain, query: nil, changeset: nil, action_input: nil}
@@ -245,8 +244,7 @@ defmodule Ash.Can do
           authorizer.initial_state(
             actor,
             subject.resource,
-            subject.action,
-            false
+            subject.action
           )
 
         context = %{domain: domain, query: nil, changeset: nil, action_input: nil}

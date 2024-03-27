@@ -147,7 +147,7 @@ defmodule Ash.Actions.Helpers do
   defp transform_tenant(opts) do
     case Keyword.fetch(opts, :tenant) do
       {:ok, tenant} ->
-        Keyword.put(opts, :tenant, Ash.ToTenant.to_tenant(tenant))
+        Keyword.put(opts, :tenant, tenant)
 
       :error ->
         opts

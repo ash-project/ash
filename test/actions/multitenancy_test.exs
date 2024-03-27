@@ -153,9 +153,9 @@ defmodule Ash.Actions.MultitenancyTest do
       User
       |> Ash.Changeset.new()
       |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Ash.create!()
 
-      assert User |> Ash.Query.set_tenant(tenant2) |> Api.list!(:name) == []
+      assert User |> Ash.Query.set_tenant(tenant2) |> Ash.list!(:name) == []
     end
 
     test "a record can be updated in a tenant", %{tenant1: tenant1, tenant2: tenant2} do
@@ -235,9 +235,9 @@ defmodule Ash.Actions.MultitenancyTest do
       Comment
       |> Ash.Changeset.new()
       |> Ash.Changeset.set_tenant(tenant1)
-      |> Api.create!()
+      |> Ash.create!()
 
-      result = User |> Api.count()
+      result = User |> Ash.count()
       assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.TenantRequired{}]}} = result
     end
   end

@@ -8,7 +8,6 @@ defmodule Ash.Policy.Authorizer do
     :data,
     :action,
     :domain,
-    :verbose?,
     :scenarios,
     :real_scenarios,
     :check_scenarios,
@@ -445,12 +444,11 @@ defmodule Ash.Policy.Authorizer do
   end
 
   @impl true
-  def initial_state(actor, resource, action, verbose?) do
+  def initial_state(actor, resource, action) do
     %__MODULE__{
       resource: resource,
       actor: actor,
-      action: action,
-      verbose?: verbose?
+      action: action
     }
   end
 
@@ -530,7 +528,6 @@ defmodule Ash.Policy.Authorizer do
       authorizers: %{
         {resource, context.query.action} => %{authorizer | query: context.query}
       },
-      verbose?: authorizer.verbose?,
       actor: authorizer.actor
     }
   end
@@ -794,7 +791,7 @@ defmodule Ash.Policy.Authorizer do
             {authorizer, acc}
 
           :error ->
-            authorizer = initial_state(acc.actor, resource, action, acc.verbose?)
+            authorizer = initial_state(acc.actor, resource, action)
 
             {authorizer,
              %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
@@ -1007,16 +1004,12 @@ defmodule Ash.Policy.Authorizer do
         else
           case filter do
             [filter] ->
-              log(authorizer, "filtering with: #{inspect(filter)}, authorization complete")
-
               with {:ok, %Ash.Filter{expression: filter}} <-
                      Ash.Filter.parse(authorizer.resource, filter) do
                 {:filter, authorizer, filter}
               end
 
             filters ->
-              log(authorizer, "filtering with: #{inspect(or: filter)}, authorization complete")
-
               with {:ok, %Ash.Filter{expression: filter}} <-
                      Ash.Filter.parse(authorizer.resource, or: filters) do
                 {:filter, authorizer, filter}
@@ -1030,11 +1023,6 @@ defmodule Ash.Policy.Authorizer do
             maybe_forbid_strict(authorizer)
 
           {filters, scenarios_without_global} ->
-            log(
-              authorizer,
-              "filtering with: #{inspect(and: filters)}, continuing authorization process"
-            )
-
             with {:ok, %Ash.Filter{expression: filter}} <-
                    Ash.Filter.parse(authorizer.resource, and: filters) do
               {:filter_and_continue, filter,
@@ -1142,7 +1130,6 @@ defmodule Ash.Policy.Authorizer do
   end
 
   defp maybe_forbid_strict(authorizer) do
-    log(authorizer, "could not determine authorization filter, checking at runtime")
     {:continue, %{authorizer | check_scenarios: authorizer.scenarios}}
   end
 
@@ -1308,7 +1295,6 @@ defmodule Ash.Policy.Authorizer do
     |> Enum.reject(&scenario_impossible?(&1, new_authorizer, record))
     |> case do
       [] ->
-        log(authorizer, "Checked all facts, no real scenarios")
         {:halt, {:forbidden, authorizer}}
 
       scenarios ->
@@ -1380,14 +1366,11 @@ defmodule Ash.Policy.Authorizer do
          )}
 
       {:ok, scenarios, authorizer} ->
-        report_scenarios(authorizer, scenarios, "Potential Scenarios")
-
         case Checker.find_real_scenarios(scenarios, authorizer.facts) do
           [] ->
             maybe_strict_filter(authorizer, scenarios)
 
-          real_scenarios ->
-            report_scenarios(authorizer, real_scenarios, "Real Scenarios")
+          _real_scenarios ->
             {:authorized, authorizer}
         end
 
@@ -1409,7 +1392,6 @@ defmodule Ash.Policy.Authorizer do
   end
 
   defp maybe_strict_filter(authorizer, scenarios) do
-    log(authorizer, "No real scenarios, attempting to filter")
     strict_filter(%{authorizer | scenarios: scenarios})
   end
 
@@ -1419,30 +1401,4 @@ defmodule Ash.Policy.Authorizer do
       | policies: Ash.Policy.Info.policies(authorizer.domain, authorizer.resource)
     }
   end
-
-  defp report_scenarios(%{verbose?: true}, scenarios, title) do
-    scenario_description =
-      scenarios
-      |> Enum.map(fn scenario ->
-        scenario
-        |> Enum.reject(fn {{module, _}, _} ->
-          module == Ash.Policy.Check.Static
-        end)
-        |> Enum.map(fn {{module, opts}, requirement} ->
-          ["  ", module.describe(opts) <> " => #{requirement}"]
-        end)
-        |> Enum.intersperse("\n")
-      end)
-      |> Enum.intersperse("\n--\n")
-
-    Logger.info([title, "\n", scenario_description])
-  end
-
-  defp report_scenarios(_, _, _), do: :ok
-
-  defp log(%{verbose?: true}, message) do
-    Logger.info(message)
-  end
-
-  defp log(_, _), do: :ok
 end

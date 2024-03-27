@@ -73,7 +73,7 @@ defmodule Ash.ActionInput do
 
   @spec set_tenant(t(), Ash.ToTenant.t()) :: t()
   def set_tenant(input, tenant) do
-    %{input | tenant: Ash.ToTenant.to_tenant(tenant)}
+    %{input | tenant: tenant}
   end
 
   defp require_arguments(input) do

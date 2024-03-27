@@ -74,7 +74,10 @@ defmodule Ash.Changeset do
 
       tenant =
         if changeset.tenant do
-          concat("tenant: ", to_doc(changeset.tenant, opts))
+          concat(
+            "tenant: ",
+            to_doc(Ash.ToTenant.to_tenant(changeset.resource, changeset.tenant), opts)
+          )
         else
           empty()
         end
@@ -3204,7 +3207,7 @@ defmodule Ash.Changeset do
 
   @spec set_tenant(t(), Ash.ToTenant.t()) :: t()
   def set_tenant(changeset, tenant) do
-    %{changeset | tenant: Ash.ToTenant.to_tenant(tenant)}
+    %{changeset | tenant: tenant}
   end
 
   @spec timeout(t(), nil | pos_integer, nil | pos_integer) :: t()

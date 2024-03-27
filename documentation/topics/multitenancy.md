@@ -79,18 +79,25 @@ For `AshPostgres` context multitenancy, which uses postgres schemas and is refer
 
 By default, the tenant value is passed directly to the relevant implementation. For example, if you are using schema multitenancy with `ash_postgres`, you might provide a schema like `organization.subdomain`. In Ash, a tenant should be identifiable by a single value, like an integer or a string.
 
-If you are using AshPostgres' context multitenancy, you can use the `Repo.tenant_to_schema` function in AshPostgres to convert from this single value into the appropriate tenant schema. Additionally, you can use the `Ash.ToTenant` protocol to automatically convert values into this simple value. Taken together, they might look like this:
+You can use the `Ash.ToTenant` protocol to automatically convert values into this simple value. The example below will allow you to use the same organization everywhere, and have it automatically converted into the correct schema for postgres, and the correct id for attribute-based multitenant resources. You can use this without looking up the relevant record as well, as long as the required fields used in your protocol are present.
+
+```elixir
+Ash.Changeset.for_create(..., tenant: %MyApp.Organization{id: id})
+```
 
 ```elixir
 # in Organization resource
 
 defimpl Ash.ToTenant do
-  def to_tenant(%{id: id}), do: id
+  def to_tenant(resource, %MyApp.Accounts.Organization{id: id}) do
+    if Ash.Resource.Info.data_layer(resource) == AshPostgres.DataLayer
+      && Ash.Resource.Info.multitenancy_strategy(resource) == :context do
+      "org_#{id}"
+    else
+      id
+    end
+  end
 end
-
-# in your Repo
-
-def tenant_to_schema(org_id), do: "org_#{org_id}"
 ```
 
 This allows you to pass an `%Organization{}` or an organization_id around, and have that `organization_id` properly used with attribute and context-based multitenancy.

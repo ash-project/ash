@@ -42,11 +42,6 @@ defmodule Ash do
       A tracer that implements the `Ash.Tracer` behaviour. See that module for more.
       """
     ],
-    verbose?: [
-      type: :boolean,
-      default: false,
-      doc: "Log engine operations (very verbose!)"
-    ],
     action: [
       type: :any,
       doc: "The action to use, either an Action struct or the name of the action"
@@ -55,6 +50,10 @@ defmodule Ash do
       type: {:in, [true, false, nil]},
       doc:
         "If an actor option is provided (even if it is `nil`), authorization happens automatically. If not, this flag can be used to authorize with no user."
+    ],
+    context: [
+      type: :map,
+      doc: "Context to set on the query, changeset, or input"
     ],
     stacktraces?: [
       type: :boolean,
@@ -115,6 +114,9 @@ defmodule Ash do
                       "Global Options"
                     )
 
+  @doc false
+  def read_opts, do: @read_opts_schema
+
   @read_one_opts_schema Spark.Options.merge(
                           [
                             not_found_error?: [
@@ -150,6 +152,9 @@ defmodule Ash do
                  @read_opts_schema,
                  "Read Options"
                )
+
+  @doc false
+  def stream_opts, do: @stream_opts
 
   @offset_page_opts [
     offset: [
@@ -321,6 +326,9 @@ defmodule Ash do
                         "Shared create/update/destroy Options"
                       )
 
+  @doc false
+  def create_opts, do: @create_opts_schema
+
   @shared_bulk_opts_schema [
     assume_casted?: [
       type: :boolean,
@@ -485,6 +493,9 @@ defmodule Ash do
                              "Shared bulk options"
                            )
 
+  @doc false
+  def bulk_update_opts, do: @bulk_update_opts_schema
+
   @bulk_destroy_opts_schema [
                               resource: [
                                 type: {:spark, Ash.Resource},
@@ -533,6 +544,9 @@ defmodule Ash do
                               "Shared bulk options"
                             )
 
+  @doc false
+  def bulk_destroy_opts, do: @bulk_destroy_opts_schema
+
   @bulk_create_opts_schema [
                              upsert?: [
                                type: :boolean,
@@ -577,6 +591,9 @@ defmodule Ash do
                              "Shared bulk options"
                            )
 
+  @doc false
+  def bulk_create_opts, do: @bulk_create_opts_schema
+
   @update_opts_schema [
                         params: [
                           type: :map,
@@ -589,6 +606,9 @@ defmodule Ash do
                         @shared_created_update_and_destroy_opts_schema,
                         "Shared create/update/destroy Options"
                       )
+
+  @doc false
+  def update_opts, do: @update_opts_schema
 
   @destroy_opts_schema [
                          return_destroyed?: [
@@ -603,6 +623,9 @@ defmodule Ash do
                          @shared_created_update_and_destroy_opts_schema,
                          "Shared create/update/destroy Options"
                        )
+
+  @doc false
+  def destroy_opts, do: @destroy_opts_schema
 
   @aggregate_opts [] |> Spark.Options.merge(@global_opts, "Global Options")
 
@@ -742,7 +765,13 @@ defmodule Ash do
     ]
   ]
 
+  @doc false
+  def can_opts, do: @can_opts
+
   @can_question_mark_opts Spark.Options.Helpers.set_default!(@can_opts, :maybe_is, true)
+
+  @doc false
+  def can_question_mark_opts, do: @can_question_mark_opts
 
   @doc """
   Runs an aggregate or aggregates over a resource query. See `aggregate/3` for more.

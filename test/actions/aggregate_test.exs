@@ -92,7 +92,7 @@ defmodule Ash.Test.Actions.AggregateTest do
         public?(true)
       end
 
-      attribute :foo, :boolean, default: false
+      attribute :foo, :boolean, default: false, public?: true
     end
 
     multitenancy do
@@ -243,26 +243,26 @@ defmodule Ash.Test.Actions.AggregateTest do
     test "use custom actions from the query" do
       Post
       |> Ash.Changeset.for_create(:create, %{title: "without foo", foo: false})
-      |> Api.create!()
+      |> Ash.create!(authorize?: false)
 
       assert false ==
                Post
                |> Ash.Query.for_read(:with_foo)
-               |> Api.exists?()
+               |> Ash.exists?(authorize?: false)
 
       Post
       |> Ash.Changeset.for_create(:create, %{title: "with foo", foo: true})
-      |> Api.create!()
+      |> Ash.create!(authorize?: false)
 
       assert 1 ==
                Post
                |> Ash.Query.for_read(:with_foo)
-               |> Api.count!()
+               |> Ash.count!(authorize?: false)
 
       assert ["with foo"] ==
                Post
                |> Ash.Query.for_read(:with_foo)
-               |> Api.list!(:title)
+               |> Ash.list!(:title, authorize?: false)
     end
   end
 
