@@ -13,8 +13,8 @@ defmodule Ash.Context do
   * `:tracer`
   * `:tenant`
   """
-  def to_opts(map, add_to \\ []) when is_map(map) do
-    add_to
+  def to_opts(map, opts \\ []) when is_map(map) do
+    opts
     |> add_if_present(map, :actor)
     |> add_if_present(map, :authorize?)
     |> add_if_present(map, :tracer)
@@ -23,7 +23,7 @@ defmodule Ash.Context do
 
   defp add_if_present(opts, map, key) do
     case Map.fetch(map, key) do
-      {:ok, value} -> Keyword.put(opts, key, value)
+      {:ok, value} -> Keyword.put_new(opts, key, value)
       :error -> opts
     end
   end
