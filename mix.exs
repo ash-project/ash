@@ -91,13 +91,19 @@ defmodule Ash.MixProject do
         "documentation/dsls/DSL:-Ash.DataLayer.Ets.md",
         "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md",
         "documentation/dsls/DSL:-Ash.Reactor.md",
-        "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md"
+        "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md",
+        "CHANGELOG.md"
       ],
       groups_for_extras: [
         Tutorials: ~r'documentation/tutorials',
         "How To": ~r'documentation/how_to',
         Topics: ~r'documentation/topics',
         DSLs: ~r'documentation/dsls'
+      ],
+      skip_undefined_reference_warnings_on: [
+        "CHANGELOG.md",
+        "documentation/topics/glossary.md",
+        "documentation/how_to/upgrade.md"
       ],
       nest_modules_by_prefix: [
         Ash.Error,

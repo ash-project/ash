@@ -6,232 +6,186 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 <!-- changelog -->
 
 ## [v3.0.0-rc.0](https://github.com/ash-project/ash/compare/v2.21.2...v3.0.0-rc.0) (2024-03-27)
+
 ### Breaking Changes:
 
-* 3.0 (#955)
+- use `%Ash.NotSelected{}` for unselected values
 
-* use `%Ash.NotSelected{}` for unselected values
+- default `require_atomic?` to `true`
 
-* default `require_atomic?` to `true`
+- raise errors on unknown generic action arguments
 
-* raise errors on unknown generic action arguments
+- default bulk strategy to `:atomic`
 
-* default bulk strategy to `:atomic`
+- warnings on `require_atomic?` `true` actions
 
-* warnings on `require_atomic?` `true` actions
+- revise `Ash.NotSelected` to `Ash.NotLoaded`
 
-* revise `Ash.NotSelected` to `Ash.NotLoaded`
+- errors on unknown action inputs across the board
 
-* errors on unknown action inputs across the board
+- default `api.authorization.authorize` to `:by_default`
 
-* default `api.authorization.authorize` to `:by_default`
+- require the api when constructing changesets
 
-* require the api when constructing changesets
+- code_interface.define_for -> code_interface.api
 
-* code_interface.define_for -> code_interface.api
+- remove registries
 
-* remove registries
+- pubsub notifier default to `previous_values?: false`
 
-* pubsub notifier default to `previous_values?: false`
+- requires_original_data? callback defaults to false
 
-* requires_original_data? callback defaults to false
+- rename Ash.Calculation -> Ash.Resource.Calculation
 
-* rename Ash.Calculation -> Ash.Resource.Calculation
+- improve `Ash.Query.Calculation.new` signature
 
-* improve `Ash.Query.Calculation.new` signature
+- anonymous function calculations now take lists and return lists
 
-* anonymous function calculations now take lists and return lists
+- make callback contexts into structs
 
-* make callback contexts into structs
+- pass context to builtin lifecycle hook changes
 
-* pass context to builtin lifecycle hook changes
+- calculation arguments are now in the `arguments` key of the context
 
-* calculation arguments are now in the `arguments` key of the context
+- remove `aggregates` and `calculations` from `Filter.parse` and `Filter.parse_input`
 
-* remove `aggregates` and `calculations` from `Filter.parse` and `Filter.parse_input`
+- make picosat_elixir optional with `simple_sat`
 
-* make picosat_elixir optional with `simple_sat`
+- rename api to domain
 
-* rename api to domain
+- remove `Ash.Changeset.new!/2` (`Ash.Changeset.new/1` is still present)
 
-* remove `Ash.Changeset.new!`
+- deprecate `private?: false` in favor of `public?: true`
 
-* deprecate `private?: false` in favor of `public?: true`
+- default `default_accept` is now `[]`
 
-* default `default_accept` is now `[]`
+- `Ash.CiString.new/1` returns `nil` on `nil` input
 
-* `Ash.CiString.new/1` returns `nil` on `nil` input
+- clean up and reorganize `Ash` functions
 
-* clean up and reorganize `Ash` functions
+- remove context-based functionality
 
-* remove context-based functionality
+- Deprecate calling functions on (domain) api in favor of `Ash`
 
-* Deprecate calling functions on (domain) api in favor of `Ash`
+- add `attribute_public?` and update `attribute_writable?` behavior
 
-* add `attribute_public?` and update `attribute_writable?` behavior
+- changeset.filters was a map, it is now changeset.filter and is an expression
 
-* update atomic behaviors, default to invalid
+- remove `Ash.Filter.TemplateHelpers`, all functionality moved to `Ash.Expr`
 
-* changeset.filters -> changeset.filter
+- keyword lists are no longer special cased in ash expressions
 
-* remove deprecated functions
+- introduce strict mode to calculations
 
-* remove and simplify `Ash.Filter.TemplateHelpers`
+- reverse order of before action & before transaction hooks
 
-* keyword lists are no longer special cased in ash expressions
+- default read actions are now paginatable with keyset and offset pagination
 
-* introduce strict mode to calculations
+- move Ash.Flow and Ash.Engine into a separate package
 
-* reverse order of before action & before transaction hooks
+- standardize various exception keys and names
 
-* default read actions are now paginatable
+- use `splode` for errors
 
-* require explicit accept lists in default actions
+- move simple_notifiers to an option to `use Ash.Resource` instead of its own DSL
 
-* remove Ash.Flow and Ash.Engine
+- update spark for better autocomplete, configure autocomplete for key functions
 
-* standardize various exception keys and names
+- swap position of sort order and arguments in calculation sorting
 
-* use `Splode` for errors
-
-* move simple_notifiers to an option instead of a DSL builder
-
-* update spark for better autocomplete, configure autocomplete for key functions
-
-* swap position of sort order and arguments in calculation sorting
-
-* add `include_nil?` aggregate option, and default it to `false`
-
-* errors on unknown inputs for calculations
-
-
+- add `include_nil?` aggregate option, and default it to `false`
 
 ### Features:
 
-* code interface on the domain
+- code interface on the domain
+
+- Policies on the domain
+
+- add Ash.ToTenant protocol
+
+- support for custom expressions
+
+- support action-specific notifiers
+
+- support specifying multiple filters in a read action and relationship
+
+- support sensitive? on calculations and arguments
+
+- support bulk and atomic operations in code interfaces
 
 ### Bug Fixes:
 
-* set tenant on query so that root calles to Api.aggreagte work as expected (#929)
+- set tenant on query so that root calles to Api.aggreagte work as expected (#929)
 
-* properly construct new query in `build/3`
+- properly construct new query in `build/3`
 
 ### Improvements:
 
-* update spark to 2.0
+- update spark to 2.0
 
-* update reactor to 3.0
+- import Ash.Expr in modules where it is used
 
-* import Ash.Expr in modules where it is used
+- use structs for more context implementations
 
-* require Ash.QUery in modules where it makes sense
+- only require primary key and build schema if resource has actions or fields
 
-* add structs for more context implementations
+- better generated code interface documentation
 
-* ensure selects are applied on destroys
+- add `sortable?` flags to all fields
 
-* support custom expressions
+- validate resources in inputs to code interface
 
-* update upgrade guide to include Splode
-
-* only require primary key if resource has actions or fields
-
-* only build schema if resource has actions or fields
-
-* verify primary key in its own verifier
-
-* add `resource/1` builtin check
-
-* better code interface documentation
-
-* support notifiers within actions
-
-* support specifying multiple filters
-
-* add `sortable?` flags to all fields
-
-* support multiple filters on relationships
-
-* support sensitive? on calculations and arguments
-
-* validate resources in inputs to code interface
-
-* update reactor and tests
-
-* don't require domain on relationships if destination has domain
-
-* always choose to cast atomic
-
-* support casting some embeds atomically
-
-* various 3.0 updates, documented in upgrade.md
-
-* ensure non-static dynamic domains works
-
-* add Ash.ToTenant protocol
-
-* use `Keyword.put_new` in `Ash.Context.to_opts` (#953)
-
-* support bulk and atomic operations in code interfaces
+- don't require domain on relationships if destination resource has domain
 
 ## [v2.21.2](https://github.com/ash-project/ash/compare/v2.21.1...v2.21.2) (2024-03-26)
 
-
-
-
 ### Bug Fixes:
 
-* don't try to reselect fields when pkeys are missing
+- don't try to reselect fields when pkeys are missing
 
 ## [v2.21.1](https://github.com/ash-project/ash/compare/v2.21.0...v2.21.1) (2024-03-25)
 
-
-
-
 ### Improvements:
 
-* detect loaded-through types
+- detect loaded-through types
 
 ## [v2.21.0](https://github.com/ash-project/ash/compare/v2.20.3...v2.21.0) (2024-03-24)
 
-
-
-
 ### Features:
 
-* add less_than, greater_than constraints to float, decimal (#936)
+- add less_than, greater_than constraints to float, decimal (#936)
 
-* allow providing descriptions to Ash.Type.Enum values (#940)
+- allow providing descriptions to Ash.Type.Enum values (#940)
 
 ### Bug Fixes:
 
-* convert `%{__struct__: T}` into `%T{}` (#947)
+- convert `%{__struct__: T}` into `%T{}` (#947)
 
-* corrections for `reload`/`reload!` (#942)
+- corrections for `reload`/`reload!` (#942)
 
-* show that `Policy.Check.strict_check` can return an error tuple (#945)
+- show that `Policy.Check.strict_check` can return an error tuple (#945)
 
-* remove unnecessary function
+- remove unnecessary function
 
-* fully expand calculation and aggregate references for applying authorization
+- fully expand calculation and aggregate references for applying authorization
 
-* batch_change/3 is never called for updates (#938)
+- batch_change/3 is never called for updates (#938)
 
-* bulk updates for streams ignore :batch_size
+- bulk updates for streams ignore :batch_size
 
-* don't double-encode vector data (#934)
+- don't double-encode vector data (#934)
 
-* update set/get/update_context function specs to use maps (#935)
+- update set/get/update_context function specs to use maps (#935)
 
 ### Improvements:
 
-* support `load` option for create/update/destroy (#946)
+- support `load` option for create/update/destroy (#946)
 
-* restore old behavior of leveraging in memory values for calculations
+- restore old behavior of leveraging in memory values for calculations
 
-* simplify inspect for aggregates
+- simplify inspect for aggregates
 
-* add `matches` built-in policy check (#937)
+- add `matches` built-in policy check (#937)
 
 ## [v2.20.3](https://github.com/ash-project/ash/compare/v2.20.2...v2.20.3) (2024-03-20)
 

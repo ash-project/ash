@@ -49,7 +49,7 @@ If you do not have any expression calculations that accept arguments, you likely
 
 #### Ash.Filter
 
-Ash.Filter.parse/5 is now `Ash.Filter.parse/3`. Ash.Filter.parse_input/5 is now `Ash.Filter.parse_input/2` The third and fourth optional arguments are unnecessary and were previously ignored, and the fifth argument is not necessary for `parse_input`.
+`Ash.Filter.parse/5` is now `Ash.Filter.parse/3`. `Ash.Filter.parse_input/5` is now `Ash.Filter.parse_input/2` The third and fourth optional arguments are unnecessary and were previously ignored, and the fifth argument is not necessary for `parse_input`.
 
 `Ash.Filter.used_aggregates/3` no longer accepts `:all` as a relationship path, instead using `:*`. Its very unlikely that this is used in your application.
 
@@ -89,7 +89,7 @@ The format for sorting on calculations that take input has been swapped. Previou
 
 #### Ash.Changeset
 
-Ash.Changeset.new/2 has been removed. `Ash.Changeset.new/1` is still available for creating a new changeset, but attributes and arguments should, with few exceptions, be passed to the relevant `Ash.Changeset.for_<action_type>` functions, _not_ to Ash.Changeset.new/2. Removing the second argument helps clarify the purpose of `Ash.Changeset.new/1`.
+`Ash.Changeset.new/2` has been removed. `Ash.Changeset.new/1` is still available for creating a new changeset, but attributes and arguments should, with few exceptions, be passed to the relevant `Ash.Changeset.for_<action_type>` functions, _not_ to `Ash.Changeset.new/2`. Removing the second argument helps clarify the purpose of `Ash.Changeset.new/1`.
 
 `Ash.Changeset.manage_relationship/4` no longer uses `:all` to signal that all changes will be sent to the join relationship. Instead, use `:*`.
 
@@ -97,7 +97,7 @@ Ash.Changeset.new/2 has been removed. `Ash.Changeset.new/1` is still available f
 
 #### Ash.Policy.FilterCheckWithContext
 
-`Ash.Policy.FilterCheck` and `Ash.Policy.FilterCheckWithContext` have been combined. The name is `Ash.Policy.FilterCheck`, but the callbacks take the extra arguments present in  `Ash.Policy.FilterCheckWithContext`.
+`Ash.Policy.FilterCheck` and `Ash.Policy.FilterCheckWithContext` have been combined. The name is `Ash.Policy.FilterCheck`, but the callbacks take the extra arguments present in `Ash.Policy.FilterCheckWithContext`.
 
 #### Builtin Changes
 
@@ -569,7 +569,7 @@ end
 
 ### Calculations do not reuse values by default
 
-When loading data in 2.0 the option `reselect_all?` defaulted to `false`. What this would mean is that existing values for attributes would be reused, instead of visiting the data layer, by default. This can be an extremely valuable piece of behavior, but *defaulting* to it often means accidentally using data as a cache that you did not intent to use as a cache. Take the following example:
+When loading data in 2.0 the option `reselect_all?` defaulted to `false`. What this would mean is that existing values for attributes would be reused, instead of visiting the data layer, by default. This can be an extremely valuable piece of behavior, but _defaulting_ to it often means accidentally using data as a cache that you did not intent to use as a cache. Take the following example:
 
 ```elixir
 user = %User{first_name: "fred", last_name: "weasley"}
