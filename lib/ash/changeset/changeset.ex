@@ -548,7 +548,7 @@ defmodule Ash.Changeset do
       Ash.Changeset.changing_attribute?(changeset, attribute.name)
     end)
     |> Enum.reduce_while(changeset, fn attribute, changeset ->
-      case Ash.Type.cast_atomic_update(
+      case Ash.Type.cast_atomic(
              attribute.type,
              attribute.update_default,
              attribute.constraints
