@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.2](https://github.com/ash-project/ash/compare/v3.0.0-rc.1...v3.0.0-rc.2) (2024-03-28)
+
+
+
+
+### Improvements:
+
+* ignore unknown string-keyed inputs beginning with `_`
+
+* support requesting to ignore additional keys
+
+* add `skip_unknown_inputs` option, use it for embeds in unions
+
 ## [v3.0.0-rc.1](https://github.com/ash-project/ash/compare/v3.0.0-rc.0...v3.0.0-rc.1) (2024-03-28)
 ### Breaking Changes:
 
