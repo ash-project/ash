@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.21.4](https://github.com/ash-project/ash/compare/v2.21.3...v2.21.4) (2024-03-28)
+
+
+
+
+### Bug Fixes:
+
+* properly handle transaction errors from bulk creates
+
+### Improvements:
+
+* ensure that update defaults are set
+
 ## [v2.21.3](https://github.com/ash-project/ash/compare/v2.21.2...v2.21.3) (2024-03-27)
 
 
