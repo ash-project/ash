@@ -528,13 +528,70 @@ defmodule Ash.Changeset do
       with :ok <- verify_notifiers_support_atomic(resource, action),
            %Ash.Changeset{} = changeset <- atomic_update(changeset, opts[:atomic_update] || []),
            %Ash.Changeset{} = changeset <- atomic_params(changeset, action, params, opts),
-           %Ash.Changeset{} = changeset <- atomic_changes(changeset, action) do
+           %Ash.Changeset{} = changeset <- atomic_changes(changeset, action),
+           %Ash.Changeset{} = changeset <- atomic_defaults(changeset) do
         hydrate_atomic_refs(changeset, opts[:actor], Keyword.take(opts, [:eager?]))
       else
         {:not_atomic, reason} ->
           {:not_atomic, reason}
       end
     end
+  end
+
+  defp atomic_defaults(changeset) do
+    with %__MODULE__{} <- atomic_static_update_defaults(changeset) do
+      atomic_lazy_update_defaults(changeset)
+    end
+  end
+
+  defp atomic_static_update_defaults(changeset) do
+    changeset.resource
+    |> Ash.Resource.Info.static_default_attributes(:update)
+    |> Enum.reject(fn attribute ->
+      Ash.Changeset.changing_attribute?(changeset, attribute.name)
+    end)
+    |> Enum.reduce_while(changeset, fn attribute, changeset ->
+      case Ash.Type.cast_atomic_update(
+             attribute.type,
+             attribute.update_default,
+             attribute.constraints
+           ) do
+        {:atomic, atomic} ->
+          {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
+
+        {:error, error} ->
+          {:cont,
+           add_invalid_errors(attribute.update_default, :attribute, changeset, attribute, error)}
+
+        {:not_atomic, reason} ->
+          {:halt, {:not_atomic, reason}}
+      end
+    end)
+  end
+
+  defp atomic_lazy_update_defaults(changeset) do
+    changeset.resource
+    |> Ash.Resource.Info.lazy_matching_default_attributes(:update)
+    |> Enum.concat(
+      Ash.Resource.Info.lazy_non_matching_default_attributes(changeset.resource, :update)
+    )
+    |> Enum.reject(fn attribute ->
+      Ash.Changeset.changing_attribute?(changeset, attribute.name)
+    end)
+    |> Enum.reduce_while(changeset, fn attribute, changeset ->
+      cond do
+        attribute.update_default == (&DateTime.utc_now/0) ->
+          {:cont, atomic_update(changeset, attribute.name, Ash.Expr.expr(now()))}
+
+        attribute.update_default == (&Ash.UUID.generate/0) ->
+          {:cont, atomic_update(changeset, attribute.name, Ash.Expr.expr(^Ash.UUID.generate()))}
+
+        true ->
+          {:halt,
+           {:not_atomic,
+            "update_default for `#{inspect(attribute.name)}` cannot be done atomically: #{inspect(attribute.update_default)}"}}
+      end
+    end)
   end
 
   defp verify_notifiers_support_atomic(resource, action) do
