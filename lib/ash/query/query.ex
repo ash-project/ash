@@ -381,7 +381,7 @@ defmodule Ash.Query do
 
   def new(resource, opts) when is_atom(resource) do
     query = %__MODULE__{
-      domain: opts[:domain] || Ash.Resource.Info.domain(resource),
+      domain: opts[:domain],
       filter: nil,
       resource: resource
     }
@@ -438,6 +438,11 @@ defmodule Ash.Query do
     tenant: [
       type: {:protocol, Ash.ToTenant},
       doc: "set the tenant on the query"
+    ],
+    skip_unknown_inputs: [
+      type: {:list, {:or, [:atom, :string]}},
+      doc:
+        "A list of inputs that, if provided, will be ignored if they are not recognized by the action."
     ]
   ]
 
@@ -508,7 +513,7 @@ defmodule Ash.Query do
           |> set_authorize?(opts)
           |> set_tracer(opts)
           |> set_tenant(opts[:tenant] || query.tenant)
-          |> cast_params(action, args)
+          |> cast_params(action, args, opts)
           |> set_argument_defaults(action)
           |> require_arguments(action)
           |> run_preparations(action, opts[:actor], opts[:authorize?], opts[:tracer], metadata)
@@ -603,20 +608,30 @@ defmodule Ash.Query do
     end)
   end
 
-  defp cast_params(query, action, args) do
-    Enum.reduce(args, query, fn {name, value}, query ->
-      if has_argument?(action, name) do
-        set_argument(query, name, value)
-      else
-        error =
-          Ash.Error.Invalid.NoSuchInput.exception(
-            resource: query.resource,
-            action: query.action.name,
-            input: name,
-            inputs: Enum.map(query.action.arguments, & &1.name)
-          )
+  defp cast_params(query, action, args, opts) do
+    skip_unknown_inputs = opts[:skip_unknown_inputs] || []
 
-        add_error(query, Ash.Error.set_path(error, name))
+    Enum.reduce(args, query, fn {name, value}, query ->
+      cond do
+        has_argument?(action, name) ->
+          set_argument(query, name, value)
+
+        name in skip_unknown_inputs ->
+          query
+
+        match?("_" <> _, name) ->
+          query
+
+        true ->
+          error =
+            Ash.Error.Invalid.NoSuchInput.exception(
+              resource: query.resource,
+              action: query.action.name,
+              input: name,
+              inputs: Enum.map(query.action.arguments, & &1.name)
+            )
+
+          add_error(query, Ash.Error.set_path(error, name))
       end
     end)
   end

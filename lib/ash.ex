@@ -1926,6 +1926,8 @@ defmodule Ash do
          {:ok, resource} <- Ash.Domain.Info.resource(domain, changeset.resource),
          {:ok, action} <- Ash.Helpers.get_action(resource, opts, :create, changeset.action) do
       Ash.Actions.Create.run(domain, changeset, action, opts)
+    else
+      {:error, error} -> {:error, Ash.Error.to_error_class(error)}
     end
   end
 

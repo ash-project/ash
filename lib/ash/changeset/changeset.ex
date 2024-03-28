@@ -332,18 +332,15 @@ defmodule Ash.Changeset do
 
     context = Ash.Resource.Info.default_context(resource) || %{}
 
-    domain = Ash.Resource.Info.domain(resource)
-
     if Ash.Resource.Info.resource?(resource) do
-      %__MODULE__{resource: resource, data: record, action_type: action_type, domain: domain}
+      %__MODULE__{resource: resource, data: record, action_type: action_type}
       |> set_context(context)
       |> set_tenant(tenant)
     else
       %__MODULE__{
         resource: resource,
         action_type: action_type,
-        data: struct(resource),
-        domain: domain
+        data: struct(resource)
       }
       |> add_error(NoSuchResource.exception(resource: resource))
       |> set_tenant(tenant)
@@ -858,6 +855,9 @@ defmodule Ash.Changeset do
                 {:halt, {:not_atomic, reason}}
             end
 
+          match?("_" <> _, key) ->
+            {:cont, changeset}
+
           key in List.wrap(opts[:skip_unknown_inputs]) ->
             {:cont, changeset}
 
@@ -881,21 +881,26 @@ defmodule Ash.Changeset do
             {:cont, set_argument(changeset, key, value)}
 
           attribute = Ash.Resource.Info.attribute(changeset.resource, key) ->
-            if attribute.name in action.accept do
-              case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
-                {:atomic, atomic} ->
-                  {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
+            cond do
+              attribute.name in action.accept ->
+                case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
+                  {:atomic, atomic} ->
+                    {:cont, atomic_update(changeset, attribute.name, {:atomic, atomic})}
 
-                {:error, error} ->
-                  {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
+                  {:error, error} ->
+                    {:cont, add_invalid_errors(value, :attribute, changeset, attribute, error)}
 
-                {:not_atomic, reason} ->
-                  {:halt, {:not_atomic, reason}}
-              end
-            else
-              if key in List.wrap(opts[:skip_unknown_inputs]) do
+                  {:not_atomic, reason} ->
+                    {:halt, {:not_atomic, reason}}
+                end
+
+              key in List.wrap(opts[:skip_unknown_inputs]) ->
                 {:cont, changeset}
-              else
+
+              match?("_" <> _, key) ->
+                {:cont, changeset}
+
+              true ->
                 {:cont,
                  add_error(
                    changeset,
@@ -906,8 +911,10 @@ defmodule Ash.Changeset do
                      inputs: Ash.Resource.Info.action_inputs(changeset.resource, action.name)
                    )
                  )}
-              end
             end
+
+          match?("_" <> _, key) ->
+            {:cont, changeset}
 
           key in List.wrap(opts[:skip_unknown_inputs]) ->
             {:cont, changeset}
@@ -1793,30 +1800,14 @@ defmodule Ash.Changeset do
     Enum.reduce(params, changeset, fn {name, value}, changeset ->
       cond do
         !Ash.Resource.Info.action_input?(changeset.resource, action.name, name) ->
-          if name in skip_unknown_inputs do
-            changeset
-          else
-            add_error(
-              changeset,
-              NoSuchInput.exception(
-                resource: changeset.resource,
-                action: action.name,
-                input: name,
-                inputs: Ash.Resource.Info.action_inputs(changeset.resource, action.name)
-              )
-            )
-          end
-
-        argument = get_action_argument(action, name) ->
-          do_set_argument(changeset, argument.name, value, true)
-
-        attr = Ash.Resource.Info.public_attribute(changeset.resource, name) ->
-          if attr.writable? do
-            do_change_attribute(changeset, attr.name, value, true)
-          else
-            if name in skip_unknown_inputs do
+          cond do
+            name in skip_unknown_inputs ->
               changeset
-            else
+
+            match?("_" <> _, name) ->
+              changeset
+
+            true ->
               add_error(
                 changeset,
                 NoSuchInput.exception(
@@ -1826,6 +1817,32 @@ defmodule Ash.Changeset do
                   inputs: Ash.Resource.Info.action_inputs(changeset.resource, action.name)
                 )
               )
+          end
+
+        argument = get_action_argument(action, name) ->
+          do_set_argument(changeset, argument.name, value, true)
+
+        attr = Ash.Resource.Info.public_attribute(changeset.resource, name) ->
+          if attr.writable? do
+            do_change_attribute(changeset, attr.name, value, true)
+          else
+            cond do
+              name in skip_unknown_inputs ->
+                changeset
+
+              match?("_" <> _, name) ->
+                changeset
+
+              true ->
+                add_error(
+                  changeset,
+                  NoSuchInput.exception(
+                    resource: changeset.resource,
+                    action: action.name,
+                    input: name,
+                    inputs: Ash.Resource.Info.action_inputs(changeset.resource, action.name)
+                  )
+                )
             end
           end
 
@@ -4321,21 +4338,21 @@ defmodule Ash.Changeset do
                Ash.Type.include_source(attribute.type, changeset, attribute.constraints),
              {{:ok, prepared}, _} <-
                {prepare_change(changeset, attribute, value, constraints), value},
-             {:ok, casted} <-
-               Ash.Type.cast_input(
-                 attribute.type,
-                 prepared,
-                 constraints
-               ),
-             {:ok, casted} <-
-               handle_change(
-                 changeset,
-                 attribute,
-                 casted,
-                 constraints
-               ),
-             {:ok, casted} <-
-               Ash.Type.apply_constraints(attribute.type, casted, constraints) do
+             {{:ok, casted}, _} <-
+               {Ash.Type.cast_input(
+                  attribute.type,
+                  prepared,
+                  constraints
+                ), prepared},
+             {{:ok, casted}, _} <-
+               {handle_change(
+                  changeset,
+                  attribute,
+                  casted,
+                  constraints
+                ), casted},
+             {{:ok, casted}, _} <-
+               {Ash.Type.apply_constraints(attribute.type, casted, constraints), casted} do
           data_value = Map.get(changeset.data, attribute.name)
           changeset = remove_default(changeset, attribute.name)
 

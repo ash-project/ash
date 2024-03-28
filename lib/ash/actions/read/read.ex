@@ -28,7 +28,7 @@ defmodule Ash.Actions.Read do
   def run(query, action, opts) do
     query = Ash.Query.new(query)
 
-    domain = query.domain || opts[:domain]
+    domain = query.domain || opts[:domain] || Ash.Resource.Info.domain(query.resource)
 
     if !domain do
       raise Ash.Error.Framework.AssumptionFailed, message: "got a query without a domain"

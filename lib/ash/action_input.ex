@@ -184,18 +184,23 @@ defmodule Ash.ActionInput do
     }
 
     Enum.reduce(params, input, fn {name, value}, input ->
-      if has_argument?(input.action, name) do
-        set_argument(input, name, value)
-      else
-        error =
-          Ash.Error.Invalid.NoSuchInput.exception(
-            resource: input.resource,
-            action: input.action.name,
-            input: name,
-            inputs: Enum.map(input.action.arguments, & &1.name)
-          )
+      cond do
+        has_argument?(input.action, name) ->
+          set_argument(input, name, value)
 
-        add_error(input, Ash.Error.set_path(error, name))
+        match?("_" <> _, name) ->
+          input
+
+        true ->
+          error =
+            Ash.Error.Invalid.NoSuchInput.exception(
+              resource: input.resource,
+              action: input.action.name,
+              input: name,
+              inputs: Enum.map(input.action.arguments, & &1.name)
+            )
+
+          add_error(input, Ash.Error.set_path(error, name))
       end
     end)
   end
