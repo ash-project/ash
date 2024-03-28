@@ -472,7 +472,8 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.Changeset.for_create(action_name, input,
       require?: false,
       actor: actor,
-      authorize?: opts[:authorize?]
+      authorize?: opts[:authorize?],
+      skip_unknown_inputs: Map.keys(input)
     )
     |> Ash.Changeset.set_context(relationship.context)
     |> Ash.Changeset.set_tenant(changeset.tenant)
@@ -966,7 +967,8 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.Changeset.for_create(create_or_update, join_input,
           actor: actor,
           authorize?: opts[:authorize?],
-          require?: false
+          require?: false,
+          skip_unknown_inputs: Map.keys(join_input)
         )
         |> maybe_force_change_attribute(
           relationship,
@@ -1038,7 +1040,8 @@ defmodule Ash.Actions.ManagedRelationships do
         })
         |> Ash.Changeset.for_update(create_or_update, input,
           actor: actor,
-          authorize?: opts[:authorize?]
+          authorize?: opts[:authorize?],
+          skip_unknown_inputs: Map.keys(input)
         )
         |> maybe_force_change_attribute(
           relationship,
@@ -1108,7 +1111,8 @@ defmodule Ash.Actions.ManagedRelationships do
                 |> Ash.Changeset.for_create(action_name, input,
                   require?: false,
                   actor: actor,
-                  authorize?: opts[:authorize?]
+                  authorize?: opts[:authorize?],
+                  skip_unknown_inputs: Map.keys(input)
                 )
                 |> maybe_force_change_attribute(
                   relationship,
@@ -1169,7 +1173,8 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.Changeset.for_create(action_name, regular_params,
               require?: false,
               authorize?: opts[:authorize?],
-              actor: actor
+              actor: actor,
+              skip_unknown_inputs: Map.keys(regular_params)
             )
             |> Ash.Changeset.set_context(relationship.context)
             |> Ash.Changeset.set_tenant(changeset.tenant)
@@ -1189,7 +1194,8 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.Changeset.for_create(join_action_name, join_params,
               require?: false,
               authorize?: opts[:authorize?],
-              actor: actor
+              actor: actor,
+              skip_unknown_inputs: Map.keys(join_params)
             )
             |> maybe_force_change_attribute(
               relationship,
@@ -1314,7 +1320,8 @@ defmodule Ash.Actions.ManagedRelationships do
         |> Ash.Changeset.for_update(action_name, input,
           actor: actor,
           authorize?: opts[:authorize?],
-          domain: domain
+          domain: domain,
+          skip_unknown_inputs: Map.keys(input)
         )
         |> Ash.Changeset.set_context(relationship.context)
         |> Ash.Changeset.set_tenant(changeset.tenant)
@@ -1361,7 +1368,8 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.Changeset.for_update(action_name, regular_params,
               actor: actor,
               authorize?: opts[:authorize?],
-              domain: domain
+              domain: domain,
+              skip_unknown_inputs: Map.keys(regular_params)
             )
             |> Ash.Changeset.set_context(relationship.context)
             |> Ash.Changeset.set_tenant(changeset.tenant)
@@ -1412,7 +1420,8 @@ defmodule Ash.Actions.ManagedRelationships do
                 })
                 |> Ash.Changeset.for_update(join_action_name, join_params,
                   actor: actor,
-                  authorize?: opts[:authorize?]
+                  authorize?: opts[:authorize?],
+                  skip_unknown_inputs: Map.keys(join_params)
                 )
                 |> Ash.Changeset.set_context(join_relationship.context)
                 |> Ash.Changeset.set_tenant(changeset.tenant)
