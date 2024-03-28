@@ -1127,16 +1127,16 @@ defmodule Ash.Actions.Destroy.Bulk do
     )
   end
 
-  defp handle_params(changeset, false, action, _opts, input, _argument_names) do
-    Ash.Changeset.handle_params(changeset, action, input)
+  defp handle_params(changeset, false, action, opts, input, _argument_names) do
+    Ash.Changeset.handle_params(changeset, action, input, opts)
   end
 
-  defp handle_params(changeset, true, action, _opts, input, argument_names) do
+  defp handle_params(changeset, true, action, opts, input, argument_names) do
     {args, attrs} =
       Map.split(input, argument_names)
 
     %{changeset | arguments: args, attributes: attrs}
-    |> Ash.Changeset.handle_params(action, input, cast_params?: false)
+    |> Ash.Changeset.handle_params(action, input, Keyword.put(opts, :cast_params?, false))
   end
 
   defp map_batches(stream, resource, opts, ref, callback) do

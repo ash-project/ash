@@ -858,8 +858,20 @@ defmodule Ash.Changeset do
                 {:halt, {:not_atomic, reason}}
             end
 
-          true ->
+          key in List.wrap(opts[:skip_unknown_inputs]) ->
             {:cont, changeset}
+
+          true ->
+            {:cont,
+             add_error(
+               changeset,
+               NoSuchInput.exception(
+                 resource: changeset.resource,
+                 action: action.name,
+                 input: key,
+                 inputs: Ash.Resource.Info.action_inputs(changeset.resource, action.name)
+               )
+             )}
         end
       end)
     else
@@ -881,19 +893,36 @@ defmodule Ash.Changeset do
                   {:halt, {:not_atomic, reason}}
               end
             else
-              {:cont,
-               add_error(
-                 changeset,
-                 InvalidAttribute.exception(
-                   field: key,
-                   message: "cannot be changed",
-                   value: changeset.attributes[key]
-                 )
-               )}
+              if key in List.wrap(opts[:skip_unknown_inputs]) do
+                {:cont, changeset}
+              else
+                {:cont,
+                 add_error(
+                   changeset,
+                   NoSuchInput.exception(
+                     resource: changeset.resource,
+                     action: action.name,
+                     input: key,
+                     inputs: Ash.Resource.Info.action_inputs(changeset.resource, action.name)
+                   )
+                 )}
+              end
             end
 
-          true ->
+          key in List.wrap(opts[:skip_unknown_inputs]) ->
             {:cont, changeset}
+
+          true ->
+            {:cont,
+             add_error(
+               changeset,
+               NoSuchInput.exception(
+                 resource: changeset.resource,
+                 action: action.name,
+                 input: key,
+                 inputs: Ash.Resource.Info.action_inputs(changeset.resource, action.name)
+               )
+             )}
         end
       end)
     end
@@ -970,6 +999,11 @@ defmodule Ash.Changeset do
     tenant: [
       type: {:protocol, Ash.ToTenant},
       doc: "set the tenant on the changeset"
+    ],
+    skip_unknown_inputs: [
+      type: {:list, {:or, [:atom, :string]}},
+      doc:
+        "A list of inputs that, if provided, will be ignored if they are not recognized by the action."
     ]
   ]
 
@@ -1163,9 +1197,10 @@ defmodule Ash.Changeset do
               |> set_authorize(opts)
               |> set_tracer(opts)
               |> set_tenant(opts[:tenant] || changeset.tenant)
-              |> cast_params(action, params)
+              |> cast_params(action, params, opts)
               |> set_argument_defaults(action)
               |> require_arguments(action)
+              |> validate_attributes_accepted(action)
               |> run_action_changes(
                 action,
                 opts[:actor],
@@ -1403,7 +1438,7 @@ defmodule Ash.Changeset do
             changeset =
               changeset
               |> prepare_changeset_for_action(action, opts)
-              |> handle_params(action, params)
+              |> handle_params(action, params, opts)
               |> run_action_changes(
                 action,
                 opts[:actor],
@@ -1487,7 +1522,7 @@ defmodule Ash.Changeset do
 
   def handle_params(changeset, action, params, handle_params_opts \\ []) do
     if Keyword.get(handle_params_opts, :cast_params?, true) do
-      cast_params(changeset, action, params || %{})
+      cast_params(changeset, action, params || %{}, handle_params_opts)
     else
       changeset
     end
@@ -1745,7 +1780,7 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp cast_params(changeset, action, params) do
+  defp cast_params(changeset, action, params, opts) do
     changeset = %{
       changeset
       | params: Map.merge(changeset.params, Enum.into(params, %{})),
@@ -1753,25 +1788,13 @@ defmodule Ash.Changeset do
         casted_attributes: %{}
     }
 
+    skip_unknown_inputs = opts[:skip_unknown_inputs] || []
+
     Enum.reduce(params, changeset, fn {name, value}, changeset ->
       cond do
         !Ash.Resource.Info.action_input?(changeset.resource, action.name, name) ->
-          add_error(
-            changeset,
-            NoSuchInput.exception(
-              resource: changeset.resource,
-              action: action.name,
-              input: name,
-              inputs: Ash.Resource.Info.action_inputs(changeset.resource, action.name)
-            )
-          )
-
-        argument = get_action_argument(action, name) ->
-          do_set_argument(changeset, argument.name, value, true)
-
-        attr = Ash.Resource.Info.public_attribute(changeset.resource, name) ->
-          if attr.writable? do
-            do_change_attribute(changeset, attr.name, value, true)
+          if name in skip_unknown_inputs do
+            changeset
           else
             add_error(
               changeset,
@@ -1782,6 +1805,28 @@ defmodule Ash.Changeset do
                 inputs: Ash.Resource.Info.action_inputs(changeset.resource, action.name)
               )
             )
+          end
+
+        argument = get_action_argument(action, name) ->
+          do_set_argument(changeset, argument.name, value, true)
+
+        attr = Ash.Resource.Info.public_attribute(changeset.resource, name) ->
+          if attr.writable? do
+            do_change_attribute(changeset, attr.name, value, true)
+          else
+            if name in skip_unknown_inputs do
+              changeset
+            else
+              add_error(
+                changeset,
+                NoSuchInput.exception(
+                  resource: changeset.resource,
+                  action: action.name,
+                  input: name,
+                  inputs: Ash.Resource.Info.action_inputs(changeset.resource, action.name)
+                )
+              )
+            end
           end
 
         true ->

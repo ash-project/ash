@@ -135,12 +135,10 @@ defmodule Ash.Test.Actions.LoadTest do
           bio: [
             type: Bio,
             tag: :type,
-            cast_tag?: false,
             tag_value: "bio"
           ],
           other_kind_of_bio: [
             type: OtherKindOfBio,
-            cast_tag?: false,
             tag: :type,
             tag_value: "other_kind_of_bio"
           ]

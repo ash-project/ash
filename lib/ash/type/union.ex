@@ -360,7 +360,18 @@ defmodule Ash.Type.Union do
     type = constraints[:types][type_name][:type]
     inner_constraints = constraints[:types][type_name][:constraints] || []
 
-    case Ash.Type.cast_input(type, value, inner_constraints) do
+    inner_constraints =
+      if Ash.Type.embedded_type?(type) do
+        Keyword.put(inner_constraints, :__union_tag__, constraints[:types][type_name][:tag])
+      else
+        inner_constraints
+      end
+
+    case Ash.Type.cast_input(
+           type,
+           value,
+           inner_constraints
+         ) do
       {:ok, value} ->
         {:ok, %Ash.Union{value: value, type: type_name}}
 
@@ -412,11 +423,18 @@ defmodule Ash.Type.Union do
               Map.drop(value, [config[:tag], to_string(config[:tag])])
             end
 
+          config_constraints =
+            if Ash.Type.embedded_type?(config[:type]) do
+              Keyword.put(config[:constraints] || [], :__union_tag__, config[:tag])
+            else
+              config[:constraints] || []
+            end
+
           constraints_with_source =
             Ash.Type.include_source(
               config[:type],
               constraints[:__source__],
-              config[:constraints] || []
+              config_constraints
             )
 
           case Ash.Type.cast_input(

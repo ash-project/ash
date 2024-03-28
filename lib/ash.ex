@@ -431,6 +431,11 @@ defmodule Ash do
       default: 0,
       doc:
         "If set to a value greater than 0, up to that many tasks will be started to run batches asynchronously"
+    ],
+    skip_unknown_inputs: [
+      type: {:list, {:or, [:atom, :string]}},
+      doc:
+        "A list of inputs that, if provided, will be ignored if they are not recognized by the action."
     ]
   ]
 
@@ -474,6 +479,11 @@ defmodule Ash do
                                default: @bulk_strategy_default,
                                doc:
                                  "The strategy or strategies to enable. :stream is used in all cases if the data layer does not support atomics."
+                             ],
+                             skip_unknown_inputs: [
+                               type: {:list, {:or, [:atom, :string]}},
+                               doc:
+                                 "A list of inputs that, if provided, will be ignored if they are not recognized by the action."
                              ]
                            ]
                            |> Spark.Options.merge(
@@ -525,6 +535,11 @@ defmodule Ash do
                                 default: @bulk_strategy_default,
                                 doc:
                                   "The strategy or strategies to enable. :stream is used in all cases if the data layer does not support atomics."
+                              ],
+                              skip_unknown_inputs: [
+                                type: {:list, {:or, [:atom, :string]}},
+                                doc:
+                                  "A list of inputs that, if provided, will be ignored if they are not recognized by the action."
                               ]
                             ]
                             |> Spark.Options.merge(

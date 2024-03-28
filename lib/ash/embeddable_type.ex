@@ -179,7 +179,10 @@ defmodule Ash.EmbeddableType do
         __MODULE__
         |> Ash.Changeset.new()
         |> Ash.EmbeddableType.copy_source(constraints)
-        |> Ash.Changeset.for_create(action, value, domain: ShadowDomain)
+        |> Ash.Changeset.for_create(action, value,
+          domain: ShadowDomain,
+          skip_unknown_inputs: skip_unknown_inputs(constraints)
+        )
         |> Ash.create()
         |> case do
           {:ok, result} ->
@@ -219,6 +222,7 @@ defmodule Ash.EmbeddableType do
             domain: ShadowDomain,
             context: context,
             sorted?: true,
+            skip_unknown_inputs: skip_unknown_inputs(constraints),
             return_records?: true,
             return_errors?: true,
             batch_size: 1_000_000_000
@@ -404,6 +408,19 @@ defmodule Ash.EmbeddableType do
         end
       end
 
+      defp skip_unknown_inputs(constraints) do
+        case Keyword.fetch(constraints, :__union_tag__) do
+          {:ok, union_tag} when is_atom(union_tag) ->
+            [union_tag, to_string(union_tag)]
+
+          {:ok, union_tag} ->
+            List.wrap(union_tag)
+
+          _ ->
+            []
+        end
+      end
+
       def prepare_change(old_value, "", constraints) do
         prepare_change(old_value, nil, constraints)
       end
@@ -433,7 +450,10 @@ defmodule Ash.EmbeddableType do
           old_value
           |> Ash.Changeset.new()
           |> Ash.EmbeddableType.copy_source(constraints)
-          |> Ash.Changeset.for_update(action, new_uncasted_value, domain: ShadowDomain)
+          |> Ash.Changeset.for_update(action, new_uncasted_value,
+            domain: ShadowDomain,
+            skip_unknown_inputs: skip_unknown_inputs(constraints)
+          )
           |> Ash.update()
           |> case do
             {:ok, value} -> {:ok, value}
@@ -465,7 +485,10 @@ defmodule Ash.EmbeddableType do
               old_value
               |> Ash.Changeset.new()
               |> Ash.EmbeddableType.copy_source(constraints)
-              |> Ash.Changeset.for_update(action, new_uncasted_value, domain: ShadowDomain)
+              |> Ash.Changeset.for_update(action, new_uncasted_value,
+                domain: ShadowDomain,
+                skip_unknown_inputs: skip_unknown_inputs(constraints)
+              )
               |> Ash.update()
               |> case do
                 {:ok, value} -> {:ok, value}
@@ -773,7 +796,10 @@ defmodule Ash.EmbeddableType do
                     value_updating_from
                     |> Ash.Changeset.new()
                     |> Ash.EmbeddableType.copy_source(constraints)
-                    |> Ash.Changeset.for_update(action, new, domain: ShadowDomain)
+                    |> Ash.Changeset.for_update(action, new,
+                      domain: ShadowDomain,
+                      skip_unknown_inputs: skip_unknown_inputs(constraints)
+                    )
                     |> Ash.update()
                     |> case do
                       {:ok, value} ->
