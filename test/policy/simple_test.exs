@@ -3,7 +3,7 @@ defmodule Ash.Test.Policy.SimpleTest do
   use ExUnit.Case
   require Ash.Query
 
-  alias Ash.Test.Support.PolicySimple.{Car, Domain, Organization, Post, Trip, Tweet, User}
+  alias Ash.Test.Support.PolicySimple.{Car, Domain, Foo, Organization, Post, Trip, Tweet, User}
 
   setup do
     [
@@ -165,5 +165,11 @@ defmodule Ash.Test.Policy.SimpleTest do
 
   test "filter checks work via deeply related data", %{user: user} do
     assert Ash.read!(Trip, actor: user) == []
+  end
+
+  test "changing_attributes with `:to` option works" do
+    Foo
+    |> Ash.Changeset.for_create(:create, %{name: "Foo"})
+    |> Ash.create!()
   end
 end
