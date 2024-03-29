@@ -367,11 +367,11 @@ end
 
 ### `private?: true` -> `public?: true`
 
-There is no longer a `private?` option for attributes, relationships, calculations and aggregates. Instead of attributes defaulting to `private?: false`, they now default to `public?: false`. It was too easy to add an attribute and not realize that you had exposed it over your api. One
+There is no longer a `private?` option for attributes, relationships, calculations and aggregates. Instead of attributes defaulting to `private?: false`, they now default to `public?: false`. It was too easy to add an attribute and not realize that you had exposed it over your api.
 
 #### What you'll need to change
 
-If you are using api extensions (i.e `AshGraphql` and `AshJsonApi`), you will need to go to your resources and "invert" the definitions. i.e _remove_ `private?: true` and _add_ `public?: true` to _every other_ attribute.
+If you are using api extensions (i.e `AshGraphql` and `AshJsonApi`), you will need to go to your resources and "invert" the definitions. i.e _remove_ `private?: true` and _add_ `public?: true` to _every other_ attribute, _relationship_ and _calculation_. Don't forget the relationships and calculations!
 
 ---
 
