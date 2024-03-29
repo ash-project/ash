@@ -772,6 +772,8 @@ defmodule Ash.Actions.Helpers do
   def select(results, query) do
     if Enumerable.impl_for(results) do
       Enum.map(results, &select(&1, query))
+    else
+       results
     end
   end
 
