@@ -38,24 +38,24 @@ defmodule Ash.Policy.Check.ChangingAttributes do
 
             {{:ok, from}, {:ok, to}} ->
               if expr == true do
-                {:cont, expr(not (^ref(attribute) == ^from and ^atomic_ref(attribute) == ^to))}
+                {:cont, expr(^ref(attribute) == ^from and ^atomic_ref(attribute) == ^to)}
               else
                 {:cont,
-                 expr(^expr and not (^ref(attribute) == ^from and ^atomic_ref(attribute) == ^to))}
+                 expr(^expr and ^ref(attribute) == ^from and ^atomic_ref(attribute) == ^to)}
               end
 
             {{:ok, from}, :error} ->
               if expr == true do
-                {:cont, expr(^ref(attribute) != ^from)}
+                {:cont, expr(^ref(attribute) == ^from)}
               else
-                {:cont, expr(^expr and ^ref(attribute) != ^from)}
+                {:cont, expr(^expr and ^ref(attribute) == ^from)}
               end
 
             {:error, {:ok, to}} ->
               if expr == true do
-                {:cont, expr(^atomic_ref(attribute) != ^to)}
+                {:cont, expr(^atomic_ref(attribute) == ^to)}
               else
-                {:cont, expr(^expr and ^atomic_ref(attribute) != ^to)}
+                {:cont, expr(^expr and ^atomic_ref(attribute) == ^to)}
               end
           end
         else

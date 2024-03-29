@@ -108,8 +108,18 @@ defmodule Ash.Policy.FilterCheck do
 
       defp try_eval(expression, %{
              resource: resource,
-             changeset: %Ash.Changeset{action_type: :create} = changeset
+             changeset: %Ash.Changeset{action_type: :create} = changeset,
+             actor: actor
            }) do
+        expression =
+          Ash.Expr.fill_template(
+            expression,
+            actor,
+            changeset.arguments,
+            changeset.context,
+            changeset
+          )
+
         case Ash.Filter.hydrate_refs(expression, %{
                resource: resource,
                unknown_on_unknown_refs?: true,
