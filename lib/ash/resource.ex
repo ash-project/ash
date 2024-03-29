@@ -70,6 +70,13 @@ defmodule Ash.Resource do
       domains =
         Application.get_env(otp_app, :ash_domains, [])
 
+      domains =
+        if domain = Ash.Resource.Info.domain(module) do
+          [domain | domains]
+        else
+          domains
+        end
+
       contained_in_domain =
         domains
         |> Enum.flat_map(&Ash.Domain.Info.resources/1)
