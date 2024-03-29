@@ -248,6 +248,9 @@ attributes do
   attribute :subject, :string do
     # Don't allow `nil` values
     allow_nil? false
+
+    # Allow this attribute to be public. By default, all attributes are private.
+    public? true
   end
 
   # status is either `open` or `closed`. We can add more statuses later
@@ -481,6 +484,7 @@ Now we want to be able to assign a Ticket to a Representative. First, let's crea
 defmodule Helpdesk.Support.Representative do
   # This turns this module into a resource using the in memory ETS data layer
   use Ash.Resource,
+    domain: Helpdesk.Support,
     data_layer: Ash.DataLayer.Ets
 
   actions do
@@ -494,7 +498,10 @@ defmodule Helpdesk.Support.Representative do
     uuid_primary_key :id
 
     # Add a string type attribute called `:name`
-    attribute :name, :string
+    attribute :name, :string do
+      # Make the attribute public in order to give a name when calling functions from `Ash.Changeset`.
+      public? true
+    end
   end
 
   relationships do
@@ -575,7 +582,7 @@ recompile()
 ticket = (
   Helpdesk.Support.Ticket
   |> Ash.Changeset.for_create(:open, %{subject: "I can't find my hand!"})
-  |> Helpdesk.Support.create!()
+  |> Ash.create!()
 )
 ```
 
@@ -585,7 +592,7 @@ ticket = (
 representative = (
   Helpdesk.Support.Representative
   |> Ash.Changeset.for_create(:create, %{name: "Joe Armstrong"})
-  |> Helpdesk.Support.create!()
+  |> Ash.create!()
 )
 ```
 
@@ -594,7 +601,7 @@ representative = (
 ```elixir
 ticket
 |> Ash.Changeset.for_update(:assign, %{representative_id: representative.id})
-|> Helpdesk.Support.update!()
+|> Ash.update!()
 ```
 
 ### What next?
