@@ -246,21 +246,19 @@ end
 
 For those who want to be more explicit, or after your upgrade has complete if you wish to refactor existing resources and actions, the general best path forward is to copy the `default_accept` into each action (or put it in a module attribute and reference it) as the `accept` option. This way when a new action is added, it does not "inherit" some list of accepted attributes.
 
+> ### :\* includes belongs_to attributes! {:.WARNING}
+>
+> The change to explicit accepts also included a change that defaults belongs_to attributes to `writable?: true` and `public?: true`. You may want to add `attribute_writable?: false` to your belongs_to relationships if you are adding `default_acceot :*` and don't currently have `attribute_writable?: true` on them currently.
+
 ---
 
 ### Default actions `:create` and `:update` can now have an accept list
 
-This accept list will be _required_ at compile time if the resource has `default_accept :*`. here is an example of how it is used:
+For example:
 
 ```elixir
 defaults [:read, :destroy, create: :*, update: :*]
 ```
-
-#### What you'll need to change
-
-You will get compile time errors if you don't do this, so follow the errors and you'll get there. I suggest that each time you get an error, you go to the resource that caused the error, and copy and replace any instance of that same default accept list. That way you'll only need to do a couple of find and replaces. i.e
-
-replace `defaults [:create, :read, :update, :destroy]` with `defaults [:read, :destroy, create: :*, update: :*]` and so on.
 
 ### Default read actions are now paginatable
 
