@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.4](https://github.com/ash-project/ash/compare/v3.0.0-rc.3...v3.0.0-rc.4) (2024-03-29)
+
+
+
+
+### Bug Fixes:
+
+* fix `changing_attributes` check implementation
+
+### Improvements:
+
+* change `type` argument position in `Ash.Query.calculate` (#959)
+
+* allow simple check to return error tuple (#956)
+
 ## [v3.0.0-rc.3](https://github.com/ash-project/ash/compare/v3.0.0-rc.2...v3.0.0-rc.3) (2024-03-28)
 
 
