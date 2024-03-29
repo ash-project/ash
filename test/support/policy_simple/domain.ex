@@ -10,5 +10,6 @@ defmodule Ash.Test.Support.PolicySimple.Domain do
     resource(Ash.Test.Support.PolicySimple.CarUser)
     resource(Ash.Test.Support.PolicySimple.Trip)
     resource(Ash.Test.Support.PolicySimple.Tweet)
+    resource(Ash.Test.Support.PolicySimple.Foo)
   end
 end
