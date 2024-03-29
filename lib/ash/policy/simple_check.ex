@@ -16,7 +16,7 @@ defmodule Ash.Policy.SimpleCheck do
   @type options :: Keyword.t()
 
   @doc "Whether or not the request matches the check"
-  @callback match?(actor(), context(), options()) :: boolean
+  @callback match?(actor(), context(), options()) :: boolean | {:ok, boolean} | {:error, term}
 
   defmacro __using__(_) do
     quote do
@@ -27,8 +27,13 @@ defmodule Ash.Policy.SimpleCheck do
 
       def requires_original_data?(_, _), do: true
 
+      @dialyzer {:nowarn_function, strict_check: 3}
       def strict_check(actor, context, opts) do
-        {:ok, match?(actor, context, opts)}
+        case match?(actor, context, opts) do
+          {:ok, value} -> {:ok, value}
+          {:error, error} -> {:error, error}
+          value -> {:ok, value}
+        end
       end
 
       defoverridable requires_original_data?: 2
