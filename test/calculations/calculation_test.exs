@@ -918,7 +918,7 @@ defmodule Ash.Test.CalculationTest do
   test "custom calculations can be added to a query" do
     full_names =
       User
-      |> Ash.Query.calculate(:full_name, {Concat, keys: [:first_name, :last_name]}, :string, %{
+      |> Ash.Query.calculate(:full_name, :string, {Concat, keys: [:first_name, :last_name]}, %{
         separator: " \o.o/ "
       })
       |> Ash.read!()
