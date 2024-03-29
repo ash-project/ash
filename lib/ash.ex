@@ -1570,11 +1570,19 @@ defmodule Ash do
     end
   end
 
+  @type record_or_records :: Ash.Resource.record() | [Ash.Resource.record()]
+
   @doc """
   Load fields or relationships on already fetched records. See `load/3` for more information.
   """
   @spec load!(
-          record_or_records :: Ash.Resource.record() | [Ash.Resource.record()],
+          record_or_records ::
+            record_or_records
+            | {:ok, record_or_records}
+            | :error
+            | {:error, term}
+            | :ok
+            | Ash.Page.page(),
           query :: load_statement(),
           opts :: Keyword.t()
         ) ::
