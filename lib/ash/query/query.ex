@@ -2104,11 +2104,11 @@ defmodule Ash.Query do
       {:aggregate, {name, type, relationship, agg_query}}, query ->
         aggregate(query, name, type, relationship, agg_query)
 
-      {:calculate, {name, module_and_opts, type}}, query ->
-        calculate(query, name, module_and_opts, type)
+      {:calculate, {name, type, module_and_opts}}, query ->
+        calculate(query, name, type, module_and_opts)
 
-      {:calculate, {name, module_and_opts, type, arguments}}, query ->
-        calculate(query, name, module_and_opts, type, arguments)
+      {:calculate, {name, type, module_and_opts, arguments}}, query ->
+        calculate(query, name, type, module_and_opts, arguments)
 
       {:select, fields}, query ->
         select(query, fields)
@@ -2249,8 +2249,8 @@ defmodule Ash.Query do
   def calculate(
         query,
         name,
-        module_and_opts,
         type,
+        module_and_opts,
         arguments \\ %{},
         constraints \\ [],
         extra_context \\ %{}

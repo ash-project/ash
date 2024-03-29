@@ -803,9 +803,9 @@ defmodule Ash.Actions.Read.Calculations do
                   Ash.Query.calculate(
                     query,
                     new_calc_name,
+                    equivalent_aggregate.type,
                     {Ash.Resource.Calculation.FetchAgg,
                      load: equivalent_aggregate.name, name: equivalent_aggregate.load},
-                    equivalent_aggregate.type,
                     %{},
                     equivalent_aggregate.constraints,
                     equivalent_aggregate.context
@@ -1014,11 +1014,11 @@ defmodule Ash.Actions.Read.Calculations do
                       query
                       |> Ash.Query.calculate(
                         new_calc_name,
+                        type,
                         {Ash.Resource.Calculation.LoadRelationship,
                          relationship: relationship.name,
                          query: further,
                          domain: relationship.domain || domain},
-                        type,
                         %{},
                         constraints
                       )
@@ -1180,9 +1180,9 @@ defmodule Ash.Actions.Read.Calculations do
           Ash.Query.calculate(
             query,
             new_calc_name,
+            equivalent_calculation.type,
             {Ash.Resource.Calculation.FetchCalc,
              load: equivalent_calculation.name, name: equivalent_calculation.load},
-            equivalent_calculation.type,
             equivalent_calculation.context.arguments,
             equivalent_calculation.constraints,
             equivalent_calculation.context

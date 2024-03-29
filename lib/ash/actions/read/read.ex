@@ -1941,8 +1941,8 @@ defmodule Ash.Actions.Read do
         Ash.Query.calculate(
           query,
           calc.name,
-          {calc.module, calc.opts},
           calc.type,
+          {calc.module, calc.opts},
           calc.context.arguments,
           calc.constraints,
           calc.context
