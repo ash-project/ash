@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.5](https://github.com/ash-project/ash/compare/v3.0.0-rc.4...v3.0.0-rc.5) (2024-03-30)
+
+
+
+
+### Bug Fixes:
+
+* properly retain input order for embedded attributes
+
+### Improvements:
+
+* better error messages for private attribute accepting
+
+* use resource api when verifying its presence in a known api
+
 ## [v3.0.0-rc.4](https://github.com/ash-project/ash/compare/v3.0.0-rc.3...v3.0.0-rc.4) (2024-03-29)
 
 
