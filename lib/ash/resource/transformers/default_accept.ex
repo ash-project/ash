@@ -71,21 +71,6 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
               """
         end
 
-        accept
-        |> Enum.reject(&(&1 in public_attribute_names))
-        |> case do
-          [] ->
-            :ok
-
-          invalid_attrs ->
-            raise Spark.Error.DslError,
-              module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
-              path: [:actions, action.name, :accept],
-              message: """
-              Cannot accept #{inspect(invalid_attrs)}, because they are not public attributes.
-              """
-        end
-
         accept =
           Enum.reject(accept, &(&1 in argument_names))
 

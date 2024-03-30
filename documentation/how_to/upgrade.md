@@ -379,6 +379,10 @@ There is no longer a `private?` option for attributes, relationships, calculatio
 
 If you are using api extensions (i.e `AshGraphql` and `AshJsonApi`), you will need to go to your resources and "invert" the definitions. i.e _remove_ `private?: true` and _add_ `public?: true` to _every other_ attribute, _relationship_ and _calculation_. Don't forget the relationships and calculations!
 
+> ### Embedded resources too! {:.WARNING}
+>
+> The above includes embedded resources as well! Don't forget to make sure that all fields on your embedded resources are also marked as `public?: true` (if applicable). The goal here is to have a clear visual indicator of what in your application can be shown publically.
+
 ---
 
 ### Anonymous calculations now operate on a list, just like module calculations
