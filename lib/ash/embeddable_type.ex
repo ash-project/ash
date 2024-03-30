@@ -202,7 +202,10 @@ defmodule Ash.EmbeddableType do
           constraints[:create_action] ||
             Ash.Resource.Info.primary_action!(__MODULE__, :create).name
 
-        {structs, values} = Enum.split_with(value, &is_struct(&1, __MODULE__))
+        {structs, values} =
+          value
+          |> Stream.with_index()
+          |> Enum.split_with(&is_struct(elem(&1, 0), __MODULE__))
 
         {context, opts} =
           case constraints[:__source__] do
@@ -215,6 +218,7 @@ defmodule Ash.EmbeddableType do
           end
 
         values
+        |> Stream.map(&elem(&1, 0))
         |> Ash.bulk_create(
           __MODULE__,
           action,
@@ -230,7 +234,9 @@ defmodule Ash.EmbeddableType do
         )
         |> case do
           %{status: :success, records: records} ->
-            {:ok, structs ++ records}
+            Enum.reduce(structs, {:ok, records}, fn {struct, index}, {:ok, records} ->
+              {:ok, List.insert_at(records, index, struct)}
+            end)
 
           %{errors: errors} ->
             errors =
@@ -419,6 +425,9 @@ defmodule Ash.EmbeddableType do
           _ ->
             []
         end
+        |> Enum.concat(
+          Enum.flat_map(Ash.Resource.Info.primary_key(__MODULE__), &[&1, to_string(&1)])
+        )
       end
 
       def prepare_change(old_value, "", constraints) do

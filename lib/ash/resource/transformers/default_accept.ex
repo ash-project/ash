@@ -82,7 +82,7 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
               module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
               path: [:actions, action.name, :accept],
               message: """
-              Cannot accept #{inspect(invalid_attrs)}, because they are private attributes.
+              Cannot accept #{inspect(invalid_attrs)}, because they are not public attributes.
               """
         end
 
