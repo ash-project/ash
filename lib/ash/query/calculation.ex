@@ -38,7 +38,7 @@ defmodule Ash.Query.Calculation do
     sensitive?: [
       type: :boolean,
       doc: "Whether or not references to this calculation will be considered sensitive",
-      default: true
+      default: false
     ],
     load: [
       type: :any,
@@ -86,7 +86,8 @@ defmodule Ash.Query.Calculation do
          context: context,
          required_loads: opts[:load],
          filterable?: opts[:filterable?],
-         sortable?: opts[:filterable?]
+         sortable?: opts[:sortable?],
+         sensitive?: opts[:sensitive?]
        }}
     end
   end

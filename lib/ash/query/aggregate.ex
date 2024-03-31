@@ -73,11 +73,13 @@ defmodule Ash.Query.Aggregate do
     ],
     filterable?: [
       type: :boolean,
-      doc: "Whether or not this aggregate may be used in filters."
+      doc: "Whether or not this aggregate may be used in filters.",
+      default: true
     ],
     sortable?: [
       type: :boolean,
-      doc: "Whether or not this aggregate may be used in sorts."
+      doc: "Whether or not this aggregate may be used in sorts.",
+      default: true
     ],
     type: [
       type: :any,
@@ -117,7 +119,7 @@ defmodule Ash.Query.Aggregate do
     sensitive?: [
       type: :boolean,
       doc: "Whether or not references to this aggregate will be considered sensitive",
-      default: true
+      default: false
     ],
     authorize?: [
       type: :boolean,
@@ -179,8 +181,9 @@ defmodule Ash.Query.Aggregate do
           relationship = opts[:path] || []
           field = opts[:field]
           default = opts[:default]
-          filterable? = Keyword.get(opts, :filterable?, true)
-          sortable? = Keyword.get(opts, :sortable?, true)
+          filterable? = opts[:filterable?]
+          sortable? = opts[:sortable?]
+          sensitive? = opts[:sensitive?]
           type = opts[:type]
           constraints = Keyword.get(opts, :constraints, [])
           implementation = opts[:implementation]
@@ -240,6 +243,7 @@ defmodule Ash.Query.Aggregate do
                query: query,
                filterable?: filterable?,
                sortable?: sortable?,
+               sensitive?: sensitive?,
                authorize?: authorize?,
                read_action: read_action,
                join_filters: Map.new(join_filters, fn {key, value} -> {List.wrap(key), value} end)
