@@ -1044,7 +1044,6 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`allow_nil_input`](#actions-create-allow_nil_input){: #actions-create-allow_nil_input } | `list(atom)` |  | A list of attributes that would normally be required, but should not be for this action. They will still be validated just before the record is created. |
 | [`manual`](#actions-create-manual){: #actions-create-manual } | `(any, any -> any) \| module` |  | Override the creation behavior. Accepts a module or module and opts, or a function that takes the changeset and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
 | [`upsert?`](#actions-create-upsert?){: #actions-create-upsert? } | `boolean` | `false` | Forces all uses of this action to be treated as an upsert. |
 | [`upsert_identity`](#actions-create-upsert_identity){: #actions-create-upsert_identity } | `atom` |  | The identity to use for the upsert. Cannot be overriden by the caller. Ignored  if `upsert?` is not set to `true`. |
@@ -1054,9 +1053,10 @@ end
 | [`transaction?`](#actions-create-transaction?){: #actions-create-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-create-touches_resources){: #actions-create-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`accept`](#actions-create-accept){: #actions-create-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
+| [`require_attributes`](#actions-create-require_attributes){: #actions-create-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
+| [`allow_nil_input`](#actions-create-allow_nil_input){: #actions-create-allow_nil_input } | `list(atom)` |  | A list of attributes that would normally be required, but should not be for this action. They will still be validated just before the data layer step. |
 | [`delay_global_validations?`](#actions-create-delay_global_validations?){: #actions-create-delay_global_validations? } | `boolean` | `false` | If true, global validations will be done in a `before_action` hook, regardless of their configuration on the resource. |
 | [`skip_global_validations?`](#actions-create-skip_global_validations?){: #actions-create-skip_global_validations? } | `boolean` | `false` | If true, global validations will be skipped. Useful for manual actions. |
-| [`require_attributes`](#actions-create-require_attributes){: #actions-create-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
 | [`error_handler`](#actions-create-error_handler){: #actions-create-error_handler } | `mfa` |  | Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more |
 | [`notifiers`](#actions-create-notifiers){: #actions-create-notifiers } | `list(module)` |  | Notifiers that will be called specifically for this action. |
 | [`manual?`](#actions-create-manual?){: #actions-create-manual? } | `boolean` |  | Instructs Ash to *skip* the actual update/create/destroy step at the data layer. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
@@ -1532,9 +1532,10 @@ update :flag_for_review, primary?: true
 | [`transaction?`](#actions-update-transaction?){: #actions-update-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-update-touches_resources){: #actions-update-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`accept`](#actions-update-accept){: #actions-update-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
+| [`require_attributes`](#actions-update-require_attributes){: #actions-update-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
+| [`allow_nil_input`](#actions-update-allow_nil_input){: #actions-update-allow_nil_input } | `list(atom)` |  | A list of attributes that would normally be required, but should not be for this action. They will still be validated just before the data layer step. |
 | [`delay_global_validations?`](#actions-update-delay_global_validations?){: #actions-update-delay_global_validations? } | `boolean` | `false` | If true, global validations will be done in a `before_action` hook, regardless of their configuration on the resource. |
 | [`skip_global_validations?`](#actions-update-skip_global_validations?){: #actions-update-skip_global_validations? } | `boolean` | `false` | If true, global validations will be skipped. Useful for manual actions. |
-| [`require_attributes`](#actions-update-require_attributes){: #actions-update-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
 | [`error_handler`](#actions-update-error_handler){: #actions-update-error_handler } | `mfa` |  | Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more |
 | [`notifiers`](#actions-update-notifiers){: #actions-update-notifiers } | `list(module)` |  | Notifiers that will be called specifically for this action. |
 | [`manual?`](#actions-update-manual?){: #actions-update-manual? } | `boolean` |  | Instructs Ash to *skip* the actual update/create/destroy step at the data layer. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
@@ -1771,9 +1772,10 @@ end
 | [`transaction?`](#actions-destroy-transaction?){: #actions-destroy-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-destroy-touches_resources){: #actions-destroy-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
 | [`accept`](#actions-destroy-accept){: #actions-destroy-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
+| [`require_attributes`](#actions-destroy-require_attributes){: #actions-destroy-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
+| [`allow_nil_input`](#actions-destroy-allow_nil_input){: #actions-destroy-allow_nil_input } | `list(atom)` |  | A list of attributes that would normally be required, but should not be for this action. They will still be validated just before the data layer step. |
 | [`delay_global_validations?`](#actions-destroy-delay_global_validations?){: #actions-destroy-delay_global_validations? } | `boolean` | `false` | If true, global validations will be done in a `before_action` hook, regardless of their configuration on the resource. |
 | [`skip_global_validations?`](#actions-destroy-skip_global_validations?){: #actions-destroy-skip_global_validations? } | `boolean` | `false` | If true, global validations will be skipped. Useful for manual actions. |
-| [`require_attributes`](#actions-destroy-require_attributes){: #actions-destroy-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
 | [`error_handler`](#actions-destroy-error_handler){: #actions-destroy-error_handler } | `mfa` |  | Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more |
 | [`notifiers`](#actions-destroy-notifiers){: #actions-destroy-notifiers } | `list(module)` |  | Notifiers that will be called specifically for this action. |
 | [`manual?`](#actions-destroy-manual?){: #actions-destroy-manual? } | `boolean` |  | Instructs Ash to *skip* the actual update/create/destroy step at the data layer. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
