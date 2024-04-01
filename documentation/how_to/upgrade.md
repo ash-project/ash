@@ -7,6 +7,7 @@ Other packages have had a major version bump in addition to Ash core. While _all
 - [AshPostgres](https://github.com/ash-project/ash_postgres/blob/main/documentation/how_to/upgrade.md)
 - [AshPhoenix](https://github.com/ash-project/ash_phoenix/blob/main/documentation/how_to/upgrade.md)
 - [AshJsonApi](https://github.com/ash-project/ash_json_api/blob/main/documentation/how_to/upgrade.md)
+- [AshGraphql](https://github.com/ash-project/ash_graphql/blob/main/documentation/how_to/upgrade.md)
 
 ## Upgrading to 3.0
 
