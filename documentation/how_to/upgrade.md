@@ -255,6 +255,10 @@ end
 
 For those who want to be more explicit, or after your upgrade has complete if you wish to refactor existing resources and actions, the general best path forward is to copy the `default_accept` into each action (or put it in a module attribute and reference it) as the `accept` option. This way when a new action is added, it does not "inherit" some list of accepted attributes.
 
+> ### :\* private attributes can now be accepted {:.INFO}
+>
+> In 2.0, accepting a private attribute as a change required adding an argument with the same name, and using `change set_attribute(...)`. Now that we require explicit accept lists, you can place private attribtues in that list, which will allow them to be written to (but not read back).
+
 > ### :\* includes belongs_to attributes! {:.WARNING}
 >
 > The change to explicit accepts also included a change that defaults belongs_to attributes to `writable?: true` and `public?: true`. You may want to add `attribute_writable?: false` to your belongs_to relationships if you are adding `default_acceot :*` and don't currently have `attribute_writable?: true` on them currently.
