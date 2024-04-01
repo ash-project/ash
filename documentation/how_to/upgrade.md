@@ -450,6 +450,29 @@ def strict_loads, do: true
 
 ---
 
+### Calculations do not have a `select/3` callback any more
+
+In 2.0 calculations had a `select/3` callback, but `load/3` is now a superset of `select/3` and so the former is no longer needed.
+
+#### What you'll need to change
+
+If you have a `select/3` callback in your calculations, you will need to remove the `select/3` callback. You must then add those fields to the `load/3` callback.
+
+For example:
+
+```elixir
+def select(_, _, _), do: [:some_attribute]
+def load(_, _, _), do: [:some_calculation, some_relationship: [:some_field1, :some_field2]]
+```
+
+can now be written more simply as:
+
+```elixir
+def load(_, _, _), do: [:some_attribute, :some_calculation, some_relationship: [:some_field1, :some_field2]]
+```
+
+---
+
 ### PubSub notifier no longer publishes events for previous values by default
 
 Previously, the Ash notifier would publish a message containing both the old _and_ new values for changing attributes. Typically, we use
