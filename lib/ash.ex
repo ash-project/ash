@@ -2022,7 +2022,7 @@ defmodule Ash do
   #{Spark.Options.docs(@bulk_create_opts_schema)}
   """
   @spec bulk_create(
-          [map],
+          Enumerable.t(map),
           resource :: Ash.Resource.t(),
           action :: atom,
           opts :: Keyword.t()
