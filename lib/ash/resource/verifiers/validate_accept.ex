@@ -7,30 +7,23 @@ defmodule Ash.Resource.Verifiers.ValidateAccept do
 
   @impl true
   def verify(dsl_state) do
-    {public_attributes, private_attributes} =
+    attributes =
       dsl_state
       |> Verifier.get_entities([:attributes])
-      |> Enum.split_with(& &1.public?)
 
-    public_attribute_names = MapSet.new(public_attributes, & &1.name)
-    private_attribute_names = MapSet.new(private_attributes, & &1.name)
+    attribute_names = MapSet.new(attributes, & &1.name)
 
-    initial_errors = %{private: [], not_attribute: []}
+    initial_errors = %{not_attribute: []}
 
     result =
       Verifier.get_entities(dsl_state, [:actions])
       |> Enum.reduce(%{}, fn
         %{name: action_name, accept: accept}, acc ->
           validate_attribute_name = fn attribute_name ->
-            cond do
-              MapSet.member?(private_attribute_names, attribute_name) ->
-                :private
-
-              MapSet.member?(public_attribute_names, attribute_name) ->
-                :ok
-
-              true ->
-                :not_attribute
+            if MapSet.member?(attribute_names, attribute_name) do
+              :ok
+            else
+              :not_attribute
             end
           end
 
@@ -38,16 +31,13 @@ defmodule Ash.Resource.Verifiers.ValidateAccept do
             Enum.reduce(
               accept,
               initial_errors,
-              fn attribute, %{private: private, not_attribute: not_attribute} = acc ->
+              fn attribute, %{not_attribute: not_attribute} = acc ->
                 case validate_attribute_name.(attribute) do
                   :ok ->
                     acc
 
-                  :private ->
-                    %{private: [attribute | private], not_attribute: not_attribute}
-
                   :not_attribute ->
-                    %{private: private, not_attribute: [attribute | not_attribute]}
+                    %{not_attribute: [attribute | not_attribute]}
                 end
               end
             )

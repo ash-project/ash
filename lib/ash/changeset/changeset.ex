@@ -1822,8 +1822,8 @@ defmodule Ash.Changeset do
         argument = get_action_argument(action, name) ->
           do_set_argument(changeset, argument.name, value, true)
 
-        attr = Ash.Resource.Info.public_attribute(changeset.resource, name) ->
-          if attr.writable? do
+        attr = Ash.Resource.Info.attribute(changeset.resource, name) ->
+          if attr.writable? && attr.name in changeset.action.accept do
             do_change_attribute(changeset, attr.name, value, true)
           else
             cond do
