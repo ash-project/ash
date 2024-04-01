@@ -683,6 +683,9 @@ defmodule Ash.Actions.Read.Calculations do
               module.has_expression?()
             end)
 
+          {:error, _error} ->
+            true
+
           :error ->
             true
         end
