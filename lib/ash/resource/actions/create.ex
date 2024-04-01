@@ -6,10 +6,11 @@ defmodule Ash.Resource.Actions.Create do
     :description,
     :error_handler,
     accept: nil,
+    require_attributes: [],
+    allow_nil_input: [],
     manual: nil,
     notifiers: [],
     touches_resources: [],
-    require_attributes: [],
     delay_global_validations?: false,
     skip_global_validations?: false,
     upsert?: false,
@@ -17,7 +18,6 @@ defmodule Ash.Resource.Actions.Create do
     upsert_fields: nil,
     arguments: [],
     changes: [],
-    allow_nil_input: [],
     reject: [],
     metadata: [],
     transaction?: true,
@@ -28,6 +28,8 @@ defmodule Ash.Resource.Actions.Create do
           type: :create,
           name: atom,
           accept: list(atom),
+          require_attributes: list(atom),
+          allow_nil_input: list(atom),
           manual: module | nil,
           upsert?: boolean,
           notifiers: [module()],
@@ -40,7 +42,6 @@ defmodule Ash.Resource.Actions.Create do
             | :replace_all
             | {:replace, list(atom)}
             | {:replace_all_except, list(atom)},
-          allow_nil_input: list(atom),
           touches_resources: list(atom),
           arguments: list(Ash.Resource.Actions.Argument.t()),
           primary?: boolean,
@@ -53,12 +54,6 @@ defmodule Ash.Resource.Actions.Create do
   @create_update_opts create_update_opts()
 
   @opt_schema [
-                allow_nil_input: [
-                  type: {:list, :atom},
-                  doc: """
-                  A list of attributes that would normally be required, but should not be for this action. They will still be validated just before the record is created.
-                  """
-                ],
                 manual: [
                   type:
                     {:spark_function_behaviour, Ash.Resource.ManualCreate,
