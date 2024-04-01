@@ -5,6 +5,213 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.6](https://github.com/ash-project/ash/compare/v3.0.0-rc.5...v3.0.0-rc.6) (2024-04-01)
+### Breaking Changes:
+
+* 3.0 (#955)
+
+* use `%Ash.NotSelected{}` for unselected values
+
+* default `require_atomic?` to `true`
+
+* raise errors on unknown generic action arguments
+
+* default bulk strategy to `:atomic`
+
+* warnings on `require_atomic?` `true` actions
+
+* revise `Ash.NotSelected` to `Ash.NotLoaded`
+
+* errors on unknown action inputs across the board
+
+* default `api.authorization.authorize` to `:by_default`
+
+* require the api when constructing changesets
+
+* code_interface.define_for -> code_interface.api
+
+* remove registries
+
+* pubsub notifier default to `previous_values?: false`
+
+* requires_original_data? callback defaults to false
+
+* rename Ash.Calculation -> Ash.Resource.Calculation
+
+* improve `Ash.Query.Calculation.new` signature
+
+* anonymous function calculations now take lists and return lists
+
+* make callback contexts into structs
+
+* pass context to builtin lifecycle hook changes
+
+* calculation arguments are now in the `arguments` key of the context
+
+* remove `aggregates` and `calculations` from `Filter.parse` and `Filter.parse_input`
+
+* make picosat_elixir optional with `simple_sat`
+
+* rename api to domain
+
+* remove `Ash.Changeset.new!`
+
+* deprecate `private?: false` in favor of `public?: true`
+
+* default `default_accept` is now `[]`
+
+* `Ash.CiString.new/1` returns `nil` on `nil` input
+
+* clean up and reorganize `Ash` functions
+
+* remove context-based functionality
+
+* Deprecate calling functions on (domain) api in favor of `Ash`
+
+* add `attribute_public?` and update `attribute_writable?` behavior
+
+* update atomic behaviors, default to invalid
+
+* changeset.filters -> changeset.filter
+
+* remove deprecated functions
+
+* remove and simplify `Ash.Filter.TemplateHelpers`
+
+* keyword lists are no longer special cased in ash expressions
+
+* introduce strict mode to calculations
+
+* reverse order of before action & before transaction hooks
+
+* default read actions are now paginatable
+
+* require explicit accept lists in default actions
+
+* remove Ash.Flow and Ash.Engine
+
+* standardize various exception keys and names
+
+* use `Splode` for errors
+
+* move simple_notifiers to an option instead of a DSL builder
+
+* update spark for better autocomplete, configure autocomplete for key functions
+
+* swap position of sort order and arguments in calculation sorting
+
+* add `include_nil?` aggregate option, and default it to `false`
+
+* errors on unknown inputs for calculations
+
+
+
+### Features:
+
+* code interface on the domain
+
+### Bug Fixes:
+
+* ending a policy w/ `authorize_if` had flipped conditional
+
+* handle `sensitive?` option in query aggregate/calculation (#963)
+
+* properly retain input order for embedded attributes
+
+* fix `changing_attributes` check implementation
+
+* properly handle transaction errors from bulk creates
+
+* set tenant on query so that root calles to Api.aggreagte work as expected (#929)
+
+* properly construct new query in `build/3`
+
+* make bang variant of field aggregates work correctly (#954)
+
+* enforce multitenancy on aggregates (#952)
+
+* fix missing tenant in some bulk contexts (#951)
+
+* Fix places where tenant is not passed along (#950)
+
+### Improvements:
+
+* allow adding non-public attributes to explicit accept lists
+
+* better error messages for private attribute accepting
+
+* use resource api when verifying its presence in a known api
+
+* change `type` argument position in `Ash.Query.calculate` (#959)
+
+* allow simple check to return error tuple (#956)
+
+* skip unknown inputs when managing relationships
+
+* ignore unknown string-keyed inputs beginning with `_`
+
+* support requesting to ignore additional keys
+
+* add `skip_unknown_inputs` option, use it for embeds in unions
+
+* ensure that update defaults are set
+
+* update spark to 2.0
+
+* update reactor to 3.0
+
+* import Ash.Expr in modules where it is used
+
+* require Ash.QUery in modules where it makes sense
+
+* add structs for more context implementations
+
+* ensure selects are applied on destroys
+
+* support custom expressions
+
+* update upgrade guide to include Splode
+
+* only require primary key if resource has actions or fields
+
+* only build schema if resource has actions or fields
+
+* verify primary key in its own verifier
+
+* add `resource/1` builtin check
+
+* better code interface documentation
+
+* support notifiers within actions
+
+* support specifying multiple filters
+
+* add `sortable?` flags to all fields
+
+* support multiple filters on relationships
+
+* support sensitive? on calculations and arguments
+
+* validate resources in inputs to code interface
+
+* update reactor and tests
+
+* don't require domain on relationships if destination has domain
+
+* always choose to cast atomic
+
+* support casting some embeds atomically
+
+* various 3.0 updates, documented in upgrade.md
+
+* ensure non-static dynamic domains works
+
+* add Ash.ToTenant protocol
+
+* use `Keyword.put_new` in `Ash.Context.to_opts` (#953)
+
+* support bulk and atomic operations in code interfaces
+
 ## [v3.0.0-rc.5](https://github.com/ash-project/ash/compare/v3.0.0-rc.4...v3.0.0-rc.5) (2024-03-30)
 
 
