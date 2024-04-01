@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.21.5](https://github.com/ash-project/ash/compare/v2.21.4...v2.21.5) (2024-04-01)
+
+
+
+
+### Bug Fixes:
+
+* policy ending with authorize_unless had flipped conditional
+
+* properly handle transaction errors from bulk creates
+
+### Improvements:
+
+* allow simple check to return error tuple (#958)
+
+* ensure that update defaults are set
+
 ## [v2.21.4](https://github.com/ash-project/ash/compare/v2.21.3...v2.21.4) (2024-03-28)
 
 
