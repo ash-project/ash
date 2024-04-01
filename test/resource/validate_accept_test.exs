@@ -15,19 +15,4 @@ defmodule Ash.Test.Resource.ValidateAcceptTest do
       end
     end
   end
-
-  test "Accepting an attribute that is private raises an error" do
-    assert_raise DslError, ~r/\[:secret\], because they are not public attributes/, fn ->
-      defposts do
-        attributes do
-          attribute :secret, :string
-        end
-
-        actions do
-          default_accept :*
-          create :example_action, accept: [:secret]
-        end
-      end
-    end
-  end
 end

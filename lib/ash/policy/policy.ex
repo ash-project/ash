@@ -538,7 +538,7 @@ defmodule Ash.Policy.Policy do
         {true, authorizer}
 
       {:error, authorizer} ->
-        {{clause.check_module, clause.check_opts}, authorizer}
+        {{:not, {clause.check_module, clause.check_opts}}, authorizer}
     end
   end
 
