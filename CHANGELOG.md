@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.7](https://github.com/ash-project/ash/compare/v3.0.0-rc.6...v3.0.0-rc.7) (2024-04-01)
+
+
+
+
+### Bug Fixes:
+
+* fix typespec for bulk_create
+
+### Improvements:
+
+* allow accepting private attributes
+
 ## [v3.0.0-rc.6](https://github.com/ash-project/ash/compare/v3.0.0-rc.5...v3.0.0-rc.6) (2024-04-01)
 ### Breaking Changes:
 
