@@ -1971,35 +1971,40 @@ defmodule Ash.Actions.Update.Bulk do
         {%{validation: {module, opts}} = validation, _change_index}, %{batch: batch} = state ->
           batch =
             Enum.map(batch, fn changeset ->
-              if Enum.all?(validation.where || [], fn {module, opts} ->
-                   opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
-                   {:ok, opts} = module.init(opts)
+              cond do
+                validation.only_when_valid? && !changeset.valid? ->
+                  changeset
 
-                   module.validate(
-                     changeset,
-                     opts,
-                     struct(Ash.Resource.Validation.Context, context)
-                   ) == :ok
-                 end) do
-                opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
-                {:ok, opts} = module.init(opts)
+                Enum.all?(validation.where || [], fn {module, opts} ->
+                  opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
+                  {:ok, opts} = module.init(opts)
 
-                case module.validate(
-                       changeset,
-                       opts,
-                       struct(
-                         Ash.Resource.Validation.Context,
-                         Map.put(context, :message, validation.message)
-                       )
-                     ) do
-                  :ok ->
-                    changeset
+                  module.validate(
+                    changeset,
+                    opts,
+                    struct(Ash.Resource.Validation.Context, context)
+                  ) == :ok
+                end) ->
+                  opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
+                  {:ok, opts} = module.init(opts)
 
-                  {:error, error} ->
-                    Ash.Changeset.add_error(changeset, error)
-                end
-              else
-                changeset
+                  case module.validate(
+                         changeset,
+                         opts,
+                         struct(
+                           Ash.Resource.Validation.Context,
+                           Map.put(context, :message, validation.message)
+                         )
+                       ) do
+                    :ok ->
+                      changeset
+
+                    {:error, error} ->
+                      Ash.Changeset.add_error(changeset, error)
+                  end
+
+                true ->
+                  changeset
               end
             end)
 
