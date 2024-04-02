@@ -629,7 +629,7 @@ user |> Ash.load!(:full_name, reuse_values?: true)
 
 ### Resources are not interchangeable with `Ash.Type` anymore
 
-In 2.0 it was possible to pass an Ash resource in all places where some instance of `Ash.Type` was supported. In 3.0 resources don't implement the `Ash.Type` behaviour anymore.
+In 2.0 it was possible to pass an Ash resource in all places where some instance of `Ash.Type` was supported. In 3.0 resources (except for embedded resources) don't implement the `Ash.Type` behaviour anymore.
 
 #### What you'll need to change
 
