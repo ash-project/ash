@@ -4918,14 +4918,9 @@ defmodule Ash.Changeset do
   defp add_invalid_errors(value, type, changeset, attribute, message \\ nil) do
     changeset = %{changeset | invalid_keys: MapSet.put(changeset.invalid_keys, attribute.name)}
 
-    messages =
-      if Keyword.keyword?(message) do
-        [message]
-      else
-        List.wrap(message)
-      end
-
-    Enum.reduce(messages, changeset, fn message, changeset ->
+    message
+    |> Ash.Helpers.flatten_preserving_keywords()
+    |> Enum.reduce(changeset, fn message, changeset ->
       if is_exception(message) do
         error =
           message

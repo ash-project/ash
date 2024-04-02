@@ -24,7 +24,9 @@ defmodule Ash.Helpers do
     if Keyword.keyword?(list) do
       [list]
     else
-      Enum.flat_map(list, fn item ->
+    list
+    |> List.flatten()
+      |> Enum.flat_map(fn item ->
         cond do
           Keyword.keyword?(item) ->
             [item]
