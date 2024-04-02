@@ -624,3 +624,20 @@ To opt into the old behavior, which we recommend doing on a case-by-case basis, 
 ```elixir
 user |> Ash.load!(:full_name, reuse_values?: true)
 ```
+
+---
+
+### Resources are not interchangeable with `Ash.Type` anymore
+
+In 2.0 it was possible to pass an Ash resource in all places where some instance of `Ash.Type` was supported. In 3.0 resources don't implement the `Ash.Type` behaviour anymore.
+
+#### What you'll need to change
+
+If you were using a resource in one of the places that accept an `Ash.Type` (arguments, calculation return values or fields of a union) you have to refactor your code to use the `:struct` type together with an `instance_of` constraint
+
+```elixir
+calculation :random_post, :struct do
+  constraints instance_of: Post
+  calculate Calculations.RandomPost
+end
+```
