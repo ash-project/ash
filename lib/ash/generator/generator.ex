@@ -337,7 +337,6 @@ defmodule Ash.Generator do
   defp set_allow_nil(
          attributes,
          %{
-           type: :create,
            allow_nil_input: allow_nil_input,
            require_attributes: require_attributes
          }
@@ -352,21 +351,6 @@ defmodule Ash.Generator do
 
         true ->
           attribute
-      end
-    end)
-  end
-
-  defp set_allow_nil(
-         attributes,
-         %{
-           require_attributes: require_attributes
-         }
-       ) do
-    Enum.map(attributes, fn attribute ->
-      if attribute.name in require_attributes do
-        %{attribute | allow_nil?: false}
-      else
-        attribute
       end
     end)
   end

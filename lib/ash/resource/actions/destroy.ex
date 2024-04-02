@@ -16,10 +16,11 @@ defmodule Ash.Resource.Actions.Destroy do
     delay_global_validations?: false,
     skip_global_validations?: false,
     accept: nil,
+    require_attributes: [],
+    allow_nil_input: [],
     changes: [],
     reject: [],
     transaction?: true,
-    require_attributes: [],
     metadata: [],
     type: :destroy
   ]
@@ -30,6 +31,9 @@ defmodule Ash.Resource.Actions.Destroy do
           manual: module | nil,
           arguments: list(Ash.Resource.Actions.Argument.t()),
           require_atomic?: boolean,
+          accept: list(atom),
+          require_attributes: list(atom),
+          allow_nil_input: list(atom),
           delay_global_validations?: boolean,
           skip_global_validations?: boolean,
           touches_resources: list(atom),

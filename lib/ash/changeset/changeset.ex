@@ -2440,63 +2440,31 @@ defmodule Ash.Changeset do
   # Attributes that are private and/or are the source field of a belongs_to relationship
   # are typically not set by input, so they aren't required until the actual action
   # is run.
-  defp attributes_to_require(
-         resource,
-         %{type: :create},
-         true
-       ) do
+  defp attributes_to_require(resource, _action, true) do
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.reject(&(&1.allow_nil? || &1.generated?))
   end
 
-  defp attributes_to_require(
-         resource,
-         %{type: :create, accept: accept, require_attributes: require_attributes} = action,
-         false
-       ) do
-    resource
-    |> do_attributes_to_require(action)
-    |> Enum.filter(&(&1.name in accept || &1.name in require_attributes))
-  end
+  defp attributes_to_require(resource, action, false) do
+    accept = action.accept
+    reject = action.reject
+    require_attributes = action.require_attributes
+    allow_nil_input = action.allow_nil_input
+    argument_names = action.arguments |> Enum.map(& &1.name)
 
-  defp attributes_to_require(resource, _action, true = _private_and_belongs_to?) do
-    resource
-    |> Ash.Resource.Info.attributes()
-    |> Enum.reject(&(&1.allow_nil? || &1.generated?))
-  end
-
-  defp attributes_to_require(resource, action, false = _private_and_belongs_to?) do
-    do_attributes_to_require(resource, action)
-  end
-
-  defp do_attributes_to_require(resource, action) do
-    action =
-      case action do
-        action when is_atom(action) ->
-          Ash.Resource.Info.action(resource, action)
-
-        _ ->
-          action
-      end
-
-    allow_nil_input =
-      case action do
-        %{allow_nil_input: allow_nil_input} ->
-          allow_nil_input
-
-        _ ->
-          []
-      end
-
-    masked_argument_names = Enum.map(action.arguments, & &1.name)
+    accepted =
+      accept
+      |> Kernel.++(require_attributes)
+      |> Kernel.--(allow_nil_input)
+      |> Kernel.--(reject)
+      |> Kernel.--(argument_names)
 
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.reject(
-      &(&1.allow_nil? || &1.private? || !&1.writable? || &1.generated? ||
-          &1.name in masked_argument_names ||
-          &1.name in allow_nil_input)
+      &(&1.name not in accepted || &1.private? || !&1.writable? || &1.generated? ||
+          (&1.allow_nil? && &1.name not in require_attributes))
     )
   end
 

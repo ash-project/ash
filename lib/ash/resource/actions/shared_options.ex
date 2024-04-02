@@ -35,6 +35,24 @@ defmodule Ash.Resource.Actions.SharedOptions do
       type: {:or, [in: [:all], list: :atom]},
       doc: "The list of attributes to accept. Defaults to all attributes on the resource"
     ],
+    reject: [
+      type: {:or, [in: [:all], list: :atom]},
+      doc: """
+      A list of attributes not to accept. If this is specified along with `accept`, these are removed from the `accept` list.
+      """
+    ],
+    require_attributes: [
+      type: {:list, :atom},
+      doc: """
+      A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil?
+      """
+    ],
+    allow_nil_input: [
+      type: {:list, :atom},
+      doc: """
+      A list of attributes that would normally be required, but should not be for this action. They will still be validated just before the data layer step.
+      """
+    ],
     delay_global_validations?: [
       type: :boolean,
       default: false,
@@ -47,18 +65,6 @@ defmodule Ash.Resource.Actions.SharedOptions do
       default: false,
       doc: """
       If true, global validations will be skipped. Useful for manual actions.
-      """
-    ],
-    reject: [
-      type: {:or, [in: [:all], list: :atom]},
-      doc: """
-      A list of attributes not to accept. If this is specified along with `accept`, these are removed from the `accept` list.
-      """
-    ],
-    require_attributes: [
-      type: {:list, :atom},
-      doc: """
-      A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil?
       """
     ],
     error_handler: [
