@@ -4893,7 +4893,8 @@ defmodule Ash.Changeset do
     Ash.Type.handle_change(attribute.type, old_value, value, constraints)
   end
 
-  defp add_invalid_errors(value, type, changeset, attribute, message \\ nil) do
+  @doc false
+  def add_invalid_errors(value, type, changeset, attribute, message \\ nil) do
     changeset = %{changeset | invalid_keys: MapSet.put(changeset.invalid_keys, attribute.name)}
 
     messages =
@@ -4930,30 +4931,34 @@ defmodule Ash.Changeset do
       else
         opts = Ash.Type.Helpers.error_to_exception_opts(message, attribute)
 
-        exception =
-          case type do
-            :attribute -> InvalidAttribute
-            :argument -> InvalidArgument
-          end
-
-        Enum.reduce(opts, changeset, fn opts, changeset ->
-          error =
-            exception.exception(
-              value: value,
-              field: Keyword.get(opts, :field),
-              message: Keyword.get(opts, :message),
-              vars: opts
-            )
-
-          error =
-            if opts[:path] do
-              Ash.Error.set_path(error, opts[:path])
-            else
-              error
+        if is_exception(opts) do
+          add_error(changeset, opts)
+        else
+          exception =
+            case type do
+              :attribute -> InvalidAttribute
+              :argument -> InvalidArgument
             end
 
-          add_error(changeset, error)
-        end)
+          Enum.reduce(opts, changeset, fn opts, changeset ->
+            error =
+              exception.exception(
+                value: value,
+                field: Keyword.get(opts, :field),
+                message: Keyword.get(opts, :message),
+                vars: opts
+              )
+
+            error =
+              if opts[:path] do
+                Ash.Error.set_path(error, opts[:path])
+              else
+                error
+              end
+
+            add_error(changeset, error)
+          end)
+        end
       end
     end)
   end

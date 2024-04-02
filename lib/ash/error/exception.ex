@@ -69,15 +69,24 @@ defmodule Ash.Error.Exception do
             opts
           end
 
-        super(opts) |> Map.update(:vars, [], &clean_vars/1)
+        exception = super(opts)
+        Map.update(exception, :vars, [], &clean_vars(exception, &1))
       end
 
-      defp clean_vars(vars) when is_map(vars) do
-        clean_vars(Map.to_list(vars))
+      defp clean_vars(exception, vars) when is_map(vars) do
+        clean_vars(exception, Map.to_list(vars))
       end
 
-      defp clean_vars(vars) do
-        vars |> Kernel.||([]) |> Keyword.drop([:field, :message, :path])
+      defp clean_vars(exception, vars) do
+        if is_nil(vars) || Keyword.keyword?(vars) do
+          vars |> Kernel.||([]) |> Keyword.drop([:field, :message, :path])
+        else
+          IO.warn(
+            "Got malformed `vars` when building exception. #{inspect(exception)} - #{inspect(vars)}"
+          )
+
+          []
+        end
       end
 
       defoverridable exception: 1, message: 1, from_json: 1

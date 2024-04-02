@@ -2,6 +2,31 @@ defmodule Ash.Test.Actions.ValidationTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  defmodule CustomValidation do
+    use Ash.Resource.Validation
+
+    def validate(_changeset, _, _) do
+      {:error,
+       Ash.Error.Changes.InvalidAttribute.exception(
+         field: :status,
+         message: "status is wrong dawg",
+         vars: [foo: 10]
+       )}
+    end
+  end
+
+  defmodule Embedded do
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      attribute :name, :string
+    end
+
+    validations do
+      validate CustomValidation
+    end
+  end
+
   defmodule Profile do
     @moduledoc false
     use Ash.Resource,
@@ -28,6 +53,8 @@ defmodule Ash.Test.Actions.ValidationTest do
 
       validate attribute_does_not_equal(:status, "foo"),
         where: attribute_equals(:foo, false)
+
+      validate CustomValidation, where: attribute_equals(:status, "baz")
     end
 
     attributes do
@@ -36,6 +63,8 @@ defmodule Ash.Test.Actions.ValidationTest do
       attribute :date, :date
       attribute :status, :string
       attribute :foo, :boolean
+      attribute :embedded, Embedded
+      attribute :embedded_list, {:array, Embedded}
     end
   end
 
@@ -105,6 +134,46 @@ defmodule Ash.Test.Actions.ValidationTest do
       |> Api.update!()
       |> Api.destroy!()
     end)
+  end
+
+  describe "custom validations" do
+    test "they can return exceptions" do
+      assert {:error, _} =
+               Profile
+               |> Ash.Changeset.new(%{status: "baz"})
+               |> Api.create()
+    end
+
+    test "they can return exceptions inside of embedded resources" do
+      assert {:error, _} =
+               Profile
+               |> Ash.Changeset.new(%{embedded: %{name: "thing"}})
+               |> Api.create()
+    end
+
+    test "they can return exceptions inside of embedded lists" do
+      assert {:error, error} =
+               Profile
+               |> Ash.Changeset.new(%{embedded_list: [%{name: "thing"}]})
+               |> Api.create()
+    end
+
+    test "a thing" do
+      changeset =
+        Profile
+        |> Ash.Changeset.new(%{embedded_list: [%{name: "thing"}]})
+
+      Ash.Changeset.add_invalid_errors(
+        10,
+        :attribute,
+        changeset,
+        Ash.Resource.Info.attribute(Profile, :bio),
+        Ash.Error.Changes.InvalidAttribute.exception(
+          field: :foo,
+          vars: []
+        )
+      )
+    end
   end
 
   describe "one_of" do

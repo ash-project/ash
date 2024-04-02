@@ -1930,16 +1930,20 @@ defmodule Ash.Actions.Update.Bulk do
                 opts = templated_opts(opts, actor, changeset.arguments, changeset.context)
                 {:ok, opts} = module.init(opts)
 
-                case module.validate(
-                       changeset,
-                       opts,
-                       Map.put(context, :message, validation.message)
-                     ) do
-                  :ok ->
-                    changeset
+                if validation.only_when_valid? && !changeset.valid? do
+                  changeset
+                else
+                  case module.validate(
+                         changeset,
+                         opts,
+                         Map.put(context, :message, validation.message)
+                       ) do
+                    :ok ->
+                      changeset
 
-                  {:error, error} ->
-                    Ash.Changeset.add_error(changeset, error)
+                    {:error, error} ->
+                      Ash.Changeset.add_error(changeset, error)
+                  end
                 end
               else
                 changeset
