@@ -24,8 +24,8 @@ defmodule Ash.Helpers do
     if Keyword.keyword?(list) do
       [list]
     else
-    list
-    |> List.flatten()
+      list
+      |> List.wrap()
       |> Enum.flat_map(fn item ->
         cond do
           Keyword.keyword?(item) ->
