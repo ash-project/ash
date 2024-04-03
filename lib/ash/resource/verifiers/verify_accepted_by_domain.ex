@@ -5,7 +5,7 @@ defmodule Ash.Resource.Verifiers.VerifyAcceptedByDomain do
   def verify(dsl) do
     domain = Spark.Dsl.Transformer.get_persisted(dsl, :domain)
 
-    if domain do
+    if domain && Code.ensure_loaded?(domain) do
       resource = Spark.Dsl.Verifier.get_persisted(dsl, :module)
 
       case Ash.Domain.Info.resource(domain, resource) do
