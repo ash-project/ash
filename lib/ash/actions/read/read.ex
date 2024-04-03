@@ -1994,7 +1994,7 @@ defmodule Ash.Actions.Read do
     |> Helpers.load_runtime_types(query, load_attributes?)
     |> case do
       {:ok, result} ->
-        Ash.load(result, query, domain: query.domain)
+        Ash.load(result, query, domain: query.domain, reuse_values?: true)
 
       other ->
         other
