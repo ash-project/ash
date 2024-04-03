@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.9](https://github.com/ash-project/ash/compare/v3.0.0-rc.8...v3.0.0-rc.9) (2024-04-03)
+
+
+
+
+### Bug Fixes:
+
+* ensure that generic action arguments have proper default for public?
+
+### Improvements:
+
+* add `skip_unknown_inputs` for generic actions
+
 ## [v3.0.0-rc.8](https://github.com/ash-project/ash/compare/v3.0.0-rc.7...v3.0.0-rc.8) (2024-04-03)
 ### Breaking Changes:
 
