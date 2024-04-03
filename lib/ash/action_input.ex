@@ -67,7 +67,7 @@ defmodule Ash.ActionInput do
     {input, _opts} = Ash.Actions.Helpers.set_context_and_get_opts(input.domain, input, opts)
 
     input
-    |> cast_params(params)
+    |> cast_params(params, opts)
     |> require_arguments()
   end
 
@@ -177,11 +177,13 @@ defmodule Ash.ActionInput do
     %{input | context: Ash.Helpers.deep_merge_maps(input.context, map)}
   end
 
-  defp cast_params(input, params) do
+  defp cast_params(input, params, opts) do
     input = %{
       input
       | params: Map.merge(input.params, Enum.into(params, %{}))
     }
+
+    skip_unknown_inputs = opts[:skip_unknown_inputs] || []
 
     Enum.reduce(params, input, fn {name, value}, input ->
       cond do
@@ -189,6 +191,9 @@ defmodule Ash.ActionInput do
           set_argument(input, name, value)
 
         match?("_" <> _, name) ->
+          input
+
+        name in skip_unknown_inputs ->
           input
 
         true ->
