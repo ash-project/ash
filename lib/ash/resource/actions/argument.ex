@@ -5,9 +5,9 @@ defmodule Ash.Resource.Actions.Argument do
     :type,
     :name,
     :default,
-    :public?,
     :sensitive?,
     :description,
+    public?: true,
     constraints: []
   ]
 
