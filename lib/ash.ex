@@ -1727,7 +1727,7 @@ defmodule Ash do
 
   #{Spark.Options.docs(@stream_opts)}
   """
-  @spec stream!(query :: Ash.Query.t(), opts :: Keyword.t()) ::
+  @spec stream!(query :: Ash.Query.t() | Ash.Resource.t(), opts :: Keyword.t()) ::
           Enumerable.t(Ash.Resource.record())
   @doc spark_opts: [{1, @stream_opts}]
   def stream!(query, opts \\ []) do
