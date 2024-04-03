@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.10](https://github.com/ash-project/ash/compare/v3.0.0-rc.9...v3.0.0-rc.10) (2024-04-03)
+
+
+
+
+### Bug Fixes:
+
+* don't call domain at compile time if its not loaded
+
 ## [v3.0.0-rc.9](https://github.com/ash-project/ash/compare/v3.0.0-rc.8...v3.0.0-rc.9) (2024-04-03)
 
 
