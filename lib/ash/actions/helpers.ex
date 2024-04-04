@@ -55,8 +55,7 @@ defmodule Ash.Actions.Helpers do
     query_or_changeset = set_context(query_or_changeset, opts[:context] || %{})
 
     domain =
-      domain || opts[:domain] || query_or_changeset.domain ||
-        Ash.Resource.Info.domain(query_or_changeset.resource)
+      domain || Ash.Resource.Info.domain(query_or_changeset.resource) || opts[:domain] || query_or_changeset.domain
 
     opts =
       case query_or_changeset.context do
