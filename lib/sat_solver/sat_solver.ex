@@ -968,14 +968,26 @@ defmodule Ash.SatSolver do
 
     true ->
       def solve_expression(_cnf) do
-        raise """
-        No SAT solver available.
+        if Code.ensure_loaded?(Picosat) || Code.ensure_loaded?(SimpleSat) do
+          raise """
+          No SAT solver available, although one was loaded. This typically means you need to run `mix deps.compile ash --force`
 
-        Please add one of the following dependencies to your application to use sat solver features:
+          If that doesn't work, please ensure that one of the following dependencies is present in your application to use sat solver features:
 
-        * `:picosat_elixir` (recommended) - A NIF wrapper around the PicoSAT SAT solver. Fast, production ready, battle tested.
-        * `:simple_sat` - A pure Elixir SAT solver. Slower than PicoSAT, but no NIF dependency.
-        """
+          * `:picosat_elixir` (recommended) - A NIF wrapper around the PicoSAT SAT solver. Fast, production ready, battle tested.
+          * `:simple_sat` - A pure Elixir SAT solver. Slower than PicoSAT, but no NIF dependency.
+          """
+
+        else
+          raise """
+          No SAT solver available.
+
+          Please add one of the following dependencies to your application to use sat solver features:
+
+          * `:picosat_elixir` (recommended) - A NIF wrapper around the PicoSAT SAT solver. Fast, production ready, battle tested.
+          * `:simple_sat` - A pure Elixir SAT solver. Slower than PicoSAT, but no NIF dependency.
+          """
+        end
       end
   end
 

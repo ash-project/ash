@@ -36,16 +36,17 @@ defmodule Ash.MixProject do
 
   defp docs do
     [
-      main: "get-started",
+      main: "home",
       source_ref: "v#{@version}",
       logo: "logos/small-logo.png",
       extra_section: "GUIDES",
       extras: [
+        {"documentation/home.md",
+          title: "Home"
+        },
         "documentation/tutorials/get-started.md",
-        "documentation/tutorials/why-ash.md",
-        "documentation/tutorials/philosophy.md",
-        "documentation/tutorials/using-hexdocs.md",
-        "documentation/tutorials/extending-resources.md",
+        "documentation/topics/what-is-ash.md",
+        "documentation/topics/design-principles.md",
         "documentation/how_to/contribute.md",
         "documentation/how_to/define-idiomatic-actions.md",
         "documentation/how_to/defining-manual-relationships.md",
@@ -65,6 +66,7 @@ defmodule Ash.MixProject do
         "documentation/topics/constraints.md",
         "documentation/topics/development-utilities.md",
         "documentation/topics/embedded-resources.md",
+        "documentation/topics/extending-resources.md",
         "documentation/topics/expressions.md",
         "documentation/topics/glossary.md",
         "documentation/topics/identities.md",

@@ -104,7 +104,7 @@ define_calculation :id_matches, args: [{:arg, :id}, {:optional, {:ref, :id}}]
 
 Updates support a list, stream, or query as the first argument. This allows for bulk updates. In this mode, an `%Ash.BulkResult{}` is returned.
 
-> ### Valid inputs {:.WARNING}
+> ### Valid inputs {: .warning}
 >
 > You cannot provide "any enumerable", only lists, streams (a function or a %Stream{}), and queries. We have to be able to distinguish the input as a bulk input and not input to the action itself.
 
@@ -128,7 +128,7 @@ You can pass options to the bulk operation with the `bulk_options` option to you
 
 For bulk creates, you can provide a list or stream of inputs. In this mode also, an `%Ash.BulkResult{}` is returned.
 
-> ### Valid inputs {:.WARNING}
+> ### Valid inputs {: .warning}
 >
 > You cannot provide "any enumerable", only lists, streams (a function or a %Stream{}). We have to be able to distinguish the input as a bulk input and not input to the action itself.
 

@@ -1,13 +1,5 @@
 # Get Started
 
-<!--- ash-hq-hide-start --> <!--- -->
-
-> #### HexDocs {: .tip}
->
-> Hexdocs does not support multi-package search. To assist with this, we provide a mirror of this documentation at [ash-hq.org](https://ash-hq.org). Use Ctrl+K or Cmd+K to search all packages on that site. For the best way to use the hex documentation, see the [hexdocs guide](/documentation/tutorials/using-hexdocs.md).
-
-<!--- ash-hq-hide-stop --> <!--- -->
-
 ## Learn with Livebook
 
 We have a basic step by step tutorial in Livebook that introduces you to Ash. No prior Ash knowledge is required.
@@ -15,30 +7,20 @@ The Livebook tutorial is self contained and separate from the documentation belo
 
 [![Run in Livebook](https://livebook.dev/badge/v1/pink.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2Fash-project%2Fash_tutorial%2Fblob%2Fmaster%2Foverview.livemd)
 
-## Watch the ElixirConf Talk
-
-<iframe width="560" height="315" class="rounded-xl w-full aspect-video" src="https://www.youtube.com/embed/c4iou77kOFc?si=gxPdzGng5cQTrr7P" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen />
-
 ## Goals
 
 In this guide we will:
 
 1. Create a new Elixir application and add Ash as a dependency
-2. Create a simple set of resources and show they can be used
-3. Illustrate some core concepts of Ash
-4. Point you to good next resources so you can explore Ash further
-
-## Things you may want to read first
-
-- [Install Elixir](https://elixir-lang.org/install.html)
-- [Philosophy Guide](/documentation/tutorials/philosophy.md)
-- [Using Hexdocs](/documentation/tutorials/using-hexdocs.md)
+2. Create a simple set of resources and see how they can be used
+3. Go over some core concepts f Ash
+4. Find out what material might be good to visit next
 
 ## Requirements
 
 If you want to follow along yourself, you will need the following things:
 
-1. Elixir and Erlang installed
+1. [Elixir and Erlang installed](https://elixir-lang.org/install.html)
 2. A text editor to make the changes that we make
 3. A terminal to run the examples using `iex`
 
@@ -59,7 +41,7 @@ The actions we will be able to take on these resources include:
 
 ### Create a new project
 
-We first create a new project with the `--sup` flag to add a supervision tree. This will be necessary for later steps.
+We first create a new project with the `--sup` flag to add a supervision tree. This will be necessary for other follow-up tutorials.
 
 ```bash
 # In your terminal
@@ -80,35 +62,22 @@ Open the project in your text editor, and we'll get started.
 
 ### Add Ash to your application
 
-Add the `ash` dependency to your `mix.exs`
+Add the `ash` and `picosat_elixir` dependencies to your `mix.exs`
 
 ```elixir
 defp deps do
   [
-    # {:dep_from_hexpm, "~> 0.3.0"},
-    # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
-    {:ash, "~> 3.0"}, # <-- add this line
-    {:picosat_elixir, "~> 0.2"} # <- and this line
+    {:ash, "~> 3.0"},
+    {:picosat_elixir, "~> 0.2"}
   ]
 end
 ```
 
-### Picosat Installation Issues
+And then run `mix deps.get && mix deps.compile` to install the dependencies
 
-In rare cases, users have trouble installing picosat (usually on windows)
-if that is the case, use `simple_sat` instead. We _highly recommend_ that you
-get `picosat_elixir` working before shipping to production if you intend to use
-Ash policies. We've provided `simple_sat` to get you up and running more easily
-and to allow you to explore Ash without roadblocks.
-
-```elixir
-defp deps do
-  [
-    # {:picosat_elixir, "~> 0.2"} # instead of this
-    {:simple_sat, "~> 0.1"} # <- use this
-  ]
-end
-```
+> ### Picosat installation issues? {: .info}
+>
+> Replace `{:picosat_elixir, "~> 0.2"}` with `{:simple_sat, "~> 0.1"}` to use a simpler (but mildly slower) solver. You can always switch back to `picosat_elixir` later once you're done with the tutorial.
 
 ### Formatting
 
@@ -136,8 +105,8 @@ The basic building blocks of an Ash application are Ash resources. They are tied
 
 Let's start by creating our first resource along with our first domain. We will create the following files:
 
-- The domain [Helpdesk.Support] - `lib/helpdesk/support.ex`
-- Our Ticket resource [Helpdesk.Support.Ticket] - `lib/helpdesk/support/ticket.ex`.
+- The domain `Helpdesk.Support`, in `lib/helpdesk/support.ex`
+- Our Ticket resource `Helpdesk.Support.Ticket`, in `lib/helpdesk/support/ticket.ex`.
 
 To create the required folders and files, you can use the following command in your terminal:
 
@@ -146,7 +115,7 @@ mkdir -p lib/helpdesk/support && touch $_/ticket.ex
 touch lib/helpdesk/support.ex
 ```
 
-Your project structure should now look like this:
+Your project structure should now include the following files:
 
 ```
 lib/
@@ -178,8 +147,11 @@ defmodule Helpdesk.Support.Ticket do
   use Ash.Resource, domain: Helpdesk.Support
 
   actions do
-    # Add a set of simple actions. You'll customize these later.
-    defaults [:read, :destroy, create: :*, update: :*]
+    # Use the default implementation of the :read action
+    defaults [:read]
+
+    # and a custom create action, which we'll customize later
+    create :create
   end
 
   # Attributes are the simple pieces of data that exist on your resource
@@ -202,7 +174,7 @@ mkdir -p config
 touch config/config.exs
 ```
 
-and add the following contents to it (if the file already exists, just make sure the `config` line is added)
+and add the following contents to it.
 
 ```elixir
 # in config/config.exs
@@ -213,7 +185,7 @@ config :helpdesk, :ash_domains, [Helpdesk.Support]
 
 ### Try our first resource out
 
-Run `iex -S mix` in your project and try it out.
+Run `iex -S mix` in your project's root directory and try out the following.
 
 To create a ticket, we first make an `Ash.Changeset` for the `:create` action of the `Helpdesk.Support.Ticket` resource. Then we pass it to the `Ash.create!/1` function.
 
@@ -236,7 +208,7 @@ This returns what we call a `record` which is an instance of a resource.
 
 ### Customizing our Actions
 
-One thing you may have noticed earlier is that we created a ticket without providing any input, and as a result our ticket had a `subject` of `nil`. Additionally, we don't have any other data on the ticket. Lets add a `status` attribute, ensure that `subject` can't be `nil`, and provide a better interface by making a custom action for opening a ticket, called `:open`.
+One thing you may have noticed earlier is that we created a ticket without providing any input, and as a result our ticket had a `subject` of `nil`. Additionally, we don't have any other data on the ticket. Lets add a `status` attribute, ensure that `subject` can't be `nil`, and provide a better interface by giving the `:create` action a better name, and accepting `:subject` as part of the action.
 
 We'll start with the attribute changes:
 
@@ -271,7 +243,7 @@ attributes do
 end
 ```
 
-And then add our customized `open` action which should take a `subject` argument:
+And then replace the `:create` action with `:open`, and accept `:ubject` as input.
 
 ```elixir
 # lib/helpdesk/support/ticket.ex
@@ -279,8 +251,6 @@ And then add our customized `open` action which should take a `subject` argument
 actions do
   ...
   create :open do
-    # By default you can provide all public attributes to an action
-    # This action should only accept the subject
     accept [:subject]
   end
 end
@@ -296,7 +266,7 @@ recompile()
 
 Helpdesk.Support.Ticket
 |> Ash.Changeset.for_create(:open, %{subject: "My mouse won't click!"})
-|> Helpdesk.Support.create!()
+|> Ash.create!()
 ```
 
 And we can see our newly created ticket with a subject and a status.
@@ -334,6 +304,10 @@ actions do
     # We don't want to accept any input here
     accept []
 
+    validate attribute_does_not_equal(:status, :closed) do
+      message "Ticket is already closed"
+    end
+
     change set_attribute(:status, :closed)
     # A custom change could be added like so:
     #
@@ -353,12 +327,12 @@ recompile()
 ticket = (
   Helpdesk.Support.Ticket
   |> Ash.Changeset.for_create(:open, %{subject: "My mouse won't click!"})
-  |> Helpdesk.Support.create!()
+  |> Ash.create!()
 )
 
 ticket
 |> Ash.Changeset.for_update(:close)
-|> Helpdesk.Support.update!()
+|> Ash.update!()
 
 #Helpdesk.Support.Ticket<
   ...
@@ -373,7 +347,7 @@ ticket
 So far we haven't used a data layer that does any persistence, like storing records in a database. All that this simple resource does is return the record back to us. You can see this lack of persistence by attempting to use a `read` action:
 
 ```elixir
-Helpdesk.Support.read!(Helpdesk.Support.Ticket)
+Ash.read!(Helpdesk.Support.Ticket)
 ```
 
 Which will raise an error explaining that there is no data to be read for that resource.
@@ -393,12 +367,12 @@ tickets =
     ticket =
       Helpdesk.Support.Ticket
       |> Ash.Changeset.for_create(:open, %{subject: "Issue #{i}"})
-      |> Helpdesk.Support.create!()
+      |> Ash.create!()
 
     if rem(i, 2) == 0 do
       ticket
       |> Ash.Changeset.for_update(:close)
-      |> Helpdesk.Support.update!()
+      |> Ash.update!()
     else
       ticket
     end
@@ -411,7 +385,7 @@ Find the tickets where the subject contains `"2"`. Note that the we're setting t
 Helpdesk.Support.Ticket
 |> Ash.Query.filter(contains(subject, "2"))
 |> Ash.DataLayer.Simple.set_data(tickets)
-|> Helpdesk.Support.read!()
+|> Ash.read!()
 ```
 
 Find the tickets that are _closed_ and their subject does _not_ contain `"4"`
@@ -420,7 +394,7 @@ Find the tickets that are _closed_ and their subject does _not_ contain `"4"`
 Helpdesk.Support.Ticket
 |> Ash.Query.filter(status == :closed and not(contains(subject, "4")))
 |> Ash.DataLayer.Simple.set_data(tickets)
-|> Helpdesk.Support.read!()
+|> Ash.read!()
 ```
 
 The examples above could be easily implemented with `Enum.filter`, but the real power here is to allow you to use the same tools when working with any data layer. If you were using the `AshPostgres.DataLayer` data layer.
@@ -439,6 +413,7 @@ To add it to your resource, modify it like so:
 # lib/helpdesk/support/ticket.ex
 
 use Ash.Resource,
+  domain: Helpdesk.Support,
   data_layer: Ash.DataLayer.Ets
 ```
 
@@ -454,24 +429,24 @@ for i <- 0..5 do
   ticket =
     Helpdesk.Support.Ticket
     |> Ash.Changeset.for_create(:open, %{subject: "Issue #{i}"})
-    |> Helpdesk.Support.create!()
+    |> Ash.create!()
 
   if rem(i, 2) == 0 do
     ticket
     |> Ash.Changeset.for_update(:close)
-    |> Helpdesk.Support.update!()
+    |> Ash.update!()
   end
 end
 
 # Show the tickets where the subject contains "2"
 Helpdesk.Support.Ticket
 |> Ash.Query.filter(contains(subject, "2"))
-|> Helpdesk.Support.read!()
+|> Ash.read!()
 
 # Show the tickets that are closed and their subject does not contain "4"
 Helpdesk.Support.Ticket
 |> Ash.Query.filter(status == :closed and not(contains(subject, "4")))
-|> Helpdesk.Support.read!()
+|> Ash.read!()
 ```
 
 ### Adding relationships
@@ -489,7 +464,11 @@ defmodule Helpdesk.Support.Representative do
 
   actions do
     # Add the default simple actions
-    defaults [:read, :destroy, create: :*, update: :*]
+    defaults [:read]
+
+    create :create do
+      accept [:name]
+    end
   end
 
   # Attributes are the simple pieces of data that exist on your resource
@@ -608,7 +587,7 @@ ticket
 
 What you've seen above barely scratches the surface of what Ash can do. In a lot of ways, it will look very similar to other tools that you've seen. If all that you ever used was the above, then realistically you won't see much benefit to using Ash.
 
-Where Ash shines however, is all of the tools that can operate on your resources. You have the ability to extend the framework yourself, and apply consistent design patterns that enable unparalleled efficiency, power and flexibility as your application grows.
+Where Ash shines however, is all of the tools that can work *with* your resources. You have the ability to extend the framework yourself, and apply consistent design patterns that enable unparalleled efficiency, power and flexibility as your application grows.
 
 #### Get Help
 
@@ -618,7 +597,7 @@ Where Ash shines however, is all of the tools that can operate on your resources
 
 #### Clean up your code that uses Ash?
 
-Creating and using changesets manually can be verbose, and they all look very similar. Luckily, Ash has your back and can generate these for you using Code Interfaces!
+Creating and using changesets manually can be verbose, and they all look very similar. Luckily, Ash has your back and can help you build high quality interfaces for you!
 
 Check out the [Code Interface Guide](/documentation/topics/code-interface.md) to derive things like `Helpdesk.Support.Ticket.assign!(representative.id)`
 
@@ -628,7 +607,7 @@ See [The AshPostgres getting started guide](https://hexdocs.pm/ash_postgres/get-
 
 #### Add a web API
 
-Check out the `AshJsonApi` and `AshGraphql` extensions to effortlessly build APIs around your resources
+Check out the `AshJsonApi` and `AshGraphql` extensions to  build APIs around your resources
 
 #### Authorize access and work with users
 
