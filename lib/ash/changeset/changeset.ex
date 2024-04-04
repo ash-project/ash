@@ -4141,7 +4141,7 @@ defmodule Ash.Changeset do
   Add an argument to the changeset, which will be provided to the action.
   """
   def set_argument(changeset, argument, value) do
-    maybe_already_validated_error!(changeset, :set_argument)
+    maybe_already_validated_error!(changeset, :force_set_argument)
     do_set_argument(changeset, argument, value)
   end
 
@@ -4280,7 +4280,7 @@ defmodule Ash.Changeset do
   @doc "Adds a change to the changeset, unless the value matches the existing value."
   @spec change_attribute(t(), atom, any) :: t()
   def change_attribute(changeset, attribute, value) do
-    maybe_already_validated_error!(changeset, :change_attribute)
+    maybe_already_validated_error!(changeset, :force_change_attribute)
     do_change_attribute(changeset, attribute, value)
   end
 
