@@ -132,6 +132,23 @@ defmodule Ash.Resource.Change.Builtins do
   end
 
   @doc """
+  Updates an existing attribute change by applying a function to it.
+
+  The update function gets called with the value already cast to the correct type, and only gets called
+  on valid changesets, so the value is guaranteed to have passed validations and constraints.
+  """
+  defmacro update_change(attribute, function) do
+    {value, function} =
+      Spark.CodeHelpers.lift_functions(function, :change_update_change, __CALLER__)
+
+    quote generated: true do
+      unquote(function)
+
+      {Ash.Resource.Change.UpdateChange, attribute: unquote(attribute), function: unquote(value)}
+    end
+  end
+
+  @doc """
   Increments an attribute's value by the amount specified, which defaults to 1.
 
   Options:
