@@ -1391,7 +1391,7 @@ defmodule Ash.Actions.ManagedRelationships do
     end
   end
 
-  defp find_match(current_value, input, pkeys, relationship \\ nil, force_has_one? \\ false)
+  defp find_match(current_value, input, pkeys, relationship, force_has_one? \\ false)
 
   defp find_match(%Ash.NotLoaded{}, _input, _pkeys, _relationship, _force_has_one?) do
     nil
@@ -1413,9 +1413,11 @@ defmodule Ash.Actions.ManagedRelationships do
     if relationship && relationship.type in [:has_one, :has_many] &&
          relationship.destination_attribute in pkey do
       Enum.all?(pkey, fn field ->
+        attr = Ash.Resource.Info.attribute(relationship.destination, field)
+
         if field == relationship.destination_attribute do
           if is_struct(input) do
-            do_matches?(current_value, input, field)
+            do_matches?(current_value, input, field, attr.type)
           else
             # We know that it will be the same as all other records in this relationship
             # (because thats how has_one and has_many relationships work), so we
@@ -1423,20 +1425,29 @@ defmodule Ash.Actions.ManagedRelationships do
             true
           end
         else
-          do_matches?(current_value, input, field)
+          do_matches?(current_value, input, field, attr.type)
         end
       end)
     else
+      if relationship do
+        Enum.all?(pkey, fn field ->
+          attr = Ash.Resource.Info.attribute(relationship.destination, field)
+          do_matches?(current_value, input, field, attr.type)
+        end)
+      else
       Enum.all?(pkey, fn field ->
-        do_matches?(current_value, input, field)
+        do_matches?(current_value, input, field, nil)
       end)
+      end
     end
   end
 
-  defp do_matches?(current_value, input, field) do
+  defp do_matches?(current_value, input, field, type) do
     with {:ok, current_val} when not is_nil(current_val) <- Map.fetch(current_value, field),
-         {:ok, input_val} when not is_nil(input_val) <- fetch_field(input, field) do
-      Comp.equal?(current_val, input_val)
+         {:ok, input_val} when not is_nil(input_val) <- fetch_field(input, field),
+         {:ok, current_val} <- Ash.Type.cast_input(type, current_val),
+         {:ok, input_val} <- Ash.Type.cast_input(type, input_val) do
+      Ash.Type.equal?(type, current_val, input_val)
     else
       _ ->
         false
@@ -1484,7 +1495,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
     original_value
     |> List.wrap()
-    |> Enum.reject(&find_match(all_used, &1, [pkey]))
+    |> Enum.reject(&find_match(all_used, &1, [pkey], relationship))
     |> Enum.reduce_while(
       {:ok, current_value, []},
       fn record, {:ok, current_value, all_notifications} ->
