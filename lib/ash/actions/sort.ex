@@ -96,7 +96,7 @@ defmodule Ash.Actions.Sort do
             end
 
           if ref_attribute.sortable? do
-            case find_non_sortable_relationship(resource, path) do
+            case find_non_sortable_relationship(resource, path, sort) do
               nil ->
                 {:cont, :ok}
 
@@ -238,17 +238,22 @@ defmodule Ash.Actions.Sort do
     end)
   end
 
-  defp find_non_sortable_relationship(_resource, []) do
+  defp find_non_sortable_relationship(_resource, [], _sort) do
     nil
   end
 
-  defp find_non_sortable_relationship(resource, [first | rest]) do
+  defp find_non_sortable_relationship(resource, [first | rest], sort) do
     relationship = Ash.Resource.Info.relationship(resource, first)
 
-    if relationship.sortable? do
-      find_non_sortable_relationship(relationship.destination, [rest])
-    else
-      {relationship.source, relationship.name}
+    cond do
+      !relationship ->
+        raise """
+          No such relationship #{first} for resource #{inspect(resource)} when evaluating #{inspect(sort)}
+        """
+      !relationship.sortable? ->
+        {relationship.source, relationship.name}
+      true ->
+        find_non_sortable_relationship(relationship.destination, [rest], sort)
     end
   end
 
