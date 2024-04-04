@@ -56,6 +56,34 @@ defmodule Ash.Resource.Validation.Match do
   end
 
   @impl true
+  def atomic(changeset, opts, context) do
+    cond do
+      argument?(changeset.action, opts[:attribute]) ->
+        validate(changeset, opts, context)
+
+      not Ash.Changeset.changing_attribute?(changeset, opts[:attribute]) ->
+        {:not_atomic, "can't atomically match an attribute that is not changing"}
+
+      atomic_expr_change?(changeset.atomics, opts[:attribute]) ->
+        {:not_atomic, "can't match on an atomic expression"}
+
+      true ->
+        validate(changeset, opts, context)
+    end
+  end
+
+  defp argument?(%{arguments: arguments}, attribute) do
+    Enum.find(arguments, &(&1.name == attribute))
+  end
+
+  defp atomic_expr_change?(atomics, attribute) do
+    case Keyword.get(atomics, attribute) do
+      nil -> false
+      value -> Ash.Expr.expr?(value)
+    end
+  end
+
+  @impl true
   def describe(opts) do
     [
       message: opts[:message],
