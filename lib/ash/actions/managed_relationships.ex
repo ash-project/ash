@@ -1435,7 +1435,7 @@ defmodule Ash.Actions.ManagedRelationships do
     end
   end
 
-  defp find_match(current_value, input, pkeys, relationship \\ nil, force_has_one? \\ false)
+  defp find_match(current_value, input, pkeys, relationship, force_has_one? \\ false)
 
   defp find_match(%Ash.NotLoaded{}, _input, _pkeys, _relationship, _force_has_one?) do
     nil
@@ -1457,7 +1457,7 @@ defmodule Ash.Actions.ManagedRelationships do
     if relationship && relationship.type in [:has_one, :has_many] &&
          relationship.destination_attribute in pkey do
       Enum.all?(pkey, fn field ->
-        attr = Ash.Resource.Info.attribute(relationship.source, field)
+        attr = Ash.Resource.Info.attribute(relationship.destination, field)
 
         if field == relationship.destination_attribute do
           if is_struct(input) do
@@ -1474,7 +1474,7 @@ defmodule Ash.Actions.ManagedRelationships do
       end)
     else
       Enum.all?(pkey, fn field ->
-        attr = Ash.Resource.Info.attribute(relationship.source, field)
+        attr = Ash.Resource.Info.attribute(relationship.destination, field)
         do_matches?(current_value, input, field, attr.type)
       end)
     end
@@ -1533,7 +1533,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
     original_value
     |> List.wrap()
-    |> Enum.reject(&find_match(all_used, &1, [pkey]))
+    |> Enum.reject(&find_match(all_used, &1, [pkey], relationship))
     |> Enum.reduce_while(
       {:ok, current_value, []},
       fn record, {:ok, current_value, all_notifications} ->
