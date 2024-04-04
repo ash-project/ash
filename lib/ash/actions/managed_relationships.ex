@@ -1435,9 +1435,9 @@ defmodule Ash.Actions.ManagedRelationships do
           do_matches?(current_value, input, field, attr.type)
         end)
       else
-      Enum.all?(pkey, fn field ->
-        do_matches?(current_value, input, field, nil)
-      end)
+        Enum.all?(pkey, fn field ->
+          do_matches?(current_value, input, field, nil)
+        end)
       end
     end
   end
