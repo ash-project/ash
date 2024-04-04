@@ -172,6 +172,32 @@ Additionally, the following exceptions have had keys remapped:
 
 ## Significant Changes
 
+### `Ash.set_*` functions have been removed
+
+In 2.0, a set of features allowed storing the actor, tenant and context in the process dictionary. There were fundamental issues with this pattern that manifested in subtle bugs.
+
+#### What you'll need to change
+
+You need to manually thread through your tenant, actor, and context values wherever you were using `Ash.set_*`. For example:
+
+```elixir
+Ash.set_actor(current_user)
+Ash.set_tenant(current_tenant)
+
+Ash.Changeset.for_create!(..)
+Ash.Query.for_read(..)
+```
+
+would become
+
+```elixir
+Ash.set_actor(current_user)
+Ash.set_tenant(current_tenant)
+
+Ash.Changeset.for_create!(.., tenant: current_tenant, actor: current_user)
+Ash.Query.for_read(.., tenant: current_tenant, actor: current_user)
+```
+
 ### the `Domain` of a resource must now be known when constructing a changeset, query or action input
 
 In order to honor rules on the `Domain` module about authorization and timeouts, we have to know the `Domain` when building the changeset.
@@ -253,11 +279,11 @@ end
 
 For those who want to be more explicit, or after your upgrade has complete if you wish to refactor existing resources and actions, the general best path forward is to copy the `default_accept` into each action (or put it in a module attribute and reference it) as the `accept` option. This way when a new action is added, it does not "inherit" some list of accepted attributes.
 
-> ### :\* private attributes can now be accepted {:.INFO}
+> ### :\* private attributes can now be accepted {: .info}
 >
 > In 2.0, accepting a private attribute as a change required adding an argument with the same name, and using `change set_attribute(...)`. Now that we require explicit accept lists, you can place private attribtues in that list, which will allow them to be written to (but not read back).
 
-> ### :\* includes belongs_to attributes! {:.WARNING}
+> ### :\* includes belongs_to attributes! {: .warning}
 >
 > The change to explicit accepts also included a change that defaults belongs_to attributes to `writable?: true` and `public?: true`. You may want to add `attribute_writable?: false` to your belongs_to relationships if you are adding `default_acceot :*` and don't currently have `attribute_writable?: true` on them currently.
 
@@ -382,7 +408,7 @@ There is no longer a `private?` option for attributes, relationships, calculatio
 
 If you are using api extensions (i.e `AshGraphql` and `AshJsonApi`), you will need to go to your resources and "invert" the definitions. i.e _remove_ `private?: true` and _add_ `public?: true` to _every other_ attribute, _relationship_ and _calculation_. Don't forget the relationships and calculations!
 
-> ### Embedded resources too! {:.WARNING}
+> ### Embedded resources too! {: .WARNING}
 >
 > The above includes embedded resources as well! Don't forget to make sure that all fields on your embedded resources are also marked as `public?: true` (if applicable). The goal here is to have a clear visual indicator of what in your application can be shown publically.
 
