@@ -8,17 +8,6 @@ defmodule Ash.Actions.ManagedRelationships do
   require Ash.Query
   import Ash.Expr
 
-  if Application.compile_env(:ash, :use_all_identities_in_manage_relationship?) == true do
-    IO.warn("""
-    * IMPORTANT *
-
-    This configuration is no longer valid and is being ignored. You must explicitly configure the validations
-    used by `manage_relationship`, using `use_identities: [...]` in your manage_relationship options.
-
-    Please read https://github.com/ash-project/ash/issues/469 for more
-    """)
-  end
-
   def load(_domain, created, %{relationships: rels}, _) when rels == %{},
     do: {:ok, created}
 
@@ -1468,9 +1457,11 @@ defmodule Ash.Actions.ManagedRelationships do
     if relationship && relationship.type in [:has_one, :has_many] &&
          relationship.destination_attribute in pkey do
       Enum.all?(pkey, fn field ->
+        attr = Ash.Resource.Info.attribute(relationship.source, field)
+
         if field == relationship.destination_attribute do
           if is_struct(input) do
-            do_matches?(current_value, input, field)
+            do_matches?(current_value, input, field, attr.type)
           else
             # We know that it will be the same as all other records in this relationship
             # (because thats how has_one and has_many relationships work), so we
@@ -1478,20 +1469,23 @@ defmodule Ash.Actions.ManagedRelationships do
             true
           end
         else
-          do_matches?(current_value, input, field)
+          do_matches?(current_value, input, field, attr.type)
         end
       end)
     else
       Enum.all?(pkey, fn field ->
-        do_matches?(current_value, input, field)
+        attr = Ash.Resource.Info.attribute(relationship.source, field)
+        do_matches?(current_value, input, field, attr.type)
       end)
     end
   end
 
-  defp do_matches?(current_value, input, field) do
+  defp do_matches?(current_value, input, field, type) do
     with {:ok, current_val} when not is_nil(current_val) <- Map.fetch(current_value, field),
-         {:ok, input_val} when not is_nil(input_val) <- fetch_field(input, field) do
-      Comp.equal?(current_val, input_val)
+         {:ok, input_val} when not is_nil(input_val) <- fetch_field(input, field),
+         {:ok, current_val} <- Ash.Type.cast_input(type, current_val),
+         {:ok, input_val} <- Ash.Type.cast_input(type, input_val) do
+      Ash.Type.equal?(type, current_val, input_val)
     else
       _ ->
         false
