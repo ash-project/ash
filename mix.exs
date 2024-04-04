@@ -41,9 +41,7 @@ defmodule Ash.MixProject do
       logo: "logos/small-logo.png",
       extra_section: "GUIDES",
       extras: [
-        {"documentation/home.md",
-          title: "Home"
-        },
+        {"documentation/home.md", title: "Home"},
         "documentation/tutorials/get-started.md",
         "documentation/topics/what-is-ash.md",
         "documentation/topics/design-principles.md",

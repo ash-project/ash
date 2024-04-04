@@ -977,7 +977,6 @@ defmodule Ash.SatSolver do
           * `:picosat_elixir` (recommended) - A NIF wrapper around the PicoSAT SAT solver. Fast, production ready, battle tested.
           * `:simple_sat` - A pure Elixir SAT solver. Slower than PicoSAT, but no NIF dependency.
           """
-
         else
           raise """
           No SAT solver available.
