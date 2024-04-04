@@ -174,7 +174,7 @@ Additionally, the following exceptions have had keys remapped:
 
 ### `Ash.set_*` functions have been removed
 
-In 2.0, a set of features allowed storing the actor, tenant and context in the process dictionary. There were fundamental issues with this pattern that manifested in subtle bugs.
+In 2.0, a set of features allowed storing the actor, tenant and context in the process dictionary. There were fundamental issues with this pattern that manifested in subtle bugs. We suggest making this change *before* you upgrade, as this change can be made and verified without upgrading to 3.0.
 
 #### What you'll need to change
 
