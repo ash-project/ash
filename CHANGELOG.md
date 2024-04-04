@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.11](https://github.com/ash-project/ash/compare/v3.0.0-rc.10...v3.0.0-rc.11) (2024-04-04)
+
+
+
+
+### Bug Fixes:
+
+* properly handle multiple paths for checking sortable relationships
+
+* multi-line DSL doc options in `Ash.Reactor`. (#974)
+
 ## [v3.0.0-rc.10](https://github.com/ash-project/ash/compare/v3.0.0-rc.9...v3.0.0-rc.10) (2024-04-03)
 
 
