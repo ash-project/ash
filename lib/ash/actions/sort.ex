@@ -250,10 +250,12 @@ defmodule Ash.Actions.Sort do
         raise """
           No such relationship #{first} for resource #{inspect(resource)} when evaluating #{inspect(sort)}
         """
+
       !relationship.sortable? ->
         {relationship.source, relationship.name}
+
       true ->
-        find_non_sortable_relationship(relationship.destination, [rest], sort)
+        find_non_sortable_relationship(relationship.destination, rest, sort)
     end
   end
 
