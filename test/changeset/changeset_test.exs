@@ -301,6 +301,37 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     defstruct [:name]
   end
 
+  defmodule Tag do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :name, :string do
+        public?(true)
+        allow_nil?(false)
+      end
+
+      attribute :category, :string do
+        public?(true)
+      end
+
+      attribute :priority, :integer do
+        public?(true)
+      end
+    end
+  end
+
   describe "new" do
     test "it wraps a new resource in a `create` changeset" do
       assert %Ash.Changeset{
@@ -1092,6 +1123,45 @@ defmodule Ash.Test.Changeset.ChangesetTest do
                }
              ] =
                Ash.Changeset.for_create(Category, :with_name_validation, %{"name" => ""}).errors
+    end
+  end
+
+  describe "update_change/3" do
+    test "updates the attribute if it exists" do
+      changeset =
+        Tag
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:name, "FOO")
+        |> Ash.Changeset.update_change(:name, &String.downcase/1)
+        |> Ash.Changeset.for_create(:create)
+
+      assert %Ash.Changeset{attributes: %{name: "foo"}} = changeset
+    end
+
+    test "does not call the update function if the attribute is not set" do
+      Tag
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.update_change(:category, fn _ -> raise "I should not be called" end)
+      |> Ash.Changeset.for_create(:create)
+    end
+
+    test "does not call the update function on attributes that failed initial validation" do
+      Tag
+      |> Ash.Changeset.new()
+      |> Ash.Changeset.change_attribute(:priority, "foo")
+      |> Ash.Changeset.update_change(:priority, fn _ -> raise "I should not be called" end)
+      |> Ash.Changeset.for_create(:create)
+    end
+
+    test "gets called with casted attributes" do
+      changeset =
+        Tag
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:priority, "3")
+        |> Ash.Changeset.update_change(:priority, &(&1 + 1))
+        |> Ash.Changeset.for_create(:create)
+
+      assert %Ash.Changeset{attributes: %{priority: 4}} = changeset
     end
   end
 end
