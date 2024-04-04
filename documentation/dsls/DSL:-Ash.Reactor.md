@@ -36,6 +36,16 @@ action name, resource, action \\ nil
 
 Declares a step that will call a generic action on a resource.
 
+> #### Undo behaviour {: .tip}
+>
+> This step has three different modes of undo.
+>
+> * `never` - The result of the action is never undone.  This is the default.
+> * `always` - The `undo_action` will always be called.
+> * `outside_transaction` - The `undo_action` will not be called when running inside a `transaction` block, but will be otherwise.
+
+
+
 ### Nested DSLs
  * [actor](#reactor-action-actor)
  * [inputs](#reactor-action-inputs)
@@ -49,7 +59,7 @@ Declares a step that will call a generic action on a resource.
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`name`](#reactor-action-name){: #reactor-action-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`name`](#reactor-action-name){: #reactor-action-name .spark-required} | `atom` |  | A unique name for the step. |
 | [`resource`](#reactor-action-resource){: #reactor-action-resource .spark-required} | `module` |  | The resource to call the action on. |
 | [`action`](#reactor-action-action){: #reactor-action-action } | `atom` |  | The name of the action to call on the resource. |
 ### Options
@@ -61,7 +71,7 @@ Declares a step that will call a generic action on a resource.
 | [`authorize?`](#reactor-action-authorize?){: #reactor-action-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
 | [`description`](#reactor-action-description){: #reactor-action-description } | `String.t` |  | A description for the step |
 | [`undo_action`](#reactor-action-undo_action){: #reactor-action-undo_action } | `atom` |  | The name of the action to call on the resource when the step is to be undone. |
-| [`undo`](#reactor-action-undo){: #reactor-action-undo } | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
+| [`undo`](#reactor-action-undo){: #reactor-action-undo } | `:always \| :never \| :outside_transaction` | `:never` | How to handle undoing this action |
 
 
 ## reactor.action.actor
@@ -80,7 +90,7 @@ Specifies the action actor
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-action-actor-source){: #reactor-action-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+| [`source`](#reactor-action-actor-source){: #reactor-action-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -157,7 +167,7 @@ Specifies the action tenant
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-action-tenant-source){: #reactor-action-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+| [`source`](#reactor-action-tenant-source){: #reactor-action-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -224,6 +234,16 @@ create name, resource, action \\ nil
 
 Declares a step that will call a create action on a resource.
 
+> #### Undo behaviour {: .tip}
+>
+> This step has three different modes of undo.
+>
+> * `never` - The result of the action is never undone.  This is the default.
+> * `always` - The `undo_action` will always be called.
+> * `outside_transaction` - The `undo_action` will not be called when running inside a `transaction` block, but will be otherwise.
+
+
+
 ### Nested DSLs
  * [actor](#reactor-create-actor)
  * [inputs](#reactor-create-inputs)
@@ -250,7 +270,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`name`](#reactor-create-name){: #reactor-create-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`name`](#reactor-create-name){: #reactor-create-name .spark-required} | `atom` |  | A unique name for the step. |
 | [`resource`](#reactor-create-resource){: #reactor-create-resource .spark-required} | `module` |  | The resource to call the action on. |
 | [`action`](#reactor-create-action){: #reactor-create-action } | `atom` |  | The name of the action to call on the resource. |
 ### Options
@@ -264,7 +284,7 @@ end
 | [`authorize?`](#reactor-create-authorize?){: #reactor-create-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
 | [`description`](#reactor-create-description){: #reactor-create-description } | `String.t` |  | A description for the step |
 | [`undo_action`](#reactor-create-undo_action){: #reactor-create-undo_action } | `atom` |  | The name of the action to call on the resource when the step is to be undone. |
-| [`undo`](#reactor-create-undo){: #reactor-create-undo } | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
+| [`undo`](#reactor-create-undo){: #reactor-create-undo } | `:always \| :never \| :outside_transaction` | `:never` | How to handle undoing this action |
 
 
 ## reactor.create.actor
@@ -283,7 +303,7 @@ Specifies the action actor
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-create-actor-source){: #reactor-create-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+| [`source`](#reactor-create-actor-source){: #reactor-create-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -360,7 +380,7 @@ Specifies the action tenant
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-create-tenant-source){: #reactor-create-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+| [`source`](#reactor-create-tenant-source){: #reactor-create-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -427,6 +447,16 @@ destroy name, resource, action \\ nil
 
 Declares a step that will call a destroy action on a resource.
 
+> #### Undo behaviour {: .tip}
+>
+> This step has three different modes of undo.
+>
+> * `never` - The result of the action is never undone.  This is the default.
+> * `always` - The `undo_action` will always be called.
+> * `outside_transaction` - The `undo_action` will not be called when running inside a `transaction` block, but will be otherwise.
+
+
+
 ### Nested DSLs
  * [actor](#reactor-destroy-actor)
  * [inputs](#reactor-destroy-inputs)
@@ -450,7 +480,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`name`](#reactor-destroy-name){: #reactor-destroy-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`name`](#reactor-destroy-name){: #reactor-destroy-name .spark-required} | `atom` |  | A unique name for the step. |
 | [`resource`](#reactor-destroy-resource){: #reactor-destroy-resource .spark-required} | `module` |  | The resource to call the action on. |
 | [`action`](#reactor-destroy-action){: #reactor-destroy-action } | `atom` |  | The name of the action to call on the resource. |
 ### Options
@@ -464,7 +494,7 @@ end
 | [`authorize?`](#reactor-destroy-authorize?){: #reactor-destroy-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
 | [`description`](#reactor-destroy-description){: #reactor-destroy-description } | `String.t` |  | A description for the step |
 | [`undo_action`](#reactor-destroy-undo_action){: #reactor-destroy-undo_action } | `atom` |  | The name of the action to call on the resource when the step is to be undone. |
-| [`undo`](#reactor-destroy-undo){: #reactor-destroy-undo } | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
+| [`undo`](#reactor-destroy-undo){: #reactor-destroy-undo } | `:always \| :never \| :outside_transaction` | `:never` | How to handle undoing this action |
 
 
 ## reactor.destroy.actor
@@ -483,7 +513,7 @@ Specifies the action actor
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-destroy-actor-source){: #reactor-destroy-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+| [`source`](#reactor-destroy-actor-source){: #reactor-destroy-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -560,7 +590,7 @@ Specifies the action tenant
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-destroy-tenant-source){: #reactor-destroy-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+| [`source`](#reactor-destroy-tenant-source){: #reactor-destroy-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -648,7 +678,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`name`](#reactor-read_one-name){: #reactor-read_one-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`name`](#reactor-read_one-name){: #reactor-read_one-name .spark-required} | `atom` |  | A unique name for the step. |
 | [`resource`](#reactor-read_one-resource){: #reactor-read_one-resource .spark-required} | `module` |  | The resource to call the action on. |
 | [`action`](#reactor-read_one-action){: #reactor-read_one-action } | `atom` |  | The name of the action to call on the resource. |
 ### Options
@@ -678,7 +708,7 @@ Specifies the action actor
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-read_one-actor-source){: #reactor-read_one-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+| [`source`](#reactor-read_one-actor-source){: #reactor-read_one-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -755,7 +785,7 @@ Specifies the action tenant
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-read_one-tenant-source){: #reactor-read_one-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+| [`source`](#reactor-read_one-tenant-source){: #reactor-read_one-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -848,7 +878,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`name`](#reactor-read-name){: #reactor-read-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`name`](#reactor-read-name){: #reactor-read-name .spark-required} | `atom` |  | A unique name for the step. |
 | [`resource`](#reactor-read-resource){: #reactor-read-resource .spark-required} | `module` |  | The resource to call the action on. |
 | [`action`](#reactor-read-action){: #reactor-read-action } | `atom` |  | The name of the action to call on the resource. |
 ### Options
@@ -877,7 +907,7 @@ Specifies the action actor
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-read-actor-source){: #reactor-read-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+| [`source`](#reactor-read-actor-source){: #reactor-read-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -954,7 +984,7 @@ Specifies the action tenant
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-read-tenant-source){: #reactor-read-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+| [`source`](#reactor-read-tenant-source){: #reactor-read-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1031,7 +1061,7 @@ Creates a group of steps which will be executed inside a data layer transaction.
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`name`](#reactor-transaction-name){: #reactor-transaction-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`name`](#reactor-transaction-name){: #reactor-transaction-name .spark-required} | `atom` |  | A unique name for the step. |
 | [`resources`](#reactor-transaction-resources){: #reactor-transaction-resources .spark-required} | `module \| list(module)` |  | A resource or list of resources to consider in the transaction. |
 ### Options
 
@@ -1093,6 +1123,16 @@ update name, resource, action \\ nil
 
 Declares a step that will call an update action on a resource.
 
+> #### Undo behaviour {: .tip}
+>
+> This step has three different modes of undo.
+>
+> * `never` - The result of the action is never undone.  This is the default.
+> * `always` - The `undo_action` will always be called.
+> * `outside_transaction` - The `undo_action` will not be called when running inside a `transaction` block, but will be otherwise.
+
+
+
 ### Nested DSLs
  * [actor](#reactor-update-actor)
  * [inputs](#reactor-update-inputs)
@@ -1119,7 +1159,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`name`](#reactor-update-name){: #reactor-update-name .spark-required} | `atom` |  | A unique name for the step. This is used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`name`](#reactor-update-name){: #reactor-update-name .spark-required} | `atom` |  | A unique name for the step. |
 | [`resource`](#reactor-update-resource){: #reactor-update-resource .spark-required} | `module` |  | The resource to call the action on. |
 | [`action`](#reactor-update-action){: #reactor-update-action } | `atom` |  | The name of the action to call on the resource. |
 ### Options
@@ -1132,7 +1172,7 @@ end
 | [`authorize?`](#reactor-update-authorize?){: #reactor-update-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
 | [`description`](#reactor-update-description){: #reactor-update-description } | `String.t` |  | A description for the step |
 | [`undo_action`](#reactor-update-undo_action){: #reactor-update-undo_action } | `atom` |  | The name of the action to call on the resource when the step is to be undone. |
-| [`undo`](#reactor-update-undo){: #reactor-update-undo } | `:always \| :never \| :outside_transaction` | `:never` | What to do when the reactor is undoing it's work? * `always` - The undo action will always be run. * `never` - The action will never be undone. * `outside_transaction` - The action will only be undone if not running inside a transaction. |
+| [`undo`](#reactor-update-undo){: #reactor-update-undo } | `:always \| :never \| :outside_transaction` | `:never` | How to handle undoing this action |
 
 
 ## reactor.update.actor
@@ -1151,7 +1191,7 @@ Specifies the action actor
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-update-actor-source){: #reactor-update-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. See `Reactor.Dsl.Argument` for more information. |
+| [`source`](#reactor-update-actor-source){: #reactor-update-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1228,7 +1268,7 @@ Specifies the action tenant
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-update-tenant-source){: #reactor-update-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. See `Reactor.Dsl.Argument` for more information. |
+| [`source`](#reactor-update-tenant-source){: #reactor-update-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
 ### Options
 
 | Name | Type | Default | Docs |

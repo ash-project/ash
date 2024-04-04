@@ -46,7 +46,11 @@ defmodule Ash.Reactor.Dsl.Update do
   def __entity__,
     do: %Spark.Dsl.Entity{
       name: :update,
-      describe: "Declares a step that will call an update action on a resource.",
+      describe: """
+      Declares a step that will call an update action on a resource.
+
+      #{Ash.Reactor.Dsl.Action.__shared_undo_docs__()}
+      """,
       examples: [
         """
         update :publish_post, MyApp.Post, :update do

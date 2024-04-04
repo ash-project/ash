@@ -44,7 +44,11 @@ defmodule Ash.Reactor.Dsl.Action do
   def __entity__,
     do: %Spark.Dsl.Entity{
       name: :action,
-      describe: "Declares a step that will call a generic action on a resource.",
+      describe: """
+      Declares a step that will call a generic action on a resource.
+
+      #{Ash.Reactor.Dsl.Action.__shared_undo_docs__()}
+      """,
       no_depend_modules: [:domain, :resource],
       target: __MODULE__,
       args: [:name, :resource, {:optional, :action}],
@@ -98,12 +102,7 @@ defmodule Ash.Reactor.Dsl.Action do
       name: [
         type: :atom,
         required: true,
-        doc: """
-        A unique name for the step.
-
-        This is used when choosing the return value of the Reactor and for
-        arguments into other steps.
-        """
+        doc: "A unique name for the step."
       ],
       resource: [
         type: {:spark, Ash.Resource},
@@ -126,17 +125,23 @@ defmodule Ash.Reactor.Dsl.Action do
           type: {:in, [:always, :never, :outside_transaction]},
           required: false,
           default: :never,
-          doc: """
-          What to do when the reactor is undoing it's work?
-
-          * `always` - The undo action will always be run.
-          * `never` - The action will never be undone.
-          * `outside_transaction` - The action will only be undone if not running inside a transaction.
-          """
+          doc: "How to handle undoing this action"
         ]
       ],
       include_undo?
     )
+  end
+
+  def __shared_undo_docs__ do
+    """
+    > #### Undo behaviour {: .tip}
+    >
+    > This step has three different modes of undo.
+    >
+    > * `never` - The result of the action is never undone.  This is the default.
+    > * `always` - The `undo_action` will always be called.
+    > * `outside_transaction` - The `undo_action` will not be called when running inside a `transaction` block, but will be otherwise.
+    """
   end
 
   defp maybe_concat(left, right, true), do: Enum.concat(left, right)

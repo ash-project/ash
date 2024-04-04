@@ -28,21 +28,15 @@ defmodule Ash.Reactor.Dsl.Actor do
         source: [
           type: template_type,
           required: true,
-          doc: """
-          What to use as the source of the actor.
-
-          See `Reactor.Dsl.Argument` for more information.
-          """
+          doc: "What to use as the source of the actor."
         ],
         transform: [
           type:
             {:or, [{:spark_function_behaviour, Reactor.Step, {Reactor.Step.Transform, 1}}, nil]},
           required: false,
           default: nil,
-          doc: """
-          An optional transformation function which can be used to modify the
-          actor before it is passed to the action.
-          """
+          doc:
+            "An optional transformation function which can be used to modify the actor before it is passed to the action."
         ]
       ]
     }

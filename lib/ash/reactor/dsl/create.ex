@@ -48,7 +48,11 @@ defmodule Ash.Reactor.Dsl.Create do
   def __entity__,
     do: %Spark.Dsl.Entity{
       name: :create,
-      describe: "Declares a step that will call a create action on a resource.",
+      describe: """
+      Declares a step that will call a create action on a resource.
+
+      #{Ash.Reactor.Dsl.Action.__shared_undo_docs__()}
+      """,
       examples: [
         """
         create :create_post, MyApp.Post, :create do
