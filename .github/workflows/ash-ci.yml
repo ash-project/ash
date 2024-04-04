@@ -74,6 +74,20 @@ jobs:
       - uses: actions/upload-pages-artifact@v1
         with:
           path: doc/
+  deploy-docs:
+    name: Deploy docs to GitHub pages.
+    runs-on: ubuntu-latest
+    needs: build-docs
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub pages
+        id: deployment
+        uses: actions/deploy-pages@v1
   formatter:
     name: mix format --check-formatted
     runs-on: ubuntu-latest
