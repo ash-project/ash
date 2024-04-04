@@ -48,7 +48,11 @@ defmodule Ash.Reactor.Dsl.Destroy do
   def __entity__,
     do: %Spark.Dsl.Entity{
       name: :destroy,
-      describe: "Declares a step that will call a destroy action on a resource.",
+      describe: """
+      Declares a step that will call a destroy action on a resource.
+
+      #{Ash.Reactor.Dsl.Action.__shared_undo_docs__()}
+      """,
       examples: [
         """
         destroy :delete_post, MyApp.Post, :destroy do

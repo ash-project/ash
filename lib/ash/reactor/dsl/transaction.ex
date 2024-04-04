@@ -50,12 +50,7 @@ defmodule Ash.Reactor.Dsl.Transaction do
         name: [
           type: :atom,
           required: true,
-          doc: """
-          A unique name for the step.
-
-          This is used when choosing the return value of the Reactor and for
-          arguments into other steps.
-          """
+          doc: "A unique name for the step."
         ],
         resources: [
           type: {:wrap_list, {:spark, Ash.Resource}},

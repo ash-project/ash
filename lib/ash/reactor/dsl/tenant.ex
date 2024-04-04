@@ -28,21 +28,15 @@ defmodule Ash.Reactor.Dsl.Tenant do
         source: [
           type: template_type,
           required: true,
-          doc: """
-          What to use as the source of the tenant.
-
-          See `Reactor.Dsl.Argument` for more information.
-          """
+          doc: "What to use as the source of the tenant."
         ],
         transform: [
           type:
             {:or, [{:spark_function_behaviour, Reactor.Step, {Reactor.Step.Transform, 1}}, nil]},
           required: false,
           default: nil,
-          doc: """
-          An optional transformation function which can be used to modify the
-          tenant before it is passed to the action.
-          """
+          doc:
+            "An optional transformation function which can be used to modify the tenant before it is passed to the action."
         ]
       ]
     }

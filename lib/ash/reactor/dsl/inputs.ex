@@ -63,10 +63,8 @@ defmodule Ash.Reactor.Dsl.Inputs do
              [{:spark_function_behaviour, Reactor.Step, {Reactor.Step.TransformAll, 1}}, nil]},
           required: false,
           default: nil,
-          doc: """
-          An optional transformation function which will transform the inputs
-          before executing the action.
-          """
+          doc:
+            "An optional transformation function which will transform the inputs before executing the action."
         ]
       ],
       transform: {__MODULE__, :__transform__, []}
