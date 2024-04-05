@@ -104,7 +104,7 @@ defmodule Ash.MixProject do
           "documentation/topics/glossary.md"
         ],
         "About Ash": [
-          "documentation/topics/about-ash/what-is-ash.md",
+          "documentation/topics/about_ash/what-is-ash.md",
           "documentation/topics/about_ash/design-principles.md",
           "documentation/topics/about_ash/contributing-to-ash.md",
           "CHANGELOG.md"
