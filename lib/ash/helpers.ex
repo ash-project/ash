@@ -410,6 +410,10 @@ defmodule Ash.Helpers do
     get_domain(record, opts)
   end
 
+  def get_domain({%resource{}, _}, opts) do
+    get_domain(resource, opts)
+  end
+
   def get_domain({resource, _}, opts) when is_atom(resource) do
     get_domain(resource, opts)
   end

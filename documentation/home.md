@@ -35,6 +35,7 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 
 - [What is Ash?](documentation/topics/what-is-ash.md)
 - [Our Design Principles](documentation/topics/design-principles.md)
+- [Contributing to Ash](documentation/topics/contributing-to-ash.md)
 
 ---
 
