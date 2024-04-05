@@ -86,7 +86,7 @@ defmodule Ash.Domain.Verifiers.ValidateRelatedResourceInclusion do
     if relationship.domain do
       relationship.domain
     else
-      Verifier.get_persisted(dsl, :module)
+      Ash.Resource.Info.domain(relationship.destination) || Verifier.get_persisted(dsl, :module)
     end
   end
 end
