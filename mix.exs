@@ -84,7 +84,7 @@ defmodule Ash.MixProject do
         "documentation/topics/store-context-in-process.md",
         "documentation/topics/testing.md",
         "documentation/topics/timeouts.md",
-        "documentation/topics/validations.md",
+        "documentation/topics/validations.md"
       ],
       groups_for_extras: [
         "Start Here": [
@@ -99,8 +99,7 @@ defmodule Ash.MixProject do
           "documentation/topics/contributing-to-ash.md",
           "CHANGELOG.md"
         ],
-        "How To": [
-        ],
+        "How To": [],
         "DSL Reference": [
           "documentation/dsls/DSL:-Ash.Resource.md",
           "documentation/dsls/DSL:-Ash.Domain.md",
@@ -109,7 +108,7 @@ defmodule Ash.MixProject do
           "documentation/dsls/DSL:-Ash.DataLayer.Ets.md",
           "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md",
           "documentation/dsls/DSL:-Ash.Reactor.md",
-          "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md",
+          "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md"
         ],
         "Under Review": [
           # Documentation below this line is pending review
@@ -150,7 +149,7 @@ defmodule Ash.MixProject do
           "documentation/topics/store-context-in-process.md",
           "documentation/topics/testing.md",
           "documentation/topics/timeouts.md",
-          "documentation/topics/validations.md",
+          "documentation/topics/validations.md"
         ]
       ],
       skip_undefined_reference_warnings_on: [

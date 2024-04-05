@@ -23,45 +23,31 @@ defmodule Ash.Can do
     opts = Keyword.put_new(opts, :filter_with, :filter)
 
     {resource, action_or_query_or_changeset, input} =
-      case action_or_query_or_changeset do
-        %Ash.Query{} = query ->
-          {query.resource, query, nil}
-
-        %Ash.Changeset{} = changeset ->
-          {changeset.resource, changeset, nil}
-
-        %Ash.ActionInput{} = input ->
-          {input.resource, input, nil}
-
-        {resource, %struct{}} = action
-        when struct in [
-               Ash.Resource.Actions.Create,
-               Ash.Resource.Actions.Read,
-               Ash.Resource.Actions.Update,
-               Ash.Resource.Actions.Destroy,
-               Ash.Resource.Actions.Action
-             ] ->
-          {resource, action, %{}}
-
-        {resource, name} when is_atom(name) ->
-          {resource, Ash.Resource.Info.action(resource, name), %{}}
-
-        {resource, %struct{}, input} = action
-        when struct in [
-               Ash.Resource.Actions.Create,
-               Ash.Resource.Actions.Read,
-               Ash.Resource.Actions.Update,
-               Ash.Resource.Actions.Destroy,
-               Ash.Resource.Actions.Action
-             ] ->
-          {resource, action, input}
-
-        {resource, name, input} when is_atom(name) ->
-          {resource, Ash.Resource.Info.action(resource, name), input}
-      end
+      resource_subject_input(action_or_query_or_changeset, domain, opts)
 
     subject =
       case action_or_query_or_changeset do
+        %Ash.ActionInput{} = action_input ->
+          if opts[:tenant] do
+            Ash.ActionInput.set_tenant(action_input, opts[:tenant])
+          else
+            action_input
+          end
+
+        %Ash.Query{} = query ->
+          if opts[:tenant] do
+            Ash.Query.set_tenant(query, opts[:tenant])
+          else
+            query
+          end
+
+        %Ash.Changeset{} = changeset ->
+          if opts[:tenant] do
+            Ash.Changeset.set_tenant(changeset, opts[:tenant])
+          else
+            changeset
+          end
+
         %{type: :update, name: name} ->
           if opts[:data] do
             Ash.Changeset.for_update(opts[:data], name, input,
@@ -95,23 +81,6 @@ defmodule Ash.Can do
         %{type: :action, name: name} ->
           Ash.ActionInput.for_action(resource, name, input, actor: actor)
 
-        %Ash.ActionInput{} = action_input ->
-          action_input
-
-        %Ash.Query{} = query ->
-          if opts[:tenant] do
-            Ash.Query.set_tenant(query, opts[:tenant])
-          else
-            query
-          end
-
-        %Ash.Changeset{} = changeset ->
-          if opts[:tenant] do
-            Ash.Changeset.set_tenant(changeset, opts[:tenant])
-          else
-            changeset
-          end
-
         _ ->
           raise ArgumentError,
             message: "Invalid action/query/changeset \"#{inspect(action_or_query_or_changeset)}\""
@@ -128,6 +97,105 @@ defmodule Ash.Can do
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  defp resource_subject_input(action_or_query_or_changeset, domain, opts) do
+    case action_or_query_or_changeset do
+      {resource, name} when is_atom(name) and is_atom(resource) ->
+        resource_subject_input(
+          {resource, Ash.Resource.Info.action(resource, name), %{}},
+          domain,
+          opts
+        )
+
+      {resource, name, input} when is_atom(name) and is_atom(resource) ->
+        resource_subject_input(
+          {resource, Ash.Resource.Info.action(resource, name), input},
+          domain,
+          opts
+        )
+
+      {%resource{} = record, name} when is_atom(name) and is_atom(resource) ->
+        resource_subject_input(
+          {record, Ash.Resource.Info.action(resource, name), %{}},
+          domain,
+          opts
+        )
+
+      {%resource{} = record, name, input} when is_atom(name) and is_atom(resource) ->
+        resource_subject_input(
+          {record, Ash.Resource.Info.action(resource, name), input},
+          domain,
+          opts
+        )
+
+      %Ash.Query{} = query ->
+        {query.resource, query, nil}
+
+      %Ash.Changeset{} = changeset ->
+        {changeset.resource, changeset, nil}
+
+      %Ash.ActionInput{} = input ->
+        {input.resource, input, nil}
+
+      {resource, %struct{} = action}
+      when struct in [
+             Ash.Resource.Actions.Create,
+             Ash.Resource.Actions.Read,
+             Ash.Resource.Actions.Update,
+             Ash.Resource.Actions.Destroy,
+             Ash.Resource.Actions.Action
+           ] ->
+        resource_subject_input({resource, action, %{}}, domain, opts)
+
+      {%resource{} = record, %Ash.Resource.Actions.Read{} = action, input} ->
+        {resource, Ash.Query.for_read(resource, action.name, input) |> filter_by_pkey(record),
+         input}
+
+      {%resource{}, %Ash.Resource.Actions.Action{} = action, input} ->
+        {resource, Ash.ActionInput.for_action(resource, action.name, input), input}
+
+      {%resource{}, %Ash.Resource.Actions.Create{} = action, input} ->
+        {resource, Ash.Changeset.for_create(resource, action.name, input), input}
+
+      {%resource{} = record, %struct{} = action, input}
+      when struct in [
+             Ash.Resource.Actions.Update,
+             Ash.Resource.Actions.Destroy
+           ] ->
+        {resource, Ash.Changeset.for_action(record, action.name, input, domain: domain), input}
+
+      {resource, %Ash.Resource.Actions.Read{} = action, input} ->
+        {resource, Ash.Query.for_read(resource, action.name, input, domain: domain), input}
+
+      {resource, %Ash.Resource.Actions.Action{} = action, input} ->
+        {resource, Ash.ActionInput.for_action(resource, action.name, input, domain: domain),
+         input}
+
+      {resource, %Ash.Resource.Actions.Create{} = action, input} ->
+        {resource, Ash.Changeset.for_create(resource, action.name, input, domain: domain), input}
+
+      {resource, %struct{} = action, input}
+      when struct in [
+             Ash.Resource.Actions.Update,
+             Ash.Resource.Actions.Destroy
+           ] ->
+        {resource, action, input}
+
+      {resource, action} ->
+        raise ArgumentError, """
+        If providing an update or destroy action, you must provide a record to update or destroy.
+
+        Got: #{inspect({resource, action})}
+        """
+    end
+  end
+
+  defp filter_by_pkey(query, %resource{} = record) do
+    Ash.Query.do_filter(
+      query,
+      record |> Map.take(Ash.Resource.Info.primary_key(resource)) |> Map.to_list()
+    )
   end
 
   defp alter_source({:ok, true, query}, domain, actor, %Ash.Changeset{} = subject, opts) do
