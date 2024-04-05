@@ -36,7 +36,7 @@ defmodule Ash.Actions.Sort do
           nil ->
             {sorts,
              [
-               "Cannot provide argumentsw to a non-calculation field while sorting"
+               "Cannot provide arguments to a non-calculation field while sorting"
                | errors
              ]}
 
