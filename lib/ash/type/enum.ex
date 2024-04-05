@@ -237,7 +237,9 @@ defmodule Ash.Type.Enum do
         :ok
 
       other ->
-        raise("`values` must be a list of `atom | string` or {`atom | string`, string} tuples, got #{inspect(other)}")
+        raise(
+          "`values` must be a list of `atom | string` or {`atom | string`, string} tuples, got #{inspect(other)}"
+        )
     end)
 
     values

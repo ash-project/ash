@@ -72,7 +72,7 @@ defmodule Ash.Domain.Info do
     related_domain(
       relationship.destination,
       relationships,
-      relationship.domain || Ash.Resource.Info.domain(resource) ||
+      Ash.Resource.Info.domain(resource) || relationship.domain ||
         subject_domain || default
     )
   end
@@ -98,7 +98,8 @@ defmodule Ash.Domain.Info do
         _ -> nil
       end
 
-    relationship.domain || Ash.Resource.Info.domain(resource) || subject_domain || default
+    Ash.Resource.Info.domain(relationship.destination) || relationship.domain || subject_domain ||
+      default
   end
 
   def find_manage_relationships_with_identity_not_configured(otp_app) do
