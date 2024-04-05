@@ -81,7 +81,7 @@ jobs:
         if: ${{matrix.project.name == 'ash_postgres' || matrix.project.name == 'ash_sqlite'}}
         working-directory: ./${{matrix.project.name}}
       - run: mix test.migrate_tenants
-        if: ${{matrix.project.name == 'ash_postgres' || matrix.project.name == 'ash_sqlite'}}
+        if: ${{matrix.project.name == 'ash_postgres'}}
         working-directory: ./${{matrix.project.name}}
       - name: mix compile --force --warnings-as-errors inside ./${{matrix.project.name}}
         run: mix compile --force --warnings-as-errors
