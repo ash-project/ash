@@ -75,10 +75,10 @@ jobs:
         run: mix deps.get
         working-directory: ./${{matrix.project.name}}
       - run: mix test.create
-        if: ${{matrix.project.name == 'ash_postgres' || matrix.project.name == 'ash_sqlite'}}
+        if: ${{matrix.project.name == 'ash_postgres' || matrix.project.name == 'ash_sqlite' || matrix.project.name == 'ash_oban'}}
         working-directory: ./${{matrix.project.name}}
       - run: mix test.migrate
-        if: ${{matrix.project.name == 'ash_postgres' || matrix.project.name == 'ash_sqlite'}}
+        if: ${{matrix.project.name == 'ash_postgres' || matrix.project.name == 'ash_sqlite' || matrix.project.name == 'ash_oban'}}
         working-directory: ./${{matrix.project.name}}
       - run: mix test.migrate_tenants
         if: ${{matrix.project.name == 'ash_postgres'}}
