@@ -29,6 +29,7 @@ To make this change you will need to do two things:
 
 1. replace `Ash.Api` with `Ash.Domain` in your application
 2. replace places where an `:api` option is passed to a function with the `:domain` option. For example, `AshPhoenix.Form.for_create(..., api: MyApp.SomeApi)` should now be `AshPhoenix.Form.for_create(..., domain: MyApp.SomeDomain)`
+3. Update your application config to define `ash_domains` instead of `ash_apis`, eg. `config :my_app, ash_domains: [MyApp.MyDomain]`
 
 ### DSL Changes
 
