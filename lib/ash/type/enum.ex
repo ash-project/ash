@@ -227,17 +227,17 @@ defmodule Ash.Type.Enum do
   @doc false
   def verify_values!(values) when is_list(values) do
     Enum.each(values, fn
-      value when is_atom(value) ->
+      value when is_atom(value) or is_binary(value) ->
         :ok
 
-      {value, nil} when is_atom(value) ->
+      {value, nil} when is_atom(value) or is_binary(value) ->
         :ok
 
-      {value, description} when is_atom(value) and is_binary(description) ->
+      {value, description} when (is_atom(value) or is_binary(value)) and is_binary(description) ->
         :ok
 
       other ->
-        raise("`values` must be a list of atoms or {atom, string} tuples, got #{inspect(other)}")
+        raise("`values` must be a list of `atom | string` or {`atom | string`, string} tuples, got #{inspect(other)}")
     end)
 
     values
