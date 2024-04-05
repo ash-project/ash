@@ -45,6 +45,7 @@ defmodule Ash.MixProject do
         "documentation/tutorials/get-started.md",
         "documentation/topics/what-is-ash.md",
         "documentation/topics/design-principles.md",
+        # Documentation below this line is pending review
         "documentation/how_to/contribute.md",
         "documentation/how_to/define-idiomatic-actions.md",
         "documentation/how_to/defining-manual-relationships.md",
