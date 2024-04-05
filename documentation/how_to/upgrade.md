@@ -67,6 +67,10 @@ If you do not have any expression calculations that accept arguments, you likely
 
 ### Module/function changes
 
+#### Ash.Policy.FilterCheck and Ash.Policy.FilterCheckWithContext are combined
+
+`Ash.Policy.FilterCheck` and `Ash.Policy.FilterCheckWithContext` have been combined into `Ash.Policy.FilterCheck`. If you have any usages of `FilterCheckWithContext`, you'll need to change that to `FilterCheck`. If you have usages of `FilterCheck`, you will need to add the `context` arguments to the callbacks. Compiler warnings will show you what callbacks mismatch.
+
 #### Ash.Filter
 
 `Ash.Filter.parse/5` is now `Ash.Filter.parse/3`. `Ash.Filter.parse_input/5` is now `Ash.Filter.parse_input/2` The third and fourth optional arguments are unnecessary and were previously ignored, and the fifth argument is not necessary for `parse_input`.
