@@ -264,6 +264,13 @@ defmodule Ash.Test.Actions.AggregateTest do
                |> Ash.Query.for_read(:with_foo)
                |> Ash.list!(:title, authorize?: false)
     end
+
+    test "returns error for invalid input" do
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.NoSuchInput{input: :bar}]}} =
+               Post
+               |> Ash.Query.for_read(:with_foo, %{bar: "no such input"})
+               |> Ash.exists(authorize?: false)
+    end
   end
 
   describe "aggregate loading" do
