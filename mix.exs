@@ -43,9 +43,9 @@ defmodule Ash.MixProject do
       extras: [
         {"documentation/home.md", title: "Home"},
         "documentation/tutorials/get-started.md",
-        "documentation/topics/what-is-ash.md",
-        "documentation/topics/design-principles.md",
-        "documentation/topics/contributing-to-ash.md",
+        "documentation/topics/about_ash/what-is-ash.md",
+        "documentation/topics/about_ash/design-principles.md",
+        "documentation/topics/about_ash/contributing-to-ash.md",
         "CHANGELOG.md",
         "documentation/how_to/define-idiomatic-actions.md",
         "documentation/how_to/defining-manual-relationships.md",
@@ -84,7 +84,15 @@ defmodule Ash.MixProject do
         "documentation/topics/store-context-in-process.md",
         "documentation/topics/testing.md",
         "documentation/topics/timeouts.md",
-        "documentation/topics/validations.md"
+        "documentation/topics/validations.md",
+        "documentation/dsls/DSL:-Ash.Resource.md",
+        "documentation/dsls/DSL:-Ash.Domain.md",
+        "documentation/dsls/DSL:-Ash.Notifier.PubSub.md",
+        "documentation/dsls/DSL:-Ash.Policy.Authorizer.md",
+        "documentation/dsls/DSL:-Ash.DataLayer.Ets.md",
+        "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md",
+        "documentation/dsls/DSL:-Ash.Reactor.md",
+        "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md"
       ],
       groups_for_extras: [
         "Start Here": [
@@ -92,11 +100,13 @@ defmodule Ash.MixProject do
           "documentation/tutorials/get-started.md"
         ],
         Tutorials: [],
-        Topics: [],
+        Topics: [
+          "documentation/topics/glossary.md"
+        ],
         "About Ash": [
-          "documentation/topics/what-is-ash.md",
-          "documentation/topics/design-principles.md",
-          "documentation/topics/contributing-to-ash.md",
+          "documentation/topics/about-ash/what-is-ash.md",
+          "documentation/topics/about_ash/design-principles.md",
+          "documentation/topics/about_ash/contributing-to-ash.md",
           "CHANGELOG.md"
         ],
         "How To": [],
@@ -112,6 +122,7 @@ defmodule Ash.MixProject do
         ],
         "Under Review": [
           # Documentation below this line is pending review
+          "documentation/topics/domains.md",
           "documentation/how_to/define-idiomatic-actions.md",
           "documentation/how_to/defining-manual-relationships.md",
           "documentation/how_to/handle-errors.md",
@@ -132,7 +143,6 @@ defmodule Ash.MixProject do
           "documentation/topics/embedded-resources.md",
           "documentation/topics/extending-resources.md",
           "documentation/topics/expressions.md",
-          "documentation/topics/glossary.md",
           "documentation/topics/identities.md",
           "documentation/topics/managing-relationships.md",
           "documentation/topics/manual-actions.md",

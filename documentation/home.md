@@ -4,7 +4,7 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 
 ## Dive In
 
-- [What is Ash?](documentation/how_to/what-is-ash.md)
+- [What is Ash?](documentation/topics/about_ash/what-is-ash.md)
 - [Get Started](documentation/tutorials/get-started.md)
 
 ## About the Documentation
@@ -31,11 +31,13 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 
 ## Topics
 
+- [Glossary](documentation/topics/glossary.md)
+
 ### About Ash
 
-- [What is Ash?](documentation/topics/what-is-ash.md)
-- [Our Design Principles](documentation/topics/design-principles.md)
-- [Contributing to Ash](documentation/topics/contributing-to-ash.md)
+- [What is Ash?](documentation/topics/about_ash/what-is-ash.md)
+- [Our Design Principles](documentation/topics/about_ash/design-principles.md)
+- [Contributing to Ash](documentation/topics/about_ash/contributing-to-ash.md)
 
 ---
 
@@ -85,5 +87,3 @@ The Ash ecosystem consists of numerous packages, all of which have their own doc
 ### Testing
 
 - [Smokestack](https://hexdocs.pm/smokestack) | Declarative test factories for Ash resources
-
----
