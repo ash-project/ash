@@ -152,7 +152,7 @@ defmodule Ash.Test.Actions.ValidationTest do
     end
 
     test "they can return exceptions inside of embedded lists" do
-      assert {:error, error} =
+      assert {:error, _error} =
                Profile
                |> Ash.Changeset.new(%{embedded_list: [%{name: "thing"}]})
                |> Api.create()

@@ -144,7 +144,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     relationships do
       belongs_to :org, Org do
         allow_nil? false
-        attribute_writable? true
+        attribute_writable? false
       end
     end
   end
