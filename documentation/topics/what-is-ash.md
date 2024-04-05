@@ -4,7 +4,7 @@ At a high level, Ash is an opinionated, foundational set of application building
 
 More concretely, Ash provides a "Resource" abstraction, with which you model your application. These resources determine the database schema, API endpoints, state machines, background jobs, and more. They are the source of truth for your entire application, and everything stems from them.
 
-Ash is declarative-first, with deep extensibility. We provide a suite of extensions, as well as a toolkit to build your own. When you need to break out of our design patterns, we provide escape hatches ranging from the simple and small in scope to abilities to override large pieces of behavior. Additionally, your Ash application is just an Elixir application, so if you want to do something completley custom outside of Ash, it won't get in your way.
+Ash is a declarative framework, with deep extensibility. We provide a suite of extensions, as well as a toolkit to build your own. When you need to break out of our design patterns, we provide escape hatches ranging from the simple and small in scope to abilities to override large pieces of behavior. Additionally, your Ash application is just an Elixir application, so if you want to do something completley custom outside of Ash, it won't get in your way.
 
 > #### Model your domain, derive the rest {: .info}
 > With the tools provided by Ash you can get entire application layers, derived and configured directly by your resources, practically for free.
