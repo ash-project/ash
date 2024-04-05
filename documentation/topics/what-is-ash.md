@@ -1,13 +1,15 @@
 # What is Ash?
 
-At a high level, Ash is an opinionated, foundational set of application building blocks, designed for maximum compatibility, reuse and extensibility. It can be used for any kind of Elixir application, but it shines when building web applications, APIs and services. It is not a web framework, like Phoenix or Rails. It is a framework for building your application layer, independent of how it is exposed or consumed. It is not an **alternative** to frameworks like Phoenix, rather a **complement** to them.
+Ash is an opinionated, composable set of application building blocks designed for extensibility. It shines when building web apps, APIs and services (though it can be used for any kind of Elixir application). It has integrations for Phoenix, LiveView, Postgres, GraphQL, Oban, and many more.
 
-More concretely, Ash provides a "Resource" abstraction, with which you model your application. These resources determine the database schema, API endpoints, state machines, background jobs, and more. They are the source of truth for your entire application, and everything stems from them.
+To achieve this Ash provides a "Resource" abstraction you use to model the heart of your application. These resources then determine the database schema, API endpoints, state machines, background jobs, and more. Resources are the source of truth for your entire application, and everything stems from them.
 
-Ash is a declarative framework, with deep extensibility. We provide a suite of extensions, as well as a toolkit to build your own. When you need to break out of our design patterns, we provide escape hatches ranging from the simple and small in scope to abilities to override large pieces of behavior. Additionally, your Ash application is just an Elixir application, so if you want to do something completley custom outside of Ash, it won't get in your way.
+Ash is a declarative framework with deep extensibility. We provide a suite of extensions informed from building production apps, as well as a toolkit so you can build your own. We provide escape hatches ranging from the simple and small to the ability to override large pieces of behavior. Your Ash application is just an Elixir application, so if you want to do something completely custom then Ash won’t get in your way.
+
+It is not a web framework, like Phoenix or Rails. It is a framework for building your application layer, independent of how it is exposed or consumed. It is not an **alternative** to frameworks like Phoenix, rather a **complement** to them.
 
 > #### Model your domain, derive the rest {: .info}
-> With the tools provided by Ash you can get entire application layers, derived and configured directly by your resources, practically for free.
+> With the tools provided by Ash you can get large swaths of your application , derived and configured directly by your resources, practically for free.
 > Ash leverages the best of the Elixir ecosystem under the hood, but provides a single unified tool-chain for our users.
 
 ---

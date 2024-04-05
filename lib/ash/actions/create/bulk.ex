@@ -283,7 +283,6 @@ defmodule Ash.Actions.Create.Bulk do
     })
     |> Ash.Actions.Helpers.add_context(opts)
     |> Ash.Changeset.set_context(opts[:context] || %{})
-    |> set_tenant()
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
   end
 
@@ -506,6 +505,7 @@ defmodule Ash.Actions.Create.Bulk do
     )
     |> set_lazy_non_matching_defaults()
     |> set_lazy_matching_defaults(lazy_matching_default_values)
+    |> set_tenant()
   end
 
   defp set_tenant(changeset) do

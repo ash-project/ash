@@ -106,6 +106,29 @@ defmodule Ash.Test.Actions.ValidationTest do
     end)
   end
 
+  describe "custom validations" do
+    test "they can return exceptions" do
+      assert {:error, _} =
+               Profile
+               |> Ash.Changeset.for_create(:create, %{status: "baz"})
+               |> Ash.create()
+    end
+
+    test "they can return exceptions inside of embedded resources" do
+      assert {:error, _} =
+               Profile
+               |> Ash.Changeset.for_create(:create, %{embedded: %{name: "thing"}})
+               |> Ash.create()
+    end
+
+    test "they can return exceptions inside of embedded lists" do
+      assert {:error, _error} =
+               Profile
+               |> Ash.Changeset.for_create(:create, %{embedded_list: [%{name: "thing"}]})
+               |> Ash.create()
+    end
+  end
+
   describe "one_of" do
     test "it succeeds if the value is in the list" do
       Profile
