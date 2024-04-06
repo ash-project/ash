@@ -33,6 +33,10 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 
 - [Glossary](documentation/topics/glossary.md)
 
+### Security
+
+- [Actors & Authorization](documentation/topics/security/actors-and-authorization.md)
+
 ### Development
 
 - [Development Utilities](documentation/topics/development/development-utilities.md)

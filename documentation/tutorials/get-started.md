@@ -605,7 +605,7 @@ Check out  [AshJsonApi](https://hexdocs.pm/ash_json_api) and [AshGraphql](https:
 
 #### Authorize access and work with users
 
-See the [Policies guide](/documentation/topics/policies.md) for information on how to authorize access to your resources using actors and policies.
+See the [Policies guide](/documentation/topics/security/policies.md) for information on how to authorize access to your resources using actors and policies.
 
 #### Clean up your code that uses Ash?
 

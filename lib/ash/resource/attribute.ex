@@ -70,7 +70,7 @@ defmodule Ash.Resource.Attribute do
       type: :boolean,
       default: false,
       doc: """
-      Whether or not the attribute value contains sensitive information, like PII. See the [Security guide](/documentation/topics/security.md) for more.
+      Whether or not the attribute value contains sensitive information, like PII. See the [Sensitive Data guide](/documentation/topics/security/sensitive-data.md) for more.
       """
     ],
     source: [
@@ -118,7 +118,7 @@ defmodule Ash.Resource.Attribute do
       type: :boolean,
       default: false,
       doc: """
-      Whether or not the attribute should be shown over public interfaces. See the [security guide](/documentation/topics/security.md) for more.
+      Whether or not the attribute should be shown over public interfaces. See the [sensitive data guide](/documentation/topics/security/sensitive-data.md) for more.
       """
     ],
     default: [

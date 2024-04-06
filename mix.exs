@@ -48,6 +48,8 @@ defmodule Ash.MixProject do
         "documentation/topics/about_ash/contributing-to-ash.md",
         "documentation/topics/development/development-utilities.md",
         "documentation/topics/development/upgrading-to-3.0.md",
+        "documentation/topics/security/actors-and-authorization.md",
+        "documentation/topics/security/sensitive-data.md",
         "CHANGELOG.md",
         "documentation/how_to/define-idiomatic-actions.md",
         "documentation/how_to/defining-manual-relationships.md",
@@ -75,11 +77,10 @@ defmodule Ash.MixProject do
         "documentation/topics/multitenancy.md",
         "documentation/topics/notifiers.md",
         "documentation/topics/pagination.md",
-        "documentation/topics/policies.md",
+        "documentation/topics/security/policies.md",
         "documentation/topics/pub_sub.md",
         "documentation/topics/reactor.md",
         "documentation/topics/relationships.md",
-        "documentation/topics/security.md",
         "documentation/topics/testing.md",
         "documentation/topics/timeouts.md",
         "documentation/topics/validations.md",
@@ -100,6 +101,11 @@ defmodule Ash.MixProject do
         Tutorials: [],
         Topics: [
           "documentation/topics/glossary.md"
+        ],
+        "Security": [
+          "documentation/topics/security/actors-and-authorization.md",
+          "documentation/topics/security/policies.md",
+          "documentation/topics/security/sensitive-data.md",
         ],
         "Development": [
           "documentation/topics/development/development-utilities.md",
@@ -150,11 +156,9 @@ defmodule Ash.MixProject do
           "documentation/topics/multitenancy.md",
           "documentation/topics/notifiers.md",
           "documentation/topics/pagination.md",
-          "documentation/topics/policies.md",
           "documentation/topics/pub_sub.md",
           "documentation/topics/reactor.md",
           "documentation/topics/relationships.md",
-          "documentation/topics/security.md",
           "documentation/topics/testing.md",
           "documentation/topics/timeouts.md",
           "documentation/topics/validations.md"

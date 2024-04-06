@@ -20,7 +20,7 @@ A resource can be given a set of policies, which are enforced on each call to a 
 For reads, policies can be configured to filter out data that the actor shouldn't see, as opposed to
 resulting in a forbidden error.
 
-See the [policies guide](/documentation/topics/policies.md) for practical examples.
+See the [policies guide](/documentation/topics/security/policies.md) for practical examples.
 
 Policies are solved/managed via a boolean satisfiability solver. To read more about boolean satisfiability,
 see this page: https://en.wikipedia.org/wiki/Boolean_satisfiability_problem. At the end of
@@ -38,7 +38,7 @@ A section for declaring authorization policies.
 Each policy that applies must pass independently in order for the
 request to be authorized.
 
-See the [policies guide](/documentation/topics/policies.md) for more.
+See the [policies guide](/documentation/topics/security/policies.md) for more.
 
 
 ### Nested DSLs
@@ -120,7 +120,7 @@ policy always() do
 end
 ```
 
-See the [policies guide](/documentation/topics/policies.md) for more.
+See the [policies guide](/documentation/topics/security/policies.md) for more.
 
 
 ### Nested DSLs

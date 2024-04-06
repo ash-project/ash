@@ -215,7 +215,7 @@ end
 
 
 ## authorization
-Options for how requests are authorized using this domain. See the [security guide](/documentation/topics/security.md) for more.
+Options for how requests are authorized using this domain. See the [Sensitive Data guide](/documentation/topics/security/sensitive-data.md) for more.
 
 
 

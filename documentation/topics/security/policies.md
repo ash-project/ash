@@ -4,7 +4,7 @@ Policies determine what actions on a resource are permitted for a given actor, a
 
 To restrict access to specific fields (attributes, aggregates, calculations), the section on field policies.
 
-Read and understand the [Security](/documentation/topics/security.md) guide before proceeding, which explains actors, how to set them, and other relevant configurations.
+Read and understand the [Actors & Authorization guide](/documentation/topics/security/actors-and-authorization.md) before proceeding, which explains actors, how to set them, and other relevant configurations.
 
 ## Setup
 

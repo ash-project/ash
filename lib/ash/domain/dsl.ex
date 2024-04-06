@@ -51,7 +51,7 @@ defmodule Ash.Domain.Dsl do
   @authorization %Spark.Dsl.Section{
     name: :authorization,
     describe: """
-    Options for how requests are authorized using this domain. See the [security guide](/documentation/topics/security.md) for more.
+    Options for how requests are authorized using this domain. See the [Sensitive Data guide](/documentation/topics/security/sensitive-data.md) for more.
     """,
     examples: [
       """

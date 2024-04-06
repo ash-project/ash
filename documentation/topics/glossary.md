@@ -19,7 +19,7 @@ The entity that performs an action. Most actions are run on direct user request,
 
 Actors can be used in a number of places, from modifying the behavior of an action to auditing who did what in your system. They are most prominent, however, when writing [policies](#policy).
 
-See the [Security guide](/documentation/topics/security.md#actors) for more.
+See the [Actors & Authorization guide](/documentation/topics/security/actors-and-authorization.md) for more.
 
 ## Aggregate
 
@@ -40,6 +40,12 @@ See the [Domains guide](/documentation/topics/domains.md) for more.
 A piece of data belonging to a resource. The most basic building block; an attribute has a type and a value. For resources backed by a data layer, they typically represent a column in a database table, or a key in an object store, for example.
 
 See the [Attributes guide](/documentation/topics/attributes.md) for more.
+
+## Authorizer
+
+An authorizer is an extension that can be added to a resource that will be given the opportunity to modify and/or prevent requests to a resource. In practice, you will almost always be using `Ash.Policy.Authorizer`, but you can still write your own if you need to.
+
+See the [Actors & Authorization](documentation/topics/security/actors-and-authorization.md) and [Policies](documentation/topics/security/policies.md) guides for more.
 
 ## Calculation
 
@@ -89,7 +95,7 @@ A set of rules defining who is authorized to perform specific actions on a resou
 - Forbidding anyone other than the user who wrote a blog post, from editing it
 - Allowing only admins to update site-wide settings
 
-See the [Policies guide](/documentation/topics/policies.md) for more.
+See the [Policies guide](/documentation/topics/security/policies.md) for more.
 
 ## Query
 
