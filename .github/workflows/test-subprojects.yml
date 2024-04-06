@@ -31,7 +31,6 @@ jobs:
           ]
         otp: ["26.0.2"]
         elixir: ["1.16.0"]
-        ash_three: ["true", "false"]
     services:
       pg:
         image: postgres:13
