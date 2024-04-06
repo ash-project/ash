@@ -1,11 +1,9 @@
 # Get Started
 
-## Learn with Livebook
-
-We have a basic step by step tutorial in Livebook that introduces you to Ash. No prior Ash knowledge is required.
-The Livebook tutorial is self contained and separate from the documentation below.
-
-[![Run in Livebook](https://livebook.dev/badge/v1/pink.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2Fash-project%2Fash_tutorial%2Fblob%2Fmaster%2Foverview.livemd)
+> ### Learn with Livebook {: .tip}
+> We have a basic step by step tutorial in Livebook that introduces you to Ash. No prior Ash knowledge is required.
+> The Livebook tutorial is self contained and separate from the documentation below.
+> [![Run in Livebook](https://livebook.dev/badge/v1/pink.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2Fash-project%2Fash_tutorial%2Fblob%2Fmaster%2Foverview.livemd)
 
 ## Goals
 
