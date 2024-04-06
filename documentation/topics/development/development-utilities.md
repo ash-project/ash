@@ -2,15 +2,11 @@
 
 ## ElixirSense Plugin
 
-The Ash ElixirSense plugin offers custom auto complete inside of any Ash DSL module (i.e `Ash.Resource`/`Ash.Domain`)
-
-As of this writing, this does not work with the currently released VSCode package. We are waiting for them to do another release
-to resolve this issue. However, you can clone down the elixir-ls repository, run its release command, and configure VSCode to point
-at the folder where you did that.
+Ash uses [Spark](https://hexdocs.pm/spark) to build all of our DSLs (like `Ash.Resource` and `Ash.Domain`) and to validate options lists to functions. `Spark` ships with an extension that is automatically picked up by ElixirLS to provide autocomplete for all of our DSLs, and options list. You don't need to do anything to enable this, but it only works with ElixirLS (not other language server tools).
 
 ## Formatter plugin
 
-The underlying DSL tooling `Spark` has a formatter plugin that can help you keep your resources consistent and neat.
+`Spark` also ships with a formatter plugin that can help you keep your resources formatted consistently. This plugin can sort the sections of your DSL to make your resources more consistent, and it can ensure that the DSL builders don't have parenthesis around them. (i.e `attribute :foo, :bar` vs `attribute(:foo, :bar)`).
 
 ### Adding the plugin
 
@@ -30,20 +26,20 @@ Add the following to your `.formatter.exs`
 ```elixir
 config :spark, :formatter,
   remove_parens?: true,
+  "Ash.Domain": [],
   "Ash.Resource": [
-    type: Ash.Resource,
     section_order: [
-      :authentication,
-      :token,
+      # any section not in this list is left where it is
+      # but these sections will always appear in this order in a resource
+      :actions,
       :attributes,
       :relationships,
-      :policies,
-      :postgres
+      :identities
     ]
   ]
 ```
 
-#### If you use a different module than Ash.Resource
+#### If you `use` a different module than Ash.Resource
 
 ```elixir
 config :spark, :formatter,

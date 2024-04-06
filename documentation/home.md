@@ -33,6 +33,11 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 
 - [Glossary](documentation/topics/glossary.md)
 
+### Development
+
+- [Development Utilities](documentation/topics/development/development-utilities.md)
+- [Upgrading to 3.0](documentation/topics/development/upgrading-to-3.0.md)
+
 ### About Ash
 
 - [What is Ash?](documentation/topics/about_ash/what-is-ash.md)
