@@ -75,13 +75,11 @@ defmodule Ash.MixProject do
         "documentation/topics/multitenancy.md",
         "documentation/topics/notifiers.md",
         "documentation/topics/pagination.md",
-        "documentation/topics/phoenix.md",
         "documentation/topics/policies.md",
         "documentation/topics/pub_sub.md",
         "documentation/topics/reactor.md",
         "documentation/topics/relationships.md",
         "documentation/topics/security.md",
-        "documentation/topics/store-context-in-process.md",
         "documentation/topics/testing.md",
         "documentation/topics/timeouts.md",
         "documentation/topics/validations.md",
@@ -107,6 +105,7 @@ defmodule Ash.MixProject do
           "documentation/topics/about_ash/what-is-ash.md",
           "documentation/topics/about_ash/design-principles.md",
           "documentation/topics/about_ash/contributing-to-ash.md",
+          "documentation/topics/upgrading-to-3.0.md",
           "CHANGELOG.md"
         ],
         "How To": [],
@@ -127,7 +126,6 @@ defmodule Ash.MixProject do
           "documentation/how_to/defining-manual-relationships.md",
           "documentation/how_to/handle-errors.md",
           "documentation/how_to/structure-your-project.md",
-          "documentation/how_to/upgrade.md",
           "documentation/how_to/use-without-data-layers.md",
           "documentation/how_to/validate-changes.md",
           "documentation/how_to/auto-format-code.md",
@@ -150,13 +148,11 @@ defmodule Ash.MixProject do
           "documentation/topics/multitenancy.md",
           "documentation/topics/notifiers.md",
           "documentation/topics/pagination.md",
-          "documentation/topics/phoenix.md",
           "documentation/topics/policies.md",
           "documentation/topics/pub_sub.md",
           "documentation/topics/reactor.md",
           "documentation/topics/relationships.md",
           "documentation/topics/security.md",
-          "documentation/topics/store-context-in-process.md",
           "documentation/topics/testing.md",
           "documentation/topics/timeouts.md",
           "documentation/topics/validations.md"
@@ -165,7 +161,7 @@ defmodule Ash.MixProject do
       skip_undefined_reference_warnings_on: [
         "CHANGELOG.md",
         "documentation/topics/glossary.md",
-        "documentation/how_to/upgrade.md"
+        "documentation/topics/upgrading-to-3.0.md"
       ],
       nest_modules_by_prefix: [
         Ash.Error,

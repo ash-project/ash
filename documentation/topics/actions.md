@@ -154,7 +154,6 @@ end
 
 The following steps are performed when you call `Ash.Query.for_read/4`.
 
-- [Gather Process Context](/documentation/topics/store-context-in-process.md)
 - Cast input arguments - `d:Ash.Resource.Dsl.actions.read.argument`
 - Set default argument values - `d:Ash.Resource.Dsl.actions.read.argument|default`
 - Add errors for missing required arguments | `d:Ash.Resource.Dsl.actions.read.argument|allow_nil?`
@@ -213,7 +212,6 @@ end
 
 The following steps are run when calling `Ash.Changeset.for_create/4`, `Ash.Changeset.for_update/4` or `Ash.Changeset.for_destroy/4`.
 
-- [Gather process context](/documentation/topics/store-context-in-process.md)
 - Cast input params | This is any arguments in addition to any accepted attributes
 - Set argument defaults
 - Require any missing arguments

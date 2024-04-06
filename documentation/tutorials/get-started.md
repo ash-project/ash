@@ -150,7 +150,7 @@ defmodule Helpdesk.Support.Ticket do
     # Use the default implementation of the :read action
     defaults [:read]
 
-    # and a custom create action, which we'll customize later
+    # and a create action, which we'll customize later
     create :create
   end
 
@@ -591,24 +591,24 @@ Where Ash shines however, is all of the tools that can work *with* your resource
 
 #### Get Help
 
-- Check out [ElixirForum](https://elixirforum.com/c/elixir-framework-forums/ash-framework-forum/123)
+- Check out [ElixirForum](https://elixirforum.com/c/ash-framework-forum)
 - Join our [Discord server](https://discord.gg/D7FNG2q)
 - Open a [GitHub issue](https://github.com/ash-project/ash/issues/new/choose)
+
+#### Persist your data
+
+See [The AshPostgres getting started guide](https://hexdocs.pm/ash_postgres) to see how to back your resources with Postgres. This is highly recommended, as the Postgres data layer provides tons of advanced capabilities.
+
+#### Add a web API
+
+Check out  [AshJsonApi](https://hexdocs.pm/ash_json_api) and [AshGraphql](https://hexdocs.pm/ash_graphql) extensions to build APIs around your resource
+
+#### Authorize access and work with users
+
+See the [Policies guide](/documentation/topics/policies.md) for information on how to authorize access to your resources using actors and policies.
 
 #### Clean up your code that uses Ash?
 
 Creating and using changesets manually can be verbose, and they all look very similar. Luckily, Ash has your back and can help you build high quality interfaces for you!
 
 Check out the [Code Interface Guide](/documentation/topics/code-interface.md) to derive things like `Helpdesk.Support.Ticket.assign!(representative.id)`
-
-#### Persist your data
-
-See [The AshPostgres getting started guide](https://hexdocs.pm/ash_postgres/get-started-with-postgres.html) to see how to back your resources with Postgres. This is highly recommended, as the Postgres data layer provides tons of advanced capabilities.
-
-#### Add a web API
-
-Check out the `AshJsonApi` and `AshGraphql` extensions to  build APIs around your resources
-
-#### Authorize access and work with users
-
-See the [Policies guide](/documentation/topics/policies.md) for information on how to authorize access to your resources using actors and policies.
