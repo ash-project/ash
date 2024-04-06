@@ -1913,7 +1913,16 @@ defmodule Ash.Changeset do
         end
 
       %{always_atomic?: true, validation: _} = change, changeset ->
-        run_atomic_validation(changeset, change, context)
+        case run_atomic_validation(changeset, change, context) do
+          {:not_atomic, reason} ->
+            Ash.Changeset.add_error(
+              changeset,
+              "Validation #{change.module} must be run atomically, but it could not be: #{reason}"
+            )
+
+          changeset ->
+            changeset
+        end
 
       %{change: {module, opts}, where: where} = change, changeset ->
         if module.has_change?() do
