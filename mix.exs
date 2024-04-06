@@ -102,12 +102,12 @@ defmodule Ash.MixProject do
         Topics: [
           "documentation/topics/glossary.md"
         ],
-        "Security": [
+        Security: [
           "documentation/topics/security/actors-and-authorization.md",
           "documentation/topics/security/policies.md",
-          "documentation/topics/security/sensitive-data.md",
+          "documentation/topics/security/sensitive-data.md"
         ],
-        "Development": [
+        Development: [
           "documentation/topics/development/development-utilities.md",
           "documentation/topics/development/upgrading-to-3.0.md"
         ],

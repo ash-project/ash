@@ -34,48 +34,52 @@ defmodule Ash.Resource.Validation.OneOf do
 
   @impl true
   def validate(changeset, opts, _context) do
-    case Ash.Changeset.fetch_argument_or_change(changeset, opts[:attribute]) do
+    value =
+      if Enum.any?(changeset.action.arguments, &(&1.name == opts[:attribute])) do
+        Ash.Changeset.fetch_argument(changeset, opts[:attribute])
+      else
+        {:ok, Ash.Changeset.get_attribute(changeset, opts[:attribute])}
+      end
+
+    case value do
       {:ok, nil} ->
         :ok
 
-      {:ok, changing_to} ->
-        if Enum.any?(opts[:values], &Comp.equal?(&1, changing_to)) do
+      {:ok, value} ->
+        if Enum.any?(opts[:values], &Comp.equal?(&1, value)) do
           :ok
         else
           {:error,
-           [value: changing_to, field: opts[:attribute]]
+           [value: value, field: opts[:attribute]]
            |> with_description(opts)
            |> InvalidAttribute.exception()}
         end
 
-      _ ->
+      :error ->
         :ok
     end
   end
 
   @impl true
   def atomic(changeset, opts, context) do
-    value =
-      case Ash.Changeset.fetch_argument_or_change(changeset, opts[:attribute]) do
-        {:ok, value} ->
-          value
+    if Enum.any?(changeset.action.arguments, &(&1.name == opts[:attribute])) do
+      validate(changeset, opts, context)
+    else
+      value = expr(^atomic_ref(opts[:attribute]))
 
-        :error ->
-          expr(^atomic_ref(opts[:attribute]))
-      end
-
-    {:atomic, [opts[:attribute]], expr(^value not in ^opts[:values]),
-     expr(
-       error(
-         Ash.Error.Changes.InvalidAttribute,
-         %{
-           field: ^opts[:attribute],
-           value: ^value,
-           message: ^(context.message || "expected one of %{values}"),
-           vars: %{values: ^Enum.map_join(opts[:values], ", ", &to_string/1)}
-         }
-       )
-     )}
+      {:atomic, [opts[:attribute]], expr(^value not in ^opts[:values]),
+       expr(
+         error(
+           Ash.Error.Changes.InvalidAttribute,
+           %{
+             field: ^opts[:attribute],
+             value: ^value,
+             message: ^(context.message || "expected one of %{values}"),
+             vars: %{values: ^Enum.map_join(opts[:values], ", ", &to_string/1)}
+           }
+         )
+       )}
+    end
   end
 
   @impl true

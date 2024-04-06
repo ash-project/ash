@@ -77,12 +77,10 @@ defmodule Ash.Resource.Validation.Present do
   def atomic(changeset, opts, context) do
     values =
       Enum.map(opts[:attributes], fn attr ->
-        case Ash.Changeset.fetch_argument(changeset, attr) do
-          {:ok, value} ->
-            value
-
-          :error ->
-            expr(^atomic_ref(attr))
+        if Enum.any?(changeset.action.arguments, &(&1.name == attr)) do
+          Ash.Changeset.get_argument(changeset, attr)
+        else
+          expr(^atomic_ref(attr))
         end
       end)
 

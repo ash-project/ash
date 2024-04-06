@@ -25,7 +25,14 @@ defmodule Ash.Resource.Validation.Compare do
 
   @impl true
   def validate(changeset, opts, _context) do
-    case Ash.Changeset.fetch_argument_or_change(changeset, opts[:attribute]) do
+    value =
+      if Enum.any?(changeset.action.arguments, &(&1.name == opts[:attribute])) do
+        Ash.Changeset.fetch_argument(changeset, opts[:attribute])
+      else
+        {:ok, Ash.Changeset.get_attribute(changeset, opts[:attribute])}
+      end
+
+    case value do
       {:ok, value} ->
         Enum.reduce(
           Keyword.take(opts, [
@@ -70,70 +77,68 @@ defmodule Ash.Resource.Validation.Compare do
 
   @impl true
   def atomic(changeset, opts, context) do
-    case Ash.Changeset.fetch_argument(changeset, opts[:attribute]) do
-      :error ->
-        opts
-        |> Keyword.take([
-          :greater_than,
-          :less_than,
-          :greater_than_or_equal_to,
-          :less_than_or_equal_to
-        ])
-        |> Enum.map(fn
-          {:greater_than, value} ->
-            {:atomic, [opts[:attribute]],
-             expr(^atomic_ref(opts[:attribute]) <= ^atomic_value(value)),
-             expr(
-               error(^InvalidAttribute, %{
-                 field: ^opts[:attribute],
-                 value: ^atomic_ref(opts[:attribute]),
-                 message: ^(context.message || "must be greater than %{greater_than}"),
-                 vars: %{field: ^opts[:attribute], greater_than: ^atomic_value(value)}
-               })
-             )}
+    if Enum.any?(changeset.action.arguments, &(&1.name == opts[:attribute])) do
+      validate(changeset, opts, context)
+    else
+      opts
+      |> Keyword.take([
+        :greater_than,
+        :less_than,
+        :greater_than_or_equal_to,
+        :less_than_or_equal_to
+      ])
+      |> Enum.map(fn
+        {:greater_than, value} ->
+          {:atomic, [opts[:attribute]],
+           expr(^atomic_ref(opts[:attribute]) <= ^atomic_value(value)),
+           expr(
+             error(^InvalidAttribute, %{
+               field: ^opts[:attribute],
+               value: ^atomic_ref(opts[:attribute]),
+               message: ^(context.message || "must be greater than %{greater_than}"),
+               vars: %{field: ^opts[:attribute], greater_than: ^atomic_value(value)}
+             })
+           )}
 
-          {:less_than, value} ->
-            {:atomic, [opts[:attribute]],
-             expr(^atomic_ref(opts[:attribute]) >= ^atomic_value(value)),
-             expr(
-               error(^InvalidAttribute, %{
-                 field: ^opts[:attribute],
-                 value: ^atomic_ref(opts[:attribute]),
-                 message: ^(context.message || "must be less than %{less_than}"),
-                 vars: %{field: ^opts[:attribute], less_than: ^atomic_value(value)}
-               })
-             )}
+        {:less_than, value} ->
+          {:atomic, [opts[:attribute]],
+           expr(^atomic_ref(opts[:attribute]) >= ^atomic_value(value)),
+           expr(
+             error(^InvalidAttribute, %{
+               field: ^opts[:attribute],
+               value: ^atomic_ref(opts[:attribute]),
+               message: ^(context.message || "must be less than %{less_than}"),
+               vars: %{field: ^opts[:attribute], less_than: ^atomic_value(value)}
+             })
+           )}
 
-          {:greater_than_or_equal_to, value} ->
-            {:atomic, [opts[:attribute]],
-             expr(^atomic_ref(opts[:attribute]) < ^atomic_value(value)),
-             expr(
-               error(^InvalidAttribute, %{
-                 field: ^opts[:attribute],
-                 value: ^atomic_ref(opts[:attribute]),
-                 message:
-                   ^(context.message ||
-                       "must be greater than or equal to %{greater_than_or_equal_to}"),
-                 vars: %{field: ^opts[:attribute], greater_than_or_equal_to: ^atomic_value(value)}
-               })
-             )}
+        {:greater_than_or_equal_to, value} ->
+          {:atomic, [opts[:attribute]],
+           expr(^atomic_ref(opts[:attribute]) < ^atomic_value(value)),
+           expr(
+             error(^InvalidAttribute, %{
+               field: ^opts[:attribute],
+               value: ^atomic_ref(opts[:attribute]),
+               message:
+                 ^(context.message ||
+                     "must be greater than or equal to %{greater_than_or_equal_to}"),
+               vars: %{field: ^opts[:attribute], greater_than_or_equal_to: ^atomic_value(value)}
+             })
+           )}
 
-          {:less_than_or_equal_to, value} ->
-            {:atomic, [opts[:attribute]],
-             expr(^atomic_ref(opts[:attribute]) > ^atomic_value(value)),
-             expr(
-               error(^InvalidAttribute, %{
-                 field: ^opts[:attribute],
-                 value: ^atomic_ref(opts[:attribute]),
-                 message:
-                   ^(context.message || "must be less than or equal to %{less_than_or_equal_to}"),
-                 vars: %{field: ^opts[:attribute], less_than_or_equal_to: ^atomic_value(value)}
-               })
-             )}
-        end)
-
-      {:ok, _} ->
-        validate(changeset, opts, context)
+        {:less_than_or_equal_to, value} ->
+          {:atomic, [opts[:attribute]],
+           expr(^atomic_ref(opts[:attribute]) > ^atomic_value(value)),
+           expr(
+             error(^InvalidAttribute, %{
+               field: ^opts[:attribute],
+               value: ^atomic_ref(opts[:attribute]),
+               message:
+                 ^(context.message || "must be less than or equal to %{less_than_or_equal_to}"),
+               vars: %{field: ^opts[:attribute], less_than_or_equal_to: ^atomic_value(value)}
+             })
+           )}
+      end)
     end
   end
 

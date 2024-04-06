@@ -36,11 +36,18 @@ defmodule Ash.Resource.Validation.Match do
 
   @impl true
   def validate(changeset, opts, _context) do
-    case Ash.Changeset.fetch_argument_or_change(changeset, opts[:attribute]) do
-      {:ok, changing_to} when not is_nil(changing_to) ->
-        case string_value(changing_to, opts) do
-          {:ok, changing_to} ->
-            if String.match?(changing_to, opts[:match]) do
+    value =
+      if argument?(changeset.action, opts[:attribute]) do
+        Ash.Changeset.fetch_argument(changeset, opts[:attribute])
+      else
+        {:ok, Ash.Changeset.get_attribute(changeset, opts[:attribute])}
+      end
+
+    case value do
+      {:ok, value} when not is_nil(value) ->
+        case string_value(value, opts) do
+          {:ok, value} ->
+            if String.match?(value, opts[:match]) do
               :ok
             else
               {:error, exception(opts)}
@@ -73,7 +80,7 @@ defmodule Ash.Resource.Validation.Match do
   end
 
   defp argument?(%{arguments: arguments}, attribute) do
-    Enum.find(arguments, &(&1.name == attribute))
+    Enum.any?(arguments, &(&1.name == attribute))
   end
 
   defp atomic_expr_change?(atomics, attribute) do
