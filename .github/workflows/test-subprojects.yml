@@ -43,7 +43,6 @@ jobs:
     env:
       ASH_CI: true
       ASH_VERSION: local
-      ASH_THREE: ${{matrix.ash_three}}
     steps:
       - run: sudo apt-get install --yes erlang-dev
       - uses: actions/checkout@v2
