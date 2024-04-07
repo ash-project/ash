@@ -31,7 +31,7 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 
 ## Topics
 
-- [Glossary](documentation/topics/glossary.md)
+- [Glossary](documentation/topics/reference/glossary.md)
 
 ### Resources
 

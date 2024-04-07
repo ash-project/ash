@@ -170,7 +170,7 @@ Like offset pagination, next/previous page requests can also be made in memory, 
 
 #### Setting up the resource
 
-Add the `pagination` macro call to the [action](glossary.md#action) of the [resource](glossary.md#resource) that you want to be paginated.
+Add the `pagination` macro call to the [action](/documentation/topics/reference/glossary.md#action) of the [resource](/documentation/topics/reference/glossary.md#resource) that you want to be paginated.
 
 ```elixir
 defmodule AppName.ResourceName do

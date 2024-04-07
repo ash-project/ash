@@ -71,7 +71,7 @@ defmodule Ash.MixProject do
         "documentation/topics/embedded-resources.md",
         "documentation/topics/extending-resources.md",
         "documentation/topics/expressions.md",
-        "documentation/topics/glossary.md",
+        "documentation/topics/reference/glossary.md",
         "documentation/topics/identities.md",
         "documentation/topics/managing-relationships.md",
         "documentation/topics/manual-actions.md",
@@ -130,7 +130,7 @@ defmodule Ash.MixProject do
         ],
         "How To": [],
         Reference: [
-          "documentation/topics/glossary.md",
+          "documentation/topics/reference/glossary.md",
           "documentation/dsls/DSL:-Ash.Resource.md",
           "documentation/dsls/DSL:-Ash.Domain.md",
           "documentation/dsls/DSL:-Ash.Notifier.PubSub.md",
@@ -169,7 +169,7 @@ defmodule Ash.MixProject do
       ],
       skip_undefined_reference_warnings_on: [
         "CHANGELOG.md",
-        "documentation/topics/glossary.md",
+        "documentation/topics/reference/glossary.md",
         "documentation/topics/development/upgrading-to-3.0.md"
       ],
       nest_modules_by_prefix: [
