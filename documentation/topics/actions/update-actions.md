@@ -18,7 +18,7 @@ ticket # providing an initial ticket to close
 |> Ash.update!()
 ```
 
-See the [Code Interface guide](documentation/topics/code-interface.md) for creating an interface to call the action more elegantly, like so:
+See the [Code Interface guide](documentation/topics/resources/code-interfaces.md) for creating an interface to call the action more elegantly, like so:
 
 ```elixir
 Support.close_ticket!(ticket, "I figured it out.")

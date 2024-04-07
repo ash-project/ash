@@ -609,4 +609,4 @@ See the [Policies guide](/documentation/topics/security/policies.md) for informa
 
 Creating and using changesets manually can be verbose, and they all look very similar. Luckily, Ash has your back and can help you build high quality interfaces for you!
 
-Check out the [Code Interface Guide](/documentation/topics/code-interface.md) to derive things like `Helpdesk.Support.Ticket.assign!(representative.id)`
+Check out the [Code Interface Guide](/documentation/topics/topics/code-interfaces.md) to derive things like `Helpdesk.Support.Ticket.assign!(representative.id)`

@@ -18,7 +18,7 @@ Ticket
 |> Ash.create!()
 ```
 
-See the [Code Interface guide](documentation/topics/code-interface.md) for creating an interface to call the action more elegantly, like so:
+See the [Code Interface guide](documentation/topics/resources/code-interfaces.md) for creating an interface to call the action more elegantly, like so:
 
 ```elixir
 Support.open_ticket!("Need help!")

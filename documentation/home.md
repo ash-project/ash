@@ -36,6 +36,7 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 - [Attributes](documentation/topics/resources/attributes.md)
 - [Calculations](documentation/topics/resources/calculations.md)
 - [Aggregates](documentation/topics/resources/aggregates.md)
+- [Code Interfaces](documentation/topics/resources/code-interfaces.md)
 
 ### Actions
 

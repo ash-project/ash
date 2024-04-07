@@ -48,6 +48,7 @@ defmodule Ash.MixProject do
         "documentation/topics/about_ash/contributing-to-ash.md",
         "documentation/topics/resources/attributes.md",
         "documentation/topics/resources/embedded-resources.md",
+        "documentation/topics/resources/code-interfaces.md",
         "documentation/topics/actions/actions.md",
         "documentation/topics/actions/read-actions.md",
         "documentation/topics/actions/create-actions.md",
@@ -68,7 +69,6 @@ defmodule Ash.MixProject do
         "documentation/how_to/validate-changes.md",
         "documentation/topics/resources/aggregates.md",
         "documentation/topics/resources/calculations.md",
-        "documentation/topics/code-interface.md",
         "documentation/topics/extending-resources.md",
         "documentation/topics/expressions.md",
         "documentation/topics/reference/glossary.md",
@@ -102,8 +102,9 @@ defmodule Ash.MixProject do
         Resources: [
           "documentation/topics/resources/attributes.md",
           "documentation/topics/resources/calculations.md",
-          "documentation/topics/resources/aggregates.md"
+          "documentation/topics/resources/aggregates.md",
           "documentation/topics/resources/embedded-resources.md",
+          "documentation/topics/resources/code-interfaces.md"
         ],
         Actions: [
           "documentation/topics/actions/actions.md",

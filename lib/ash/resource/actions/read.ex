@@ -56,7 +56,7 @@ defmodule Ash.Resource.Actions.Read do
                     type: :boolean,
                     default: false,
                     doc: """
-                    Expresses that this action innately only returns a single result. Used by extensions to validate and/or modify behavior. Causes code interfaces to return a single value instead of a list. See the [code interface guide](/documentation/topics/code-interface.md) for more.
+                    Expresses that this action innately only returns a single result. Used by extensions to validate and/or modify behavior. Causes code interfaces to return a single value instead of a list. See the [code interface guide](/documentation/topics/topics/code-interfaces.md) for more.
                     """
                   ],
                   modify_query: [

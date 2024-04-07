@@ -89,7 +89,7 @@ defmodule Ash.Domain.Dsl do
   @define %Spark.Dsl.Entity{
     name: :define,
     describe: """
-    Defines a function with the corresponding name and arguments. See the [code interface guide](/documentation/topics/code-interface.md) for more.
+    Defines a function with the corresponding name and arguments. See the [code interface guide](/documentation/topics/topics/code-interfaces.md) for more.
     """,
     examples: [
       "define :get_user_by_id, User, action: :get_by_id, args: [:id], get?: true"
@@ -103,7 +103,7 @@ defmodule Ash.Domain.Dsl do
   @define_calculation %Spark.Dsl.Entity{
     name: :define_calculation,
     describe: """
-    Defines a function with the corresponding name and arguments, that evaluates a calculation. Use `:_record` to take an instance of a record. See the [code interface guide](/documentation/topics/code-interface.md) for more.
+    Defines a function with the corresponding name and arguments, that evaluates a calculation. Use `:_record` to take an instance of a record. See the [code interface guide](/documentation/topics/topics/code-interfaces.md) for more.
     """,
     examples: [
       "define_calculation :referral_link, User, args: [:id]",
