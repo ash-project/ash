@@ -35,6 +35,7 @@ Ash.bulk_create([%{title: "Foo"}, %{title: "Bar"}], Ticket, :open)
 ```
 
 > ### Check the docs! {: .warning}
+>
 > Make sure to thoroughly read and understand the documentation in `Ash.bulk_create/4` before using. Read each option and note the default values. By default, bulk creates don't return records or errors, and don't emit notifications.
 
 ## Performance
@@ -45,7 +46,7 @@ Generally speaking, all regular Ash create actions are compatible (or can be mad
 
 - Actions that reference arguments in changes, i.e `change set_attribute(:attr, ^arg(:arg))` will prevent us from using the `batch_change/3` behavior. This is usually not a problem, for instance that change is lightweight and would not benefit from being optimized with `batch_change/3`
 
-- If your action uses `after_action` hooks, or has `after_batch/3` logic defined for any of its changes, then we *must* ask the data layer to return the records it inserted. Again, this is not generally a problem because we throw away the results of each batch by default. If you are using `return_records?: true` then you are already requesting all of the results anyway.
+- If your action uses `after_action` hooks, or has `after_batch/3` logic defined for any of its changes, then we _must_ ask the data layer to return the records it inserted. Again, this is not generally a problem because we throw away the results of each batch by default. If you are using `return_records?: true` then you are already requesting all of the results anyway.
 
 ## Returning a Stream
 
@@ -67,7 +68,9 @@ end)
 ```
 
 > ### Be careful with streams {: .warning}
->  Because streams are lazily evaluated, if you were to do something like this:
+>
+> Because streams are lazily evaluated, if you were to do something like this:
+>
 > ```elixir
 > [input1, input2, ...] # has 300 things in it
 > |> Ash.bulk_create(
@@ -79,6 +82,7 @@ end)
 > )
 > |> Enum.take(150) # stream has 300, but we only take 150
 > ```
+>
 > What would happen is that we would insert 200 records. The stream would end after we process the first two batches of 100. Be sure you aren't using things like `Stream.take` or `Enum.take` to limit the amount of things pulled from the stream, unless you actually want to limit the number of records created.
 
 ## Upserts
@@ -100,11 +104,12 @@ Ash.create!(changeset, upsert?: true, upsert_identity: :unique_email)
 ```
 
 > ### Upserts do not use an update action {: .warning}
+>
 > While an upsert is conceptually a "create or update" operation, it does not result in an update action being called. The data layer contains the upsert implementation. This means that if you have things like global changes that are only run on update, they will not be run on upserts that result in an update. Additionally, notifications for updates will not be emitted from upserts.
 
 ### Atomic Updates
 
-Upserts support atomic updates. These atomic updates *do not apply to the data being created*. They are only applied in the case of an update. For example:
+Upserts support atomic updates. These atomic updates _do not apply to the data being created_. They are only applied in the case of an update. For example:
 
 ```elixir
 create :create_game do
@@ -123,7 +128,7 @@ For information on options when calling the action, see `Ash.create/2`.
 
 ## What happens when you run a create Action
 
-When All actions are run in a transaction if the data layer supports it. You can opt out of this behavior by supplying `transaction?: false` when creating the action. When an action is being run in a transaction, all steps inside of it are serialized because transactions cannot be split across processes.
+All actions are run in a transaction if the data layer supports it. You can opt out of this behavior by supplying `transaction?: false` when creating the action. When an action is being run in a transaction, all steps inside of it are serialized because transactions cannot be split across processes.
 
 - Authorization is performed on the changes
 - A before action hook is added to set up belongs_to relationships that are managed. This means potentially creating/modifying the destination of the relationship, and then changing the `destination_attribute` of the relationship.

@@ -2,7 +2,7 @@
 
 Policies determine what actions on a resource are permitted for a given actor, and can also filter the results of read actions to restrict the results to only records that should be visible.
 
-To restrict access to specific fields (attributes, aggregates, calculations), the section on field policies.
+To restrict access to specific fields (attributes, aggregates, calculations), see the section on field policies.
 
 Read and understand the [Actors & Authorization guide](/documentation/topics/security/actors-and-authorization.md) before proceeding, which explains actors, how to set them, and other relevant configurations.
 
@@ -98,7 +98,7 @@ This will be covered in greater detail in [Checks](#checks), but will be briefly
 
 Ash provides two basic types of policy checks - _simple_ checks and _filter_ checks. Simple checks are what we commonly think of with authorization, and what the above example would suggest - is an actor allowed to perform a given operation, yes or no? But we can also use filter checks - given a list of resources, which ones is an actor allowed to perform the operation on?
 
-Filter checks are frequently used with read actions, as they can refer to multiple instances (eg. "list all products"), but may also be applied to actions like bulk-deleting records (which is not currently supported, but will be eventually).
+Filter checks are applied to all read actions, including those generated for bulk updates and destroys.
 
 ### Bypass policies
 
@@ -163,7 +163,9 @@ For the example from earlier:
 
 As mentioned earlier, there are two distinct types of checks - _simple_ checks and _filter_ checks. So far we've seen examples of both - let's look in a bit more detail.
 
-(Both simple and filter checks are a subset of a third type of check - a _manual_ check - but you will almost always want to write simple or filter checks.)
+> #### Manual Checks {: .neutral}
+>
+> Both simple and filter checks are a subset of a third type of check - a _manual_ check - but you will almost always want to write simple or filter checks.
 
 #### Simple checks
 
@@ -188,7 +190,7 @@ defmodule MyApp.Checks.ActorIsOldEnough do
     age >= 21
   end
 
-  def match?(_, _, _), do: true
+  def match?(_, _, _), do: false
 end
 ```
 
@@ -330,7 +332,7 @@ field_policies do
 end
 ```
 
-If *any* field policies exist then *all* fields must be authorized by a field policy.
+If _any_ field policies exist then _all_ fields must be authorized by a field policy.
 If you want a "deny-list" style, then you can add policies for specific fields.
 and add a catch-all policy using the special field name `:*`. All policies that apply
 to a field must be authorized.
