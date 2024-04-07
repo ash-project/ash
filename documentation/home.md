@@ -45,6 +45,7 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 - [Update Actions](documentation/topics/actions/update-actions.md)
 - [Destroy Actions](documentation/topics/actions/destroy-actions.md)
 - [Generic Actions](documentation/topics/actions/generic-actions.md)
+- [Manual Actions](documentation/topics/actions/manual-actions.md)
 
 ### Security
 

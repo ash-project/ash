@@ -1,8 +1,6 @@
 # Embedded Resources
 
-Embedded resources function very similarly to [embedded schemas in Ecto](https://hexdocs.pm/ecto/Ecto.Schema.html).
-The primary difference is the same as the primary difference between Ecto schemas and Ash resources: the full lifecycle
-of the resource is managed by its configuration. For example, you can add validations, calculations, and even authorization policies to an embedded resource. Here is an example of a simple embedded resource:
+Embedded resources are stored as maps in attributes of other resources. They are great for storing structured data, and support a whole range of useful features that resources support. For example, you can have calculations, validations, policies and even relationships on embedded resources.Here is an example of a simple embedded resource:
 
 ```elixir
 defmodule MyApp.Profile do
@@ -10,13 +8,14 @@ defmodule MyApp.Profile do
     data_layer: :embedded # Use the atom `:embedded` as the data layer.
 
   attributes do
-    attribute :first_name, :string
-    attribute :last_name, :string
+    attribute :first_name, :string, public?: true
+    attribute :last_name, :string, public?: true
   end
 end
 ```
 
-Embedded resources cannot have relationships or aggregates.
+> ### embedded resources can't do everything {: .info}
+> Embedded resources cannot have aggregates, or expression calculations that rely on data-layer-specific capabilities. It typically depends on the data layer what embedded resources can/can't do.
 
 ## Adding embedded resource attributes
 
@@ -29,20 +28,20 @@ defmodule MyApp.User do
   attributes do
     ...
 
-    attribute :profile, MyApp.Profile
-    attribute :profiles, {:array, MyApp.Profile} # You can also have an array of embeds
+    attribute :profile, MyApp.Profile, public?: true
+    attribute :profiles, {:array, MyApp.Profile}, public?: true # You can also have an array of embeds
   end
 end
 ```
 
-## Nil values
+## Handling nil values
 
 By default, all fields on an embedded resource will be included in the data layer, including keys with nil values. To prevent this, add the `embed_nil_values?` option to `use Ash.Resource`. For example:
 
 ```elixir
 defmodule YourEmbed do
-  use Ash.Resource, 
-    data_layer: :embedded, 
+  use Ash.Resource,
+    data_layer: :embedded,
     embed_nil_values?: false
 end
 ```
@@ -70,8 +69,8 @@ defmodule MyApp.Profile do
     data_layer: :embedded # Use the atom `:embedded` as the data layer.
 
   attributes do
-    attribute :first_name, :string
-    attribute :last_name, :string
+    attribute :first_name, :string, public?: true
+    attribute :last_name, :string, public?: true
   end
 
   validations do
@@ -91,8 +90,8 @@ defmodule MyApp.Profile do
     data_layer: :embedded # Use the atom `:embedded` as the data layer.
 
   attributes do
-    attribute :first_name, :string
-    attribute :last_name, :string
+    attribute :first_name, :string, public?: true
+    attribute :last_name, :string, public?: true
   end
 
   calculations do
@@ -106,6 +105,7 @@ defmodule MyApp.User do
 
   attributes do
     attribute :profile, MyApp.Profile do
+      public? true
       constraints [load: [:full_name]]
     end
   end
@@ -139,8 +139,8 @@ defmodule MyApp.Tag do
 
   attributes do
     uuid_primary_key :id
-    attribute :name, :string
-    attribute :counter, :integer
+    attribute :name, :string, public?: true
+    attribute :counter, :integer, public?: true
   end
 
   validations do
