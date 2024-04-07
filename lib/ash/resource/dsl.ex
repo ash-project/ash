@@ -750,7 +750,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Represents a unique constraint on the resource.
 
-    See the [identities guide](/documentation/topics/identities.md) for more.
+    See the [identities guide](/documentation/topics/resources/identities.md) for more.
     """,
     examples: [
       "identity :name, [:name]",

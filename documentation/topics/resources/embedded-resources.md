@@ -15,7 +15,7 @@ end
 ```
 
 > ### embedded resources can't do everything {: .info}
-> Embedded resources cannot have aggregates, or expression calculations that rely on data-layer-specific capabilities. It typically depends on the data layer what embedded resources can/can't do.
+> Embedded resources cannot have aggregates, or expression calculations that rely on data-layer-specific capabilities.
 
 ## Adding embedded resource attributes
 

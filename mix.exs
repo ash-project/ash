@@ -49,6 +49,7 @@ defmodule Ash.MixProject do
         "documentation/topics/resources/attributes.md",
         "documentation/topics/resources/embedded-resources.md",
         "documentation/topics/resources/code-interfaces.md",
+        "documentation/topics/resources/identities.md",
         "documentation/topics/actions/actions.md",
         "documentation/topics/actions/read-actions.md",
         "documentation/topics/actions/create-actions.md",
@@ -72,7 +73,6 @@ defmodule Ash.MixProject do
         "documentation/topics/extending-resources.md",
         "documentation/topics/expressions.md",
         "documentation/topics/reference/glossary.md",
-        "documentation/topics/identities.md",
         "documentation/topics/managing-relationships.md",
         "documentation/topics/monitoring.md",
         "documentation/topics/multitenancy.md",
@@ -104,7 +104,8 @@ defmodule Ash.MixProject do
           "documentation/topics/resources/calculations.md",
           "documentation/topics/resources/aggregates.md",
           "documentation/topics/resources/embedded-resources.md",
-          "documentation/topics/resources/code-interfaces.md"
+          "documentation/topics/resources/code-interfaces.md",
+          "documentation/topics/resources/identities.md"
         ],
         Actions: [
           "documentation/topics/actions/actions.md",
@@ -153,7 +154,6 @@ defmodule Ash.MixProject do
           "documentation/topics/code-interface.md",
           "documentation/topics/extending-resources.md",
           "documentation/topics/expressions.md",
-          "documentation/topics/identities.md",
           "documentation/topics/managing-relationships.md",
           "documentation/topics/monitoring.md",
           "documentation/topics/multitenancy.md",

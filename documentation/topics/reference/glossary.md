@@ -80,7 +80,7 @@ See `Ash.Filter` for more.
 
 A way to uniquely identify an instance of a resource. A primary key is an example of an identity that is automatically generated; you can manually add others such as a user's email address, or a URL slug for a post. If using AshPostgres, constraints will be created by the migration generator to enforce identities at the database level.
 
-See the [Identities guide](/documentation/topics/identities.md) for more.
+See the [Identities guide](/documentation/topics/resources/identities.md) for more.
 
 ## Notifier
 
