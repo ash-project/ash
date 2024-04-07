@@ -14,7 +14,7 @@ Each action has its own set of options, ways of calling it, and ways of customiz
 
 Primary actions are a way to inform the framework which actions should be used in certain "automated" circumstances, or in cases where an action has not been specified. If a primary action is attempted to be used but does not exist, you will get an error about it at runtime.
 
-The place you typically need primary actions is, when [Managing Relationships](/documentation/topics/managing-relationships.md). When using the `defaults` option to add default actions, they are marked as primary.
+The place you typically need primary actions is when [Managing Relationships](/documentation/topics/managing-relationships.md). When using the `defaults` option to add default actions, they are marked as primary.
 
 A simple example where a primary action would be used:
 
