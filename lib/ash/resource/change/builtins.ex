@@ -313,7 +313,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Example
 
-    change ensure_selected([:necessary_field])
+      change ensure_selected([:necessary_field])
   """
   @spec ensure_selected(select :: atom | list(atom)) :: Ash.Resource.Change.ref()
   def ensure_selected(value) do

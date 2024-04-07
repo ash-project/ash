@@ -65,7 +65,8 @@ defmodule Ash.Resource.Validation.Builtins do
   Validates that other validation does not pass
 
   ## Examples
-    validate negate(one_of(:status, [:closed, :finished]))
+
+      validate negate(one_of(:status, [:closed, :finished]))
   """
   @spec negate(validation :: Validation.ref()) :: Validation.ref()
   def negate(validation) do
@@ -213,7 +214,7 @@ defmodule Ash.Resource.Validation.Builtins do
 
   ## Examples
 
-    validate match(:slug, ~r/^[0-9a-z-_]+$/)
+      validate match(:slug, ~r/^[0-9a-z-_]+$/)
   """
   @spec match(attribute :: atom, match :: Regex.t()) :: Validation.ref()
   def match(attribute, match) do
