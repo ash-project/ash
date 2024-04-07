@@ -7,7 +7,7 @@ action :say_hello, :string do
   argument :name, :string, allow_nil?: false
 
   run fn input, _ ->
-    {:ok, "Hello: #{input.arguments.name}"
+    {:ok, "Hello: #{input.arguments.name}"}
   end
 end
 ```
