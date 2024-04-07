@@ -420,9 +420,6 @@ defmodule Ash.CodeInterface do
             interface.get_by ->
               interface.get_by
 
-            interface.get? ->
-              Ash.Resource.Info.primary_key(resource)
-
             true ->
               []
           end

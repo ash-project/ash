@@ -13,10 +13,10 @@ defmodule Ash.Test.CodeInterfaceTest do
     end
 
     code_interface do
-      define :get_user, action: :read, get?: true
-      define :get_user_safely, action: :read, get?: true, not_found_error?: false
+      define :get_user, action: :read, get_by: :id
+      define :get_user_safely, action: :read, get_by: :id, not_found_error?: false
       define :read_users, action: :read
-      define :get_by_id, action: :read, get_by: [:id]
+      define :get_by_id, action: :by_id, get?: true, args: [:id]
       define :create, args: [{:optional, :first_name}]
       define :hello, args: [:name]
 
@@ -84,7 +84,7 @@ defmodule Ash.Test.CodeInterfaceTest do
 
     resources do
       resource User do
-        define :get_user, action: :read, get?: true
+        define :get_user, action: :read, get_by: :id
 
         define_calculation(:full_name, args: [:first_name, :last_name])
       end
