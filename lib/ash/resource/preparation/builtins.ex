@@ -43,11 +43,11 @@ defmodule Ash.Resource.Preparation.Builtins do
 
   ## Example
 
-    prepare before_action(fn query ->
-      Logger.debug("About to execute query for #{query.action.name} on #{inspect(query.resource)})
+      prepare before_action(fn query ->
+        Logger.debug("About to execute query for #{query.action.name} on #{inspect(query.resource)}")
 
-      query
-    end)
+        query
+      end)
   """
   defmacro before_action(callback) do
     {value, function} =
@@ -67,11 +67,11 @@ defmodule Ash.Resource.Preparation.Builtins do
 
   ## Example
 
-    prepare after_action(fn query, records ->
-      Logger.debug("Query for #{query.action.name} on resource #{inspect(query.resource)} returned #{length(records)} records")
+      prepare after_action(fn query, records ->
+        Logger.debug("Query for #{query.action.name} on resource #{inspect(query.resource)} returned #{length(records)} records")
 
-      {:ok, records}
-    end)
+        {:ok, records}
+      end)
   """
   defmacro after_action(callback) do
     {value, function} =
