@@ -22,10 +22,6 @@ defmodule Ash do
           | list(atom | {atom, atom | Keyword.t()})
 
   @global_opts [
-    internal?: [
-      type: :boolean,
-      hide: true
-    ],
     domain: [
       type: {:spark, Ash.Domain},
       doc: "The domain to use."
@@ -54,12 +50,6 @@ defmodule Ash do
     context: [
       type: :map,
       doc: "Context to set on the query, changeset, or input"
-    ],
-    stacktraces?: [
-      type: :boolean,
-      default: true,
-      doc:
-        "For Ash errors, whether or not each error has a stacktrace. See the error_handling guide for more."
     ],
     tenant: [
       type: {:protocol, Ash.ToTenant},
