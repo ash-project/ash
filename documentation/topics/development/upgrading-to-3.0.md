@@ -574,7 +574,7 @@ On `:update` actions, and `:destroy` actions, they now default to `require_atomi
 3. the action has a manual implementation
 4. the action has applicable notifiers that require the original data.
 
-Updates and destroys that can be made fully atomic are always safe to do concurrently, and as such we now require that actions meet this criteria. See the [atomics guide](/documentation/topics/atomics.md) for more.
+Updates and destroys that can be made fully atomic are always safe to do concurrently, and as such we now require that actions meet this criteria. See the [update actions guide](/documentation/topics/actions/update-actions.md#fully-atomic-updates) for more.
 
 #### What you'll need to change
 
