@@ -37,6 +37,7 @@ Ash.destroy!(ticket, return_destroyed?: true)
 ```
 
 > ### Loading on destroyed records {: .warning}
+>
 > Keep in mind that using `Ash.load` on destroyed data will produced mixed results. Relationships may appear as empty, or may be loaded as expected (depending on the data layer/relationship implementation) and calculations/aggregates may show as `nil` if they must be run in the data layer.
 
 ## Bulk Destroys
@@ -45,7 +46,7 @@ There are three strategies for bulk destroying data. They are, in order of prefe
 
 ## Atomic
 
-Atomic bulk updates are used when the subject of the bulk update is a query and the data layer supports updating a query. They map to a single statement to the data layer to destroy all matching records. The data layer must support updating a query.
+Atomic bulk destroys are used when the subject of the bulk destroy is a query and the data layer supports destroying a query. They map to a single statement to the data layer to destroy all matching records.
 
 ### Example
 
@@ -64,30 +65,29 @@ WHERE status = 'open';
 
 ## Atomic Batches
 
-Atomic batches is used when the subject of the bulk destroy is an enumerable (i.e list or stream) of records and the data layer supports destroying a query. The records are pulled out in batches, and then each batch follows the logic described [above](#atomic). The batch size is controllable by the `batch_size` option.
+Atomic batches are used when the subject of the bulk destroy is an enumerable (i.e list or stream) of records and the data layer supports destroying a query. The records are pulled out in batches, and then each batch follows the logic described [above](#atomic). The batch size is controllable by the `batch_size` option.
 
 ### Example
 
 ```elixir
 
-Ash.bulk_update!(one_hundred_tickets, :close, %{reason: "Closing all open tickets."}, batch_size: 10)
+Ash.bulk_destroy!(one_hundred_tickets, :close, %{}, batch_size: 10)
 ```
 
 If using a SQL data layer, this would produce ten queries along the lines of
 
 ```sql
-UPDATE tickets
-SET status = 'closed',
-    reason = 'Closing all open tickets.'
+DELETE FROM tickets
 WHERE id IN (...ids)
 ```
 
 ## Stream
 
-Stream is used when the data layer does not support updating a query. If a query is given, it is run and the records are used as an enumerable of inputs. If an enumerable of inputs is given, each one is destroyed individually. There is nothing inherently wrong with doing this kind of destroy, but it will naturally be slower than the other two strategies.
+Stream is used when the data layer does not support destroying a query. If a query is given, it is run and the records are used as an enumerable of inputs. If an enumerable of inputs is given, each one is destroyed individually. There is nothing inherently wrong with doing this kind of destroy, but it will naturally be slower than the other two strategies.
 The benefit of having a single interface (`Ash.bulk_destroy/4`) is that the caller doesn't need to change based on the performance implications of the action.
 
 > ### Check the docs! {: .warning}
+>
 > Make sure to thoroughly read and understand the documentation in `Ash.bulk_destroy/4` before using. Read each option and note the default values. By default, bulk destroys don't return records or errors, and don't emit notifications.
 
 ### Destroying records

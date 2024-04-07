@@ -40,6 +40,7 @@ end
 Changing attributes in this way makes them safer to use in concurrent environments, and is typically more performant than doing it manually in memory.
 
 > ### atomics are not stored with other changes {: .warning}
+>
 > While we recommend using atomics wherever possible, it is important to note that they are stored in their own map in the changeset, i.e `changeset.atomics`, meaning if you need to do something later in the action with the new value for an attribute, you won't be able to access the new value. This is because atomics are evaluated in the data layer.
 
 ## Fully Atomic updates
@@ -47,6 +48,7 @@ Changing attributes in this way makes them safer to use in concurrent environmen
 Atomic updates are a special case of update actions that can be done atomically. If your update action can't be done atomically, you will get an error unless you have set `require_atomic? false`. This is to encourage you to opt for atomic updates whereever reasonable. Not all actions can reasonably be made atomic, and not all non-atomic actions are problematic for concurrency. The goal is only to make sure that you are aware and have considered the implications.
 
 > ### What does atomic mean? {: .info}
+>
 > An atomic update is one that can be done in a single operation in the data layer. This ensures that there are no issues with concurrent access to the record being updated, and that it is as performant as possible.
 > For example, the following action cannot be done atomically, because it has
 > an anonymous function change on it.
@@ -54,14 +56,14 @@ Atomic updates are a special case of update actions that can be done atomically.
 > ```elixir
 > update :increment_score do
 >   change fn changeset, _ ->
->     Ash.Changeset.set_attribute(changeset, :score, changeset.data.score)
+>     Ash.Changeset.set_attribute(changeset, :score, changeset.data.score + 1)
 >   end
 > end
 > ```
 >
 > The action shown above is not safe to run concurrently. If two separate processes fetch the record with score `1`, and then call `increment_score`, they will both set the score to `2`, when what you almost certainly intended to do was end up with a score of `3`
 >
-> By contrast, the following action *can* be done atomically
+> By contrast, the following action _can_ be done atomically
 >
 > ```elixir
 > update :increment_score do
@@ -114,7 +116,7 @@ end
 
 ## Bulk updates
 
-There are three strategies for bulk updating data. They are, in order of preference: `:atomic`, `:atomic_batches`, and `:stream`. When calling `Ash.bulk_update/4`, you can provide a strategy or strategies that can be used, and Ash will choose the best one available. The implementation of the udpate action and the capabilities of the data layer determine what strategies can be used.
+There are three strategies for bulk updating data. They are, in order of preference: `:atomic`, `:atomic_batches`, and `:stream`. When calling `Ash.bulk_update/4`, you can provide a strategy or strategies that can be used, and Ash will choose the best one available. The implementation of the update action and the capabilities of the data layer determine what strategies can be used.
 
 ## Atomic
 
