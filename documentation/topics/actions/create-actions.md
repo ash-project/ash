@@ -81,6 +81,46 @@ end)
 > ```
 > What would happen is that we would insert 200 records. The stream would end after we process the first two batches of 100. Be sure you aren't using things like `Stream.take` or `Enum.take` to limit the amount of things pulled from the stream, unless you actually want to limit the number of records created.
 
+## Upserts
+
+Upserting is the process of "creating or updating" a record, modeled with a single simple create. Both bulk creates and regular creates support upserts. Upserts can be declared in the action, like so:
+
+```elixir
+create :create_user do
+  accept [:email]
+  upsert? true
+  upsert_identity :unique_email
+end
+```
+
+Or they can be done with options when calling the create action.
+
+```elixir
+Ash.create!(changeset, upsert?: true, upsert_identity: :unique_email)
+```
+
+> ### Upserts do not use an update action {: .warning}
+> While an upsert is conceptually a "create or update" operation, it does not result in an update action being called. The data layer contains the upsert implementation. This means that if you have things like global changes that are only run on update, they will not be run on upserts that result in an update. Additionally, notifications for updates will not be emitted from upserts.
+
+### Atomic Updates
+
+Upserts support atomic updates. These atomic updates *do not apply to the data being created*. They are only applied in the case of an update. For example:
+
+```elixir
+create :create_game do
+  accept [:identifier]
+  upsert? true
+  upsert_identity :identifier
+  change set_attribute(:score, 0)
+  change atomic_update(:score, expr(score + 1))
+end
+```
+
+This will result in creating a game with a score of 0, and if the game already exists, it will increment the score by 1.
+
+For information on options configured in the action, see `d:Ash.Resource.Dsl.actions.create`.
+For information on options when calling the action, see `Ash.create/2`.
+
 ## What happens when you run a create Action
 
 When All actions are run in a transaction if the data layer supports it. You can opt out of this behavior by supplying `transaction?: false` when creating the action. When an action is being run in a transaction, all steps inside of it are serialized because transactions cannot be split across processes.

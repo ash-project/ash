@@ -26,7 +26,23 @@ Support.close_ticket!(ticket, "I figured it out.")
 Support.close_ticket!(ticket.id, "I figured it out.")
 ```
 
-## Atomic updates
+## Atomics
+
+Atomic updates can be added to a changeset, which will update the value of an attribute given by an expression. Atomics can be a very powerful way to model updating data in a simple way. An action does not have to be [fully atomic](#fully-atomic-updates) in order to leverage atomic updates. For example:
+
+```elixir
+update :add_to_name do
+  argument :to_add, :string, allow_nil? false
+  change atomic_update(:name, expr("#{name}_#{to_add}"))
+end
+```
+
+Changing attributes in this way makes them safer to use in concurrent environments, and is typically more performant than doing it manually in memory.
+
+> ### atomics are not stored with other changes {: .warning}
+> While we recommend using atomics wherever possible, it is important to note that they are stored in their own map in the changeset, i.e `changeset.atomics`, meaning if you need to do something later in the action with the new value for an attribute, you won't be able to access the new value. This is because atomics are evaluated in the data layer.
+
+## Fully Atomic updates
 
 Atomic updates are a special case of update actions that can be done atomically. If your update action can't be done atomically, you will get an error unless you have set `require_atomic? false`. This is to encourage you to opt for atomic updates whereever reasonable. Not all actions can reasonably be made atomic, and not all non-atomic actions are problematic for concurrency. The goal is only to make sure that you are aware and have considered the implications.
 
@@ -102,7 +118,7 @@ There are three strategies for bulk updating data. They are, in order of prefere
 
 ## Atomic
 
-Atomic bulk updates are used when the subject of the bulk update is a query, and the update action [can be done atomically](#atomic-updates) and the data layer supports updating a query. They map to a single statement to the data layer to update all matching records. The data layer must support updating a query.
+Atomic bulk updates are used when the subject of the bulk update is a query, and the update action [can be done atomically](#fully-atomic-updates) and the data layer supports updating a query. They map to a single statement to the data layer to update all matching records. The data layer must support updating a query.
 
 ### Example
 
@@ -123,7 +139,7 @@ WHERE status = 'open';
 
 ## Atomic Batches
 
-Atomic batches is used when the subject of the bulk update is an enumerable (i.e list or stream) of records and the update action [can be done atomically](#atomic-updates) and the data layer supports updating a query. The records are pulled out in batches, and then each batch follows the logic described [above](#atomic). The batch size is controllable by the `batch_size` option.
+Atomic batches is used when the subject of the bulk update is an enumerable (i.e list or stream) of records and the update action [can be done atomically](#fully-atomic-updates) and the data layer supports updating a query. The records are pulled out in batches, and then each batch follows the logic described [above](#atomic). The batch size is controllable by the `batch_size` option.
 
 ### Example
 
@@ -143,7 +159,7 @@ WHERE id IN (...ids)
 
 ## Stream
 
-Stream is used when the update action [cannot be done atomically](#atomic-updates) or if the data layer does not support updating a query. If a query is given, it is run and the records are used as an enumerable of inputs. If an enumerable of inputs is given, each one is updated individually. There is nothing inherently wrong with doing this kind of update, but it will naturally be slower than the other two strategies.
+Stream is used when the update action [cannot be done atomically](#fully-atomic-updates) or if the data layer does not support updating a query. If a query is given, it is run and the records are used as an enumerable of inputs. If an enumerable of inputs is given, each one is updated individually. There is nothing inherently wrong with doing this kind of update, but it will naturally be slower than the other two strategies.
 The benefit of having a single interface (`Ash.bulk_update/4`) is that the caller doesn't need to change based on the performance implications of the action.
 
 ## Running a standard update action
