@@ -290,7 +290,7 @@ For those who want to be more explicit, or after your upgrade has complete if yo
 
 > ### :\* includes belongs_to attributes! {: .warning}
 >
-> The change to explicit accepts also included a change that defaults belongs_to attributes to `writable?: true` and `public?: true`. You may want to add `attribute_writable?: false` to your belongs_to relationships if you are adding `default_acceot :*` and don't currently have `attribute_writable?: true` on them currently.
+> The change to explicit accepts also included a change that defaults belongs_to attributes to `writable?: true` and `public?: true`. You may want to add `attribute_writable?: false` to your belongs_to relationships if you are adding `default_accept :*` and don't currently have `attribute_writable?: true` on them currently.
 
 ---
 
