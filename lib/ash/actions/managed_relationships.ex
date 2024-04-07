@@ -1153,7 +1153,7 @@ defmodule Ash.Actions.ManagedRelationships do
 
         created =
           if is_struct(input, relationship.destination) do
-            {:ok, input, [], [input]}
+            {:ok, input, []}
           else
             regular_params =
               Map.take(
