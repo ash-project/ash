@@ -59,7 +59,7 @@ defmodule Ash.Resource.Attribute do
     constraints: [
       type: :keyword_list,
       doc: """
-      Constraints to provide to the type when casting the value. For more, see the [constraints topic](/documentation/topics/constraints.md).
+      Constraints to provide to the type when casting the value. For more, see `Ash.Type`.
       """
     ],
     description: [

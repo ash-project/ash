@@ -71,7 +71,7 @@ defmodule Ash.Resource.Actions.Action do
                 constraints: [
                   type: :keyword_list,
                   doc: """
-                  Constraints for the return type. See the [constriants topic](/documentation/topics/constraints.md) for more.
+                  Constraints for the return type. See `Ash.Type` for more.
                   """
                 ],
                 allow_nil?: [

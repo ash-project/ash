@@ -33,7 +33,7 @@ defmodule Ash.Resource.Actions.Argument do
         type: :keyword_list,
         default: [],
         doc: """
-        Constraints to provide to the type when casting the value. For more information, see [the constraints topic](/documentation/topics/constraints.md).
+        Constraints to provide to the type when casting the value. For more information, see `Ash.Type`.
         """
       ],
       allow_nil?: [
