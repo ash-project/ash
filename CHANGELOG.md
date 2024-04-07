@@ -5,6 +5,37 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.15](https://github.com/ash-project/ash/compare/v3.0.0-rc.14...v3.0.0-rc.15) (2024-04-07)
+
+
+
+
+### Features:
+
+* add `update_change` function and builtin change (#976)
+
+### Bug Fixes:
+
+* undo adding primary key argument for methods with `get?` (#989)
+
+* remove `internal?` and `stacktraces?` from common opts (#988)
+
+* pattern match error in managed relationships
+
+* include options for generic action code interfaces
+
+* logic errors around arguments/changing attributes in validations
+
+* handle partially atomic validations in run_action_changes
+
+### Improvements:
+
+* synthesize attributes from atomics for better notifications
+
+* make Ash.Resource.Validation.Match partially atomic (#979)
+
+* make Ash.Resource.Validation.Match partially atomic
+
 ## [v3.0.0-rc.14](https://github.com/ash-project/ash/compare/v3.0.0-rc.13...v3.0.0-rc.14) (2024-04-05)
 ### Breaking Changes:
 
