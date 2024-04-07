@@ -4147,6 +4147,41 @@ defmodule Ash.Changeset do
   end
 
   @doc """
+  Updates an existing attribute change by applying a function to it.
+
+  This is useful for applying some kind of normalization to the attribute.
+
+  ```elixir
+  Ash.Changeset.update_change(changeset, :serial, &String.downcase/1)
+  ```
+
+  The update function gets called with the value already cast to the correct type.
+
+  ```elixir
+  changeset
+  |> Ash.Changeset.change_attribute(:integer_attribute, "3")
+  |> Ash.Changeset.update_change(:integer_attribute, fn x -> x + 1 end)
+  ```
+
+  ## Invalid value handling
+
+  If `update_change` is called with a changeset that has not been validated yet, the update
+  function must handle potentially invalid and `nil` values.
+
+  To only deal with valid values, you can call `update_change` in a `before_action` hook.
+  """
+  @spec update_change(t(), atom, (any -> any)) :: t()
+  def update_change(changeset, attribute, fun) do
+    case Ash.Changeset.fetch_change(changeset, attribute) do
+      {:ok, change} ->
+        Ash.Changeset.force_change_attribute(changeset, attribute, fun.(change))
+
+      :error ->
+        changeset
+    end
+  end
+
+  @doc """
   Add an argument to the changeset, which will be provided to the action.
   """
   def set_argument(changeset, argument, value) do
