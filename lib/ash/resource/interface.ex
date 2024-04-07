@@ -37,12 +37,14 @@ defmodule Ash.Resource.Interface do
         keys: Keyword.drop(Ash.bulk_create_opts(), Keyword.keys(opts))
       ]
     )
+    |> Keyword.drop([:domain])
   end
 
   def interface_options(:update) do
     opts = Ash.update_opts()
 
-    Keyword.merge(opts,
+    opts
+    |> Keyword.merge(
       bulk_options: [
         type: :keyword_list,
         doc:
@@ -50,6 +52,7 @@ defmodule Ash.Resource.Interface do
         keys: Keyword.drop(Ash.bulk_update_opts(), Keyword.keys(opts) ++ [:resource])
       ]
     )
+    |> Keyword.drop([:domain])
   end
 
   def interface_options(:destroy) do
@@ -63,12 +66,14 @@ defmodule Ash.Resource.Interface do
         keys: Keyword.drop(Ash.bulk_destroy_opts(), Keyword.keys(opts) ++ [:resource])
       ]
     )
+    |> Keyword.drop([:domain])
   end
 
   def interface_options(:read) do
     opts = Ash.read_opts()
 
-    Keyword.merge(opts,
+    opts
+      |> Keyword.merge(
       query: [
         type: :any,
         doc: "A query to seed the action with."
@@ -89,9 +94,13 @@ defmodule Ash.Resource.Interface do
         keys: Keyword.drop(Ash.stream_opts(), Keyword.keys(opts))
       ]
     )
+    |> Keyword.drop([:domain])
   end
 
-  def interface_options(_), do: []
+  def interface_options(:action) do
+    Ash.run_action_opts()
+    |> Keyword.drop([:domain])
+  end
 
   @schema [
     name: [

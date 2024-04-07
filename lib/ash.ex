@@ -729,6 +729,9 @@ defmodule Ash do
     ]
   ]
 
+  @doc false
+  def run_action_opts, do: @run_action_opts
+
   @can_opts [
     maybe_is: [
       type: :any,
