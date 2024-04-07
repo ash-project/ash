@@ -24,7 +24,7 @@ The fundamental idea behind Ash is that when the various components of your syst
 
 Ash has many use cases, with varying degrees of complexity. Ash helps you on day 1 of your project, removing boiler plate and allowing you to focus on the essential complexity of your application. It also helps you on year 5, lending consistency, code reuse, and maintainability.
 
-> #### Ash is a force multiplier .tip}
+> #### Ash is a force multiplier {: .tip}
 > Things that once took days or weeks can be done in hours, and to a degree of quality that would have been unreasonable before. Entire classes of bugs are eliminated. And the best part is, you can do all of this without sacrificing the flexibility, robustness and ecosystem that Elixir is known for.
 
 ## Watch the ElixirConf 2023 Talk
