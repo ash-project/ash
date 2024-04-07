@@ -519,7 +519,7 @@ You may notice that if you don't add the resource to your domain, or if you don'
 
 ## Working with relationships
 
-There are a wide array of options when managing relationships, and we won't cover all of them here. See the guide on [Managing Relationships](/documentation/topics/managing-relationships.md) for a full explanation.
+There are a wide array of options when managing relationships, and we won't cover all of them here. See the guide on [Managing Relationships](/documentation/topics/resources/relationships.md#managing-relationships.md) for a full explanation.
 
 In this example we'll demonstrate the use of action arguments, the method by which you can accept additional input to an action.
 

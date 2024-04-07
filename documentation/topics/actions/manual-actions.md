@@ -32,7 +32,7 @@ The underlying record can be retrieved from `changeset.data` for update and dest
 
 ## Manual Read Actions
 
-Manual read actions work the same, except the will also get the "data layer query". For AshPostgres, this means you get the ecto query that would have been run.
+Manual read actions work the same, except the will also get the "data layer query". For AshPostgres, this means you get the ecto query that would have been run. You can use `Ash.Query.apply_to/3` to apply a query to records in memory. This allows you to fetch the data in a way that is not possible with the data layer, but still honor the query that was provided to.
 
 ```elixir
 # in the resource

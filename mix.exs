@@ -50,6 +50,7 @@ defmodule Ash.MixProject do
         "documentation/topics/resources/embedded-resources.md",
         "documentation/topics/resources/code-interfaces.md",
         "documentation/topics/resources/identities.md",
+        "documentation/topics/resources/relationships.md",
         "documentation/topics/actions/actions.md",
         "documentation/topics/actions/read-actions.md",
         "documentation/topics/actions/create-actions.md",
@@ -63,7 +64,6 @@ defmodule Ash.MixProject do
         "documentation/topics/security/sensitive-data.md",
         "CHANGELOG.md",
         # below this line under review
-        "documentation/how_to/defining-manual-relationships.md",
         "documentation/how_to/handle-errors.md",
         "documentation/how_to/structure-your-project.md",
         "documentation/how_to/use-without-data-layers.md",
@@ -73,14 +73,12 @@ defmodule Ash.MixProject do
         "documentation/topics/extending-resources.md",
         "documentation/topics/expressions.md",
         "documentation/topics/reference/glossary.md",
-        "documentation/topics/managing-relationships.md",
         "documentation/topics/monitoring.md",
         "documentation/topics/multitenancy.md",
         "documentation/topics/notifiers.md",
         "documentation/topics/security/policies.md",
         "documentation/topics/pub_sub.md",
         "documentation/topics/reactor.md",
-        "documentation/topics/relationships.md",
         "documentation/topics/testing.md",
         "documentation/topics/timeouts.md",
         "documentation/topics/validations.md",
@@ -105,7 +103,8 @@ defmodule Ash.MixProject do
           "documentation/topics/resources/aggregates.md",
           "documentation/topics/resources/embedded-resources.md",
           "documentation/topics/resources/code-interfaces.md",
-          "documentation/topics/resources/identities.md"
+          "documentation/topics/resources/identities.md",
+          "documentation/topics/resources/relationships.md"
         ],
         Actions: [
           "documentation/topics/actions/actions.md",
@@ -114,7 +113,7 @@ defmodule Ash.MixProject do
           "documentation/topics/actions/update-actions.md",
           "documentation/topics/actions/destroy-actions.md",
           "documentation/topics/actions/generic-actions.md",
-          "documentation/topics/actions/manual-actions.md",
+          "documentation/topics/actions/manual-actions.md"
         ],
         Security: [
           "documentation/topics/security/actors-and-authorization.md",
@@ -146,7 +145,6 @@ defmodule Ash.MixProject do
         "Under Review": [
           # Documentation below this line is pending review
           "documentation/topics/domains.md",
-          "documentation/how_to/defining-manual-relationships.md",
           "documentation/how_to/handle-errors.md",
           "documentation/how_to/structure-your-project.md",
           "documentation/how_to/use-without-data-layers.md",
@@ -154,13 +152,11 @@ defmodule Ash.MixProject do
           "documentation/topics/code-interface.md",
           "documentation/topics/extending-resources.md",
           "documentation/topics/expressions.md",
-          "documentation/topics/managing-relationships.md",
           "documentation/topics/monitoring.md",
           "documentation/topics/multitenancy.md",
           "documentation/topics/notifiers.md",
           "documentation/topics/pub_sub.md",
           "documentation/topics/reactor.md",
-          "documentation/topics/relationships.md",
           "documentation/topics/testing.md",
           "documentation/topics/timeouts.md",
           "documentation/topics/validations.md"

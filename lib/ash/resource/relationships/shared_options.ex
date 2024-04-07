@@ -109,7 +109,7 @@ defmodule Ash.Resource.Relationships.SharedOptions do
      [
        type: :boolean,
        doc: """
-       All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/relationships.md) for more.
+       All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/resources/relationships.md) for more.
        """
      ]}
   end

@@ -107,7 +107,7 @@ See `Ash.Query` for more.
 
 Relationships are named links between resources, that define how they relate to each other. Relationships can be used to signify ownership of a record, membership of a group, or can be used in filtering and querying data.
 
-See the [Relationships guide](/documentation/topics/relationships.md) for more.
+See the [Relationships guide](/documentation/topics/resources/relationships.md) for more.
 
 ## Resource
 

@@ -362,7 +362,7 @@ A section for declaring relationships on the resource.
 Relationships are a core component of resource oriented design. Many components of Ash
 will use these relationships. A simple use case is loading relationships (done via the `Ash.Query.load/2`).
 
-See the [relationships guide](/documentation/topics/relationships.md) for more.
+See the [relationships guide](/documentation/topics/resources/relationships.md) for more.
 
 
 ### Nested DSLs
@@ -429,7 +429,7 @@ Declares a `has_one` relationship. In a relational database, the foreign key wou
 
 Generally speaking, a `has_one` also implies that the destination table is unique on that foreign key.
 
-See the [relationships guide](/documentation/topics/relationships.md) for more.
+See the [relationships guide](/documentation/topics/resources/relationships.md) for more.
 
 
 ### Nested DSLs
@@ -459,7 +459,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`manual`](#relationships-has_one-manual){: #relationships-has_one-manual } | `(any, any -> any) \| module` |  | A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. |
-| [`no_attributes?`](#relationships-has_one-no_attributes?){: #relationships-has_one-no_attributes? } | `boolean` |  | All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/relationships.md) for more. |
+| [`no_attributes?`](#relationships-has_one-no_attributes?){: #relationships-has_one-no_attributes? } | `boolean` |  | All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/resources/relationships.md) for more. |
 | [`allow_nil?`](#relationships-has_one-allow_nil?){: #relationships-has_one-allow_nil? } | `boolean` | `true` | Marks the relationship as required. Has no effect on validations, but can inform extensions that there will always be a related entity. |
 | [`from_many?`](#relationships-has_one-from_many?){: #relationships-has_one-from_many? } | `boolean` | `false` | Signal that this relationship is actually a `has_many` where the first record is given via the `sort`. This will allow data layers to properly deduplicate when necessary. |
 | [`description`](#relationships-has_one-description){: #relationships-has_one-description } | `String.t` |  | An optional description for the relationship |
@@ -528,7 +528,7 @@ has_many name, destination
 
 Declares a `has_many` relationship. There can be any number of related entities.
 
-See the [relationships guide](/documentation/topics/relationships.md) for more.
+See the [relationships guide](/documentation/topics/resources/relationships.md) for more.
 
 
 ### Nested DSLs
@@ -558,7 +558,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`manual`](#relationships-has_many-manual){: #relationships-has_many-manual } | `(any, any -> any) \| module` |  | A module that implements `Ash.Resource.ManualRelationship`. Also accepts a 2 argument function that takes the source records and the context. |
-| [`no_attributes?`](#relationships-has_many-no_attributes?){: #relationships-has_many-no_attributes? } | `boolean` |  | All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/relationships.md) for more. |
+| [`no_attributes?`](#relationships-has_many-no_attributes?){: #relationships-has_many-no_attributes? } | `boolean` |  | All existing entities are considered related, i.e this relationship is not based on any fields, and `source_attribute` and `destination_attribute` are ignored. See the See the [relationships guide](/documentation/topics/resources/relationships.md) for more. |
 | [`description`](#relationships-has_many-description){: #relationships-has_many-description } | `String.t` |  | An optional description for the relationship |
 | [`destination_attribute`](#relationships-has_many-destination_attribute){: #relationships-has_many-destination_attribute } | `atom` |  | The attribute on the related resource that should match the `source_attribute` configured on this resource. |
 | [`validate_destination_attribute?`](#relationships-has_many-validate_destination_attribute?){: #relationships-has_many-validate_destination_attribute? } | `boolean` | `true` | Whether or not to validate that the destination field exists on the destination resource |
@@ -627,7 +627,7 @@ Declares a `many_to_many` relationship. Many to many relationships require a joi
 
 A join resource is a resource that consists of a relationship to the source and destination of the many to many.
 
-See the [relationships guide](/documentation/topics/relationships.md) for more.
+See the [relationships guide](/documentation/topics/resources/relationships.md) for more.
 
 
 ### Nested DSLs
@@ -735,7 +735,7 @@ Declares a `belongs_to` relationship. In a relational database, the foreign key 
 
 This creates a field on the resource with the corresponding name and type, unless `define_attribute?: false` is provided.
 
-See the [relationships guide](/documentation/topics/relationships.md) for more.
+See the [relationships guide](/documentation/topics/resources/relationships.md) for more.
 
 
 ### Nested DSLs

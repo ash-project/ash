@@ -199,7 +199,7 @@ defmodule Ash.Resource.Dsl do
 
     Generally speaking, a `has_one` also implies that the destination table is unique on that foreign key.
 
-    See the [relationships guide](/documentation/topics/relationships.md) for more.
+    See the [relationships guide](/documentation/topics/resources/relationships.md) for more.
     """,
     examples: [
       """
@@ -225,7 +225,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Declares a `has_many` relationship. There can be any number of related entities.
 
-    See the [relationships guide](/documentation/topics/relationships.md) for more.
+    See the [relationships guide](/documentation/topics/resources/relationships.md) for more.
     """,
     examples: [
       """
@@ -253,7 +253,7 @@ defmodule Ash.Resource.Dsl do
 
     A join resource is a resource that consists of a relationship to the source and destination of the many to many.
 
-    See the [relationships guide](/documentation/topics/relationships.md) for more.
+    See the [relationships guide](/documentation/topics/resources/relationships.md) for more.
     """,
     examples: [
       """
@@ -288,7 +288,7 @@ defmodule Ash.Resource.Dsl do
 
     This creates a field on the resource with the corresponding name and type, unless `define_attribute?: false` is provided.
 
-    See the [relationships guide](/documentation/topics/relationships.md) for more.
+    See the [relationships guide](/documentation/topics/resources/relationships.md) for more.
     """,
     examples: [
       """
@@ -317,7 +317,7 @@ defmodule Ash.Resource.Dsl do
     Relationships are a core component of resource oriented design. Many components of Ash
     will use these relationships. A simple use case is loading relationships (done via the `Ash.Query.load/2`).
 
-    See the [relationships guide](/documentation/topics/relationships.md) for more.
+    See the [relationships guide](/documentation/topics/resources/relationships.md) for more.
     """,
     examples: [
       """

@@ -83,13 +83,15 @@ Using this, you might make requests like the following:
 ```elixir
 # Get the first ten records
 Ash.read(Resource, page: [limit: 10])
-# or by using an action named `read` directly
-Resource.read(page: [limit: 10])
+# or by using an action named `read` directly through a
+# code interface on the domain
+Domain.read(page: [limit: 10])
 
 # Get the next ten records
 Ash.read(Resource, page: [limit: 10, offset: 10])
-# or by using an action named `read` directly
-Resource.read(page: [limit: 10, offset: 10])
+# or by using an action named `read` directly through a
+# code interface on the domain
+Domain.read(page: [limit: 10, offset: 10])
 ```
 
 Next/previous page requests can also be made in memory, using an existing page of search results:

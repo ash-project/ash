@@ -2732,6 +2732,32 @@ defmodule Ash.Query do
     end
   end
 
+  @spec apply_to(t(), records :: list(Ash.Resource.record()), opts :: Keyword.t()) ::
+          {:ok, list(Ash.Resource.record())}
+  def apply_to(query, records, opts \\ []) do
+    domain =
+      query.domain || Ash.Resource.Info.domain(query.resource) || opts[:domain] ||
+        raise ArgumentError,
+              "Could not determine domain for #{inspect(query)}, please provide the `:domain` option."
+
+    with {:ok, records} <-
+           Ash.Filter.Runtime.filter_matches(domain, records, query.filter, parent: opts[:parent]),
+         records <- Sort.runtime_sort(records, query.distinct_sort || query.sort, domain: domain),
+         records <- Sort.runtime_distinct(records, query.distinct, domain: domain),
+         records <- Sort.runtime_sort(records, query.sort, domain: domain),
+         records <- Enum.drop(records, query.offset),
+         records <- do_limit(records, query.limit),
+         {:ok, records} <- Ash.load(records, query, domain: domain) do
+      {:ok, records}
+    else
+      {:error, error} ->
+        {:error, Ash.Error.to_ash_error(error)}
+    end
+  end
+
+  defp do_limit(records, nil), do: records
+  defp do_limit(records, limit), do: Enum.take(records, limit)
+
   @spec unset(Ash.Resource.t() | t(), atom | [atom]) :: t()
   def unset(query, keys) when is_list(keys) do
     query = new(query)
