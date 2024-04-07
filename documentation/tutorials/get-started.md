@@ -91,7 +91,7 @@ To ensure that your code stays formatted like the examples here, you can add `:a
 
 > #### Note {: .neutral}
 >
-> For more auto-formatting options, see the [Auto-Format Code guide](/documentation/how_to/auto-format-code.md).
+> For more auto-formatting options, see the [Development Utilities guide](/documentation/topics/development/development-utilities.md).
 
 And run `mix deps.get`, to install the dependency.
 

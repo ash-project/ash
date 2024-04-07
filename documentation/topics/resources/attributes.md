@@ -1,25 +1,10 @@
 # Attributes
 
-Attributes specify the name, type and properties of a piece of information in a resource.
+Attributes specify the `name`, `type` and additional configuration of a simple property of a record. When using SQL data layers, for example, an attribute would correspond to a column in a database table.
 
-## Ways of writing attributes
+To see the options available when building attributes, see `d:Ash.Resource.Dsl.attributes.attribute`
 
-There are two ways to write an attribute:
-
-```elixir
-attribute :name, :string, allow_nil?: false
-
-# or ...
-attribute :name, :string do
-  allow_nil? false
-end
-```
-
-Both ways will work. Though when you're using many options the latter is preferred. This is also true of any other keyword in the Ash DSL, so you can build a flexible yet concise domain model.
-
-For more information on attribute types including composite types and defining your own custom type see `Ash.Type`
-
-You can find a comprehensive of attribute options with detailed descriptions on the `d:Ash.Resource.Dsl.attributes` page.
+If you are looking to compute values on demand, see the [Calculations guide](/documentation/topics/resources/calculations.md) and the [aggregates guide](/documentation/topics/resources/aggregates.md).
 
 ## Special attributes
 

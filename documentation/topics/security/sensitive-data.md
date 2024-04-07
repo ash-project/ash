@@ -6,7 +6,7 @@ By default, attributes, calculations, aggregates and relationships are *private*
 
 ## Public & Private Arguments
 
-Public/private arguments work the same way as public/private fields, except that they default to `public?: true`. This is because arguments to an action being usedin a public interface would naturally be expected to be `public`. If an argument is marked as `public?: false`, it can only be set with `Ash.Query.set_argument/3` or `Ash.Changeset.set_argument/3`
+Public/private arguments work the same way as public/private fields, except that they default to `public?: true`. This is because arguments to an action being used in a public interface would naturally be expected to be `public`. If an argument is marked as `public?: false`, it can only be set with `Ash.Query.set_argument/3` or `Ash.Changeset.set_argument/3`
 
 ## Sensitive Attributes
 

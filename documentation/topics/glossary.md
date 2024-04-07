@@ -27,7 +27,7 @@ An aggregate is a special type of field for a resource, one that summarizes rela
 
 If a Project resource has_many Ticket resources, an example of an aggregate on the Project might be to count the tickets associated to each project.
 
-See the [Aggregates guide](/documentation/topics/aggregates.md) for more.
+See the [Aggregates guide](/documentation/topics/resources/aggregates.md) for more.
 
 ## Domain
 
@@ -39,7 +39,7 @@ See the [Domains guide](/documentation/topics/domains.md) for more.
 
 A piece of data belonging to a resource. The most basic building block; an attribute has a type and a value. For resources backed by a data layer, they typically represent a column in a database table, or a key in an object store, for example.
 
-See the [Attributes guide](/documentation/topics/attributes.md) for more.
+See the [Attributes guide](/documentation/topics/resources/attributes.md) for more.
 
 ## Authorizer
 
@@ -51,7 +51,7 @@ See the [Actors & Authorization](documentation/topics/security/actors-and-author
 
 A calculation is a special type of field for a resource, one that is not directly stored in the data layer but generated on-demand. Typically it will derive from other information on the record, but it may come from some other data source entirely.
 
-See the [Calculations guide](/documentation/topics/calculations.md) for more.
+See the [Calculations guide](/documentation/topics/resources/calculations.md) for more.
 
 ## Changeset
 

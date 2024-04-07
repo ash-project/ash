@@ -33,6 +33,12 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 
 - [Glossary](documentation/topics/glossary.md)
 
+### Resources
+
+- [Attributes](documentation/topics/resources/attributes.md)
+- [Calculations](documentation/topics/resources/calculations.md)
+- [Aggregates](documentation/topics/resources/aggregates.md)
+
 ### Actions
 
 - [Actions](documentation/topics/actions/actions.md)

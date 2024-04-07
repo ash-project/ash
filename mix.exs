@@ -46,6 +46,7 @@ defmodule Ash.MixProject do
         "documentation/topics/about_ash/what-is-ash.md",
         "documentation/topics/about_ash/design-principles.md",
         "documentation/topics/about_ash/contributing-to-ash.md",
+        "documentation/topics/resources/attributes.md",
         "documentation/topics/actions/actions.md",
         "documentation/topics/actions/read-actions.md",
         "documentation/topics/actions/create-actions.md",
@@ -63,10 +64,8 @@ defmodule Ash.MixProject do
         "documentation/how_to/structure-your-project.md",
         "documentation/how_to/use-without-data-layers.md",
         "documentation/how_to/validate-changes.md",
-        "documentation/how_to/auto-format-code.md",
-        "documentation/topics/aggregates.md",
-        "documentation/topics/attributes.md",
-        "documentation/topics/calculations.md",
+        "documentation/topics/resources/aggregates.md",
+        "documentation/topics/resources/calculations.md",
         "documentation/topics/code-interface.md",
         "documentation/topics/constraints.md",
         "documentation/topics/embedded-resources.md",
@@ -101,6 +100,11 @@ defmodule Ash.MixProject do
           "documentation/tutorials/get-started.md"
         ],
         Tutorials: [],
+        Resources: [
+          "documentation/topics/resources/attributes.md",
+          "documentation/topics/resources/calculations.md",
+          "documentation/topics/resources/aggregates.md"
+        ],
         Actions: [
           "documentation/topics/actions/actions.md",
           "documentation/topics/actions/read-actions.md",
@@ -144,10 +148,6 @@ defmodule Ash.MixProject do
           "documentation/how_to/structure-your-project.md",
           "documentation/how_to/use-without-data-layers.md",
           "documentation/how_to/validate-changes.md",
-          "documentation/how_to/auto-format-code.md",
-          "documentation/topics/aggregates.md",
-          "documentation/topics/attributes.md",
-          "documentation/topics/calculations.md",
           "documentation/topics/code-interface.md",
           "documentation/topics/constraints.md",
           "documentation/topics/embedded-resources.md",

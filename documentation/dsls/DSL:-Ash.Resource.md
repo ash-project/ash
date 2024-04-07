@@ -2402,7 +2402,7 @@ Declare named aggregates on the resource.
 These are aggregates that can be loaded only by name using `Ash.Query.load/2`.
 They are also available as top level fields on the resource.
 
-See the [aggregates guide](/documentation/topics/aggregates.md) for more.
+See the [aggregates guide](/documentation/topics/resources/aggregates.md) for more.
 
 
 ### Nested DSLs
@@ -2449,7 +2449,7 @@ Declares a named count aggregate on the resource
 
 Supports `filter`, but not `sort` (because that wouldn't affect the count)
 
-See the [aggregates guide](/documentation/topics/aggregates.md) for more.
+See the [aggregates guide](/documentation/topics/resources/aggregates.md) for more.
 
 
 ### Nested DSLs
@@ -2542,7 +2542,7 @@ Declares a named `exists` aggregate on the resource
 
 Supports `filter`, but not `sort` (because that wouldn't affect if something exists)
 
-See the [aggregates guide](/documentation/topics/aggregates.md) for more.
+See the [aggregates guide](/documentation/topics/resources/aggregates.md) for more.
 
 
 ### Nested DSLs
@@ -2632,7 +2632,7 @@ Declares a named `first` aggregate on the resource
 First aggregates return the first value of the related record
 that matches. Supports both `filter` and `sort`.
 
-See the [aggregates guide](/documentation/topics/aggregates.md) for more.
+See the [aggregates guide](/documentation/topics/resources/aggregates.md) for more.
 
 
 ### Nested DSLs
@@ -2727,7 +2727,7 @@ Declares a named `sum` aggregate on the resource
 
 Supports `filter`, but not `sort` (because that wouldn't affect the sum)
 
-See the [aggregates guide](/documentation/topics/aggregates.md) for more.
+See the [aggregates guide](/documentation/topics/resources/aggregates.md) for more.
 
 
 ### Nested DSLs
@@ -2820,7 +2820,7 @@ Declares a named `list` aggregate on the resource.
 A list aggregate selects the list of all values for the given field
 and relationship combination.
 
-See the [aggregates guide](/documentation/topics/aggregates.md) for more.
+See the [aggregates guide](/documentation/topics/resources/aggregates.md) for more.
 
 
 ### Nested DSLs
@@ -2914,7 +2914,7 @@ Declares a named `max` aggregate on the resource
 
 Supports `filter`, but not `sort` (because that wouldn't affect the max)
 
-See the [aggregates guide](/documentation/topics/aggregates.md) for more.
+See the [aggregates guide](/documentation/topics/resources/aggregates.md) for more.
 
 
 ### Nested DSLs
@@ -3006,7 +3006,7 @@ Declares a named `min` aggregate on the resource
 
 Supports `filter`, but not `sort` (because that wouldn't affect the min)
 
-See the [aggregates guide](/documentation/topics/aggregates.md) for more.
+See the [aggregates guide](/documentation/topics/resources/aggregates.md) for more.
 
 
 ### Nested DSLs
@@ -3098,7 +3098,7 @@ Declares a named `avg` aggregate on the resource
 
 Supports `filter`, but not `sort` (because that wouldn't affect the avg)
 
-See the [aggregates guide](/documentation/topics/aggregates.md) for more.
+See the [aggregates guide](/documentation/topics/resources/aggregates.md) for more.
 
 
 ### Nested DSLs
@@ -3192,7 +3192,7 @@ Supports `filter` and `sort`.
 
 Custom aggregates provide an `implementation` which must implement data layer specific callbacks.
 
-See the relevant data layer documentation and the [aggregates guide](/documentation/topics/aggregates.md) for more.
+See the relevant data layer documentation and the [aggregates guide](/documentation/topics/resources/aggregates.md) for more.
 
 
 ### Nested DSLs
@@ -3286,7 +3286,7 @@ Declare named calculations on the resource.
 These are calculations that can be loaded only by name using `Ash.Query.load/2`.
 They are also available as top level fields on the resource.
 
-See the [calculations guide](/documentation/topics/calculations.md) for more.
+See the [calculations guide](/documentation/topics/resources/calculations.md) for more.
 
 
 ### Nested DSLs
@@ -3322,7 +3322,7 @@ To ensure that the necessary fields are selected:
 2.) Define a `select/2` callback in the calculation module
 3.) Set `always_select?` on the attribute in question
 
-See the [calculations guide](/documentation/topics/calculations.md) for more.
+See the [calculations guide](/documentation/topics/resources/calculations.md) for more.
 
 
 ### Nested DSLs
@@ -3371,7 +3371,7 @@ argument name, type
 
 An argument to be passed into the calculation's arguments map
 
-See the [calculations guide](/documentation/topics/calculations.md) for more.
+See the [calculations guide](/documentation/topics/resources/calculations.md) for more.
 
 
 

@@ -42,6 +42,8 @@ defmodule Concat do
 
   @impl true
   # A callback to tell Ash what keys must be loaded/selected when running this calculation
+  # you can include related data here, but be sure to include the attributes you need from said related data
+  # i.e `posts: [:title, :body]`.
   def load(_query, opts, _context) do
     opts[:keys]
   end
@@ -106,5 +108,5 @@ If the calculation uses an expression, you can also filter and sort on it like s
 ```elixir
 query
 |> Ash.Query.filter(full_name(separator: ","))
-|> Ash.Query.sort(full_name: {:asc, %{separator: ","}})
+|> Ash.Query.sort(full_name: {%{separator: ","}, :asc})
 ```
