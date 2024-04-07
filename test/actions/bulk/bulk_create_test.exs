@@ -504,7 +504,6 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       assert Ash.count!(Post, authorize?: false) == 1
     end
 
-
     test "by returning notifications, you get the notifications in the stream" do
       assert [{:notification, _}, {:notification, _}] =
                [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]

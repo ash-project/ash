@@ -111,7 +111,7 @@ defmodule Ash.Test.CodeInterfaceTest do
   describe "read actions" do
     test "have a helper methods to produce queries" do
       assert %Ash.Query{action: %{name: :read}} = User.query_to_read_users()
-      assert %Ash.Query{action: %{name: :read}} = User.query_to_get_by_id("some uuid")
+      assert %Ash.Query{action: %{name: :by_id}} = User.query_to_get_by_id("some uuid")
     end
 
     test "have a helper to test authorization" do

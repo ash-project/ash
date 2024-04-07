@@ -126,7 +126,7 @@ defmodule Ash.MixProject do
           "CHANGELOG.md"
         ],
         "How To": [],
-        "Reference": [
+        Reference: [
           "documentation/topics/glossary.md",
           "documentation/dsls/DSL:-Ash.Resource.md",
           "documentation/dsls/DSL:-Ash.Domain.md",

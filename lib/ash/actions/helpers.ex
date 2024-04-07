@@ -322,7 +322,7 @@ defmodule Ash.Actions.Helpers do
   defp resource_notification(changeset, result, opts) do
     # This gives notifications a view of what actually changed
     changeset =
-      Enum.reduce(changeset.atomics, fn {key, value}, changeset ->
+      Enum.reduce(changeset.atomics, changeset, fn {key, value}, changeset ->
         %{changeset | attributes: Map.put(changeset.attributes, key, value)}
       end)
 

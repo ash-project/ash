@@ -73,7 +73,7 @@ defmodule Ash.Resource.Interface do
     opts = Ash.read_opts()
 
     opts
-      |> Keyword.merge(
+    |> Keyword.merge(
       query: [
         type: :any,
         doc: "A query to seed the action with."
