@@ -31,8 +31,6 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 
 ## Topics
 
-- [Glossary](documentation/topics/reference/glossary.md)
-
 ### Resources
 
 - [Attributes](documentation/topics/resources/attributes.md)
@@ -51,6 +49,8 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 ### Security
 
 - [Actors & Authorization](documentation/topics/security/actors-and-authorization.md)
+- [Sensitive Data](documentation/topics/security/sensitive-data.md)
+- [Policies](documentation/topics/security/policies.md)
 
 ### Development
 
@@ -68,6 +68,10 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 ## How To
 
 ---
+
+## Reference
+
+- [Glossary](documentation/topics/reference/glossary.md)
 
 ## Packages
 
