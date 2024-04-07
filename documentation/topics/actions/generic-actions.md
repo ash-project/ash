@@ -55,11 +55,8 @@ end
 >
 > It sometimes happens that you want to make a generic action which returns an
 > instance or instances of the resource. It's natural to assume that you can
-> set your action's return type to the name of your resource. Unfortunately
-> this will result in a compile error as the resource struct is not yet defined
-> at the time of DSL transformation. The work around is to define an action
-> that returns `:struct` and is constrained to only be of a specific type, eg:
->
+> set your action's return type to the name of your resource. This won't work
+> as resources do not define a type, unless they are embedded. In embedded resources, this won't work because the module is still being compiled, so referencing yourself as a type causes a compile error. Instead, use the `:struct` type and the `instance_of` constraint, like so:
 > ```elixir
 > action :get, :struct do
 >   constraints instance_of: __MODULE__
