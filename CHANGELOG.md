@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.16](https://github.com/ash-project/ash/compare/v3.0.0-rc.15...v3.0.0-rc.16) (2024-04-07)
+
+
+
+
+### Improvements:
+
+* add `Ash.Query.apply_to/3`
+
 ## [v3.0.0-rc.15](https://github.com/ash-project/ash/compare/v3.0.0-rc.14...v3.0.0-rc.15) (2024-04-07)
 
 
