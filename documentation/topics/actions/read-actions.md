@@ -1,17 +1,77 @@
-# Pagination
+# Read Actions
+
+Read actions operate on an `Ash.Query`. Read actions always return lists of data. The act of [pagination](#pagination), or returning a [single result](#ash-get), is handled as part of the interface, and is not a concern of the action itself. Here is an example of a read action:
+
+```elixir
+# Giving your actions informative names is always a good idea
+read :ticket_queue do
+  # Use arguments to take in values you need to run your read action.
+  argument :priorities, {:array, :atom} do
+    constraints items: [one_of: [:low, :medium, :high]]
+  end
+
+  # This action may be paginated,
+  # and returns a total count of records by default
+  pagination offset: true, countable: :by_default
+
+  # Arguments can be used in preparations and filters
+  filter expr(status == :open and priority in ^arg(:priorities))
+end
+```
+
+## Ash.get!
+
+The `Ash.get!` function is a convenience function for running a read action, filtering by a unique identifier, and expecting only a single result. It is equivalent to the following code:
+
+```elixir
+Ash.get!(Resource, 1)
+
+# is roughly equivalent to
+
+Resource
+|> Ash.Query.filter(id == 1)
+|> Ash.Query.limit(2)
+|> Ash.read!()
+|> case do
+  [] -> # raise not found error
+  [result] -> result
+  [_, _] -> # raise too many results error
+end
+```
+
+## Ash.read_one!
+
+The `Ash.read_one!` function is a similar convenience function to `Ash.get!`, but it does not take a unique identifier. It is useful when you expect an action to return only a single result, and want to enforce that and return a single result.
+
+```elixir
+Ash.read_one!(query)
+
+# is roughly equivalent to
+
+query
+|> Ash.Query.limit(2)
+|> Ash.read!()
+|> case do
+  [] -> nil
+  [result] -> result
+  [_, _] -> # raise too many results error
+end
+```
+
+## Pagination
 
 Pagination when reading records is configured on a per-action basis. Ash supports two kinds of pagination: `keyset` and `offset`.
 
 A single action can use both kinds of pagination if desired, but typically you would use one or the other.
 
-For information on configuring actions to support pagination, see `d:Ash.Resource.Dsl.actions.read|prepare`.
+For pagination configuration reference, see `d:Ash.Resource.Dsl.actions.read.pagination`.
 
 > #### Counting records {: .tip}
 >
 > When calling an action that uses pagination, the full count of records can be requested by adding the option `page: [count: true]`.
 > Note that this will perform a similar query a second time to fetch the count, which can be expensive on large data sets.
 
-## Offset Pagination
+### Offset Pagination
 
 Offset pagination is done via providing a `limit` and an `offset` when making queries.
 
@@ -44,19 +104,19 @@ Next/previous page requests can also be made in memory, using an existing page o
 {:ok, fourth_page} = Ash.page(third_page, :next)
 ```
 
-### Pros of offset pagination
+#### Pros of offset pagination
 
 - Simple to think about
 - Possible to skip to a page by number. E.g the 5th page of 10 records is `offset: 40`
 - Easy to reason about what page you are currently on (if the total number of records is requested)
 - Can go to the last page (though data may have changed between calculating the last page details, and requesting it)
 
-### Cons of offset pagination
+#### Cons of offset pagination
 
 - Does not perform well on large datasets (if you have to ask if your dataset is "large", it probably isn't)
 - When moving between pages, if data was created or deleted, individual records may be missing or appear on multiple pages
 
-## Keyset Pagination
+### Keyset Pagination
 
 Keyset pagination is done via providing an `after` or `before` option, as well as a `limit`.
 
@@ -96,19 +156,19 @@ Like offset pagination, next/previous page requests can also be made in memory, 
 {:ok, fourth_page} = Ash.page(third_page, :next)
 ```
 
-### Pros of keyset pagination
+#### Pros of keyset pagination
 
 - Performs very well on large datasets (assuming indices exist on the columns being sorted on)
 - Behaves well as data changes. The record specified will always be the first or last item in the page
 
-### Cons of keyset paginations
+#### Cons of keyset paginations
 
 - A bit more complex to use
 - Can't go to a specific page number
 
-## Example implementation
+### Example implementation
 
-### Setting up the resource
+#### Setting up the resource
 
 Add the `pagination` macro call to the [action](glossary.md#action) of the [resource](glossary.md#resource) that you want to be paginated.
 
@@ -132,3 +192,34 @@ For all available pagination options, see `d:Ash.Resource.Dsl.actions.read|pagin
 > Without pagination, Ash will return a list of records.
 >
 > But _with_ pagination, Ash will return an `Ash.Page.Offset` struct (for offset pagination) or `Ash.Page.Keyset` struct (for keyset pagination). Both structs contain the list of records in the `results` key of the struct.
+
+## What happens when you call Ash.Query.for_read/4
+
+The following steps are performed when you call `Ash.Query.for_read/4`.
+
+- Cast input arguments - `d:Ash.Resource.Dsl.actions.read.argument`
+- Set default argument values - `d:Ash.Resource.Dsl.actions.read.argument|default`
+- Add errors for missing required arguments | `d:Ash.Resource.Dsl.actions.read.argument|allow_nil?`
+- Run query preparations | `d:Ash.Resource.Dsl.actions.read.prepare`
+- Add action filter | `d:Ash.Resource.Dsl.actions.read|filter`
+
+## What happens when you run the action
+
+These steps are trimmed down, and are aimed at helping users understand the general flow. Some steps are omitted.
+
+- Run `Ash.Query.for_read/3` if it has not already been run
+- [Apply tenant filters for attribute](/documentation/topics/multitenancy.md)
+- Apply [pagination](#pagination) options
+- Run before action hooks
+- Multi-datalayer filter is synthesized. We run queries in other data layers to fetch ids and translate related filters to `(destination_field in ^ids)`
+- Strict Check & Filter Authorization is run
+- Data layer query is built and validated
+- Field policies are added to the query
+- Data layer query is Run
+- Authorizer "runtime" checks are run (you likely do not have any of these)
+
+The following steps happen while(asynchronously) or after the main data layer query has been run
+
+- If paginating and count was requested, the count is determined at the same time as the query is run.
+- Any calculations & aggregates that were able to be run outside of the main query are run
+- Relationships, calculations, and aggregates are loaded

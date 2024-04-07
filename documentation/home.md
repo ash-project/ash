@@ -33,6 +33,15 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 
 - [Glossary](documentation/topics/glossary.md)
 
+### Actions
+
+- [Actions](documentation/topics/actions/actions.md)
+- [Read Actions](documentation/topics/actions/read-actions.md)
+- [Create Actions](documentation/topics/actions/create-actions.md)
+- [Update Actions](documentation/topics/actions/update-actions.md)
+- [Destroy Actions](documentation/topics/actions/destroy-actions.md)
+- [Generic Actions](documentation/topics/actions/generic-actions.md)
+
 ### Security
 
 - [Actors & Authorization](documentation/topics/security/actors-and-authorization.md)

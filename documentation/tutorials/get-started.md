@@ -291,7 +291,7 @@ If we didn't include a subject, or left off the arguments completely, we would s
 
 Now let's add some logic to close a ticket. This time we'll add an `update` action.
 
-Here we will use a `change`. Changes allow you to customize how an action executes with very fine-grained control. There are built-in changes that are automatically available as functions, but you can define your own and pass it in as shown below. You can add multiple, and they will be run in order. See the [Actions guide](/documentation/topics/actions.md) for more.
+Here we will use a `change`. Changes allow you to customize how an action executes with very fine-grained control. There are built-in changes that are automatically available as functions, but you can define your own and pass it in as shown below. You can add multiple, and they will be run in order. See the `Ash.Changeset` module documentation for more.
 
 ```elixir
 # lib/helpdesk/support/ticket.ex

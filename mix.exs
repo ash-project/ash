@@ -46,23 +46,27 @@ defmodule Ash.MixProject do
         "documentation/topics/about_ash/what-is-ash.md",
         "documentation/topics/about_ash/design-principles.md",
         "documentation/topics/about_ash/contributing-to-ash.md",
+        "documentation/topics/actions/actions.md",
+        "documentation/topics/actions/read-actions.md",
+        "documentation/topics/actions/create-actions.md",
+        "documentation/topics/actions/update-actions.md",
+        "documentation/topics/actions/destroy-actions.md",
+        "documentation/topics/actions/generic-actions.md",
         "documentation/topics/development/development-utilities.md",
         "documentation/topics/development/upgrading-to-3.0.md",
         "documentation/topics/security/actors-and-authorization.md",
         "documentation/topics/security/sensitive-data.md",
         "CHANGELOG.md",
-        "documentation/how_to/define-idiomatic-actions.md",
+        # below this line under review
         "documentation/how_to/defining-manual-relationships.md",
         "documentation/how_to/handle-errors.md",
         "documentation/how_to/structure-your-project.md",
         "documentation/how_to/use-without-data-layers.md",
         "documentation/how_to/validate-changes.md",
         "documentation/how_to/auto-format-code.md",
-        "documentation/topics/actions.md",
         "documentation/topics/aggregates.md",
         "documentation/topics/atomics.md",
         "documentation/topics/attributes.md",
-        "documentation/topics/bulk-actions.md",
         "documentation/topics/calculations.md",
         "documentation/topics/code-interface.md",
         "documentation/topics/constraints.md",
@@ -76,7 +80,6 @@ defmodule Ash.MixProject do
         "documentation/topics/monitoring.md",
         "documentation/topics/multitenancy.md",
         "documentation/topics/notifiers.md",
-        "documentation/topics/pagination.md",
         "documentation/topics/security/policies.md",
         "documentation/topics/pub_sub.md",
         "documentation/topics/reactor.md",
@@ -99,8 +102,13 @@ defmodule Ash.MixProject do
           "documentation/tutorials/get-started.md"
         ],
         Tutorials: [],
-        Topics: [
-          "documentation/topics/glossary.md"
+        Actions: [
+          "documentation/topics/actions/actions.md",
+          "documentation/topics/actions/read-actions.md",
+          "documentation/topics/actions/create-actions.md",
+          "documentation/topics/actions/update-actions.md",
+          "documentation/topics/actions/destroy-actions.md",
+          "documentation/topics/actions/generic-actions.md"
         ],
         Security: [
           "documentation/topics/security/actors-and-authorization.md",
@@ -118,7 +126,8 @@ defmodule Ash.MixProject do
           "CHANGELOG.md"
         ],
         "How To": [],
-        "DSL Reference": [
+        "Reference": [
+          "documentation/topics/glossary.md",
           "documentation/dsls/DSL:-Ash.Resource.md",
           "documentation/dsls/DSL:-Ash.Domain.md",
           "documentation/dsls/DSL:-Ash.Notifier.PubSub.md",
@@ -131,18 +140,15 @@ defmodule Ash.MixProject do
         "Under Review": [
           # Documentation below this line is pending review
           "documentation/topics/domains.md",
-          "documentation/how_to/define-idiomatic-actions.md",
           "documentation/how_to/defining-manual-relationships.md",
           "documentation/how_to/handle-errors.md",
           "documentation/how_to/structure-your-project.md",
           "documentation/how_to/use-without-data-layers.md",
           "documentation/how_to/validate-changes.md",
           "documentation/how_to/auto-format-code.md",
-          "documentation/topics/actions.md",
           "documentation/topics/aggregates.md",
           "documentation/topics/atomics.md",
           "documentation/topics/attributes.md",
-          "documentation/topics/bulk-actions.md",
           "documentation/topics/calculations.md",
           "documentation/topics/code-interface.md",
           "documentation/topics/constraints.md",
@@ -155,7 +161,6 @@ defmodule Ash.MixProject do
           "documentation/topics/monitoring.md",
           "documentation/topics/multitenancy.md",
           "documentation/topics/notifiers.md",
-          "documentation/topics/pagination.md",
           "documentation/topics/pub_sub.md",
           "documentation/topics/reactor.md",
           "documentation/topics/relationships.md",

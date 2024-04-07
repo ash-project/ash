@@ -429,8 +429,6 @@ defmodule Ash do
     ]
   ]
 
-  @bulk_strategy_default :atomic
-
   @bulk_update_opts_schema [
                              resource: [
                                type: {:spark, Ash.Resource},
@@ -466,7 +464,7 @@ defmodule Ash do
                              ],
                              strategy: [
                                type: {:wrap_list, {:one_of, [:atomic, :atomic_batches, :stream]}},
-                               default: @bulk_strategy_default,
+                               default: [:atomic],
                                doc:
                                  "The strategy or strategies to enable. :stream is used in all cases if the data layer does not support atomics."
                              ],
@@ -522,7 +520,7 @@ defmodule Ash do
                               strategy: [
                                 type:
                                   {:wrap_list, {:one_of, [:atomic, :atomic_batches, :stream]}},
-                                default: @bulk_strategy_default,
+                                default: :atomic,
                                 doc:
                                   "The strategy or strategies to enable. :stream is used in all cases if the data layer does not support atomics."
                               ],

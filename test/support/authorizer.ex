@@ -1,8 +1,5 @@
 defmodule Ash.Test.Authorizer do
-  @moduledoc """
-  A test authorizer.
-  Only works for synchronous engine requests.
-  """
+  @moduledoc false
   @behaviour Ash.Authorizer
 
   use Agent

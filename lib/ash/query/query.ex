@@ -1,6 +1,6 @@
 defmodule Ash.Query do
   @moduledoc """
-  Utilities around constructing/manipulating ash queries.
+  A data structure for reading data from a resource.
 
   Ash queries are used for read actions and loads, and ultimately
   map to queries to a resource's data layer.

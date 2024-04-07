@@ -7,7 +7,35 @@ defmodule Ash.Changeset do
   actually incurs changes in a data layer. To commit a changeset, see `Ash.create/2`
   and `Ash.update/2`.
 
-  See the action DSL documentation for more.
+  # Changeset lifecycle
+
+  ## Action Lifecycle
+
+  The following example illustrates the hook lifecycle of a changeset.
+
+  ```elixir
+  defmodule AshChangesetLifeCycleExample do
+    def change(changeset, _, _) do
+      changeset
+      # execute code both before and after the transaction
+      |> Ash.Changeset.around_transaction(fn changeset, callback ->
+        callback.(changeset)
+      end)
+      # execute code before the transaction is started. Use for things like external calls
+      |> Ash.Changeset.before_transaction(fn changeset -> changeset end)
+      # execute code in the transaction, before and after the data layer is called
+      |> Ash.Changeset.around_action(fn changeset, callback ->
+        callback.(changeset)
+      end)
+      # execute code in the transaction, before the data layer is called
+      |> Ash.Changeset.before_action(fn changeset -> changeset end)
+      # execute code in the transaction, after the data layer is called, only if the action is successful
+      |> Ash.Changeset.after_action(fn changeset, result -> {:ok, result} end)
+      # execute code after the transaction, both in success and error cases
+      |> Ash.Changeset.after_transaction(fn changeset, success_or_error_result -> success_or_error_result end
+    end
+  end
+  ```
   """
 
   defstruct [
@@ -1051,6 +1079,19 @@ defmodule Ash.Changeset do
   Once a changeset has been validated by `for_create/4` (or `for_update/4`), it isn't validated again in the action.
   New changes added are validated individually, though. This allows you to create a changeset according
   to a given action, and then add custom changes if necessary.
+
+  ### What does this function do?
+
+  The following steps are run when calling `Ash.Changeset.for_create/4`.
+
+  - Cast input params | This is any arguments in addition to any accepted attributes
+  - Set argument defaults
+  - Require any missing arguments
+  - Validate all provided attributes are accepted
+  - Require any accepted attributes that are `allow_nil?` false
+  - Set any default values for attributes
+  - Run action changes & validations
+  - Run validations, or add them in `before_action` hooks if using `d:Ash.Resource.Dsl.actions.create.validate|before_action?`. Any global validations are skipped if the action has `skip_global_validations?` set to `true`.
   """
   def for_create(initial, action, params \\ %{}, opts \\ []) do
     changeset =
@@ -1094,7 +1135,18 @@ defmodule Ash.Changeset do
 
   Anything that is modified prior to `for_update/4` is validated against the rules of the action, while *anything after it is not*.
 
-  See `for_create/4` for more information
+  ### What does this function do?
+
+  The following steps are run when calling `Ash.Changeset.for_update/4`.
+
+  - Cast input params | This is any arguments in addition to any accepted attributes
+  - Set argument defaults
+  - Require any missing arguments
+  - Validate all provided attributes are accepted
+  - Require any accepted attributes that are `allow_nil?` false
+  - Set any default values for attributes
+  - Run action changes & validations
+  - Run validations, or add them in `before_action` hooks if using `d:Ash.Resource.Dsl.actions.update.validate|before_action?`. Any global validations are skipped if the action has `skip_global_validations?` set to `true`.
   """
   def for_update(initial, action, params \\ %{}, opts \\ []) do
     changeset =
@@ -1131,6 +1183,19 @@ defmodule Ash.Changeset do
   Once a changeset has been validated by `for_destroy/4`, it isn't validated again in the action.
   New changes added are validated individually, though. This allows you to create a changeset according
   to a given action, and then add custom changes if necessary.
+
+  ### What does this function do?
+
+  The following steps are run when calling `Ash.Changeset.for_destroy/4`.
+
+  - Cast input params | This is any arguments in addition to any accepted attributes
+  - Set argument defaults
+  - Require any missing arguments
+  - Validate all provided attributes are accepted
+  - Require any accepted attributes that are `allow_nil?` false
+  - Set any default values for attributes
+  - Run action changes & validations
+  - Run validations, or add them in `before_action` hooks if using `d:Ash.Resource.Dsl.actions.destroy.validate|before_action?`. Any global validations are skipped if the action has `skip_global_validations?` set to `true`.
   """
   def for_destroy(initial, action_or_name, params \\ %{}, opts \\ []) do
     changeset =

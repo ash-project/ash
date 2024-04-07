@@ -11,7 +11,7 @@ An action describes an operation that can be performed for a given resource; it 
 
 Ash supports five different types of actions. `create`, `read`, `update` and `destroy` (collectively often abbreviated as CRUD), and `action`, referring to a generic action with a custom return type. A resource can define multiple actions per action type, eg. a _publish_ action would be considered an `update` because it is updating an existing instance of a resource. Actions are much more flexible than simple CRUD, but these five action types serve as templates for anything you might want to do.
 
-See the [Actions guide](/documentation/topics/actions.md) for more.
+See the [Actions guide](/documentation/topics/actions/actions.md) for more.
 
 ## Actor
 

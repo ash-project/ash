@@ -66,6 +66,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     multitenancy do
       strategy :attribute
       attribute :org_id
+      global? true
     end
 
     calculations do
@@ -486,6 +487,23 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                )
                |> Enum.to_list()
     end
+
+    test "batch size is honored while streaming" do
+      assert [_] =
+               [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
+               |> Ash.bulk_create!(
+                 Post,
+                 :create_with_policy,
+                 authorize?: true,
+                 batch_size: 1,
+                 return_records?: true,
+                 return_stream?: true
+               )
+               |> Enum.take(1)
+
+      assert Ash.count!(Post, authorize?: false) == 1
+    end
+
 
     test "by returning notifications, you get the notifications in the stream" do
       assert [{:notification, _}, {:notification, _}] =
