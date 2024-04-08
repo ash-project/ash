@@ -72,8 +72,7 @@ defmodule Ash.Sort do
   end
 
   @doc """
-  A utility for parsing sorts provided from external input. Only allows sorting
-  on public attributes and aggregates.
+  A utility for parsing sorts provided from external input. Only allows sorting on public fields.
 
   The supported formats are:
 
@@ -108,7 +107,7 @@ defmodule Ash.Sort do
   out of the sort, or setting calculation values if they are not included in the sort string.
 
   To return calculation parameters, return `{:field, %{param: :value}}`. This will end up as something
-  like `{:field, {:desc, %{param: :value}}}`, with the corresponding sort order.
+  like `{:field, {%{param: :value}, :desc}}`, with the corresponding sort order.
 
   This handler function will only be called if you pass in a string or list of strings for the sort.
   Atoms will be assumed to have already been handled. The handler should return `nil` if it is not handling
@@ -219,7 +218,7 @@ defmodule Ash.Sort do
   end
 
   defp add_order({field, map}, order) when is_map(map) do
-    {field, {order, map}}
+    {field, {map, order}}
   end
 
   defp add_order(field, order) do
