@@ -1,6 +1,10 @@
-# Instrumentation
+# Monitoring
 
-Instrumentation Ash has two primary components, `Ash.Tracer` and `:telemetry`. Instrumentation is closely tied to observability and monitoring.
+Monitoring in Ash has two primary components, `Ash.Tracer` and `:telemetry`. Monitoring might also be referred to as observability and instrumentation.
+
+## Packages
+
+If you want to integrate with [Appsignal](https://www.appsignal.com), use the [AshAppsignal](https://hexdocs.pm/ash_appsignal) package, which is maintained by the core team. We believe that Appsignal is a great way to get started quickly, is relatively cost effective, and provides a great user experience.
 
 ## Telemetry
 

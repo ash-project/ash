@@ -82,4 +82,4 @@ calculate :grade, :decimal, expr(
 )
 ```
 
-See the [Expressions guide](/documentation/topics/expressions.md#inline-aggregates) for more.
+See the [Expressions guide](/documentation/topics/reference/expressions.md#inline-aggregates) for more.

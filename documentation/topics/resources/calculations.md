@@ -18,7 +18,7 @@ calculations do
 end
 ```
 
-See the [Expressions guide](/documentation/topics/expressions.md) for more.
+See the [Expressions guide](/documentation/topics/reference/expressions.md) for more.
 
 ### Module Calculations
 

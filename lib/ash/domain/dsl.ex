@@ -35,9 +35,9 @@ defmodule Ash.Domain.Dsl do
       timeout: [
         type: :timeout,
         doc: """
-        The default timeout to use for requests using this domain. See the [timeouts guide](/documentation/topics/timeouts.md) for more.
+        The default timeout in milliseconds to use for requests using this domain. See the [timeouts guide](/documentation/topics/timeouts.md) for more.
         """,
-        default: 30_000
+        default: :timer.seconds(30)
       ],
       trace_name: [
         type: :string,

@@ -210,7 +210,7 @@ The following steps are performed when you call `Ash.Query.for_read/4`.
 These steps are trimmed down, and are aimed at helping users understand the general flow. Some steps are omitted.
 
 - Run `Ash.Query.for_read/3` if it has not already been run
-- [Apply tenant filters for attribute](/documentation/topics/multitenancy.md)
+- [Apply tenant filters for attribute](/documentation/topics/advanced/multitenancy.md)
 - Apply [pagination](#pagination) options
 - Run before action hooks
 - Multi-datalayer filter is synthesized. We run queries in other data layers to fetch ids and translate related filters to `(destination_field in ^ids)`

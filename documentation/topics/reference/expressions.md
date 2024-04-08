@@ -8,7 +8,9 @@ Ash.Expr.expr(x + y)
 Ash.Expr.expr(post.title <> " | " <> post.subtitle)
 ```
 
-Ash expressions have some interesting properties in their evaluation, primarily because they are made to be portable, i.e executable in some data layer (like SQL) or executable in Elixir. In general, these expressions will behave the same way they do in Elixir. The primary difference is how `nil` values work. They behave the way that `NULL` values behave in SQL. This is primarily because this pattern is easier to replicate to various popular data layers, and is generally safer when using expressions for things like authentication. The practical implications of this are that `nil` values will "poison" many expressions, and cause them to return `nil`. For example, `x + nil` would always evaluate to `nil`. Additionally, `true and nil` will always result in `nil`, _this is also true with or and not_, i.e `true or nil` will return `nil`, and `not nil` will return `nil`.
+> ### Ash Expressions are SQL-ish {: .info}
+>
+> Ash expressions have some interesting properties in their evaluation, primarily because they are made to be portable, i.e executable in some data layer (like SQL) or executable in Elixir. In general, these expressions will behave the same way they do in Elixir. The primary difference is how `nil` values work. They behave the way that `NULL` values behave in SQL. This is primarily because this pattern is easier to replicate to various popular data layers, and is generally safer when using expressions for things like authentication. The practical implications of this are that `nil` values will "poison" many expressions, and cause them to return `nil`. For example, `x + nil` would always evaluate to `nil`. Additionally, `true and nil` will always result in `nil`, _this is also true with or and not_, i.e `true or nil` will return `nil`, and `not nil` will return `nil`.
 
 ## Operators
 
@@ -134,21 +136,9 @@ mix deps.compile ash --force
 
 These expressions will be available across all usages of Ash expressions within your application.
 
-## Use cases for expressions
+## Filter semantics & joins
 
-### Filters
-
-The most obvious place we use expressions is when filtering data. For example:
-
-```elixir
-Ash.Query.filter(Ticket, status == :open and opened_at >= ago(10, :day))
-```
-
-These filters will be run in the data layer, i.e in the SQL query.
-
-#### Filter semantics & joins
-
-The semantics of Ash filters are probably slightly different than what you are used to, and they are important to understand. Every filter expression is always talking about a single row, potentially "joined" to single related rows. By referencing relationships, you are implicitly doing a join. For those familiar with SQL terminology, it is equivalent to a left join, although AshPostgres can detect when it is safe to do an inner join (for performance reason). Lets use an example of `posts` and `comments`.
+The semantics of Ash filters are probably slightly different than what you are used to, and they are important to understand. Every filter expression is always talking about a single row, potentially "joined" to single related rows. By referencing relationships, you are implicitly doing a join. For those familiar with SQL terminology, it is equivalent to a left join, although AshPostgres can detect when it is safe to do an inner join (for performance reasons). Lets use an example of `posts` and `comments`.
 
 Given a filter like the following:
 
@@ -174,7 +164,7 @@ Post
 
 That code _seems_ like it ought to produce a filter over `Post` that would give us any post with a comment having more than 10 points, _and_ with a comment tagged `elixir`. That is not the same thing as having a _single_ comment that meets both those criteria. So how do we make this better?
 
-##### Exists
+### Exists
 
 Lets rewrite the above using exists:
 
@@ -194,7 +184,7 @@ Post
 
 Now, they will compose properly! Generally speaking, you should use exists when you are filtering across any relationships that are `to_many` relationships \*even if you don't expect your filter to be composed. Currently, the filter syntax does not minimize(combine) these `exists/2` statements, but doing so is not complex and can be added. While unlikely, please lodge an issue if you see any performance issues with `exists`.
 
-##### Exists at path
+### Exists at path
 
 Sometimes, you want the ability to say that some given row must have an existing related entry matching a filter. For example:
 
@@ -203,19 +193,6 @@ Ash.Query.filter(Post, author.exists(roles, name == :admin) and author.active)
 ```
 
 While the above is not common, it can be useful in some specific circumstances, and is used under the hood by the policy authorizer when combining the filters of various resources to create a single filter.
-
-## Relationship Filters
-
-When filtering relationships, you can use the `parent/1` function to scope a part of the expression to "source" of the join. This allows for very expressive relationships! Keep in mind, however, that if you want to update and/or manage these relationships, you'll have to make sure that any attributes that make these things actually related are properly set.
-
-```elixir
-has_many :descendents, __MODULE__ do
-  description "All descendents in the same tree"
-  no_attributes? true # this says that there is no matching source_attribute and destination_attribute on this relationship
-  # This is an example using postgres' ltree extension.
-  filter expr(tree_id == parent(tree_id) and fragment("? @> ?", parent(path), path))
-end
-```
 
 ## Portability
 
@@ -238,10 +215,10 @@ You would see that it ran a SQL query with the `full_name` calculation as SQL. T
 
 ```elixir
 # data can be loaded in the query like above, or on demand later
-Accounts.load!(user, :full_name)
+Accounts.load!(user, :full_name, reuse_values?: true)
 ```
 
-you would see that no SQL queries are run. The calculation is run directly in Elixir and the value is set.
+you would see that no SQL queries are run. The calculation is run directly in Elixir without needing to visit the database.
 
 ## Parent
 
@@ -253,6 +230,8 @@ Ash.Query.filter(exists(open_tickets, severity >= parent(severity_threshold)))
 
 ```elixir
 has_many :relevant_tickets, Ticket do
+  no_attributes? true
+  # this says that there is no matching source_attribute and destination_attribute on this relationship
   filter expr(status == :open and severity >= parent(severity_threshold))
 end
 ```
@@ -270,7 +249,7 @@ When referencing related values in filters, if the reference is a `has_one` or `
 
 ### Referencing aggregates and calculations
 
-Aggregates are simple, as all aggregates can be referenced in filter expressions (if you are using a data layer that supports it).
+Aggregates are simple, as all aggregates can be referenced in filter expressions (if you are using a data layer that supports aggregates).
 
 For calculations, only those that define an expression can be referenced in other expressions.
 

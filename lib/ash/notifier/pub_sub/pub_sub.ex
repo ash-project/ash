@@ -4,11 +4,7 @@ defmodule Ash.Notifier.PubSub do
   @publish %Spark.Dsl.Entity{
     name: :publish,
     target: Ash.Notifier.PubSub.Publication,
-    describe: """
-    Configure a given action to publish its results over a given topic.
-
-    See `Ash.Notifier.PubSub` and the [Notifiers](/documentation/topics/notifiers.md) guides for more.
-    """,
+    describe: "Configure a given action to publish its results over a given topic.",
     examples: [
       "publish :create, \"created\"",
       """
@@ -23,10 +19,7 @@ defmodule Ash.Notifier.PubSub do
     name: :publish_all,
     target: Ash.Notifier.PubSub.Publication,
     describe: """
-    Works just like `publish`, except that it takes a type
-    and publishes all actions of that type
-
-    See `Ash.Notifier.PubSub` and the [Notifiers](/documentation/topics/notifiers.md) guides for more.
+    Works the same as `publish`, except that it takes a type and publishes all actions of that type.
     """,
     examples: [
       "publish_all :create, \"created\""
@@ -39,8 +32,6 @@ defmodule Ash.Notifier.PubSub do
     name: :pub_sub,
     describe: """
     A section for configuring how resource actions are published over pubsub
-
-    See `Ash.Notifier.PubSub` and the [Notifiers](/documentation/topics/notifiers.md) guide for more.
     """,
     examples: [
       """
@@ -91,20 +82,19 @@ defmodule Ash.Notifier.PubSub do
   @sections [@pub_sub]
 
   @moduledoc """
-  Ash includes a builtin notifier to help you publish events over any kind of pub-sub pattern.
-  This is plug and play with `Phoenix.PubSub`, but could be used with any pubsub pattern.
+  A builtin notifier to help you publish events over any kind of pub-sub tooling.
+
+  This is plug and play with `Phoenix.PubSub`, but could be used with any pubsub system.
 
   You configure a module that defines a `broadcast/3` function, and then add some "publications"
   which configure under what conditions an event should be sent and what the topic should be.
-
-  For the full DSL spec see `Ash.Notifier.PubSub`
 
   ## Debugging PubSub
 
   It can be quite frustrating when setting up pub_sub when everything appears to be set up properly, but
   you aren't receiving events. This usually means some kind of mismatch between the event names produced
   by the resource/config of your publications, and you can use the following flag to display debug
-  information about pub sub events coming from `Ash.Notifier.PubSub`
+  information about all pub sub events.
 
   ```elixir
   config :ash, :pub_sub, debug?: true

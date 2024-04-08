@@ -1,0 +1,34 @@
+# Structure your project
+
+In this guide we'll discuss some best practices for how to structure your project. These recommendations align well with [Elixir conventions](https://hexdocs.pm/elixir/1.16.2/naming-conventions.html#casing) around file and module naming. These conventions allow for a logical coupling of module and file names, and help keep your project organized and easy to navigate.
+
+> ### These are recommendations {: .info}
+>
+> None of the things we show you here are _requirements_, only recommendations.
+> Feel free to plot your own course here. Ash avoids any pattern that requires
+> you to name a  file or module in a specific way, or put them in a specific
+> place. This ensures that all connections between one module and another
+> module are _explicit_ rather than _implicit_.
+
+```
+lib/ # top level lib folder for your whole project
+├─ my_app/ # your app's main namespace
+│  ├─ accounts/ # The Accounts context
+│  │  ├─ user/ # resource w/ additional files
+│  │  ├─ user.ex # The resource file
+│  │  ├─ token.ex # A resource without additional files
+│  │  ├─ password_helper.ex # A non-resource file
+│  │  ├─ accounts.ex # The Accounts domain module
+│  ├─ helpdesk/ # A Helpdesk context
+│  │  ├─ notification.ex # A resource without additional files
+│  │  ├─ other_file.ex # A non-resource file
+│  │  ├─ ticket/ # A resource with additional files
+│  │  │  ├─ preparations/ # Components of the reosurce, grouped by type
+│  │  │  ├─ changes/
+│  │  │  ├─ checks/
+│  │  ├─ ticket.ex # The resource file
+```
+
+Generally speaking, your Ash application lives in the standard place within your elixir application, i.e `lib/my_app`. Within that folder, you create one folder for each context that you have. Each context has an `Ash.Domain` module within it, and the resources that live within that context. All resource interaction ultimately goes through a domain module.
+
+Alongside the domain module, you have your resources, as well as any other files used in the context. If a resource has any additional files that are used to implement it, they should be placed in a folder with the same name as the resource, in subfolders grouping the files by type. Feel free to choose another logical grouping, but we've found by-type to be effective.

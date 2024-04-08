@@ -206,7 +206,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`timeout`](#execution-timeout){: #execution-timeout } | `timeout` | `30000` | The default timeout to use for requests using this domain. See the [timeouts guide](/documentation/topics/timeouts.md) for more. |
+| [`timeout`](#execution-timeout){: #execution-timeout } | `timeout` | `30000` | The default timeout in milliseconds to use for requests using this domain. See the [timeouts guide](/documentation/topics/timeouts.md) for more. |
 | [`trace_name`](#execution-trace_name){: #execution-trace_name } | `String.t` |  | The name to use in traces. Defaults to the last part of the module. See the [monitoring guide](/documentation/topics/monitoring.md) for more |
 
 

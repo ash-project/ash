@@ -2,14 +2,17 @@
 
 ## Built-in Notifiers
 
-- PubSub: `Ash.Notifier.PubSub`
+Ash comes with a builtin pub_sub notifier: `Ash.Notifier.PubSub`. See the module documentation for more.
 
-## Creating a notifier
+## Creating your own notifier
 
-A notifier is a simple extension that must implement a single callback `notify/1`. Notifiers do not have to implement an Ash DSL extension, but they may in order to configure how that notifier should behave. See `Ash.Notifier.Notification` for the currently available fields. Notifiers should not do anything intensive synchronously. If any heavy work needs to be done, they should delegate to something else to handle the notification, like sending it to a GenServer or GenStage.
-Eventually, there may be built in notifiers that will make setting up a GenStage that reacts to your resource changes easy. Until then, you'll have to write your own.
+A notifier is a simple extension that must implement a single callback `notify/1`. Notifiers do not have to implement an Ash DSL extension, but they may in order to configure how that notifier should behave. See `Ash.Notifier.Notification` for the currently available fields on a notification.
 
 For more information on creating a DSL extension to configure your notifier, see the docs for `Spark.Dsl.Extension`.
+
+> ### notifier performance {: .warning}
+>
+> Notifiers should not do intensive synchronous work. If any heavy work needs to be done, they should delegate to something else to handle the notification, like sending it to a GenServer or GenStage.
 
 ### Example notifier
 

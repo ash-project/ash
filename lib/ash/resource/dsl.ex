@@ -1363,7 +1363,7 @@ defmodule Ash.Resource.Dsl do
     To specify a tenant, use `Ash.Query.set_tenant/2` or
     `Ash.Changeset.set_tenant/2` before passing it to an operation.
 
-    See the [multitenancy guide](/documentation/topics/multitenancy.md)
+    See the [multitenancy guide](/documentation/topics/advanced/multitenancy.md)
     """,
     examples: [
       """

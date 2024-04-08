@@ -86,7 +86,7 @@ See the [Identities guide](/documentation/topics/resources/identities.md) for mo
 
 Notifiers are modules that are called for each action that occurs on a resource (except generic actions). They are called at the end of transactions, meaning that if a notifier is called, it is guaranteed that the action they pertain to has completed successfully.
 
-See the [Notifiers guide](/documentation/topics/notifiers.md) for more.
+See the [Notifiers guide](/documentation/topics/resources/notifiers.md) for more.
 
 ## Policy
 
@@ -119,4 +119,4 @@ See the [Resource DSL docs](dsl-ash-resource.html) for DSL documentation.
 
 Multitenancy is the siloing of your app's data into discrete non-overlapping groups, typically by customer or organization (the tenant). Ash supports multitenancy both at the code level and the data layer level (depending on the data layer; for example, AshPostgres uses schemas to fully separate data per tenant.)
 
-See the [Multitenancy guide](/documentation/topics/multitenancy.md) for more.
+See the [Multitenancy guide](/documentation/topics/advanced/multitenancy.md) for more.
