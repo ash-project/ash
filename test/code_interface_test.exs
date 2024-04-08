@@ -206,4 +206,8 @@ defmodule Ash.Test.CodeInterfaceTest do
     assert User.create!().first_name == "fred"
     assert User.create!("joe").first_name == "joe"
   end
+
+  test "it handles keyword inputs properly" do
+    assert User.create!("fred", [last_name: "weasley"], [actor: nil])
+  end
 end
