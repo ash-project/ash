@@ -208,6 +208,6 @@ defmodule Ash.Test.CodeInterfaceTest do
   end
 
   test "it handles keyword inputs properly" do
-    assert User.create!("fred", [last_name: "weasley"], [actor: nil])
+    assert User.create!("fred", [last_name: "weasley"], actor: nil)
   end
 end
