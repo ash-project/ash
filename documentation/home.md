@@ -87,6 +87,8 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 
 ## How To
 
+- [Use Resources without Data Layers](documentation/how_to/use-resources-without-data-layers.md)
+
 ---
 
 ## Reference

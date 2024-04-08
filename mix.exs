@@ -79,6 +79,7 @@ defmodule Ash.MixProject do
         "documentation/topics/security/policies.md",
         "documentation/topics/reference/glossary.md",
         "documentation/topics/reference/expressions.md",
+        "documentation/how_to/use-resources-without-data-layers.md",
         "documentation/dsls/DSL:-Ash.Resource.md",
         "documentation/dsls/DSL:-Ash.Domain.md",
         "documentation/dsls/DSL:-Ash.Notifier.PubSub.md",
@@ -87,9 +88,7 @@ defmodule Ash.MixProject do
         "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md",
         "documentation/dsls/DSL:-Ash.Reactor.md",
         "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md",
-        "CHANGELOG.md",
-        # below this line under review
-        "documentation/how_to/use-without-data-layers.md",
+        "CHANGELOG.md"
       ],
       groups_for_extras: [
         "Start Here": [
@@ -144,7 +143,9 @@ defmodule Ash.MixProject do
           "documentation/topics/advanced/multitenancy.md",
           "documentation/topics/advanced/writing-extensions.md"
         ],
-        "How To": [],
+        "How To": [
+          "documentation/how-to/use-resources-without-data-layers.md"
+        ],
         Reference: [
           "documentation/topics/reference/expressions.md",
           "documentation/topics/reference/glossary.md",
@@ -157,8 +158,7 @@ defmodule Ash.MixProject do
           "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md"
         ],
         "Under Review": [
-          # Documentation below this line is pending review
-          "documentation/how_to/use-without-data-layers.md"
+          "documentation/how-to/use-without-data-layers.md"
         ]
       ],
       skip_undefined_reference_warnings_on: [
