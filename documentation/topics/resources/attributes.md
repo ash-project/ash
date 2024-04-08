@@ -64,7 +64,7 @@ end
 
 ### `integer_primary_key`
 
-Don't use this attribute unless absolutely necessary, there are [a lot of good reasons to not use autoincrementing integer ids](https://www.clever-cloud.com/blog/engineering/2015/05/20/why-auto-increment-is-a-terrible-idea/). If you do, _please_ make sure these resource are only accessed internally and aren't exposed via a public API.
+Creates a generated integer primary key. Keep in mind that not all data layers support auto incrementing ids, but for SQL data layers this is a very common practice. For those that don't, it is your own job to provide values for the primary key. We generally suggest using UUIDs over integers, as there are [a lot of good reasons to not use autoincrementing integer ids](https://www.clever-cloud.com/blog/engineering/2015/05/20/why-auto-increment-is-a-terrible-idea/).
 
 `integer_primary_key :id` is equivalent to:
 
