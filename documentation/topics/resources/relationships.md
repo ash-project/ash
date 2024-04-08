@@ -29,7 +29,7 @@ end
 
 ## Managing related data
 
-See [Managing Relationships](/documentation/topics/resources/relationships.md#managing-relationships.md) for more information.
+See [Managing Relationships](/documentation/topics/resources/relationships.md#managing-relationships) for more information.
 
 Your data layer may enforce foreign key constraints, see the following guides for more information:
 
@@ -459,4 +459,6 @@ post
 
 ### Derived behavior
 
-Determining what will happen when managing related data can be complicated, as the nature of the problem itself is quite complicated. In some simple cases, like `type: :create`, there may be only one action that will be called. But in order to support all of the various ways that related resources may need to be managed, Ash provides a very rich set of options to determine what happens with the provided input. Tools like `AshPhoenix.Form` can look at your arguments that have a corresponding `manage_relationship` change, and derive the structure of those nested forms. Tools like `AshGraphql` can derive complex input objects to allow manipulating those relationships over a graphql Api. This all works because the options are, ultimately, quite explicit. It can be determined exactly what actions might be called, and therefore what input could be needed.
+Determining what will happen when managing related data can be complicated, as the nature of the problem itself is quite complicated. In some simple cases, like `type: :create`, there may be only one action that will be called. But in order to support all of the various ways that related resources may need to be managed, Ash provides a rich set of options to determine what happens with the provided input. Tools like `AshPhoenix.Form` can look at your arguments that have a corresponding `manage_relationship` change, and derive the structure of those nested forms. Tools like `AshGraphql` can derive complex input objects to allow manipulating those relationships over a graphql Api. This all works because the options are, ultimately, quite explicit. It can be determined exactly what actions might be called, and therefore what input could be needed.
+
+To see all of the options available, see `Ash.Changeset.manage_relationship/4`

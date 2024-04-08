@@ -96,6 +96,12 @@ defmodule Ash.MixProject do
           "documentation/tutorials/get-started.md"
         ],
         Tutorials: [],
+        "About Ash": [
+          "documentation/topics/about_ash/what-is-ash.md",
+          "documentation/topics/about_ash/design-principles.md",
+          "documentation/topics/about_ash/contributing-to-ash.md",
+          "CHANGELOG.md"
+        ],
         Resources: [
           "documentation/topics/resources/attributes.md",
           "documentation/topics/resources/calculations.md",
@@ -131,14 +137,8 @@ defmodule Ash.MixProject do
         Advanced: [
           "documentation/topics/advanced/reactor.md",
           "documentation/topics/advanced/monitoring.md",
-          "documentation/topics/timeouts.md",
-          "documentation/topics/multitenancy.md"
-        ],
-        "About Ash": [
-          "documentation/topics/about_ash/what-is-ash.md",
-          "documentation/topics/about_ash/design-principles.md",
-          "documentation/topics/about_ash/contributing-to-ash.md",
-          "CHANGELOG.md"
+          "documentation/topics/advanced/timeouts.md",
+          "documentation/topics/advanced/multitenancy.md"
         ],
         "How To": [],
         Reference: [

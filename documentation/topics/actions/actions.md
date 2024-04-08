@@ -14,7 +14,7 @@ Each action has its own set of options, ways of calling it, and ways of customiz
 
 Primary actions are a way to inform the framework which actions should be used in certain "automated" circumstances, or in cases where an action has not been specified. If a primary action is attempted to be used but does not exist, you will get an error about it at runtime.
 
-The place you typically need primary actions is when [Managing Relationships](/documentation/topics/resources/relationships.md#managing-relationships.md). When using the `defaults` option to add default actions, they are marked as primary.
+The place you typically need primary actions is when [Managing Relationships](/documentation/topics/resources/relationships.md#managing-relationships). When using the `defaults` option to add default actions, they are marked as primary.
 
 A simple example where a primary action would be used:
 
@@ -43,7 +43,7 @@ actions do
 end
 ```
 
-But that is just a simple way to get started, or to create resources that really don't do anything beyond those four operations. You can have _as many actions as you want_. The best designed Ash applications will have numerous actions, named after the intent behind how they are used. They won't have all reads going through a single read action, and the same goes for the other action types. The richer the actions on the resource, the better interface you can have. With that said, many resources may only have those four basic actions, especially those that are "managed" through some parent resource. See the guide on [Managing Relationships](/documentation/topics/resources/relationships.md#managing-relationships.md) for more.
+But that is just a simple way to get started, or to create resources that really don't do anything beyond those four operations. You can have _as many actions as you want_. The best designed Ash applications will have numerous actions, named after the intent behind how they are used. They won't have all reads going through a single read action, and the same goes for the other action types. The richer the actions on the resource, the better interface you can have. With that said, many resources may only have those four basic actions, especially those that are "managed" through some parent resource. See the guide on [Managing Relationships](/documentation/topics/resources/relationships.md#managing-relationships) for more.
 
 ### Put everything inside the action
 

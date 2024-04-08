@@ -21,7 +21,7 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 
 ---
 
-**Reference** documentation is produced automatically from our source code. It comes in the form of module documentation and DSL documentation. This documentation is **information-oriented**. Use the sidebar and the searchbar to find relevant reference information.
+[**Reference**](#reference) documentation is produced automatically from our source code. It comes in the form of module documentation and DSL documentation. This documentation is **information-oriented**. Use the sidebar and the searchbar to find relevant reference information.
 
 ## Tutorials
 
@@ -30,6 +30,12 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 ---
 
 ## Topics
+
+### About Ash
+
+- [What is Ash?](documentation/topics/about_ash/what-is-ash.md)
+- [Our Design Principles](documentation/topics/about_ash/design-principles.md)
+- [Contributing to Ash](documentation/topics/about_ash/contributing-to-ash.md)
 
 ### Resources
 
@@ -73,12 +79,6 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 - [Reactor](documentation/topics/advanced/reactor.md)
 - [Timeouts](documentation/topics/advanced/timeouts.md)
 
-### About Ash
-
-- [What is Ash?](documentation/topics/about_ash/what-is-ash.md)
-- [Our Design Principles](documentation/topics/about_ash/design-principles.md)
-- [Contributing to Ash](documentation/topics/about_ash/contributing-to-ash.md)
-
 ---
 
 ## How To
@@ -96,6 +96,7 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 - [Ash.Policy.Authorizer DSL](documentation/dsls/DSL:-Ash.Policy.Authorizer.md)
 - [Ash.DataLayer.Ets DSL](documentation/dsls/DSL:-Ash.DataLayer.Ets.md)
 - [Ash.DataLayer.Mnesia DSL](documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md)
+- For other reference documentation, see the sidebar & search bar
 
 ## Packages
 
