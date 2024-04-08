@@ -101,4 +101,39 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       end
     end
   end
+
+  describe "generic actions wrapping a reactor" do
+    defmodule EchoReactor do
+      @moduledoc false
+      use Reactor
+
+      input :input
+
+      step :echo do
+        argument :echo, input(:input)
+        run &Map.fetch(&1, :echo)
+      end
+    end
+
+    defmodule EchoResource do
+      @moduledoc false
+      use Ash.Resource, domain: Domain
+
+      actions do
+        action :echo, :string do
+          argument :input, :string, allow_nil?: false
+
+          run EchoReactor
+        end
+      end
+
+      code_interface do
+        define :echo, args: [:input]
+      end
+    end
+
+    test "it automatically runs the reactor" do
+      assert {:ok, "Marty"} = EchoResource.echo("Marty")
+    end
+  end
 end

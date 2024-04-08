@@ -83,8 +83,12 @@ defmodule Ash.Resource.Actions.Action do
                 ],
                 run: [
                   type:
-                    {:spark_function_behaviour, Ash.Resource.Actions.Implementation,
-                     {Ash.Resource.Action.ImplementationFunction, 2}}
+                    {:or,
+                     [
+                       {:spark_function_behaviour, Ash.Resource.Actions.Implementation,
+                        {Ash.Resource.Action.ImplementationFunction, 2}},
+                       {:spark, Reactor}
+                     ]}
                 ]
               ]
               |> Spark.Options.merge(
