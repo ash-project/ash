@@ -1,6 +1,6 @@
 # Ash Framework Documentation
 
-Welcome to the Ash Framework documentation! Here you will find everything you need to know to get started with and use Ash.
+Welcome! Here you will find everything you need to know to get started with and use Ash.
 
 ## Dive In
 
