@@ -1,8 +1,8 @@
 # Attributes
 
-Attributes specify the `name`, `type` and additional configuration of a simple property of a record. When using SQL data layers, for example, an attribute would correspond to a column in a database table.
+Attributes specify the `name`, `type` and additional configuration of a simple property of a record. When using SQL data layers, for example, an attribute would correspond to a column in a database table. For information on types, see `Ash.Type`.
 
-To see the options available when building attributes, see `d:Ash.Resource.Dsl.attributes.attribute`
+To see all of the options available when building attributes, see `d:Ash.Resource.Dsl.attributes.attribute`
 
 If you are looking to compute values on demand, see the [Calculations guide](/documentation/topics/resources/calculations.md) and the [aggregates guide](/documentation/topics/resources/aggregates.md).
 

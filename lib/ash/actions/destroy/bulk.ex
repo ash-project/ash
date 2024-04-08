@@ -1973,6 +1973,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           )
         end)
     end
+    |> Enum.to_list()
   end
 
   defp templated_opts({:templated, opts}, _actor, _arguments, _context), do: opts

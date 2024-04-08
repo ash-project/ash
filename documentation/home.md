@@ -38,6 +38,10 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 - [Aggregates](documentation/topics/resources/aggregates.md)
 - [Code Interfaces](documentation/topics/resources/code-interfaces.md)
 - [Relationships](documentation/topics/resources/relationships.md)
+- [Identities](documentation/topics/resources/identities.md)
+- [Validations](documentation/topics/resources/validations.md)
+- [Changes](documentation/topics/resources/changes.md)
+- [Embedded Resources](documentation/topics/resources/embedded-resources.md)
 
 ### Actions
 

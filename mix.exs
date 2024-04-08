@@ -51,6 +51,8 @@ defmodule Ash.MixProject do
         "documentation/topics/resources/code-interfaces.md",
         "documentation/topics/resources/identities.md",
         "documentation/topics/resources/relationships.md",
+        "documentation/topics/resources/validations.md",
+        "documentation/topics/resources/changes.md",
         "documentation/topics/actions/actions.md",
         "documentation/topics/actions/read-actions.md",
         "documentation/topics/actions/create-actions.md",
@@ -67,7 +69,6 @@ defmodule Ash.MixProject do
         "documentation/how_to/handle-errors.md",
         "documentation/how_to/structure-your-project.md",
         "documentation/how_to/use-without-data-layers.md",
-        "documentation/how_to/validate-changes.md",
         "documentation/topics/resources/aggregates.md",
         "documentation/topics/resources/calculations.md",
         "documentation/topics/extending-resources.md",
@@ -77,11 +78,9 @@ defmodule Ash.MixProject do
         "documentation/topics/multitenancy.md",
         "documentation/topics/notifiers.md",
         "documentation/topics/security/policies.md",
-        "documentation/topics/pub_sub.md",
         "documentation/topics/reactor.md",
         "documentation/topics/testing.md",
         "documentation/topics/timeouts.md",
-        "documentation/topics/validations.md",
         "documentation/dsls/DSL:-Ash.Resource.md",
         "documentation/dsls/DSL:-Ash.Domain.md",
         "documentation/dsls/DSL:-Ash.Notifier.PubSub.md",
@@ -104,7 +103,9 @@ defmodule Ash.MixProject do
           "documentation/topics/resources/embedded-resources.md",
           "documentation/topics/resources/code-interfaces.md",
           "documentation/topics/resources/identities.md",
-          "documentation/topics/resources/relationships.md"
+          "documentation/topics/resources/relationships.md",
+          "documentation/topics/resources/validations.md",
+          "documentation/topics/resources/changes.md"
         ],
         Actions: [
           "documentation/topics/actions/actions.md",
@@ -148,18 +149,15 @@ defmodule Ash.MixProject do
           "documentation/how_to/handle-errors.md",
           "documentation/how_to/structure-your-project.md",
           "documentation/how_to/use-without-data-layers.md",
-          "documentation/how_to/validate-changes.md",
           "documentation/topics/code-interface.md",
           "documentation/topics/extending-resources.md",
           "documentation/topics/expressions.md",
           "documentation/topics/monitoring.md",
           "documentation/topics/multitenancy.md",
           "documentation/topics/notifiers.md",
-          "documentation/topics/pub_sub.md",
           "documentation/topics/reactor.md",
           "documentation/topics/testing.md",
-          "documentation/topics/timeouts.md",
-          "documentation/topics/validations.md"
+          "documentation/topics/timeouts.md"
         ]
       ],
       skip_undefined_reference_warnings_on: [

@@ -46,7 +46,7 @@ create :create do
 end
 ```
 
-When your notifier is not an extension, and you want it to run on all actions, include it this way to avoid a compile time dependency:
+When your notifier is not an extension, and you want it to run on all actions, include it this way to avoid unnecessary compile time dependencies:
 
 ```elixir
 defmodule MyResource do

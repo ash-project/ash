@@ -10,7 +10,7 @@ resources do
 end
 ```
 
-This simple setup now allows you to open a ticket with `Helpdesk.Support.open_ticket(subject)`. You can cause it to raise errors instead of return them with `Helpdesk.Support.open!(subject)`. For information on the options and additional inputs these defined functions take, look at the generated function documentation, which you can do in iex with `h Helpdesk.Support.open_ticket`. For more information on the code interface, read the DSL documentation: `d:Ash.Domain.Dsl.resource.interfaces`.
+This simple setup now allows you to open a ticket with `Helpdesk.Support.open_ticket(subject)`. You can cause it to raise errors instead of return them with `Helpdesk.Support.open_ticket!(subject)`. For information on the options and additional inputs these defined functions take, look at the generated function documentation, which you can do in iex with `h Helpdesk.Support.open_ticket`. For more information on the code interface, read the DSL documentation: `d:Ash.Domain.Dsl.resource.interfaces`.
 
 ## Code interfaces on the resource
 
@@ -22,6 +22,8 @@ code_interface do
   define :open, args: [:subject]
 end
 ```
+
+These will then be called on the resource itself, i.e `Helpdesk.Support.Ticket.open(subject)`.
 
 ## Using the code interface
 

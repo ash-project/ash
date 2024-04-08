@@ -1,37 +1,3 @@
-# Validate Changes
-
-In Ash, there are three kinds of validations.
-
-- The simple `allow_nil?` and `writable?` validations provided for attributes
-- Type constraints, specific to each type
-- The `validations` section
-
-## allow_nil/writable?
-
-These are considered simple/global enough to warrant being specified at the attribute level.
-
-```elixir
-attributes do
-  attribute :some_field, :integer, writable?: false
-  attribute :some_other_field, :integer, allow_nil?: false
-end
-```
-
-To see the equivalent statements using the `validations` section of a resource, see the
-corresponding section below.
-
-## Type constraints
-
-Each type (including custom types) can expose `constraints`. When declaring an attribute
-these constraints can be provided with the `constraints` option. For example:
-
-```elixir
-attributes do
-  attribute :some_field, :integer, constraints: [min: 1, max: 5]
-  attribute :some_other_field, :string, constraints: [max_length: 255]
-end
-```
-
 ## Validations Section
 
 The validations section allows you to create validations based on the changeset.
