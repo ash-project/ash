@@ -79,7 +79,7 @@ defmodule Ash.MixProject do
         "documentation/topics/security/policies.md",
         "documentation/topics/reference/glossary.md",
         "documentation/topics/reference/expressions.md",
-        "documentation/how_to/use-resources-without-data-layers.md",
+        "documentation/how-to/use-resources-without-data-layers.md",
         "documentation/dsls/DSL:-Ash.Resource.md",
         "documentation/dsls/DSL:-Ash.Domain.md",
         "documentation/dsls/DSL:-Ash.Notifier.PubSub.md",
@@ -156,9 +156,6 @@ defmodule Ash.MixProject do
           "documentation/dsls/DSL:-Ash.Policy.Authorizer.md",
           "documentation/dsls/DSL:-Ash.DataLayer.Ets.md",
           "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md"
-        ],
-        "Under Review": [
-          "documentation/how-to/use-without-data-layers.md"
         ]
       ],
       skip_undefined_reference_warnings_on: [
