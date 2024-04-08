@@ -46,6 +46,7 @@ defmodule Ash.MixProject do
         "documentation/topics/about_ash/what-is-ash.md",
         "documentation/topics/about_ash/design-principles.md",
         "documentation/topics/about_ash/contributing-to-ash.md",
+        "documentation/topics/resources/domains.md",
         "documentation/topics/resources/attributes.md",
         "documentation/topics/resources/relationships.md",
         "documentation/topics/resources/calculations.md",
@@ -67,7 +68,9 @@ defmodule Ash.MixProject do
         "documentation/topics/advanced/monitoring.md",
         "documentation/topics/advanced/timeouts.md",
         "documentation/topics/advanced/multitenancy.md",
+        "documentation/topics/advanced/writing-extensions.md",
         "documentation/topics/development/project-structure.md",
+        "documentation/topics/development/error-handling.md",
         "documentation/topics/development/testing.md",
         "documentation/topics/development/development-utilities.md",
         "documentation/topics/development/upgrading-to-3.0.md",
@@ -86,9 +89,7 @@ defmodule Ash.MixProject do
         "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md",
         "CHANGELOG.md",
         # below this line under review
-        "documentation/how_to/handle-errors.md",
         "documentation/how_to/use-without-data-layers.md",
-        "documentation/topics/extending-resources.md"
       ],
       groups_for_extras: [
         "Start Here": [
@@ -103,6 +104,7 @@ defmodule Ash.MixProject do
           "CHANGELOG.md"
         ],
         Resources: [
+          "documentation/topics/resources/domains.md",
           "documentation/topics/resources/attributes.md",
           "documentation/topics/resources/calculations.md",
           "documentation/topics/resources/aggregates.md",
@@ -130,6 +132,7 @@ defmodule Ash.MixProject do
         ],
         Development: [
           "documentation/topics/development/project-structure.md",
+          "documentation/topics/development/error-handling.md",
           "documentation/topics/development/testing.md",
           "documentation/topics/development/development-utilities.md",
           "documentation/topics/development/upgrading-to-3.0.md"
@@ -138,7 +141,8 @@ defmodule Ash.MixProject do
           "documentation/topics/advanced/reactor.md",
           "documentation/topics/advanced/monitoring.md",
           "documentation/topics/advanced/timeouts.md",
-          "documentation/topics/advanced/multitenancy.md"
+          "documentation/topics/advanced/multitenancy.md",
+          "documentation/topics/advanced/writing-extensions.md"
         ],
         "How To": [],
         Reference: [
@@ -154,11 +158,7 @@ defmodule Ash.MixProject do
         ],
         "Under Review": [
           # Documentation below this line is pending review
-          "documentation/topics/domains.md",
-          "documentation/how_to/handle-errors.md",
-          "documentation/how_to/use-without-data-layers.md",
-          "documentation/topics/code-interface.md",
-          "documentation/topics/extending-resources.md"
+          "documentation/how_to/use-without-data-layers.md"
         ]
       ],
       skip_undefined_reference_warnings_on: [

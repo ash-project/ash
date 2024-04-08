@@ -1,4 +1,6 @@
-# Handle Errors
+# Error Handling
+
+As of 3.0, Ash uses `Splode` to as our basis for errors. The documentation below still applies, but it is powered by `Splode` under the hood.
 
 There is a difficult balance to cut between informative errors and enabling simple reactions to those errors. Since many extensions may need to work with and/or adapt their behavior based on errors coming from Ash, we need rich error messages. However, when you have a hundred different exceptions to represent the various kinds of errors a system can produce, it becomes difficult to say something like "try this code, and if it is invalid, do x, if it is forbidden, do y. To this effect, exceptions in Ash have one of four classes mapping to the top level exceptions.
 
@@ -107,7 +109,7 @@ def change(changeset, _, _) do
 end
 ```
 
-## Use a Custom Exception
+## Using a Custom Exception
 
 You can create a custom exception like so. This is an example of a builtin exception that you could mirror to build your own
 

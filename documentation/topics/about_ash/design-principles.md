@@ -27,3 +27,7 @@ A high priority is placed on ensuring that our users don't experience feature wh
 ## Community
 
 The Ash community comes together and collaborates to make sure that we can all build our software quickly, effectively and in a way that will age gracefully. We have a strict code of conduct, and love working with people of any experience level or background. To experience this first-hand, participate on [ElixirForum](https://elixirforum.com/c/elixir-framework-forums/ash-framework-forum/123) or join our [discord](https://discord.gg/D7FNG2q)!
+
+> ### Domain Driven Design? {: .info}
+>
+>  Ash is _not_ a Domain Driven Design framework, if we're talking about "proper" Domain Driven Design as it is taught and discussed today. Domain Driven Design comes with a considerable amount of baggage and unnecessary complexity. While we identify with the *goals* of Domain Driven Design, we believe that a simpler approach is more effective, and that much of what DDD teaches are actually _implementation_ details, and not _design_ concepts. If the name wasn't taken, we would surely have claimed it for ourselves. If you must have a similar term for Ash, consider it a "Resource-oriented, Declarative Design Application Framework".

@@ -39,6 +39,7 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 
 ### Resources
 
+- [Domains](documentation/topics/resources/domains.md)
 - [Attributes](documentation/topics/resources/attributes.md)
 - [Relationships](documentation/topics/resources/relationships.md)
 - [Calculations](documentation/topics/resources/calculations.md)
@@ -72,12 +73,15 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 - [Testing](documentation/topics/development/testing.md)
 - [Development Utilities](documentation/topics/development/development-utilities.md)
 - [Upgrading to 3.0](documentation/topics/development/upgrading-to-3.0.md)
+- [Error Handling](documentation/topics/development/error-handling.md)
 
 ### Advanced
 
 - [Monitoring](documentation/topics/advanced/monitoring.md)
+- [Multitenancy](documentation/topics/advanced/multitenancy.md)
 - [Reactor](documentation/topics/advanced/reactor.md)
 - [Timeouts](documentation/topics/advanced/timeouts.md)
+- [Writing Extensions](documentation/topics/advanced/writing-extensions.md)
 
 ---
 
