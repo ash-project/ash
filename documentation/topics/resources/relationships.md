@@ -397,7 +397,7 @@ def load(records, _opts, %{query: query, ..}) do
   data = get_other_data(data, query.sort)
 
   query
-  # unset the limit and offset since we already applied that
+  # unset the sort since we already applied that
   |> Ash.Query.unset([:sort])
   # apply the query in memory (filtering, distinct, limit, offset)
   |> Ash.Query.apply_to(data)

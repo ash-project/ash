@@ -23,6 +23,11 @@ defmodule Ash.Error.Invalid.NoMatchingBulkStrategy do
         not_atomic_batches_reason: not_atomic_batches_reason,
         not_atomic_reason: not_atomic_reason
       }) do
+    action = if is_atom(action) do
+      action
+    else
+      action && action.name
+    end
     reasons =
       [
         "Could not use `:stream`": not_stream_reason || "Not in requested strategies",
