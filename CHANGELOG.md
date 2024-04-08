@@ -5,6 +5,29 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.17](https://github.com/ash-project/ash/compare/v3.0.0-rc.16...v3.0.0-rc.17) (2024-04-08)
+
+
+
+
+### Features:
+
+* Ash.Reactor: Add new `change` step type which can be used to modify changesets.
+
+### Bug Fixes:
+
+* honor new calcualtion sort format in sort parser
+
+* don't raise error on keyword input to create interface
+
+* action is an atom in erroor case for bulk update
+
+### Improvements:
+
+* Ash.Reactor: Allow `create` to be provided an initial value.
+
+* Allow Reactor modules to be run directly from generic actions. (#993)
+
 ## [v3.0.0-rc.16](https://github.com/ash-project/ash/compare/v3.0.0-rc.15...v3.0.0-rc.16) (2024-04-07)
 
 
