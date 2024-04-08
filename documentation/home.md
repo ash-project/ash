@@ -17,7 +17,7 @@ Welcome to the Ash Framework documentation! Here you will find everything you ne
 
 ---
 
-[**How-to**](#how_to) guides are **goal-oriented** recipes for accomplishing specific tasks. These are also good to browse to get an idea of how Ash works and what is possible with it.
+[**How-to**](#how-to) guides are **goal-oriented** recipes for accomplishing specific tasks. These are also good to browse to get an idea of how Ash works and what is possible with it.
 
 ---
 
