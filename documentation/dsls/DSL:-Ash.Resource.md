@@ -952,7 +952,7 @@ end
 |------|------|---------|------|
 | [`constraints`](#actions-action-constraints){: #actions-action-constraints } | `keyword` |  | Constraints for the return type. See `Ash.Type` for more. |
 | [`allow_nil?`](#actions-action-allow_nil?){: #actions-action-allow_nil? } | `boolean` | `false` | Whether or not the action can return nil. Unlike attributes & arguments, this defaults to `false`. |
-| [`run`](#actions-action-run){: #actions-action-run } | `(any, any -> any) \| module` |  |  |
+| [`run`](#actions-action-run){: #actions-action-run } | `(any, any -> any) \| module \| module` |  |  |
 | [`primary?`](#actions-action-primary?){: #actions-action-primary? } | `boolean` | `false` | Whether or not this action should be used when no action is specified by the caller. |
 | [`description`](#actions-action-description){: #actions-action-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-action-transaction?){: #actions-action-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |

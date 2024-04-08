@@ -64,7 +64,7 @@ defmodule Ash.Actions.Action do
               fn ->
                 case authorize(domain, opts[:actor], input) do
                   :ok ->
-                    case module.run(input, run_opts, context) do
+                    case call_run_function(module, input, run_opts, context, true) do
                       {:ok, result} ->
                         {:ok, result, []}
 
@@ -122,7 +122,7 @@ defmodule Ash.Actions.Action do
         else
           case authorize(domain, opts[:actor], input) do
             :ok ->
-              case module.run(input, run_opts, context) do
+              case call_run_function(module, input, run_opts, context, false) do
                 {:ok, result} ->
                   {:ok, result}
 
@@ -147,6 +147,35 @@ defmodule Ash.Actions.Action do
           end
         end
       end
+    end
+  end
+
+  defp is_reactor?(module) when is_atom(module) do
+    module.spark_is() == Reactor
+  rescue
+    UndefinedFunctionError -> false
+  end
+
+  defp call_run_function(module, input, run_opts, context, in_transaction?) do
+    if is_reactor?(module) do
+      run_opts =
+        if in_transaction?,
+          do: Keyword.put(run_opts, :async?, false),
+          else: run_opts
+
+      context =
+        context
+        |> Ash.Context.to_opts()
+        |> Map.new()
+
+      Reactor.run(
+        module,
+        input.arguments,
+        context,
+        run_opts
+      )
+    else
+      module.run(input, run_opts, context)
     end
   end
 

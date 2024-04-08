@@ -151,7 +151,14 @@ Because a reactor has transaction-like semantics notifications are automatically
 
 ## Running Reactors as an action
 
-Currently the best way to expose a Reactor as an action is to use a [Generic Action](actions.html#generic-actions).
+Ash's [generic actions](actions.md#generic-actions) now support providing a Reactor module directly as their `run` option.
+
+Notes:
+
+- Every Reactor input must have a corresponding action argument.
+- Ash's action context is passed in as the Reactor's context (including things like actor, tenant, etc).
+- [Reactor runtime options](`t:Reactor.options/0`) can be set by setting `run {MyReactor, opts}` instead of just `run MyReactor`.
+- If you set the `transaction?` action DSL option to true then the Reactor will be run synchronously - regardless of the value of the `async?` runtime option.
 
 ### Example
 
@@ -163,8 +170,6 @@ action :run_reactor, :struct do
   argument :blog_body, :string, allow_nil?: false
   argument :author_email, :ci_string, allow_nil?: false
 
-  run fn input, _context ->
-    Reactor.run(MyBlog.CreatePostReactor, input.arguments)
-  end
+  run MyBlog.CreatePostReactor
 end
 ```
