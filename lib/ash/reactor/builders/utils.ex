@@ -61,12 +61,6 @@ defmodule Ash.Reactor.BuilderUtils do
 
   @doc false
   @spec ensure_hooked(Reactor.t()) :: {:ok, Reactor.t()} | {:error, any}
-  def ensure_hooked(reactor) when is_map_key(reactor.context, :__ash_hooked__),
-    do: {:ok, reactor}
-
-  def ensure_hooked(reactor) do
-    with {:ok, reactor} <- Reactor.Builder.ensure_middleware(reactor, Ash.Reactor.Notifications) do
-      {:ok, %{reactor | context: Map.put(reactor.context, :__ash_hooked__, true)}}
-    end
-  end
+  def ensure_hooked(reactor),
+    do: Reactor.Builder.ensure_middleware(reactor, Ash.Reactor.Notifications)
 end

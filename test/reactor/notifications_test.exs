@@ -9,16 +9,16 @@ defmodule Ash.Test.Reactor.NotificationsTest do
     test "it starts an agent" do
       {:ok, context} = Notifications.init(%{})
 
-      assert [] == agent_get(context.__ash_notification_agent__)
+      assert [] == agent_get(context.ash_notification_agent)
     end
 
     test "when there are already notifications in the context it stores them in the agent" do
       notifications = build_notifications()
 
       {:ok, context} =
-        Notifications.init(%{__unpublished_ash_notifications__: notifications})
+        Notifications.init(%{ash_notifications: notifications})
 
-      enqueued = agent_get(context.__ash_notification_agent__)
+      enqueued = agent_get(context.ash_notification_agent)
       assert enqueued == notifications
     end
 
@@ -26,9 +26,9 @@ defmodule Ash.Test.Reactor.NotificationsTest do
       notifications = build_notifications()
 
       {:ok, context} =
-        Notifications.init(%{__unpublished_ash_notifications__: notifications})
+        Notifications.init(%{ash_notifications: notifications})
 
-      refute is_map_key(context, :__unpublished_ash_notifications__)
+      refute is_map_key(context, :ash_notifications)
     end
   end
 
@@ -39,10 +39,10 @@ defmodule Ash.Test.Reactor.NotificationsTest do
     end
 
     test "it stops the agent", %{context: context} do
-      agent = context.__ash_notification_agent__
+      [agent | _] = context.ash_notification_agent
 
       {:ok, context} = Notifications.halt(context)
-      refute is_map_key(context, :__ash_notification_agent__)
+      assert context.ash_notification_agent == []
       refute Process.alive?(agent)
     end
 
@@ -51,7 +51,7 @@ defmodule Ash.Test.Reactor.NotificationsTest do
       :ok = Notifications.enqueue_notifications(context, notifications)
       {:ok, context} = Notifications.halt(context)
 
-      assert context.__unpublished_ash_notifications__ == notifications
+      assert context.ash_notifications == notifications
     end
   end
 
@@ -65,7 +65,7 @@ defmodule Ash.Test.Reactor.NotificationsTest do
       notifications = build_notifications()
       :ok = Notifications.enqueue_notifications(context, notifications)
 
-      expect(Notifications, :publish, fn actual ->
+      expect(Notifications, :publish, fn _context, actual ->
         assert actual == notifications
         []
       end)
@@ -77,7 +77,7 @@ defmodule Ash.Test.Reactor.NotificationsTest do
       notifications = build_notifications()
       :ok = Notifications.enqueue_notifications(context, notifications)
 
-      expect(Notifications, :publish, & &1)
+      expect(Notifications, :publish, fn _context, notifications -> notifications end)
 
       assert capture_log(fn ->
                assert {:ok, :result} = Notifications.complete(:result, context)
@@ -85,7 +85,7 @@ defmodule Ash.Test.Reactor.NotificationsTest do
     end
 
     test "it stops the agent", %{context: context} do
-      agent = context.__ash_notification_agent__
+      [agent | _] = context.ash_notification_agent
 
       {:ok, :result} = Notifications.complete(:result, context)
       refute Process.alive?(agent)
@@ -99,7 +99,7 @@ defmodule Ash.Test.Reactor.NotificationsTest do
     end
 
     test "it stops the agent", %{context: context} do
-      agent = context.__ash_notification_agent__
+      [agent | _] = context.ash_notification_agent
 
       :ok = Notifications.error([:errors], context)
       refute Process.alive?(agent)
@@ -112,5 +112,5 @@ defmodule Ash.Test.Reactor.NotificationsTest do
     end
   end
 
-  defp agent_get(agent), do: Agent.get(agent, & &1)
+  defp agent_get([agent | _]), do: Agent.get(agent, & &1)
 end
