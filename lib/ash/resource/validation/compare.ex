@@ -34,41 +34,30 @@ defmodule Ash.Resource.Validation.Compare do
 
     case value do
       {:ok, value} ->
-        Enum.reduce(
-          Keyword.take(opts, [
-            :greater_than,
-            :less_than,
-            :greater_than_or_equal_to,
-            :less_than_or_equal_to
-          ]),
-          :ok,
-          fn validation, _ ->
-            case validation do
-              {:greater_than, attribute} ->
-                if Comp.greater_than?(value, attribute_value(changeset, attribute)),
-                  do: :ok,
-                  else: invalid_attribute_error(opts, value)
+        opts
+        |> Keyword.take([
+          :greater_than,
+          :less_than,
+          :greater_than_or_equal_to,
+          :less_than_or_equal_to
+        ])
+        |> Enum.find_value(fn
+          {:greater_than, attribute} ->
+            if !Comp.greater_than?(value, attribute_value(changeset, attribute)),
+              do: invalid_attribute_error(opts, value)
 
-              {:greater_than_or_equal_to, attribute} ->
-                if Comp.greater_or_equal?(value, attribute_value(changeset, attribute)),
-                  do: :ok,
-                  else: invalid_attribute_error(opts, value)
+          {:greater_than_or_equal_to, attribute} ->
+            if !Comp.greater_or_equal?(value, attribute_value(changeset, attribute)),
+              do: invalid_attribute_error(opts, value)
 
-              {:less_than, attribute} ->
-                if Comp.less_than?(value, attribute_value(changeset, attribute)),
-                  do: :ok,
-                  else: invalid_attribute_error(opts, value)
+          {:less_than, attribute} ->
+            if !Comp.less_than?(value, attribute_value(changeset, attribute)),
+              do: invalid_attribute_error(opts, value)
 
-              {:less_than_or_equal_to, attribute} ->
-                if Comp.less_or_equal?(value, attribute_value(changeset, attribute)),
-                  do: :ok,
-                  else: invalid_attribute_error(opts, value)
-
-              true ->
-                :ok
-            end
-          end
-        )
+          {:less_than_or_equal_to, attribute} ->
+            if !Comp.less_or_equal?(value, attribute_value(changeset, attribute)),
+              do: invalid_attribute_error(opts, value)
+        end) || :ok
 
       _ ->
         :ok

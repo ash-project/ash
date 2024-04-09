@@ -136,8 +136,25 @@ defmodule Ash.Test.Resource.Validation.CompareTest do
     end
   end
 
+  test "validate against a range of values" do
+    {:ok, opts} =
+      Compare.init(attribute: :number_one, greater_than: 0, less_than_or_equal_to: 10)
+
+    # Below range
+    changeset = Post |> Ash.Changeset.for_create(:create, %{number_one: -1})
+    assert_error(changeset, opts, "must be greater than 0 and must be less than or equal to 10")
+
+    # In range
+    changeset = Post |> Ash.Changeset.for_create(:create, %{number_one: 5})
+    assert :ok = Compare.validate(changeset, opts, %{})
+
+    # Above range
+    changeset = Post |> Ash.Changeset.for_create(:create, %{number_one: 11})
+    assert_error(changeset, opts, "must be greater than 0 and must be less than or equal to 10")
+  end
+
   defp assert_error(changeset, opts, expected_message) do
-    {:error, %{message: message, vars: vars}} = Compare.validate(changeset, opts, %{})
+    assert {:error, %{message: message, vars: vars}} = Compare.validate(changeset, opts, %{})
     assert expected_message == translate_message(message, vars)
   end
 
