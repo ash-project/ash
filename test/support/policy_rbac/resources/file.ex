@@ -25,6 +25,10 @@ defmodule Ash.Test.Support.PolicyRbac.File do
 
   actions do
     defaults [:create, :read, :update, :destroy]
+
+    update :update_with_args do
+      argument :some_arg, :string, allow_nil?: false
+    end
   end
 
   attributes do

@@ -760,8 +760,8 @@ defmodule Ash.Api do
             Ash.Query.t()
             | Ash.Changeset.t()
             | Ash.ActionInput.t()
-            | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()}
-            | {Ash.Resource.t(), atom | Ash.Resource.Actions.action(), input :: map},
+            | {Ash.Resource.t() | Ash.Resource.record(), atom | Ash.Resource.Actions.action()}
+            | {Ash.Resource.t() | Ash.Resource.record(), atom | Ash.Resource.Actions.action(), input :: map},
           actor :: term,
           opts :: Keyword.t()
         ) ::
@@ -786,8 +786,8 @@ defmodule Ash.Api do
             Ash.Query.t()
             | Ash.Changeset.t()
             | Ash.ActionInput.t()
-            | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()}
-            | {Ash.Resource.t(), atom | Ash.Resource.Actions.action(), input :: map},
+            | {Ash.Resource.t() | Ash.Resource.record(), atom | Ash.Resource.Actions.action()}
+            | {Ash.Resource.t() | Ash.Resource.record(), atom | Ash.Resource.Actions.action(), input :: map},
           actor :: term,
           opts :: Keyword.t()
         ) ::
@@ -1712,8 +1712,8 @@ defmodule Ash.Api do
                 Ash.Query.t()
                 | Ash.Changeset.t()
                 | Ash.ActionInput.t()
-                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()}
-                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action(), input :: map},
+                | {Ash.Resource.t() | Ash.Resource.record(), atom | Ash.Resource.Actions.action()}
+                | {Ash.Resource.t() | Ash.Resource.record(), atom | Ash.Resource.Actions.action(), input :: map},
               actor :: term,
               opts :: Keyword.t()
             ) ::
@@ -1753,8 +1753,8 @@ defmodule Ash.Api do
                 Ash.Query.t()
                 | Ash.Changeset.t()
                 | Ash.ActionInput.t()
-                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action()}
-                | {Ash.Resource.t(), atom | Ash.Resource.Actions.action(), input :: map},
+                | {Ash.Resource.t() | Ash.Resource.record(), atom | Ash.Resource.Actions.action()}
+                | {Ash.Resource.t() | Ash.Resource.record(), atom | Ash.Resource.Actions.action(), input :: map},
               actor :: term,
               opts :: Keyword.t()
             ) ::
