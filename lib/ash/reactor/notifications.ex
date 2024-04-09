@@ -8,14 +8,16 @@ defmodule Ash.Reactor.Notifications do
 
   require Logger
 
-  @context_agent_key :__ash_notification_agent__
-  @context_notification_key :__unpublished_ash_notifications__
+  @agent_key :ash_notification_agent
+  @notification_key :ash_notifications
 
-  defguardp has_agent?(context) when is_map_key(context, @context_agent_key)
+  defguardp has_agent?(context)
+            when is_map_key(context, @agent_key) and
+                   :erlang.map_get(@agent_key, context) != []
 
   defguardp has_notifications?(context)
-            when is_map_key(context, @context_notification_key) and
-                   length(:erlang.map_get(@context_notification_key, context)) > 0
+            when is_map_key(context, @notification_key) and
+                   :erlang.map_get(@notification_key, context) != []
 
   @doc """
   When starting a reactor, start an agent to act as a temporary store of
@@ -23,10 +25,13 @@ defmodule Ash.Reactor.Notifications do
   """
   @impl true
   def init(context) when has_notifications?(context) do
-    with {:ok, notifications} <- Map.fetch(context, @context_notification_key),
+    with {:ok, notifications} <- Map.fetch(context, @notification_key),
          {:ok, context} <- agent_start(context),
          {:ok, context} <- agent_put(context, notifications) do
-      context = Map.delete(context, @context_notification_key)
+      context =
+        context
+        |> Map.delete(@notification_key)
+
       {:ok, context}
     end
   end
@@ -45,7 +50,7 @@ defmodule Ash.Reactor.Notifications do
         {:ok,
          Map.update(
            context,
-           @context_notification_key,
+           @notification_key,
            notifications,
            &Enum.concat(&1, notifications)
          )}
@@ -61,8 +66,8 @@ defmodule Ash.Reactor.Notifications do
   @impl true
   def complete(result, context) when has_agent?(context) do
     with {:ok, notifications} <- agent_get(context),
-         {:ok, _context} <- agent_stop(context),
-         [] <- __MODULE__.publish(notifications) do
+         {:ok, context} <- agent_stop(context),
+         [] <- __MODULE__.publish(context, notifications) do
       {:ok, result}
     else
       {:error, reason} ->
@@ -110,51 +115,47 @@ defmodule Ash.Reactor.Notifications do
   @doc """
   Dispatch notifications.
   """
-  @spec publish(Ash.Notifier.Notification.t() | [Ash.Notifier.Notification.t()]) ::
+  @spec publish(
+          Reactor.context(),
+          Ash.Notifier.Notification.t() | [Ash.Notifier.Notification.t()]
+        ) ::
           [Ash.Notifier.Notification.t()]
-  def publish(notifications), do: Ash.Notifier.notify(notifications)
-
-  defp agent_start(context) when has_agent?(context) do
-    case agent_get(context) do
-      {:ok, _} -> {:ok, context}
-      _ -> agent_start(Map.delete(context, @context_agent_key))
+  def publish(context, notifications) when has_agent?(context) do
+    case agent_put(context, notifications) do
+      {:ok, _} -> []
+      {:error, _} -> notifications
     end
   end
 
+  def publish(_, notifications), do: Ash.Notifier.notify(notifications)
+
   defp agent_start(context) do
     case Agent.start_link(fn -> [] end) do
-      {:ok, pid} -> {:ok, Map.put(context, :__ash_notification_agent__, pid)}
+      {:ok, pid} -> {:ok, Map.update(context, @agent_key, [pid], &[pid | &1])}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp agent_get(context) do
-    notifications =
-      context
-      |> Map.fetch!(@context_agent_key)
-      |> Agent.get(fn notifications -> notifications end, 100)
-
+  defp agent_get(%{@agent_key => [pid | _]}) do
+    notifications = Agent.get(pid, & &1, 100)
     {:ok, notifications}
   rescue
     error -> {:error, error}
   end
 
-  defp agent_stop(context) do
-    :ok =
-      context
-      |> Map.fetch!(@context_agent_key)
-      |> Agent.stop(:normal)
+  defp agent_get(%{@agent_key => []}),
+    do: {:error, "Context does not contain a notification agent"}
 
-    {:ok, Map.delete(context, @context_agent_key)}
+  defp agent_stop(%{@agent_key => [pid | agents]} = context) do
+    :ok = Agent.stop(pid, :normal)
+
+    {:ok, %{context | @agent_key => agents}}
   rescue
     error -> {:error, error}
   end
 
-  defp agent_put(context, notifications) do
-    :ok =
-      context
-      |> Map.fetch!(@context_agent_key)
-      |> Agent.update(&Enum.concat(&1, notifications))
+  defp agent_put(%{@agent_key => [pid | _]} = context, notifications) do
+    :ok = Agent.update(pid, &Enum.concat(&1, notifications))
 
     {:ok, context}
   rescue

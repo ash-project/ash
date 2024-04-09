@@ -55,7 +55,7 @@ defmodule Ash.Test.ReactorTest do
       end
     end
 
-    expect(Ash.Reactor.Notifications, :publish, fn notifications ->
+    expect(Ash.Reactor.Notifications, :publish, fn _context, notifications ->
       assert [
                %Ash.Notifier.Notification{
                  resource: Ash.Test.ReactorTest.Post,

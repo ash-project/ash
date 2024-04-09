@@ -79,7 +79,7 @@ defmodule Ash.Test.Reactor.TransactionTest do
     end
 
     assert {:ok, %{title: "About Marty McFly"}} =
-             Reactor.run(SuccessfulNamedReturnTransactionReactor)
+             Reactor.run!(SuccessfulNamedReturnTransactionReactor)
   end
 
   test "when the transaction fails it is rolled back" do
