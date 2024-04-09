@@ -21,7 +21,7 @@ defmodule Ash.Test.Resource.Preparations.LifecycleHooksTest do
       read :read_with_before_action do
         argument :caller, :term
 
-        prepare before_action(fn query ->
+        prepare before_action(fn query, _context ->
                   send(query.arguments.caller, query.phase)
                   query
                 end)
@@ -30,7 +30,7 @@ defmodule Ash.Test.Resource.Preparations.LifecycleHooksTest do
       read :read_with_after_action do
         argument :caller, :term
 
-        prepare after_action(fn query, records ->
+        prepare after_action(fn query, records, _context ->
                   send(query.arguments.caller, query.phase)
                   {:ok, records}
                 end)
@@ -39,12 +39,12 @@ defmodule Ash.Test.Resource.Preparations.LifecycleHooksTest do
       read :read_with_multiple_before_actions do
         argument :caller, :term
 
-        prepare before_action(fn query ->
+        prepare before_action(fn query, _context ->
                   send(query.arguments.caller, {query.phase, 1})
                   query
                 end)
 
-        prepare before_action(fn query ->
+        prepare before_action(fn query, _context ->
                   send(query.arguments.caller, {query.phase, 2})
                   query
                 end)
@@ -53,12 +53,12 @@ defmodule Ash.Test.Resource.Preparations.LifecycleHooksTest do
       read :read_with_multiple_after_actions do
         argument :caller, :term
 
-        prepare after_action(fn query, records ->
+        prepare after_action(fn query, records, _context ->
                   send(query.arguments.caller, {query.phase, 1})
                   {:ok, records}
                 end)
 
-        prepare after_action(fn query, records ->
+        prepare after_action(fn query, records, _context ->
                   send(query.arguments.caller, {query.phase, 2})
                   {:ok, records}
                 end)

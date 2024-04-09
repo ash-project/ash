@@ -124,7 +124,7 @@ The format for sorting on calculations that take input has been swapped. Previou
 
 `Ash.Policy.FilterCheck` and `Ash.Policy.FilterCheckWithContext` have been combined. The name is `Ash.Policy.FilterCheck`, but the callbacks take the extra arguments present in `Ash.Policy.FilterCheckWithContext`.
 
-#### Builtin Changes
+#### Builtin Changes & Preparations
 
 The functions provided to `after_action/1`, `after_transaction/1`, `before_transaction/1` and `before_action/1` must all now take an additional argument, which is the change context.
 
@@ -139,6 +139,8 @@ is now
 ```elixir
 change after_action(fn changeset, result, context -> ... end)
 ```
+
+This is true for both preparations and changes.
 
 #### Expressions
 

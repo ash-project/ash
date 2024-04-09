@@ -72,7 +72,7 @@ defmodule Ash.Actions.PaginationTest do
       end
 
       read :keyset_before_action do
-        prepare(before_action(&Ash.Query.filter(&1, name in ["0", "1", "2"])))
+        prepare(before_action(fn query, _ -> Ash.Query.filter(query, name in ["0", "1", "2"]) end))
         pagination keyset?: true, countable: true
       end
 

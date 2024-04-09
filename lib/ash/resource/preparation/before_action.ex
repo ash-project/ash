@@ -5,7 +5,7 @@ defmodule Ash.Resource.Preparation.BeforeAction do
 
   @doc false
   @spec prepare(Ash.Query.t(), keyword, map) :: Ash.Query.t()
-  def prepare(query, opts, _context) do
-    Ash.Query.before_action(query, opts[:callback])
+  def prepare(query, opts, context) do
+    Ash.Query.before_action(query, fn query -> opts[:callback].(query, context) end)
   end
 end
