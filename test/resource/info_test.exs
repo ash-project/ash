@@ -2,6 +2,8 @@ defmodule Ash.Test.Resource.InfoTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  require Spark.Dsl
+  require Spark.Dsl.Extension
   alias Ash.Resource
   alias Ash.Resource.Info
   alias Ash.Test.Domain, as: Domain
@@ -39,15 +41,20 @@ defmodule Ash.Test.Resource.InfoTest do
     end
 
     relationships do
-      many_to_many :tags, Tag do
-        through TagOnPost
+      many_to_many :tags, Ash.Test.Resource.InfoTest.Tag do
+        through Ash.Test.Resource.InfoTest.TagOnPost
         public?(true)
-        source_attribute_on_join_resource(:vendor_id)
-        destination_attribute_on_join_resource(:shipping_method_id)
+        source_attribute_on_join_resource(:tag_id)
+        destination_attribute_on_join_resource(:post_id)
       end
 
-      has_many :comments, Comment, destination_attribute: :post_id, public?: true
-      has_one :private, PostPrivate, destination_attribute: :post_id, public?: true
+      has_many :comments, Ash.Test.Resource.InfoTest.Comment,
+        destination_attribute: :post_id,
+        public?: true
+
+      has_one :private, Ash.Test.Resource.InfoTest.PostPrivate,
+        destination_attribute: :post_id,
+        public?: true
     end
   end
 
@@ -198,6 +205,21 @@ defmodule Ash.Test.Resource.InfoTest do
 
     test "get datalayer from resource" do
       assert Ash.DataLayer.Ets == Info.data_layer(Post)
+    end
+
+    test "get relationship fields" do
+      assert Spark.Dsl.Extension.get_entities(Comment, [:post]) |> IO.inspect()
+      IO.inspect(IEx.Info.info(Comment))
+
+      comment = Info.public_relationship(Post, [:comments]).destination
+      IO.inspect(IEx.Info.info(comment))
+      assert Spark.Dsl.Extension.get_entities(comment, [:post]) |> IO.inspect()
+
+      assert %Resource.Relationships.ManyToMany{name: :tags} =
+               Info.public_relationship(Post, :tags)
+
+      assert %Resource.Relationships.BelongsTo{name: :post} =
+               Info.public_relationship(Post, [:comments, :post])
     end
   end
 end
