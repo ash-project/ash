@@ -351,6 +351,10 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "Get a public relationship by name or path"
+  def public_relationship(resource, [name]) do
+    public_relationship(resource, name)
+  end
+
   def public_relationship(resource, [name | rest]) do
     case public_relationship(resource, name) do
       nil ->
