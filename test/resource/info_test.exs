@@ -208,12 +208,10 @@ defmodule Ash.Test.Resource.InfoTest do
     end
 
     test "get relationship fields" do
-      assert Spark.Dsl.Extension.get_entities(Comment, [:post]) |> IO.inspect()
-      IO.inspect(IEx.Info.info(Comment))
+      assert Spark.Dsl.Extension.get_entities(Comment, [:post])
 
       comment = Info.public_relationship(Post, [:comments]).destination
-      IO.inspect(IEx.Info.info(comment))
-      assert Spark.Dsl.Extension.get_entities(comment, [:post]) |> IO.inspect()
+      assert Spark.Dsl.Extension.get_entities(comment, [:post])
 
       assert %Resource.Relationships.ManyToMany{name: :tags} =
                Info.public_relationship(Post, :tags)
