@@ -579,6 +579,11 @@ defmodule Ash do
                                   ]},
                                doc:
                                  "The fields to upsert. If not set, the action's `upsert_fields` is used. Unlike singular `create`, `bulk_create` with `upsert?` requires that `upsert_fields` be specified explicitly in one of these two locations."
+                             ],
+                             skip_unknown_inputs: [
+                               type: {:list, {:or, [:atom, :string]}},
+                               doc:
+                                 "A list of inputs that, if provided, will be ignored if they are not recognized by the action."
                              ]
                            ]
                            |> Spark.Options.merge(
