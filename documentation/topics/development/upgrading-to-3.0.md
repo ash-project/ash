@@ -576,11 +576,48 @@ On `:update` actions, and `:destroy` actions, they now default to `require_atomi
 3. the action has a manual implementation
 4. the action has applicable notifiers that require the original data.
 
-Updates and destroys that can be made fully atomic are always safe to do concurrently, and as such we now require that actions meet this criteria. See the [update actions guide](/documentation/topics/actions/update-actions.md#fully-atomic-updates) for more.
+Updates and destroys that can be made fully atomic are always safe to do concurrently, and as such we now require that actions meet this criteria, or that it is explicitly stated that they do not have to. See the [update actions guide](/documentation/topics/actions/update-actions.md#fully-atomic-updates) for more.
+
+#### Upgrade config
+
+You can set the following configuration, which _will be removed in Ash 3.1_. This configuration will retain the 2.0 default behavior of `require_atomic?` defaulting to `false`. You can then safely do the rest of the upgrade. Then, you can perform this one change after confirming that your system works as expected.
+
+```elixir
+config :ash, :require_atomic_by_default?, false
+```
 
 #### What you'll need to change
 
-The vast majority of cases will be caught by warnings emitted at compile time. If you are using `change atomic_update/2` or `Ash.Changeset.atomic_update/2` or `Ash.Changeset.atomic_update/3`, and the type does not support atomic updates, you will get an error unless you do one of the following:
+The vast majority of cases will be caught by warnings emitted at compile time.
+
+##### Anonymous function changes
+
+Anonymous function changes can never be made atomic, because we don't know what they contain. You will either need to transfer it to a module change and then follow the next section, or set `require_atomic? false`
+
+##### Module changes
+
+If you have a module change, you can make it atomic by defining the `atomic/3` callback. This callback can replace the `change/3` callback, but it is very important to keep in mind that _later changes_ will no longer have access to the value. For example, if you have
+
+```elixir
+def change(changeset, _, _) do
+  # this is not concurrency safe
+  Ash.Changeset.change_attribute(changeset, :value, changeset.data.value + 1)
+end
+```
+
+If you have a subsequent change that does something like `Ash.Changeset.get_attribute(changeset, :value)` it will get the new value (i.e old value + 1). With atomics, `Ash.Changeset.get_attribute(changeset, :value)` would return the _old value_. This is because atomics are scheduling an update that happens when call the data layer. For example:
+
+```elixir
+def atomic(changeset, _, _) do
+  {:atomic, %{value: expr(value + 1)}}
+end
+```
+
+This should not typically matter unless you have complex actions w/ multiple changes where subsequent changes need to know the results of previous steps. In those cases, if you can't make them all atomic, then its best just not to worry about it and set `require_atomic? false`
+
+##### Non-atomic castable types
+
+If you are using `change atomic_update/2` or `Ash.Changeset.atomic_update/2` or `Ash.Changeset.atomic_update/3`, and the type does not support atomic updates, you will get an error unless you do one of the following:
 
 1. for `change atomic_update/2` add the `cast_atomic?: false` option.
 2. for `Ash.Changeset.atomic_update`, pass the value as `{:atomic, expr}`, i.e `Ash.Changeset.atomic_update(changeset, :value, {:atomic, expr(value + 1)})`

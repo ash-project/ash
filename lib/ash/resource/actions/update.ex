@@ -13,7 +13,7 @@ defmodule Ash.Resource.Actions.Update do
     allow_nil_input: [],
     manual: nil,
     manual?: false,
-    require_atomic?: false,
+    require_atomic?: Application.compile_env(:ash, :require_atomic_by_default?, true),
     notifiers: [],
     atomics: [],
     delay_global_validations?: false,
@@ -63,7 +63,7 @@ defmodule Ash.Resource.Actions.Update do
                   doc: """
                   Require that the update be atomic. This means that all changes and validations implement the `atomic` callback. See the guide on atomic updates for more.
                   """,
-                  default: true
+                  default: Application.compile_env(:ash, :require_atomic_by_default?, true)
                 ]
               ]
               |> Spark.Options.merge(

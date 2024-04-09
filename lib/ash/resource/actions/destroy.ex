@@ -10,7 +10,7 @@ defmodule Ash.Resource.Actions.Destroy do
     :description,
     :error_handler,
     manual: nil,
-    require_atomic?: false,
+    require_atomic?: Application.compile_env(:ash, :require_atomic_by_default?, true),
     arguments: [],
     touches_resources: [],
     delay_global_validations?: false,
@@ -66,7 +66,7 @@ defmodule Ash.Resource.Actions.Destroy do
                   doc: """
                   Require that the update be atomic. Only relevant if `soft?` is set to `true`. This means that all changes and validations implement the `atomic` callback. See the guide on atomic updates for more.
                   """,
-                  default: true
+                  default: Application.compile_env(:ash, :require_atomic_by_default?, true)
                 ]
               ]
               |> Spark.Options.merge(
