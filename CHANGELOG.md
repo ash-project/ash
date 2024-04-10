@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.18](https://github.com/ash-project/ash/compare/v3.0.0-rc.17...v3.0.0-rc.18) (2024-04-10)
+
+
+
+
+### Bug Fixes:
+
+* swap the parameters in Ash.ToTenant.to_tenant/2 (#1003)
+
+* Ash.Reactor: crash when calling an ash reactor for the first time.
+
+* add context argument to `before_action` and `after_action` for read actions
+
+* add base case for  Ash.Resource.Info.public_relationship/2 (#1000)
+
+### Improvements:
+
+* add `ash.rollback` mix task
+
+* add `ash.rollback` task
+
+* add `config :ash, require_atomic_by_default?, false`, for upgrading
+
+* support `skip_unknown_inputs` in `Ash.bulk_create`
+
 ## [v3.0.0-rc.17](https://github.com/ash-project/ash/compare/v3.0.0-rc.16...v3.0.0-rc.17) (2024-04-08)
 
 
