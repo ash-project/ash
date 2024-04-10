@@ -38,7 +38,7 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       end
 
       action :do_nothing do
-        run fn _ -> :ok end
+        run fn _, _ -> :ok end
       end
     end
 

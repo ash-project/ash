@@ -75,7 +75,7 @@ defmodule Ash.Resource.Interface do
     opts
     |> Keyword.merge(
       query: [
-        type: :any,
+        type: {:or, [{:behaviour, Ash.Resource}, {:struct, Ash.Query}, :keyword_list]},
         doc: "A query to seed the action with."
       ],
       stream?: [

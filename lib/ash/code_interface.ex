@@ -567,33 +567,33 @@ defmodule Ash.CodeInterface do
                     Keyword.split(opts, [:query, :actor, :tenant, :authorize?, :tracer])
 
                   {query, query_opts} = Keyword.pop(query_opts, :query)
+
                   query_opts = Keyword.put(query_opts, :domain, unquote(domain))
 
-                  case query do
-                    %Ash.Query{resource: unquote(resource)} ->
-                      query
+                  query =
+                    case query do
+                      %Ash.Query{resource: unquote(resource)} = query ->
+                        query
 
-                    %Ash.Query{resource: other_resource} ->
-                      raise ArgumentError,
-                            "Query resource #{inspect(other_resource)} does not match expected resource #{inspect(unquote(resource))}."
+                      %Ash.Query{resource: other_resource} ->
+                        raise ArgumentError,
+                              "Query resource #{inspect(other_resource)} does not match expected resource #{inspect(unquote(resource))}."
 
-                    query ->
-                      query
-                  end
+                      query ->
+                        Ash.Query.build(unquote(resource), query || [])
+                    end
 
                   query =
                     if unquote(filter_keys) && !Enum.empty?(unquote(filter_keys)) do
                       require Ash.Query
                       {filters, params} = Map.split(params, unquote(filter_keys))
 
+
                       query
-                      |> Kernel.||(unquote(resource))
                       |> Ash.Query.for_read(unquote(action.name), params, query_opts)
                       |> Ash.Query.filter(filters)
                     else
-                      query
-                      |> Kernel.||(unquote(resource))
-                      |> Ash.Query.for_read(unquote(action.name), params, query_opts)
+                      Ash.Query.for_read(query, unquote(action.name), params, query_opts)
                     end
                 end
 
@@ -641,6 +641,7 @@ defmodule Ash.CodeInterface do
                   end
                 else
                   quote do
+
                     if opts[:stream?] do
                       Ash.stream!(query, Keyword.drop(opts, [:stream?, :stream_options]))
                     else
