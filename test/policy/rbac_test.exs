@@ -124,10 +124,11 @@ defmodule Ash.Test.Policy.RbacTest do
     assert Api.can?(changeset, user)
   end
 
-  test "if the changeset update can be performed with a filter, the can utility should return true", %{
-    user: user,
-    org: org
-  } do
+  test "if the changeset update can be performed with a filter, the can utility should return true",
+       %{
+         user: user,
+         org: org
+       } do
     file_with_access = create_file(org, "foo")
     give_role(user, org, :admin, :file, file_with_access.id)
 
@@ -136,20 +137,22 @@ defmodule Ash.Test.Policy.RbacTest do
     assert Api.can?(changeset, user)
   end
 
-  test "if the resource struct update can be performed with a filter, the can utility should return true", %{
-    user: user,
-    org: org
-  } do
+  test "if the resource struct update can be performed with a filter, the can utility should return true",
+       %{
+         user: user,
+         org: org
+       } do
     file_with_access = create_file(org, "foo")
     give_role(user, org, :admin, :file, file_with_access.id)
 
     assert Api.can?({file_with_access, :update}, user)
   end
 
-  test "if the resource struct update_with_args can be performed with a filter, the can utility should return true", %{
-    user: user,
-    org: org
-  } do
+  test "if the resource struct update_with_args can be performed with a filter, the can utility should return true",
+       %{
+         user: user,
+         org: org
+       } do
     file_with_access = create_file(org, "foo")
     give_role(user, org, :admin, :file, file_with_access.id)
 

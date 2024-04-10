@@ -10,7 +10,8 @@ defmodule Ash.Api.Interface do
                 Ash.Query.t()
                 | Ash.Changeset.t()
                 | {Ash.Resource.t() | Ash.Resource.record(), atom | Ash.Resource.Actions.action()}
-                | {Ash.Resource.t() | Ash.Resource.record(), atom | Ash.Resource.Actions.action(), input :: map},
+                | {Ash.Resource.t() | Ash.Resource.record(), atom | Ash.Resource.Actions.action(),
+                   input :: map},
               actor :: term,
               opts :: Keyword.t()
             ) ::
@@ -24,7 +25,8 @@ defmodule Ash.Api.Interface do
                 Ash.Query.t()
                 | Ash.Changeset.t()
                 | {Ash.Resource.t() | Ash.Resource.record(), atom | Ash.Resource.Actions.action()}
-                | {Ash.Resource.t() | Ash.Resource.record(), atom | Ash.Resource.Actions.action(), input :: map},
+                | {Ash.Resource.t() | Ash.Resource.record(), atom | Ash.Resource.Actions.action(),
+                   input :: map},
               actor :: term,
               opts :: Keyword.t()
             ) ::
