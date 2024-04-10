@@ -1272,8 +1272,11 @@ defmodule Ash do
          {:ok, result} <- Ash.Actions.Action.run(domain, input, opts) do
       {:ok, result}
     else
+      :ok ->
+        :ok
+
       {:error, error} ->
-        {:error, error}
+        {:error, Ash.Error.to_error_class(error)}
     end
   end
 
