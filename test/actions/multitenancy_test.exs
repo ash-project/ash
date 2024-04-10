@@ -124,6 +124,115 @@ defmodule Ash.Actions.MultitenancyTest do
     end
   end
 
+  defmodule Tenant do
+    @doc false
+
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      integer_primary_key :id, writable?: true
+    end
+
+    defimpl Ash.ToTenant do
+      def to_tenant(tenant, _resource), do: tenant.id
+    end
+  end
+
+  defmodule MultitenantThing do
+    @doc false
+
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    multitenancy do
+      strategy(:attribute)
+      attribute(:tenant_id)
+      parse_attribute {MultitenantThing, :parse_tenant, []}
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :tenant_id, :string do
+        public?(true)
+      end
+
+      attribute :name, :string do
+        public?(true)
+      end
+    end
+
+    def parse_tenant(id), do: "tenant_#{id}"
+  end
+
+  describe "ToTenant and parse_attribute are applied in the correct order" do
+    setup do
+      tenant1 =
+        Tenant
+        |> Ash.Changeset.for_create(:create, %{id: 1})
+        |> Ash.create!()
+
+      tenant2 =
+        Tenant
+        |> Ash.Changeset.for_create(:create, %{id: 2})
+        |> Ash.create!()
+
+      %{tenant1: tenant1, tenant2: tenant2}
+    end
+
+    test "with tenant on changeset and query", %{tenant1: tenant1, tenant2: tenant2} do
+      thing =
+        MultitenantThing
+        |> Ash.Changeset.for_create(:create, %{name: "foo"}, tenant: tenant1)
+        |> Ash.create!()
+
+      thing
+      |> Ash.Changeset.for_update(:update, %{name: "bar"}, tenant: tenant1)
+      |> Ash.update!()
+
+      assert [%{tenant_id: "tenant_1", name: "bar"}] =
+               MultitenantThing
+               |> Ash.Query.set_tenant(tenant1)
+               |> Ash.read!()
+
+      assert MultitenantThing |> Ash.Query.set_tenant(tenant2) |> Ash.read!() == []
+    end
+
+    test "with tenant in options", %{tenant1: tenant1, tenant2: tenant2} do
+      thing =
+        MultitenantThing
+        |> Ash.Changeset.for_create(:create, %{name: "foo"})
+        |> Ash.create!(tenant: tenant1)
+
+      thing
+      |> Ash.Changeset.for_update(:update, %{name: "bar"})
+      |> Ash.update!(tenant: tenant1)
+
+      assert [%{tenant_id: "tenant_1", name: "bar"}] =
+               MultitenantThing
+               |> Ash.read!(tenant: tenant1)
+
+      assert MultitenantThing |> Ash.read!(tenant: tenant2) == []
+    end
+  end
+
   describe "attribute multitenancy" do
     setup do
       %{tenant1: Ash.UUID.generate(), tenant2: Ash.UUID.generate()}
