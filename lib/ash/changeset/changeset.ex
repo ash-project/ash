@@ -104,7 +104,7 @@ defmodule Ash.Changeset do
         if changeset.tenant do
           concat(
             "tenant: ",
-            to_doc(Ash.ToTenant.to_tenant(changeset.resource, changeset.tenant), opts)
+            to_doc(Ash.ToTenant.to_tenant(changeset.tenant, changeset.resource), opts)
           )
         else
           empty()

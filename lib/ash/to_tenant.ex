@@ -13,7 +13,7 @@ defprotocol Ash.ToTenant do
     ...
 
     defimpl Ash.ToTenant do
-      def to_tenant(%{id: id}), do: "org_\#{id}"
+      def to_tenant(%{id: id}, _resource), do: "org_\#{id}"
     end
   end
   ```
@@ -21,19 +21,19 @@ defprotocol Ash.ToTenant do
 
   @type t :: term()
 
-  @spec to_tenant(Ash.Resource.t(), t) :: term()
-  def to_tenant(resource, value)
+  @spec to_tenant(t, Ash.Resource.t()) :: term()
+  def to_tenant(value, resource)
 end
 
 defimpl Ash.ToTenant, for: BitString do
-  def to_tenant(_resource, value), do: value
+  def to_tenant(value, _resource), do: value
 end
 
 defimpl Ash.ToTenant, for: Atom do
-  def to_tenant(_resource, nil), do: nil
-  def to_tenant(_resource, value), do: value
+  def to_tenant(nil, _resource), do: nil
+  def to_tenant(value, _resource), do: value
 end
 
 defimpl Ash.ToTenant, for: Integer do
-  def to_tenant(_resource, value), do: value
+  def to_tenant(value, _resource), do: value
 end
