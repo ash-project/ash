@@ -24,12 +24,16 @@ defmodule Ash.Resource.Actions.Action do
           touches_resources: [Ash.Resource.t()],
           constraints: Keyword.t(),
           run: {module, Keyword.t()},
-          returns: Ash.Type.t(),
+          returns: Ash.Type.t() | nil,
           primary?: boolean,
           transaction?: boolean
         }
 
   import Ash.Resource.Actions.SharedOptions
+
+  def transform(%{returns: nil} = action) do
+    {:ok, action}
+  end
 
   def transform(%{returns: original_type, constraints: constraints} = thing) do
     type = Ash.Type.get_type(original_type)

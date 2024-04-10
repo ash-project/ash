@@ -495,7 +495,7 @@ defmodule Ash.Resource.Dsl do
         @action_argument
       ]
     ],
-    args: [:name, :returns]
+    args: [:name, {:optional, :returns}]
   }
 
   @create %Spark.Dsl.Entity{

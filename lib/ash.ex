@@ -1261,7 +1261,7 @@ defmodule Ash do
   """
   @doc spark_opts: [{1, @run_action_opts}]
   @spec run_action(input :: Ash.ActionInput.t(), opts :: Keyword.t()) ::
-          {:ok, term} | {:error, Ash.Error.t()}
+          :ok | {:ok, term} | {:error, Ash.Error.t()}
   def run_action(input, opts \\ []) do
     Ash.Helpers.expect_options!(opts)
     domain = Ash.Helpers.domain!(input, opts)

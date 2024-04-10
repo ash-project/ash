@@ -14,6 +14,20 @@ end
 
 A generic action declares its arguments, return type, and implementation, as illustrated above.
 
+> ### No return? No problem! {: .tip}
+>
+> Generic actions can omit a return type, in which case running them returns `:ok` if successful.
+>
+> ```elixir
+> action :schedule_job do
+>   argument :job_name, :string, allow_nil?: false
+>   run fn input ->
+>     # Schedule the job
+>     :ok
+>   end
+> end
+> ```
+
 ## Why use generic actions?
 
 The example above could be written as a normal function in elixir, i.e
@@ -51,7 +65,7 @@ action :priority, :integer do
 end
 ```
 
-> #### Returning resource instances {: .tip}
+> #### Returning resource instances {: .info}
 >
 > It sometimes happens that you want to make a generic action which returns an
 > instance or instances of the resource. It's natural to assume that you can

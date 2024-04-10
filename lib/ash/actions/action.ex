@@ -123,8 +123,15 @@ defmodule Ash.Actions.Action do
           case authorize(domain, opts[:actor], input) do
             :ok ->
               case call_run_function(module, input, run_opts, context, false) do
+                :ok when is_nil(input.action.returns) ->
+                  :ok
+
                 {:ok, result} ->
-                  {:ok, result}
+                  if input.action.returns do
+                    {:ok, result}
+                  else
+                    :ok
+                  end
 
                 {:ok, result, notifications} ->
                   remaining = Ash.Notifier.notify(notifications)
@@ -133,7 +140,11 @@ defmodule Ash.Actions.Action do
                     resource_notifications: remaining
                   })
 
-                  {:ok, result}
+                  if input.action.returns do
+                    {:ok, result}
+                  else
+                    :ok
+                  end
 
                 {:error, error} ->
                   {:error, error}

@@ -912,7 +912,7 @@ end
 
 ## actions.action
 ```elixir
-action name, returns
+action name, returns \\ nil
 ```
 
 

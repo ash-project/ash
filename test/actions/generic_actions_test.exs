@@ -36,6 +36,10 @@ defmodule Ash.Test.Actions.GenericActionsTest do
           {:ok, "Hello #{input.arguments.name}"}
         end)
       end
+
+      action :do_nothing do
+        run fn _ -> :ok end
+      end
     end
 
     attributes do
