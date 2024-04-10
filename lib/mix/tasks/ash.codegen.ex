@@ -48,16 +48,16 @@ defmodule Mix.Tasks.Ash.Codegen do
     |> Ash.Mix.Tasks.Helpers.extensions!()
     |> Enum.map(fn extension ->
       if function_exported?(extension, :codegen, 1) do
-        name =
+        extension_name =
           if function_exported?(extension, :name, 0) do
             extension.name()
           else
             inspect(extension)
           end
 
-        Mix.shell().info("Running codegen for #{name}...")
+        Mix.shell().info("Running codegen for #{extension_name}...")
 
-        extension.codegen(argv)
+        extension.codegen(argv ++ ["--name", name])
       end
     end)
   end
