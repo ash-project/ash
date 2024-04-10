@@ -33,6 +33,7 @@ defmodule Ash.Mix.Tasks.Helpers do
     end
   end
 
+
   @doc """
   Get all domains for the current project and ensure they are compiled.
   """

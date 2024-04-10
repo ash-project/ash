@@ -7,6 +7,8 @@ defmodule Mix.Tasks.Ash.Rollback do
   @shortdoc "Runs all rollback tasks for any extension on any resource/domain in your application."
   @doc @shortdoc
   def run(argv) do
+    Mix.Task.run("compile")
+
     argv
     |> Ash.Mix.Tasks.Helpers.extensions!()
     |> Enum.map(fn extension ->
