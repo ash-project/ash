@@ -8,6 +8,7 @@ defmodule Mix.Tasks.Ash.Codegen do
   @doc @shortdoc
   def run(argv) do
     Mix.Task.run("compile")
+
     {name, argv} =
       case argv do
         ["-" <> _ | _] ->
