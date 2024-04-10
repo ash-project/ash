@@ -692,6 +692,86 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule UserFirstNameForWarranty do
+    use Ash.Resource.Calculation
+
+    @impl true
+    def load(_, _, _) do
+      [product: [user: [:first_name]]]
+    end
+
+    @impl true
+    def calculate(records, _, _) do
+      Enum.map(records, & &1.product.user.first_name)
+    end
+  end
+
+  defmodule Product do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    actions do
+      default_accept :*
+      defaults([:read, :destroy, update: :*])
+
+      create :create do
+        primary? true
+
+        accept [:name, :user_id]
+      end
+    end
+
+    ets do
+      private?(true)
+    end
+
+    attributes do
+      uuid_primary_key(:id)
+      attribute :name, :string
+    end
+
+    relationships do
+      belongs_to :user, User
+    end
+  end
+
+  defmodule Warranty do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    actions do
+      default_accept :*
+      defaults([:read, :destroy, update: :*])
+
+      create :create do
+        primary? true
+
+        accept [:expiry, :product_id]
+      end
+    end
+
+    ets do
+      private?(true)
+    end
+
+    attributes do
+      uuid_primary_key(:id)
+      attribute :expiry, :datetime
+    end
+
+    calculations do
+      calculate :user_first_name, :string, UserFirstNameForWarranty do
+        public?(true)
+      end
+    end
+
+    relationships do
+      belongs_to :product, Product
+    end
+  end
+
   setup do
     user1 =
       User
@@ -1317,5 +1397,19 @@ defmodule Ash.Test.CalculationTest do
              User
              |> Ash.Query.filter(full_name(separator: first_name) == "zachzachdaniel")
              |> Ash.read!()
+  end
+
+  test "loads private relationships", %{user1: user1} do
+    product =
+      Product
+      |> Ash.Changeset.for_create(:create, %{name: "SuperFoo3000", user_id: user1.id})
+      |> Ash.create!()
+
+    warranty =
+      Warranty
+      |> Ash.Changeset.for_create(:create, %{product_id: product.id})
+      |> Ash.create!()
+
+    assert %{user_first_name: "zach"} = Ash.load!(warranty, :user_first_name)
   end
 end
