@@ -17,6 +17,9 @@ defmodule Ash.Domain do
   ```
   """
 
+  @doc false
+  @callback domain?() :: true
+
   use Spark.Dsl,
     default_extensions: [extensions: [Ash.Domain.Dsl]],
     opt_schema: [
@@ -32,6 +35,11 @@ defmodule Ash.Domain do
   @impl Spark.Dsl
   def handle_opts(opts) do
     quote do
+      @behaviour Ash.Domain
+
+      @impl Ash.Domain
+      def domain?, do: true
+
       @persist {:simple_notifiers, unquote(opts[:simple_notifiers])}
     end
   end

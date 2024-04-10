@@ -8,8 +8,6 @@ defmodule Ash.Resource do
   @type t :: module
   @type record :: struct()
 
-  @callback domain?() :: true
-
   use Spark.Dsl,
     single_extension_kinds: [:data_layer],
     many_extension_kinds: [
@@ -114,11 +112,6 @@ defmodule Ash.Resource do
             has_domain?: Keyword.has_key?(opts, :domain),
             embed_nil_values?: opts[:embed_nil_values?]
           ] do
-      @behaviour Ash.Domain
-
-      @impl Ash.Domain
-      def domain?, do: true
-
       unless has_domain? || embedded? do
         IO.warn("""
         Configuration Error:
