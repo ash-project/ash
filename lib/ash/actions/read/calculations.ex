@@ -1352,11 +1352,31 @@ defmodule Ash.Actions.Read.Calculations do
     if strict_loads? do
       resource
       |> Ash.Query.select([])
-      |> Ash.Query.load(loads)
+      |> Ash.Query.load(apply_strict(resource, loads, strict_loads?))
     else
       resource
       |> Ash.Query.load(loads)
     end
+  end
+
+  defp apply_strict(resource, loads, strict_loads?) do
+    loads
+    |> List.wrap()
+    |> Enum.map(fn
+      {key, value} ->
+        if relationship = Ash.Resource.Info.relationship(resource, key) do
+          {key, to_loaded_query(relationship.destination, value, strict_loads?)}
+        else
+          {key, value}
+        end
+
+      key ->
+        if relationship = Ash.Resource.Info.relationship(resource, key) do
+          {key, to_loaded_query(relationship.destination, [], strict_loads?)}
+        else
+          key
+        end
+    end)
   end
 
   # Deselect fields that we know statically cannot be seen
