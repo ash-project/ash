@@ -70,8 +70,8 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       end
 
       destroy :destroy_with_after_action do
-        change after_action(fn _changeset, result ->
-                 {:ok, %{result | title: result.title <> "_stuff"}}
+        change after_action(fn changeset, result ->
+                 {:ok, %{result | title: result.title <> "_stuff", title3: changeset.action_type}}
                end)
       end
 
@@ -333,6 +333,25 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
              end)
+  end
+
+  test "action_type gets set correctly" do
+    assert %Ash.BulkResult{
+             records: [
+               %{title3: :destroy},
+               %{title3: :destroy}
+             ]
+           } =
+             Api.bulk_create!([%{title: "title"}, %{title: "title"}], Post, :create,
+               return_stream?: true,
+               return_records?: true
+             )
+             |> Stream.map(fn {:ok, result} -> result end)
+             |> Api.bulk_destroy!(:destroy_with_after_action, %{},
+               resource: Post,
+               return_records?: true,
+               return_errors?: true
+             )
   end
 
   describe "authorization" do
