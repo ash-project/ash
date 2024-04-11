@@ -217,11 +217,6 @@ jobs:
           mix-env: test
           task: ash_sqlite.migrate
         if: ${{inputs.sqlite}}
-      - uses: team-alembic/staple-actions/actions/mix-task@main
-        with:
-          mix-env: test
-          task: ash_sqlite.migrate --tenants
-        if: ${{inputs.sqlite}}
       - uses: team-alembic/staple-actions/actions/mix-test@main
         with:
           mix-env: test
