@@ -255,7 +255,7 @@ defmodule Ash.Helpers do
     if Keyword.get(opts, :page) && Keyword.get(opts, :page) != [] && !Map.get(action, :pagination) do
       {:error,
        Ash.Error.to_error_class(
-         Ash.Error.Invalid.ActionRequiresPagination.exception(resource: resource, action: action)
+         Ash.Error.Invalid.PaginationNotSupported.exception(resource: resource, action: action)
        )}
     else
       {:ok, action}
