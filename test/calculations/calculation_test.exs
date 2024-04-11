@@ -701,7 +701,11 @@ defmodule Ash.Test.CalculationTest do
     end
 
     @impl true
-    def calculate(records, _, _) do
+    def calculate(records, _, %{arguments: arguments}) do
+      if arguments.assert_strict? do
+        Enum.each(records, &assert(%Ash.NotLoaded{} = &1.product.user.last_name))
+      end
+
       Enum.map(records, & &1.product.user.first_name)
     end
   end
@@ -763,6 +767,7 @@ defmodule Ash.Test.CalculationTest do
 
     calculations do
       calculate :user_first_name, :string, UserFirstNameForWarranty do
+        argument :assert_strict?, :boolean, default: false
         public?(true)
       end
     end
@@ -1411,5 +1416,19 @@ defmodule Ash.Test.CalculationTest do
       |> Ash.create!()
 
     assert %{user_first_name: "zach"} = Ash.load!(warranty, :user_first_name)
+  end
+
+  test "applies strict_loads? also to nested relationships", %{user1: user1} do
+    product =
+      Product
+      |> Ash.Changeset.for_create(:create, %{name: "SuperFoo3000", user_id: user1.id})
+      |> Ash.create!()
+
+    warranty =
+      Warranty
+      |> Ash.Changeset.for_create(:create, %{product_id: product.id})
+      |> Ash.create!()
+
+    Ash.load!(warranty, user_first_name: [assert_strict?: true])
   end
 end
