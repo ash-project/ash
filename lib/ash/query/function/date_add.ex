@@ -16,7 +16,7 @@ defmodule Ash.Query.Function.DateAdd do
 
   def evaluate(%{arguments: [date, factor, interval]}) do
     with {:ok, datetime} <- DateTime.new(date, @beginning_of_day),
-         shifted <- Ash.Query.Function.Ago.datetime_add(datetime, -factor, interval),
+         shifted <- Ash.Query.Function.Ago.datetime_add(datetime, factor, interval),
          truncated <- DateTime.to_date(shifted) do
       {:known, truncated}
     end
