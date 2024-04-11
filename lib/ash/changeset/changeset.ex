@@ -1436,7 +1436,7 @@ defmodule Ash.Changeset do
   def prepare_changeset_for_action(changeset, action, opts) do
     changeset
     |> Map.put(:action, action)
-    |> Map.put(:action_type, action.type || :update)
+    |> Map.put(:action_type, action.type)
     |> reset_arguments()
     |> handle_errors(action.error_handler)
     |> set_actor(opts)
