@@ -5,6 +5,29 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.19](https://github.com/ash-project/ash/compare/v3.0.0-rc.18...v3.0.0-rc.19) (2024-04-11)
+
+
+
+
+### Bug Fixes:
+
+* properly load depended on fields for relationships even if `public?: false`
+
+* fix date_add query function (#1010)
+
+* pass name through to underlying tasks
+
+* Validate all conditions in a `numericality` validation instead of only the last (#997)
+
+### Improvements:
+
+* support builder options in `read` code interfaces
+
+* support omitting generic action return types
+
+* call ToTenant protocol when setting tenant in actions (#1004)
+
 ## [v3.0.0-rc.18](https://github.com/ash-project/ash/compare/v3.0.0-rc.17...v3.0.0-rc.18) (2024-04-10)
 
 
