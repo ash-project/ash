@@ -473,7 +473,7 @@ defmodule Ash.Actions.Read do
 
   defp source_fields(query) do
     query
-    |> Ash.Query.accessing([:relationships])
+    |> Ash.Query.accessing([:relationships], false)
     |> Enum.flat_map(fn name ->
       case Ash.Resource.Info.relationship(query.resource, name) do
         %{no_attributes?: true} ->

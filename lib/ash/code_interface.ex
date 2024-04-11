@@ -588,7 +588,6 @@ defmodule Ash.CodeInterface do
                       require Ash.Query
                       {filters, params} = Map.split(params, unquote(filter_keys))
 
-
                       query
                       |> Ash.Query.for_read(unquote(action.name), params, query_opts)
                       |> Ash.Query.filter(filters)
@@ -641,7 +640,6 @@ defmodule Ash.CodeInterface do
                   end
                 else
                   quote do
-
                     if opts[:stream?] do
                       Ash.stream!(query, Keyword.drop(opts, [:stream?, :stream_options]))
                     else

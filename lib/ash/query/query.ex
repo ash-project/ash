@@ -996,10 +996,20 @@ defmodule Ash.Query do
 
   Provide a list of field types to narrow down the returned results.
   """
-  def accessing(query, types \\ [:attributes, :relationships, :calculations, :aggregates]) do
+  def accessing(
+        query,
+        types \\ [:attributes, :relationships, :calculations, :aggregates],
+        only_public? \\ true
+      ) do
     query.resource
     |> Ash.Resource.Info.fields(types)
-    |> Stream.filter(& &1.public?)
+    |> then(fn fields ->
+      if only_public? do
+        Stream.filter(fields, & &1.public?)
+      else
+        fields
+      end
+    end)
     |> Stream.map(& &1.name)
     |> Enum.filter(&loading?(query, &1))
   end
