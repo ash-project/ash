@@ -29,12 +29,6 @@ If a Project resource has_many Ticket resources, an example of an aggregate on t
 
 See the [Aggregates guide](/documentation/topics/resources/aggregates.md) for more.
 
-## Domain
-
-A method of broadly separating resources into different [domains](<https://en.wikipedia.org/wiki/Domain_(software_engineering)>), A.K.A [bounded contexts](https://martinfowler.com/bliki/BoundedContext.html).
-
-See the [Domains guide](/documentation/topics/domains.md) for more.
-
 ## Attribute
 
 A piece of data belonging to a resource. The most basic building block; an attribute has a type and a value. For resources backed by a data layer, they typically represent a column in a database table, or a key in an object store, for example.
@@ -58,6 +52,12 @@ See the [Calculations guide](/documentation/topics/resources/calculations.md) fo
 Changesets encapsulate data changes made while creating or updating an instance of a resource. Similarly to [Ecto changesets](https://hexdocs.pm/ecto/Ecto.Changeset.html), they include data validations but they also have their own callback hook lifecycle.
 
 See `Ash.Changeset` for more.
+
+## Domain
+
+A method of broadly separating resources into different [domains](https://en.wikipedia.org/wiki/Domain_(software_engineering)), A.K.A [bounded contexts](https://martinfowler.com/bliki/BoundedContext.html).
+
+See the [Domains guide](/documentation/topics/domains.md) for more.
 
 ## Extension
 
