@@ -1503,7 +1503,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                     return_records?:
                       opts[:return_records?] || must_return_records? ||
                         must_return_records_for_changes?,
-                    tenant: opts[:tenant]
+                    tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
                   })
                   |> Enum.flat_map(fn
                     {:ok, result} ->

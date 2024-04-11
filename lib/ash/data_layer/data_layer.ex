@@ -416,6 +416,7 @@ defmodule Ash.DataLayer do
   @spec update(Ash.Resource.t(), Ash.Changeset.t()) ::
           {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
   def update(resource, changeset) do
+    changeset = %{changeset | tenant: changeset.to_tenant}
     Ash.DataLayer.data_layer(resource).update(resource, changeset)
   end
 
@@ -425,6 +426,8 @@ defmodule Ash.DataLayer do
           | {:error, Ash.Error.t()}
           | {:error, :no_rollback, Ash.Error.t()}
   def update_query(query, changeset, opts) do
+    changeset = %{changeset | tenant: changeset.to_tenant}
+
     Ash.DataLayer.data_layer(changeset.resource).update_query(
       query,
       changeset,
@@ -439,6 +442,8 @@ defmodule Ash.DataLayer do
           | {:error, Ash.Error.t()}
           | {:error, :no_rollback, Ash.Error.t()}
   def destroy_query(query, changeset, opts) do
+    changeset = %{changeset | tenant: changeset.to_tenant}
+
     Ash.DataLayer.data_layer(changeset.resource).destroy_query(
       query,
       changeset,
@@ -450,6 +455,7 @@ defmodule Ash.DataLayer do
   @spec create(Ash.Resource.t(), Ash.Changeset.t()) ::
           {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
   def create(resource, changeset) do
+    changeset = %{changeset | tenant: changeset.to_tenant}
     Ash.DataLayer.data_layer(resource).create(resource, changeset)
   end
 
@@ -481,6 +487,8 @@ defmodule Ash.DataLayer do
   @spec destroy(Ash.Resource.t(), Ash.Changeset.t()) ::
           :ok | {:error, term} | {:error, :no_rollback, term}
   def destroy(resource, changeset) do
+    changeset = %{changeset | tenant: changeset.to_tenant}
+
     Ash.DataLayer.data_layer(resource).destroy(resource, changeset)
   end
 
@@ -500,13 +508,14 @@ defmodule Ash.DataLayer do
   @spec set_tenant(Ash.Resource.t(), data_layer_query(), String.t()) ::
           {:ok, data_layer_query()} | {:error, term}
   def set_tenant(resource, query, term) do
-    term = Ash.ToTenant.to_tenant(term, resource)
     Ash.DataLayer.data_layer(resource).set_tenant(resource, query, term)
   end
 
   @spec upsert(Ash.Resource.t(), Ash.Changeset.t(), list(atom)) ::
           {:ok, Ash.Resource.record()} | {:error, term}
   def upsert(resource, changeset, keys) do
+    changeset = %{changeset | tenant: changeset.to_tenant}
+
     Ash.DataLayer.data_layer(resource).upsert(resource, changeset, keys)
   end
 

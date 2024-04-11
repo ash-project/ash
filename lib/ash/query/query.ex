@@ -38,6 +38,7 @@ defmodule Ash.Query do
     :tenant,
     :timeout,
     :lock,
+    :to_tenant,
     sort_input_indices: [],
     around_transaction: [],
     invalid_keys: MapSet.new(),
@@ -165,7 +166,7 @@ defmodule Ash.Query do
         "#Ash.Query<",
         [
           concat("resource: ", inspect(query.resource)),
-          or_empty(concat("tenant: ", to_doc(query.tenant, opts)), tenant?),
+          or_empty(concat("tenant: ", to_doc(query.to_tenant, opts)), tenant?),
           arguments(query, opts),
           or_empty(concat("filter: ", to_doc(query.filter, opts)), filter?),
           or_empty(concat("sort: ", to_doc(query.sort, opts)), sort?),
@@ -1919,7 +1920,7 @@ defmodule Ash.Query do
   @spec set_tenant(t() | Ash.Resource.t(), Ash.ToTenant.t()) :: t()
   def set_tenant(query, tenant) do
     query = new(query)
-    %{query | tenant: tenant}
+    %{query | tenant: tenant, to_tenant: Ash.ToTenant.to_tenant(tenant, query.resource)}
   end
 
   @doc "Removes a field from the list of fields to load"
@@ -2871,8 +2872,8 @@ defmodule Ash.Query do
 
   defp add_tenant(query, ash_query) do
     with :context <- Ash.Resource.Info.multitenancy_strategy(ash_query.resource),
-         tenant when not is_nil(tenant) <- ash_query.tenant,
-         {:ok, query} <- Ash.DataLayer.set_tenant(ash_query.resource, query, tenant) do
+         tenant when not is_nil(tenant) <- ash_query.to_tenant,
+         {:ok, query} <- Ash.DataLayer.set_tenant(ash_query.resource, query, ash_query.to_tenant) do
       {:ok, query}
     else
       {:error, error} -> {:error, error}

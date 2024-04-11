@@ -47,6 +47,7 @@ defmodule Ash.Changeset do
     :handle_errors,
     :resource,
     :tenant,
+    :to_tenant,
     :timeout,
     invalid_keys: MapSet.new(),
     filter: nil,
@@ -104,7 +105,7 @@ defmodule Ash.Changeset do
         if changeset.tenant do
           concat(
             "tenant: ",
-            to_doc(Ash.ToTenant.to_tenant(changeset.tenant, changeset.resource), opts)
+            to_doc(changeset.to_tenant, opts)
           )
         else
           empty()
@@ -3366,7 +3367,7 @@ defmodule Ash.Changeset do
 
   @spec set_tenant(t(), Ash.ToTenant.t()) :: t()
   def set_tenant(changeset, tenant) do
-    %{changeset | tenant: tenant}
+    %{changeset | tenant: tenant, to_tenant: Ash.ToTenant.to_tenant(tenant, changeset.resource)}
   end
 
   @spec timeout(t(), nil | pos_integer, nil | pos_integer) :: t()

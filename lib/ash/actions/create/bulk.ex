@@ -1023,7 +1023,9 @@ defmodule Ash.Actions.Create.Bulk do
                 if data_layer_can_bulk? do
                   Ash.DataLayer.bulk_create(
                     resource,
-                    batch,
+                    Stream.map(batch, fn changeset ->
+                      %{changeset | tenant: changeset.to_tenant}
+                    end),
                     %{
                       select: opts[:select],
                       batch_size: opts[:batch_size],
@@ -1037,7 +1039,7 @@ defmodule Ash.Actions.Create.Bulk do
                           opts[:upsert_fields] || action.upsert_fields,
                           resource
                         ),
-                      tenant: opts[:tenant]
+                      tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
                     }
                   )
                   |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)

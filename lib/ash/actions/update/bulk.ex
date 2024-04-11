@@ -1610,7 +1610,7 @@ defmodule Ash.Actions.Update.Bulk do
                       return_records?:
                         opts[:return_records?] || must_return_records? ||
                           must_return_records_for_changes?,
-                      tenant: opts[:tenant]
+                      tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
                     )
                   ])
                   |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
