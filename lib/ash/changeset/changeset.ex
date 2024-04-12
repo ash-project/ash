@@ -1044,7 +1044,7 @@ defmodule Ash.Changeset do
     context: [
       type: :map,
       doc:
-        "set context, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
+        "Context to set on the query, changeset, or input""
     ]
   ]
 
