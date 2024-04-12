@@ -1043,8 +1043,7 @@ defmodule Ash.Changeset do
     ],
     context: [
       type: :map,
-      doc:
-        "Context to set on the query, changeset, or input""
+      doc: "Context to set on the query, changeset, or input"
     ]
   ]
 
