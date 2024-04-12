@@ -112,18 +112,29 @@ defmodule Ash.Resource do
             has_domain?: Keyword.has_key?(opts, :domain),
             embed_nil_values?: opts[:embed_nil_values?]
           ] do
-      unless has_domain? || embedded? do
-        IO.warn("""
-        Configuration Error:
+      cond do
+        embedded? && has_domain? ->
+          raise """
+          Configuration Error in #{inspect(__MODULE__)}:
 
-        `domain` option missing for #{inspect(__MODULE__)}
+          `domain` option must not be specified for embedded resource.
+          """
 
-        If you wish to make a resource compatible with multiple domains, set the domain to `nil` explicitly.
+        embedded? || has_domain? ->
+          :ok
 
-        Example configuration:
+        true ->
+          IO.warn("""
+          Configuration Error:
 
-        use Ash.Resource, #{String.trim_trailing(String.trim_leading(inspect([{:domain, YourDomain} | opts], pretty: true), "["), "]")}
-        """)
+          `domain` option missing for #{inspect(__MODULE__)}
+
+          If you wish to make a resource compatible with multiple domains, set the domain to `nil` explicitly.
+
+          Example configuration:
+
+          use Ash.Resource, #{String.trim_trailing(String.trim_leading(inspect([{:domain, YourDomain} | opts], pretty: true), "["), "]")}
+          """)
       end
 
       if domain do

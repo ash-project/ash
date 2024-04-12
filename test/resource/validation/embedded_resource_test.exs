@@ -34,7 +34,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   end
 
   defmodule SubSubEmbeddedResource do
-    use Ash.Resource, domain: Domain, data_layer: :embedded
+    use Ash.Resource, data_layer: :embedded
 
     attributes do
       uuid_primary_key :id
@@ -59,7 +59,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   end
 
   defmodule SubEmbeddedResource do
-    use Ash.Resource, domain: Domain, data_layer: :embedded
+    use Ash.Resource, data_layer: :embedded
 
     attributes do
       uuid_primary_key :id
@@ -85,7 +85,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
   end
 
   defmodule EmbeddedResource do
-    use Ash.Resource, domain: Domain, data_layer: :embedded
+    use Ash.Resource, data_layer: :embedded
 
     attributes do
       uuid_primary_key :id

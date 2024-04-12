@@ -348,7 +348,7 @@ defmodule Ash.Test.CalculationTest do
   end
 
   defmodule Bio do
-    use Ash.Resource, domain: Domain, data_layer: :embedded
+    use Ash.Resource, data_layer: :embedded
 
     attributes do
       attribute :greeting, :string do
