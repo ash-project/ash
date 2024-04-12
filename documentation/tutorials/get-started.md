@@ -241,7 +241,7 @@ attributes do
 end
 ```
 
-And then replace the `:create` action with `:open`, and accept `:ubject` as input.
+And then replace the `:create` action with `:open`, and accept `:subject` as input.
 
 ```elixir
 # lib/helpdesk/support/ticket.ex
