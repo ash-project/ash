@@ -20,7 +20,9 @@ defmodule Ash.Test.CodeInterfaceTest do
       define :create, args: [{:optional, :first_name}]
       define :hello, args: [:name]
 
+      define :bulk_create, action: :create
       define :update, action: :update
+      define :destroy, action: :destroy
 
       define_calculation(:full_name, args: [:first_name, :last_name])
 
@@ -42,6 +44,8 @@ defmodule Ash.Test.CodeInterfaceTest do
       create :create
 
       update :update
+
+      destroy :destroy
 
       read :by_id do
         argument :id, :uuid, allow_nil?: false
@@ -90,6 +94,8 @@ defmodule Ash.Test.CodeInterfaceTest do
       end
     end
   end
+
+  @context %{test: "value"}
 
   describe "generic actions" do
     test "can be invoked" do
@@ -148,6 +154,14 @@ defmodule Ash.Test.CodeInterfaceTest do
         User.get_user_safely!(Ash.UUID.generate(), not_found_error?: true)
       end
     end
+
+    test "can take a @context options" do
+      assert {:ok, nil} ==
+               User.get_user(Ash.UUID.generate(), not_found_error?: false, context: @context)
+
+      assert nil ==
+               User.get_user!(Ash.UUID.generate(), not_found_error?: false, context: @context)
+    end
   end
 
   describe "create actions" do
@@ -164,6 +178,78 @@ defmodule Ash.Test.CodeInterfaceTest do
       assert {:ok, true} == User.can_create(nil, "bob")
       assert User.can_create?(nil)
       assert User.can_create?(nil, "bob")
+    end
+
+    test "can take a @context options" do
+      assert {:ok, _record} = User.create("bob", context: @context)
+      assert _record = User.create!("bob", context: @context)
+    end
+
+    test "bulk_create can take a @context options" do
+      assert %Ash.BulkResult{status: :success} =
+               User.bulk_create([%{first_name: "bob"}, %{first_name: "other_bob"}],
+                 context: @context
+               )
+    end
+  end
+
+  describe "update actions" do
+    test "have a helper methods to produce changeset" do
+      bob = User.create!("bob", context: @context)
+
+      assert %Ash.Changeset{action: %{name: :update}, attributes: %{first_name: "fred"}} =
+               User.changeset_to_update(bob, %{first_name: "fred"})
+    end
+
+    test "can take a @context options" do
+      bob = User.create!("bob", context: @context)
+
+      assert {:ok, _record} = User.update(bob, %{first_name: "bob_updated"}, context: @context)
+      assert _record = User.update!(bob, %{first_name: "bob_updated"}, context: @context)
+    end
+
+    test "bulk update can take a @context options" do
+      bob1 = User.create!("bob", context: @context)
+      bob2 = User.create!("bob", context: @context)
+
+      assert %Ash.BulkResult{status: :success} =
+               User.update([bob1, bob2], %{first_name: "other_bob"}, context: @context)
+
+      assert result =
+               User.update!([bob1, bob2], %{first_name: "different_bob"},
+                 context: @context,
+                 bulk_options: [return_records?: true]
+               )
+
+      Enum.map(result.records, &assert(&1.first_name == "different_bob"))
+    end
+  end
+
+  describe "destroy actions" do
+    test "have a helper methods to produce changeset" do
+      bob = User.create!("bob", context: @context)
+
+      assert %Ash.Changeset{action: %{name: :destroy}} = User.changeset_to_destroy(bob)
+    end
+
+    test "can take a @context options" do
+      bob1 = User.create!("bob", context: @context)
+      bob2 = User.create!("bob", context: @context)
+
+      assert :ok = User.destroy(bob1, context: @context)
+      assert :ok = User.destroy!(bob2, context: @context)
+    end
+
+    test "bulk destroy can take a @context options" do
+      bob1 = User.create!("bob", context: @context)
+      bob2 = User.create!("bob", context: @context)
+
+      assert %Ash.BulkResult{status: :success} = User.destroy([bob1, bob2], context: @context)
+
+      bob3 = User.create!("bob", context: @context)
+      bob4 = User.create!("bob", context: @context)
+
+      assert %Ash.BulkResult{status: :success} = User.destroy!([bob3, bob4], context: @context)
     end
   end
 

@@ -564,7 +564,9 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {query_opts, opts} =
-                    Keyword.split(opts, [:query, :actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [:query, :actor, :tenant, :authorize?, :tracer, :context])
+
+                  {context, query_opts} = Keyword.pop(query_opts, :context, %{})
 
                   {query, query_opts} = Keyword.pop(query_opts, :query)
 
@@ -591,8 +593,10 @@ defmodule Ash.CodeInterface do
                       query
                       |> Ash.Query.for_read(unquote(action.name), params, query_opts)
                       |> Ash.Query.filter(filters)
+                      |> Ash.Query.set_context(context)
                     else
                       Ash.Query.for_read(query, unquote(action.name), params, query_opts)
+                      |> Ash.Query.set_context(context)
                     end
                 end
 
@@ -658,7 +662,16 @@ defmodule Ash.CodeInterface do
                   {changeset, opts} = Keyword.pop(opts, :changeset)
 
                   {changeset_opts, opts} =
-                    Keyword.split(opts, [:changeset, :actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [
+                      :context,
+                      :changeset,
+                      :actor,
+                      :tenant,
+                      :authorize?,
+                      :tracer
+                    ])
+
+                  {context, changeset_opts} = Keyword.pop(changeset_opts, :context, %{})
 
                   changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
@@ -685,6 +698,7 @@ defmodule Ash.CodeInterface do
                           changeset
                       end
                       |> Ash.Changeset.for_create(unquote(action.name), params, changeset_opts)
+                      |> Ash.Changeset.set_context(context)
                     end
                 end
 
@@ -696,10 +710,11 @@ defmodule Ash.CodeInterface do
                         opts
                         |> Keyword.delete(:bulk_options)
                         |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
+                        |> Keyword.put(:context, context)
                         |> Enum.concat(changeset_opts)
 
                       Ash.bulk_create(
-                        Stream.map(inputs, &Map.merge(&1, params)),
+                        inputs,
                         unquote(resource),
                         unquote(action.name),
                         bulk_opts
@@ -718,6 +733,7 @@ defmodule Ash.CodeInterface do
                         opts
                         |> Keyword.delete(:bulk_options)
                         |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
+                        |> Keyword.put(:context, context)
                         |> Enum.concat(changeset_opts)
 
                       Ash.bulk_create!(
@@ -741,7 +757,9 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {changeset_opts, opts} =
-                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
+
+                  {context, changeset_opts} = Keyword.pop(changeset_opts, :context, %{})
 
                   changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
@@ -755,6 +773,7 @@ defmodule Ash.CodeInterface do
                           params,
                           changeset_opts
                         )
+                        |> Ash.Changeset.set_context(context)
 
                       %Ash.Changeset{resource: other_resource} ->
                         raise ArgumentError,
@@ -771,6 +790,7 @@ defmodule Ash.CodeInterface do
                           params,
                           changeset_opts
                         )
+                        |> Ash.Changeset.set_context(context)
 
                       %Ash.Query{} = query ->
                         {:atomic, :query, query}
@@ -800,6 +820,7 @@ defmodule Ash.CodeInterface do
                         opts
                         |> Keyword.delete(:bulk_options)
                         |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
+                        |> Keyword.put(:context, context)
                         |> Enum.concat(changeset_opts)
                         |> then(fn bulk_opts ->
                           if method == :id do
@@ -852,6 +873,7 @@ defmodule Ash.CodeInterface do
                         opts
                         |> Keyword.delete(:bulk_options)
                         |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
+                        |> Keyword.put(:context, context)
                         |> Enum.concat(changeset_opts)
                         |> then(fn bulk_opts ->
                           if method == :id do
@@ -901,7 +923,9 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {changeset_opts, opts} =
-                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
+
+                  {context, changeset_opts} = Keyword.pop(changeset_opts, :context, %{})
 
                   changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
@@ -915,6 +939,7 @@ defmodule Ash.CodeInterface do
                           params,
                           changeset_opts
                         )
+                        |> Ash.Changeset.set_context(context)
 
                       %Ash.Changeset{resource: other_resource} ->
                         raise ArgumentError,
@@ -931,6 +956,7 @@ defmodule Ash.CodeInterface do
                           params,
                           changeset_opts
                         )
+                        |> Ash.Changeset.set_context(context)
 
                       %Ash.Query{} = query ->
                         {:atomic, :query, query}
@@ -960,6 +986,7 @@ defmodule Ash.CodeInterface do
                         opts
                         |> Keyword.drop([:bulk_options, :return_destroyed?])
                         |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
+                        |> Keyword.put(:context, context)
                         |> Enum.concat(changeset_opts)
                         |> then(fn bulk_opts ->
                           if method == :id do
@@ -1017,6 +1044,7 @@ defmodule Ash.CodeInterface do
                         opts
                         |> Keyword.drop([:bulk_options, :return_destroyed?])
                         |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
+                        |> Keyword.put(:context, context)
                         |> Enum.concat(changeset_opts)
                         |> then(fn bulk_opts ->
                           if method == :id do
