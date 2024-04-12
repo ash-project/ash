@@ -1031,7 +1031,7 @@ defmodule Ash.Changeset do
       type: {:wrap_list, {:behaviour, Ash.Tracer}},
       doc:
         "A tracer to use. Will be carried over to the action. For more information see `Ash.Tracer`."
-    ]
+    ],
     tenant: [
       type: {:protocol, Ash.ToTenant},
       doc: "set the tenant on the changeset"
