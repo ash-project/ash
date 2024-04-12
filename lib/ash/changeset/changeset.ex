@@ -1040,6 +1040,10 @@ defmodule Ash.Changeset do
       type: {:list, {:or, [:atom, :string]}},
       doc:
         "A list of inputs that, if provided, will be ignored if they are not recognized by the action."
+    ],
+    context: [
+      type: :map,
+      doc: "Context to set on the query, changeset, or input"
     ]
   ]
 

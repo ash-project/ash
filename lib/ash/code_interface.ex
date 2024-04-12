@@ -564,7 +564,7 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {query_opts, opts} =
-                    Keyword.split(opts, [:query, :actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [:query, :actor, :tenant, :authorize?, :tracer, :context])
 
                   {query, query_opts} = Keyword.pop(query_opts, :query)
 
@@ -658,7 +658,7 @@ defmodule Ash.CodeInterface do
                   {changeset, opts} = Keyword.pop(opts, :changeset)
 
                   {changeset_opts, opts} =
-                    Keyword.split(opts, [:changeset, :actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
 
                   changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
@@ -699,7 +699,7 @@ defmodule Ash.CodeInterface do
                         |> Enum.concat(changeset_opts)
 
                       Ash.bulk_create(
-                        Stream.map(inputs, &Map.merge(&1, params)),
+                        inputs,
                         unquote(resource),
                         unquote(action.name),
                         bulk_opts
@@ -741,7 +741,7 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {changeset_opts, opts} =
-                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
 
                   changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
@@ -901,7 +901,7 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {changeset_opts, opts} =
-                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
 
                   changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
