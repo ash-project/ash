@@ -72,6 +72,13 @@ defmodule Ash.Actions.Helpers do
       end
 
     opts =
+      if tenant = query_or_changeset.tenant do
+        Keyword.put_new(opts, :tenant, tenant)
+      else
+        opts
+      end
+
+    opts =
       case query_or_changeset.context do
         %{
           private: %{
