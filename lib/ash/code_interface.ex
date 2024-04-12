@@ -453,7 +453,9 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {input_opts, opts} =
-                    Keyword.split(opts, [:input, :actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [:input, :actor, :tenant, :authorize?, :tracer, :context])
+
+                  {context, input_opts} = Keyword.pop(input_opts, :context, %{})
 
                   {input, input_opts} = Keyword.pop(input_opts, :input)
 
@@ -461,6 +463,7 @@ defmodule Ash.CodeInterface do
                     input
                     |> Kernel.||(unquote(resource))
                     |> Ash.ActionInput.for_action(unquote(action.name), params, input_opts)
+                    |> Ash.ActionInput.set_context(context)
                 end
 
               act = quote do: unquote(api).run_action(input, opts)
@@ -474,7 +477,9 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {query_opts, opts} =
-                    Keyword.split(opts, [:query, :actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [:query, :actor, :tenant, :authorize?, :tracer, :context])
+
+                  {context, query_opts} = Keyword.pop(query_opts, :context, %{})
 
                   {query, query_opts} = Keyword.pop(query_opts, :query)
 
@@ -487,10 +492,12 @@ defmodule Ash.CodeInterface do
                       |> Kernel.||(unquote(resource))
                       |> Ash.Query.for_read(unquote(action.name), params, query_opts)
                       |> Ash.Query.filter(filters)
+                      |> Ash.Query.set_context(context)
                     else
                       query
                       |> Kernel.||(unquote(resource))
                       |> Ash.Query.for_read(unquote(action.name), params, query_opts)
+                      |> Ash.Query.set_context(context)
                     end
                 end
 
@@ -548,14 +555,23 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {changeset_opts, opts} =
-                    Keyword.split(opts, [:changeset, :actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [
+                      :context,
+                      :changeset,
+                      :actor,
+                      :tenant,
+                      :authorize?,
+                      :tracer
+                    ])
 
                   {changeset, changeset_opts} = Keyword.pop(changeset_opts, :changeset)
+                  {context, changeset_opts} = Keyword.pop(changeset_opts, :context, %{})
 
                   changeset =
                     changeset
                     |> Kernel.||(unquote(resource))
                     |> Ash.Changeset.for_create(unquote(action.name), params, changeset_opts)
+                    |> Ash.Changeset.set_context(context)
                 end
 
               act = quote do: unquote(api).create(changeset, opts)
@@ -570,11 +586,14 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {changeset_opts, opts} =
-                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
+
+                  {context, changeset_opts} = Keyword.pop(changeset_opts, :context, %{})
 
                   changeset =
                     record
                     |> Ash.Changeset.for_update(unquote(action.name), params, changeset_opts)
+                    |> Ash.Changeset.set_context(context)
                 end
 
               act = quote do: unquote(api).update(changeset, opts)
@@ -589,11 +608,14 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {changeset_opts, opts} =
-                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
+
+                  {context, changeset_opts} = Keyword.pop(changeset_opts, :context, %{})
 
                   changeset =
                     record
                     |> Ash.Changeset.for_destroy(unquote(action.name), params, changeset_opts)
+                    |> Ash.Changeset.set_context(context)
                 end
 
               act = quote do: unquote(api).destroy(changeset, opts)
