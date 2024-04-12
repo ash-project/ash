@@ -1027,16 +1027,11 @@ defmodule Ash.Changeset do
       doc:
         "set authorize?, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
     ],
-    context: [
-      type: :map,
-      doc:
-        "set context, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
-    ],
     tracer: [
       type: {:wrap_list, {:behaviour, Ash.Tracer}},
       doc:
         "A tracer to use. Will be carried over to the action. For more information see `Ash.Tracer`."
-    ],
+    ]
     tenant: [
       type: {:protocol, Ash.ToTenant},
       doc: "set the tenant on the changeset"
@@ -1045,6 +1040,11 @@ defmodule Ash.Changeset do
       type: {:list, {:or, [:atom, :string]}},
       doc:
         "A list of inputs that, if provided, will be ignored if they are not recognized by the action."
+    ],
+    context: [
+      type: :map,
+      doc:
+        "set context, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
     ]
   ]
 
