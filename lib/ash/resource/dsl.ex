@@ -210,7 +210,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    no_depend_modules: [:destination, :manual],
+    no_depend_modules: [:destination, :manual, :domain],
     target: Ash.Resource.Relationships.HasOne,
     schema: Ash.Resource.Relationships.HasOne.opt_schema(),
     transform: {Ash.Resource.Relationships.HasOne, :transform, []},
@@ -237,7 +237,7 @@ defmodule Ash.Resource.Dsl do
       """
     ],
     target: Ash.Resource.Relationships.HasMany,
-    no_depend_modules: [:destination, :manual],
+    no_depend_modules: [:destination, :manual, :domain],
     schema: Ash.Resource.Relationships.HasMany.opt_schema(),
     args: [:name, :destination],
     transform: {Ash.Resource.Relationships.HasMany, :transform, []},
@@ -271,7 +271,7 @@ defmodule Ash.Resource.Dsl do
       belongs_to :word, Word, primary_key?: true, allow_nil?: false
       """
     ],
-    no_depend_modules: [:destination, :through],
+    no_depend_modules: [:destination, :through, :domain],
     target: Ash.Resource.Relationships.ManyToMany,
     schema: Ash.Resource.Relationships.ManyToMany.opt_schema(),
     transform: {Ash.Resource.Relationships.ManyToMany, :transform, []},
@@ -299,7 +299,7 @@ defmodule Ash.Resource.Dsl do
       end
       """
     ],
-    no_depend_modules: [:destination],
+    no_depend_modules: [:destination, :domain],
     target: Ash.Resource.Relationships.BelongsTo,
     schema: Ash.Resource.Relationships.BelongsTo.opt_schema(),
     transform: {Ash.Resource.Relationships.BelongsTo, :transform, []},

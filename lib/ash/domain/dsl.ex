@@ -126,7 +126,7 @@ defmodule Ash.Domain.Dsl do
       definitions: [@define, @define_calculation]
     ],
     args: [:resource],
-    no_depend_modules: [:resource],
+    modules: [:resource],
     schema: [
       resource: [
         type: {:spark, Ash.Resource},
