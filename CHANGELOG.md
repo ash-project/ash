@@ -5,6 +5,41 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.21.11](https://github.com/ash-project/ash/compare/v2.21.10...v2.21.11) (2024-04-12)
+
+
+
+
+### Bug Fixes:
+
+* properly set tenant on aggregate query
+
+* properly set action_type when preparing changesets (#1012)
+
+* types: can and can? types were only addressing create when using the tuple method, the code also accepts the record for update & destroy
+
+* allow strings in Ash.Type.Enum again
+
+* set tenant in bulk creates after setting up changeset
+
+* properly cast identity keys before comparison
+
+* properly handle lists of errors added by validations
+
+* honor only_when_valid? in bulk actions
+
+* policy ending with authorize_unless had flipped conditional
+
+* properly handle transaction errors from bulk creates
+
+### Improvements:
+
+* support `allow_nil_input` dsl option in update/destroy (#965)
+
+* allow simple check to return error tuple (#958)
+
+* ensure that update defaults are set
+
 ## [v2.21.10](https://github.com/ash-project/ash/compare/v2.21.9...v2.21.10) (2024-04-10)
 
 
