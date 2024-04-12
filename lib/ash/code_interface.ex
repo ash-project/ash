@@ -453,7 +453,7 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {input_opts, opts} =
-                    Keyword.split(opts, [:input, :actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [:input, :actor, :tenant, :authorize?, :tracer, :context])
 
                   {input, input_opts} = Keyword.pop(input_opts, :input)
 
@@ -474,7 +474,7 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {query_opts, opts} =
-                    Keyword.split(opts, [:query, :actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [:query, :actor, :tenant, :authorize?, :tracer, :context])
 
                   {query, query_opts} = Keyword.pop(query_opts, :query)
 
@@ -548,7 +548,14 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {changeset_opts, opts} =
-                    Keyword.split(opts, [:changeset, :actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [
+                      :changeset,
+                      :actor,
+                      :tenant,
+                      :authorize?,
+                      :tracer,
+                      :context
+                    ])
 
                   {changeset, changeset_opts} = Keyword.pop(changeset_opts, :changeset)
 
@@ -570,7 +577,7 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {changeset_opts, opts} =
-                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
 
                   changeset =
                     record
@@ -589,7 +596,7 @@ defmodule Ash.CodeInterface do
               resolve_subject =
                 quote do
                   {changeset_opts, opts} =
-                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer])
+                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
 
                   changeset =
                     record

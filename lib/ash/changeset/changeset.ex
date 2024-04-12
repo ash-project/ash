@@ -970,6 +970,10 @@ defmodule Ash.Changeset do
     tenant: [
       type: :any,
       doc: "set the tenant on the changeset"
+    ],
+    context: [
+      type: :map,
+      doc: "Context to set on the query, changeset, or input"
     ]
   ]
 
