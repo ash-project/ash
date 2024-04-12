@@ -47,10 +47,6 @@ defmodule Ash do
       doc:
         "If an actor option is provided (even if it is `nil`), authorization happens automatically. If not, this flag can be used to authorize with no user."
     ],
-    context: [
-      type: :map,
-      doc: "Context to set on the query, changeset, or input"
-    ],
     tenant: [
       type: {:protocol, Ash.ToTenant},
       doc: "A tenant to set on the query or changeset"
@@ -59,6 +55,10 @@ defmodule Ash do
       type: :any,
       doc:
         "If an actor is provided, it will be used in conjunction with the authorizers of a resource to authorize access"
+    ],
+    context: [
+      type: :map,
+      doc: "Context to set on the query, changeset, or input"
     ]
   ]
 

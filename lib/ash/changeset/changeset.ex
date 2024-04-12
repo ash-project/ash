@@ -1027,6 +1027,11 @@ defmodule Ash.Changeset do
       doc:
         "set authorize?, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
     ],
+    context: [
+      type: :map,
+      doc:
+        "set context, which can be used in any `Ash.Resource.Change`s configured on the action. (in the `context` argument)"
+    ],
     tracer: [
       type: {:wrap_list, {:behaviour, Ash.Tracer}},
       doc:
