@@ -659,12 +659,12 @@ defmodule Ash.CodeInterface do
 
                   {changeset_opts, opts} =
                     Keyword.split(opts, [
-                      :context,
                       :changeset,
                       :actor,
                       :tenant,
                       :authorize?,
-                      :tracer
+                      :tracer,
+                      :context
                     ])
 
                   changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
