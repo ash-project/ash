@@ -4899,6 +4899,10 @@ defmodule Ash.Changeset do
   Used by optimistic locking. See `Ash.Resource.Change.Builtins.optimistic_lock/1` for more.
   """
   @spec filter(t(), Ash.Expr.t()) :: t()
+  def filter(changeset, expr) when expr in [nil, %{}, []] do
+    changeset
+  end
+
   def filter(changeset, expr) do
     if Ash.DataLayer.data_layer_can?(changeset.resource, :changeset_filter) do
       %{

@@ -85,6 +85,9 @@ defmodule Ash.Actions.Update.Bulk do
             }
 
           _ ->
+            query =
+              Ash.Query.do_filter(query, opts[:filter])
+
             run(
               domain,
               Ash.stream!(
@@ -109,6 +112,9 @@ defmodule Ash.Actions.Update.Bulk do
         }
 
       atomic_changeset ->
+        atomic_changeset =
+          Ash.Changeset.filter(atomic_changeset, opts[:filter])
+
         {atomic_changeset, opts} =
           Ash.Actions.Helpers.set_context_and_get_opts(domain, atomic_changeset, opts)
 
@@ -655,6 +661,7 @@ defmodule Ash.Actions.Update.Bulk do
             tracer: opts[:tracer],
             atomic_changeset: atomic_changeset,
             return_errors?: opts[:return_errors?],
+            filter: opts[:filter],
             return_notifications?: opts[:return_notifications?],
             notify?: opts[:notify?],
             return_records?: opts[:return_records?],
@@ -899,6 +906,7 @@ defmodule Ash.Actions.Update.Bulk do
     resource
     |> Ash.Changeset.new()
     |> Map.put(:domain, domain)
+    |> Ash.Changeset.filter(opts[:filter])
     |> Ash.Actions.Helpers.add_context(opts)
     |> Ash.Changeset.set_context(opts[:context] || %{})
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)

@@ -86,6 +86,7 @@ defmodule Ash.Actions.Update do
             |> Ash.Changeset.set_context(%{data_layer: %{use_atomic_update_data?: true}})
             |> Map.put(:load, changeset.load)
             |> Map.put(:select, changeset.select)
+            |> Map.put(:filter, changeset.filter)
             |> Ash.Changeset.set_context(changeset.context)
 
           {atomic_changeset, opts} =

@@ -2032,9 +2032,10 @@ define :get_user_by_id, action: :get_by_id, args: [:id], get?: true
 | [`action`](#code_interface-define-action){: #code_interface-define-action } | `atom` |  | The name of the action that will be called. Defaults to the same name as the function. |
 | [`args`](#code_interface-define-args){: #code_interface-define-args } | `list(atom \| {:optional, atom})` |  | Map specific arguments to named inputs. Can provide any argument/attributes that the action allows. |
 | [`not_found_error?`](#code_interface-define-not_found_error?){: #code_interface-define-not_found_error? } | `boolean` | `true` | If the action or interface is configured with `get?: true`, this determines whether or not an error is raised or `nil` is returned. |
-| [`get?`](#code_interface-define-get?){: #code_interface-define-get? } | `boolean` |  | Expects to only receive a single result from a read action, and returns a single result instead of a list. Ignored for other action types. |
-| [`get_by`](#code_interface-define-get_by){: #code_interface-define-get_by } | `atom \| list(atom)` |  | Takes a list of fields and adds those fields as arguments, which will then be used to filter. Sets `get?` to true automatically. Ignored for non-read actions. |
-| [`get_by_identity`](#code_interface-define-get_by_identity){: #code_interface-define-get_by_identity } | `atom` |  | Only relevant for read actions. Takes an identity, and gets its field list, performing the same logic as `get_by` once it has the list of fields. |
+| [`require_reference?`](#code_interface-define-require_reference?){: #code_interface-define-require_reference? } | `boolean` | `true` | For update and destroy actions, require a resource or identifier to be passed in as the first argument. Not relevant for other action types. |
+| [`get?`](#code_interface-define-get?){: #code_interface-define-get? } | `boolean` |  | Expects to only receive a single result from a read action or a bulk update/destroy, and returns a single result instead of a list. Sets `require_reference?` to false automatically. |
+| [`get_by`](#code_interface-define-get_by){: #code_interface-define-get_by } | `atom \| list(atom)` |  | Takes a list of fields and adds those fields as arguments, which will then be used to filter. Sets `get?` to true and `require_reference?` to false automatically. Adds filters for read, update and destroy actions, replacing the `record` first argument. |
+| [`get_by_identity`](#code_interface-define-get_by_identity){: #code_interface-define-get_by_identity } | `atom` |  | Takes an identity, gets its field list, and performs the same logic as `get_by` with those fields. Adds filters for read, update and destroy actions, replacing the `record` first argument. |
 
 
 

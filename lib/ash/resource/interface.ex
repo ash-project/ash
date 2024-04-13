@@ -2,16 +2,40 @@ defmodule Ash.Resource.Interface do
   @moduledoc """
   Represents a function in a resource's code interface
   """
-  defstruct [:name, :action, :args, :get?, :get_by, :get_by_identity, :not_found_error?]
+  defstruct [
+    :name,
+    :action,
+    :args,
+    :get?,
+    :get_by,
+    :get_by_identity,
+    :not_found_error?,
+    require_reference?: true
+  ]
 
   @type t :: %__MODULE__{}
 
   def transform(definition) do
+    {:ok,
+     definition
+     |> set_get?()
+     |> set_require_reference?()}
+  end
+
+  defp set_get?(definition) do
     if definition.get_by || definition.get_by_identity do
-      {:ok, %{definition | get?: true}}
+      %{definition | get?: true}
     else
-      {:ok, definition}
+      definition
     end
+  end
+
+  defp set_require_reference?(%{get?: true} = definition) do
+    %{definition | require_reference?: false}
+  end
+
+  defp set_require_reference?(definition) do
+    definition
   end
 
   def interface_options(:calculate) do
@@ -125,22 +149,28 @@ defmodule Ash.Resource.Interface do
       doc:
         "If the action or interface is configured with `get?: true`, this determines whether or not an error is raised or `nil` is returned."
     ],
+    require_reference?: [
+      type: :boolean,
+      default: true,
+      doc:
+        "For update and destroy actions, require a resource or identifier to be passed in as the first argument. Not relevant for other action types."
+    ],
     get?: [
       type: :boolean,
       doc: """
-      Expects to only receive a single result from a read action, and returns a single result instead of a list. Ignored for other action types.
+      Expects to only receive a single result from a read action or a bulk update/destroy, and returns a single result instead of a list. Sets `require_reference?` to false automatically.
       """
     ],
     get_by: [
       type: {:wrap_list, :atom},
       doc: """
-      Takes a list of fields and adds those fields as arguments, which will then be used to filter. Sets `get?` to true automatically. Ignored for non-read actions.
+      Takes a list of fields and adds those fields as arguments, which will then be used to filter. Sets `get?` to true and `require_reference?` to false automatically. Adds filters for read, update and destroy actions, replacing the `record` first argument.
       """
     ],
     get_by_identity: [
       type: :atom,
       doc: """
-      Only relevant for read actions. Takes an identity, and gets its field list, performing the same logic as `get_by` once it has the list of fields.
+      Takes an identity, gets its field list, and performs the same logic as `get_by` with those fields. Adds filters for read, update and destroy actions, replacing the `record` first argument.
       """
     ]
   ]

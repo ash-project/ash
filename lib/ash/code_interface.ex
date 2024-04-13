@@ -411,7 +411,7 @@ defmodule Ash.CodeInterface do
 
         filter_keys =
           cond do
-            action.type != :read ->
+            action.type not in [:read, :update, :destroy] ->
               []
 
             interface.get_by_identity ->
@@ -736,64 +736,93 @@ defmodule Ash.CodeInterface do
 
             :update ->
               subject = quote do: changeset
-              subject_args = quote do: [record]
+
+              subject_args =
+                if interface.require_reference? do
+                  quote do: [record]
+                else
+                  []
+                end
 
               resolve_subject =
-                quote do
-                  {changeset_opts, opts} =
-                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
+                if Enum.empty?(filter_keys) do
+                  quote do
+                    {changeset_opts, opts} =
+                      Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
 
-                  changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
+                    changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
-                  changeset =
-                    record
-                    |> case do
-                      %Ash.Changeset{resource: unquote(resource)} ->
-                        Ash.Changeset.for_update(
-                          record,
-                          unquote(action.name),
-                          params,
-                          changeset_opts
-                        )
+                    changeset =
+                      record
+                      |> case do
+                        %Ash.Changeset{resource: unquote(resource)} ->
+                          {filters, params} = Map.split(params, unquote(filter_keys))
 
-                      %Ash.Changeset{resource: other_resource} ->
-                        raise ArgumentError,
-                              "Changeset #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
+                          record
+                          |> Ash.Changeset.filter(filters)
+                          |> Ash.Changeset.for_update(
+                            unquote(action.name),
+                            params,
+                            changeset_opts
+                          )
 
-                      %other_resource{} when other_resource != unquote(resource) ->
-                        raise ArgumentError,
-                              "Record #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
+                        %Ash.Changeset{resource: other_resource} ->
+                          raise ArgumentError,
+                                "Changeset #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
 
-                      %struct{} = record when struct == unquote(resource) ->
-                        Ash.Changeset.for_update(
-                          record,
-                          unquote(action.name),
-                          params,
-                          changeset_opts
-                        )
+                        %other_resource{} when other_resource != unquote(resource) ->
+                          raise ArgumentError,
+                                "Record #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
 
-                      %Ash.Query{} = query ->
-                        {:atomic, :query, query}
+                        %struct{} = record when struct == unquote(resource) ->
+                          {filters, params} = Map.split(params, unquote(filter_keys))
 
-                      value when is_function(value) ->
-                        {:atomic, :stream, value}
+                          record
+                          |> Ash.Changeset.new()
+                          |> Ash.Changeset.filter(filters)
+                          |> Ash.Changeset.for_update(
+                            unquote(action.name),
+                            params,
+                            changeset_opts
+                          )
 
-                      %Stream{} = value ->
-                        {:atomic, :stream, value}
+                        %Ash.Query{} = query ->
+                          {:atomic, :query, query}
 
-                      [{_key, _val} | _] = id ->
-                        {:atomic, :id, id}
+                        value when is_function(value) ->
+                          {:atomic, :stream, value}
 
-                      list when is_list(list) ->
-                        {:atomic, :stream, list}
+                        %Stream{} = value ->
+                          {:atomic, :stream, value}
 
-                      other ->
-                        {:atomic, :id, other}
-                    end
+                        [{_key, _val} | _] = id ->
+                          {:atomic, :id, id}
+
+                        list when is_list(list) ->
+                          {:atomic, :stream, list}
+
+                        other ->
+                          {:atomic, :id, other}
+                      end
+                  end
+                else
+                  quote do
+                    filters = Map.take(params, unquote(filter_keys))
+
+                    {changeset_opts, opts} =
+                      Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
+
+                    changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
+
+                    changeset =
+                      {:atomic, :query, Ash.Query.do_filter(unquote(resource), filters)}
+                  end
                 end
 
               act =
                 quote do
+                  {filters, params} = Map.split(params, unquote(filter_keys))
+
                   case changeset do
                     {:atomic, method, id} ->
                       bulk_opts =
@@ -811,12 +840,20 @@ defmodule Ash.CodeInterface do
                           end
                         end)
 
+                      bulk_opts =
+                        if method == :stream do
+                          Keyword.put(bulk_opts, :filter, filters)
+                        else
+                          bulk_opts
+                        end
+
                       case Ash.CodeInterface.bulk_query(unquote(resource), method, id) do
                         {:ok, query} ->
                           query
                           |> Ash.bulk_update(unquote(action.name), params, bulk_opts)
                           |> case do
-                            %Ash.BulkResult{} = result when method == :stream ->
+                            %Ash.BulkResult{} = result
+                            when method == :stream and unquote(Enum.empty?(filter_keys)) ->
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
@@ -848,6 +885,8 @@ defmodule Ash.CodeInterface do
                 quote do
                   case changeset do
                     {:atomic, method, id} ->
+                      {filters, params} = Map.split(params, unquote(filter_keys))
+
                       bulk_opts =
                         opts
                         |> Keyword.delete(:bulk_options)
@@ -863,12 +902,20 @@ defmodule Ash.CodeInterface do
                           end
                         end)
 
+                      bulk_opts =
+                        if method == :stream do
+                          Keyword.put(bulk_opts, :filter, filters)
+                        else
+                          bulk_opts
+                        end
+
                       case Ash.CodeInterface.bulk_query(unquote(resource), method, id) do
                         {:ok, query} ->
                           query
                           |> Ash.bulk_update!(unquote(action.name), params, bulk_opts)
                           |> case do
-                            %Ash.BulkResult{} = result when method == :stream ->
+                            %Ash.BulkResult{} = result
+                            when method == :stream and unquote(Enum.empty?(filter_keys)) ->
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
@@ -896,66 +943,95 @@ defmodule Ash.CodeInterface do
 
             :destroy ->
               subject = quote do: changeset
-              subject_args = quote do: [record]
+
+              subject_args =
+                if interface.require_reference? do
+                  quote do: [record]
+                else
+                  []
+                end
 
               resolve_subject =
-                quote do
-                  {changeset_opts, opts} =
-                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
+                if interface.require_reference? do
+                  quote do
+                    {changeset_opts, opts} =
+                      Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
 
-                  changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
+                    changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
-                  changeset =
-                    record
-                    |> case do
-                      %Ash.Changeset{resource: unquote(resource)} ->
-                        Ash.Changeset.for_destroy(
-                          record,
-                          unquote(action.name),
-                          params,
-                          changeset_opts
-                        )
+                    changeset =
+                      record
+                      |> case do
+                        %Ash.Changeset{resource: unquote(resource)} ->
+                          {filters, params} = Map.split(params, unquote(filter_keys))
 
-                      %Ash.Changeset{resource: other_resource} ->
-                        raise ArgumentError,
-                              "Changeset #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
+                          record
+                          |> Ash.Changeset.filter(filters)
+                          |> Ash.Changeset.for_destroy(
+                            unquote(action.name),
+                            params,
+                            changeset_opts
+                          )
 
-                      %other_resource{} when other_resource != unquote(resource) ->
-                        raise ArgumentError,
-                              "Record #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
+                        %Ash.Changeset{resource: other_resource} ->
+                          raise ArgumentError,
+                                "Changeset #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
 
-                      %struct{} = record when struct == unquote(resource) ->
-                        Ash.Changeset.for_destroy(
-                          record,
-                          unquote(action.name),
-                          params,
-                          changeset_opts
-                        )
+                        %other_resource{} when other_resource != unquote(resource) ->
+                          raise ArgumentError,
+                                "Record #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
 
-                      %Ash.Query{} = query ->
-                        {:atomic, :query, query}
+                        %struct{} = record when struct == unquote(resource) ->
+                          {filters, params} = Map.split(params, unquote(filter_keys))
 
-                      value when is_function(value) ->
-                        {:atomic, :stream, value}
+                          record
+                          |> Ash.Changeset.new()
+                          |> Ash.Changeset.filter(filters)
+                          |> Ash.Changeset.for_destroy(
+                            unquote(action.name),
+                            params,
+                            changeset_opts
+                          )
 
-                      %Stream{} = value ->
-                        {:atomic, :stream, value}
+                        %Ash.Query{} = query ->
+                          {:atomic, :query, query}
 
-                      [{_key, _val} | _] = id ->
-                        {:atomic, :id, id}
+                        value when is_function(value) ->
+                          {:atomic, :stream, value}
 
-                      list when is_list(list) ->
-                        {:atomic, :stream, list}
+                        %Stream{} = value ->
+                          {:atomic, :stream, value}
 
-                      other ->
-                        {:atomic, :id, other}
-                    end
+                        [{_key, _val} | _] = id ->
+                          {:atomic, :id, id}
+
+                        list when is_list(list) ->
+                          {:atomic, :stream, list}
+
+                        other ->
+                          {:atomic, :id, other}
+                      end
+                  end
+                else
+                  quote do
+                    filters = Map.take(params, unquote(filter_keys))
+
+                    {changeset_opts, opts} =
+                      Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
+
+                    changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
+
+                    changeset =
+                      {:atomic, :query, Ash.Query.do_filter(unquote(resource), filters)}
+                  end
                 end
 
               act =
                 quote do
                   case changeset do
                     {:atomic, method, id} ->
+                      {filters, params} = Map.split(params, unquote(filter_keys))
+
                       bulk_opts =
                         opts
                         |> Keyword.drop([:bulk_options, :return_destroyed?])
@@ -971,12 +1047,20 @@ defmodule Ash.CodeInterface do
                           end
                         end)
 
+                      bulk_opts =
+                        if method == :stream do
+                          Keyword.put(bulk_opts, :filter, filters)
+                        else
+                          bulk_opts
+                        end
+
                       case Ash.CodeInterface.bulk_query(unquote(resource), method, id) do
                         {:ok, query} ->
                           query
                           |> Ash.bulk_destroy(unquote(action.name), params, bulk_opts)
                           |> case do
-                            %Ash.BulkResult{} = result when method == :stream ->
+                            %Ash.BulkResult{} = result
+                            when method == :stream and unquote(Enum.empty?(filter_keys)) ->
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
@@ -1013,6 +1097,8 @@ defmodule Ash.CodeInterface do
                 quote do
                   case changeset do
                     {:atomic, method, id} ->
+                      {filters, params} = Map.split(params, unquote(filter_keys))
+
                       bulk_opts =
                         opts
                         |> Keyword.drop([:bulk_options, :return_destroyed?])
@@ -1028,12 +1114,20 @@ defmodule Ash.CodeInterface do
                           end
                         end)
 
+                      bulk_opts =
+                        if method == :stream do
+                          Keyword.put(bulk_opts, :filter, filters)
+                        else
+                          bulk_opts
+                        end
+
                       case Ash.CodeInterface.bulk_query(unquote(resource), method, id) do
                         {:ok, query} ->
                           query
                           |> Ash.bulk_destroy!(unquote(action.name), params, bulk_opts)
                           |> case do
-                            %Ash.BulkResult{} = result when method == :stream ->
+                            %Ash.BulkResult{} = result
+                            when method == :stream and unquote(Enum.empty?(filter_keys)) ->
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->

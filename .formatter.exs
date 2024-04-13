@@ -170,6 +170,7 @@ spark_locals_without_parens = [
   require_atomic?: 1,
   require_attributes: 1,
   require_primary_key?: 1,
+  require_reference?: 1,
   required?: 1,
   resource: 1,
   resource: 2,

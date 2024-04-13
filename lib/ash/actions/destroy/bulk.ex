@@ -120,6 +120,9 @@ defmodule Ash.Actions.Destroy.Bulk do
               |> Keyword.put(:domain, domain)
               |> Keyword.take(Ash.stream_opt_keys())
 
+            query =
+              Ash.Query.do_filter(query, opts[:filter])
+
             run(
               domain,
               Ash.stream!(
@@ -661,6 +664,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               tracer: opts[:tracer],
               atomic_changeset: atomic_changeset,
               return_errors?: opts[:return_errors?],
+              filter: opts[:filter],
               return_notifications?: opts[:return_notifications?],
               notify?: opts[:notify?],
               return_records?: opts[:return_records?],
@@ -833,6 +837,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
     resource
     |> Ash.Changeset.new()
+    |> Ash.Changeset.filter(opts[:filter])
     |> Map.put(:domain, domain)
     |> Ash.Actions.Helpers.add_context(opts)
     |> Ash.Changeset.set_context(opts[:context] || %{})

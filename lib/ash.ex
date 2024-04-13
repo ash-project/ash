@@ -462,6 +462,11 @@ defmodule Ash do
                                doc:
                                  "A select statement to apply to records. Ignored if `return_records?` is not true."
                              ],
+                             filter: [
+                               type: :any,
+                               doc:
+                                 "A filter to apply to records. This is also applied to a stream of inputs."
+                             ],
                              strategy: [
                                type: {:wrap_list, {:one_of, [:atomic, :atomic_batches, :stream]}},
                                default: [:atomic],
@@ -523,6 +528,11 @@ defmodule Ash do
                                 default: :atomic,
                                 doc:
                                   "The strategy or strategies to enable. :stream is used in all cases if the data layer does not support atomics."
+                              ],
+                              filter: [
+                                type: :any,
+                                doc:
+                                  "A filter to apply to records. This is also applied to a stream of inputs."
                               ],
                               skip_unknown_inputs: [
                                 type: {:list, {:or, [:atom, :string]}},
