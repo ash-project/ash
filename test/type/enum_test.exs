@@ -8,6 +8,9 @@ defmodule Ash.Test.Type.EnumTest do
 
   defmodule Status do
     use Ash.Type.Enum, values: [:open, :Closed, :NeverHappened, :Always_Was]
+
+    def match("never_happened"), do: {:ok, :NeverHappened}
+    def match(value), do: super(value)
   end
 
   defmodule DescriptiveEnum do
@@ -64,6 +67,12 @@ defmodule Ash.Test.Type.EnumTest do
   test "it handles mixed case string matches against mixed case atoms" do
     Post
     |> Ash.Changeset.for_create(:create, %{status: "nEveRHAppened"})
+    |> Ash.create!()
+  end
+
+  test "it allows overriding `match/1` and accepting custom input values" do
+    Post
+    |> Ash.Changeset.for_create(:create, %{status: "never_happened"})
     |> Ash.create!()
   end
 

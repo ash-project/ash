@@ -31,6 +31,37 @@ defmodule Ash.Type.Enum do
   * A string that matches the stringified, downcased atom, after itself being downcased.
     This allows for enum values like `:Open`, `:SomeState` and `:Some_State`
 
+  ## Custom input values
+
+  If you need to accept inputs beyond those described above while still mapping them to one
+  of the enum values, you can override the `match/1` callback.
+
+  For example, if you want to map both the `:half_empty` and `:half_full` states to the same enum
+  value, you could implement it as follows:
+
+  ```elixir
+  defmodule MyApp.GlassState do
+    use Ash.Type.Enum, values: [:empty, :half_full, :full]
+
+    def match(:half_empty), do: {:ok, :half_full}
+    def match("half_empty"), do: {:ok, :half_full}
+    def match(value), do: super(value)
+  end
+  ```
+
+  In the provided example, if no additional value is matched, `super(value)` is called, invoking
+  the default implementation of `match/1`. This approach is typically suitable if you only aim to
+  extend default matching rather than completely reimplementing it.
+
+  ### Caveats
+
+  Additional input values are not exposed in derived interfaces. For example, `HALF_EMPTY` will not
+  be present as a possible enum value when using `ash_graphql`.
+
+  Moreover, only explicitly matched values are mapped to the enum value. For instance,
+  `"HaLf_emPty"` would not be accepted by the code provided earlier. If case normalization is
+  needed for additional values, it must be explicitly implemented.
+
   ## Value descriptions
   It's possible to associate a description with a value by passing a `{value, description}` tuple
   inside the values list, which becomes a keyword list:
@@ -200,7 +231,7 @@ defmodule Ash.Type.Enum do
           :error
       end
 
-      defoverridable storage_type: 0
+      defoverridable match: 1, storage_type: 0
     end
   end
 
