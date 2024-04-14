@@ -3,7 +3,7 @@
 Domains serve three primary purposes:
 
 1. They group related resources together, providing organization and structure to your project.
-2. They allow you to define a centralized [code interfaces](/documentation/topics/resources/code-interfaces.md)
+2. They allow you to define a centralized [code interface](/documentation/topics/resources/code-interfaces.md)
 3. They allow you to configure certain cross-cutting concerns of those resources in a single place.
 
 If you are familiar with a [Phoenix Context](https://hexdocs.pm/phoenix/contexts.html), you can think of a domain as the Ash equivalent.
