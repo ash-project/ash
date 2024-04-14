@@ -6,7 +6,7 @@ Changes are the primary way of customizing action behavior. If you are familiar 
 
 There are a number of builtin changes that can be used, and are automatically imported into your resources. See `Ash.Resource.Change.Builtins` for more.
 
-Some examples of usage of builtin validations
+Some examples of usage of builtin changes
 
 ```elixir
 # set the `owner` to the current actor
@@ -124,7 +124,7 @@ To make a change atomic, you have to implement the `c:Ash.Resource.Change.atomic
 defmodule MyApp.Changes.Slugify do
   # transform and validate opts
 
-  use Ash.Resource.Validation
+  use Ash.Resource.Change
 
   ...
 
