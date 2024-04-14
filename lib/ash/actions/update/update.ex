@@ -581,8 +581,7 @@ defmodule Ash.Actions.Update do
       attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
 
       {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(changeset.resource)
-      tenant = Ash.ToTenant.to_tenant(changeset.tenant, changeset.resource)
-      attribute_value = apply(m, f, [tenant | a])
+      attribute_value = apply(m, f, [changeset.to_tenant | a])
 
       Ash.Changeset.force_change_attribute(changeset, attribute, attribute_value)
     else
