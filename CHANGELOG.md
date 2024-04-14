@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.21](https://github.com/ash-project/ash/compare/v3.0.0-rc.20...v3.0.0-rc.21) (2024-04-14)
+
+
+
+
+### Bug Fixes:
+
+* ensure `to_tenant` is copied to aggregate query
+
 ## [v3.0.0-rc.20](https://github.com/ash-project/ash/compare/v3.0.0-rc.19...v3.0.0-rc.20) (2024-04-13)
 ### Breaking Changes:
 
