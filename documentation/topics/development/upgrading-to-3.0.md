@@ -21,7 +21,7 @@ If you use `Ash.Flow`, include `{:ash_flow, "~> 0.1.0"}` in your application.
 
 #### Picosat Elixir
 
-In 2.0, Ash had a dependency on `picosat_elixir`. In 3.0, this is an optional dependency, to help folks handle certain compatibility issues. To upgrade, add `{:picosat_elixkr, "~> 0.2"}` to your `mix.exs`.
+In 2.0, Ash had a dependency on `picosat_elixir`. In 3.0, this is an optional dependency, to help folks handle certain compatibility issues. To upgrade, add `{:picosat_elixir, "~> 0.2"}` to your `mix.exs`.
 
 ### Ash.Api is now Ash.Domain
 
