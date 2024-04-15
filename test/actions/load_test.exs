@@ -224,7 +224,10 @@ defmodule Ash.Test.Actions.LoadTest do
 
   defmodule Post do
     @moduledoc false
-    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource,
+      domain: Domain,
+      authorizers: [Ash.Policy.Authorizer],
+      data_layer: Ash.DataLayer.Ets
 
     ets do
       private?(true)
@@ -233,6 +236,8 @@ defmodule Ash.Test.Actions.LoadTest do
     actions do
       default_accept :*
       defaults([:read, :destroy, create: :*, update: :*])
+
+      read :all_access
     end
 
     attributes do
@@ -240,7 +245,24 @@ defmodule Ash.Test.Actions.LoadTest do
       attribute(:title, :string, public?: true)
       attribute(:contents, :string, public?: true)
       attribute(:category, :string, public?: true)
+      attribute(:secret, :string, public?: true)
       timestamps()
+    end
+
+    policies do
+      policy always() do
+        authorize_if always()
+      end
+    end
+
+    field_policies do
+      field_policy :* do
+        authorize_if always()
+      end
+
+      field_policy :secret do
+        authorize_if action([:create, :all_access])
+      end
     end
 
     code_interface do
@@ -517,6 +539,24 @@ defmodule Ash.Test.Actions.LoadTest do
       for post <- author.posts do
         assert post.author.id == author.id
       end
+    end
+
+    test "it allows using a custom read action for related data" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
+        |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "post", secret: "42", author_id: author.id})
+      |> Ash.create!()
+
+      all_access_posts_query = Ash.Query.for_read(Posts, :all_access)
+
+      assert [%{secret: "42"}] =
+               author
+               |> Ash.load!(posts: all_access_posts_query)
+               |> Map.get(:posts)
     end
 
     test "unloading related data sets it back to `%Ash.NotLoaded{}`" do
