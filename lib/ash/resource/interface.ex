@@ -39,12 +39,8 @@ defmodule Ash.Resource.Interface do
   end
 
   def interface_options(:calculate) do
-    [
-      actor: [
-        type: :any,
-        doc: "The actor to use for actor references"
-      ]
-    ]
+    Ash.calculate_opts()
+    |> Keyword.drop([:domain, :refs, :args, :record])
   end
 
   def interface_options(:create) do

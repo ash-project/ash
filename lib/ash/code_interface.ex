@@ -322,7 +322,7 @@ defmodule Ash.CodeInterface do
 
              ### Options
 
-             #{Spark.Options.docs(Ash.Resource.Interface.interface_options(:calculate))}
+             #{Spark.Options.docs(opt_schema)}
              """
              |> Ash.CodeInterface.trim_double_newlines()
         @doc spark_opts: [
@@ -351,13 +351,8 @@ defmodule Ash.CodeInterface do
               end
             )
 
-          Ash.calculate!(unquote(resource), unquote(interface.calculation),
-            domain: unquote(domain),
-            refs: refs,
-            args: arguments,
-            actor: opts[:actor],
-            record: record
-          )
+          opts = [domain: unquote(domain), refs: refs, args: arguments, record: record] ++ opts
+          Ash.calculate!(unquote(resource), unquote(interface.calculation), opts)
         end
 
         @doc """
@@ -367,7 +362,7 @@ defmodule Ash.CodeInterface do
 
              ### Options
 
-             #{Spark.Options.docs(Ash.Resource.Interface.interface_options(:calculate))}
+             #{Spark.Options.docs(opt_schema)}
              """
              |> Ash.CodeInterface.trim_double_newlines()
         @doc spark_opts: [
@@ -396,13 +391,8 @@ defmodule Ash.CodeInterface do
               end
             )
 
-          Ash.calculate(unquote(resource), unquote(interface.calculation),
-            domain: unquote(domain),
-            refs: refs,
-            args: arguments,
-            actor: opts[:actor],
-            record: record
-          )
+          opts = [domain: unquote(domain), refs: refs, args: arguments, record: record] ++ opts
+          Ash.calculate(unquote(resource), unquote(interface.calculation), opts)
         end
       end
 
