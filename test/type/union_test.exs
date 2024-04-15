@@ -72,7 +72,7 @@ defmodule Ash.Test.Type.UnionTest do
           new_thing =
             Ash.Changeset.get_argument(changeset, :new_thing)
 
-          things = Ash.Changeset.get_attribute(changeset, :things)
+          things = Ash.Changeset.get_attribute(changeset, :things) || []
 
           Ash.Changeset.change_attribute(
             changeset,
@@ -80,6 +80,11 @@ defmodule Ash.Test.Type.UnionTest do
             things ++ [new_thing]
           )
         end
+      end
+
+      update :add_things do
+        require_atomic? false
+        accept [:things]
       end
     end
 
@@ -382,6 +387,59 @@ defmodule Ash.Test.Type.UnionTest do
              |> Ash.Changeset.for_create(:create, %{things: []})
              |> Ash.create!()
              |> Ash.Changeset.for_update(:add_thing, %{new_thing: %{type: :foo, foo: "foo"}})
+             |> Ash.update()
+  end
+
+  test "it should handle union arguments appropriately" do
+    assert {:ok, _} =
+             Example
+             |> Ash.Changeset.for_create(:create, %{things: []})
+             |> Ash.create!()
+             |> Ash.Changeset.for_update(:add_thing, %{
+               new_thing: %Ash.Union{type: :foo, value: %{type: :foo, foo: "foo"}}
+             })
+             |> Ash.update()
+  end
+
+  test "it should cast union arguments appropriately when the array is nil" do
+    assert {:ok, _} =
+             Example
+             |> Ash.Changeset.for_create(:create, %{})
+             |> Ash.create!()
+             |> Ash.Changeset.for_update(:add_thing, %{new_thing: %{type: :foo, foo: "foo"}})
+             |> Ash.update()
+  end
+
+  test "it should handle union arguments appropriately when the array is nil" do
+    assert {:ok, _} =
+             Example
+             |> Ash.Changeset.for_create(:create, %{})
+             |> Ash.create!()
+             |> Ash.Changeset.for_update(:add_thing, %{
+               new_thing: %Ash.Union{type: :foo, value: %{type: :foo, foo: "foo"}}
+             })
+             |> Ash.update()
+  end
+
+  test "it should handle union attribute" do
+    assert {:ok, _} =
+             Example
+             |> Ash.Changeset.for_create(:create, %{})
+             |> Ash.create!()
+             |> Ash.Changeset.for_update(:add_things, %{
+               things: [%Ash.Union{type: :foo, value: %{type: :foo, foo: "foo"}}]
+             })
+             |> Ash.update()
+  end
+
+  test "it should handle union attribute appropriately when the array is nil" do
+    assert {:ok, _} =
+             Example
+             |> Ash.Changeset.for_create(:create, %{})
+             |> Ash.create!()
+             |> Ash.Changeset.for_update(:add_things, %{
+               things: [%Ash.Union{type: :foo, value: %{type: :foo, foo: "foo"}}]
+             })
              |> Ash.update()
   end
 end

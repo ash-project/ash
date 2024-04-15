@@ -700,6 +700,7 @@ defmodule Ash.Type.Union do
        end) do
       old_values_by_type =
         old_values
+        |> List.wrap()
         |> Stream.with_index()
         |> Stream.map(fn {item, index} ->
           Map.put(item, :__index__, index)
@@ -860,6 +861,7 @@ defmodule Ash.Type.Union do
        end) do
       old_values_by_type =
         old_values
+        |> List.wrap()
         |> Stream.with_index()
         |> Stream.map(fn {item, index} ->
           Map.put(item, :__index__, index)
