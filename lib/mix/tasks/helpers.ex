@@ -8,6 +8,7 @@ defmodule Ash.Mix.Tasks.Helpers do
   """
   def extensions!(argv, opts \\ []) do
     if opts[:in_use?] do
+      Mix.shell().info("Getting extensions in use by resources in current project...")
       domains = Ash.Mix.Tasks.Helpers.domains!(argv)
 
       resource_extensions =
@@ -15,21 +16,33 @@ defmodule Ash.Mix.Tasks.Helpers do
         |> Enum.flat_map(&Ash.Domain.Info.resources/1)
         |> all_extensions()
 
-      Enum.uniq(all_extensions(domains) ++ resource_extensions)
-    else
-      Application.loaded_applications()
-      |> Enum.map(&elem(&1, 0))
-      |> Enum.flat_map(&elem(:application.get_key(&1, :modules), 1))
-      |> Stream.chunk_every(100)
-      # This takes a while, but it doesn't when we split up the work
-      |> Task.async_stream(fn modules ->
-        modules
-        |> Enum.filter(&Spark.implements_behaviour?(&1, Spark.Dsl.Extension))
-        |> Enum.uniq()
-      end)
-      # we're assuming no failures
-      |> Stream.flat_map(&elem(&1, 1))
+      domains
+      |> all_extensions()
+      |> Enum.concat(resource_extensions)
       |> Enum.uniq()
+      |> case do
+        [] ->
+          Mix.shell().info("No extensions in use by resources in current project...")
+
+        extensions ->
+          extensions
+      end
+    else
+      Mix.shell().info("Getting extensions in current project...")
+
+      Application.loaded_applications()
+      |> Stream.map(&elem(&1, 0))
+      |> Stream.flat_map(&List.wrap(elem(:application.get_key(&1, :modules), 1)))
+      |> Stream.filter(&Spark.implements_behaviour?(&1, Spark.Dsl.Extension))
+      |> Enum.uniq()
+      |> case do
+        [] ->
+          Mix.shell().info("No extensions in the current project.")
+          []
+
+        extensions ->
+          extensions
+      end
     end
   end
 
