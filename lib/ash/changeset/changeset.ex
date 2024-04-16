@@ -4905,13 +4905,24 @@ defmodule Ash.Changeset do
 
   def filter(changeset, expr) do
     if Ash.DataLayer.data_layer_can?(changeset.resource, :changeset_filter) do
-      case Ash.Filter.add_to_filter(
-             changeset.filter,
+        expression =
+          Ash.Expr.fill_template(
+            changeset.filter,
+            changeset.context[:private][:actor],
+            changeset.arguments,
+            changeset.context
+          )
+
+      with {:ok, expression} <- Ash.Filter.hydrate_refs(expression, %{
+             resource: changeset.resource,
+             public?: false
+           }),
+          {:ok, expression} <- Ash.Filter.add_to_filter(
+             expression,
              Ash.Filter.parse!(changeset.resource, expr)
            ) do
-        {:ok, filter} ->
-          %{changeset | filter: filter}
-
+          %{changeset | filter: expression}
+      else
         {:error, error} ->
           Ash.Changeset.add_error(changeset, error)
       end
