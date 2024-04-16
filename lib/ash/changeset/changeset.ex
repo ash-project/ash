@@ -4915,16 +4915,17 @@ defmodule Ash.Changeset do
           changeset.context
         )
 
-
-      with {:ok, expression} <- Ash.Filter.hydrate_refs(expression, %{
-             resource: changeset.resource,
-             public?: false
-           }),
-          {:ok, expression} <- Ash.Filter.add_to_filter(
-             changeset.filter,
-             expression
-           ) do
-          %{changeset | filter: expression}
+      with {:ok, expression} <-
+             Ash.Filter.hydrate_refs(expression, %{
+               resource: changeset.resource,
+               public?: false
+             }),
+           {:ok, expression} <-
+             Ash.Filter.add_to_filter(
+               changeset.filter,
+               expression
+             ) do
+        %{changeset | filter: expression}
       else
         {:error, error} ->
           Ash.Changeset.add_error(changeset, error)

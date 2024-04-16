@@ -23,30 +23,24 @@ defmodule Ash.Can do
     opts = Keyword.put_new(opts, :filter_with, :filter)
 
     {resource, action_or_query_or_changeset, input} =
-      resource_subject_input(action_or_query_or_changeset, domain, opts)
+      resource_subject_input(action_or_query_or_changeset, domain, actor, opts)
 
     subject =
       case action_or_query_or_changeset do
         %Ash.ActionInput{} = action_input ->
-          if opts[:tenant] do
-            Ash.ActionInput.set_tenant(action_input, opts[:tenant])
-          else
-            action_input
-          end
+          action_input
+          |> Ash.ActionInput.set_tenant(opts[:tenant] || action_input.tenant)
+          |> Ash.ActionInput.set_context(%{private: %{actor: actor}})
 
         %Ash.Query{} = query ->
-          if opts[:tenant] do
-            Ash.Query.set_tenant(query, opts[:tenant])
-          else
-            query
-          end
+          query
+          |> Ash.Query.set_tenant(opts[:tenant] || query.tenant)
+          |> Ash.Query.set_context(%{private: %{actor: actor}})
 
         %Ash.Changeset{} = changeset ->
-          if opts[:tenant] do
-            Ash.Changeset.set_tenant(changeset, opts[:tenant])
-          else
-            changeset
-          end
+          changeset
+          |> Ash.Changeset.set_tenant(opts[:tenant] || changeset.tenant)
+          |> Ash.Changeset.set_context(%{private: %{actor: actor}})
 
         %{type: :update, name: name} ->
           if opts[:data] do
@@ -79,7 +73,7 @@ defmodule Ash.Can do
           end
 
         %{type: :action, name: name} ->
-          Ash.ActionInput.for_action(resource, name, input, actor: actor)
+          Ash.ActionInput.for_action(resource, name, input, actor: actor, tenant: opts[:tenant])
 
         _ ->
           raise ArgumentError,
@@ -99,12 +93,13 @@ defmodule Ash.Can do
     end
   end
 
-  defp resource_subject_input(action_or_query_or_changeset, domain, opts) do
+  defp resource_subject_input(action_or_query_or_changeset, domain, actor, opts) do
     case action_or_query_or_changeset do
       {resource, name} when is_atom(name) and is_atom(resource) ->
         resource_subject_input(
           {resource, Ash.Resource.Info.action(resource, name), %{}},
           domain,
+          actor,
           opts
         )
 
@@ -112,6 +107,7 @@ defmodule Ash.Can do
         resource_subject_input(
           {resource, Ash.Resource.Info.action(resource, name), input},
           domain,
+          actor,
           opts
         )
 
@@ -119,6 +115,7 @@ defmodule Ash.Can do
         resource_subject_input(
           {record, Ash.Resource.Info.action(resource, name), %{}},
           domain,
+          actor,
           opts
         )
 
@@ -126,6 +123,7 @@ defmodule Ash.Can do
         resource_subject_input(
           {record, Ash.Resource.Info.action(resource, name), input},
           domain,
+          actor,
           opts
         )
 
@@ -146,34 +144,68 @@ defmodule Ash.Can do
              Ash.Resource.Actions.Destroy,
              Ash.Resource.Actions.Action
            ] ->
-        resource_subject_input({resource, action, %{}}, domain, opts)
+        resource_subject_input({resource, action, %{}}, domain, actor, opts)
 
       {%resource{} = record, %Ash.Resource.Actions.Read{} = action, input} ->
-        {resource, Ash.Query.for_read(resource, action.name, input) |> filter_by_pkey(record),
-         input}
+        {resource,
+         Ash.Query.for_read(resource, action.name, input,
+           domain: domain,
+           tenant: opts[:tenant],
+           actor: actor
+         )
+         |> filter_by_pkey(record), input}
 
       {%resource{}, %Ash.Resource.Actions.Action{} = action, input} ->
-        {resource, Ash.ActionInput.for_action(resource, action.name, input), input}
+        {resource,
+         Ash.ActionInput.for_action(resource, action.name, input,
+           domain: domain,
+           tenant: opts[:tenant],
+           actor: actor
+         ), input}
 
       {%resource{}, %Ash.Resource.Actions.Create{} = action, input} ->
-        {resource, Ash.Changeset.for_create(resource, action.name, input), input}
+        {resource,
+         Ash.Changeset.for_create(resource, action.name, input,
+           domain: domain,
+           tenant: opts[:tenant],
+           actor: actor
+         ), input}
 
       {%resource{} = record, %struct{} = action, input}
       when struct in [
              Ash.Resource.Actions.Update,
              Ash.Resource.Actions.Destroy
            ] ->
-        {resource, Ash.Changeset.for_action(record, action.name, input, domain: domain), input}
+        {resource,
+         Ash.Changeset.for_action(record, action.name, input,
+           domain: domain,
+           tenant: opts[:tenant],
+           actor: actor
+         ), input}
 
       {resource, %Ash.Resource.Actions.Read{} = action, input} ->
-        {resource, Ash.Query.for_read(resource, action.name, input, domain: domain), input}
+        {resource,
+         Ash.Query.for_read(resource, action.name, input,
+           domain: domain,
+           tenant: opts[:tenant],
+           actor: actor
+         ), input}
 
       {resource, %Ash.Resource.Actions.Action{} = action, input} ->
-        {resource, Ash.ActionInput.for_action(resource, action.name, input, domain: domain),
-         input}
+        {resource,
+         Ash.ActionInput.for_action(resource, action.name, input,
+           domain: domain,
+           tenant: opts[:tenant],
+           actor: actor
+         ), input}
 
       {resource, %Ash.Resource.Actions.Create{} = action, input} ->
-        {resource, Ash.Changeset.for_create(resource, action.name, input, domain: domain), input}
+        {resource,
+         Ash.Changeset.for_create(resource, action.name, input,
+           domain: domain,
+           tenant: opts[:tenant],
+           actor: actor
+         ), input}
 
       {resource, %struct{} = action, input}
       when struct in [
