@@ -328,6 +328,10 @@ defmodule Ash.Expr do
     end
   end
 
+  def walk_template(%{__struct__: Ash.Filter, expression: expression} = filter, mapper) do
+    %{filter | expression: walk_template(expression, mapper)}
+  end
+
   def walk_template(%Ash.Query.Parent{expr: expr} = this_expr, mapper) do
     case mapper.(this_expr) do
       ^this_expr ->
