@@ -38,7 +38,7 @@ defmodule MyApp.Changes.Slugify do
 
   @impl true
   def change(changeset, opts, _context) do
-    case Ash.Changeset.fetch_change(changeset, opts[:attribute)) do
+    case Ash.Changeset.fetch_change(changeset, opts[:attribute]) do
       {:ok, new_value} ->
         slug = String.replace(new_value, ~r/\s+/, "-")
         Ash.Changeset.force_change_attribute(changeset, opts[:attribute], slug)
