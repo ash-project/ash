@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.24](https://github.com/ash-project/ash/compare/v3.0.0-rc.23...v3.0.0-rc.24) (2024-04-16)
+
+
+
+
+### Bug Fixes:
+
+* ensure changeset filter is parsed for templates
+
+* properly parse additional changeset expression
+
+* properly parse changeset template for filters
+
+* properly parse changeset filter
+
 ## [v3.0.0-rc.23](https://github.com/ash-project/ash/compare/v3.0.0-rc.22...v3.0.0-rc.23) (2024-04-16)
 
 
