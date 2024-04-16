@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.23](https://github.com/ash-project/ash/compare/v3.0.0-rc.22...v3.0.0-rc.23) (2024-04-16)
+
+
+
+
+### Bug Fixes:
+
+* ensure changeset filters are applied on bulk destroy/update
+
 ## [v3.0.0-rc.22](https://github.com/ash-project/ash/compare/v3.0.0-rc.21...v3.0.0-rc.22) (2024-04-16)
 
 
