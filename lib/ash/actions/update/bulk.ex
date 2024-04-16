@@ -957,7 +957,7 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp add_changeset_filters(query, changeset) do
-    {Ash.Query.filter(query, changeset.filter), %{changeset | filter: nil}}
+    {Ash.Query.do_filter(query, changeset.filter), %{changeset | filter: nil}}
   end
 
   defp pre_template(opts, changeset, actor) do

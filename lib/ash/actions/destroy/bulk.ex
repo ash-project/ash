@@ -532,7 +532,7 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   defp add_changeset_filters(query, changeset) do
-    {Ash.Query.filter(query, changeset.filter), %{changeset | filter: nil}}
+    {Ash.Query.do_filter(query, changeset.filter), %{changeset | filter: nil}}
   end
 
   defp do_run(domain, stream, action, input, opts, not_atomic_reason) do
