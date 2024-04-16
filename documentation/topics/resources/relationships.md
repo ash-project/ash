@@ -192,34 +192,6 @@ performing relationship operations like filtering and loading.
 
 See the docs for more: `d:Ash.Resource.Dsl.relationships.many_to_many`
 
-### Cross-domain relationships
-
-You will need to specify the `domain` option in the relationship if the destination resource and/or the join table are parts of a different domain:
-
-```elixir
-many_to_many :authors, MyApp.OtherDomain.Resource do
-  domain MyApp.OtherDomain
-  ...
-end
-```
-
-However, if the join table is a part of the same domain but the destination resource is a part of a different domain, you will have to add a custom `has_many` association to the source domain as well. Suppose you have a domain called `MyApp.Organizations` with a resource named `MyApp.Organizations.Organization`, a domain called `MyApp.Accounts` with a resource named `MyApp.Accounts.User`, as well as a join resource `MyApp.Organizations.OrganizationUsers`. Then, in order to add `many_to_many :users` for `MyApp.Organizations.Organization`, you'll need the following setup:
-
-```elixir
-relationships do
-  ...
-
-  has_many :users_join_assoc, MyApp.Organizations.OrganizationUsers
-
-  many_to_many :users, MyApp.Accounts.User do
-    domain MyApp.Accounts
-    through MyApp.Organizations.OrganizationUsers
-    source_attribute_on_join_resource :organization_id
-    destination_attribute_on_join_resource :user_id
-  end
-end
-```
-
 ## Loading related data
 
 There are two ways to load relationships:
