@@ -551,7 +551,7 @@ defmodule Ash.Test.Actions.LoadTest do
       |> Ash.Changeset.for_create(:create, %{title: "post", secret: "42", author_id: author.id})
       |> Ash.create!()
 
-      all_access_posts_query = Ash.Query.for_read(Posts, :all_access)
+      all_access_posts_query = Ash.Query.for_read(Post, :all_access)
 
       assert [%{secret: "42"}] =
                author
