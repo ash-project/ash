@@ -4905,14 +4905,16 @@ defmodule Ash.Changeset do
 
   def filter(changeset, expr) do
     if Ash.DataLayer.data_layer_can?(changeset.resource, :changeset_filter) do
-      %{
-        changeset
-        | filter:
-            Ash.Filter.add_to_filter(
-              changeset.filter,
-              Ash.Filter.parse!(changeset.resource, expr)
-            )
-      }
+      case Ash.Filter.add_to_filter(
+             changeset.filter,
+             Ash.Filter.parse!(changeset.resource, expr)
+           ) do
+        {:ok, filter} ->
+          %{changeset | filter: filter}
+
+        {:error, error} ->
+          Ash.Changeset.add_error(changeset, error)
+      end
     else
       IO.warn(
         "Filters (used by optimistic locking) is not supported in the #{inspect(Ash.DataLayer.data_layer(changeset.resource))} data layer"
