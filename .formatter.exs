@@ -135,6 +135,7 @@ spark_locals_without_parens = [
   min: 4,
   modify_query: 1,
   module: 1,
+  multitenancy: 1,
   name: 1,
   no_attributes?: 1,
   not_found_error?: 1,

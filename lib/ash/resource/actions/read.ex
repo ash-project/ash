@@ -10,6 +10,7 @@ defmodule Ash.Resource.Actions.Read do
             manual: nil,
             metadata: [],
             modify_query: nil,
+            multitenancy: nil,
             name: nil,
             pagination: nil,
             preparations: [],
@@ -29,6 +30,7 @@ defmodule Ash.Resource.Actions.Read do
           manual: atom | {atom, Keyword.t()} | nil,
           metadata: [Ash.Resource.Actions.Metadata.t()],
           modify_query: nil | mfa,
+          multitenancy: atom,
           name: atom,
           pagination: any,
           primary?: boolean,
@@ -76,6 +78,13 @@ defmodule Ash.Resource.Actions.Read do
                     type: :pos_integer,
                     doc: """
                     The maximum amount of time, in milliseconds, that the action is allowed to run for. Ignored if the data layer doesn't support transactions *and* async is disabled.
+                    """
+                  ],
+                  multitenancy: [
+                    type: {:in, [:enforce, :allow_global, :bypass]},
+                    default: :enforce,
+                    doc: """
+                    This setting defines how this action handles multitenancy. `:enforce` requires a tenant to be set (the default behavior), `:allow_global` allows using this action both with and without a tenant, `:bypass` completely ignores the tenant even if it's set. This is useful to change the behaviour of selected read action without the need of marking the whole resource with `global? true`.
                     """
                   ]
                 ],

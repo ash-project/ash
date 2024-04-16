@@ -21,6 +21,14 @@ defmodule Ash.Actions.MultitenancyTest do
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
+
+      read :allow_global do
+        multitenancy(:allow_global)
+      end
+
+      read :bypass_tenant do
+        multitenancy(:bypass)
+      end
     end
 
     attributes do
@@ -99,6 +107,14 @@ defmodule Ash.Actions.MultitenancyTest do
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
+
+      read :allow_global do
+        multitenancy(:allow_global)
+      end
+
+      read :bypass_tenant do
+        multitenancy(:bypass)
+      end
     end
 
     attributes do
@@ -255,6 +271,59 @@ defmodule Ash.Actions.MultitenancyTest do
       assert User |> Ash.Query.set_tenant(tenant2) |> Ash.read!() == []
     end
 
+    test "supports :allow_global multitenancy on the read action", %{
+      tenant1: tenant1,
+      tenant2: tenant2
+    } do
+      user1 =
+        User
+        |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+        |> Ash.create!()
+
+      user2 =
+        User
+        |> Ash.Changeset.for_create(:create, %{}, tenant: tenant2)
+        |> Ash.create!()
+
+      assert [fetched_user1, fetched_user2] =
+               User
+               |> Ash.Query.for_read(:allow_global)
+               |> Ash.read!()
+
+      assert Enum.sort([fetched_user1.id, fetched_user2.id]) == Enum.sort([user1.id, user2.id])
+
+      assert [fetched_user1] =
+               User
+               |> Ash.Query.for_read(:allow_global)
+               |> Ash.Query.set_tenant(tenant1)
+               |> Ash.read!()
+
+      assert fetched_user1.id == user1.id
+    end
+
+    test "supports :bypass multitenancy on the read action", %{
+      tenant1: tenant1,
+      tenant2: tenant2
+    } do
+      user1 =
+        User
+        |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+        |> Ash.create!()
+
+      user2 =
+        User
+        |> Ash.Changeset.for_create(:create, %{}, tenant: tenant2)
+        |> Ash.create!()
+
+      assert [fetched_user1, fetched_user2] =
+               User
+               |> Ash.Query.for_read(:bypass_tenant)
+               |> Ash.Query.set_tenant(tenant1)
+               |> Ash.read!()
+
+      assert Enum.sort([fetched_user1.id, fetched_user2.id]) == Enum.sort([user1.id, user2.id])
+    end
+
     test "a record written to one tenant cannot be read from another with aggregate queries", %{
       tenant1: tenant1,
       tenant2: tenant2
@@ -348,6 +417,45 @@ defmodule Ash.Actions.MultitenancyTest do
 
       result = User |> Ash.count()
       assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.TenantRequired{}]}} = result
+    end
+
+    test "supports :allow_global multitenancy on the read action", %{
+      tenant1: tenant1,
+      tenant2: tenant2
+    } do
+      comment1 =
+        Comment
+        |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+        |> Ash.create!()
+
+      _comment2 =
+        Comment
+        |> Ash.Changeset.for_create(:create, %{}, tenant: tenant2)
+        |> Ash.create!()
+
+      # We can't actually read all the posts because the ETS data layer
+      # can't query across contextual tenants, but the read action
+      # doesn't raise Ash.Error.Invalid.TenantRequired
+      Comment
+      |> Ash.Query.for_read(:allow_global)
+      |> Ash.read!()
+
+      assert [fetched_comment1] =
+               Comment
+               |> Ash.Query.for_read(:allow_global)
+               |> Ash.Query.set_tenant(tenant1)
+               |> Ash.read!()
+
+      assert fetched_comment1.id == comment1.id
+    end
+
+    test "supports :bypass multitenancy on the read action" do
+      # We can't actually read all the posts because the ETS data layer
+      # can't query across contextual tenants, but the read action
+      # doesn't raise Ash.Error.Invalid.TenantRequired
+      Comment
+      |> Ash.Query.for_read(:bypass_tenant)
+      |> Ash.read!()
     end
   end
 end

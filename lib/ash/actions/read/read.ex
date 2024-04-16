@@ -318,8 +318,7 @@ defmodule Ash.Actions.Read do
 
   defp do_read(%{action: action} = query, calculations_at_runtime, calculations_in_query, opts) do
     maybe_in_transaction(query, opts, fn ->
-      with %{valid?: true} = query <- handle_attribute_multitenancy(query),
-           :ok <- validate_multitenancy(query),
+      with {:ok, %{valid?: true} = query} <- handle_multitenancy(query),
            {:ok, sort} <-
              Ash.Actions.Sort.process(
                query.resource,
@@ -1143,7 +1142,26 @@ defmodule Ash.Actions.Read do
   end
 
   @doc false
-  def handle_attribute_multitenancy(query) do
+  def handle_multitenancy(query) do
+    action_multitenancy = get_action(query.resource, query.action).multitenancy
+
+    case action_multitenancy do
+      :enforce ->
+        query = handle_attribute_multitenancy(query)
+
+        with :ok <- validate_multitenancy(query) do
+          {:ok, query}
+        end
+
+      :allow_global ->
+        {:ok, handle_attribute_multitenancy(query)}
+
+      :bypass ->
+        {:ok, %{query | tenant: nil, to_tenant: nil}}
+    end
+  end
+
+  defp handle_attribute_multitenancy(query) do
     multitenancy_attribute = Ash.Resource.Info.multitenancy_attribute(query.resource)
 
     if multitenancy_attribute && query.tenant do
@@ -1180,8 +1198,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  @doc false
-  def validate_multitenancy(query) do
+  defp validate_multitenancy(query) do
     if is_nil(Ash.Resource.Info.multitenancy_strategy(query.resource)) ||
          Ash.Resource.Info.multitenancy_global?(query.resource) || query.tenant do
       :ok
