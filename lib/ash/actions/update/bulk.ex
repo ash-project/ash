@@ -337,6 +337,7 @@ defmodule Ash.Actions.Update.Bulk do
            authorize_bulk_query(query, atomic_changeset, opts),
          {:ok, atomic_changeset, query} <-
            authorize_atomic_changeset(query, atomic_changeset, opts),
+         {query, atomic_changeset} <- add_changeset_filters(query, atomic_changeset),
          {:ok, data_layer_query} <- Ash.Query.data_layer_query(query) do
       case Ash.DataLayer.update_query(
              data_layer_query,
@@ -953,6 +954,10 @@ defmodule Ash.Actions.Update.Bulk do
         other
     end)
     |> Enum.with_index()
+  end
+
+  defp add_changeset_filters(query, changeset) do
+    {Ash.Query.filter(query, changeset.filter), %{changeset | filter: nil}}
   end
 
   defp pre_template(opts, changeset, actor) do
