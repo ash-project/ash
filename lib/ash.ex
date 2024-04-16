@@ -937,6 +937,7 @@ defmodule Ash do
     |> Ash.Query.new()
     |> Ash.Query.select([])
     |> Ash.Query.load(field)
+    |> Ash.Query.limit(1)
     |> read_one(opts)
     |> case do
       {:ok, record} when not is_nil(record) ->
@@ -1876,6 +1877,47 @@ defmodule Ash do
     Ash.Helpers.expect_resource_or_query!(query)
     domain = Ash.Helpers.domain!(query, opts)
     query = Ash.Query.new(query)
+
+    with {:ok, opts} <- Spark.Options.validate(opts, @read_one_opts_schema),
+         {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
+         {:ok, action} <- Ash.Helpers.pagination_check(action, query.resource, opts),
+         {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
+         {:ok, result} <- do_read_one(query, action, opts) do
+      {:ok, result}
+    else
+      {:error, error} ->
+        {:error, Ash.Error.to_error_class(error)}
+    end
+  end
+
+  @doc """
+  Runs an ash query, returning the first result or raise an error. See `read_first/2` for more.
+  """
+  @doc spark_opts: [{1, @read_one_opts_schema}]
+  def read_first!(query, opts \\ []) do
+    Ash.Helpers.expect_resource_or_query!(query)
+    Ash.Helpers.expect_options!(opts)
+
+    query
+    |> read_first(opts)
+    |> Ash.Helpers.unwrap_or_raise!()
+  end
+
+  @doc """
+  Runs a query on a resource, returning a first result, nil, or an error.
+
+  Query is automatically limited to only return one result, unlike `read_one/3`
+
+  ## Options
+
+  #{Spark.Options.docs(@read_one_opts_schema)}
+  """
+  @doc spark_opts: [{1, @read_one_opts_schema}]
+  def read_first(query, opts \\ []) do
+    Ash.Helpers.expect_options!(opts)
+    Ash.Helpers.expect_resource_or_query!(query)
+    domain = Ash.Helpers.domain!(query, opts)
+    query = query |> Ash.Query.new() |> Ash.Query.limit(1)
 
     with {:ok, opts} <- Spark.Options.validate(opts, @read_one_opts_schema),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
