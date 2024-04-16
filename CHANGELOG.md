@@ -5,6 +5,31 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.22](https://github.com/ash-project/ash/compare/v3.0.0-rc.21...v3.0.0-rc.22) (2024-04-16)
+
+
+
+
+### Features:
+
+* configurable multitenancy on read actions (#1030)
+
+### Bug Fixes:
+
+* fix typo in load test (#1031)
+
+* support all calculate opts in code interface methods (#1026)
+
+### Improvements:
+
+* add `Ash.read_first`
+
+* helpful output in mix tasks helper
+
+* use explicit read actions when reading relationships (#1029)
+
+* use cached to_tenant when setting tenant attribute (#1021)
+
 ## [v3.0.0-rc.21](https://github.com/ash-project/ash/compare/v3.0.0-rc.20...v3.0.0-rc.21) (2024-04-14)
 
 
