@@ -4906,7 +4906,6 @@ defmodule Ash.Changeset do
   def filter(changeset, expression) do
     if Ash.DataLayer.data_layer_can?(changeset.resource, :changeset_filter) do
       expression = Ash.Filter.parse!(changeset.resource, expression)
-      IO.inspect(expression, label: "1")
 
       expression =
         Ash.Expr.fill_template(
@@ -4916,16 +4915,15 @@ defmodule Ash.Changeset do
           changeset.context
         )
 
-        IO.inspect(expression, label: "2")
 
       with {:ok, expression} <- Ash.Filter.hydrate_refs(expression, %{
              resource: changeset.resource,
              public?: false
-           }) |> IO.inspect(label: "3"),
+           }),
           {:ok, expression} <- Ash.Filter.add_to_filter(
              changeset.filter,
              expression
-           ) |> IO.inspect(label: "4") do
+           ) do
           %{changeset | filter: expression}
       else
         {:error, error} ->
