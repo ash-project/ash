@@ -683,6 +683,21 @@ defmodule Ash.Expr do
   end
 
   def do_expr(
+        {:&, _,
+         [
+           {:/, _,
+            [
+              {{:., _, [v, _]}, _, []},
+              _
+            ]}
+         ]} = expr,
+        _
+      )
+      when is_atom(v) do
+    expr
+  end
+
+  def do_expr(
         {:&, _, _} = expr,
         _
       ) do
