@@ -166,7 +166,7 @@ defmodule Ash.Resource.Validation do
         def has_validate?, do: false
       end
 
-      if Module.defines?(__MODULE__, {:atomic, 2}, :def) do
+      if Module.defines?(__MODULE__, {:atomic, 3}, :def) do
         unless Module.defines?(__MODULE__, {:atomic?, 0}, :def) do
           @impl true
           def atomic?, do: true

@@ -339,7 +339,6 @@ defmodule Ash.Actions.Update.Bulk do
            authorize_atomic_changeset(query, atomic_changeset, opts),
          {query, atomic_changeset} <- add_changeset_filters(query, atomic_changeset),
          {:ok, data_layer_query} <- Ash.Query.data_layer_query(query) do
-      IO.inspect(atomic_changeset.atomics)
 
       case Ash.DataLayer.update_query(
              data_layer_query,
