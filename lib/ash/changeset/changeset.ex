@@ -2109,43 +2109,45 @@ defmodule Ash.Changeset do
       Enum.reduce(
         changeset.atomics,
         changeset,
-        fn {_key,
-            %Ash.Query.Function.Error{
-              arguments: arguments
-            } = error}, changeset ->
-          Enum.reduce_while(arguments, {:ok, []}, fn argument, {:ok, args} ->
-            case Ash.Expr.eval(argument,
-                   resource: changeset.resource,
-                   unknown_on_unknown_refs?: true
-                 ) do
-              {:ok, value} ->
-                {:cont, {:ok, [value | args]}}
-
-              _ ->
-                {:halt, :error}
-            end
-          end)
-          |> case do
-            {:ok, args} ->
-              error = %{error | arguments: args}
-
-              case Ash.Expr.eval(error,
+        fn
+          {_key,
+           %Ash.Query.Function.Error{
+             arguments: arguments
+           } = error},
+          changeset ->
+            Enum.reduce_while(arguments, {:ok, []}, fn argument, {:ok, args} ->
+              case Ash.Expr.eval(argument,
                      resource: changeset.resource,
                      unknown_on_unknown_refs?: true
                    ) do
-                {:error, error} ->
-                  Ash.Changeset.add_error(changeset, error)
+                {:ok, value} ->
+                  {:cont, {:ok, [value | args]}}
 
                 _ ->
-                  changeset
+                  {:halt, :error}
               end
+            end)
+            |> case do
+              {:ok, args} ->
+                error = %{error | arguments: args}
 
-            _ ->
-              changeset
-          end
+                case Ash.Expr.eval(error,
+                       resource: changeset.resource,
+                       unknown_on_unknown_refs?: true
+                     ) do
+                  {:error, error} ->
+                    Ash.Changeset.add_error(changeset, error)
 
-           {_key, _value}, changeset ->
-             changeset
+                  _ ->
+                    changeset
+                end
+
+              _ ->
+                changeset
+            end
+
+          {_key, _value}, changeset ->
+            changeset
         end
       )
     else

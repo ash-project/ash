@@ -3509,7 +3509,7 @@ defmodule Ash.Filter do
             end
 
           {:ok, right} ->
-             {:ok, %{expr | left: left, right: right}}
+            {:ok, %{expr | left: left, right: right}}
         end
     end
   end
