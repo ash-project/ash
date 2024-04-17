@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.25](https://github.com/ash-project/ash/compare/v3.0.0-rc.24...v3.0.0-rc.25) (2024-04-17)
+
+
+
+
+### Bug Fixes:
+
+* ensure validations are considered atomic
+
+* ensure tenant and actor are properly set in `Ash.can?`
+
+### Improvements:
+
+* better eager expression parsing and atomic error anticipation
+
 ## [v3.0.0-rc.24](https://github.com/ash-project/ash/compare/v3.0.0-rc.23...v3.0.0-rc.24) (2024-04-16)
 
 
