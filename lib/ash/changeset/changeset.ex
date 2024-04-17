@@ -2090,6 +2090,7 @@ defmodule Ash.Changeset do
       {:ok, hydrated_changeset} ->
         hydrated_changeset
         |> add_atomic_validations(actor, opts)
+        |> extract_atomic_eager_errors(actor, opts)
         |> case do
           %Ash.Changeset{} = changeset ->
             %{changeset | atomic_validations: []}
@@ -2100,6 +2101,55 @@ defmodule Ash.Changeset do
 
       other ->
         other
+    end
+  end
+
+  defp extract_atomic_eager_errors(changeset, _actor, opts) do
+    if Keyword.get(opts, :eager?, true) do
+      Enum.reduce(
+        changeset.atomics,
+        changeset,
+        fn {_key,
+            %Ash.Query.Function.Error{
+              arguments: arguments
+            } = error}, changeset ->
+          Enum.reduce_while(arguments, {:ok, []}, fn argument, {:ok, args} ->
+            case Ash.Expr.eval(argument,
+                   resource: changeset.resource,
+                   unknown_on_unknown_refs?: true
+                 ) do
+              {:ok, value} ->
+                {:cont, {:ok, [value | args]}}
+
+              _ ->
+                {:halt, :error}
+            end
+          end)
+          |> case do
+            {:ok, args} ->
+              error = %{error | arguments: args}
+
+              case Ash.Expr.eval(error,
+                     resource: changeset.resource,
+                     unknown_on_unknown_refs?: true
+                   ) do
+                {:error, error} ->
+                  Ash.Changeset.add_error(changeset, error)
+
+                _ ->
+                  changeset
+              end
+
+            _ ->
+              changeset
+          end
+
+           {_key, _value}, changeset ->
+             changeset
+        end
+      )
+    else
+      changeset
     end
   end
 

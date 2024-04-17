@@ -3191,12 +3191,32 @@ defmodule Ash.Filter do
                  Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, function}) do
               {:ok, function}
             else
-              case function_module.evaluate(function) do
-                {:known, result} ->
-                  {:ok, result}
+              function.arguments
+              |> List.wrap()
+              |> Enum.reduce_while({:ok, []}, fn arg, {:ok, acc} ->
+                case Ash.Expr.eval(arg) do
+                  {:ok, value} ->
+                    {:cont, {:ok, [value | acc]}}
 
-                _ ->
-                  {:error, "data layer does not support the function #{inspect(function)}"}
+                  _ ->
+                    {:halt,
+                     {:error, "data layer does not support the function #{inspect(function)}"}}
+                end
+              end)
+              |> case do
+                {:ok, arguments} ->
+                  function = %{function | arguments: Enum.reverse(arguments)}
+
+                  case function_module.evaluate(function) do
+                    {:known, result} ->
+                      {:ok, result}
+
+                    _ ->
+                      {:error, "data layer does not support the function #{inspect(function)}"}
+                  end
+
+                {:error, error} ->
+                  {:error, error}
               end
             end
           end
@@ -3457,18 +3477,55 @@ defmodule Ash.Filter do
   end
 
   def do_hydrate_refs(%BooleanExpression{left: left, right: right} = expr, context) do
-    with {:ok, left} <- do_hydrate_refs(left, context),
-         {:ok, right} <- do_hydrate_refs(right, context) do
-      {:ok, %{expr | left: left, right: right}}
-    else
-      other ->
-        other
+    case do_hydrate_refs(left, context) do
+      {:ok, true} ->
+        if expr.op == :or do
+          true
+        else
+          do_hydrate_refs(right, context)
+        end
+
+      {:ok, false} ->
+        if expr.op == :or do
+          do_hydrate_refs(right, context)
+        else
+          {:ok, false}
+        end
+
+      {:ok, left} ->
+        case do_hydrate_refs(right, context) do
+          {:ok, true} ->
+            if expr.op == :or do
+              true
+            else
+              {:ok, left}
+            end
+
+          {:ok, false} ->
+            if expr.op == :or do
+              {:ok, left}
+            else
+              {:ok, false}
+            end
+
+          {:ok, right} ->
+             {:ok, %{expr | left: left, right: right}}
+        end
     end
   end
 
   def do_hydrate_refs(%Not{expression: expression} = expr, context) do
     with {:ok, expression} <- do_hydrate_refs(expression, context) do
-      {:ok, %{expr | expression: expression}}
+      case expression do
+        true ->
+          {:ok, false}
+
+        false ->
+          {:ok, true}
+
+        _ ->
+          {:ok, %{expr | expression: expression}}
+      end
     end
   end
 
