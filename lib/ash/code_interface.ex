@@ -653,9 +653,7 @@ defmodule Ash.CodeInterface do
                   changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
                   changeset =
-                    if is_list(params) || is_function(params) || match?(%Stream{}, params) do
-                      {:bulk, params}
-                    else
+                    if is_map(params) || Keyword.keyword?(params) do
                       changeset
                       |> Kernel.||(unquote(resource))
                       |> case do
@@ -675,6 +673,8 @@ defmodule Ash.CodeInterface do
                           changeset
                       end
                       |> Ash.Changeset.for_create(unquote(action.name), params, changeset_opts)
+                    else
+                      {:bulk, params}
                     end
                 end
 
@@ -779,12 +779,6 @@ defmodule Ash.CodeInterface do
                         %Ash.Query{} = query ->
                           {:atomic, :query, query}
 
-                        value when is_function(value) ->
-                          {:atomic, :stream, value}
-
-                        %Stream{} = value ->
-                          {:atomic, :stream, value}
-
                         [{_key, _val} | _] = id ->
                           {:atomic, :id, id}
 
@@ -792,7 +786,11 @@ defmodule Ash.CodeInterface do
                           {:atomic, :stream, list}
 
                         other ->
-                          {:atomic, :id, other}
+                          if Keyword.keyword?(other) || is_map(other) do
+                            {:atomic, :id, other}
+                          else
+                            {:atomic, :stream, other}
+                          end
                       end
                   end
                 else
@@ -986,20 +984,12 @@ defmodule Ash.CodeInterface do
                         %Ash.Query{} = query ->
                           {:atomic, :query, query}
 
-                        value when is_function(value) ->
-                          {:atomic, :stream, value}
-
-                        %Stream{} = value ->
-                          {:atomic, :stream, value}
-
-                        [{_key, _val} | _] = id ->
-                          {:atomic, :id, id}
-
-                        list when is_list(list) ->
-                          {:atomic, :stream, list}
-
                         other ->
-                          {:atomic, :id, other}
+                          if Keyword.keyword?(other) || is_map(other) do
+                            {:atomic, :id, other}
+                          else
+                            {:atomic, :stream, other}
+                          end
                       end
                   end
                 else
