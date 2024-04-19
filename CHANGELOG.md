@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.27](https://github.com/ash-project/ash/compare/v3.0.0-rc.26...v3.0.0-rc.27) (2024-04-19)
+
+
+
+
+### Bug Fixes:
+
+* don't eager evaluate type because it breaks data layers
+
 ## [v3.0.0-rc.26](https://github.com/ash-project/ash/compare/v3.0.0-rc.25...v3.0.0-rc.26) (2024-04-19)
 
 
