@@ -1012,6 +1012,8 @@ defmodule Ash.Type.Union do
          {:ok, type_config} <- Keyword.fetch(type_configs, type_name),
          {:ok, type} <- Keyword.fetch(type_config, :type),
          type_constraints <- Keyword.get(type_config, :constraints, []),
+         type_constraints <-
+           Keyword.put(type_constraints, :__union_tag__, type_config[:tag]),
          type <- Ash.Type.get_type(type),
          {:ok, value} <- type.prepare_change(old_value, new_value, type_constraints) do
       {:ok, %Ash.Union{type: type_name, value: value}}
