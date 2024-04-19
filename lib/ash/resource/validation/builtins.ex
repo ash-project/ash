@@ -115,30 +115,12 @@ defmodule Ash.Resource.Validation.Builtins do
     {Validation.AttributeIn, attribute: attribute, list: list}
   end
 
-  @string_length_opts [
-    min: [
-      type: :non_neg_integer,
-      doc: "String must be this length at least"
-    ],
-    max: [
-      type: :non_neg_integer,
-      doc: "String must be this length at most"
-    ],
-    exact: [
-      type: :non_neg_integer,
-      doc: "String must be this length exactly"
-    ]
-  ]
-
-  @doc false
-  def string_length_opts, do: @string_length_opts
-
   @doc """
   Validates that an attribute on the original record meets the given length criteria
 
   ## Options
 
-  #{Spark.Options.docs(@string_length_opts)}
+  #{Spark.Options.docs(Ash.Resource.Validation.StringLength.opt_schema())}
 
   ## Examples
 
@@ -151,41 +133,13 @@ defmodule Ash.Resource.Validation.Builtins do
     {Validation.StringLength, Keyword.merge(opts, attribute: attribute)}
   end
 
-  @compare_opts [
-    greater_than: [
-      type: {:or, [:integer, :atom, :float, {:struct, Decimal}, {:fun, 0}]},
-      required: false,
-      doc: "The value that the attribute should be greater than."
-    ],
-    greater_than_or_equal_to: [
-      type: {:or, [:integer, :atom, :float, {:struct, Decimal}, {:fun, 0}]},
-      required: false,
-      doc: "The value that the attribute should be greater than or equal to"
-    ],
-    less_than: [
-      type: {:or, [:integer, :atom, :float, {:struct, Decimal}, {:fun, 0}]},
-      required: false,
-      doc: "The value that the attribute should be less than"
-    ],
-    less_than_or_equal_to: [
-      type: {:or, [:integer, :atom, :float, {:struct, Decimal}, {:fun, 0}]},
-      required: false,
-      doc: "The value that the attribute should be less than or equal to"
-    ]
-  ]
-
-  @doc false
-  def compare_opts do
-    @compare_opts
-  end
-
   @numericality_docs """
   Validates that an attribute or argument meets the given comparison criteria.
 
   The values provided for each option may be a literal value, attribute, argument, or a zero argument function.
 
   ## Options
-  #{Spark.Options.docs(@compare_opts)}
+  #{Spark.Options.docs(Ash.Resource.Validation.Compare.opt_schema())}
 
   ## Examples
 
@@ -222,26 +176,6 @@ defmodule Ash.Resource.Validation.Builtins do
      attribute: attribute, match: match, message: "must match #{inspect(match)}"}
   end
 
-  @present_opts [
-    at_least: [
-      type: :non_neg_integer,
-      doc: "At least this many must be present. Defaults to the number of attributes provided"
-    ],
-    at_most: [
-      type: :non_neg_integer,
-      doc: "At most this many must be present. Defaults to the number of attributes provided"
-    ],
-    exactly: [
-      type: :non_neg_integer,
-      doc: "Exactly this many must be present"
-    ]
-  ]
-
-  @doc false
-  def present_opts do
-    @present_opts
-  end
-
   @doc """
   Validates the presence of a list of attributes or arguments.
 
@@ -249,7 +183,7 @@ defmodule Ash.Resource.Validation.Builtins do
 
   ## Options
 
-  #{Spark.Options.docs(@present_opts)}
+  #{Spark.Options.docs(Ash.Resource.Validation.Present.opt_schema())}
   """
   @spec present(attributes_or_arguments :: atom | list(atom), opts :: Keyword.t()) ::
           Validation.ref()
@@ -272,7 +206,7 @@ defmodule Ash.Resource.Validation.Builtins do
 
   ## Options
 
-  #{String.replace(Spark.Options.docs(@present_opts), "present", "absent")}
+  #{String.replace(Spark.Options.docs(Ash.Resource.Validation.Present.opt_schema()), "present", "absent")}
   """
   @spec absent(attributes_or_arguments :: atom | list(atom), opts :: Keyword.t()) ::
           Validation.ref()

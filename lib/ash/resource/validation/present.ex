@@ -5,14 +5,28 @@ defmodule Ash.Resource.Validation.Present do
   alias Ash.Error.Changes.{InvalidAttribute, InvalidChanges}
   import Ash.Expr
 
+  @opt_schema [
+    at_least: [
+      type: :non_neg_integer,
+      doc: "At least this many must be present. Defaults to the number of attributes provided"
+    ],
+    at_most: [
+      type: :non_neg_integer,
+      doc: "At most this many must be present. Defaults to the number of attributes provided"
+    ],
+    exactly: [
+      type: :non_neg_integer,
+      doc: "Exactly this many must be present"
+    ]
+  ]
+
+  def opt_schema, do: @opt_schema
+
   @impl true
   def init(opts) do
     case Spark.Options.validate(
            opts,
-           Keyword.put(Ash.Resource.Validation.Builtins.present_opts(), :attributes,
-             type: {:wrap_list, :atom},
-             required: true
-           )
+           Keyword.put(opt_schema(), :attributes, type: {:wrap_list, :atom}, required: true)
          ) do
       {:ok, opts} ->
         {:ok, opts}
