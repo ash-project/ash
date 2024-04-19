@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.26](https://github.com/ash-project/ash/compare/v3.0.0-rc.25...v3.0.0-rc.26) (2024-04-19)
+
+
+
+
+### Bug Fixes:
+
+* ensure `__union_tag__` is set when calling sub-union types
+
+* handle more `&Mod.fun/n` variations in fragments
+
 ## [v3.0.0-rc.25](https://github.com/ash-project/ash/compare/v3.0.0-rc.24...v3.0.0-rc.25) (2024-04-17)
 
 
