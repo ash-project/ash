@@ -3,9 +3,36 @@ defmodule Ash.Resource.Change.SetAttribute do
   use Ash.Resource.Change
   alias Ash.Changeset
 
+  @opt_schema [
+    attribute: [
+      doc: "The attribute to change.",
+      required: true,
+      type: :atom
+    ],
+    value: [
+      doc:
+        "The value to set the attribute to; may be a fn/0 which will be called to produce the value.",
+      required: true,
+      type: {:custom, __MODULE__, :validate_value, []}
+    ],
+    set_when_nil?: [
+      doc: "When false, decline setting the attribute if it is nil.",
+      type: :boolean,
+      default: true
+    ],
+    new?: [
+      doc:
+        "When true, sets the attribute to the value provided if the attribute is not already being changed.",
+      type: :boolean,
+      default: false
+    ]
+  ]
+
+  def opt_schema, do: @opt_schema
+
   @impl true
   def init(opts) do
-    case Spark.Options.validate(opts, Ash.Resource.Change.Builtins.set_attribute_opts()) do
+    case Spark.Options.validate(opts, opt_schema()) do
       {:ok, opts} ->
         {:ok, opts}
 

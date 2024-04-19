@@ -5,63 +5,6 @@ defmodule Ash.Resource.Change.Builtins do
   The functions in this module are imported by default in the actions section.
   """
 
-  @relate_actor_opts [
-    relationship: [
-      doc: "The relationship to set the actor to.",
-      required: true,
-      type: :atom
-    ],
-    allow_nil?: [
-      doc: "Whether or not to allow the actor to be nil, in which case nothing will happen.",
-      type: :boolean,
-      default: false
-    ],
-    field: [
-      doc: "The field of the actor to set the relationship to",
-      type: :atom
-    ]
-  ]
-
-  @set_attribute_opts [
-    attribute: [
-      doc: "The attribute to change.",
-      required: true,
-      type: :atom
-    ],
-    value: [
-      doc:
-        "The value to set the attribute to; may be a fn/0 which will be called to produce the value.",
-      required: true,
-      type: {:custom, Ash.Resource.Change.SetAttribute, :validate_value, []}
-    ],
-    set_when_nil?: [
-      doc: "When false, decline setting the attribute if it is nil.",
-      type: :boolean,
-      default: true
-    ],
-    new?: [
-      doc:
-        "When true, sets the attribute to the value provided if the attribute is not already being changed.",
-      type: :boolean,
-      default: false
-    ]
-  ]
-
-  @doc """
-  Relates the actor to the data being changed, as the provided relationship.
-
-  ## Options
-
-  #{Spark.Options.docs(@relate_actor_opts)}
-
-  ## Examples
-
-      change relate_actor(:owner, allow_nil?: true)
-  """
-  def relate_actor_opts do
-    @relate_actor_opts
-  end
-
   @doc """
   Applies a filter to the changeset. Has no effect for create actions.
 
@@ -72,6 +15,17 @@ defmodule Ash.Resource.Change.Builtins do
     {Ash.Resource.Change.Filter, filter: filter}
   end
 
+  @doc """
+  Relates the actor to the data being changed, as the provided relationship.
+
+  ## Options
+
+  #{Spark.Options.docs(Ash.Resource.Change.RelateActor.opt_schema())}
+
+  ## Examples
+
+      change relate_actor(:owner, allow_nil?: true)
+  """
   @spec relate_actor(relationship :: atom, opts :: Keyword.t()) :: Ash.Resource.Change.ref()
   def relate_actor(relationship, opts \\ []) do
     opts =
@@ -136,11 +90,6 @@ defmodule Ash.Resource.Change.Builtins do
     {Ash.Resource.Change.GetAndLock, [lock: lock]}
   end
 
-  @doc false
-  def set_attribute_opts do
-    @set_attribute_opts
-  end
-
   @doc """
   Updates an existing attribute change by applying a function to it.
 
@@ -186,7 +135,7 @@ defmodule Ash.Resource.Change.Builtins do
 
   ## Options
 
-  #{Spark.Options.docs(Keyword.drop(@set_attribute_opts, [:attribute, :value]))}
+  #{Spark.Options.docs(Keyword.drop(Ash.Resource.Change.SetAttribute.opt_schema(), [:attribute, :value]))}
 
   ## Examples
 
@@ -196,7 +145,7 @@ defmodule Ash.Resource.Change.Builtins do
       change set_attribute(:encrypted_data, arg(:data), set_when_nil?: false)
   """
   @spec set_attribute(
-          relationship :: atom,
+          attribute :: atom,
           (-> term) | {:_arg, :status} | term(),
           opts :: Keyword.t()
         ) ::
