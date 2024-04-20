@@ -19,6 +19,8 @@ defmodule Ash.Test.CodeInterfaceTest do
       define :get_by_id, action: :by_id, get?: true, args: [:id]
       define :create, args: [{:optional, :first_name}]
       define :hello, args: [:name]
+      define :create_with_map, args: [:map]
+      define :update_with_map, args: [:map]
 
       define :bulk_create, action: :create
       define :update, action: :update
@@ -43,7 +45,15 @@ defmodule Ash.Test.CodeInterfaceTest do
 
       create :create
 
+      create :create_with_map do
+        argument :map, :map, allow_nil?: false
+      end
+
       update :update
+
+      update :update_with_map do
+        argument :map, :map, allow_nil?: false
+      end
 
       destroy :destroy
 
@@ -173,6 +183,10 @@ defmodule Ash.Test.CodeInterfaceTest do
                User.changeset_to_create("bob")
     end
 
+    test "can handle when a map is provided as an argument value" do
+      User.create_with_map!(%{some_random_key: 10})
+    end
+
     test "have a helper to test authorization" do
       assert {:ok, true} == User.can_create(nil)
       assert {:ok, true} == User.can_create(nil, "bob")
@@ -199,6 +213,11 @@ defmodule Ash.Test.CodeInterfaceTest do
 
       assert %Ash.Changeset{action: %{name: :update}, attributes: %{first_name: "fred"}} =
                User.changeset_to_update(bob, %{first_name: "fred"})
+    end
+
+    test "can handle when a map is provided as an argument value" do
+      bob = User.create!("bob", context: @context)
+      User.update_with_map!(bob, %{some_random_key: 10})
     end
 
     test "can take a @context options" do
