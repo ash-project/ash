@@ -30,19 +30,41 @@ defmodule Ash.Mix.Tasks.Helpers do
     else
       Mix.shell().info("Getting extensions in current project...")
 
-      Application.loaded_applications()
-      |> Stream.map(&elem(&1, 0))
-      |> Stream.flat_map(&List.wrap(elem(:application.get_key(&1, :modules), 1)))
-      |> Stream.filter(&Spark.implements_behaviour?(&1, Spark.Dsl.Extension))
-      |> Enum.uniq()
-      |> case do
-        [] ->
-          Mix.shell().info("No extensions in the current project.")
+      apps =
+        if Code.ensure_loaded?(Mix.Project) do
+          if apps_paths = Mix.Project.apps_paths() do
+            apps_paths |> Map.keys() |> Enum.sort()
+          else
+            [Mix.Project.config()[:app]]
+          end
+        else
           []
+        end
 
-        extensions ->
-          extensions
-      end
+      # for our app, and all dependency apps, we want to find extensions
+      # the benefit of not just getting all loaded applications is that this
+      # is actually a surprisingly expensive thing to do for every single built
+      # in application for elixir/erlang. Instead we get anything w/ a dependency on ash or spark
+      # this could miss things, but its unlikely. And if it misses things, it actually should be
+      # fixed in the dependency that is relying on a transitive dependency :)
+      Mix.Project.deps_tree()
+      |> Stream.filter(fn {_, nested_deps} ->
+        Enum.any?(nested_deps, &(&1 == :spark || &1 == :ash))
+      end)
+      |> Stream.map(&elem(&1, 0))
+      |> Stream.concat(apps)
+      |> Stream.uniq()
+      |> Task.async_stream(fn app ->
+        app
+        |> :application.get_key(:modules)
+        |> elem(1)
+        |> List.wrap()
+        |> Enum.filter(&Spark.implements_behaviour?(&1, Spark.Dsl.Extension))
+      end, timeout: :infinity)
+      |> Stream.map(&elem(&1, 1))
+      |> Stream.flat_map(& &1)
+      |> Stream.uniq()
+      |> Enum.to_list()
     end
   end
 
