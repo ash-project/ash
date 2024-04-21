@@ -55,6 +55,7 @@ defmodule Ash.Query do
     limit: nil,
     load: [],
     offset: 0,
+    page: nil,
     params: %{},
     phase: :preparing,
     select: nil,
@@ -93,6 +94,7 @@ defmodule Ash.Query do
           limit: nil | non_neg_integer(),
           load: keyword(keyword),
           offset: non_neg_integer(),
+          page: keyword() | nil,
           params: %{optional(atom | binary) => any},
           phase: :preparing | :before_action | :after_action | :executing,
           select: nil | [atom],
@@ -118,6 +120,7 @@ defmodule Ash.Query do
     InvalidCalculationArgument,
     InvalidLimit,
     InvalidOffset,
+    InvalidPage,
     NoReadAction,
     ReadActionRequiresActor,
     Required
@@ -161,6 +164,7 @@ defmodule Ash.Query do
       select? = query.select not in [[], nil]
       distinct? = query.distinct not in [[], nil]
       lock? = not is_nil(query.lock)
+      page? = not is_nil(query.page)
 
       container_doc(
         "#Ash.Query<",
@@ -179,7 +183,8 @@ defmodule Ash.Query do
           or_empty(concat("errors: ", to_doc(query.errors, opts)), errors?),
           or_empty(concat("select: ", to_doc(query.select, opts)), select?),
           or_empty(concat("distinct: ", to_doc(query.distinct, opts)), distinct?),
-          or_empty(concat("lock: ", to_doc(query.lock, opts)), lock?)
+          or_empty(concat("lock: ", to_doc(query.lock, opts)), lock?),
+          or_empty(concat("page: ", to_doc(query.page, opts)), page?)
         ],
         ">",
         opts,
@@ -1921,6 +1926,27 @@ defmodule Ash.Query do
   def set_tenant(query, tenant) do
     query = new(query)
     %{query | tenant: tenant, to_tenant: Ash.ToTenant.to_tenant(tenant, query.resource)}
+  end
+
+  @doc """
+  Sets the pagination options of the query.
+
+  Pass `nil` to disable pagination.
+
+  ### Limit/offset pagination
+  #{Spark.Options.docs(Ash.Page.Offset.page_opts())}
+
+  ### Keyset pagination
+  #{Spark.Options.docs(Ash.Page.Keyset.page_opts())}
+  """
+  @spec page(t() | Ash.Resource.t(), Keyword.t()) :: t()
+  def page(query, page_opts) do
+    query = new(query)
+
+    case Ash.Page.page_opts(page_opts) do
+      {:ok, page_opts} -> %{query | page: page_opts}
+      {:error, _error} -> add_error(query, :page, InvalidPage.exception(page: page_opts))
+    end
   end
 
   @doc "Removes a field from the list of fields to load"

@@ -9,6 +9,34 @@ defmodule Ash.Page.Keyset do
 
   @type t :: %__MODULE__{}
 
+  @page_opts [
+    before: [
+      type: :string,
+      doc: "Get records that appear before the provided keyset (mutually exclusive with `after`)"
+    ],
+    after: [
+      type: :string,
+      doc: "Get records that appear after the provided keyset (mutually exclusive with `before`)"
+    ],
+    limit: [
+      type: :pos_integer,
+      doc: "How many records to include in the page"
+    ],
+    filter: [
+      type: :any,
+      doc: "See the `filter` option for offset pagination, this behaves the same."
+    ],
+    count: [
+      type: :boolean,
+      doc: "Whether or not to return the page with a full count of all records"
+    ]
+  ]
+
+  @doc false
+  def page_opts do
+    @page_opts
+  end
+
   def new(results, count, _sort, original_query, more?, opts) do
     %__MODULE__{
       results: results,

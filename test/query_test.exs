@@ -55,6 +55,13 @@ defmodule Ash.Test.QueryTest do
     end
   end
 
+  describe "page validation" do
+    test "it returns an appropriate error when a page is invalid" do
+      query = Ash.Query.page(User, limit: :foo)
+      assert [%Ash.Error.Query.InvalidPage{page: [limit: :foo]}] = query.errors
+    end
+  end
+
   describe "sensitive attributes" do
     test "it hides the value in filters" do
       equals = Ash.Query.filter(User, email == "fred") |> inspect()
