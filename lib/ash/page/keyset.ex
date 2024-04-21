@@ -41,9 +41,9 @@ defmodule Ash.Page.Keyset do
     %__MODULE__{
       results: results,
       count: count,
-      before: opts[:page][:before],
-      after: opts[:page][:after],
-      limit: opts[:page][:limit],
+      before: original_query.page[:before],
+      after: original_query.page[:after],
+      limit: original_query.page[:limit],
       more?: more?,
       rerun: {original_query, opts}
     }

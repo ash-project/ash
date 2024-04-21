@@ -1459,11 +1459,13 @@ defmodule Ash do
   def page(%Ash.Page.Keyset{results: [], before: before, rerun: {query, opts}}, :prev)
       when not is_nil(before) do
     new_page_opts =
-      opts[:page]
+      query.page
       |> Keyword.delete(:before)
       |> Keyword.put(:after, before)
 
-    read(query, Keyword.put(opts, :page, new_page_opts))
+    query
+    |> Ash.Query.page(new_page_opts)
+    |> read(opts)
   end
 
   def page(%Ash.Page.Keyset{}, n) when is_integer(n) do
@@ -1481,11 +1483,13 @@ defmodule Ash do
       |> Map.get(:keyset)
 
     new_page_opts =
-      opts[:page]
+      query.page
       |> Keyword.delete(:before)
       |> Keyword.put(:after, last_keyset)
 
-    case read(query, Keyword.put(opts, :page, new_page_opts)) do
+    query = Ash.Query.page(query, new_page_opts)
+
+    case read(query, opts) do
       {:ok, %{results: []}} ->
         {:ok, page}
 
@@ -1502,11 +1506,13 @@ defmodule Ash do
       |> Map.get(:keyset)
 
     new_page_opts =
-      opts[:page]
+      query.page
       |> Keyword.put(:before, first_keyset)
       |> Keyword.delete(:after)
 
-    case read(query, Keyword.put(opts, :page, new_page_opts)) do
+    query = Ash.Query.page(query, new_page_opts)
+
+    case read(query, opts) do
       {:ok, %{results: []}} ->
         {:ok, page}
 
@@ -1517,13 +1523,15 @@ defmodule Ash do
 
   def page(%Ash.Page.Keyset{rerun: {query, opts}}, :first) do
     page_opts =
-      if opts[:page][:count] do
+      if query.page[:count] do
         [count: true]
       else
         []
       end
 
-    read(query, Keyword.put(opts, :page, page_opts))
+    query
+    |> Ash.Query.page(page_opts)
+    |> read(opts)
   end
 
   def page(%Ash.Page.Keyset{rerun: {query, opts}}, :self) do
@@ -1553,14 +1561,14 @@ defmodule Ash do
           end
 
         :self ->
-          opts[:page]
+          query.page
 
         page_num when is_integer(page_num) ->
           [offset: (page_num - 1) * limit, limit: limit]
       end
 
     page_opts =
-      if opts[:page][:count] do
+      if query.page[:count] do
         Keyword.put(page_opts, :count, true)
       else
         page_opts
@@ -1569,7 +1577,9 @@ defmodule Ash do
     if request == :last && !count do
       {:error, "Cannot fetch last page without counting"}
     else
-      read(query, Keyword.put(opts, :page, page_opts))
+      query
+      |> Ash.Query.page(page_opts)
+      |> read(opts)
     end
   end
 
@@ -1802,7 +1812,7 @@ defmodule Ash do
 
     with {:ok, opts} <- Spark.Options.validate(opts, @read_opts_schema),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
-         {:ok, action} <- Ash.Helpers.pagination_check(action, query.resource, opts),
+         {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
          {:ok, results} <- Ash.Actions.Read.run(query, action, opts) do
       {:ok, results}
@@ -1873,7 +1883,7 @@ defmodule Ash do
 
     with {:ok, opts} <- Spark.Options.validate(opts, @read_one_opts_schema),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
-         {:ok, action} <- Ash.Helpers.pagination_check(action, query.resource, opts),
+         {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
          {:ok, result} <- do_read_one(query, action, opts) do
       {:ok, result}
@@ -1914,7 +1924,7 @@ defmodule Ash do
 
     with {:ok, opts} <- Spark.Options.validate(opts, @read_one_opts_schema),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
-         {:ok, action} <- Ash.Helpers.pagination_check(action, query.resource, opts),
+         {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
          {:ok, result} <- do_read_one(query, action, opts) do
       {:ok, result}

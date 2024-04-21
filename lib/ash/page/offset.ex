@@ -41,9 +41,9 @@ defmodule Ash.Page.Offset do
   def new(results, count, original_query, more?, opts) do
     %__MODULE__{
       results: results,
-      limit: opts[:page][:limit],
+      limit: original_query.page[:limit],
       count: count,
-      offset: opts[:page][:offset] || 0,
+      offset: original_query.page[:offset] || 0,
       more?: more?,
       rerun: {original_query, opts}
     }
