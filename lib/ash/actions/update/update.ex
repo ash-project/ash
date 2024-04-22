@@ -57,8 +57,7 @@ defmodule Ash.Actions.Update do
 
           true ->
             params =
-              changeset.attributes
-              |> Map.merge(changeset.casted_attributes)
+              changeset.casted_attributes
               |> Map.merge(changeset.arguments)
               |> Map.merge(changeset.casted_arguments)
 
@@ -71,7 +70,11 @@ defmodule Ash.Actions.Update do
                 |> Keyword.merge(
                   assume_casted?: true,
                   notify?: true,
-                  atomics: changeset.atomics || [],
+                  atomics:
+                    Keyword.merge(
+                      changeset.atomics || [],
+                      Keyword.new(changeset.attribute_changes)
+                    ),
                   tenant: changeset.tenant
                 )
               )

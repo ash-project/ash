@@ -66,9 +66,10 @@ defmodule Ash.Changeset do
     defaults: [],
     errors: [],
     params: %{},
+    attribute_changes: %{},
     casted_attributes: %{},
     casted_arguments: %{},
-    phase: :validate,
+    phase: :pending,
     relationships: %{},
     select: nil,
     load: [],
@@ -236,7 +237,9 @@ defmodule Ash.Changeset do
           invalid_keys: MapSet.t(),
           params: %{optional(atom | binary) => any},
           phase:
-            :validate
+            :atomic
+            | :pending
+            | :validate
             | :before_transaction
             | :before_action
             | :after_action
@@ -548,16 +551,28 @@ defmodule Ash.Changeset do
           opts
         )
 
+      changeset = set_phase(changeset, :atomic)
+
       with :ok <- verify_notifiers_support_atomic(resource, action),
-           %Ash.Changeset{} = changeset <- atomic_update(changeset, opts[:atomic_update] || []),
            %Ash.Changeset{} = changeset <- atomic_params(changeset, action, params, opts),
            %Ash.Changeset{} = changeset <- atomic_changes(changeset, action),
-           %Ash.Changeset{} = changeset <- atomic_defaults(changeset) do
+           %Ash.Changeset{} = changeset <- atomic_defaults(changeset),
+           %Ash.Changeset{} = changeset <- atomic_update(changeset, opts[:atomic_update] || []) do
         hydrate_atomic_refs(changeset, opts[:actor], Keyword.take(opts, [:eager?]))
       else
         {:not_atomic, reason} ->
           {:not_atomic, reason}
       end
+    end
+    |> case do
+      {:not_atomic, reason} ->
+        {:not_atomic, reason}
+
+      {:error, error} ->
+        {:error, error}
+
+      changeset ->
+        clear_phase(changeset)
     end
   end
 
@@ -1957,6 +1972,7 @@ defmodule Ash.Changeset do
   end
 
   defp run_action_changes(changeset, %{changes: changes}, actor, authorize?, tracer, metadata) do
+    changeset = set_phase(changeset, :validate)
     changes = changes ++ Ash.Resource.Info.changes(changeset.resource, changeset.action_type)
 
     context = %{
@@ -2063,6 +2079,7 @@ defmodule Ash.Changeset do
       %{validation: _} = validation, changeset ->
         validate(changeset, validation, tracer, metadata, actor)
     end)
+    |> clear_phase()
   end
 
   @doc false
@@ -4595,7 +4612,9 @@ defmodule Ash.Changeset do
 
       attribute when is_nil(value) ->
         changeset = remove_default(changeset, attribute.name)
+
         %{changeset | attributes: Map.put(changeset.attributes, attribute.name, nil)}
+        |> record_attribute_change_for_atomic_upgrade(attribute.name, nil)
 
       attribute ->
         with value <- Ash.Type.Helpers.handle_indexed_maps(attribute.type, value),
@@ -4618,24 +4637,28 @@ defmodule Ash.Changeset do
                 changeset
                 | attributes: Map.put(changeset.attributes, attribute.name, casted)
               }
+              |> record_attribute_change_for_atomic_upgrade(attribute.name, casted)
 
             is_nil(data_value) and is_nil(casted) ->
               %{
                 changeset
                 | attributes: Map.delete(changeset.attributes, attribute.name)
               }
+              |> record_attribute_change_for_atomic_upgrade(attribute.name, casted)
 
             Ash.Type.equal?(attribute.type, casted, data_value) ->
               %{
                 changeset
                 | attributes: Map.delete(changeset.attributes, attribute.name)
               }
+              |> record_attribute_change_for_atomic_upgrade(attribute.name, casted)
 
             true ->
               %{
                 changeset
                 | attributes: Map.put(changeset.attributes, attribute.name, casted)
               }
+              |> record_attribute_change_for_atomic_upgrade(attribute.name, casted)
           end
         else
           :error ->
@@ -4644,6 +4667,14 @@ defmodule Ash.Changeset do
           {:error, error_or_errors} ->
             add_invalid_errors(value, :attribute, changeset, attribute, error_or_errors)
         end
+    end
+  end
+
+  defp record_attribute_change_for_atomic_upgrade(changeset, name, casted) do
+    if changeset.phase == :pending do
+      %{changeset | attribute_changes: Map.put(changeset.attribute_changes, name, casted)}
+    else
+      changeset
     end
   end
 
@@ -5165,8 +5196,8 @@ defmodule Ash.Changeset do
   defp set_phase(changeset, phase) when changeset.phase == phase, do: changeset
 
   defp set_phase(changeset, phase)
-       when phase in ~w[validate before_action after_action before_transaction after_transaction around_action around_transaction]a,
+       when phase in ~w[atomic pending validate before_action after_action before_transaction after_transaction around_action around_transaction]a,
        do: %{changeset | phase: phase}
 
-  defp clear_phase(changeset), do: %{changeset | phase: :validate}
+  defp clear_phase(changeset), do: %{changeset | phase: :pending}
 end

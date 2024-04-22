@@ -54,13 +54,16 @@ defmodule Ash.Mix.Tasks.Helpers do
       |> Stream.map(&elem(&1, 0))
       |> Stream.concat(apps)
       |> Stream.uniq()
-      |> Task.async_stream(fn app ->
-        app
-        |> :application.get_key(:modules)
-        |> elem(1)
-        |> List.wrap()
-        |> Enum.filter(&Spark.implements_behaviour?(&1, Spark.Dsl.Extension))
-      end, timeout: :infinity)
+      |> Task.async_stream(
+        fn app ->
+          app
+          |> :application.get_key(:modules)
+          |> elem(1)
+          |> List.wrap()
+          |> Enum.filter(&Spark.implements_behaviour?(&1, Spark.Dsl.Extension))
+        end,
+        timeout: :infinity
+      )
       |> Stream.map(&elem(&1, 1))
       |> Stream.flat_map(& &1)
       |> Stream.uniq()
