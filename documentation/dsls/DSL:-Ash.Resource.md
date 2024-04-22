@@ -2180,7 +2180,9 @@ identity :full_name, [:first_name, :last_name]
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`eager_check_with`](#identities-identity-eager_check_with){: #identities-identity-eager_check_with } | `module` |  | Validates that the unique identity provided is unique at validation time, outside of any transactions, using the domain module provided. |
+| [`eager_check?`](#identities-identity-eager_check?){: #identities-identity-eager_check? } | `boolean` | `false` | Whether or not this identity is validated to be unique at validation time. |
+| [`eager_check_with`](#identities-identity-eager_check_with){: #identities-identity-eager_check_with } | `module` |  | Validates that the unique identity provided is unique at validation time, outside of any transactions, using the domain module provided. Will default to resource's domain. |
+| [`pre_check?`](#identities-identity-pre_check?){: #identities-identity-pre_check? } | `boolean` | `false` | Whether or not this identity is validated to be unique in a before_action hook. |
 | [`pre_check_with`](#identities-identity-pre_check_with){: #identities-identity-pre_check_with } | `module` |  | Validates that the unique identity provided is unique in a before_action hook. |
 | [`description`](#identities-identity-description){: #identities-identity-description } | `String.t` |  | An optional description for the identity |
 | [`message`](#identities-identity-message){: #identities-identity-message } | `String.t` |  | An error message to use when the unique identity would be violated |

@@ -1433,6 +1433,8 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.DefaultAccept,
     Ash.Resource.Transformers.RequireUniqueFieldNames,
     Ash.Resource.Transformers.SetDefineFor,
+    Ash.Resource.Transformers.SetEagerCheckWith,
+    Ash.Resource.Transformers.SetPreCheckWith,
     Ash.Resource.Transformers.GetByReadActions
   ]
 

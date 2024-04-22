@@ -14,7 +14,9 @@ defmodule Ash.Resource.Identity do
     :keys,
     :description,
     :message,
+    :eager_check?,
     :eager_check_with,
+    :pre_check?,
     :pre_check_with,
     :all_tenants?
   ]
@@ -30,11 +32,21 @@ defmodule Ash.Resource.Identity do
       required: true,
       doc: "The names of the attributes that uniquely identify this resource."
     ],
+    eager_check?: [
+      type: :boolean,
+      default: false,
+      doc: "Whether or not this identity is validated to be unique at validation time."
+    ],
     eager_check_with: [
       type: {:behaviour, Ash.Domain},
       doc: """
-      Validates that the unique identity provided is unique at validation time, outside of any transactions, using the domain module provided.
+      Validates that the unique identity provided is unique at validation time, outside of any transactions, using the domain module provided. Will default to resource's domain.
       """
+    ],
+    pre_check?: [
+      type: :boolean,
+      default: false,
+      doc: "Whether or not this identity is validated to be unique in a before_action hook."
     ],
     pre_check_with: [
       type: {:behaviour, Ash.Domain},
