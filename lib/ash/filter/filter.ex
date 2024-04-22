@@ -1266,7 +1266,10 @@ defmodule Ash.Filter do
           refs,
           Ash.Query.for_read(
             last_relationship.destination,
-            Ash.Resource.Info.primary_action(last_relationship.destination, :read).name
+            Ash.Resource.Info.primary_action(last_relationship.destination, :read).name,
+            actor: actor,
+            tenant: tenant,
+            authorize?: authorize?
           ),
           true
         )
@@ -2270,7 +2273,7 @@ defmodule Ash.Filter do
     read_action =
       aggregate.read_action || Ash.Resource.Info.primary_action!(related, :read).name
 
-    with %{valid?: true} = aggregate_query <- Ash.Query.for_read(related, read_action),
+    with %{valid?: true} = aggregate_query <- Ash.Query.new(related),
          %{valid?: true} = aggregate_query <-
            Ash.Query.Aggregate.build_query(aggregate_query,
              filter: aggregate.filter,
@@ -2944,7 +2947,7 @@ defmodule Ash.Filter do
         read_action =
           aggregate.read_action || Ash.Resource.Info.primary_action!(related, :read).name
 
-        with %{valid?: true} = aggregate_query <- Ash.Query.for_read(related, read_action),
+        with %{valid?: true} = aggregate_query <- Ash.Query.new(related),
              %{valid?: true} = aggregate_query <-
                Ash.Query.Aggregate.build_query(aggregate_query,
                  filter: aggregate.filter,
@@ -3543,11 +3546,8 @@ defmodule Ash.Filter do
           aggregate = aggregate(context, attribute) ->
             agg_related = Ash.Resource.Info.related(related, aggregate.relationship_path)
 
-            read_action =
-              aggregate.read_action || Ash.Resource.Info.primary_action!(agg_related, :read).name
-
             with %{valid?: true} = aggregate_query <-
-                   Ash.Query.for_read(agg_related, read_action),
+                   Ash.Query.new(agg_related),
                  %{valid?: true} = aggregate_query <-
                    Ash.Query.Aggregate.build_query(aggregate_query,
                      filter: aggregate.filter,
