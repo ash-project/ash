@@ -16,7 +16,7 @@ Tools like `AshPostgres` will create unique constraints in the database automati
 
 ## Eager Checking
 
-Setting `eager_check_with: DomainName` on an identity will allow that identity to be checked when building a create changeset over the resource. This allows for showing quick up-front validations about whether some value is taken, for example.
+Setting `eager_check?: true` on an identity will allow that identity to be checked when building a create changeset over the resource. This allows for showing quick up-front validations about whether some value is taken, for example. If the resource does not have the domain configured, you can specify the domain to use with `eager_check_with: DomainName`.
 
 If you are using `AshPhoenix.Form`, for example, this looks for a conflicting record on each call to `Form.validate/2`.
 For updates, it is only checked if one of the involved fields is being changed.
@@ -25,4 +25,4 @@ For creates, The identity is checked unless your are performing an `upsert`, and
 
 ## Pre Checking
 
-`pre_check_with: DomainName` behaves the same as `eager_check_with`, but it runs just prior to the action being committed. Useful for data layers that don't support transactions/unique constraints, or manual resources with identities. `Ash.DataLayer.Ets` will require you to set `pre_check_with` since the ETS data layer has no built in support for unique constraints.
+`pre_check?` behaves the same as `eager_check?`, but it runs just prior to the action being committed. Useful for data layers that don't support transactions/unique constraints, or manual resources with identities. `Ash.DataLayer.Ets` will require you to set `pre_check?` since the ETS data layer has no built in support for unique constraints. The domain can be manually specified with `pre_check_with: DomainName`.

@@ -87,6 +87,44 @@ defmodule Ash.Test.Resource.IdentitiesTest do
              ] = Ash.Resource.Info.identities(Post)
     end
 
+    test "enforce identity domain is inferred" do
+      assert_raise Spark.Error.DslError,
+                   ~r/Cannot infer eager_check_with, because the domain is not specified on this resource./,
+                   fn ->
+                     defmodule EagerSite do
+                       @moduledoc false
+                       use Ash.Resource, domain: nil
+
+                       attributes do
+                         uuid_primary_key :id
+                         attribute :url, :string, public?: true
+                       end
+
+                       identities do
+                         identity :unique_url, [:url], eager_check?: true
+                       end
+                     end
+                   end
+
+      assert_raise Spark.Error.DslError,
+                   ~r/Cannot infer pre_check_with, because the domain is not specified on this resource./,
+                   fn ->
+                     defmodule PreSite do
+                       @moduledoc false
+                       use Ash.Resource, domain: nil
+
+                       attributes do
+                         uuid_primary_key :id
+                         attribute :url, :string, public?: true
+                       end
+
+                       identities do
+                         identity :unique_url, [:url], pre_check?: true
+                       end
+                     end
+                   end
+    end
+
     test "enforce identity constraints on attributes" do
       assert_raise Spark.Error.DslError,
                    ~r/All identity keys must be attributes. Got: :naem/,
