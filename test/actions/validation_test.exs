@@ -4,6 +4,24 @@ defmodule Ash.Test.Actions.ValidationTest do
 
   alias Ash.Test.Domain, as: Domain
 
+  defmodule EmbeddedResource do
+    @moduledoc false
+    use Ash.Resource, data_layer: :embedded
+
+    attributes do
+      attribute :name, :string, allow_nil?: true, public?: true
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    validations do
+      validate present(:name)
+    end
+  end
+
   defmodule Profile do
     @moduledoc false
     use Ash.Resource,
@@ -52,6 +70,14 @@ defmodule Ash.Test.Actions.ValidationTest do
       attribute :foo, :boolean do
         public?(true)
       end
+
+      attribute :embedded, EmbeddedResource do
+        public?(true)
+      end
+
+      attribute :embedded_list, {:array, EmbeddedResource} do
+        public?(true)
+      end
     end
   end
 
@@ -86,46 +112,47 @@ defmodule Ash.Test.Actions.ValidationTest do
   end
 
   test "validations run on update" do
-    assert_raise(Ash.Error.Invalid, ~r/bio: must be present/, fn ->
+    profile =
       Profile
       |> Ash.Changeset.for_create(:create, %{})
       |> Ash.create!()
+
+    assert_raise(Ash.Error.Invalid, ~r/bio: must be present/, fn ->
+      profile
       |> Ash.Changeset.for_update(:update, %{})
       |> Ash.update!()
     end)
   end
 
   test "validations run on destroy" do
-    assert_raise(Ash.Error.Invalid, ~r/date: must be absent/, fn ->
+    profile =
       Profile
       |> Ash.Changeset.for_create(:create, %{})
       |> Ash.create!()
       |> Ash.Changeset.for_update(:update, %{bio: "foo", date: Date.utc_today()})
       |> Ash.update!()
+
+    assert_raise(Ash.Error.Invalid, ~r/date: must be absent/, fn ->
+      profile
       |> Ash.destroy!()
     end)
   end
 
-  describe "custom validations" do
-    test "they can return exceptions" do
-      assert {:error, _} =
-               Profile
-               |> Ash.Changeset.for_create(:create, %{status: "baz"})
-               |> Ash.create()
-    end
-
+  describe "validations run for embedded resources" do
     test "they can return exceptions inside of embedded resources" do
-      assert {:error, _} =
-               Profile
-               |> Ash.Changeset.for_create(:create, %{embedded: %{name: "thing"}})
-               |> Ash.create()
+      assert_raise(Ash.Error.Invalid, ~r/name: must be present/, fn ->
+        Profile
+        |> Ash.Changeset.for_create(:create, %{embedded: %{name: nil}})
+        |> Ash.create!()
+      end)
     end
 
     test "they can return exceptions inside of embedded lists" do
-      assert {:error, _error} =
-               Profile
-               |> Ash.Changeset.for_create(:create, %{embedded_list: [%{name: "thing"}]})
-               |> Ash.create()
+      assert_raise(Ash.Error.Invalid, ~r/name: must be present/, fn ->
+        Profile
+        |> Ash.Changeset.for_create(:create, %{embedded_list: [%{name: nil}]})
+        |> Ash.create!()
+      end)
     end
   end
 
