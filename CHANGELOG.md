@@ -5,6 +5,29 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.28](https://github.com/ash-project/ash/compare/v3.0.0-rc.27...v3.0.0-rc.28) (2024-04-23)
+
+
+
+
+### Features:
+
+* leverage resource domain for eager/pre checking (#1040)
+
+### Bug Fixes:
+
+* don't carry over all changes during atomic upgrade
+
+* properly pin `Enum.join` in atomic for enum types
+
+* ensure actor is set when building queries in filter
+
+### Improvements:
+
+* make extension discovery faster
+
+* add `mix deps.audit` task to shared CI
+
 ## [v3.0.0-rc.27](https://github.com/ash-project/ash/compare/v3.0.0-rc.26...v3.0.0-rc.27) (2024-04-19)
 
 
