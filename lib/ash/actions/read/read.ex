@@ -15,6 +15,10 @@ defmodule Ash.Actions.Read do
     run(query, action, Keyword.put(opts, :skip_pagination?, true))
   end
 
+  def read_and_return_unpaged(query, action \\ nil, opts \\ []) do
+    run(query, action, Keyword.put(opts, :return_unpaged?, true))
+  end
+
   @spec run(Ash.Query.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
           {:ok, Ash.Page.page() | list(Ash.Resource.record())}
           | {:ok, Ash.Page.page() | list(Ash.Resource.record()), Ash.Query.t()}
@@ -1246,6 +1250,9 @@ defmodule Ash.Actions.Read do
 
       original_query.page == false ->
         data
+
+      opts[:return_unpaged?] && original_query.page[:limit] ->
+        Ash.Page.Unpaged.new(data, count, opts)
 
       original_query.page[:limit] ->
         to_page(data, action, count, sort, original_query, opts)

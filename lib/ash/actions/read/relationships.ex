@@ -370,7 +370,7 @@ defmodule Ash.Actions.Read.Relationships do
           |> Ash.Query.set_context(%{
             accessing_from: %{source: relationship.source, name: relationship.name}
           })
-          |> Ash.Actions.Read.unpaginated_read()
+          |> Ash.Actions.Read.read_and_return_unpaged()
 
         {relationship, related_query, result}
       end
@@ -546,70 +546,51 @@ defmodule Ash.Actions.Read.Relationships do
   end
 
   defp do_attach_related_records(
-         [%resource{} | _] = records,
+         [_ | _] = records,
+         relationship,
+         %Ash.Page.Unpaged{} = unpaged,
+         %{context: %{data_layer: %{lateral_join_source: {_records, lateral_join_source_path}}}} =
+           related_query
+       ) do
+    %Ash.Page.Unpaged{
+      related_records: related_records,
+      count: count,
+      opts: opts
+    } = unpaged
+
+    to_page_fun =
+      if relationship.cardinality == :many do
+        fn value, record ->
+          # We scope the lateral join to the specific record, so that next runs of rerun
+          # just fetch the entries related to this record
+          related_query =
+            Ash.Query.set_context(related_query, %{
+              data_layer: %{lateral_join_source: {[record], lateral_join_source_path}}
+            })
+
+          Ash.Actions.Read.to_page(
+            value,
+            related_query.action,
+            count,
+            related_query.sort,
+            related_query,
+            opts
+          )
+        end
+      else
+        fn value, _record -> value end
+      end
+
+    attach_lateral_join_related_records(records, relationship, related_records, to_page_fun)
+  end
+
+  defp do_attach_related_records(
+         [_ | _] = records,
          relationship,
          related_records,
          %{context: %{data_layer: %{lateral_join_source: {_, _}}}}
        ) do
-    source_attribute =
-      Ash.Resource.Info.attribute(relationship.source, relationship.source_attribute)
-
-    pkey_simple_equality? = Ash.Resource.Info.primary_key_simple_equality?(relationship.source)
-    source_attribute_simple_equality? = Ash.Type.simple_equality?(source_attribute.type)
-    primary_key = Ash.Resource.Info.primary_key(resource)
-
-    if pkey_simple_equality? && source_attribute_simple_equality? do
-      values =
-        if relationship.cardinality == :many do
-          Enum.group_by(related_records, & &1.__lateral_join_source__)
-        else
-          Map.new(Enum.reverse(related_records), &{&1.__lateral_join_source__, &1})
-        end
-
-      default =
-        if relationship.cardinality == :many do
-          []
-        else
-          nil
-        end
-
-      Enum.map(records, fn record ->
-        with :error <- Map.fetch(values, Map.take(record, primary_key)),
-             :error <- Map.fetch(values, Map.get(record, relationship.source_attribute)) do
-          Map.put(record, relationship.name, default)
-        else
-          {:ok, value} ->
-            Map.put(record, relationship.name, value)
-        end
-      end)
-    else
-      Enum.map(records, fn record ->
-        func =
-          if relationship.cardinality == :one do
-            :find
-          else
-            :filter
-          end
-
-        related =
-          apply(Enum, func, [
-            related_records,
-            fn related_record ->
-              if is_map(related_record.__lateral_join_source__) do
-                resource.primary_key_matches?(record, related_record.__lateral_join_source__)
-              else
-                Ash.Type.equal?(
-                  source_attribute.type,
-                  related_record.__lateral_join_source__,
-                  Map.get(record, relationship.source_attribute)
-                )
-              end
-            end
-          ])
-
-        Map.put(record, relationship.name, related)
-      end)
-    end
+    attach_lateral_join_related_records(records, relationship, related_records)
   end
 
   defp do_attach_related_records(
@@ -826,6 +807,73 @@ defmodule Ash.Actions.Read.Relationships do
     Map.put(record, key, default)
   end
 
+  defp attach_lateral_join_related_records(
+         [%resource{} | _] = records,
+         relationship,
+         related_records,
+         maybe_to_page_fun \\ fn related_value, _record -> related_value end
+       ) do
+    source_attribute =
+      Ash.Resource.Info.attribute(relationship.source, relationship.source_attribute)
+
+    pkey_simple_equality? = Ash.Resource.Info.primary_key_simple_equality?(relationship.source)
+    source_attribute_simple_equality? = Ash.Type.simple_equality?(source_attribute.type)
+    primary_key = Ash.Resource.Info.primary_key(resource)
+
+    if pkey_simple_equality? && source_attribute_simple_equality? do
+      values =
+        if relationship.cardinality == :many do
+          Enum.group_by(related_records, & &1.__lateral_join_source__)
+        else
+          Map.new(Enum.reverse(related_records), &{&1.__lateral_join_source__, &1})
+        end
+
+      default =
+        if relationship.cardinality == :many do
+          []
+        else
+          nil
+        end
+
+      Enum.map(records, fn record ->
+        with :error <- Map.fetch(values, Map.take(record, primary_key)),
+             :error <- Map.fetch(values, Map.get(record, relationship.source_attribute)) do
+          Map.put(record, relationship.name, maybe_to_page_fun.(default, record))
+        else
+          {:ok, value} ->
+            Map.put(record, relationship.name, maybe_to_page_fun.(value, record))
+        end
+      end)
+    else
+      Enum.map(records, fn record ->
+        func =
+          if relationship.cardinality == :one do
+            :find
+          else
+            :filter
+          end
+
+        related =
+          apply(Enum, func, [
+            related_records,
+            fn related_record ->
+              if is_map(related_record.__lateral_join_source__) do
+                resource.primary_key_matches?(record, related_record.__lateral_join_source__)
+              else
+                Ash.Type.equal?(
+                  source_attribute.type,
+                  related_record.__lateral_join_source__,
+                  Map.get(record, relationship.source_attribute)
+                )
+              end
+            end
+          ])
+
+        Map.put(record, relationship.name, maybe_to_page_fun.(related, record))
+      end)
+    end
+  end
+
   defp lateral_join?(%{action: action} = query, relationship, source_data) do
     if action.manual do
       raise_if_parent_expr!(relationship, "manual actions")
@@ -838,6 +886,7 @@ defmodule Ash.Actions.Read.Relationships do
         |> Enum.reject(&is_nil/1)
 
       has_distinct? = query.distinct not in [[], nil]
+      has_page? = query.page not in [nil, false]
 
       cond do
         is_many_to_many_not_unique_on_join?(relationship) ->
@@ -871,7 +920,7 @@ defmodule Ash.Actions.Read.Relationships do
             ) ->
           true
 
-        limit || offset || has_distinct? ->
+        limit || offset || has_distinct? || has_page? ->
           true
 
         true ->
