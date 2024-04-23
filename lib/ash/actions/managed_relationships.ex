@@ -464,10 +464,10 @@ defmodule Ash.Actions.ManagedRelationships do
     |> Ash.Changeset.for_create(action_name, input,
       require?: false,
       actor: actor,
+      tenant: changeset.tenant,
       authorize?: opts[:authorize?]
     )
     |> Ash.Changeset.set_context(relationship.context)
-    |> Ash.Changeset.set_tenant(changeset.tenant)
     |> api(changeset, relationship).create(return_notifications?: true)
     |> case do
       {:ok, created, notifications} ->
@@ -957,6 +957,7 @@ defmodule Ash.Actions.ManagedRelationships do
         })
         |> Ash.Changeset.for_create(create_or_update, join_input,
           actor: actor,
+          tenant: changeset.tenant,
           authorize?: opts[:authorize?],
           require?: false
         )
@@ -971,7 +972,6 @@ defmodule Ash.Actions.ManagedRelationships do
           Map.get(found, relationship.destination_attribute)
         )
         |> Ash.Changeset.set_context(join_relationship.context)
-        |> Ash.Changeset.set_tenant(changeset.tenant)
         |> api(changeset, join_relationship).create(return_notifications?: true)
         |> case do
           {:ok, _created, notifications} ->
@@ -1022,6 +1022,7 @@ defmodule Ash.Actions.ManagedRelationships do
         })
         |> Ash.Changeset.for_update(create_or_update, input,
           actor: actor,
+          tenant: changeset.tenant,
           authorize?: opts[:authorize?]
         )
         |> maybe_force_change_attribute(
@@ -1030,7 +1031,6 @@ defmodule Ash.Actions.ManagedRelationships do
           Map.get(record, relationship.source_attribute)
         )
         |> Ash.Changeset.set_context(relationship.context)
-        |> Ash.Changeset.set_tenant(changeset.tenant)
         |> api(changeset, relationship).update(return_notifications?: true)
         |> case do
           {:ok, updated, notifications} ->
@@ -1084,6 +1084,7 @@ defmodule Ash.Actions.ManagedRelationships do
                 |> Ash.Changeset.for_create(action_name, input,
                   require?: false,
                   actor: actor,
+                  tenant: changeset.tenant,
                   authorize?: opts[:authorize?]
                 )
                 |> maybe_force_change_attribute(
@@ -1092,7 +1093,6 @@ defmodule Ash.Actions.ManagedRelationships do
                   Map.get(record, relationship.source_attribute)
                 )
                 |> Ash.Changeset.set_context(relationship.context)
-                |> Ash.Changeset.set_tenant(changeset.tenant)
                 |> api(changeset, relationship).create(return_notifications?: true)
               end
 
@@ -1137,10 +1137,10 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.Changeset.for_create(action_name, regular_params,
               require?: false,
               authorize?: opts[:authorize?],
-              actor: actor
+              actor: actor,
+              tenant: changeset.tenant
             )
             |> Ash.Changeset.set_context(relationship.context)
-            |> Ash.Changeset.set_tenant(changeset.tenant)
             |> api(changeset, relationship).create(return_notifications?: true)
           end
 
@@ -1157,7 +1157,8 @@ defmodule Ash.Actions.ManagedRelationships do
             |> Ash.Changeset.for_create(join_action_name, join_params,
               require?: false,
               authorize?: opts[:authorize?],
-              actor: actor
+              actor: actor,
+              tenant: changeset.tenant
             )
             |> maybe_force_change_attribute(
               relationship,
@@ -1170,7 +1171,6 @@ defmodule Ash.Actions.ManagedRelationships do
               Map.get(created, relationship.destination_attribute)
             )
             |> Ash.Changeset.set_context(join_relationship.context)
-            |> Ash.Changeset.set_tenant(changeset.tenant)
             |> api(changeset, join_relationship).create(return_notifications?: true)
             |> case do
               {:ok, _join_row, notifications} ->
@@ -1275,10 +1275,10 @@ defmodule Ash.Actions.ManagedRelationships do
         })
         |> Ash.Changeset.for_update(action_name, input,
           actor: actor,
+          tenant: changeset.tenant,
           authorize?: opts[:authorize?]
         )
         |> Ash.Changeset.set_context(relationship.context)
-        |> Ash.Changeset.set_tenant(changeset.tenant)
         |> api.update(return_notifications?: true)
         |> case do
           {:ok, updated, update_notifications} ->
@@ -1315,10 +1315,10 @@ defmodule Ash.Actions.ManagedRelationships do
             })
             |> Ash.Changeset.for_update(action_name, regular_params,
               actor: actor,
+              tenant: changeset.tenant,
               authorize?: opts[:authorize?]
             )
             |> Ash.Changeset.set_context(relationship.context)
-            |> Ash.Changeset.set_tenant(changeset.tenant)
             |> api.update(return_notifications?: true)
           else
             {:ok, match, []}
@@ -1366,10 +1366,10 @@ defmodule Ash.Actions.ManagedRelationships do
                 })
                 |> Ash.Changeset.for_update(join_action_name, join_params,
                   actor: actor,
+                  tenant: changeset.tenant,
                   authorize?: opts[:authorize?]
                 )
                 |> Ash.Changeset.set_context(join_relationship.context)
-                |> Ash.Changeset.set_tenant(changeset.tenant)
                 |> api(changeset, join_relationship).update(return_notifications?: true)
                 # credo:disable-for-next-line Credo.Check.Refactor.Nesting
                 |> case do
@@ -1543,10 +1543,10 @@ defmodule Ash.Actions.ManagedRelationships do
                   join_action_name,
                   %{},
                   actor: actor,
+                  tenant: changeset.tenant,
                   authorize?: opts[:authorize?]
                 )
                 |> Ash.Changeset.set_context(join_relationship.context)
-                |> Ash.Changeset.set_tenant(changeset.tenant)
                 |> api(changeset, join_relationship).destroy(return_notifications?: true)
                 |> case do
                   {:ok, join_notifications} ->
@@ -1559,10 +1559,10 @@ defmodule Ash.Actions.ManagedRelationships do
                     })
                     |> Ash.Changeset.for_destroy(action_name, %{},
                       actor: actor,
+                      tenant: changeset.tenant,
                       authorize?: opts[:authorize?]
                     )
                     |> Ash.Changeset.set_context(relationship.context)
-                    |> Ash.Changeset.set_tenant(changeset.tenant)
                     |> api.destroy(return_notifications?: true)
                     # credo:disable-for-next-line Credo.Check.Refactor.Nesting
                     |> case do
@@ -1592,10 +1592,10 @@ defmodule Ash.Actions.ManagedRelationships do
             })
             |> Ash.Changeset.for_destroy(action_name, %{},
               actor: actor,
+              tenant: changeset.tenant,
               authorize?: opts[:authorize?]
             )
             |> Ash.Changeset.set_context(relationship.context)
-            |> Ash.Changeset.set_tenant(changeset.tenant)
             |> api.destroy(return_notifications?: true)
             |> case do
               {:ok, notifications} ->
