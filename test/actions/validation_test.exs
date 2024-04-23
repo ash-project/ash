@@ -35,21 +35,6 @@ defmodule Ash.Test.Actions.ValidationTest do
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
-
-      update :fill_bar do
-        argument :bar, :integer, allow_nil?: false
-
-        validate attributes_absent(:bar)
-        validate present(:bar)
-
-        change fn cs, _ctx ->
-          arg_bar = cs |> Ash.Changeset.get_argument(:bar)
-          cs |> Ash.Changeset.change_attribute(:bar, arg_bar)
-        end
-
-        validate attributes_present(:bar)
-        validate present(:bar)
-      end
     end
 
     validations do
@@ -83,10 +68,6 @@ defmodule Ash.Test.Actions.ValidationTest do
       end
 
       attribute :foo, :boolean do
-        public?(true)
-      end
-
-      attribute :bar, :integer do
         public?(true)
       end
 
