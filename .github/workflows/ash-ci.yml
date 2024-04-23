@@ -25,7 +25,7 @@ on:
         default: false
       postgres-version:
         type: string
-        default: "13"
+        default: "14"
       sqlite:
         type: boolean
         default: false
