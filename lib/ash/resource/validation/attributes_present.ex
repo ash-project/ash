@@ -1,4 +1,4 @@
-defmodule Ash.Resource.Validation.AttributePresent do
+defmodule Ash.Resource.Validation.AttributesPresent do
   @moduledoc false
   use Ash.Resource.Validation
 
@@ -16,7 +16,7 @@ defmodule Ash.Resource.Validation.AttributePresent do
   def validate(changeset, opts, _context) do
     {present, count} =
       Enum.reduce(opts[:attributes], {0, 0}, fn attribute, {present, count} ->
-        if Ash.Changeset.attribute_present?(changeset, attribute) do
+        if Ash.Changeset.attributes_present?(changeset, attribute) do
           {present + 1, count + 1}
         else
           {present, count + 1}

@@ -39,7 +39,7 @@ defmodule Ash.Test.Actions.ValidationTest do
       update :fill_bar do
         argument :bar, :integer, allow_nil?: false
 
-        validate attribute_absent(:bar)
+        validate attributes_absent(:bar)
         validate present(:bar)
 
         change fn cs, _ctx ->
@@ -47,7 +47,7 @@ defmodule Ash.Test.Actions.ValidationTest do
           cs |> Ash.Changeset.change_attribute(:bar, arg_bar)
         end
 
-        validate attribute_present(:bar)
+        validate attributes_present(:bar)
         validate present(:bar)
       end
     end
@@ -191,7 +191,7 @@ defmodule Ash.Test.Actions.ValidationTest do
     end
   end
 
-  describe "attribute_present, attribute_absent" do
+  describe "attributes_present, attributes_absent" do
     defmodule Author do
       @moduledoc false
       use Ash.Resource,
@@ -209,7 +209,7 @@ defmodule Ash.Test.Actions.ValidationTest do
         update :fill_bar do
           argument :bar, :integer, allow_nil?: false
 
-          validate attribute_absent(:bar)
+          validate attributes_absent(:bar)
           validate present(:bar)
 
           change fn cs, _ctx ->
@@ -217,7 +217,7 @@ defmodule Ash.Test.Actions.ValidationTest do
             cs |> Ash.Changeset.change_attribute(:bar, arg_bar)
           end
 
-          validate attribute_present(:bar)
+          validate attributes_present(:bar)
           validate present(:bar)
         end
       end

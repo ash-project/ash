@@ -204,17 +204,17 @@ defmodule Ash.Resource.Validation.Builtins do
 
   ## Options
 
-  #{Spark.Options.docs(Ash.Resource.Validation.AttributePresent.opt_schema())}
+  #{Spark.Options.docs(Ash.Resource.Validation.AttributesPresent.opt_schema())}
   """
-  @spec attribute_present(attributes :: atom | list(atom), opts :: Keyword.t()) ::
+  @spec attributes_present(attributes :: atom | list(atom), opts :: Keyword.t()) ::
           Validation.ref()
-  def attribute_present(attributes, opts \\ []) do
+  def attributes_present(attributes, opts \\ []) do
     if opts == [] do
       attributes = List.wrap(attributes)
-      {Validation.AttributePresent, attributes: attributes, exactly: Enum.count(attributes)}
+      {Validation.AttributesPresent, attributes: attributes, exactly: Enum.count(attributes)}
     else
       opts = Keyword.put(opts, :attributes, List.wrap(attributes))
-      {Validation.AttributePresent, opts}
+      {Validation.AttributesPresent, opts}
     end
   end
 
@@ -269,13 +269,13 @@ defmodule Ash.Resource.Validation.Builtins do
 
   ## Options
 
-  #{String.replace(Spark.Options.docs(Ash.Resource.Validation.AttributePresent.opt_schema()), "present", "absent")}
+  #{String.replace(Spark.Options.docs(Ash.Resource.Validation.AttributesPresent.opt_schema()), "present", "absent")}
   """
-  @spec attribute_absent(attributes :: atom | list(atom), opts :: Keyword.t()) ::
+  @spec attributes_absent(attributes :: atom | list(atom), opts :: Keyword.t()) ::
           Validation.ref()
-  def attribute_absent(attributes, opts \\ []) do
+  def attributes_absent(attributes, opts \\ []) do
     if opts == [] do
-      {Validation.AttributePresent, attributes: List.wrap(attributes), exactly: 0}
+      {Validation.AttributesPresent, attributes: List.wrap(attributes), exactly: 0}
     else
       attributes = List.wrap(attributes)
       count = Enum.count(attributes)
@@ -298,7 +298,7 @@ defmodule Ash.Resource.Validation.Builtins do
             Keyword.put(new_opts, :at_least, 0)
         end
 
-      attribute_present(attributes, new_opts)
+      attributes_present(attributes, new_opts)
     end
   end
 
