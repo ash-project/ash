@@ -39,7 +39,7 @@ end
 
 Changing attributes in this way makes them safer to use in concurrent environments, and is typically more performant than doing it manually in memory.
 
-> ### atomics are not stored with other changes {: .warning}
+> ### Atomics are not stored with other changes {: .warning}
 >
 > While we recommend using atomics wherever possible, it is important to note that they are stored in their own map in the changeset, i.e `changeset.atomics`, meaning if you need to do something later in the action with the new value for an attribute, you won't be able to access the new value. This is because atomics are evaluated in the data layer.
 

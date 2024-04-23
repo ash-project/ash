@@ -107,6 +107,6 @@ If the calculation uses an expression, you can also filter and sort on it like s
 
 ```elixir
 query
-|> Ash.Query.filter(full_name(separator: ","))
-|> Ash.Query.sort(full_name: {%{separator: ","}, :asc})
+|> Ash.Query.filter(full_name(separator: " ") == "Zach Daniel")
+|> Ash.Query.sort(full_name: {%{separator: " "}, :asc})
 ```

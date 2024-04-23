@@ -10,7 +10,7 @@ A notifier is a simple extension that must implement a single callback `notify/1
 
 For more information on creating a DSL extension to configure your notifier, see the docs for `Spark.Dsl.Extension`.
 
-> ### notifier performance {: .warning}
+> ### Notifier performance {: .warning}
 >
 > Notifiers should not do intensive synchronous work. If any heavy work needs to be done, they should delegate to something else to handle the notification, like sending it to a GenServer or GenStage.
 

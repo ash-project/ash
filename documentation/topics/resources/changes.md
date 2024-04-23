@@ -89,7 +89,7 @@ actions do
 end
 ```
 
-Or you can use the global changes block to apply to all actions of a given type. Where statements can be used in both cases. Use `on` to determine the types of actions the validation runs on. By default, it only runs on create an update actions.
+Or you can use the global changes block to apply to all actions of a given type. Where statements can be used in both cases. Use `on` to determine the types of actions the validation runs on. By default, it only runs on create and update actions.
 
 ```elixir
 changes do
@@ -99,7 +99,7 @@ changes do
 end
 ```
 
-The changes section allows you to add validations across multiple actions of a changeset.
+The changes section allows you to add changes across multiple actions of a changeset.
 
 > ### Running on destroy actions {: .warning}
 >
@@ -181,9 +181,9 @@ defmodule MyApp.Changes.Slugify do
   def batch_change(changeset, opts, context) do
     # here we could run queries or do common work required
     # for a given batch of changesets.
-    # in this example, however, we just return the changests with
+    # in this example, however, we just return the changesets with
     # the change logic applied.
-    Enum.map(changesets, &change(&1, opts, contextk)
+    Enum.map(changesets, &change(&1, opts, context))
   end
 end
 ```

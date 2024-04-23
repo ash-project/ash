@@ -1,6 +1,6 @@
 # Embedded Resources
 
-Embedded resources are stored as maps in attributes of other resources. They are great for storing structured data, and support a whole range of useful features that resources support. For example, you can have calculations, validations, policies and even relationships on embedded resources.Here is an example of a simple embedded resource:
+Embedded resources are stored as maps in attributes of other resources. They are great for storing structured data, and support a whole range of useful features that resources support. For example, you can have calculations, validations, policies and even relationships on embedded resources. Here is an example of a simple embedded resource:
 
 ```elixir
 defmodule MyApp.Profile do
@@ -14,7 +14,7 @@ defmodule MyApp.Profile do
 end
 ```
 
-> ### embedded resources can't do everything {: .info}
+> ### Embedded resources can't do everything {: .info}
 > Embedded resources cannot have aggregates, or expression calculations that rely on data-layer-specific capabilities.
 
 ## Adding embedded resource attributes
@@ -51,7 +51,7 @@ end
 If you manually supply instances of the embedded structs, the structs you provide are used with no validation. For example:
 
 ```elixir
-Ash.Changeset.for_update(user, :update, %{profile: %MyApp.Profile{first_name: "first_name", last_name: "last_name}})
+Ash.Changeset.for_update(user, :update, %{profile: %MyApp.Profile{first_name: "first_name", last_name: "last_name"}})
 ```
 
 However, you can also treat embedded resources like regular resources that can be "created", "updated", and "destroyed".
