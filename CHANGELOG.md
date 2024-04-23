@@ -5,6 +5,51 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.21.13](https://github.com/ash-project/ash/compare/v2.21.12...v2.21.13) (2024-04-23)
+
+
+
+
+### Bug Fixes:
+
+* disable atomic upgrade for 2.0
+
+* ensure actor is set when calling `for_read`
+
+* `code_interface` actions accept `@context` for `Ash 2.0` (#1017)
+
+* `code_interface` actions accept `@context` for `Ash 2.0`
+
+* ensure opts properly contain the `tenant`
+
+* properly set tenant on aggregate query
+
+* properly set action_type when preparing changesets (#1012)
+
+* types: can and can? types were only addressing create when using the tuple method, the code also accepts the record for update & destroy
+
+* allow strings in Ash.Type.Enum again
+
+* set tenant in bulk creates after setting up changeset
+
+* properly cast identity keys before comparison
+
+* properly handle lists of errors added by validations
+
+* honor only_when_valid? in bulk actions
+
+* policy ending with authorize_unless had flipped conditional
+
+* properly handle transaction errors from bulk creates
+
+### Improvements:
+
+* support `allow_nil_input` dsl option in update/destroy (#965)
+
+* allow simple check to return error tuple (#958)
+
+* ensure that update defaults are set
+
 ## [v2.21.12](https://github.com/ash-project/ash/compare/v2.21.11...v2.21.12) (2024-04-12)
 
 
