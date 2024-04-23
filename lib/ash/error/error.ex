@@ -54,4 +54,13 @@ defmodule Ash.Error do
   end
 
   def ash_error?(value), do: splode_error?(value, __MODULE__)
+
+  def set_path(%struct{errors: errors} = container, path)
+      when struct in [Ash.Changeset, Ash.ActionInput, Ash.Query] do
+    %{container | errors: set_path(errors, path)}
+  end
+
+  def set_path(error, path) do
+    super(error, path)
+  end
 end
