@@ -293,7 +293,7 @@ unnecessary `organization_id` field on `Employee`. The same works in reverse: `h
 allows relating the employee to their organization.
 
 
-> ### caveats for using `no_attributes?` {: .warning}
+> ### Caveats for using `no_attributes?` {: .warning}
 >
 >  1. You can still manage relationships from one to the other, but "relate" and "unrelate" will have no effect, because there are no fields to change.
 >  2. Loading the relationship on a list of resources will not behave as expected in all circumstances involving multitenancy. For example, if you get a list of `Organization` and then try to load `employees`, you would need to set a single tenant on the load query, meaning you'll get all organizations back with the set of employees from one tenant. This could eventually be solved, but for now it is considered an edge case.
@@ -307,7 +307,7 @@ Manual relationships allow you to express complex or non-typical relationships b
 
 In our Helpdesk example, we'd like to have a way to find tickets
 
-In the `Rep?` resource, define a `has_many` relationship as `manual` and point to the module where
+In the `Representative` resource, define a `has_many` relationship as `manual` and point to the module where
 it will be implemented.
 
 ```elixir
@@ -406,7 +406,7 @@ With this, those arguments can be used in action input:
 
 ```elixir
 post
-|> Ash.Changeset.for_update(:update, tags: [tag1.id, tag2.id], add_comment: %{text: "comment text"})
+|> Ash.Changeset.for_update(:update, %{tags: [tag1.id, tag2.id], add_comment: %{text: "comment text"}})
 |> Ash.update!()
 ```
 
@@ -425,7 +425,7 @@ And then you could use it like so:
 
 ```elixir
 post
-|> Ash.Changeset.for_update(:update, tags: [tag1.id, tag2.id], add_comment: "comment text")
+|> Ash.Changeset.for_update(:update, %{tags: [tag1.id, tag2.id], add_comment: "comment text"})
 |> Ash.update!()
 ```
 

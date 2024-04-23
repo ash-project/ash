@@ -92,7 +92,7 @@ actions do
 end
 ```
 
-Or you can use the global validations block to validate on all actions of a given type. Where statements can be used in either. Note the warning about runningo on destroy actions below.
+Or you can use the global validations block to validate on all actions of a given type. Where statements can be used in either. Note the warning about running on destroy actions below.
 
 ```elixir
 validations do

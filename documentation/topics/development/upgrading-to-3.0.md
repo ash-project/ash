@@ -209,7 +209,7 @@ Ash.Changeset.for_create!(.., tenant: current_tenant, actor: current_user)
 Ash.Query.for_read(.., tenant: current_tenant, actor: current_user)
 ```
 
-### the `Domain` of a resource must now be known when constructing a changeset, query or action input
+### The `Domain` of a resource must now be known when constructing a changeset, query or action input
 
 In order to honor rules on the `Domain` module about authorization and timeouts, we have to know the `Domain` when building the changeset.
 
