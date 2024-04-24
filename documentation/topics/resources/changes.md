@@ -118,7 +118,7 @@ end
 
 ## Atomic Changes
 
-To make a change atomic, you have to implement the `c:Ash.Resource.Change.atomic/3` callback. This callback returns a map of changes to attributes that should be changed atomically. You can also add the `c:Ash.Resource.Change.after_atomic/4` callback to run code after atomic changes have been applied.
+To make a change atomic, you have to implement the `c:Ash.Resource.Change.atomic/3` callback. This callback returns a map of changes to attributes that should be changed atomically. We will also honor any `c:Ash.Resource.Change.after_batch/3` functionality to run code after atomic changes have been applied.
 
 ```elixir
 defmodule MyApp.Changes.Slugify do

@@ -473,7 +473,16 @@ defmodule Ash.Actions.Create.Bulk do
       ref
     )
     |> run_after_action_hooks(opts, domain, ref, changesets_by_index)
-    |> process_results(changes, all_changes, opts, ref, changesets_by_index, domain, resource)
+    |> process_results(
+      changes,
+      all_changes,
+      opts,
+      ref,
+      changesets_by_index,
+      batch,
+      domain,
+      resource
+    )
     |> then(fn stream ->
       if opts[:return_stream?] do
         stream
@@ -1146,6 +1155,7 @@ defmodule Ash.Actions.Create.Bulk do
          opts,
          ref,
          changesets_by_index,
+         changesets,
          domain,
          resource
        ) do
@@ -1181,7 +1191,7 @@ defmodule Ash.Actions.Create.Bulk do
       end)
 
     changes
-    |> run_bulk_after_changes(all_changes, results, changesets_by_index, opts, ref)
+    |> run_bulk_after_changes(all_changes, results, changesets_by_index, changesets, opts, ref)
     |> then(fn records ->
       select =
         if opts[:select] do
@@ -1230,16 +1240,39 @@ defmodule Ash.Actions.Create.Bulk do
     end
   end
 
-  defp run_bulk_after_changes(changes, all_changes, results, changesets_by_index, opts, ref) do
+  defp run_bulk_after_changes(
+         changes,
+         all_changes,
+         results,
+         changesets_by_index,
+         changesets,
+         opts,
+         ref
+       ) do
+    context =
+      struct(
+        Ash.Resource.Change.Context,
+        %{
+          bulk?: true,
+          actor: opts[:actor],
+          tenant: opts[:tenant],
+          tracer: opts[:tracer],
+          authorize?: opts[:authorize?]
+        }
+      )
+
     all_changes
     |> Enum.filter(fn
-      {%{change: {module, _opts}}, _} ->
-        function_exported?(module, :after_batch, 3)
+      {%{change: {module, change_opts}}, _} ->
+        function_exported?(module, :after_batch, 3) &&
+          module.batch_callbacks?(changesets, change_opts, context)
 
       _ ->
         false
     end)
     |> Enum.reduce(results, fn {%{change: {module, change_opts}}, index}, results ->
+      records = results
+
       if changes[index] == :all do
         results =
           Enum.map(results, fn result ->
@@ -1249,18 +1282,9 @@ defmodule Ash.Actions.Create.Bulk do
         module.after_batch(
           results,
           change_opts,
-          struct(
-            Ash.Resource.Change.Context,
-            %{
-              bulk?: true,
-              actor: opts[:actor],
-              tenant: opts[:tenant],
-              tracer: opts[:tracer],
-              authorize?: opts[:authorize?]
-            }
-          )
+          context
         )
-        |> handle_after_batch_results(ref, opts)
+        |> handle_after_batch_results(records, ref, opts)
       else
         {matches, non_matches} =
           results
@@ -1292,14 +1316,16 @@ defmodule Ash.Actions.Create.Bulk do
               }
             )
           )
-          |> handle_after_batch_results(ref, opts)
+          |> handle_after_batch_results(matches, ref, opts)
 
         Enum.concat([after_batch_results, non_matches])
       end
     end)
   end
 
-  defp handle_after_batch_results(results, ref, options) do
+  defp handle_after_batch_results(:ok, matches, _, _), do: matches
+
+  defp handle_after_batch_results(results, _matches, ref, options) do
     Enum.flat_map(
       results,
       fn
@@ -1408,7 +1434,9 @@ defmodule Ash.Actions.Create.Bulk do
               state.must_return_records? ||
                 Enum.any?(batch, fn item ->
                   item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action)
-                end) || function_exported?(module, :after_batch, 3)
+                end) ||
+                (function_exported?(module, :after_batch, 3) &&
+                   module.batch_callbacks?(batch, change_opts, context))
 
             %{
               state
@@ -1457,7 +1485,9 @@ defmodule Ash.Actions.Create.Bulk do
                 state.must_return_records? ||
                   Enum.any?(batch, fn item ->
                     item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action)
-                  end) || function_exported?(module, :after_batch, 3)
+                  end) ||
+                  (function_exported?(module, :after_batch, 3) &&
+                     module.batch_callbacks?(batch, change_opts, context))
 
               %{
                 state

@@ -135,11 +135,22 @@ defmodule Ash.Resource.Change do
               opts :: Keyword.t(),
               context :: Context.t()
             ) ::
-              Enumerable.t(
-                {:ok, Ash.Resource.record()}
-                | {:error, Ash.Error.t()}
-                | Ash.Notifier.Notification.t()
-              )
+              :ok
+              | Enumerable.t(
+                  {:ok, Ash.Resource.record()}
+                  | {:error, Ash.Error.t()}
+                  | Ash.Notifier.Notification.t()
+                )
+
+  @doc """
+  Whether or not batch callbacks should be run (if they are defined). Defaults to `true`.
+  """
+  @callback batch_callbacks?(
+              changesets_or_query :: [Ash.Changeset.t()] | Ash.Query.t(),
+              opts :: Keyword.t(),
+              context :: Context.t()
+            ) ::
+              boolean
 
   @callback atomic(Ash.Changeset.t(), Keyword.t(), Context.t()) ::
               {:ok, Ash.Changeset.t()}
@@ -151,16 +162,13 @@ defmodule Ash.Resource.Change do
 
   @callback atomic?() :: boolean
 
-  @callback after_atomic(Ash.Changeset.t(), Keyword.t(), Ash.Resource.record(), Context.t()) ::
-              {:ok, Ash.Resource.record()} | {:error, term()}
   @callback has_change?() :: boolean
 
   @optional_callbacks before_batch: 3,
                       after_batch: 3,
                       batch_change: 3,
                       change: 3,
-                      atomic: 3,
-                      after_atomic: 4
+                      atomic: 3
 
   defmacro __using__(_) do
     quote do
@@ -173,7 +181,10 @@ defmodule Ash.Resource.Change do
       @impl true
       def init(opts), do: {:ok, opts}
 
-      defoverridable init: 1
+      @impl true
+      def batch_callbacks?(_, _, _), do: true
+
+      defoverridable init: 1, batch_callbacks?: 3
     end
   end
 

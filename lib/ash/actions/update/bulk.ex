@@ -133,12 +133,33 @@ defmodule Ash.Actions.Update.Bulk do
           end
 
         try do
-          has_after_action_hooks? = not Enum.empty?(atomic_changeset.after_action)
+          context =
+            struct(
+              Ash.Resource.Change.Context,
+              %{
+                bulk?: true,
+                actor: opts[:actor],
+                tenant: opts[:tenant],
+                tracer: opts[:tracer],
+                authorize?: opts[:authorize?]
+              }
+            )
+
+          has_after_batch_hooks? =
+            Enum.any?(
+              action.changes ++
+                Ash.Resource.Info.changes(atomic_changeset.resource, atomic_changeset.action_type),
+              fn %{change: {module, change_opts}} ->
+                function_exported?(module, :after_batch, 3) &&
+                  module.batch_callbacks?(query, change_opts, context)
+              end
+            )
+
           # There are performance implications here. We probably need to explicitly enable
           # having after action hooks. Or perhaps we need to stream the ids and then bulk update
           # them.
           opts =
-            if has_after_action_hooks? || opts[:notify?] do
+            if has_after_batch_hooks? || opts[:notify?] do
               Keyword.put(opts, :return_records?, true)
             else
               opts
@@ -153,54 +174,62 @@ defmodule Ash.Actions.Update.Bulk do
                 :bulk_destroy
             end
 
-          bulk_result =
-            if has_after_action_hooks? && opts[:transaction] do
-              Ash.DataLayer.transaction(
-                List.wrap(atomic_changeset.resource) ++ action.touches_resources,
-                fn ->
-                  do_atomic_update(query, atomic_changeset, has_after_action_hooks?, input, opts)
-                end,
-                opts[:timeout],
-                %{
-                  type: context_key,
-                  metadata: %{
-                    resource: query.resource,
-                    action: atomic_changeset.action.name,
-                    actor: opts[:actor]
-                  },
-                  data_layer_context: opts[:data_layer_context] || %{}
-                }
-              )
-            else
-              do_atomic_update(query, atomic_changeset, has_after_action_hooks?, input, opts)
-            end
-
-          notifications =
-            if notify? do
-              List.wrap(bulk_result.notifications) ++
-                List.wrap(Process.delete(:ash_notifications))
-            else
-              List.wrap(bulk_result.notifications)
-            end
-
-          if opts[:return_notifications?] do
-            %{bulk_result | notifications: notifications}
+          if has_after_batch_hooks? && Keyword.get(opts, :transaction, true) do
+            Ash.DataLayer.transaction(
+              List.wrap(atomic_changeset.resource) ++ action.touches_resources,
+              fn ->
+                do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts)
+              end,
+              opts[:timeout],
+              %{
+                type: context_key,
+                metadata: %{
+                  resource: query.resource,
+                  action: atomic_changeset.action.name,
+                  actor: opts[:actor]
+                },
+                data_layer_context: opts[:data_layer_context] || %{}
+              }
+            )
           else
-            if opts[:return_notifications?] do
-              bulk_result
-            else
-              if notify? do
-                remaining_notifications = Ash.Notifier.notify(notifications)
+            {:ok, do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts)}
+          end
+          |> case do
+            {:ok, bulk_result} ->
+              notifications =
+                if notify? do
+                  List.wrap(bulk_result.notifications) ++
+                    List.wrap(Process.delete(:ash_notifications))
+                else
+                  List.wrap(bulk_result.notifications)
+                end
 
-                Ash.Actions.Helpers.warn_missed!(atomic_changeset.resource, action, %{
-                  resource_notifications: remaining_notifications
-                })
-
+              if opts[:return_notifications?] do
                 %{bulk_result | notifications: notifications}
               else
-                bulk_result
+                if opts[:return_notifications?] do
+                  bulk_result
+                else
+                  if notify? do
+                    remaining_notifications = Ash.Notifier.notify(notifications)
+
+                    Ash.Actions.Helpers.warn_missed!(atomic_changeset.resource, action, %{
+                      resource_notifications: remaining_notifications
+                    })
+
+                    %{bulk_result | notifications: notifications}
+                  else
+                    bulk_result
+                  end
+                end
               end
-            end
+
+            {:error, error} ->
+              %Ash.BulkResult{
+                status: :error,
+                errors: [Ash.Error.to_ash_error(error)],
+                error_count: 1
+              }
           end
         after
           if notify? do
@@ -313,7 +342,19 @@ defmodule Ash.Actions.Update.Bulk do
     end
   end
 
-  defp do_atomic_update(query, atomic_changeset, has_after_action_hooks?, input, opts) do
+  defp do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts) do
+    context =
+      struct(
+        Ash.Resource.Change.Context,
+        %{
+          bulk?: true,
+          actor: opts[:actor],
+          tenant: opts[:tenant],
+          tracer: opts[:tracer],
+          authorize?: opts[:authorize?]
+        }
+      )
+
     atomic_changeset = Ash.Actions.Helpers.apply_opts_load(atomic_changeset, opts)
 
     atomic_changeset =
@@ -333,6 +374,15 @@ defmodule Ash.Actions.Update.Bulk do
         }
       end
 
+    {all_changes, conditional_after_batch_hooks, calculations} =
+      hooks_and_calcs_for_update_query(atomic_changeset, context, query, opts)
+
+    update_query_opts =
+      opts
+      |> Keyword.take([:return_records?, :tenant])
+      |> Map.new()
+      |> Map.put(:calculations, calculations)
+
     with {:ok, query} <-
            authorize_bulk_query(query, atomic_changeset, opts),
          {:ok, atomic_changeset, query} <-
@@ -342,7 +392,7 @@ defmodule Ash.Actions.Update.Bulk do
       case Ash.DataLayer.update_query(
              data_layer_query,
              atomic_changeset,
-             Map.new(Keyword.take(opts, [:return_records?, :tenant]))
+             update_query_opts
            ) do
         :ok ->
           %Ash.BulkResult{
@@ -365,25 +415,17 @@ defmodule Ash.Actions.Update.Bulk do
 
           results = List.wrap(results)
 
-          {errors, results, notifications, error_count} =
-            if has_after_action_hooks? do
-              results
-              |> Enum.reduce({[], [], [], 0}, fn
-                result, {errors, successes, notifications, error_count} ->
-                  case Ash.Changeset.run_after_actions(result, atomic_changeset, []) do
-                    {:error, error} ->
-                      {[error | errors], successes, error_count + 1}
-
-                    {:ok, result, _changeset, %{notifications: new_notifications}} ->
-                      {errors, [result | successes], notifications ++ new_notifications,
-                       error_count}
-                  end
-              end)
-              |> then(fn {errors, successes, notifications, error_count} ->
-                {Enum.reverse(errors), Enum.reverse(successes), notifications, error_count}
-              end)
+          {results, notifications} =
+            if has_after_batch_hooks? do
+              run_atomic_after_batch_hooks(
+                results,
+                atomic_changeset,
+                all_changes,
+                conditional_after_batch_hooks,
+                context
+              )
             else
-              {[], results, [], 0}
+              {results, []}
             end
 
           {results, errors, error_count} =
@@ -395,10 +437,10 @@ defmodule Ash.Actions.Update.Bulk do
                    opts
                  ) do
               {:ok, results} ->
-                {results, errors, error_count}
+                {results, [], 0}
 
               {:error, error} ->
-                {[], List.wrap(error) ++ errors, error_count + Enum.count(List.wrap(error))}
+                {[], List.wrap(error), Enum.count(List.wrap(error))}
             end
 
           notifications =
@@ -421,9 +463,6 @@ defmodule Ash.Actions.Update.Bulk do
 
               {_error_count, []} ->
                 :error
-
-              {0, _results} ->
-                :success
             end
 
           %Ash.BulkResult{
@@ -431,7 +470,12 @@ defmodule Ash.Actions.Update.Bulk do
             error_count: error_count,
             notifications: notifications,
             errors: errors,
-            records: results
+            records:
+              if opts[:return_records?] do
+                results
+              else
+                []
+              end
           }
 
         {:error, :no_rollback,
@@ -517,6 +561,144 @@ defmodule Ash.Actions.Update.Bulk do
           errors: [Ash.Error.to_error_class(error)]
         }
     end
+  end
+
+  @doc false
+  def run_atomic_after_batch_hooks(
+        results,
+        atomic_changeset,
+        all_changes,
+        conditional_after_batch_hooks,
+        context
+      ) do
+    results =
+      results
+      |> Stream.with_index()
+      |> Enum.map(fn {result, index} ->
+        {atomic_changeset, Ash.Resource.set_metadata(result, %{atomic_index: index})}
+      end)
+
+    {records_with_changesets, notifications} =
+      conditional_after_batch_hooks
+      |> Enum.reduce(
+        {results, []},
+        fn {where, indices}, {records, additional_notifications} ->
+          {to_apply, to_not_apply} =
+            case where do
+              true ->
+                {records, []}
+
+              false ->
+                {[], records}
+
+              where ->
+                Enum.split_with(records, fn {_, record} ->
+                  record.calculations[{:run_after_batch, where}]
+                end)
+            end
+
+          if Enum.empty?(to_apply) do
+            {records, additional_notifications}
+          else
+            {applied, notifications} =
+              Enum.reduce(
+                indices,
+                {to_apply, additional_notifications},
+                fn index, {records, additional_notifications} ->
+                  change = Enum.at(all_changes, index)
+                  {module, opts} = change.change
+
+                  case module.after_batch(records, opts, context) do
+                    :ok ->
+                      {to_apply, additional_notifications}
+
+                    instructions ->
+                      Enum.reduce(
+                        instructions,
+                        {[], additional_notifications},
+                        fn
+                          {:ok, record}, {records, additional_notifications} ->
+                            {[{atomic_changeset, record} | records], additional_notifications}
+
+                          {:error, error}, _ ->
+                            raise Ash.Error.to_ash_error(error)
+
+                          %Ash.Notifier.Notification{} = notification,
+                          {records, additional_notifications} ->
+                            {records, [notification | additional_notifications]}
+                        end
+                      )
+                  end
+                end
+              )
+
+            {applied ++ to_not_apply, notifications ++ additional_notifications}
+          end
+        end
+      )
+
+    final_results =
+      records_with_changesets
+      # would be nice to have `Enum.map_sort_by`
+      |> Stream.map(&elem(&1, 1))
+      |> Enum.sort_by(& &1.__metadata__.atomic_index)
+
+    {final_results, notifications}
+  end
+
+  @doc false
+  def hooks_and_calcs_for_update_query(atomic_changeset, context, query, opts) do
+    all_changes =
+      atomic_changeset.action.changes
+      |> Enum.concat(
+        Ash.Resource.Info.changes(atomic_changeset.resource, atomic_changeset.action_type)
+      )
+
+    conditional_after_batch_hooks =
+      all_changes
+      |> Stream.with_index()
+      |> Enum.filter(fn {%{change: {module, change_opts}}, _index} ->
+        function_exported?(module, :after_batch, 3) &&
+          module.batch_callbacks?(query, change_opts, context)
+      end)
+      |> Enum.reduce(%{}, fn {%{where: where}, index}, acc ->
+        {:atomic, condition} =
+          Ash.Changeset.atomic_condition(where, atomic_changeset, context)
+
+        Map.update(acc, condition, [index], &[index | &1])
+      end)
+
+    calculations =
+      Enum.flat_map(conditional_after_batch_hooks, fn
+        {static, _indices} when static in [true, false] ->
+          []
+
+        {where, _indices} ->
+          {:ok, calculation} =
+            Ash.Query.Calculation.new(
+              {:run_after_batch, where},
+              Ash.Resource.Calculation.Expression,
+              [expression: where],
+              :boolean,
+              [],
+              arguments: atomic_changeset.arguments,
+              source_context: atomic_changeset.context
+            )
+
+          calculation =
+            Ash.Actions.Read.add_calc_context(
+              calculation,
+              opts[:actor],
+              opts[:authorize?],
+              opts[:tenant],
+              opts[:tracer],
+              atomic_changeset.domain
+            )
+
+          [{calculation, where}]
+      end)
+
+    {all_changes, conditional_after_batch_hooks, calculations}
   end
 
   defp set_strategy(opts, resource) do
@@ -1175,6 +1357,7 @@ defmodule Ash.Actions.Update.Bulk do
       opts,
       ref,
       changesets_by_index,
+      batch,
       metadata_key,
       resource,
       domain,
@@ -1770,6 +1953,7 @@ defmodule Ash.Actions.Update.Bulk do
          opts,
          ref,
          changesets_by_index,
+         changesets,
          metadata_key,
          resource,
          domain,
@@ -1780,6 +1964,7 @@ defmodule Ash.Actions.Update.Bulk do
       all_changes,
       batch,
       changesets_by_index,
+      changesets,
       opts,
       ref,
       metadata_key
@@ -1859,19 +2044,35 @@ defmodule Ash.Actions.Update.Bulk do
          all_changes,
          results,
          changesets_by_index,
+         changesets,
          opts,
          ref,
          metadata_key
        ) do
+    context =
+      struct(
+        Ash.Resource.Change.Context,
+        %{
+          bulk?: true,
+          actor: opts[:actor],
+          tenant: opts[:tenant],
+          tracer: opts[:tracer],
+          authorize?: opts[:authorize?]
+        }
+      )
+
     all_changes
     |> Enum.filter(fn
-      {%{change: {module, _opts}}, _} ->
-        function_exported?(module, :after_batch, 3)
+      {%{change: {module, change_opts}}, _} ->
+        function_exported?(module, :after_batch, 3) &&
+          module.batch_callbacks?(changesets, change_opts, context)
 
       _ ->
         false
     end)
     |> Enum.reduce(results, fn {%{change: {module, change_opts}}, index}, results ->
+      records = results
+
       if changes[index] == :all do
         results =
           Enum.map(results, fn result ->
@@ -1881,18 +2082,9 @@ defmodule Ash.Actions.Update.Bulk do
         module.after_batch(
           results,
           change_opts,
-          struct(
-            Ash.Resource.Change.Context,
-            %{
-              bulk?: true,
-              actor: opts[:actor],
-              tenant: opts[:tenant],
-              tracer: opts[:tracer],
-              authorize?: opts[:authorize?]
-            }
-          )
+          context
         )
-        |> handle_after_batch_results(ref, opts)
+        |> handle_after_batch_results(records, ref, opts)
       else
         {matches, non_matches} =
           results
@@ -1903,6 +2095,8 @@ defmodule Ash.Actions.Update.Bulk do
             _ ->
               false
           end)
+
+        match_records = matches
 
         matches =
           Enum.map(matches, fn match ->
@@ -1924,14 +2118,16 @@ defmodule Ash.Actions.Update.Bulk do
               }
             )
           )
-          |> handle_after_batch_results(ref, opts)
+          |> handle_after_batch_results(match_records, ref, opts)
 
         Enum.concat([after_batch_results, non_matches])
       end
     end)
   end
 
-  defp handle_after_batch_results(results, ref, options) do
+  defp handle_after_batch_results(:ok, matches, _ref, _options), do: matches
+
+  defp handle_after_batch_results(results, _matches, ref, options) do
     Enum.flat_map(
       results,
       fn
@@ -2037,7 +2233,9 @@ defmodule Ash.Actions.Update.Bulk do
               state.must_return_records? ||
                 Enum.any?(batch, fn item ->
                   item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action)
-                end) || function_exported?(module, :after_batch, 3)
+                end) ||
+                (function_exported?(module, :after_batch, 3) &&
+                   module.batch_callbacks?(batch, change_opts, context))
 
             %{
               state
@@ -2085,7 +2283,9 @@ defmodule Ash.Actions.Update.Bulk do
                 state.must_return_records? ||
                   Enum.any?(batch, fn item ->
                     item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action)
-                  end) || function_exported?(module, :after_batch, 3)
+                  end) ||
+                  (function_exported?(module, :after_batch, 3) &&
+                     module.batch_callbacks?(batch, change_opts, context))
 
               %{
                 state

@@ -169,12 +169,29 @@ defmodule Ash.Actions.Destroy.Bulk do
           end
 
         try do
-          has_after_action_hooks? = not Enum.empty?(atomic_changeset.after_action)
-          # There are performance implications here. We probably need to explicitly enable
-          # having after action hooks. Or perhaps we need to stream the ids and then bulk update
-          # them.
+          context =
+            struct(
+              Ash.Resource.Change.Context,
+              %{
+                bulk?: true,
+                actor: opts[:actor],
+                tenant: opts[:tenant],
+                tracer: opts[:tracer],
+                authorize?: opts[:authorize?]
+              }
+            )
+
+          has_after_batch_hooks? =
+            Enum.any?(
+              action.changes ++ Ash.Resource.Info.changes(atomic_changeset.resource, :destroy),
+              fn %{change: {module, change_opts}} ->
+                function_exported?(module, :after_batch, 3) &&
+                  module.batch_callbacks?(query, change_opts, context)
+              end
+            )
+
           opts =
-            if has_after_action_hooks? || opts[:notify?] do
+            if has_after_batch_hooks? || opts[:notify?] do
               Keyword.put(opts, :return_records?, true)
             else
               opts
@@ -190,11 +207,11 @@ defmodule Ash.Actions.Destroy.Bulk do
             end
 
           bulk_result =
-            if has_after_action_hooks? && opts[:transaction] do
+            if has_after_batch_hooks? && opts[:transaction] do
               Ash.DataLayer.transaction(
                 List.wrap(atomic_changeset.resource) ++ action.touches_resources,
                 fn ->
-                  do_atomic_destroy(query, atomic_changeset, has_after_action_hooks?, input, opts)
+                  do_atomic_destroy(query, atomic_changeset, has_after_batch_hooks?, input, opts)
                 end,
                 opts[:timeout],
                 %{
@@ -208,7 +225,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                 }
               )
             else
-              do_atomic_destroy(query, atomic_changeset, has_after_action_hooks?, input, opts)
+              do_atomic_destroy(query, atomic_changeset, has_after_batch_hooks?, input, opts)
             end
 
           notifications =
@@ -355,7 +372,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
-  defp do_atomic_destroy(query, atomic_changeset, has_after_action_hooks?, input, opts) do
+  defp do_atomic_destroy(query, atomic_changeset, has_after_batch_hooks?, input, opts) do
     atomic_changeset =
       if atomic_changeset.context[:data_layer][:use_atomic_destroy_data?] do
         atomic_changeset
@@ -366,6 +383,29 @@ defmodule Ash.Actions.Destroy.Bulk do
         }
       end
 
+    context =
+      struct(Ash.Resource.Change.Context, %{
+        bulk?: true,
+        actor: opts[:actor],
+        tenant: opts[:tenant],
+        tracer: opts[:tracer],
+        authorize?: opts[:authorize?]
+      })
+
+    {all_changes, conditional_after_batch_hooks, calculations} =
+      Ash.Actions.Update.Bulk.hooks_and_calcs_for_update_query(
+        atomic_changeset,
+        context,
+        query,
+        opts
+      )
+
+    destroy_query_opts =
+      opts
+      |> Keyword.take([:return_records?, :tenant, :select])
+      |> Map.new()
+      |> Map.put(:calculations, calculations)
+
     with {:ok, query} <- authorize_bulk_query(query, atomic_changeset, opts),
          {:ok, atomic_changeset, query} <-
            authorize_atomic_changeset(query, atomic_changeset, opts),
@@ -374,7 +414,7 @@ defmodule Ash.Actions.Destroy.Bulk do
       case Ash.DataLayer.destroy_query(
              data_layer_query,
              atomic_changeset,
-             Map.new(Keyword.take(opts, [:return_records?, :tenant, :select]))
+             destroy_query_opts
            )
            |> Ash.Actions.Helpers.rollback_if_in_transaction(query.resource, nil) do
         :ok ->
@@ -385,25 +425,17 @@ defmodule Ash.Actions.Destroy.Bulk do
         {:ok, results} ->
           results = List.wrap(results)
 
-          {errors, results, notifications, error_count} =
-            if has_after_action_hooks? do
-              results
-              |> Enum.reduce({[], [], [], 0}, fn result,
-                                                 {errors, successes, notifications, error_count} ->
-                case Ash.Changeset.run_after_actions(result, atomic_changeset, []) do
-                  {:error, error} ->
-                    {[error | errors], successes, error_count + 1}
-
-                  {:ok, result, _changeset, %{notifications: new_notifications}} ->
-                    {errors, [result | successes], notifications ++ new_notifications,
-                     error_count}
-                end
-              end)
-              |> then(fn {errors, successes, notifications, error_count} ->
-                {Enum.reverse(errors), Enum.reverse(successes), notifications, error_count}
-              end)
+          {results, notifications} =
+            if has_after_batch_hooks? do
+              Ash.Actions.Update.Bulk.run_atomic_after_batch_hooks(
+                results,
+                atomic_changeset,
+                all_changes,
+                conditional_after_batch_hooks,
+                context
+              )
             else
-              {[], results, [], 0}
+              {results, []}
             end
 
           notifications =
@@ -416,26 +448,11 @@ defmodule Ash.Actions.Destroy.Bulk do
               notifications
             end
 
-          status =
-            case {error_count, results} do
-              {0, []} ->
-                :success
-
-              {0, _results} ->
-                :success
-
-              {_error_count, []} ->
-                :error
-
-              {0, _results} ->
-                :success
-            end
-
           %Ash.BulkResult{
-            status: status,
-            error_count: error_count,
+            status: :success,
+            error_count: 0,
             notifications: notifications,
-            errors: errors,
+            errors: [],
             records: results
           }
 
@@ -1099,6 +1116,7 @@ defmodule Ash.Actions.Destroy.Bulk do
       opts,
       ref,
       changesets_by_index,
+      batch,
       domain,
       resource,
       base_changeset
@@ -1651,12 +1669,13 @@ defmodule Ash.Actions.Destroy.Bulk do
          opts,
          ref,
          changesets_by_index,
+         changesets,
          domain,
          resource,
          base_changeset
        ) do
     changes
-    |> run_bulk_after_changes(all_changes, batch, changesets_by_index, opts, ref)
+    |> run_bulk_after_changes(all_changes, batch, changesets_by_index, changesets, opts, ref)
     |> Enum.flat_map(fn result ->
       changeset = changesets_by_index[result.__metadata__[:bulk_destroy_index]]
 
@@ -1721,17 +1740,40 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
-  defp run_bulk_after_changes(changes, all_changes, results, changesets_by_index, opts, ref) do
+  defp run_bulk_after_changes(
+         changes,
+         all_changes,
+         results,
+         changesets_by_index,
+         changesets,
+         opts,
+         ref
+       ) do
+    context =
+      struct(
+        Ash.Resource.Change.Context,
+        %{
+          bulk?: true,
+          actor: opts[:actor],
+          tenant: opts[:tenant],
+          tracer: opts[:tracer],
+          authorize?: opts[:authorize?]
+        }
+      )
+
     all_changes
     |> Enum.filter(fn
-      {%{change: {module, _opts}}, _} ->
-        function_exported?(module, :after_batch, 3)
+      {%{change: {module, change_opts}}, _} ->
+        function_exported?(module, :after_batch, 3) &&
+          module.batch_callbacks?(changesets, change_opts, context)
 
       _ ->
         false
     end)
     |> Enum.reduce(results, fn {%{change: {module, change_opts}}, index}, results ->
       if changes[index] == :all do
+        records = results
+
         results =
           Enum.map(results, fn result ->
             {changesets_by_index[result.__metadata__.bulk_destroy_index], result}
@@ -1740,18 +1782,9 @@ defmodule Ash.Actions.Destroy.Bulk do
         module.after_batch(
           results,
           change_opts,
-          struct(
-            Ash.Resource.Change.Context,
-            %{
-              bulk?: true,
-              actor: opts[:actor],
-              tenant: opts[:tenant],
-              tracer: opts[:tracer],
-              authorize?: opts[:authorize?]
-            }
-          )
+          context
         )
-        |> handle_after_batch_results(ref, opts)
+        |> handle_after_batch_results(records, ref, opts)
       else
         {matches, non_matches} =
           results
@@ -1762,6 +1795,8 @@ defmodule Ash.Actions.Destroy.Bulk do
             _ ->
               false
           end)
+
+        match_records = matches
 
         matches =
           Enum.map(matches, fn match ->
@@ -1783,14 +1818,18 @@ defmodule Ash.Actions.Destroy.Bulk do
               }
             )
           )
-          |> handle_after_batch_results(ref, opts)
+          |> handle_after_batch_results(match_records, ref, opts)
 
         Enum.concat([after_batch_results, non_matches])
       end
     end)
   end
 
-  defp handle_after_batch_results(results, ref, options) do
+  defp handle_after_batch_results(:ok, match_records, _ref, _options) do
+    match_records
+  end
+
+  defp handle_after_batch_results(results, _match_records, ref, options) do
     Enum.flat_map(
       results,
       fn
@@ -1882,7 +1921,9 @@ defmodule Ash.Actions.Destroy.Bulk do
               state.must_return_records? ||
                 Enum.any?(batch, fn item ->
                   item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action)
-                end) || function_exported?(module, :after_batch, 3)
+                end) ||
+                (function_exported?(module, :after_batch, 3) &&
+                   module.batch_callbacks?(batch, change_opts, context))
 
             %{
               state
@@ -1930,7 +1971,9 @@ defmodule Ash.Actions.Destroy.Bulk do
                 state.must_return_records? ||
                   Enum.any?(batch, fn item ->
                     item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action)
-                  end) || function_exported?(module, :after_batch, 3)
+                  end) ||
+                  (function_exported?(module, :after_batch, 3) &&
+                     module.batch_callbacks?(batch, change_opts, context))
 
               %{
                 state

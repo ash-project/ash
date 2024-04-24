@@ -109,7 +109,8 @@ defmodule Ash.Actions.Read.Relationships do
     end)
   end
 
-  defp related_query(relationship_name, records, related_query, query) do
+  @doc false
+  def related_query(relationship_name, records, related_query, query) do
     relationship = Ash.Resource.Info.relationship(query.resource, relationship_name)
 
     {read_action_name, arguments} =

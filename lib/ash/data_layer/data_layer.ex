@@ -186,6 +186,7 @@ defmodule Ash.DataLayer do
 
   @type bulk_update_options :: %{
           return_records?: boolean,
+          calculations: list({Ash.Query.Calculation.t(), Ash.Expr.t()}),
           select: list(atom),
           tenant: term()
         }

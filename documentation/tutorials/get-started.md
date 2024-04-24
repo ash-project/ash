@@ -1,6 +1,7 @@
 # Get Started
 
 > ### Learn with Livebook {: .tip}
+>
 > We have a basic step by step tutorial in Livebook that introduces you to Ash. No prior Ash knowledge is required.
 > The Livebook tutorial is self contained and separate from the documentation below.
 > [![Run in Livebook](https://livebook.dev/badge/v1/pink.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2Fash-project%2Fash_tutorial%2Fblob%2Fmaster%2Foverview.livemd)
@@ -519,9 +520,11 @@ You may notice that if you don't add the resource to your domain, or if you don'
 
 ## Working with relationships
 
-There are a wide array of options when managing relationships, and we won't cover all of them here. See the guide on [Managing Relationships](/documentation/topics/resources/relationships.md#managing-relationships) for a full explanation.
+The simplest way to work with belongs to relationships is to allow directly editing the underlying id field.
 
-In this example we'll demonstrate the use of action arguments, the method by which you can accept additional input to an action.
+> ### managing relationships {: .tip}
+>
+> There are a wide array of options when managing relationships, and we won't cover all of them here. See the [Managing Relationships guide](/documentation/topics/resources/relationships.md#managing-relationships) for more.
 
 Add the `assign` action to allow us to assign a Ticket to a Representative.
 
@@ -529,19 +532,7 @@ Add the `assign` action to allow us to assign a Ticket to a Representative.
 # lib/helpdesk/support/ticket.ex
 
 update :assign do
-  # No attributes should be accepted
-  accept []
-
-  # We accept a representative's id as input here
-  argument :representative_id, :uuid do
-    # This action requires representative_id
-    allow_nil? false
-  end
-
-  # We use a change here to replace the related Representative
-  # If there is a different representative for this Ticket, it will be changed to the new one
-  # The Representative itself is not modified in any way
-  change manage_relationship(:representative_id, :representative, type: :append_and_remove)
+  accept [:representative_id]
 end
 ```
 
@@ -585,7 +576,7 @@ ticket
 
 What you've seen above barely scratches the surface of what Ash can do. In a lot of ways, it will look very similar to other tools that you've seen. If all that you ever used was the above, then realistically you won't see much benefit to using Ash.
 
-Where Ash shines however, is all of the tools that can work *with* your resources. You have the ability to extend the framework yourself, and apply consistent design patterns that enable unparalleled efficiency, power and flexibility as your application grows.
+Where Ash shines however, is all of the tools that can work _with_ your resources. You have the ability to extend the framework yourself, and apply consistent design patterns that enable unparalleled efficiency, power and flexibility as your application grows.
 
 #### Get Help
 
@@ -599,7 +590,7 @@ See [The AshPostgres getting started guide](https://hexdocs.pm/ash_postgres) to 
 
 #### Add a web API
 
-Check out  [AshJsonApi](https://hexdocs.pm/ash_json_api) and [AshGraphql](https://hexdocs.pm/ash_graphql) extensions to build APIs around your resource
+Check out [AshJsonApi](https://hexdocs.pm/ash_json_api) and [AshGraphql](https://hexdocs.pm/ash_graphql) extensions to build APIs around your resource
 
 #### Authorize access and work with users
 

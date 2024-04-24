@@ -557,8 +557,14 @@ defmodule Ash.Changeset do
            %Ash.Changeset{} = changeset <- atomic_params(changeset, action, params, opts),
            %Ash.Changeset{} = changeset <- atomic_changes(changeset, action),
            %Ash.Changeset{} = changeset <- atomic_defaults(changeset),
-           %Ash.Changeset{} = changeset <- atomic_update(changeset, opts[:atomic_update] || []) do
-        hydrate_atomic_refs(changeset, opts[:actor], Keyword.take(opts, [:eager?]))
+           %Ash.Changeset{} = changeset <- atomic_update(changeset, opts[:atomic_update] || []),
+           %Ash.Changeset{} = changeset <-
+             hydrate_atomic_refs(changeset, opts[:actor], Keyword.take(opts, [:eager?])) do
+        if Enum.empty?(changeset.after_action || []) do
+          changeset
+        else
+          {:error, "Cannot perform a changeset with after action hooks atomically"}
+        end
       else
         {:not_atomic, reason} ->
           {:not_atomic, reason}
@@ -769,8 +775,6 @@ defmodule Ash.Changeset do
              changeset
            ),
          {:atomic, condition} <- atomic_condition(where, changeset, context) do
-      changeset = add_after_atomic(changeset, module, change_opts)
-
       case condition do
         true ->
           atomic_update(changeset, atomic_changes)
@@ -807,23 +811,6 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp add_after_atomic(changeset, module, opts) do
-    if function_exported?(module, :after_atomic?, 3) do
-      after_action(changeset, fn changeset, result ->
-        context = %Ash.Resource.Change.Context{
-          actor: changeset.context[:private][:actor],
-          tenant: changeset.tenant,
-          authorize?: changeset.context[:private][:authorize?],
-          tracer: changeset.context[:private][:tracer]
-        }
-
-        module.after_atomic(changeset, opts, result, context)
-      end)
-    else
-      changeset
-    end
-  end
-
   defp atomic_with_changeset({:atomic, atomics}, changeset), do: {:atomic, changeset, atomics}
   defp atomic_with_changeset(other, _), do: other
 
@@ -855,7 +842,8 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp atomic_condition(where, changeset, context) do
+  @doc false
+  def atomic_condition(where, changeset, context) do
     Enum.reduce_while(where, {:atomic, true}, fn {module, validation_opts},
                                                  {:atomic, condition} ->
       case module.atomic(
@@ -871,7 +859,7 @@ defmodule Ash.Changeset do
               expr(^condition and ^expr)
             end
 
-          {:cont, new_expr}
+          {:cont, {:atomic, new_expr}}
 
         {:not_atomic, reason} ->
           {:halt, {:not_atomic, reason}}
