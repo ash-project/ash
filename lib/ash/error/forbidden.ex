@@ -1,13 +1,6 @@
 defmodule Ash.Error.Forbidden do
   @moduledoc "Used when authorization for an action fails"
-
-  use Ash.Error.Exception
-
-  use Splode.Error, fields: [:errors, :changeset, :query, :action_input], class: :forbidden
+  use Splode.ErrorClass, fields: [:changeset, :query, :action_input], class: :forbidden
 
   @type t :: %__MODULE__{}
-
-  def message(%{errors: errors}) do
-    Splode.ErrorClass.error_messages(errors)
-  end
 end
