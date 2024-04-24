@@ -279,7 +279,7 @@ In 2.0, as well as 3.0, there is an option called `default_accept`, which modifi
 
 #### What you'll need to change
 
-For those who want to upgrade, you would use the new `:*` option to `default_accept` (also usable in an action's `accept` option) that was added that explicitly opts into the old behavior. Go to each resource and, inside the actions block, add:
+For those who want to upgrade, you would use the new `:*` option to `default_accept` (also usable in an action's `accept` option) to accept all public attributes. Go to each resource and, inside the actions block, add:
 
 ```elixir
 actions do
@@ -287,6 +287,8 @@ actions do
   ...
 end
 ```
+
+Then mark the attributes and relationships you want to accept as `public?: true` (see [this section](#private-true-public-true) for more information on this change).
 
 For those who want to be more explicit, or after your upgrade has complete if you wish to refactor existing resources and actions, the general best path forward is to copy the `default_accept` into each action (or put it in a module attribute and reference it) as the `accept` option. This way when a new action is added, it does not "inherit" some list of accepted attributes.
 
