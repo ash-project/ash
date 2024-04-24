@@ -52,14 +52,14 @@ defmodule Ash.Test.AshTest do
   end
 
   describe "create/1" do
-    test "with a {resource, arguments} as first argument" do
+    test "with a {resource, args} as first argument" do
       assert {:ok, %User{name: "John"}} = Ash.create({User, name: "John"})
       assert {:ok, %User{name: "John"}} = Ash.create({User, %{name: "John"}})
     end
   end
 
   describe "create/2" do
-    test "with a {record, arguments} as first argument and explicit action" do
+    test "with a {record, args} as first argument and explicit action" do
       assert {:ok, %User{name: "John"}} =
                Ash.create({User, name: "John"}, action: :create)
 
@@ -75,14 +75,14 @@ defmodule Ash.Test.AshTest do
   end
 
   describe "create!/1" do
-    test "with a {resource, arguments} as first argument" do
+    test "with a {resource, args} as first argument" do
       assert %User{name: "John"} = Ash.create!({User, name: "John"})
       assert %User{name: "John"} = Ash.create!({User, %{name: "John"}})
     end
   end
 
   describe "create!/2" do
-    test "with a {record, arguments} as first argument and explicit action" do
+    test "with a {record, args} as first argument and explicit action" do
       assert %User{name: "John"} =
                Ash.create!({User, name: "John"}, action: :create)
 
@@ -98,7 +98,7 @@ defmodule Ash.Test.AshTest do
   end
 
   describe "update/1" do
-    test "with a {record, arguments} as first argument" do
+    test "with a {record, args} as first argument" do
       user = Ash.create!({User, name: "John"})
 
       assert {:ok, %User{name: "Jane"}} = Ash.update({user, name: "Jane"})
@@ -107,7 +107,7 @@ defmodule Ash.Test.AshTest do
   end
 
   describe "update/2" do
-    test "with a {record, arguments} as first argument and explicit action" do
+    test "with a {record, args} as first argument and explicit action" do
       user = Ash.create!({User, name: "John"})
 
       assert {:ok, %User{name: "Jane"}} =
@@ -125,7 +125,7 @@ defmodule Ash.Test.AshTest do
   end
 
   describe "update!/1" do
-    test "with a {record, arguments} as first argument" do
+    test "with a {record, args} as first argument" do
       user = Ash.create!({User, name: "John"})
 
       assert %User{name: "Jane"} = Ash.update!({user, name: "Jane"})
@@ -134,7 +134,7 @@ defmodule Ash.Test.AshTest do
   end
 
   describe "update!/2" do
-    test "with a {record, arguments} as first argument and explicit action" do
+    test "with a {record, args} as first argument and explicit action" do
       user = Ash.create!({User, name: "John"})
 
       assert %User{name: "Jane"} =

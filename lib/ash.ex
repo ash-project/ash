@@ -21,9 +21,9 @@ defmodule Ash do
           | Keyword.t()
           | list(atom | {atom, atom | Keyword.t()})
 
-  @type resource_with_arguments :: {Ash.Resource.t(), map() | Keyword.t()}
+  @type resource_with_args :: {Ash.Resource.t(), map() | Keyword.t()}
 
-  @type record_with_arguments :: {Ash.Resource.record(), map() | Keyword.t()}
+  @type record_with_args :: {Ash.Resource.record(), map() | Keyword.t()}
 
   @global_opts [
     domain: [
@@ -1957,13 +1957,13 @@ defmodule Ash do
   Create a record or raises an error. See `create/2` for more information.
   """
   @doc spark_opts: [{1, @create_opts_schema}]
-  @spec create!(Ash.Changeset.t() | resource_with_arguments(), Keyword.t()) ::
+  @spec create!(Ash.Changeset.t() | resource_with_args(), Keyword.t()) ::
           Ash.Resource.record()
           | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | no_return
-  def create!(changeset_or_resource_with_argument, opts \\ [])
+  def create!(changeset_or_resource_with_args, opts \\ [])
 
-  def create!({resource, arguments}, opts) do
+  def create!({resource, args}, opts) do
     Ash.Helpers.expect_resource!(resource)
     Ash.Helpers.expect_options!(opts)
 
@@ -1971,10 +1971,10 @@ defmodule Ash do
     create_opts = Keyword.take(opts, Keyword.keys(@create_opts_schema))
 
     action = opts[:action] || Ash.Resource.Info.primary_action!(resource, :create).name
-    arguments = Enum.into(arguments, %{})
+    args = Enum.into(args, %{})
 
     resource
-    |> Ash.Changeset.for_create(action, arguments, changeset_opts)
+    |> Ash.Changeset.for_create(action, args, changeset_opts)
     |> create!(create_opts)
   end
 
@@ -1993,13 +1993,13 @@ defmodule Ash do
   #{Spark.Options.docs(@create_opts_schema)}
   """
   @doc spark_opts: [{1, @create_opts_schema}]
-  @spec create(Ash.Changeset.t() | resource_with_arguments(), Keyword.t()) ::
+  @spec create(Ash.Changeset.t() | resource_with_args(), Keyword.t()) ::
           {:ok, Ash.Resource.record()}
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
   def create(changeset_or_resource_with_argument, opts \\ [])
 
-  def create({resource, arguments}, opts) do
+  def create({resource, args}, opts) do
     Ash.Helpers.expect_resource!(resource)
     Ash.Helpers.expect_options!(opts)
 
@@ -2007,10 +2007,10 @@ defmodule Ash do
     create_opts = Keyword.take(opts, Keyword.keys(@create_opts_schema))
 
     action = opts[:action] || Ash.Resource.Info.primary_action!(resource, :create).name
-    arguments = Enum.into(arguments, %{})
+    args = Enum.into(args, %{})
 
     resource
-    |> Ash.Changeset.for_create(action, arguments, changeset_opts)
+    |> Ash.Changeset.for_create(action, args, changeset_opts)
     |> create(create_opts)
   end
 
@@ -2353,13 +2353,13 @@ defmodule Ash do
   @doc """
   Update a record. See `update/2` for more information.
   """
-  @spec update!(Ash.Changeset.t() | record_with_arguments(), opts :: Keyword.t()) ::
+  @spec update!(Ash.Changeset.t() | record_with_args(), opts :: Keyword.t()) ::
           Ash.Resource.record()
           | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | no_return
-  def update!(changeset_or_record_with_arguments, opts \\ [])
+  def update!(changeset_or_record_with_args, opts \\ [])
 
-  def update!({record, arguments}, opts) do
+  def update!({record, args}, opts) do
     Ash.Helpers.expect_record!(record)
     Ash.Helpers.expect_options!(opts)
 
@@ -2367,10 +2367,10 @@ defmodule Ash do
     update_opts = Keyword.take(opts, Keyword.keys(@update_opts_schema))
 
     action = opts[:action] || Ash.Resource.Info.primary_action!(record, :create).name
-    arguments = Enum.into(arguments, %{})
+    args = Enum.into(args, %{})
 
     record
-    |> Ash.Changeset.for_update(action, arguments, changeset_opts)
+    |> Ash.Changeset.for_update(action, args, changeset_opts)
     |> update!(update_opts)
   end
 
@@ -2390,13 +2390,13 @@ defmodule Ash do
 
   #{Spark.Options.docs(@update_opts_schema)}
   """
-  @spec update(Ash.Changeset.t() | record_with_arguments(), opts :: Keyword.t()) ::
+  @spec update(Ash.Changeset.t() | record_with_args(), opts :: Keyword.t()) ::
           {:ok, Ash.Resource.record()}
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
-  def update(changeset_or_record_with_arguments, opts \\ [])
+  def update(changeset_or_record_with_args, opts \\ [])
 
-  def update({record, arguments}, opts) do
+  def update({record, args}, opts) do
     Ash.Helpers.expect_record!(record)
     Ash.Helpers.expect_options!(opts)
 
@@ -2404,10 +2404,10 @@ defmodule Ash do
     update_opts = Keyword.take(opts, Keyword.keys(@update_opts_schema))
 
     action = opts[:action] || Ash.Resource.Info.primary_action!(record, :update).name
-    arguments = Enum.into(arguments, %{})
+    args = Enum.into(args, %{})
 
     record
-    |> Ash.Changeset.for_update(action, arguments, changeset_opts)
+    |> Ash.Changeset.for_update(action, args, changeset_opts)
     |> update(update_opts)
   end
 
