@@ -21,6 +21,10 @@ defmodule Ash do
           | Keyword.t()
           | list(atom | {atom, atom | Keyword.t()})
 
+  @type resource_with_arguments :: {Ash.Resource.t(), map() | Keyword.t()}
+
+  @type record_with_arguments :: {Ash.Resource.record(), map() | Keyword.t()}
+
   @global_opts [
     domain: [
       type: {:spark, Ash.Domain},
@@ -1953,11 +1957,22 @@ defmodule Ash do
   Create a record or raises an error. See `create/2` for more information.
   """
   @doc spark_opts: [{1, @create_opts_schema}]
-  @spec create!(Ash.Changeset.t(), Keyword.t()) ::
+  @spec create!(Ash.Changeset.t() | resource_with_arguments(), Keyword.t()) ::
           Ash.Resource.record()
           | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | no_return
-  def create!(changeset, opts \\ []) do
+  def create!(changeset_or_resource_with_argument, opts \\ [])
+
+  def create!({resource, arguments}, opts) do
+    action = opts[:action] || Ash.Resource.Info.primary_action!(resource, :create).name
+    arguments = Enum.into(arguments, %{})
+
+    resource
+    |> Ash.Changeset.for_create(action, arguments)
+    |> create!(opts)
+  end
+
+  def create!(changeset, opts) do
     Ash.Helpers.expect_changeset!(changeset)
     Ash.Helpers.expect_options!(opts)
 
@@ -1972,11 +1987,22 @@ defmodule Ash do
   #{Spark.Options.docs(@create_opts_schema)}
   """
   @doc spark_opts: [{1, @create_opts_schema}]
-  @spec create(Ash.Changeset.t(), Keyword.t()) ::
+  @spec create(Ash.Changeset.t() | resource_with_arguments(), Keyword.t()) ::
           {:ok, Ash.Resource.record()}
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
-  def create(changeset, opts \\ []) do
+  def create(changeset_or_resource_with_argument, opts \\ [])
+
+  def create({resource, arguments}, opts) do
+    action = opts[:action] || Ash.Resource.Info.primary_action!(resource, :create).name
+    arguments = Enum.into(arguments, %{})
+
+    resource
+    |> Ash.Changeset.for_create(action, arguments)
+    |> create(opts)
+  end
+
+  def create(changeset, opts) do
     Ash.Helpers.expect_changeset!(changeset)
     Ash.Helpers.expect_options!(opts)
     domain = Ash.Helpers.domain!(changeset, opts)
@@ -2315,12 +2341,23 @@ defmodule Ash do
   @doc """
   Update a record. See `update/2` for more information.
   """
-  @spec update!(Ash.Changeset.t(), opts :: Keyword.t()) ::
+  @spec update!(Ash.Changeset.t() | record_with_arguments(), opts :: Keyword.t()) ::
           Ash.Resource.record()
           | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | no_return
+  def update!(changeset_or_record_with_arguments, opts \\ [])
+
+  def update!({record, arguments}, opts) do
+    action = opts[:action] || Ash.Resource.Info.primary_action!(record, :create).name
+    arguments = Enum.into(arguments, %{})
+
+    record
+    |> Ash.Changeset.for_update(action, arguments)
+    |> update!(opts)
+  end
+
   @doc spark_opts: [{1, @update_opts_schema}]
-  def update!(changeset, opts \\ []) do
+  def update!(changeset, opts) do
     Ash.Helpers.expect_changeset!(changeset)
     Ash.Helpers.expect_options!(opts)
     opts = Spark.Options.validate!(opts, @update_opts_schema)
@@ -2335,12 +2372,23 @@ defmodule Ash do
 
   #{Spark.Options.docs(@update_opts_schema)}
   """
-  @spec update(Ash.Changeset.t(), opts :: Keyword.t()) ::
+  @spec update(Ash.Changeset.t() | record_with_arguments(), opts :: Keyword.t()) ::
           {:ok, Ash.Resource.record()}
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
+  def update(changeset_or_record_with_arguments, opts \\ [])
+
+  def update({record, arguments}, opts) do
+    action = opts[:action] || Ash.Resource.Info.primary_action!(record, :update).name
+    arguments = Enum.into(arguments, %{})
+
+    record
+    |> Ash.Changeset.for_update(action, arguments)
+    |> update(opts)
+  end
+
   @doc spark_opts: [{1, @update_opts_schema}]
-  def update(changeset, opts \\ []) do
+  def update(changeset, opts) do
     Ash.Helpers.expect_changeset!(changeset)
     Ash.Helpers.expect_options!(opts)
     domain = Ash.Helpers.domain!(changeset, opts)
