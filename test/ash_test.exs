@@ -51,63 +51,103 @@ defmodule Ash.Test.AshTest do
     end
   end
 
-  test "create accepts a resource with arguments tuple" do
-    assert {:ok, %User{name: "John"}} = Ash.create({User, name: "John"})
-    assert {:ok, %User{name: "John"}} = Ash.create({User, %{name: "John"}})
-
-    assert {:ok, %User{name: "John"}} = Ash.create({User, name: "John"}, action: :create)
-    assert {:ok, %User{name: "John"}} = Ash.create({User, %{name: "John"}}, action: :create)
-
-    assert {:ok, %User{name: "John", state: :awake}} =
-             Ash.create({User, name: "John"}, action: :create_awake)
-
-    assert {:ok, %User{name: "John", state: :awake}} =
-             Ash.create({User, %{name: "John"}}, action: :create_awake)
+  describe "create/1" do
+    test "with a {resource, arguments} as first argument" do
+      assert {:ok, %User{name: "John"}} = Ash.create({User, name: "John"})
+      assert {:ok, %User{name: "John"}} = Ash.create({User, %{name: "John"}})
+    end
   end
 
-  test "create! accepts a resource with arguments tuple" do
-    assert %User{name: "John"} = Ash.create!({User, name: "John"})
-    assert %User{name: "John"} = Ash.create!({User, %{name: "John"}})
+  describe "create/2" do
+    test "with a {record, arguments} as first argument and explicit action" do
+      assert {:ok, %User{name: "John"}} =
+               Ash.create({User, name: "John"}, action: :create)
 
-    assert %User{name: "John"} = Ash.create!({User, name: "John"}, action: :create)
-    assert %User{name: "John"} = Ash.create!({User, %{name: "John"}}, action: :create)
+      assert {:ok, %User{name: "John"}} =
+               Ash.create({User, %{name: "John"}}, action: :create)
 
-    assert %User{name: "John", state: :awake} =
-             Ash.create!({User, name: "John"}, action: :create_awake)
+      assert {:ok, %User{name: "John", state: :awake}} =
+               Ash.create({User, name: "John"}, action: :create_awake)
 
-    assert %User{name: "John", state: :awake} =
-             Ash.create!({User, %{name: "John"}}, action: :create_awake)
+      assert {:ok, %User{name: "John", state: :awake}} =
+               Ash.create({User, %{name: "John"}}, action: :create_awake)
+    end
   end
 
-  test "update accepts a record with arguments tuple" do
-    user = Ash.create!({User, name: "John"})
-
-    assert {:ok, %User{name: "Jane"}} = Ash.update({user, name: "Jane"})
-    assert {:ok, %User{name: "Jane"}} = Ash.update({user, %{name: "Jane"}})
-
-    assert {:ok, %User{name: "Jane"}} = Ash.update({user, name: "Jane"}, action: :update)
-    assert {:ok, %User{name: "Jane"}} = Ash.update({user, %{name: "Jane"}}, action: :update)
-
-    assert {:ok, %User{name: "John", state: :awake}} =
-             Ash.update({user, state: :awake}, action: :update_state)
-
-    assert {:ok, %User{name: "John", state: :awake}} =
-             Ash.update({user, %{state: :awake}}, action: :update_state)
+  describe "create!/1" do
+    test "with a {resource, arguments} as first argument" do
+      assert %User{name: "John"} = Ash.create!({User, name: "John"})
+      assert %User{name: "John"} = Ash.create!({User, %{name: "John"}})
+    end
   end
 
-  test "update! accepts a record with arguments tuple" do
-    user = Ash.create!({User, name: "John"})
+  describe "create!/2" do
+    test "with a {record, arguments} as first argument and explicit action" do
+      assert %User{name: "John"} =
+               Ash.create!({User, name: "John"}, action: :create)
 
-    assert %User{name: "Jane"} = Ash.update!({user, name: "Jane"})
-    assert %User{name: "Jane"} = Ash.update!({user, %{name: "Jane"}})
+      assert %User{name: "John"} =
+               Ash.create!({User, %{name: "John"}}, action: :create)
 
-    assert %User{name: "Jane"} = Ash.update!({user, name: "Jane"}, action: :update)
-    assert %User{name: "Jane"} = Ash.update!({user, %{name: "Jane"}}, action: :update)
+      assert %User{name: "John", state: :awake} =
+               Ash.create!({User, name: "John"}, action: :create_awake)
 
-    assert %User{name: "John", state: :awake} =
-             Ash.update!({user, state: :awake}, action: :update_state)
+      assert %User{name: "John", state: :awake} =
+               Ash.create!({User, %{name: "John"}}, action: :create_awake)
+    end
+  end
 
-    assert %User{name: "John", state: :awake} =
-             Ash.update!({user, %{state: :awake}}, action: :update_state)
+  describe "update/1" do
+    test "with a {record, arguments} as first argument" do
+      user = Ash.create!({User, name: "John"})
+
+      assert {:ok, %User{name: "Jane"}} = Ash.update({user, name: "Jane"})
+      assert {:ok, %User{name: "Jane"}} = Ash.update({user, %{name: "Jane"}})
+    end
+  end
+
+  describe "update/2" do
+    test "with a {record, arguments} as first argument and explicit action" do
+      user = Ash.create!({User, name: "John"})
+
+      assert {:ok, %User{name: "Jane"}} =
+               Ash.update({user, name: "Jane"}, action: :update)
+
+      assert {:ok, %User{name: "Jane"}} =
+               Ash.update({user, %{name: "Jane"}}, action: :update)
+
+      assert {:ok, %User{name: "John", state: :awake}} =
+               Ash.update({user, state: :awake}, action: :update_state)
+
+      assert {:ok, %User{name: "John", state: :awake}} =
+               Ash.update({user, %{state: :awake}}, action: :update_state)
+    end
+  end
+
+  describe "update!/1" do
+    test "with a {record, arguments} as first argument" do
+      user = Ash.create!({User, name: "John"})
+
+      assert %User{name: "Jane"} = Ash.update!({user, name: "Jane"})
+      assert %User{name: "Jane"} = Ash.update!({user, %{name: "Jane"}})
+    end
+  end
+
+  describe "update!/2" do
+    test "with a {record, arguments} as first argument and explicit action" do
+      user = Ash.create!({User, name: "John"})
+
+      assert %User{name: "Jane"} =
+               Ash.update!({user, name: "Jane"}, action: :update)
+
+      assert %User{name: "Jane"} =
+               Ash.update!({user, %{name: "Jane"}}, action: :update)
+
+      assert %User{name: "John", state: :awake} =
+               Ash.update!({user, state: :awake}, action: :update_state)
+
+      assert %User{name: "John", state: :awake} =
+               Ash.update!({user, %{state: :awake}}, action: :update_state)
+    end
   end
 end

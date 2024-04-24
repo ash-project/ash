@@ -1150,6 +1150,11 @@ defmodule Ash.Changeset do
     |> do_for_action(action, params, opts)
   end
 
+  @for_update_opts @for_create_opts
+
+  @doc false
+  def for_update_opts, do: @for_update_opts
+
   @doc """
   Constructs a changeset for a given update action, and validates it.
 

@@ -1964,12 +1964,18 @@ defmodule Ash do
   def create!(changeset_or_resource_with_argument, opts \\ [])
 
   def create!({resource, arguments}, opts) do
+    Ash.Helpers.expect_resource!(resource)
+    Ash.Helpers.expect_options!(opts)
+
+    changeset_opts = Keyword.take(opts, Keyword.keys(Ash.Changeset.for_create_opts()))
+    create_opts = Keyword.take(opts, Keyword.keys(@create_opts_schema))
+
     action = opts[:action] || Ash.Resource.Info.primary_action!(resource, :create).name
     arguments = Enum.into(arguments, %{})
 
     resource
-    |> Ash.Changeset.for_create(action, arguments)
-    |> create!(opts)
+    |> Ash.Changeset.for_create(action, arguments, changeset_opts)
+    |> create!(create_opts)
   end
 
   def create!(changeset, opts) do
@@ -1994,12 +2000,18 @@ defmodule Ash do
   def create(changeset_or_resource_with_argument, opts \\ [])
 
   def create({resource, arguments}, opts) do
+    Ash.Helpers.expect_resource!(resource)
+    Ash.Helpers.expect_options!(opts)
+
+    changeset_opts = Keyword.take(opts, Keyword.keys(Ash.Changeset.for_create_opts()))
+    create_opts = Keyword.take(opts, Keyword.keys(@create_opts_schema))
+
     action = opts[:action] || Ash.Resource.Info.primary_action!(resource, :create).name
     arguments = Enum.into(arguments, %{})
 
     resource
-    |> Ash.Changeset.for_create(action, arguments)
-    |> create(opts)
+    |> Ash.Changeset.for_create(action, arguments, changeset_opts)
+    |> create(create_opts)
   end
 
   def create(changeset, opts) do
@@ -2348,12 +2360,18 @@ defmodule Ash do
   def update!(changeset_or_record_with_arguments, opts \\ [])
 
   def update!({record, arguments}, opts) do
+    Ash.Helpers.expect_record!(record)
+    Ash.Helpers.expect_options!(opts)
+
+    changeset_opts = Keyword.take(opts, Keyword.keys(Ash.Changeset.for_update_opts()))
+    update_opts = Keyword.take(opts, Keyword.keys(@update_opts_schema))
+
     action = opts[:action] || Ash.Resource.Info.primary_action!(record, :create).name
     arguments = Enum.into(arguments, %{})
 
     record
-    |> Ash.Changeset.for_update(action, arguments)
-    |> update!(opts)
+    |> Ash.Changeset.for_update(action, arguments, changeset_opts)
+    |> update!(update_opts)
   end
 
   @doc spark_opts: [{1, @update_opts_schema}]
@@ -2379,12 +2397,18 @@ defmodule Ash do
   def update(changeset_or_record_with_arguments, opts \\ [])
 
   def update({record, arguments}, opts) do
+    Ash.Helpers.expect_record!(record)
+    Ash.Helpers.expect_options!(opts)
+
+    changeset_opts = Keyword.take(opts, Keyword.keys(Ash.Changeset.for_update_opts()))
+    update_opts = Keyword.take(opts, Keyword.keys(@update_opts_schema))
+
     action = opts[:action] || Ash.Resource.Info.primary_action!(record, :update).name
     arguments = Enum.into(arguments, %{})
 
     record
-    |> Ash.Changeset.for_update(action, arguments)
-    |> update(opts)
+    |> Ash.Changeset.for_update(action, arguments, changeset_opts)
+    |> update(update_opts)
   end
 
   @doc spark_opts: [{1, @update_opts_schema}]
