@@ -1,8 +1,6 @@
 defmodule Ash.Error.Unknown do
   @moduledoc "The top level unknown error container"
-  use Ash.Error.Exception
-
-  use Splode.Error, fields: [:errors, :changeset, :query, :action_input], class: :unknown
+  use Splode.ErrorClass, fields: [:changeset, :query, :action_input], class: :unknown
 
   @type t :: %__MODULE__{}
 
@@ -12,9 +10,5 @@ defmodule Ash.Error.Unknown do
     else
       super(opts)
     end
-  end
-
-  def message(%{errors: errors}) do
-    Splode.ErrorClass.error_messages(errors)
   end
 end
