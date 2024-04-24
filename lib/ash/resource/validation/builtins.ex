@@ -198,6 +198,27 @@ defmodule Ash.Resource.Validation.Builtins do
   end
 
   @doc """
+  Validates the presence of a list of attributes.
+
+  If no options are provided, validates that they are all present.
+
+  ## Options
+
+  #{Spark.Options.docs(Ash.Resource.Validation.AttributesPresent.opt_schema())}
+  """
+  @spec attributes_present(attributes :: atom | list(atom), opts :: Keyword.t()) ::
+          Validation.ref()
+  def attributes_present(attributes, opts \\ []) do
+    if opts == [] do
+      attributes = List.wrap(attributes)
+      {Validation.AttributesPresent, attributes: attributes, exactly: Enum.count(attributes)}
+    else
+      opts = Keyword.put(opts, :attributes, List.wrap(attributes))
+      {Validation.AttributesPresent, opts}
+    end
+  end
+
+  @doc """
   Validates the absence of a list of attributes or arguments.
 
   If no options are provided, validates that they are all absent.
@@ -236,6 +257,48 @@ defmodule Ash.Resource.Validation.Builtins do
         end
 
       present(attributes, new_opts)
+    end
+  end
+
+  @doc """
+  Validates the absence of a list of attributes.
+
+  If no options are provided, validates that they are all absent.
+
+  This works by changing your options and providing them to the `present` validation.
+
+  ## Options
+
+  #{String.replace(Spark.Options.docs(Ash.Resource.Validation.AttributesPresent.opt_schema()), "present", "absent")}
+  """
+  @spec attributes_absent(attributes :: atom | list(atom), opts :: Keyword.t()) ::
+          Validation.ref()
+  def attributes_absent(attributes, opts \\ []) do
+    if opts == [] do
+      {Validation.AttributesPresent, attributes: List.wrap(attributes), exactly: 0}
+    else
+      attributes = List.wrap(attributes)
+      count = Enum.count(attributes)
+
+      new_opts =
+        case Keyword.fetch(opts, :at_least) do
+          {:ok, value} ->
+            Keyword.put(opts, :at_most, count - value)
+
+          :error ->
+            Keyword.put(opts, :at_most, 0)
+        end
+
+      new_opts =
+        case Keyword.fetch(opts, :at_most) do
+          {:ok, value} ->
+            Keyword.put(new_opts, :at_least, count - value)
+
+          :error ->
+            Keyword.put(new_opts, :at_least, 0)
+        end
+
+      attributes_present(attributes, new_opts)
     end
   end
 

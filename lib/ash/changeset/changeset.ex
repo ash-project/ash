@@ -1559,7 +1559,7 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Checks if an attribute is not nil, either in the original data, or that it is not being changed to a `nil` value if it is changing.
+  Checks if an argument is not nil or an attribute is not nil, either in the original data, or that it is not being changed to a `nil` value if it is changing.
 
   This also accounts for the `accessing_from` context that is set when using `manage_relationship`, so it is aware that a particular value
   *will* be set by `manage_relationship` even if it isn't currently being set.
@@ -1590,6 +1590,32 @@ defmodule Ash.Changeset do
       end
 
     not is_nil(arg_or_attribute_value) ||
+      belongs_to_attr_of_rel_being_managed?(attribute, changeset, true) ||
+      is_belongs_to_rel_being_managed?(attribute, changeset)
+  end
+
+  @doc """
+  Checks if an attribute is not nil, either in the original data, or that it is not being changed to a `nil` value if it is changing.
+
+  This also accounts for the `accessing_from` context that is set when using `manage_relationship`, so it is aware that a particular value
+  *will* be set by `manage_relationship` even if it isn't currently being set.
+  """
+  def attributes_present?(changeset, attribute) do
+    attribute_value = Ash.Changeset.get_attribute(changeset, attribute)
+
+    attribute_value =
+      case attribute_value do
+        %Ash.NotLoaded{} ->
+          nil
+
+        %Ash.ForbiddenField{} ->
+          nil
+
+        other ->
+          other
+      end
+
+    not is_nil(attribute_value) ||
       belongs_to_attr_of_rel_being_managed?(attribute, changeset, true) ||
       is_belongs_to_rel_being_managed?(attribute, changeset)
   end
