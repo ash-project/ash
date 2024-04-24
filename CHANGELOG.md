@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.30](https://github.com/ash-project/ash/compare/v3.0.0-rc.29...v3.0.0-rc.30) (2024-04-24)
+
+
+
+
+### Bug Fixes:
+
+* use Splode.ErrorClass for error classes (#1054)
+
+### Improvements:
+
+* remove `after_atomic` and instead support `after_batch`
+
+* Add attributes_present, attributes_absent. (#1046)
+
 ## [v3.0.0-rc.29](https://github.com/ash-project/ash/compare/v3.0.0-rc.28...v3.0.0-rc.29) (2024-04-23)
 ### Breaking Changes:
 
