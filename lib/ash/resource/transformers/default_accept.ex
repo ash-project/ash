@@ -6,10 +6,10 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
   alias Spark.Dsl.Transformer
 
   def transform(dsl_state) do
-    public_attribute_names =
+    attribute_names =
       dsl_state
       |> Transformer.get_entities([:attributes])
-      |> Enum.filter(&(&1.public? && &1.writable?))
+      |> Enum.filter(& &1.writable?)
       |> Enum.map(& &1.name)
 
     default_default_accept =
@@ -50,7 +50,7 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
       action, {:ok, dsl_state} ->
         accept =
           case List.wrap(action.accept || default_accept) do
-            [:*] -> public_attribute_names
+            [:*] -> attribute_names
             list -> list
           end
 
