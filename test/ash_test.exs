@@ -1,5 +1,6 @@
 defmodule Ash.Test.AshTest do
   @moduledoc false
+
   use ExUnit.Case, async: true
 
   defmodule Domain do
@@ -53,73 +54,121 @@ defmodule Ash.Test.AshTest do
 
   describe "create/1" do
     test "with a resource as first argument" do
-      assert {:ok, %User{name: "John"}} = Ash.create(User, input: %{name: "John"})
+      assert {:ok, %User{name: nil}} = Ash.create(User)
     end
   end
 
   describe "create/2" do
-    test "with a record as first argument and explicit action" do
-      assert {:ok, %User{name: "John"}} =
-               Ash.create(User, input: %{name: "John"}, action: :create)
+    test "with a resource as first argument, with params as second argument" do
+      assert {:ok, %User{name: "Alice"}} = Ash.create(User, %{name: "Alice"})
+    end
 
-      assert {:ok, %User{name: "John", state: :awake}} =
-               Ash.create(User, input: %{name: "John"}, action: :create_awake)
+    test "with a resource as first argument, with opts as second argument" do
+      assert {:ok, %User{name: nil}} = Ash.create(User, action: :create)
+    end
+  end
+
+  describe "create/3" do
+    test "with a record as first argument, then params and opts" do
+      assert {:ok, %User{name: "Alice"}} =
+               Ash.create(User, %{name: "Alice"}, action: :create)
+
+      assert {:ok, %User{name: "Alice", state: :awake}} =
+               Ash.create(User, %{name: "Alice"}, action: :create_awake)
     end
   end
 
   describe "create!/1" do
     test "with a resource as first argument" do
-      assert %User{name: "John"} = Ash.create!(User, input: %{name: "John"})
+      assert %User{name: nil} = Ash.create!(User)
     end
   end
 
   describe "create!/2" do
-    test "with a record as first argument and explicit action" do
-      assert %User{name: "John"} =
-               Ash.create!(User, input: %{name: "John"}, action: :create)
+    test "with a resource as first argument, with params as second argument" do
+      assert %User{name: "Alice"} = Ash.create!(User, %{name: "Alice"})
+    end
 
-      assert %User{name: "John", state: :awake} =
-               Ash.create!(User, input: %{name: "John"}, action: :create_awake)
+    test "with a resource as first argument, with opts as second argument" do
+      assert %User{name: nil} = Ash.create!(User, action: :create)
+    end
+  end
+
+  describe "create!/3" do
+    test "with a record as first argument, then params and opts" do
+      assert %User{name: "Alice"} =
+               Ash.create!(User, %{name: "Alice"}, action: :create)
+
+      assert %User{name: "Alice", state: :awake} =
+               Ash.create!(User, %{name: "Alice"}, action: :create_awake)
     end
   end
 
   describe "update/1" do
     test "with a record as first argument" do
-      user = Ash.create!(User, input: %{name: "John"})
+      user = Ash.create!(User, %{name: "Alice"})
 
-      assert {:ok, %User{name: "Jane"}} = Ash.update(user, input: %{name: "Jane"})
+      assert {:ok, %User{name: "Alice"}} = Ash.update(user)
     end
   end
 
   describe "update/2" do
-    test "with a record as first argument and explicit action" do
-      user = Ash.create!(User, input: %{name: "John"})
+    test "with a record as first argument, with params as second argument" do
+      user = Ash.create!(User, %{name: "Alice"})
 
-      assert {:ok, %User{name: "Jane"}} =
-               Ash.update(user, input: %{name: "Jane"}, action: :update)
+      assert {:ok, %User{name: "Bob"}} = Ash.update(user, %{name: "Bob"})
+    end
 
-      assert {:ok, %User{name: "John", state: :awake}} =
-               Ash.update(user, input: %{state: :awake}, action: :update_state)
+    test "with a record as first argument, with opts as second argument" do
+      user = Ash.create!(User, %{name: "Alice"})
+
+      assert {:ok, %User{name: "Alice"}} = Ash.update(user, action: :update)
+    end
+  end
+
+  describe "update/3" do
+    test "with a record as first argument, then params and opts" do
+      user = Ash.create!(User, %{name: "Alice"})
+
+      assert {:ok, %User{name: "Bob"}} =
+               Ash.update(user, %{name: "Bob"}, action: :update)
+
+      assert {:ok, %User{name: "Alice", state: :awake}} =
+               Ash.update(user, %{state: :awake}, action: :update_state)
     end
   end
 
   describe "update!/1" do
     test "with a record as first argument" do
-      user = Ash.create!(User, input: %{name: "John"})
+      user = Ash.create!(User, %{name: "Alice"})
 
-      assert %User{name: "Jane"} = Ash.update!(user, input: %{name: "Jane"})
+      assert %User{name: "Alice"} = Ash.update!(user)
     end
   end
 
   describe "update!/2" do
+    test "with a record as first argument, with params as second argument" do
+      user = Ash.create!(User, %{name: "Alice"})
+
+      assert %User{name: "Bob"} = Ash.update!(user, %{name: "Bob"})
+    end
+
+    test "with a record as first argument, with opts as second argument" do
+      user = Ash.create!(User, %{name: "Alice"})
+
+      assert %User{name: "Alice"} = Ash.update!(user, action: :update)
+    end
+  end
+
+  describe "update!/3" do
     test "with a record as first argument and explicit action" do
-      user = Ash.create!(User, input: %{name: "John"})
+      user = Ash.create!(User, %{name: "Alice"})
 
-      assert %User{name: "Jane"} =
-               Ash.update!(user, input: %{name: "Jane"}, action: :update)
+      assert %User{name: "Bob"} =
+               Ash.update!(user, %{name: "Bob"}, action: :update)
 
-      assert %User{name: "John", state: :awake} =
-               Ash.update!(user, input: %{state: :awake}, action: :update_state)
+      assert %User{name: "Alice", state: :awake} =
+               Ash.update!(user, %{state: :awake}, action: :update_state)
     end
   end
 end

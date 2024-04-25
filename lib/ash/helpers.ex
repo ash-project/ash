@@ -269,6 +269,17 @@ defmodule Ash.Helpers do
     end
   end
 
+  @doc """
+  Returns {params, opts} from ambigous inputs.
+  """
+  def get_params_and_opts(params_or_opts, opts) do
+    if opts == [] && Keyword.keyword?(params_or_opts) do
+      {%{}, params_or_opts}
+    else
+      {params_or_opts, opts}
+    end
+  end
+
   def pagination_check(action, resource, opts) do
     if Keyword.get(opts, :page) && Keyword.get(opts, :page) != [] && !Map.get(action, :pagination) do
       {:error,
