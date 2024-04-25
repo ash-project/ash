@@ -149,9 +149,12 @@ defmodule Ash.Actions.Update.Bulk do
             Enum.any?(
               action.changes ++
                 Ash.Resource.Info.changes(atomic_changeset.resource, atomic_changeset.action_type),
-              fn %{change: {module, change_opts}} ->
+              fn 
+              %Ash.Resource.Change{change: {module, change_opts}} ->
                 function_exported?(module, :after_batch, 3) &&
                   module.batch_callbacks?(query, change_opts, context)
+              _ -> 
+                false
               end
             )
 
