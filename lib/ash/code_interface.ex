@@ -569,6 +569,15 @@ defmodule Ash.CodeInterface do
                         raise ArgumentError,
                               "Query resource #{inspect(other_resource)} does not match expected resource #{inspect(unquote(resource))}."
 
+                      unquote(resource) ->
+                        unquote(resource)
+                        |> Ash.Query.new()
+
+                      other_resource
+                      when is_atom(other_resource) and not is_nil(other_resource) ->
+                        raise ArgumentError,
+                              "Query resource #{inspect(other_resource)} does not match expected resource #{inspect(unquote(resource))}."
+
                       query ->
                         Ash.Query.build(unquote(resource), query || [])
                     end
