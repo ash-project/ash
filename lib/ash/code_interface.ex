@@ -569,7 +569,7 @@ defmodule Ash.CodeInterface do
                         raise ArgumentError,
                               "Query resource #{inspect(other_resource)} does not match expected resource #{inspect(unquote(resource))}."
 
-                      resource when is_atom(resource) ->
+                      resource when is_atom(resource) and not is_nil(resource) ->
                         resource
 
                       query ->
