@@ -160,7 +160,7 @@ defmodule Ash.Type.Enum do
                error(
                  Ash.Error.Changes.InvalidChanges,
                  message: "must be one of %{values}",
-                 vars: %{values: ^Enum.map_join(@values, ", ")}
+                 vars: %{values: ^Enum.join(@values, ", ")}
                )
              end
            )}
@@ -170,7 +170,7 @@ defmodule Ash.Type.Enum do
               error(
                 Ash.Error.Changes.InvalidChanges,
                 message: "must be one of %{values}",
-                vars: %{values: ^Enum.map_join(@values, ", ")}
+                vars: %{values: ^Enum.join(@values, ", ")}
               )
             )
 
