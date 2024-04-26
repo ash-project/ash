@@ -690,11 +690,13 @@ defmodule Ash.Actions.Update.Bulk do
     conditional_after_batch_hooks =
       all_changes
       |> Stream.with_index()
-      |> Enum.filter(fn {%{change: {module, change_opts}}, _index} ->
-        function_exported?(module, :after_batch, 3) &&
-          module.batch_callbacks?(query, change_opts, context)
-          _ ->
-            false
+      |> Enum.filter(fn
+        {%{change: {module, change_opts}}, _index} ->
+          function_exported?(module, :after_batch, 3) &&
+            module.batch_callbacks?(query, change_opts, context)
+
+        _ ->
+          false
       end)
       |> Enum.reduce(%{}, fn {%{where: where}, index}, acc ->
         {:atomic, condition} =
