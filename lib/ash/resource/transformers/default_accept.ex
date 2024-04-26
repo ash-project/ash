@@ -49,10 +49,11 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
 
       action, {:ok, dsl_state} ->
         accept =
-          case List.wrap(action.accept || default_accept) do
-            [:*] -> public_attribute_names
-            list -> list
-          end
+          List.wrap(action.accept || default_accept)
+          |> Enum.flat_map(fn
+            :* -> public_attribute_names
+            attribute_name -> [attribute_name]
+          end)
 
         argument_names = Enum.map(action.arguments, & &1.name)
 

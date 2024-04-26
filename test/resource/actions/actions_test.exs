@@ -31,22 +31,22 @@ defmodule Ash.Test.Dsl.Resource.Actions.ActionsTest do
               public?(true)
             end
 
-            attribute :last_name, :string do
-              public?(true)
-            end
+            attribute :last_name, :string
           end
 
           actions do
-            create :all_params, accept: :*
+            create :all_params, accept: [:*, :last_name]
+            create :public_params, accept: :*
             create :no_params, accept: []
-            create :one_param, accept: [:first_name]
+            create :one_param, accept: [:last_name]
             destroy :destroy
           end
         end
 
       assert Info.action(resource, :all_params).accept == [:first_name, :last_name]
+      assert Info.action(resource, :public_params).accept == [:first_name]
       assert Info.action(resource, :no_params).accept == []
-      assert Info.action(resource, :one_param).accept == [:first_name]
+      assert Info.action(resource, :one_param).accept == [:last_name]
       assert Info.action(resource, :destroy).accept == []
     end
 
