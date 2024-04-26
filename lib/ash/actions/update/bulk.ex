@@ -396,7 +396,10 @@ defmodule Ash.Actions.Update.Bulk do
            authorize_atomic_changeset(query, atomic_changeset, opts),
          {query, atomic_changeset} <-
            add_changeset_filters(query, atomic_changeset),
-         {:ok, data_layer_query} <- Ash.Query.data_layer_query(query) do
+         %Ash.Changeset{valid?: true} = atomic_changeset <-
+           Ash.Changeset.hydrate_atomic_refs(atomic_changeset, opts[:actor], eager?: true),
+         {:ok, data_layer_query} <-
+           Ash.Query.data_layer_query(query) do
       case Ash.DataLayer.update_query(
              data_layer_query,
              atomic_changeset,
@@ -690,6 +693,8 @@ defmodule Ash.Actions.Update.Bulk do
       |> Enum.filter(fn {%{change: {module, change_opts}}, _index} ->
         function_exported?(module, :after_batch, 3) &&
           module.batch_callbacks?(query, change_opts, context)
+          _ ->
+            false
       end)
       |> Enum.reduce(%{}, fn {%{where: where}, index}, acc ->
         {:atomic, condition} =
