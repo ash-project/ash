@@ -115,10 +115,21 @@ defmodule Ash.Resource.Transformers.ValidatePrimaryActions do
             )
         )
       else
-        Ash.Resource.Builder.prepend_action(dsl_state, type, type,
-          primary?: primary?,
-          accept: accept
-        )
+        opts =
+          if type in [:update, :destroy] do
+            [
+              require_atomic?: false,
+              primary?: primary?,
+              accept: accept
+            ]
+          else
+            [
+              primary?: primary?,
+              accept: accept
+            ]
+          end
+
+        Ash.Resource.Builder.prepend_action(dsl_state, type, type, opts)
       end
       |> case do
         {:ok, dsl_state} -> {:cont, {:ok, dsl_state}}

@@ -131,7 +131,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               ),
               action,
               input,
-              Keyword.put(opts, :resource, query.resource),
+              Keyword.merge(opts, resource: query.resource, input_was_stream?: false),
               reason
             )
         end
@@ -184,9 +184,13 @@ defmodule Ash.Actions.Destroy.Bulk do
           has_after_batch_hooks? =
             Enum.any?(
               action.changes ++ Ash.Resource.Info.changes(atomic_changeset.resource, :destroy),
-              fn %{change: {module, change_opts}} ->
-                function_exported?(module, :after_batch, 3) &&
-                  module.batch_callbacks?(query, change_opts, context)
+              fn
+                %{change: {module, change_opts}} ->
+                  function_exported?(module, :after_batch, 3) &&
+                    module.batch_callbacks?(query, change_opts, context)
+
+                _ ->
+                  false
               end
             )
 
@@ -267,14 +271,16 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   def run(domain, stream, action, input, opts, not_atomic_reason) do
-    not_atomic_reason =
-      not_atomic_reason || "Cannot perform atomic destroys on a stream of inputs"
-
     resource = opts[:resource]
 
     opts = select(opts, resource)
 
-    opts = set_strategy(opts, resource)
+    opts = set_strategy(opts, resource, Keyword.get(opts, :input_was_stream?, true))
+
+    not_atomic_reason =
+      not_atomic_reason ||
+        if :atomic_batches not in opts[:strategy],
+          do: "Cannot perform atomic destroys on an enumerable of inputs"
 
     action =
       case action do
@@ -350,7 +356,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           handle_bulk_result(bulk_result, resource, action, opts)
 
         {:error, error} ->
-          {:error, error}
+          [{:error, error}]
       end
     else
       domain
@@ -474,6 +480,28 @@ defmodule Ash.Actions.Destroy.Bulk do
             errors: [Ash.Error.to_error_class(error)]
           }
 
+        {:error,
+         %Ash.Error.Forbidden.Placeholder{
+           authorizer: authorizer
+         }} ->
+          error =
+            Ash.Authorizer.exception(
+              authorizer,
+              :forbidden,
+              query.context[:private][:authorizer_state][authorizer]
+            )
+
+          if Ash.DataLayer.in_transaction?(atomic_changeset.resource) do
+            Ash.DataLayer.rollback(atomic_changeset.resource, Ash.Error.to_error_class(error))
+          else
+            %Ash.BulkResult{
+              status: :error,
+              error_count: 1,
+              notifications: [],
+              errors: [Ash.Error.to_error_class(error)]
+            }
+          end
+
         {:error, :no_rollback, error} ->
           %Ash.BulkResult{
             status: :error,
@@ -526,7 +554,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               query,
               atomic_changeset.action,
               input,
-              opts,
+              Keyword.put(opts, :strategy, [:stream]),
               "authorization requires initial data"
             )
         end
@@ -540,11 +568,18 @@ defmodule Ash.Actions.Destroy.Bulk do
     end
   end
 
-  defp set_strategy(opts, resource) do
-    if Ash.DataLayer.data_layer_can?(resource, :destroy_query) do
-      opts
+  defp set_strategy(opts, resource, inputs_is_enumerable? \\ false) do
+    opts =
+      if Ash.DataLayer.data_layer_can?(resource, :update_query) do
+        opts
+      else
+        Keyword.put(opts, :strategy, [:stream])
+      end
+
+    if inputs_is_enumerable? && :atomic in List.wrap(opts[:strategy]) do
+      Keyword.put(opts, :strategy, Enum.uniq([:atomic_batches | List.wrap(opts[:strategy])]))
     else
-      Keyword.put(opts, :strategy, [:stream])
+      opts
     end
   end
 
@@ -681,12 +716,15 @@ defmodule Ash.Actions.Destroy.Bulk do
             input,
             [
               actor: opts[:actor],
-              authorize?: false,
+              authorize_query?: false,
+              authorize?: true,
               tenant: atomic_changeset.tenant,
               tracer: opts[:tracer],
               atomic_changeset: atomic_changeset,
               return_errors?: opts[:return_errors?],
               filter: opts[:filter],
+              load: opts[:load],
+              resource: opts[:resource],
               return_notifications?: opts[:return_notifications?],
               notify?: opts[:notify?],
               return_records?: opts[:return_records?],
@@ -706,7 +744,7 @@ defmodule Ash.Actions.Destroy.Bulk do
             } ->
               store_notification(ref, notifications, opts)
               store_error(ref, errors, opts, error_count)
-              {:error, Ash.Error.to_error_class(errors)}
+              []
           end
         end)
       end
@@ -900,6 +938,9 @@ defmodule Ash.Actions.Destroy.Bulk do
              return_forbidden_error?: true,
              maybe_is: false,
              atomic_changeset: changeset,
+             no_check?: true,
+             on_must_pass_strict_check:
+               {:error, %Ash.Error.Forbidden.InitialDataRequired{source: changeset}},
              run_queries?: false,
              filter_with: opts[:authorize_changeset_with] || :filter,
              alter_source?: true,
@@ -1356,13 +1397,9 @@ defmodule Ash.Actions.Destroy.Bulk do
         {errors, count} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
 
         error =
-          case error do
-            %Ash.Changeset{} = changeset ->
-              changeset
-
-            other ->
-              Ash.Error.to_ash_error(other)
-          end
+          error
+          |> List.wrap()
+          |> Ash.Error.to_ash_error()
 
         Process.put(
           {:bulk_destroy_errors, ref},

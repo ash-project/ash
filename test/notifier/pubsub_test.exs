@@ -37,9 +37,21 @@ defmodule Ash.Test.Notifier.PubSubTest do
     end
 
     actions do
-      default_accept :*
-      defaults [:read, :destroy, create: :*, update: :*]
-      update :update_pkey
+      defaults [:read, :destroy]
+
+      create :create do
+        accept :*
+      end
+
+      update :update do
+        require_atomic? false
+        accept :*
+      end
+
+      update :update_pkey do
+        accept :*
+        require_atomic? false
+      end
     end
 
     attributes do

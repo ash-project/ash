@@ -67,6 +67,7 @@ defmodule Ash.Changeset do
     errors: [],
     params: %{},
     attribute_changes: %{},
+    atomic_changes: [],
     casted_attributes: %{},
     casted_arguments: %{},
     phase: :pending,
@@ -658,7 +659,7 @@ defmodule Ash.Changeset do
     changes =
       action.changes
       |> Enum.concat(Ash.Resource.Info.changes(changeset.resource, changeset.action_type))
-      |> Enum.concat(Ash.Resource.Info.validations(changeset.resource))
+      |> Enum.concat(Ash.Resource.Info.validations(changeset.resource, changeset.action_type))
 
     context = %{
       actor: changeset.context[:private][:actor],
@@ -666,6 +667,8 @@ defmodule Ash.Changeset do
       authorize?: changeset.context[:private][:authorize?] || false,
       tracer: changeset.context[:private][:tracer]
     }
+
+    changeset = set_phase(changeset, :atomic)
 
     Enum.reduce_while(changes, changeset, fn
       %{change: _} = change, changeset ->
@@ -686,6 +689,10 @@ defmodule Ash.Changeset do
             {:cont, changeset}
         end
     end)
+    |> case do
+      {:not_atomic, reason} -> {:not_atomic, reason}
+      %__MODULE__{} = changeset -> clear_phase(changeset)
+    end
   end
 
   defp run_atomic_validation(
@@ -769,6 +776,14 @@ defmodule Ash.Changeset do
          %{change: {module, change_opts}, where: where},
          context
        ) do
+    change_opts =
+      Ash.Expr.fill_template(
+        change_opts,
+        changeset.context.private[:actor],
+        changeset.arguments,
+        changeset.context
+      )
+
     with {:atomic, changeset, atomic_changes} <-
            atomic_with_changeset(
              module.atomic(changeset, change_opts, struct(Ash.Resource.Change.Context, context)),
@@ -1378,8 +1393,30 @@ defmodule Ash.Changeset do
 
     case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
       {:atomic, value} ->
+        value =
+          if attribute.allow_nil? do
+            value
+          else
+            expr(
+              if is_nil(^value) do
+                error(
+                  ^Ash.Error.Changes.Required,
+                  %{
+                    field: ^attribute.name,
+                    type: ^:attribute,
+                    resource: ^changeset.resource
+                  }
+                )
+              else
+                ^value
+              end
+            )
+          end
+
         value = set_error_field(value, attribute.name)
+
         %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+        |> record_atomic_update_for_atomic_upgrade(attribute.name, value)
 
       {:not_atomic, message} ->
         add_error(
@@ -2165,7 +2202,7 @@ defmodule Ash.Changeset do
             end)
             |> case do
               {:ok, args} ->
-                error = %{error | arguments: args}
+                error = %{error | arguments: Enum.reverse(args)}
 
                 case Ash.Expr.eval(error,
                        resource: changeset.resource,
@@ -4692,6 +4729,14 @@ defmodule Ash.Changeset do
   defp record_attribute_change_for_atomic_upgrade(changeset, name, casted) do
     if changeset.phase == :pending do
       %{changeset | attribute_changes: Map.put(changeset.attribute_changes, name, casted)}
+    else
+      changeset
+    end
+  end
+
+  defp record_atomic_update_for_atomic_upgrade(changeset, name, value) do
+    if changeset.phase == :pending do
+      %{changeset | atomic_changes: Keyword.put(changeset.atomic_changes, name, value)}
     else
       changeset
     end

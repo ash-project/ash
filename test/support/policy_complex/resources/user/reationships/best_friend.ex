@@ -7,6 +7,9 @@ defmodule Ash.Test.Support.PolicyComplex.User.Relationships.BestFriend do
     query = Ash.Query.unset(query, [:limit, :offset])
     user_ids = Enum.map(users, & &1.id)
 
+    Ash.Test.Support.PolicyComplex.FriendLink
+    |> Ash.read!(authorize?: false, domain: domain)
+
     friend_links =
       Ash.Test.Support.PolicyComplex.FriendLink
       |> Ash.Query.filter(source_id in ^user_ids or destination_id in ^user_ids)

@@ -12,25 +12,11 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       changeset
     end
 
+    def atomic(_, _, _), do: :ok
+
     def after_batch(results, _, _) do
       Stream.map(results, fn {_changeset, result} ->
         {:ok, %{result | title: result.title <> "_after"}}
-      end)
-    end
-  end
-
-  defmodule AddBeforeToTitle do
-    use Ash.Resource.Change
-
-    def change(changeset, _, %{bulk?: true}) do
-      changeset
-    end
-
-    def before_batch(changesets, _, _) do
-      changesets
-      |> Stream.map(fn changeset ->
-        title = Ash.Changeset.get_attribute(changeset, :title)
-        Ash.Changeset.force_change_attribute(changeset, :title, "before_" <> title)
       end)
     end
   end
@@ -56,6 +42,8 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       end
 
       destroy :destroy_with_change do
+        require_atomic? false
+
         change fn changeset, _ ->
           title = Ash.Changeset.get_attribute(changeset, :title)
           Ash.Changeset.force_change_attribute(changeset, :title, title <> "_stuff")
@@ -63,37 +51,43 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       end
 
       destroy :destroy_with_argument do
+        require_atomic? false
+
         argument :a_title, :string do
           allow_nil? false
         end
-
-        change set_attribute(:title2, arg(:a_title))
       end
 
       destroy :destroy_with_after_action do
+        require_atomic? false
+
         change after_action(fn _changeset, result, _context ->
                  {:ok, %{result | title: result.title <> "_stuff"}}
                end)
       end
 
       destroy :destroy_with_after_batch do
+        require_atomic? false
         change AddAfterToTitle
-        change AddBeforeToTitle
       end
 
       destroy :destroy_with_after_transaction do
+        require_atomic? false
+
         change after_transaction(fn _changeset, {:ok, result}, _context ->
                  {:ok, %{result | title: result.title <> "_stuff"}}
                end)
       end
 
       destroy :destroy_with_policy do
+        require_atomic? false
         argument :authorize?, :boolean, allow_nil?: false
 
         change set_context(%{authorize?: arg(:authorize?)})
       end
 
       destroy :soft do
+        require_atomic? false
         soft? true
         change set_attribute(:title2, "archived")
       end
@@ -140,6 +134,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              end)
              |> Ash.bulk_destroy!(:destroy, %{},
                resource: Post,
+               strategy: :stream,
                return_records?: true,
                return_errors?: true
              )
@@ -163,6 +158,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              end)
              |> Ash.bulk_destroy!(:destroy_with_change, %{},
                resource: Post,
+               strategy: [:stream],
                return_records?: true,
                return_errors?: true
              )
@@ -176,8 +172,8 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
   test "accepts arguments" do
     assert %Ash.BulkResult{
              records: [
-               %{title: "title1", title2: "updated value"},
-               %{title: "title2", title2: "updated value"}
+               %{title: "title1", title2: nil},
+               %{title: "title2", title2: nil}
              ]
            } =
              Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
@@ -187,8 +183,9 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Ash.bulk_destroy!(:destroy_with_argument, %{a_title: "updated value"},
+             |> Ash.bulk_destroy!(:destroy_with_argument, %{a_title: "a value"},
                resource: Post,
+               strategy: [:stream],
                return_records?: true,
                return_errors?: true
              )
@@ -202,8 +199,8 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
   test "runs after batch hooks" do
     assert %Ash.BulkResult{
              records: [
-               %{title: "before_title1_after"},
-               %{title: "before_title2_after"}
+               %{title: "title1_after"},
+               %{title: "title2_after"}
              ]
            } =
              Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
@@ -215,6 +212,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              end)
              |> Ash.bulk_destroy!(:destroy_with_after_batch, %{},
                resource: Post,
+               strategy: [:atomic],
                return_records?: true,
                return_errors?: true
              )
@@ -228,7 +226,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
   test "will return errors on request" do
     assert %Ash.BulkResult{
              error_count: 1,
-             errors: [%Ash.Changeset{}]
+             errors: [%Ash.Error.Invalid{}]
            } =
              Ash.bulk_create!([%{title: "title1"}], Post, :create,
                return_stream?: true,
@@ -239,6 +237,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              end)
              |> Ash.bulk_destroy(:destroy_with_argument, %{a_title: %{invalid: :value}},
                resource: Post,
+               strategy: :stream,
                return_errors?: true
              )
 
@@ -261,6 +260,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              end)
              |> Ash.bulk_destroy!(:destroy_with_after_action, %{},
                resource: Post,
+               strategy: :stream,
                return_records?: true,
                return_errors?: true
              )
@@ -286,6 +286,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                result
              end)
              |> Ash.bulk_destroy!(:destroy_with_after_transaction, %{},
+               strategy: :stream,
                resource: Post,
                return_records?: true,
                return_errors?: true
@@ -312,6 +313,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                result
              end)
              |> Ash.bulk_destroy!(:soft, %{},
+               strategy: [:stream],
                resource: Post,
                return_records?: true,
                return_errors?: true
@@ -334,6 +336,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                |> Ash.bulk_destroy(
                  :destroy_with_policy,
                  %{authorize?: true},
+                 strategy: [:atomic_batches],
                  authorize?: true,
                  resource: Post,
                  return_records?: true,
@@ -352,13 +355,14 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                |> Ash.bulk_destroy(
                  :destroy_with_policy,
                  %{authorize?: true},
+                 strategy: :stream,
                  authorize?: true,
                  return_errors?: true
                )
     end
 
     test "policy failure results in failures" do
-      assert %Ash.BulkResult{errors: [_, _], records: []} =
+      assert %Ash.BulkResult{errors: [%Ash.Error.Forbidden{}], records: []} =
                Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                  return_stream?: true,
                  return_records?: true
@@ -370,6 +374,28 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                  :destroy_with_policy,
                  %{authorize?: false},
                  authorize?: true,
+                 strategy: :atomic,
+                 resource: Post,
+                 return_records?: true,
+                 return_errors?: true
+               )
+
+      assert %Ash.BulkResult{
+               errors: [%Ash.Error.Forbidden{}, %Ash.Error.Forbidden{}],
+               records: []
+             } =
+               Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+                 return_stream?: true,
+                 return_records?: true
+               )
+               |> Stream.map(fn {:ok, result} ->
+                 result
+               end)
+               |> Ash.bulk_destroy(
+                 :destroy_with_policy,
+                 %{authorize?: false},
+                 authorize?: true,
+                 strategy: :stream,
                  resource: Post,
                  return_records?: true,
                  return_errors?: true

@@ -84,6 +84,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       defaults [:read, :destroy, create: :*, update: :*]
 
       update :update_with_change do
+        require_atomic? false
+
         change fn changeset, _ ->
           title = Ash.Changeset.get_attribute(changeset, :title)
           Ash.Changeset.force_change_attribute(changeset, :title, title <> "_stuff")
@@ -91,6 +93,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       end
 
       update :update_with_argument do
+        require_atomic? false
+
         argument :a_title, :string do
           allow_nil? false
         end
@@ -99,27 +103,34 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       end
 
       update :update_with_after_action do
+        require_atomic? false
+
         change after_action(fn _changeset, result, _context ->
                  {:ok, %{result | title: result.title <> "_stuff"}}
                end)
       end
 
       update :update_with_after_batch do
+        require_atomic? false
         change AddAfterToTitle
         change AddBeforeToTitle
       end
 
       update :update_with_batch_sizes do
+        require_atomic? false
         change RecordBatchSizes
       end
 
       update :update_with_after_transaction do
+        require_atomic? false
+
         change after_transaction(fn _changeset, {:ok, result}, _context ->
                  {:ok, %{result | title: result.title <> "_stuff"}}
                end)
       end
 
       update :update_with_policy do
+        require_atomic? false
         argument :authorize?, :boolean, allow_nil?: false
 
         change set_context(%{authorize?: arg(:authorize?)})
@@ -185,6 +196,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              end)
              |> Ash.bulk_update!(:update, %{title2: "updated value"},
                resource: Post,
+               strategy: :atomic_batches,
                return_records?: true,
                return_errors?: true,
                authorize?: false
@@ -208,6 +220,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              end)
              |> Ash.bulk_update!(:update_with_change, %{title2: "updated value"},
                resource: Post,
+               strategy: :stream,
                return_records?: true,
                return_errors?: true,
                authorize?: false
@@ -260,6 +273,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              end)
              |> Ash.bulk_update!(:update_with_after_batch, %{title2: "updated value"},
                resource: Post,
+               strategy: :stream,
                return_records?: true,
                return_errors?: true,
                authorize?: false
@@ -279,7 +293,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
 
     update_records = fn records, opts ->
-      opts = [resource: Post, return_records?: true] ++ opts
+      opts = [resource: Post, return_records?: true, strategy: :stream] ++ opts
       Ash.bulk_update!(records, :update_with_batch_sizes, %{}, opts)
     end
 
@@ -318,6 +332,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              end)
              |> Ash.bulk_update(:update, %{title2: %{invalid: :value}},
                resource: Post,
+               strategy: :stream,
                return_records?: true,
                authorize?: false
              )
@@ -326,7 +341,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
   test "will return errors on request" do
     assert %Ash.BulkResult{
              error_count: 1,
-             errors: [%Ash.Changeset{}]
+             errors: [%Ash.Error.Invalid{}]
            } =
              Ash.bulk_create!([%{title: "title1"}], Post, :create,
                return_stream?: true,
@@ -337,6 +352,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                result
              end)
              |> Ash.bulk_update(:update, %{title2: %{invalid: :value}},
+               strategy: :stream,
                resource: Post,
                return_errors?: true,
                authorize?: false
@@ -360,6 +376,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              end)
              |> Ash.bulk_update!(:update_with_after_action, %{title2: "updated value"},
                resource: Post,
+               strategy: :stream,
                return_records?: true,
                return_errors?: true,
                authorize?: false
@@ -386,6 +403,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              end)
              |> Ash.bulk_update!(:update_with_after_transaction, %{title2: "updated value"},
                resource: Post,
+               strategy: :stream,
                return_records?: true,
                return_errors?: true,
                authorize?: false
@@ -450,7 +468,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
 
     test "policy failure results in failures" do
-      assert %Ash.BulkResult{errors: [_, _], records: []} =
+      assert %Ash.BulkResult{errors: [%Ash.Error.Forbidden{}], records: []} =
                Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
                  return_stream?: true,
                  return_records?: true,
@@ -462,6 +480,29 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                |> Ash.bulk_update(
                  :update_with_policy,
                  %{title2: "updated value", authorize?: false},
+                 strategy: :atomic,
+                 authorize?: true,
+                 resource: Post,
+                 return_records?: true,
+                 return_errors?: true
+               )
+
+      assert %Ash.BulkResult{
+               errors: [%Ash.Error.Forbidden{}, %Ash.Error.Forbidden{}],
+               records: []
+             } =
+               Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+                 return_stream?: true,
+                 return_records?: true,
+                 authorize?: false
+               )
+               |> Stream.map(fn {:ok, result} ->
+                 result
+               end)
+               |> Ash.bulk_update(
+                 :update_with_policy,
+                 %{title2: "updated value", authorize?: false},
+                 strategy: :stream,
                  authorize?: true,
                  resource: Post,
                  return_records?: true,

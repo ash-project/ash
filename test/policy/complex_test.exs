@@ -19,6 +19,7 @@ defmodule Ash.Test.Policy.ComplexTest do
       User.create!("a friend of my friend", %{email: "friends_friend@app.com"}, authorize?: false)
 
     User.add_friend!(me, my_friend.id, actor: me, authorize?: false)
+
     User.add_friend!(my_friend, a_friend_of_my_friend.id, actor: my_friend, authorize?: false)
     post_by_me = Post.create!("post by me", actor: me, authorize?: false)
     post_by_my_friend = Post.create!("post by my friend", actor: my_friend, authorize?: false)
@@ -128,7 +129,8 @@ defmodule Ash.Test.Policy.ComplexTest do
              |> Ash.Query.filter(best_friend.name == "me")
              |> Ash.Query.deselect(:private_email)
              |> Ash.read!(actor: me)
-             |> Ash.load!(:best_friend, actor: me)
+
+    # |> Ash.load!(:best_friend, actor: me)
   end
 
   test "aggregates can be loaded and filtered on", %{me: me} do

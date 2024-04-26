@@ -66,6 +66,8 @@ defmodule Ash.Test.Support.PolicyComplex.User do
     end
 
     update :set_bio do
+      require_atomic? false
+
       argument :bio, :string do
         allow_nil? false
       end

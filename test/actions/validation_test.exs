@@ -188,6 +188,7 @@ defmodule Ash.Test.Actions.ValidationTest do
         defaults [:read, :destroy, create: :*, update: :*]
 
         update :fill_bar do
+          require_atomic? false
           argument :bar, :integer, allow_nil?: false
 
           validate attributes_absent(:bar)

@@ -192,6 +192,8 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:aggregate, :min}), do: true
   def can?(_, {:aggregate, :avg}), do: true
   def can?(_, {:aggregate, :exists}), do: true
+  def can?(_, :update_query), do: true
+  def can?(_, :destroy_query), do: true
   def can?(resource, {:query_aggregate, kind}), do: can?(resource, {:aggregate, kind})
 
   def can?(_, :create), do: true
@@ -330,7 +332,7 @@ defmodule Ash.DataLayer.Ets do
     end
     |> case do
       {:error, error} ->
-        {:error, Ash.Error.to_ash_error(error)}
+        {:error, error}
 
       other ->
         other
@@ -368,7 +370,7 @@ defmodule Ash.DataLayer.Ets do
       {:ok, records}
     else
       {:error, error} ->
-        {:error, Ash.Error.to_ash_error(error)}
+        {:error, error}
     end
   end
 
@@ -606,7 +608,7 @@ defmodule Ash.DataLayer.Ets do
         {:ok, Enum.reverse(records)}
 
       {:error, error} ->
-        {:error, Ash.Error.to_ash_error(error)}
+        {:error, error}
     end
   end
 
@@ -683,7 +685,7 @@ defmodule Ash.DataLayer.Ets do
         {:ok, Enum.reverse(records)}
 
       {:error, error} ->
-        {:error, Ash.Error.to_ash_error(error)}
+        {:error, error}
     end
   end
 
@@ -1073,7 +1075,7 @@ defmodule Ash.DataLayer.Ets do
          {:ok, record} <- put_or_insert_new(table, {pkey, record}, resource) do
       {:ok, set_loaded(record)}
     else
-      {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
+      {:error, error} -> {:error, error}
     end
   end
 
@@ -1172,6 +1174,48 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
+  # This is synthesized behavior. Its not truly atomic.
+  def destroy_query(query, changeset, resource, options) do
+    acc =
+      if options[:return_records?] do
+        {:ok, []}
+      else
+        :ok
+      end
+
+    query
+    |> run_query(resource)
+    |> case do
+      {:ok, results} ->
+        results
+        |> Enum.reduce_while(acc, fn result, acc ->
+          case destroy(query.resource, %{changeset | data: result}) do
+            :ok ->
+              case acc do
+                :ok ->
+                  {:cont, :ok}
+
+                {:ok, results} ->
+                  {:cont, {:ok, [result | results]}}
+              end
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+        end)
+        |> case do
+          :ok -> :ok
+          {:ok, results} -> {:ok, Enum.reverse(results)}
+          {:error, error} -> {:error, error}
+        end
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @doc false
+  @impl true
   def destroy(resource, %{data: record} = changeset) do
     do_destroy(resource, record, changeset.tenant)
   end
@@ -1183,7 +1227,48 @@ defmodule Ash.DataLayer.Ets do
          {:ok, _} <- ETS.Set.delete(table, pkey) do
       :ok
     else
-      {:error, error} -> {:error, Ash.Error.to_ash_error(error)}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  @doc false
+  @impl true
+  # This is synthesized behavior. Its not truly atomic.
+  def update_query(query, changeset, resource, options) do
+    acc =
+      if options[:return_records?] do
+        {:ok, []}
+      else
+        :ok
+      end
+
+    query
+    |> run_query(resource)
+    |> case do
+      {:ok, results} ->
+        Enum.reduce_while(results, acc, fn result, acc ->
+          case update(query.resource, %{changeset | data: result}) do
+            {:ok, result} ->
+              case acc do
+                :ok ->
+                  {:cont, :ok}
+
+                {:ok, results} ->
+                  {:cont, {:ok, [result | results]}}
+              end
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+        end)
+
+      {:error, error} ->
+        {:error, error}
+    end
+    |> case do
+      :ok -> :ok
+      {:ok, results} -> {:ok, Enum.reverse(results)}
+      {:error, error} -> {:error, error}
     end
   end
 
@@ -1204,14 +1289,14 @@ defmodule Ash.DataLayer.Ets do
             {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
 
           {:error, error} ->
-            {:error, Ash.Error.to_ash_error(error)}
+            {:error, error}
         end
       else
         {:ok, %{record | __meta__: %Ecto.Schema.Metadata{state: :loaded, schema: resource}}}
       end
     else
       {:error, error} ->
-        {:error, Ash.Error.to_ash_error(error)}
+        {:error, error}
     end
   end
 
@@ -1271,8 +1356,8 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp make_atomics(atomics, resource, record) do
-    Enum.reduce_while(atomics, {:ok, %{}}, fn {key, value}, {:ok, acc} ->
-      case Ash.Expr.eval(value, resource: resource, record: record) do
+    Enum.reduce_while(atomics, {:ok, %{}}, fn {key, expr}, {:ok, acc} ->
+      case Ash.Expr.eval(expr, resource: resource, record: record) do
         {:ok, value} ->
           {:cont, {:ok, Map.put(acc, key, value)}}
 

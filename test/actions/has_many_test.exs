@@ -54,12 +54,14 @@ defmodule Ash.Test.Actions.HasManyTest do
       defaults [:read, :destroy, create: :*, update: :*]
 
       update :add_comment do
+        require_atomic? false
         accept []
         argument(:comment, :map, allow_nil?: false)
         change manage_relationship(:comment, :comments, on_no_match: :create, on_match: :update)
       end
 
       update :delete_comment do
+        require_atomic? false
         accept []
         argument(:comment, :map, allow_nil?: false)
         change manage_relationship(:comment, :comments, on_no_match: :error, on_match: :destroy)

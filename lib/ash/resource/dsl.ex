@@ -633,6 +633,7 @@ defmodule Ash.Resource.Dsl do
     no_depend_modules: [:touches_resources, :manual],
     target: Ash.Resource.Actions.Update,
     schema: Ash.Resource.Actions.Update.opt_schema(),
+    transform: {Ash.Resource.Actions.Update, :transform, []},
     args: [:name]
   }
 
@@ -671,6 +672,7 @@ defmodule Ash.Resource.Dsl do
     ],
     target: Ash.Resource.Actions.Destroy,
     schema: Ash.Resource.Actions.Destroy.opt_schema(),
+    transform: {Ash.Resource.Actions.Destroy, :transform, []},
     args: [:name]
   }
 

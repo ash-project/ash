@@ -195,7 +195,10 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
     actions do
       default_accept :*
       create :create
-      update :update
+
+      update :update do
+        require_atomic? false
+      end
     end
 
     attributes do

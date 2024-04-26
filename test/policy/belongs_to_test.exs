@@ -17,6 +17,7 @@ defmodule Ash.Test.Policy.Actions.BelongsToTest do
       defaults([:read, :destroy, create: :*, update: :*])
 
       update :update_with_reviewer do
+        require_atomic? false
         argument :reviewer_id, :uuid, allow_nil?: true
         change manage_relationship(:reviewer_id, :reviewer, type: :append_and_remove)
       end

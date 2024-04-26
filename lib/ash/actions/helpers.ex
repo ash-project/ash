@@ -125,12 +125,6 @@ defmodule Ash.Actions.Helpers do
     context = Process.get(:ash_context, %{}) || %{}
     private_context = Map.new(Keyword.take(opts, [:actor, :authorize?, :tracer]))
 
-    context =
-      context
-      |> Map.merge(private_context)
-      |> Map.put_new(:actor, nil)
-      |> Map.put_new(:authorize?, false)
-
     case query_or_changeset do
       %Ash.ActionInput{} ->
         query_or_changeset

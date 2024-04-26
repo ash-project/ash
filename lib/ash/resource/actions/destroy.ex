@@ -80,4 +80,10 @@ defmodule Ash.Resource.Actions.Destroy do
 
   @doc false
   def opt_schema, do: @opt_schema
+
+  def transform(%{manual: manual} = action) when not is_nil(manual) do
+    {:ok, %{action | require_atomic?: false}}
+  end
+
+  def transform(action), do: {:ok, action}
 end

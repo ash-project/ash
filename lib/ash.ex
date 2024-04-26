@@ -481,6 +481,10 @@ defmodule Ash do
                                type: {:list, {:or, [:atom, :string]}},
                                doc:
                                  "A list of inputs that, if provided, will be ignored if they are not recognized by the action."
+                             ],
+                             load: [
+                               type: :any,
+                               doc: "A load statement to apply on the resulting records."
                              ]
                            ]
                            |> Spark.Options.merge(
@@ -621,6 +625,12 @@ defmodule Ash do
                           type: :map,
                           doc:
                             "Parameters to supply, ignored if the input is a changeset, only used when an identifier is given."
+                        ],
+                        atomic_upgrade?: [
+                          type: :boolean,
+                          default: true,
+                          doc:
+                            "If true the action will be done atomically if it can, ignoring the in memory transformations and validations. You should not generally need to disable this."
                         ]
                       ]
                       |> Spark.Options.merge(@global_opts, "Global Options")
@@ -778,6 +788,10 @@ defmodule Ash do
       doc:
         "Whether or not authorization must pass at the strict/filter step, or if post-checks are allowed to be run",
       default: false
+    ],
+    on_must_pass_strict_check: [
+      type: :any,
+      doc: "Override the value returned when `no_check?` is `true` but a check must be run."
     ],
     atomic_changeset: [
       type: :any,
@@ -1244,8 +1258,18 @@ defmodule Ash do
     case Spark.Options.validate(opts, @can_opts) do
       {:ok, opts} ->
         case Ash.Can.can(action_or_query_or_changeset, domain, actor, opts) do
-          {:error, error} -> {:error, Ash.Error.to_error_class(error)}
-          other -> other
+          {:error, %Ash.Error.Forbidden.InitialDataRequired{} = error} ->
+            if opts[:on_must_pass_strict_check] do
+              {:error, error}
+            else
+              {:error, Ash.Error.to_error_class(error)}
+            end
+
+          {:error, error} ->
+            {:error, Ash.Error.to_error_class(error)}
+
+          other ->
+            other
         end
 
       {:error, error} ->

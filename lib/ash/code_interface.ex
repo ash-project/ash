@@ -824,7 +824,7 @@ defmodule Ash.CodeInterface do
                     {:atomic, method, id} ->
                       bulk_opts =
                         opts
-                        |> Keyword.delete(:bulk_options)
+                        |> Keyword.drop([:bulk_options, :atomic_upgrade?])
                         |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
                         |> Enum.concat(changeset_opts)
                         |> then(fn bulk_opts ->
@@ -886,7 +886,7 @@ defmodule Ash.CodeInterface do
 
                       bulk_opts =
                         opts
-                        |> Keyword.delete(:bulk_options)
+                        |> Keyword.drop([:bulk_options, :atomic_upgrade?])
                         |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
                         |> Enum.concat(changeset_opts)
                         |> then(fn bulk_opts ->

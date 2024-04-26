@@ -452,7 +452,14 @@ defmodule Ash.Can do
 
               {:continue, authorizer_state} ->
                 if opts[:no_check?] do
-                  Ash.Authorizer.exception(authorizer, :must_pass_strict_check, authorizer_state)
+                  {:halt,
+                   opts[:on_must_pass_strict_check] ||
+                     {:error,
+                      Ash.Authorizer.exception(
+                        authorizer,
+                        :must_pass_strict_check,
+                        authorizer_state
+                      )}}
                 else
                   if opts[:alter_source?] || !match?(%Ash.Query{}, subject) do
                     query_with_hook =
@@ -572,6 +579,8 @@ defmodule Ash.Can do
   end
 
   defp apply_filter(query, resource, domain, filter, authorizer, authorizer_state, opts) do
+    filter = Ash.Filter.parse!(resource, filter).expression
+
     case opts[:filter_with] || :filter do
       :filter ->
         Ash.Query.filter(or_query(query, resource, domain), ^filter)

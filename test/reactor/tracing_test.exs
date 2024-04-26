@@ -74,7 +74,9 @@ defmodule Ash.Test.ReactorTracingTest do
                "query:post:by_id",
                "domain:post.by_id",
                "changeset:post:update",
-               "domain:post.update",
+               "query:post:read",
+               "domain:post.read",
+               "domain:post.read",
                "changeset:post:destroy",
                "domain:post.destroy"
              ] = Ash.Tracer.Simple.gather_spans() |> Enum.map(& &1.name)
@@ -89,7 +91,9 @@ defmodule Ash.Test.ReactorTracingTest do
                "query:post:by_id",
                "domain:post.by_id",
                "changeset:post:update",
-               "domain:post.update",
+               "query:post:read",
+               "domain:post.read",
+               "domain:post.read",
                "changeset:post:destroy",
                "domain:post.destroy"
              ] = Ash.Tracer.Simple.gather_spans() |> Enum.map(& &1.name)

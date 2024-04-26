@@ -104,7 +104,7 @@ defmodule Ash.Test.Actions.UpdateTest do
 
     actions do
       default_accept :*
-      defaults [:read, :destroy, create: :*, update: :*]
+      defaults [:read, :destroy, create: :*, update: [:name, :score]]
 
       update :only_allow_name do
         accept([:name])
@@ -118,6 +118,7 @@ defmodule Ash.Test.Actions.UpdateTest do
       end
 
       update :duplicate_name do
+        require_atomic? false
         change {DuplicateName, []}
       end
 
@@ -352,10 +353,10 @@ defmodule Ash.Test.Actions.UpdateTest do
         |> Ash.Changeset.for_create(:create, %{name: "fred"})
         |> Ash.create!()
 
-      assert_raise Ash.Error.Invalid, ~r/Invalid value provided for bio: cannot be changed/, fn ->
+      assert_raise Ash.Error.Invalid, ~r/No such input `bio`/, fn ->
         author
-        |> Ash.Changeset.for_update(:update, %{bio: "bio"})
-        |> Ash.update!(action: :only_allow_name)
+        |> Ash.Changeset.for_update(:only_allow_name, %{bio: "bio"})
+        |> Ash.update!()
       end
     end
   end
@@ -824,7 +825,21 @@ defmodule Ash.Test.Actions.UpdateTest do
         |> Ash.update!(authorize?: true)
       end)
 
+      assert_raise(Ash.Error.Forbidden, fn ->
+        record
+        |> Ash.Changeset.for_update(:update, %{name: "foo"})
+        |> Ash.update!(authorize?: true, atomic_upgrade?: false)
+      end)
+
       assert Ash.get!(Authorized, record.id, authorize?: false).name == "bar"
+
+      stop_supervised!(Ash.Test.Authorizer)
+
+      start_supervised({Ash.Test.Authorizer, check: :authorized, strict_check: :continue})
+
+      record
+      |> Ash.Changeset.for_update(:update, %{name: "foo"})
+      |> Ash.update!(authorize?: true)
     end
   end
 end

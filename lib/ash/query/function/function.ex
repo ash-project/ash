@@ -16,7 +16,7 @@ defmodule Ash.Query.Function do
   @callback name() :: atom
   @callback new(list(term)) :: {:ok, term} | {:error, String.t() | Exception.t()}
   @callback evaluate(func :: map) :: :unknown | {:known, term} | {:error, term}
-  @callback partial_evaluate(func) :: func when func: map
+  @callback partial_evaluate(func) :: {:ok, func} | {:error, term} when func: map
   @callback eager_evaluate?() :: boolean()
   @callback predicate?() :: boolean()
   @callback private?() :: boolean
@@ -40,6 +40,10 @@ defmodule Ash.Query.Function do
   end
 
   def new(mod, args) do
+    if Enum.at(args, 1) == Ash.Error.Changes.Required do
+      raise "WHAT!"
+    end
+
     args = List.wrap(args)
 
     case mod.args() do
@@ -68,7 +72,7 @@ defmodule Ash.Query.Function do
                 {:ok, function} ->
                   if Enum.any?(casted, &expr?/1) do
                     if function_exported?(mod, :partial_evaluate, 1) && match?(%^mod{}, function) do
-                      {:ok, mod.partial_evaluate(function)}
+                      mod.partial_evaluate(function)
                     else
                       {:ok, function}
                     end
@@ -121,6 +125,10 @@ defmodule Ash.Query.Function do
   end
 
   def try_cast_arguments(configured_args, args) do
+    if Enum.at(args, 1) == Ash.Error.Changes.Required do
+      raise "WHAT!"
+    end
+
     args
     |> Enum.zip(configured_args)
     |> Enum.reduce_while({:ok, []}, fn

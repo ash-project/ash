@@ -80,6 +80,45 @@ defmodule Ash.Query.Operator.Basic do
           def evaluate_nil_inputs?, do: true
         end
 
+        def partial_evaluate(%{left: left, right: right} = pred) do
+          case unquote(opts[:symbol]) do
+            :|| ->
+              case left do
+                false ->
+                  {:ok, right}
+
+                nil ->
+                  {:ok, right}
+
+                other ->
+                  if Ash.Expr.expr?(other) do
+                    {:ok, pred}
+                  else
+                    {:ok, other}
+                  end
+              end
+
+            :&& ->
+              case left do
+                false ->
+                  {:ok, false}
+
+                nil ->
+                  {:ok, nil}
+
+                other ->
+                  if Ash.Expr.expr?(other) do
+                    {:ok, pred}
+                  else
+                    {:ok, other}
+                  end
+              end
+
+            _other ->
+              {:ok, pred}
+          end
+        end
+
         defp do_evaluate(:<>, %Ash.CiString{string: left}, %Ash.CiString{string: right}) do
           %Ash.CiString{string: left <> right}
         end

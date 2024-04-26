@@ -46,6 +46,7 @@ defmodule Ash.Test.Resource.UpsertTest do
       defaults [:read, :destroy, create: :*, update: :*]
 
       update :upsert_variants do
+        require_atomic? false
         transaction?(true)
 
         argument :variants, {:array, :map} do

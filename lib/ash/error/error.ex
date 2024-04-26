@@ -12,6 +12,18 @@ defmodule Ash.Error do
     unknown_error: Ash.Error.Unknown.UnknownError
 
   def to_ash_error(value, stacktrace \\ nil, opts \\ []) do
+    value =
+      value
+      |> List.wrap()
+      |> Enum.map(fn
+        %struct{} = changeset
+        when struct in [Ash.Changeset, Ash.Query, Ash.ActionInput] ->
+          to_error_class(changeset, opts)
+
+        other ->
+          other
+      end)
+
     to_error(value, Keyword.put(opts, :stacktrace, stacktrace))
   end
 

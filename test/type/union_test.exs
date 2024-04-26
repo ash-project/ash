@@ -65,6 +65,7 @@ defmodule Ash.Test.Type.UnionTest do
       defaults [:read, :destroy, create: :*, update: :*]
 
       update :add_thing do
+        require_atomic? false
         argument :new_thing, FooBarUnion, allow_nil?: false
 
         change fn changeset, _ ->

@@ -41,6 +41,7 @@ defmodule Ash.Test.CodeInterfaceTest do
 
       read :read do
         primary? true
+        pagination keyset?: true, required?: false
       end
 
       create :create

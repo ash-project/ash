@@ -33,14 +33,16 @@ defmodule Ash.Query.Operator.IsNil do
     cond do
       right == true ->
         concat([
+          "is_nil(",
           to_doc(left, opts),
-          " is nil"
+          ")"
         ])
 
       right == false ->
         concat([
+          "not(is_nil(",
           to_doc(left, opts),
-          " is not nil"
+          ")"
         ])
 
       true ->

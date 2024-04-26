@@ -23,8 +23,12 @@ defmodule Ash.DataLayer.EtsTest do
     end
 
     actions do
-      default_accept :*
-      defaults [:read, :destroy, create: :*, update: :*]
+      defaults [:read, :destroy, create: :*]
+
+      update :update do
+        accept :*
+        require_atomic? false
+      end
     end
 
     identities do

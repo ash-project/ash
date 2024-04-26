@@ -44,16 +44,16 @@ defmodule Ash.Query.Function.If do
   def evaluate(%{arguments: [_, when_true, _]}), do: {:known, when_true}
 
   def partial_evaluate(%{arguments: [false, _, when_false]}),
-    do: when_false
+    do: {:ok, when_false}
 
   def partial_evaluate(%{arguments: [nil, _, when_false]}),
-    do: when_false
+    do: {:ok, when_false}
 
   def partial_evaluate(%{arguments: [condition, when_true, _]} = fun) do
     if expr?(condition) do
-      fun
+      {:ok, fun}
     else
-      when_true
+      {:ok, when_true}
     end
   end
 end

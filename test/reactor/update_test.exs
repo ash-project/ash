@@ -24,6 +24,8 @@ defmodule Ash.Test.ReactorUpdateTest do
       defaults [:read, :destroy, create: :*, update: :*]
 
       update :undo_update_post do
+        require_atomic? false
+
         argument :changeset, :struct do
           constraints instance_of: Ash.Changeset
         end

@@ -134,6 +134,7 @@ defmodule Ash.Test.Resource.Validation.EmbeddedResourceTest do
       default_accept [:embedded_resource]
 
       update :update do
+        require_atomic? false
         argument :embedded_resource_arg, EmbeddedResource, allow_nil?: false
       end
     end

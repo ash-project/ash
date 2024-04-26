@@ -34,7 +34,12 @@ defmodule Ash.Test.NotifierTest do
 
     actions do
       default_accept :*
-      defaults [:read, :destroy, create: :*, update: :*]
+      defaults [:read, :destroy, create: :*]
+
+      update :update do
+        primary? true
+        require_atomic? false
+      end
     end
 
     relationships do
@@ -64,7 +69,12 @@ defmodule Ash.Test.NotifierTest do
 
     actions do
       default_accept :*
-      defaults [:read, :destroy, create: :*, update: :*]
+      defaults [:read, :destroy, create: :*]
+
+      update :update do
+        primary? true
+        require_atomic? false
+      end
     end
 
     attributes do
@@ -97,7 +107,12 @@ defmodule Ash.Test.NotifierTest do
 
     actions do
       default_accept :*
-      defaults [:read, create: :*, update: :*]
+      defaults [:read, create: :*]
+
+      update :update do
+        primary? true
+        require_atomic? false
+      end
 
       destroy :destroy do
         primary? true

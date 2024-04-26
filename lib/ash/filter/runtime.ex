@@ -326,7 +326,7 @@ defmodule Ash.Filter.Runtime do
          resource,
          unknown_on_unknown_refs?
        ) do
-    with {:ok, left_resolved} <-
+    with {:ok, left_resolved} when left_resolved not in [nil, false] <-
            resolve_expr(left, record, parent, resource, unknown_on_unknown_refs?),
          {:ok, right_resolved} <-
            resolve_expr(right, record, parent, resource, unknown_on_unknown_refs?) do
@@ -350,7 +350,7 @@ defmodule Ash.Filter.Runtime do
          resource,
          unknown_on_unknown_refs?
        ) do
-    with {:ok, left_resolved} <-
+    with {:ok, left_resolved} when left_resolved in [nil, false] <-
            resolve_expr(left, record, parent, resource, unknown_on_unknown_refs?),
          {:ok, right_resolved} <-
            resolve_expr(right, record, parent, resource, unknown_on_unknown_refs?) do
@@ -531,37 +531,52 @@ defmodule Ash.Filter.Runtime do
   end
 
   defp resolve_expr(
-         %mod{__predicate__?: _, left: left, right: right},
+         %mod{__predicate__?: _, left: left, right: right} = pred,
          record,
          parent,
          resource,
          unknown_on_unknown_refs?
        ) do
-    with {:ok, [left, right]} <-
-           resolve_exprs([left, right], record, parent, resource, unknown_on_unknown_refs?),
-         {:op, {:ok, new_pred}} <-
-           {:op, Ash.Query.Operator.try_cast_with_ref(mod, left, right)},
-         {:known, val} <-
-           evaluate(new_pred, record, parent, resource, unknown_on_unknown_refs?) do
-      {:ok, val}
-    else
-      {:op, {:error, error}} ->
-        {:error, error}
+    case partial_evaluate(
+           pred,
+           record,
+           parent,
+           resource,
+           unknown_on_unknown_refs?
+         ) do
+      {:ok, ^pred} ->
+        with {:ok, [left, right]} <-
+               resolve_exprs([left, right], record, parent, resource, unknown_on_unknown_refs?),
+             {:op, {:ok, new_pred}} <-
+               {:op, Ash.Query.Operator.try_cast_with_ref(mod, left, right)},
+             {:known, val} <-
+               evaluate(new_pred, record, parent, resource, unknown_on_unknown_refs?) do
+          {:ok, val}
+        else
+          {:op, {:error, error}} ->
+            {:error, error}
 
-      {:op, {:ok, expr}} ->
-        resolve_expr(expr, record, parent, resource, unknown_on_unknown_refs?)
+          {:op, {:ok, expr}} ->
+            resolve_expr(expr, record, parent, resource, unknown_on_unknown_refs?)
+
+          {:error, error} ->
+            {:error, error}
+
+          {:op, :unknown} ->
+            :unknown
+
+          :unknown ->
+            :unknown
+
+          _ ->
+            {:ok, nil}
+        end
+
+      {:ok, other} ->
+        resolve_expr(other, record, parent, resource, unknown_on_unknown_refs?)
 
       {:error, error} ->
         {:error, error}
-
-      {:op, :unknown} ->
-        :unknown
-
-      :unknown ->
-        :unknown
-
-      _ ->
-        {:ok, nil}
     end
   end
 
@@ -572,23 +587,81 @@ defmodule Ash.Filter.Runtime do
          resource,
          unknown_on_unknown_refs?
        ) do
-    with {:ok, args} <- resolve_exprs(args, record, parent, resource, unknown_on_unknown_refs?),
-         {:args, args} when not is_nil(args) <- {:args, try_cast_arguments(mod.args(), args)},
-         {:known, val} <-
-           evaluate(%{pred | arguments: args}, record, parent, resource, unknown_on_unknown_refs?) do
-      {:ok, val}
-    else
-      {:args, nil} ->
-        {:error, "Could not cast function arguments for #{mod.name()}/#{Enum.count(args)}"}
+    case partial_evaluate(
+           pred,
+           record,
+           parent,
+           resource,
+           unknown_on_unknown_refs?
+         ) do
+      {:ok, ^pred} ->
+        # resolve arguments one at a time from left to right, and attempt to partial evaluate again.
+        # required for short circuiting `and`, `or`, `||`, `&&` and `if`. Its kind of a hacky
+        # short circuiting but no functions that I know of need different behavior,
+        # and if they do we can add a new callback or something.
+        case Enum.find_index(args, &Ash.Expr.expr?/1) do
+          index when is_integer(index) ->
+            case resolve_expr(
+                   Enum.at(args, index),
+                   record,
+                   parent,
+                   resource,
+                   unknown_on_unknown_refs?
+                 ) do
+              {:ok, new_value} ->
+                resolve_expr(
+                  %{
+                    pred
+                    | arguments: List.replace_at(args, index, new_value)
+                  },
+                  record,
+                  parent,
+                  resource,
+                  unknown_on_unknown_refs?
+                )
+
+              {:error, error} ->
+                {:error, error}
+
+              :unknown ->
+                :unknown
+            end
+
+          nil ->
+            with {:ok, args} <-
+                   resolve_exprs(args, record, parent, resource, unknown_on_unknown_refs?),
+                 {:args, args} when not is_nil(args) <-
+                   {:args, try_cast_arguments(mod.args(), args)},
+                 {:known, val} <-
+                   evaluate(
+                     %{pred | arguments: args},
+                     record,
+                     parent,
+                     resource,
+                     unknown_on_unknown_refs?
+                   ) do
+              {:ok, val}
+            else
+              {:args, nil} ->
+                {:error,
+                 "Could not cast function arguments for #{mod.name()}/#{Enum.count(args)}"}
+
+              {:error, error} ->
+                {:error, error}
+
+              :unknown ->
+                :unknown
+
+              _ ->
+                {:ok, nil}
+            end
+        end
+
+      {:ok, other} ->
+        resolve_expr(other, record, parent, resource, unknown_on_unknown_refs?)
 
       {:error, error} ->
         {:error, error}
-
-      :unknown ->
-        :unknown
-
-      _ ->
-        {:ok, nil}
     end
   end
 
@@ -1056,5 +1129,23 @@ defmodule Ash.Filter.Runtime do
       {:ok, value} -> {:known, value}
       other -> other
     end
+  end
+
+  defp partial_evaluate(
+         %mod{__predicate__?: _} = pred,
+         _record,
+         _parent,
+         _resource,
+         _unknown_on_unknown_refs?
+       ) do
+    if function_exported?(mod, :partial_evaluate, 1) do
+      mod.partial_evaluate(pred)
+    else
+      {:ok, pred}
+    end
+  end
+
+  defp partial_evaluate(other, _record, _parent, _resource, _unknown_on_unknown_refs?) do
+    {:ok, other}
   end
 end

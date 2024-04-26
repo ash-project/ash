@@ -62,6 +62,26 @@ defmodule Ash.Test.Actions.DestroyTest do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
 
+      destroy :soft_with_confirm do
+        accept []
+        soft? true
+        require_atomic? false
+        argument :confirm, :string, allow_nil?: false
+
+        change fn changeset, _ ->
+          Ash.Changeset.before_action(changeset, fn changeset ->
+            if changeset.arguments[:confirm] == "CONFIRM" do
+              changeset
+            else
+              Ash.Changeset.add_error(changeset,
+                field: :confirm,
+                message: "Type CONFIRM to confirm"
+              )
+            end
+          end)
+        end
+      end
+
       destroy :manual do
         accept []
 
@@ -130,6 +150,19 @@ defmodule Ash.Test.Actions.DestroyTest do
       assert Ash.destroy!(post) == :ok
 
       refute Ash.read_one!(Ash.Query.filter(Post, id == ^post.id))
+    end
+
+    test "before action hooks are run" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "foo"})
+        |> Ash.create!()
+
+      assert_raise Ash.Error.Invalid, ~r/Type CONFIRM to confirm/, fn ->
+        author
+        |> Ash.Changeset.for_destroy(:soft_with_confirm, %{confirm: "NOT CONFIRMED"})
+        |> Ash.destroy!()
+      end
     end
 
     test "returns the record if requested" do

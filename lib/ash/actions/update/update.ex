@@ -55,6 +55,9 @@ defmodule Ash.Actions.Update do
             {{:not_atomic, "cannot atomically update a record without a primary read action"},
              nil}
 
+          opts[:atomic_upgrade?] == false ->
+            {{:not_atomic, "atomic upgrade was disabled"}, nil}
+
           true ->
             params =
               changeset.casted_attributes
@@ -72,7 +75,7 @@ defmodule Ash.Actions.Update do
                   notify?: true,
                   atomics:
                     Keyword.merge(
-                      changeset.atomics || [],
+                      changeset.atomic_changes,
                       Keyword.new(changeset.attribute_changes)
                     ),
                   tenant: changeset.tenant
