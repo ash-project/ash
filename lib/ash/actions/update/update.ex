@@ -114,6 +114,7 @@ defmodule Ash.Actions.Update do
 
           query =
             atomic_changeset.resource
+            |> Ash.Query.set_context(%{private: %{internal?: true}})
             |> Ash.Query.for_read(primary_read.name, %{},
               actor: opts[:actor],
               authorize?: false,
@@ -121,7 +122,6 @@ defmodule Ash.Actions.Update do
               tenant: atomic_changeset.tenant,
               tracer: opts[:tracer]
             )
-            |> Ash.Query.set_context(%{private: %{internal?: true}})
             |> Ash.Query.do_filter(primary_key_filter)
 
           case Ash.Actions.Update.Bulk.run(
