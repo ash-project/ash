@@ -1393,26 +1393,6 @@ defmodule Ash.Changeset do
 
     case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
       {:atomic, value} ->
-        value =
-          if attribute.allow_nil? do
-            value
-          else
-            expr(
-              if is_nil(^value) do
-                error(
-                  ^Ash.Error.Changes.Required,
-                  %{
-                    field: ^attribute.name,
-                    type: ^:attribute,
-                    resource: ^changeset.resource
-                  }
-                )
-              else
-                ^value
-              end
-            )
-          end
-
         value = set_error_field(value, attribute.name)
 
         %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
@@ -1424,6 +1404,37 @@ defmodule Ash.Changeset do
           "Cannot atomically update #{inspect(changeset.resource)}.#{attribute.name}: #{message}"
         )
     end
+  end
+
+  @doc false
+  def handle_allow_nil_atomics(changeset, actor) do
+    changeset.atomics
+    |> Enum.reduce(changeset, fn {key, value}, changeset ->
+      attribute = Ash.Resource.Info.attribute(changeset.resource, key)
+
+      value =
+        if attribute.allow_nil? do
+          value
+        else
+          expr(
+            if is_nil(^value) do
+              error(
+                ^Ash.Error.Changes.Required,
+                %{
+                  field: ^attribute.name,
+                  type: ^:attribute,
+                  resource: ^changeset.resource
+                }
+              )
+            else
+              ^value
+            end
+          )
+        end
+
+      %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+    end)
+    |> Ash.Changeset.hydrate_atomic_refs(actor, eager?: true)
   end
 
   @doc """

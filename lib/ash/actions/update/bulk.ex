@@ -99,7 +99,11 @@ defmodule Ash.Actions.Update.Bulk do
               ),
               action,
               input,
-              Keyword.merge(opts, resource: query.resource, inputs_was_stream?: false),
+              Keyword.merge(opts,
+                resource: query.resource,
+                strategy: [:stream],
+                inputs_was_stream?: false
+              ),
               reason
             )
         end
@@ -397,7 +401,7 @@ defmodule Ash.Actions.Update.Bulk do
          {query, atomic_changeset} <-
            add_changeset_filters(query, atomic_changeset),
          %Ash.Changeset{valid?: true} = atomic_changeset <-
-           Ash.Changeset.hydrate_atomic_refs(atomic_changeset, opts[:actor], eager?: true),
+           Ash.Changeset.handle_allow_nil_atomics(atomic_changeset, opts[:actor]),
          {:ok, data_layer_query} <-
            Ash.Query.data_layer_query(query) do
       case Ash.DataLayer.update_query(
@@ -550,6 +554,18 @@ defmodule Ash.Actions.Update.Bulk do
           end
       end
     else
+      %Ash.Changeset{valid?: false, errors: error} ->
+        if Ash.DataLayer.in_transaction?(atomic_changeset.resource) do
+          Ash.DataLayer.rollback(atomic_changeset.resource, Ash.Error.to_error_class(error))
+        else
+          %Ash.BulkResult{
+            status: :error,
+            error_count: 1,
+            notifications: [],
+            errors: [Ash.Error.to_error_class(error)]
+          }
+        end
+
       {:error, %Ash.Error.Forbidden.InitialDataRequired{}} ->
         case Ash.Actions.Read.Stream.stream_strategy(
                query,
@@ -576,12 +592,23 @@ defmodule Ash.Actions.Update.Bulk do
             }
 
           _strategy ->
+            input_stream =
+              if atomic_changeset.context[:data_layer][:use_atomic_update_data?] do
+                [atomic_changeset.data]
+              else
+                query
+              end
+
             run(
               atomic_changeset.domain,
-              query,
+              input_stream,
               atomic_changeset.action,
               input,
-              Keyword.put(opts, :strategy, [:stream]),
+              Keyword.merge(opts,
+                authorize_query?: false,
+                strategy: [:stream],
+                inputs_was_stream?: false
+              ),
               "authorization requires initial data"
             )
         end
@@ -690,11 +717,13 @@ defmodule Ash.Actions.Update.Bulk do
     conditional_after_batch_hooks =
       all_changes
       |> Stream.with_index()
-      |> Enum.filter(fn {%{change: {module, change_opts}}, _index} ->
-        function_exported?(module, :after_batch, 3) &&
-          module.batch_callbacks?(query, change_opts, context)
-          _ ->
-            false
+      |> Enum.filter(fn
+        {%{change: {module, change_opts}}, _index} ->
+          function_exported?(module, :after_batch, 3) &&
+            module.batch_callbacks?(query, change_opts, context)
+
+        _ ->
+          false
       end)
       |> Enum.reduce(%{}, fn {%{where: where}, index}, acc ->
         {:atomic, condition} =

@@ -358,18 +358,24 @@ defmodule Ash.Actions.Create do
                           )
 
                         true ->
-                          changeset.resource
-                          |> Ash.DataLayer.create(changeset)
-                          |> Helpers.rollback_if_in_transaction(
-                            changeset.resource,
-                            changeset
-                          )
-                          |> add_tenant(changeset)
-                          |> manage_relationships(domain, changeset,
-                            actor: opts[:actor],
-                            authorize?: opts[:authorize?],
-                            upsert?: opts[:upsert?]
-                          )
+                          case Ash.Changeset.handle_allow_nil_atomics(changeset, opts[:actor]) do
+                            %Ash.Changeset{valid?: true} = changeset ->
+                              changeset.resource
+                              |> Ash.DataLayer.create(changeset)
+                              |> Helpers.rollback_if_in_transaction(
+                                changeset.resource,
+                                changeset
+                              )
+                              |> add_tenant(changeset)
+                              |> manage_relationships(domain, changeset,
+                                actor: opts[:actor],
+                                authorize?: opts[:authorize?],
+                                upsert?: opts[:upsert?]
+                              )
+
+                            %Ash.Changeset{} = changeset ->
+                              {:error, changeset}
+                          end
                       end
                       |> case do
                         {:ok, result, instructions} ->

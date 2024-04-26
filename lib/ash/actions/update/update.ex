@@ -131,6 +131,7 @@ defmodule Ash.Actions.Update do
                  params,
                  Keyword.merge(opts,
                    strategy: [:atomic],
+                   resource: atomic_changeset.resource,
                    authorize_query?: false,
                    return_records?: true,
                    atomic_changeset: atomic_changeset,
@@ -433,27 +434,33 @@ defmodule Ash.Actions.Update do
                         changeset =
                           Ash.Changeset.set_defaults(changeset, :update, true)
 
-                        changeset.resource
-                        |> Ash.DataLayer.update(changeset)
-                        |> case do
-                          {:ok, data} ->
-                            {:ok, %{data | __metadata__: changeset.data.__metadata__}}
+                        case Ash.Changeset.handle_allow_nil_atomics(changeset, opts[:actor]) do
+                          %Ash.Changeset{valid?: true} = changeset ->
+                            changeset.resource
+                            |> Ash.DataLayer.update(changeset)
+                            |> case do
+                              {:ok, data} ->
+                                {:ok, %{data | __metadata__: changeset.data.__metadata__}}
 
-                          {:error, :no_rollback, error} ->
-                            {:error, :no_rollback, error}
+                              {:error, :no_rollback, error} ->
+                                {:error, :no_rollback, error}
 
-                          {:error, error} ->
-                            {:error, error}
+                              {:error, error} ->
+                                {:error, error}
+                            end
+                            |> Helpers.rollback_if_in_transaction(
+                              changeset.resource,
+                              changeset
+                            )
+                            |> add_tenant(changeset)
+                            |> manage_relationships(domain, changeset,
+                              actor: opts[:actor],
+                              authorize?: opts[:authorize?]
+                            )
+
+                          %Ash.Changeset{valid?: false} = changeset ->
+                            {:error, changeset}
                         end
-                        |> Helpers.rollback_if_in_transaction(
-                          changeset.resource,
-                          changeset
-                        )
-                        |> add_tenant(changeset)
-                        |> manage_relationships(domain, changeset,
-                          actor: opts[:actor],
-                          authorize?: opts[:authorize?]
-                        )
 
                       true ->
                         {:ok, changeset.data}
