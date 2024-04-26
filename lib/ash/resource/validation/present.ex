@@ -33,6 +33,10 @@ defmodule Ash.Resource.Validation.Present do
         end
       end)
 
+    do_validate(changeset, opts, present, count)
+  end
+
+  def do_validate(changeset, opts, present, count) do
     opts =
       opts
       |> Keyword.put(:keys, Enum.join(opts[:attributes] || [], ","))
@@ -86,6 +90,10 @@ defmodule Ash.Resource.Validation.Present do
         end
       end)
 
+    atomic_for_values(opts, context, values)
+  end
+
+  def atomic_for_values(opts, context, values) do
     nil_count = expr(count_nils(^values))
 
     opts
