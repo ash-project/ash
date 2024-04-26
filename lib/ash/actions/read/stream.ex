@@ -119,7 +119,9 @@ defmodule Ash.Actions.Read.Stream do
       Keyword.pop(
         opts,
         :batch_size,
-        query.action.pagination.default_limit || query.action.pagination.max_page_size || 250
+        (query.action.pagination &&
+           (query.action.pagination.default_limit ||
+              query.action.pagination.max_page_size)) || 250
       )
 
     query = Ash.Query.set_context(query, %{private: %{bypass_max_page_size?: true}})
