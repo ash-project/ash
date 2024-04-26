@@ -5,6 +5,33 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.31](https://github.com/ash-project/ash/compare/v3.0.0-rc.30...v3.0.0-rc.31) (2024-04-26)
+
+
+
+
+### Features:
+
+* Ash.create and Ash.update oneliner (#1055)
+
+* Ash.create and Ash.update oneliner
+
+### Bug Fixes:
+
+* various fixes around bulk action upgrades, atomics
+
+* handle resource being passed as query code_interface.ex (#1057)
+
+* do not use Enum.map_join (#1058)
+
+* opts dispatch for create and update
+
+### Improvements:
+
+* Treat asterisk as a single arguemnt in accept (#1062)
+
+* support atomics, update_query, destroy_query in ETS data layer
+
 ## [v3.0.0-rc.30](https://github.com/ash-project/ash/compare/v3.0.0-rc.29...v3.0.0-rc.30) (2024-04-24)
 
 
