@@ -140,7 +140,7 @@ defmodule MyApp.Validations.IsPrime do
       [opts[:attribute]],
       # the condition that should cause the error
       # here we refer to the new value or the current value
-      expr(not(fragment("is_prime(?)", ^atomic_ref(opts[:attribute)))),
+      expr(not(fragment("is_prime(?)", ^atomic_ref(opts[:attribute])))),
       # the error expression
       expr(
         error(^InvalidAttribute, %{
@@ -152,7 +152,7 @@ defmodule MyApp.Validations.IsPrime do
           vars: %{field: ^opts[:attribute]}
         })
       )
-    )}
+    }
   end
 end
 ```
