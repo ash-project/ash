@@ -170,7 +170,7 @@ defmodule Ash.Policy.Policy do
           throw(
             {:error, authorizer,
              Ash.Error.Forbidden.InitialDataRequired.exception(
-               source: "check: #{check_module.describe(opts)}"
+               source: "check: #{check_module.describe(opts)} requires initial data"
              )}
           )
         else

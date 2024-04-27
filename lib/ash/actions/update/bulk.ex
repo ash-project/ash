@@ -101,8 +101,7 @@ defmodule Ash.Actions.Update.Bulk do
               input,
               Keyword.merge(opts,
                 resource: query.resource,
-                strategy: [:stream],
-                inputs_was_stream?: false
+                input_was_stream?: false
               ),
               reason
             )
@@ -566,7 +565,7 @@ defmodule Ash.Actions.Update.Bulk do
           }
         end
 
-      {:error, %Ash.Error.Forbidden.InitialDataRequired{}} ->
+      {:error, %Ash.Error.Forbidden.InitialDataRequired{} = e} ->
         case Ash.Actions.Read.Stream.stream_strategy(
                query,
                nil,
@@ -606,10 +605,9 @@ defmodule Ash.Actions.Update.Bulk do
               input,
               Keyword.merge(opts,
                 authorize_query?: false,
-                strategy: [:stream],
-                inputs_was_stream?: false
+                input_was_stream?: false
               ),
-              "authorization requires initial data"
+              e.source
             )
         end
 
@@ -918,7 +916,7 @@ defmodule Ash.Actions.Update.Bulk do
             atomic_changeset: atomic_changeset,
             load: opts[:load],
             resource: opts[:resource],
-            inputs_was_stream?: false,
+            input_was_stream?: false,
             return_errors?: opts[:return_errors?],
             filter: opts[:filter],
             return_notifications?: opts[:return_notifications?],
@@ -1117,7 +1115,8 @@ defmodule Ash.Actions.Update.Bulk do
              atomic_changeset: changeset,
              no_check?: true,
              on_must_pass_strict_check:
-               {:error, %Ash.Error.Forbidden.InitialDataRequired{source: changeset}},
+               {:error,
+                %Ash.Error.Forbidden.InitialDataRequired{source: "must pass strict check"}},
              filter_with: opts[:authorize_changeset_with] || :filter,
              alter_source?: true,
              run_queries?: false,
@@ -1818,6 +1817,8 @@ defmodule Ash.Actions.Update.Bulk do
 
     batch
     |> Enum.map(fn changeset ->
+      changeset = Ash.Changeset.hydrate_atomic_refs(changeset, opts[:actor], opts)
+
       if changeset.valid? do
         {changeset, %{notifications: new_notifications}} =
           Ash.Changeset.run_before_actions(changeset)

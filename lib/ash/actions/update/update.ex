@@ -130,7 +130,7 @@ defmodule Ash.Actions.Update do
                  fully_atomic_changeset.action,
                  params,
                  Keyword.merge(opts,
-                   strategy: [:atomic],
+                   strategy: [:atomic, :stream],
                    resource: atomic_changeset.resource,
                    authorize_query?: false,
                    return_records?: true,
