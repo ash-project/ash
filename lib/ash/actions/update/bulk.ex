@@ -1823,6 +1823,13 @@ defmodule Ash.Actions.Update.Bulk do
         {changeset, %{notifications: new_notifications}} =
           Ash.Changeset.run_before_actions(changeset)
 
+        changed? =
+          Ash.Changeset.changing_attributes?(changeset) or
+            not Enum.empty?(changeset.atomics)
+
+        changeset =
+          Ash.Changeset.put_context(changeset, :changed?, changed?)
+
         new_notifications = store_notification(ref, new_notifications, opts)
 
         {changeset, manage_notifications} =
@@ -1907,7 +1914,7 @@ defmodule Ash.Actions.Update.Bulk do
                       store_notification(ref, notifications, opts)
                       []
                   end
-                else
+
                   [changeset] = batch
 
                   result =
