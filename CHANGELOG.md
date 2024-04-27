@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.32](https://github.com/ash-project/ash/compare/v3.0.0-rc.31...v3.0.0-rc.32) (2024-04-27)
+
+
+
+
+### Bug Fixes:
+
+* properly handle atomic upgrade when policies can't be strict checked
+
 ## [v3.0.0-rc.31](https://github.com/ash-project/ash/compare/v3.0.0-rc.30...v3.0.0-rc.31) (2024-04-26)
 
 
