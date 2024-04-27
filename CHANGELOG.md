@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.33](https://github.com/ash-project/ash/compare/v3.0.0-rc.32...v3.0.0-rc.33) (2024-04-27)
+
+
+
+
+### Improvements:
+
+* support changeset filters in ets
+
 ## [v3.0.0-rc.32](https://github.com/ash-project/ash/compare/v3.0.0-rc.31...v3.0.0-rc.32) (2024-04-27)
 
 
