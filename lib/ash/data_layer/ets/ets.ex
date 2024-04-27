@@ -192,6 +192,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, {:aggregate, :min}), do: true
   def can?(_, {:aggregate, :avg}), do: true
   def can?(_, {:aggregate, :exists}), do: true
+  def can?(_, :changeset_filter), do: true
   def can?(_, :update_query), do: true
   def can?(_, :destroy_query), do: true
   def can?(resource, {:query_aggregate, kind}), do: can?(resource, {:aggregate, kind})
@@ -967,6 +968,13 @@ defmodule Ash.DataLayer.Ets do
 
       query = Ash.Query.do_filter(resource, and: [key_filters])
 
+      query =
+        if is_nil(changeset.filter) do
+          query
+        else
+          Ash.Query.do_filter(query, changeset.filter)
+        end
+
       resource
       |> resource_to_query(changeset.domain)
       |> Map.put(:filter, query.filter)
@@ -1243,6 +1251,14 @@ defmodule Ash.DataLayer.Ets do
       end
 
     query
+    |> Map.update!(:filter, fn filter ->
+      if is_nil(changeset.filter) do
+        filter
+      else
+        filter = filter || %Ash.Filter{resource: changeset.resource}
+        Ash.Filter.add_to_filter!(filter, changeset.filter)
+      end
+    end)
     |> run_query(resource)
     |> case do
       {:ok, results} ->
@@ -1279,7 +1295,11 @@ defmodule Ash.DataLayer.Ets do
 
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
          {:ok, record} <-
-           do_update(table, {pkey, changeset.attributes, changeset.atomics}, resource),
+           do_update(
+             table,
+             {pkey, changeset.attributes, changeset.atomics, changeset.filter},
+             resource
+           ),
          {:ok, record} <- cast_record(record, resource) do
       new_pkey = pkey_map(resource, record)
 
@@ -1309,7 +1329,7 @@ defmodule Ash.DataLayer.Ets do
     end)
   end
 
-  defp do_update(table, {pkey, record, atomics}, resource) do
+  defp do_update(table, {pkey, record, atomics, changeset_filter}, resource) do
     attributes = resource |> Ash.Resource.Info.attributes()
 
     case dump_to_native(record, attributes) do
@@ -1331,7 +1351,11 @@ defmodule Ash.DataLayer.Ets do
             end
 
           {:ok, _} ->
-            {:error, "Record not found matching: #{inspect(pkey)}"}
+            {:error,
+             Ash.Error.Changes.StaleRecord.exception(
+               resource: record.__struct__,
+               filters: changeset_filter
+             )}
 
           other ->
             other
