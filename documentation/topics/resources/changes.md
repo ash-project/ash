@@ -131,7 +131,7 @@ defmodule MyApp.Changes.Slugify do
   def atomic(changeset, opts, context) do
     {:atomic, %{
       opts[:attribute] => expr(
-        fragment("regexp_replace(?, ?, ?)", ^ref(opts[:attribute]), ~r/\s+/, "-"")
+        fragment("regexp_replace(?, ?, ?)", ^ref(opts[:attribute]), ~r/\s+/, "-")
       )
     }}
   end
