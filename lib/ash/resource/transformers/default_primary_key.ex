@@ -20,7 +20,7 @@ defmodule Ash.Resource.Transformers.DefaultPrimaryKey do
         |> Transformer.get_entities([:attributes])
         |> Enum.any?(& &1.primary_key?)
 
-      if has_pkey? do
+      if has_pkey? || !Transformer.get_option(dsl_state, [:resource], :require_primary_key?, true) do
         {:ok, dsl_state}
       else
         case Transformer.build_entity(@extension, [:attributes], :uuid_primary_key,

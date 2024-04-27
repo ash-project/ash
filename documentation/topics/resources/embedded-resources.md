@@ -15,6 +15,7 @@ end
 ```
 
 > ### Embedded resources can't do everything {: .info}
+>
 > Embedded resources cannot have aggregates, or expression calculations that rely on data-layer-specific capabilities.
 
 ## Adding embedded resource attributes
@@ -33,6 +34,16 @@ defmodule MyApp.User do
   end
 end
 ```
+
+> ### primary keys {: .tip}
+>
+> Embedded resources will have a _private_ primary key added to them, if one is not added manually. This is used to track changes to the embedded resource. If you wish to disable this behavior, add the following config.
+>
+> ```elixir
+> resource do
+>   require_primary_key? false
+> end
+> ```
 
 ## Handling nil values
 
@@ -118,9 +129,9 @@ Remember: default actions are already implemented for a resource, with no need t
 
 ### Single Embeds
 
-* If the current value is `nil` - a `create` with the provided values
-* If the current value is not `nil` - an `update` with the provided values
-* If the current value is not `nil` and the *new value* is `nil` - a `destroy` with the original value
+- If the current value is `nil` - a `create` with the provided values
+- If the current value is not `nil` - an `update` with the provided values
+- If the current value is not `nil` and the _new value_ is `nil` - a `destroy` with the original value
 
 ### Array Embeds
 
@@ -155,18 +166,18 @@ Now, you can accept input meant to `update` individual list items. The entire li
 
 #### Single Embeds with primary keys
 
-* If you provide a struct, instead of a map, the value provided is used as the new relationship value directly.
-* If the current value is `nil` - a `create` with the provided values
-* If the current value is not `nil` and the primary keys match - an `update` with the provided values
-* If the current value is not `nil` and the primary keys *don't* match - a `destroy` of the original value and a `create` of the new value
-* If the current value is not `nil` and the *new value* is `nil` - a `destroy` with the original value
+- If you provide a struct, instead of a map, the value provided is used as the new relationship value directly.
+- If the current value is `nil` - a `create` with the provided values
+- If the current value is not `nil` and the primary keys match - an `update` with the provided values
+- If the current value is not `nil` and the primary keys _don't_ match - a `destroy` of the original value and a `create` of the new value
+- If the current value is not `nil` and the _new value_ is `nil` - a `destroy` with the original value
 
 #### Array Embeds with primary keys
 
-* If you provide structs, instead of maps, the value provided is used as the new relationship value directly.
-* Any values in the original list with no primary key matching in the new list are `destroy`ed.
-* Any values in the new list with no primary key matching in the original list are `create`d.
-* Any values with a primary key match in the original list and the new list are `update`d
+- If you provide structs, instead of maps, the value provided is used as the new relationship value directly.
+- Any values in the original list with no primary key matching in the new list are `destroy`ed.
+- Any values in the new list with no primary key matching in the original list are `create`d.
+- Any values with a primary key match in the original list and the new list are `update`d
 
 ## Identities
 
