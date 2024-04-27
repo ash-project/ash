@@ -412,7 +412,8 @@ defmodule Ash.Actions.Destroy.Bulk do
       |> Map.new()
       |> Map.put(:calculations, calculations)
 
-    with {:ok, query} <- authorize_bulk_query(query, atomic_changeset, opts),
+    with {:ok, query} <-
+           authorize_bulk_query(query, atomic_changeset, opts),
          {:ok, atomic_changeset, query} <-
            authorize_atomic_changeset(query, atomic_changeset, opts),
          {query, atomic_changeset} <- add_changeset_filters(query, atomic_changeset),
@@ -1802,6 +1803,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     |> Enum.filter(fn
       {%{change: {module, change_opts}}, _} ->
         function_exported?(module, :after_batch, 3) &&
+          function_exported?(module, :batch_change, 3) &&
           module.batch_callbacks?(changesets, change_opts, context)
 
       _ ->
@@ -1960,6 +1962,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                   item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action)
                 end) ||
                 (function_exported?(module, :after_batch, 3) &&
+                   function_exported?(module, :batch_change, 3) &&
                    module.batch_callbacks?(batch, change_opts, context))
 
             %{
@@ -2010,6 +2013,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                     item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action)
                   end) ||
                   (function_exported?(module, :after_batch, 3) &&
+                     function_exported?(module, :batch_change, 3) &&
                      module.batch_callbacks?(batch, change_opts, context))
 
               %{

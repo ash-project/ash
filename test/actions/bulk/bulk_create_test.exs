@@ -11,6 +11,10 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       changeset
     end
 
+    def batch_change(changesets, _, _) do
+      changesets
+    end
+
     def after_batch(results, _, _) do
       Stream.map(results, fn {_changeset, result} ->
         {:ok, %{result | title: result.title <> "_after"}}
@@ -23,6 +27,10 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
     def change(changeset, _, %{bulk?: true}) do
       changeset
+    end
+
+    def batch_change(changesets, _, _) do
+      changesets
     end
 
     def before_batch(changesets, _, _) do

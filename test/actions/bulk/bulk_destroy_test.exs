@@ -8,11 +8,15 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
   defmodule AddAfterToTitle do
     use Ash.Resource.Change
 
-    def change(changeset, _, %{bulk?: true}) do
+    def change(changeset, _, _) do
       changeset
     end
 
     def atomic(_, _, _), do: :ok
+
+    def batch_change(changesets, _, _) do
+      changesets
+    end
 
     def after_batch(results, _, _) do
       Stream.map(results, fn {_changeset, result} ->

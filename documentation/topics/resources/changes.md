@@ -118,7 +118,7 @@ end
 
 ## Atomic Changes
 
-To make a change atomic, you have to implement the `c:Ash.Resource.Change.atomic/3` callback. This callback returns a map of changes to attributes that should be changed atomically. We will also honor any `c:Ash.Resource.Change.after_batch/3` functionality to run code after atomic changes have been applied.
+To make a change atomic, you have to implement the `c:Ash.Resource.Change.atomic/3` callback. This callback returns a map of changes to attributes that should be changed atomically. We will also honor any `c:Ash.Resource.Change.after_batch/3` functionality to run code after atomic changes have been applied (only if `atomic/3` callback has also been defined). Note that `c:Ash.Resource.Change.before_batch/3` is not supported in this scenario and will be ignored.
 
 ```elixir
 defmodule MyApp.Changes.Slugify do
@@ -159,6 +159,10 @@ end
 ## Batches
 
 Changes can support being run on batches of changesets, using the `c:Ash.Resource.Change.batch_change/3`, `c:Ash.Resource.Change.before_batch/3`, and `c:Ash.Resource.Change.after_batch/3` callbacks.
+
+> ### batch_change/3 must be defined {: .warning}
+>
+> `c:Ash.Resource.Change.before_batch/3` must be defined for `c:Ash.Resource.Change.before_batch/3` and `c:Ash.Resource.Change.after_batch/3` to be called!
 
 For some changes, this may not be necessary at all, i.e the `Slugify` example has no benefit from batching. If no batch callbacks are added, your change will be run on a loop over the changesets. For the sake of example, however, we will show what it might look like to implement batching for our `Slugify` example.
 

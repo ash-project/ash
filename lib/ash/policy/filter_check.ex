@@ -146,21 +146,28 @@ defmodule Ash.Policy.FilterCheck do
                public?: false
              }) do
           {:ok, hydrated} ->
+            opts = [
+              resource: resource,
+              unknown_on_unknown_refs?: true
+            ]
+
             # We don't want to authorize on stale data in real life
             # but when using utilities to check if something *will* be authorized
             # that is our intent
-            data =
+            opts =
               if changeset.context[:private][:pre_flight_authorization?] do
-                data
+                case data do
+                  %Ash.Changeset.OriginalDataNotAvailable{reason: :atomic_query_destroy} ->
+                    opts
+
+                  data ->
+                    Keyword.put(opts, :record, data)
+                end
               else
-                nil
+                opts
               end
 
-            Ash.Expr.eval_hydrated(hydrated,
-              record: data,
-              resource: resource,
-              unknown_on_unknown_refs?: true
-            )
+            Ash.Expr.eval_hydrated(hydrated, opts)
 
           {:error, error} ->
             {:error, error}

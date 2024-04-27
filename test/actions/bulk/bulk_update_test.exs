@@ -8,8 +8,13 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     use Ash.Resource.Change
 
     @impl true
-    def change(changeset, _, %{bulk?: true}) do
+    def change(changeset, _, _) do
       changeset
+    end
+
+    @impl true
+    def batch_change(changesets, _opts, _context) do
+      changesets
     end
 
     @impl true

@@ -2144,6 +2144,7 @@ defmodule Ash.Actions.Update.Bulk do
     |> Enum.filter(fn
       {%{change: {module, change_opts}}, _} ->
         function_exported?(module, :after_batch, 3) &&
+          function_exported?(module, :batch_change, 3) &&
           module.batch_callbacks?(changesets, change_opts, context)
 
       _ ->
@@ -2314,6 +2315,7 @@ defmodule Ash.Actions.Update.Bulk do
                   item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action)
                 end) ||
                 (function_exported?(module, :after_batch, 3) &&
+                   function_exported?(module, :batch_change, 3) &&
                    module.batch_callbacks?(batch, change_opts, context))
 
             %{
@@ -2364,6 +2366,7 @@ defmodule Ash.Actions.Update.Bulk do
                     item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action)
                   end) ||
                   (function_exported?(module, :after_batch, 3) &&
+                     function_exported?(module, :batch_change, 3) &&
                      module.batch_callbacks?(batch, change_opts, context))
 
               %{
