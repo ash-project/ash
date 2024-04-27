@@ -1671,6 +1671,7 @@ defmodule Ash.Changeset do
     |> set_tracer(opts)
     |> timeout(changeset.timeout || opts[:timeout])
     |> set_tenant(opts[:tenant] || changeset.tenant || changeset.data.__metadata__[:tenant])
+    |> Map.put(:action_type, action.type)
   end
 
   defp reset_arguments(%{arguments: arguments} = changeset) do
