@@ -10,6 +10,9 @@ defmodule Ash.Resource.Verifiers.VerifyPrimaryKeyPresent do
       !Enum.empty?(Ash.Resource.Info.primary_key(dsl)) ->
         :ok
 
+      Ash.Resource.Info.embedded?(dsl) ->
+        :ok
+
       !Verifier.get_option(dsl, [:resource], :require_primary_key?, true) ->
         :ok
 

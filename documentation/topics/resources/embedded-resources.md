@@ -35,16 +35,6 @@ defmodule MyApp.User do
 end
 ```
 
-> ### primary keys {: .tip}
->
-> Embedded resources will have a _private_ primary key added to them, if one is not added manually. This is used to track changes to the embedded resource. If you wish to disable this behavior, add the following config.
->
-> ```elixir
-> resource do
->   require_primary_key? false
-> end
-> ```
-
 ## Handling nil values
 
 By default, all fields on an embedded resource will be included in the data layer, including keys with nil values. To prevent this, add the `embed_nil_values?` option to `use Ash.Resource`. For example:

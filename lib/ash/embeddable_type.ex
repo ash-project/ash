@@ -389,9 +389,10 @@ defmodule Ash.EmbeddableType do
       def handle_change(old_value, new_value, constraints) do
         pkey_fields = Ash.Resource.Info.primary_key(__MODULE__)
 
-        if Enum.all?(pkey_fields, fn pkey_field ->
-             !Ash.Resource.Info.attribute(__MODULE__, pkey_field).public?
-           end) do
+        if Enum.empty?(pkey_fields) ||
+             Enum.all?(pkey_fields, fn pkey_field ->
+               !Ash.Resource.Info.attribute(__MODULE__, pkey_field).public?
+             end) do
           {:ok, new_value}
         else
           pkey = Map.take(old_value, pkey_fields)
@@ -449,9 +450,10 @@ defmodule Ash.EmbeddableType do
       def prepare_change(old_value, new_uncasted_value, constraints) do
         pkey_fields = Ash.Resource.Info.primary_key(__MODULE__)
 
-        if Enum.all?(pkey_fields, fn pkey_field ->
-             !Ash.Resource.Info.attribute(__MODULE__, pkey_field).public?
-           end) do
+        if Enum.empty?(pkey_fields) ||
+             Enum.all?(pkey_fields, fn pkey_field ->
+               !Ash.Resource.Info.attribute(__MODULE__, pkey_field).public?
+             end) do
           action =
             constraints[:update_action] ||
               Ash.Resource.Info.primary_action!(__MODULE__, :update).name
@@ -707,12 +709,19 @@ defmodule Ash.EmbeddableType do
 
         old_values
         |> Enum.with_index()
-        |> Enum.reject(fn {old_value, _} ->
-          pkey = Map.take(old_value, pkey_fields)
+        |> then(fn list ->
+          if Enum.empty?(pkey_fields) do
+            list
+          else
+            list
+            |> Enum.reject(fn {old_value, _} ->
+              pkey = Map.take(old_value, pkey_fields)
 
-          Enum.any?(new_values, fn new_value ->
-            Map.take(new_value, pkey_fields) == pkey
-          end)
+              Enum.any?(new_values, fn new_value ->
+                Map.take(new_value, pkey_fields) == pkey
+              end)
+            end)
+          end
         end)
         |> Enum.reduce_while(:ok, fn {record, index}, :ok ->
           case Ash.destroy(record, action: destroy_action, domain: ShadowDomain) do
@@ -750,9 +759,10 @@ defmodule Ash.EmbeddableType do
       def prepare_change_array(old_values, new_uncasted_values, constraints) do
         pkey_fields = Ash.Resource.Info.primary_key(__MODULE__)
 
-        if Enum.all?(pkey_fields, fn pkey_field ->
-             !Ash.Resource.Info.attribute(__MODULE__, pkey_field).public?
-           end) do
+        if Enum.empty?(pkey_fields) ||
+             Enum.all?(pkey_fields, fn pkey_field ->
+               !Ash.Resource.Info.attribute(__MODULE__, pkey_field).public?
+             end) do
           {:ok, new_uncasted_values}
         else
           pkey_attributes =

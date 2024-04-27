@@ -51,7 +51,6 @@ defmodule Ash.Resource.Transformers.CachePrimaryKey do
   defp validate_attribute_not_nil(_, _), do: :ok
 
   def after?(Ash.Resource.Transformers.BelongsToAttribute), do: true
-  def after?(Ash.Resource.Transformers.DefaultPrimaryKey), do: true
 
   def after?(_), do: false
 end

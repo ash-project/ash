@@ -1431,7 +1431,6 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.CreateJoinRelationship,
     Ash.Resource.Transformers.CachePrimaryKey,
     Ash.Resource.Transformers.ValidatePrimaryActions,
-    Ash.Resource.Transformers.DefaultPrimaryKey,
     Ash.Resource.Transformers.DefaultAccept,
     Ash.Resource.Transformers.RequireUniqueFieldNames,
     Ash.Resource.Transformers.SetDefineFor,
