@@ -137,6 +137,7 @@ The Ash ecosystem consists of numerous packages, all of which have their own doc
 - [AshArchival](https://hexdocs.pm/ash_archival) | Archive resources instead of deleting them
 - [AshStateMachine](https://hexdocs.pm/ash_state_machine) | Create state machines for resources
 - [AshPaperTrail](https://hexdocs.pm/ash_paper_trail) | Keep a history of changes to resources
+- [AshCloak](https://hexdocs.pm/ash_cloak) | Encrypt attributes of a resource
 
 ### Admin & Monitoring
 
