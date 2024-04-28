@@ -492,7 +492,7 @@ defmodule Ash.CodeInterface do
                    ),
                    Spark.Options.validate!(
                      opts,
-                     unquote(Macro.escape(interface_options))
+                     unquote(Macro.escap87e(interface_options))
                    )}
 
             params =
@@ -772,10 +772,6 @@ defmodule Ash.CodeInterface do
                           raise ArgumentError,
                                 "Changeset #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
 
-                        %other_resource{} when other_resource != unquote(resource) ->
-                          raise ArgumentError,
-                                "Record #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
-
                         %struct{} = record when struct == unquote(resource) ->
                           {filters, params} = Map.split(params, unquote(filter_keys))
 
@@ -790,6 +786,10 @@ defmodule Ash.CodeInterface do
 
                         %Ash.Query{} = query ->
                           {:atomic, :query, query}
+
+                        %other_resource{} when other_resource != unquote(resource) ->
+                          raise ArgumentError,
+                                "Record #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
 
                         [{_key, _val} | _] = id ->
                           {:atomic, :id, id}
