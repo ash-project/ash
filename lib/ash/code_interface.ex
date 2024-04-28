@@ -486,7 +486,10 @@ defmodule Ash.CodeInterface do
                      unquote(Macro.escape(interface_options))
                    )},
                 else:
-                  {Map.new(params_or_opts),
+                  {if(Keyword.keyword?(params_or_opts),
+                     do: Map.new(params_or_opts),
+                     else: params_or_opts
+                   ),
                    Spark.Options.validate!(
                      opts,
                      unquote(Macro.escape(interface_options))
