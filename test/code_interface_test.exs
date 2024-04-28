@@ -228,6 +228,15 @@ defmodule Ash.Test.CodeInterfaceTest do
       assert _record = User.update!(bob, %{first_name: "bob_updated"}, context: @context)
     end
 
+    test "can take a query" do
+      bob = User.create!("bob", context: @context)
+      require Ash.Query
+
+      User
+      |> Ash.Query.filter(id == ^bob.id)
+      |> User.update!(%{first_name: "bob_updated"})
+    end
+
     test "bulk update can take a @context options" do
       bob1 = User.create!("bob", context: @context)
       bob2 = User.create!("bob", context: @context)

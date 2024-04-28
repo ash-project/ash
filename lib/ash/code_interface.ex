@@ -830,6 +830,7 @@ defmodule Ash.CodeInterface do
                         |> Keyword.drop([:bulk_options, :atomic_upgrade?])
                         |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
                         |> Enum.concat(changeset_opts)
+                        |> Keyword.put(:resource, unquote(resource))
                         |> then(fn bulk_opts ->
                           if method == :id do
                             bulk_opts
@@ -841,7 +842,7 @@ defmodule Ash.CodeInterface do
                         end)
 
                       bulk_opts =
-                        if method == :stream do
+                        if method in [:stream, :query] do
                           Keyword.put(bulk_opts, :filter, filters)
                         else
                           bulk_opts
@@ -853,7 +854,7 @@ defmodule Ash.CodeInterface do
                           |> Ash.bulk_update(unquote(action.name), params, bulk_opts)
                           |> case do
                             %Ash.BulkResult{} = result
-                            when method == :stream and unquote(Enum.empty?(filter_keys)) ->
+                            when method in [:stream, :query] ->
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
@@ -892,6 +893,7 @@ defmodule Ash.CodeInterface do
                         |> Keyword.drop([:bulk_options, :atomic_upgrade?])
                         |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
                         |> Enum.concat(changeset_opts)
+                        |> Keyword.put(:resource, unquote(resource))
                         |> then(fn bulk_opts ->
                           if method == :id do
                             bulk_opts
@@ -903,7 +905,7 @@ defmodule Ash.CodeInterface do
                         end)
 
                       bulk_opts =
-                        if method == :stream do
+                        if method in [:stream] do
                           Keyword.put(bulk_opts, :filter, filters)
                         else
                           bulk_opts
@@ -915,7 +917,7 @@ defmodule Ash.CodeInterface do
                           |> Ash.bulk_update!(unquote(action.name), params, bulk_opts)
                           |> case do
                             %Ash.BulkResult{} = result
-                            when method == :stream and unquote(Enum.empty?(filter_keys)) ->
+                            when method in [:stream, :query] ->
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
@@ -1029,6 +1031,7 @@ defmodule Ash.CodeInterface do
                         |> Keyword.drop([:bulk_options, :return_destroyed?])
                         |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
                         |> Enum.concat(changeset_opts)
+                        |> Keyword.put(:resource, unquote(resource))
                         |> then(fn bulk_opts ->
                           if method == :id do
                             bulk_opts
@@ -1040,7 +1043,7 @@ defmodule Ash.CodeInterface do
                         end)
 
                       bulk_opts =
-                        if method == :stream do
+                        if method in [:stream, :query] do
                           Keyword.put(bulk_opts, :filter, filters)
                         else
                           bulk_opts
@@ -1052,7 +1055,7 @@ defmodule Ash.CodeInterface do
                           |> Ash.bulk_destroy(unquote(action.name), params, bulk_opts)
                           |> case do
                             %Ash.BulkResult{} = result
-                            when method == :stream and unquote(Enum.empty?(filter_keys)) ->
+                            when method in [:stream, :query] ->
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
@@ -1096,6 +1099,7 @@ defmodule Ash.CodeInterface do
                         |> Keyword.drop([:bulk_options, :return_destroyed?])
                         |> Keyword.merge(Keyword.get(opts, :bulk_options, []))
                         |> Enum.concat(changeset_opts)
+                        |> Keyword.put(:resource, unquote(resource))
                         |> then(fn bulk_opts ->
                           if method == :id do
                             bulk_opts
@@ -1107,7 +1111,7 @@ defmodule Ash.CodeInterface do
                         end)
 
                       bulk_opts =
-                        if method == :stream do
+                        if method in [:stream, :query] do
                           Keyword.put(bulk_opts, :filter, filters)
                         else
                           bulk_opts
@@ -1119,7 +1123,7 @@ defmodule Ash.CodeInterface do
                           |> Ash.bulk_destroy!(unquote(action.name), params, bulk_opts)
                           |> case do
                             %Ash.BulkResult{} = result
-                            when method == :stream and unquote(Enum.empty?(filter_keys)) ->
+                            when method in [:stream, :query] ->
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
