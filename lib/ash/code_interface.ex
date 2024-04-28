@@ -492,7 +492,7 @@ defmodule Ash.CodeInterface do
                    ),
                    Spark.Options.validate!(
                      opts,
-                     unquote(Macro.escap87e(interface_options))
+                     unquote(Macro.escape(interface_options))
                    )}
 
             params =
