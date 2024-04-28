@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.35](https://github.com/ash-project/ash/compare/v3.0.0-rc.34...v3.0.0-rc.35) (2024-04-28)
+
+
+
+
+### Bug Fixes:
+
+* only use `Map.new` for inputs if input is keyword in code interface
+
+* properly set action type on changeset
+
+* set `changed?` context on bulk actions
+
 ## [v3.0.0-rc.34](https://github.com/ash-project/ash/compare/v3.0.0-rc.33...v3.0.0-rc.34) (2024-04-27)
 
 
