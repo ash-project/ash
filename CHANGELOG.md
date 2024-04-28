@@ -5,6 +5,17 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.36](https://github.com/ash-project/ash/compare/v3.0.0-rc.35...v3.0.0-rc.36) (2024-04-28)
+
+
+
+
+### Bug Fixes:
+
+* set `resource` option in bulk interfaces
+
+* check resource match below checking query input
+
 ## [v3.0.0-rc.35](https://github.com/ash-project/ash/compare/v3.0.0-rc.34...v3.0.0-rc.35) (2024-04-28)
 
 
