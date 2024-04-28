@@ -130,15 +130,15 @@ defmodule Ash.Resource.Attribute do
       doc: "A value to be set on all updates, unless a value is being provided already."
     ],
     filterable?: [
-      type: :boolean,
+      type: {:or, [:boolean, {:in, [:simple_equality]}]},
       default: true,
       doc: """
       Whether or not the attribute can be referenced in filters.
       """
     ],
     sortable?: [
-      type: {:or, [:boolean, {:in, [:simple_equality]}]},
       default: true,
+      type: :boolean,
       doc: """
       Whether or not the attribute can be referenced in sorts.
       """
