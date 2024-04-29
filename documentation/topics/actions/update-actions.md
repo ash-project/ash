@@ -6,7 +6,7 @@ Update actions are used to update records in the data layer. For example:
 # on a ticket resource
 update :close do
   accept [:close_reason]
-  change set_attribute(status: :closed)
+  change set_attribute(:status, :closed)
 end
 ```
 
