@@ -2766,11 +2766,15 @@ defmodule Ash.Changeset do
   end
 
   defp is_belongs_to_rel_being_managed?(attribute, changeset, only_if_relating?) do
-    Enum.any?(changeset.relationships, fn {key, [{rels, _}]} ->
-      relationship = Ash.Resource.Info.relationship(changeset.resource, key)
+    Enum.any?(changeset.relationships, fn
+      {key, [{rels, _}]} ->
+        relationship = Ash.Resource.Info.relationship(changeset.resource, key)
 
-      relationship.type == :belongs_to && relationship.name == attribute &&
-        (not only_if_relating? || rels != [])
+        relationship.type == :belongs_to && relationship.name == attribute &&
+          (not only_if_relating? || rels != [])
+
+      {_key, []} ->
+        false
     end)
   end
 
