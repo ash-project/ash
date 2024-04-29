@@ -2773,7 +2773,7 @@ defmodule Ash.Changeset do
         relationship.type == :belongs_to && relationship.name == attribute &&
           (not only_if_relating? || rels != [])
 
-      {_key, []} ->
+      {_key, list} when is_list(list) ->
         false
     end)
   end
@@ -2791,7 +2791,7 @@ defmodule Ash.Changeset do
         relationship.type == :belongs_to && relationship.source_attribute == attribute &&
           (not only_if_relating? || rels != [])
 
-      {_key, []} ->
+      {_key, list} when is_list(list) ->
         false
     end)
   end
