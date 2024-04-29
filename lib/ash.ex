@@ -2011,10 +2011,30 @@ defmodule Ash do
   def create(changeset_or_resource, params_or_opts \\ %{}, opts \\ [])
 
   def create(%Ash.Changeset{} = changeset, params_or_opts, opts) do
-    {_params, opts} = Ash.Helpers.get_params_and_opts(params_or_opts, opts)
+    {params, opts} = Ash.Helpers.get_params_and_opts(params_or_opts, opts)
 
     Ash.Helpers.expect_options!(opts)
     domain = Ash.Helpers.domain!(changeset, opts)
+
+    changeset =
+      cond do
+        changeset.__validated_for_action__ && params != %{} ->
+          raise ArgumentError,
+            message: """
+            params should not be provided for a changeset
+            that has already been validated for an action
+            """
+
+        is_nil(changeset.__validated_for_action__) ->
+          action =
+            opts[:action] ||
+              Ash.Resource.Info.primary_action!(changeset.resource, :create).name
+
+          Ash.Changeset.for_create(changeset, action, params, opts)
+
+        true ->
+          changeset
+      end
 
     with {:ok, opts} <- Spark.Options.validate(opts, @create_opts_schema),
          {:ok, resource} <- Ash.Domain.Info.resource(domain, changeset.resource),
@@ -2397,7 +2417,27 @@ defmodule Ash do
 
   @doc spark_opts: [{1, @update_opts_schema}]
   def update(%Ash.Changeset{} = changeset, params_or_opts, opts) do
-    {_params, opts} = Ash.Helpers.get_params_and_opts(params_or_opts, opts)
+    {params, opts} = Ash.Helpers.get_params_and_opts(params_or_opts, opts)
+
+    changeset =
+      cond do
+        changeset.__validated_for_action__ && params != %{} ->
+          raise ArgumentError,
+            message: """
+            params should not be provided for a changeset
+            that has already been validated for an action
+            """
+
+        is_nil(changeset.__validated_for_action__) ->
+          action =
+            opts[:action] ||
+              Ash.Resource.Info.primary_action!(changeset.resource, :update).name
+
+          Ash.Changeset.for_update(changeset, action, params, opts)
+
+        true ->
+          changeset
+      end
 
     Ash.Helpers.expect_options!(opts)
     domain = Ash.Helpers.domain!(changeset, opts)
