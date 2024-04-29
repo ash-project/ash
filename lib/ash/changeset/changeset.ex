@@ -1641,7 +1641,7 @@ defmodule Ash.Changeset do
   This also accounts for the `accessing_from` context that is set when using `manage_relationship`, so it is aware that a particular value
   *will* be set by `manage_relationship` even if it isn't currently being set.
   """
-  def attributes_present?(changeset, attribute) do
+  def attribute_present?(changeset, attribute) do
     attribute_value = Ash.Changeset.get_attribute(changeset, attribute)
 
     attribute_value =
