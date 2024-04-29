@@ -662,7 +662,7 @@ defmodule Ash.Actions.Create.Bulk do
 
   defp errors(result, {:error, error}, opts) do
     if opts[:return_errors?] do
-      {result.error_count + 1, [error | result.errors]}
+      {result.error_count + 1, [error | result.errors || []]}
     else
       {result.error_count + 1, []}
     end
@@ -758,7 +758,7 @@ defmodule Ash.Actions.Create.Bulk do
 
   defp store_error(ref, error, opts) do
     if opts[:stop_on_error?] && !opts[:return_stream?] do
-      throw({:error, Ash.Error.to_error_class(error), 0, []})
+      throw({:error, Ash.Error.to_error_class(error), 0})
     else
       if opts[:return_errors?] do
         {errors, count} = Process.get({:bulk_create_errors, ref}) || {[], 0}
@@ -1412,7 +1412,7 @@ defmodule Ash.Actions.Create.Bulk do
                       changeset
 
                     {:error, error} ->
-                      Ash.Changeset.add_error(changeset, error)
+                      Ash.Changeset.add_error(changeset, validation.message || error)
                   end
 
                 true ->
