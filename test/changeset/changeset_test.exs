@@ -1164,4 +1164,42 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       assert %Ash.Changeset{attributes: %{priority: 4}} = changeset
     end
   end
+
+  describe "present?" do
+    test "for non-relationship attribute" do
+      # when present
+      changeset = Ash.Changeset.for_create(Post, :create, %{title: "title"})
+      assert Ash.Changeset.present?(changeset, :title)
+
+      # when absent
+      changeset = Ash.Changeset.for_create(Post, :create, %{title: nil})
+      refute Ash.Changeset.present?(changeset, :title)
+    end
+
+    test "for belongs_to relationship and its source attribute" do
+      author = Ash.Changeset.for_create(Author, :create) |> Ash.create!()
+
+      # when present
+      changeset =
+        Ash.Changeset.for_create(Post, :create)
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+
+      assert Ash.Changeset.present?(changeset, :author)
+      assert Ash.Changeset.present?(changeset, :author_id)
+
+      # when absent
+      changeset = Ash.Changeset.for_create(Post, :create)
+
+      refute Ash.Changeset.present?(changeset, :author)
+      refute Ash.Changeset.present?(changeset, :author_id)
+
+      # when absent (set to nil)
+      changeset =
+        Ash.Changeset.for_create(Post, :create)
+        |> Ash.Changeset.manage_relationship(:author, nil, type: :append_and_remove)
+
+      refute Ash.Changeset.present?(changeset, :author)
+      refute Ash.Changeset.present?(changeset, :author_id)
+    end
+  end
 end
