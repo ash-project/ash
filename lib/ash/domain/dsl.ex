@@ -92,7 +92,7 @@ defmodule Ash.Domain.Dsl do
     Defines a function with the corresponding name and arguments. See the [code interface guide](/documentation/topics/topics/code-interfaces.md) for more.
     """,
     examples: [
-      "define :get_user_by_id, User, action: :get_by_id, args: [:id], get?: true"
+      "define :get_user_by_id, action: :get_by_id, args: [:id], get?: true"
     ],
     target: Ash.Resource.Interface,
     schema: Ash.Resource.Interface.schema(),
