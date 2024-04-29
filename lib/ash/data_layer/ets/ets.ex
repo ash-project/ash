@@ -2,6 +2,7 @@ defmodule Ash.DataLayer.Ets do
   @behaviour Ash.DataLayer
   require Ash.Query
   import Ash.Expr
+  require Logger
 
   @ets %Spark.Dsl.Section{
     name: :ets,
@@ -952,12 +953,12 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
-  def upsert(resource, changeset, keys) do
+  def upsert(resource, changeset, keys, from_bulk_create? \\ false) do
     pkey = Ash.Resource.Info.primary_key(resource)
     keys = keys || pkey
 
     if Enum.any?(keys, &is_nil(Ash.Changeset.get_attribute(changeset, &1))) do
-      create(resource, changeset)
+      create(resource, changeset, from_bulk_create?)
     else
       key_filters =
         Enum.map(keys, fn key ->
@@ -982,7 +983,7 @@ defmodule Ash.DataLayer.Ets do
       |> run_query(resource)
       |> case do
         {:ok, []} ->
-          create(resource, changeset)
+          create(resource, changeset, from_bulk_create?)
 
         {:ok, [result]} ->
           to_set = Ash.Changeset.set_on_upsert(changeset, keys)
@@ -993,7 +994,12 @@ defmodule Ash.DataLayer.Ets do
             |> Map.put(:data, result)
             |> Ash.Changeset.force_change_attributes(to_set)
 
-          update(resource, %{changeset | action_type: :update}, Map.take(result, pkey))
+          update(
+            resource,
+            %{changeset | action_type: :update},
+            Map.take(result, pkey),
+            from_bulk_create?
+          )
 
         {:ok, _} ->
           {:error, "Multiple records matching keys"}
@@ -1003,6 +1009,9 @@ defmodule Ash.DataLayer.Ets do
 
   @impl true
   def bulk_create(resource, stream, options) do
+    stream = Enum.to_list(stream)
+    log_bulk_create(resource, stream, options)
+
     if options[:upsert?] do
       # This is not optimized, but thats okay for now
       stream
@@ -1012,7 +1021,7 @@ defmodule Ash.DataLayer.Ets do
             private: %{upsert_fields: options[:upsert_fields] || []}
           })
 
-        case upsert(resource, changeset, options.upsert_keys) do
+        case upsert(resource, changeset, options.upsert_keys, true) do
           {:ok, result} ->
             {:cont,
              {:ok,
@@ -1069,7 +1078,7 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
-  def create(resource, changeset) do
+  def create(resource, changeset, from_bulk_create? \\ false) do
     pkey =
       resource
       |> Ash.Resource.Info.primary_key()
@@ -1078,6 +1087,7 @@ defmodule Ash.DataLayer.Ets do
       end)
 
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
+         _ <- unless(from_bulk_create?, do: log_create(resource, changeset)),
          {:ok, record} <- Ash.Changeset.apply_attributes(changeset),
          record <- unload_relationships(resource, record),
          {:ok, record} <- put_or_insert_new(table, {pkey, record}, resource) do
@@ -1191,6 +1201,8 @@ defmodule Ash.DataLayer.Ets do
         :ok
       end
 
+    log_destroy_query(resource, query)
+
     query
     |> run_query(resource)
     |> case do
@@ -1250,6 +1262,8 @@ defmodule Ash.DataLayer.Ets do
         :ok
       end
 
+    log_update_query(resource, query, changeset)
+
     query
     |> Map.update!(:filter, fn filter ->
       if is_nil(changeset.filter) do
@@ -1263,7 +1277,7 @@ defmodule Ash.DataLayer.Ets do
     |> case do
       {:ok, results} ->
         Enum.reduce_while(results, acc, fn result, acc ->
-          case update(query.resource, %{changeset | data: result}) do
+          case update(query.resource, %{changeset | data: result}, nil, true) do
             {:ok, result} ->
               case acc do
                 :ok ->
@@ -1290,14 +1304,16 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
-  def update(resource, changeset, pkey \\ nil) do
+  def update(resource, changeset, pkey \\ nil, from_bulk? \\ false) do
     pkey = pkey || pkey_map(resource, changeset.data)
 
     with {:ok, table} <- wrap_or_create_table(resource, changeset.tenant),
+         _ <- unless(from_bulk?, do: log_update(resource, pkey, changeset)),
          {:ok, record} <-
            do_update(
              table,
              {pkey, changeset.attributes, changeset.atomics, changeset.filter},
+             changeset.domain,
              resource
            ),
          {:ok, record} <- cast_record(record, resource) do
@@ -1329,7 +1345,7 @@ defmodule Ash.DataLayer.Ets do
     end)
   end
 
-  defp do_update(table, {pkey, record, atomics, changeset_filter}, resource) do
+  defp do_update(table, {pkey, record, atomics, changeset_filter}, domain, resource) do
     attributes = resource |> Ash.Resource.Info.attributes()
 
     case dump_to_native(record, attributes) do
@@ -1344,7 +1360,7 @@ defmodule Ash.DataLayer.Ets do
 
               atomics ->
                 with {:ok, casted_existing} <- cast_record(record, resource),
-                     {:ok, atomics} <- make_atomics(atomics, resource, casted_existing) do
+                     {:ok, atomics} <- make_atomics(atomics, resource, domain, casted_existing) do
                   data = record |> Map.merge(casted) |> Map.merge(atomics)
                   put_data(table, pkey, data)
                 end
@@ -1379,14 +1395,22 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp make_atomics(atomics, resource, record) do
+  defp make_atomics(atomics, resource, domain, record) do
     Enum.reduce_while(atomics, {:ok, %{}}, fn {key, expr}, {:ok, acc} ->
-      case Ash.Expr.eval(expr, resource: resource, record: record) do
+      case Ash.Expr.eval(expr,
+             resource: resource,
+             record: record,
+             domain: domain,
+             unknown_on_unknown_refs?: true
+           ) do
         {:ok, value} ->
           {:cont, {:ok, Map.put(acc, key, value)}}
 
         {:error, error} ->
           {:halt, {:error, error}}
+
+        :unknown ->
+          {:halt, {:error, "Could not evaluate expression #{inspect(expr)}"}}
       end
     end)
   end
@@ -1432,5 +1456,119 @@ defmodule Ash.DataLayer.Ets do
     else
       TableManager.start(resource, tenant)
     end
+  end
+
+  defp log_bulk_create(resource, stream, options) do
+    Logger.debug(
+      "#{bulk_create_operation(options, stream)} #{inspect(resource)}: #{inspect(stream)}"
+    )
+  end
+
+  defp bulk_create_operation(
+         %{upsert?: true, upsert_keys: upsert_keys, upsert_fields: upsert_fields},
+         stream
+       ) do
+    "Upserting #{Enum.count(stream)} on #{inspect(upsert_keys)}, setting #{inspect(List.wrap(upsert_fields))}"
+  end
+
+  defp bulk_create_operation(_options, stream) do
+    "Creating #{Enum.count(stream)}"
+  end
+
+  defp log_destroy_query(resource, query) do
+    limit =
+      if query.limit do
+        "#{query.limit} "
+      else
+        ""
+      end
+
+    offset =
+      if query.offset && query.offset != 0 do
+        " skipping #{query.offset} records"
+      else
+        ""
+      end
+
+    sort =
+      if query.sort && query.sort != [] do
+        " sorted by #{inspect(query.sort)}"
+      else
+        ""
+      end
+
+    filter =
+      if query.filter && query.filter != nil && query.filter.expression != nil do
+        " where `#{inspect(query.filter.expression)}`"
+      else
+        ""
+      end
+
+    Logger.debug("""
+    ETS: Destroying #{limit}#{inspect(resource)}#{offset}#{sort}#{filter}
+    """)
+
+    :ok
+  end
+
+  defp log_update_query(resource, query, changeset) do
+    limit =
+      if query.limit do
+        "#{query.limit} "
+      else
+        ""
+      end
+
+    offset =
+      if query.offset && query.offset != 0 do
+        " skipping #{query.offset} records"
+      else
+        ""
+      end
+
+    sort =
+      if query.sort && query.sort != [] do
+        " sorted by #{inspect(query.sort)}"
+      else
+        ""
+      end
+
+    filter =
+      if query.filter && query.filter != nil && query.filter.expression != nil do
+        " matching filter `#{inspect(query.filter.expression)}`"
+      else
+        ""
+      end
+
+    Logger.debug("""
+    ETS: Updating #{limit}#{inspect(resource)}#{offset}#{sort}#{filter}:
+
+    #{inspect(Map.merge(changeset.attributes, Map.new(changeset.atomics)), pretty: true)}
+    """)
+
+    :ok
+  end
+
+  defp log_create(resource, changeset) do
+    Logger.debug("""
+    Creating #{inspect(resource)}:
+
+    #{inspect(Map.merge(changeset.attributes, Map.new(changeset.atomics)), pretty: true)}
+    """)
+  end
+
+  defp log_update(resource, pkey, changeset) do
+    pkey =
+      if Enum.count_until(pkey, 2) == 2 do
+        inspect(pkey)
+      else
+        inspect(pkey |> Enum.at(0) |> elem(1))
+      end
+
+    Logger.debug("""
+    "Updating #{inspect(resource)} #{pkey}:
+
+    #{inspect(Map.merge(changeset.attributes, Map.new(changeset.atomics)), pretty: true)}
+    """)
   end
 end
