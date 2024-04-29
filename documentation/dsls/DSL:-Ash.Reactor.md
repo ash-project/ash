@@ -254,7 +254,7 @@ Declares a step that will modify a changeset.
 | [`initial`](#reactor-change-initial){: #reactor-change-initial .spark-required} | `module \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The initial value to work from, either a resource or a changeset |
 | [`description`](#reactor-change-description){: #reactor-change-description } | `String.t \| nil` |  | An optional description for the change |
 | [`only_when_valid?`](#reactor-change-only_when_valid?){: #reactor-change-only_when_valid? } | `boolean` | `false` | If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here. |
-| [`where`](#reactor-change-where){: #reactor-change-where } | `(any -> any) \| module \| list((any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
+| [`where`](#reactor-change-where){: #reactor-change-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
 | [`fail_if_invalid?`](#reactor-change-fail_if_invalid?){: #reactor-change-fail_if_invalid? } | `boolean` | `false` | Fail if the result of the change is an invalid changeset |
 
 

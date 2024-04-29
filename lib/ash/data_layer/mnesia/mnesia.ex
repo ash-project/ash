@@ -84,6 +84,7 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, :upsert), do: true
   def can?(_, :create), do: true
   def can?(_, :read), do: true
+  def can?(_, :calculate), do: true
   def can?(_, :update), do: true
   def can?(_, :destroy), do: true
   def can?(_, :sort), do: true
@@ -376,6 +377,20 @@ defmodule Ash.DataLayer.Mnesia do
 
       {:aborted, reason} ->
         {:error, reason}
+    end
+  end
+
+  @impl true
+  def calculate(resource, expressions, context) do
+    Enum.reduce_while(expressions, {:ok, []}, fn expression, {:ok, results} ->
+      case Ash.Expr.eval(expression, resource: resource, context: context) do
+        {:ok, result} -> {:cont, {:ok, [result | results]}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, results} -> {:ok, Enum.reverse(results)}
+      {:error, error} -> {:error, error}
     end
   end
 

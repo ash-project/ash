@@ -1412,27 +1412,31 @@ defmodule Ash.Changeset do
     |> Enum.reduce(changeset, fn {key, value}, changeset ->
       attribute = Ash.Resource.Info.attribute(changeset.resource, key)
 
-      value =
-        if attribute.allow_nil? do
-          value
-        else
-          expr(
-            if is_nil(^value) do
-              error(
-                ^Ash.Error.Changes.Required,
-                %{
-                  field: ^attribute.name,
-                  type: ^:attribute,
-                  resource: ^changeset.resource
-                }
-              )
-            else
-              ^value
-            end
-          )
-        end
+      if attribute.primary_key? do
+        changeset
+      else
+        value =
+          if attribute.allow_nil? do
+            value
+          else
+            expr(
+              if is_nil(^value) do
+                error(
+                  ^Ash.Error.Changes.Required,
+                  %{
+                    field: ^attribute.name,
+                    type: ^:attribute,
+                    resource: ^changeset.resource
+                  }
+                )
+              else
+                ^value
+              end
+            )
+          end
 
-      %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+        %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+      end
     end)
     |> Ash.Changeset.hydrate_atomic_refs(actor, eager?: true)
   end

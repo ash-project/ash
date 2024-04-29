@@ -42,6 +42,14 @@ defmodule Ash.CustomExpression do
   - `name` - The name of the custom expression. This is the name that will be used in Ash expressions.
   - `arguments` - A list of lists of types that the custom expression accepts. Each list represents a set of arguments that the custom expression can accept.
   - `predicate?` - Whether this expression can be exposed as a predicate in filter interfaces. Defaults to `false`.
+
+  ### Registering Your Expression
+
+  Use compile-time configuration to register your custom expressions
+
+  ```elixir
+  config :ash, :custom_expressions, [MyApp.Expressions.LevenshteinDistance]
+  ```
   """
 
   defstruct [:module, :arguments, :expression, :simple_expression]
