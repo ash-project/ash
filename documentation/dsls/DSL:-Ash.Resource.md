@@ -96,8 +96,8 @@ end
 | [`public?`](#attributes-attribute-public?){: #attributes-attribute-public? } | `boolean` | `false` | Whether or not the attribute should be shown over public interfaces. See the [sensitive data guide](/documentation/topics/security/sensitive-data.md) for more. |
 | [`default`](#attributes-attribute-default){: #attributes-attribute-default } | `(-> any) \| mfa \| any` |  | A value to be set on all creates, unless a value is being provided already. |
 | [`update_default`](#attributes-attribute-update_default){: #attributes-attribute-update_default } | `(-> any) \| mfa \| any` |  | A value to be set on all updates, unless a value is being provided already. |
-| [`filterable?`](#attributes-attribute-filterable?){: #attributes-attribute-filterable? } | `boolean` | `true` | Whether or not the attribute can be referenced in filters. |
-| [`sortable?`](#attributes-attribute-sortable?){: #attributes-attribute-sortable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in sorts. |
+| [`filterable?`](#attributes-attribute-filterable?){: #attributes-attribute-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in filters. |
+| [`sortable?`](#attributes-attribute-sortable?){: #attributes-attribute-sortable? } | `boolean` | `true` | Whether or not the attribute can be referenced in sorts. |
 | [`match_other_defaults?`](#attributes-attribute-match_other_defaults?){: #attributes-attribute-match_other_defaults? } | `boolean` | `false` | Ensures that other attributes that use the same "lazy" default (a function or an mfa), use the same default value. Has no effect unless `default` is a zero argument function. |
 
 
@@ -157,8 +157,8 @@ create_timestamp :inserted_at
 | [`public?`](#attributes-create_timestamp-public?){: #attributes-create_timestamp-public? } | `boolean` | `false` | Whether or not the attribute should be shown over public interfaces. See the [sensitive data guide](/documentation/topics/security/sensitive-data.md) for more. |
 | [`default`](#attributes-create_timestamp-default){: #attributes-create_timestamp-default } | `(-> any) \| mfa \| any` | `&DateTime.utc_now/0` | A value to be set on all creates, unless a value is being provided already. |
 | [`update_default`](#attributes-create_timestamp-update_default){: #attributes-create_timestamp-update_default } | `(-> any) \| mfa \| any` |  | A value to be set on all updates, unless a value is being provided already. |
-| [`filterable?`](#attributes-create_timestamp-filterable?){: #attributes-create_timestamp-filterable? } | `boolean` | `true` | Whether or not the attribute can be referenced in filters. |
-| [`sortable?`](#attributes-create_timestamp-sortable?){: #attributes-create_timestamp-sortable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in sorts. |
+| [`filterable?`](#attributes-create_timestamp-filterable?){: #attributes-create_timestamp-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in filters. |
+| [`sortable?`](#attributes-create_timestamp-sortable?){: #attributes-create_timestamp-sortable? } | `boolean` | `true` | Whether or not the attribute can be referenced in sorts. |
 | [`match_other_defaults?`](#attributes-create_timestamp-match_other_defaults?){: #attributes-create_timestamp-match_other_defaults? } | `boolean` | `true` | Ensures that other attributes that use the same "lazy" default (a function or an mfa), use the same default value. Has no effect unless `default` is a zero argument function. |
 
 
@@ -219,8 +219,8 @@ update_timestamp :updated_at
 | [`public?`](#attributes-update_timestamp-public?){: #attributes-update_timestamp-public? } | `boolean` | `false` | Whether or not the attribute should be shown over public interfaces. See the [sensitive data guide](/documentation/topics/security/sensitive-data.md) for more. |
 | [`default`](#attributes-update_timestamp-default){: #attributes-update_timestamp-default } | `(-> any) \| mfa \| any` | `&DateTime.utc_now/0` | A value to be set on all creates, unless a value is being provided already. |
 | [`update_default`](#attributes-update_timestamp-update_default){: #attributes-update_timestamp-update_default } | `(-> any) \| mfa \| any` | `&DateTime.utc_now/0` | A value to be set on all updates, unless a value is being provided already. |
-| [`filterable?`](#attributes-update_timestamp-filterable?){: #attributes-update_timestamp-filterable? } | `boolean` | `true` | Whether or not the attribute can be referenced in filters. |
-| [`sortable?`](#attributes-update_timestamp-sortable?){: #attributes-update_timestamp-sortable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in sorts. |
+| [`filterable?`](#attributes-update_timestamp-filterable?){: #attributes-update_timestamp-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in filters. |
+| [`sortable?`](#attributes-update_timestamp-sortable?){: #attributes-update_timestamp-sortable? } | `boolean` | `true` | Whether or not the attribute can be referenced in sorts. |
 | [`match_other_defaults?`](#attributes-update_timestamp-match_other_defaults?){: #attributes-update_timestamp-match_other_defaults? } | `boolean` | `true` | Ensures that other attributes that use the same "lazy" default (a function or an mfa), use the same default value. Has no effect unless `default` is a zero argument function. |
 
 
@@ -281,8 +281,8 @@ integer_primary_key :id
 | [`public?`](#attributes-integer_primary_key-public?){: #attributes-integer_primary_key-public? } | `boolean` | `true` | Whether or not the attribute should be shown over public interfaces. See the [sensitive data guide](/documentation/topics/security/sensitive-data.md) for more. |
 | [`default`](#attributes-integer_primary_key-default){: #attributes-integer_primary_key-default } | `(-> any) \| mfa \| any` |  | A value to be set on all creates, unless a value is being provided already. |
 | [`update_default`](#attributes-integer_primary_key-update_default){: #attributes-integer_primary_key-update_default } | `(-> any) \| mfa \| any` |  | A value to be set on all updates, unless a value is being provided already. |
-| [`filterable?`](#attributes-integer_primary_key-filterable?){: #attributes-integer_primary_key-filterable? } | `boolean` | `true` | Whether or not the attribute can be referenced in filters. |
-| [`sortable?`](#attributes-integer_primary_key-sortable?){: #attributes-integer_primary_key-sortable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in sorts. |
+| [`filterable?`](#attributes-integer_primary_key-filterable?){: #attributes-integer_primary_key-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in filters. |
+| [`sortable?`](#attributes-integer_primary_key-sortable?){: #attributes-integer_primary_key-sortable? } | `boolean` | `true` | Whether or not the attribute can be referenced in sorts. |
 | [`match_other_defaults?`](#attributes-integer_primary_key-match_other_defaults?){: #attributes-integer_primary_key-match_other_defaults? } | `boolean` | `false` | Ensures that other attributes that use the same "lazy" default (a function or an mfa), use the same default value. Has no effect unless `default` is a zero argument function. |
 
 
@@ -341,8 +341,8 @@ uuid_primary_key :id
 | [`public?`](#attributes-uuid_primary_key-public?){: #attributes-uuid_primary_key-public? } | `boolean` | `true` | Whether or not the attribute should be shown over public interfaces. See the [sensitive data guide](/documentation/topics/security/sensitive-data.md) for more. |
 | [`default`](#attributes-uuid_primary_key-default){: #attributes-uuid_primary_key-default } | `(-> any) \| mfa \| any` | `&Ash.UUID.generate/0` | A value to be set on all creates, unless a value is being provided already. |
 | [`update_default`](#attributes-uuid_primary_key-update_default){: #attributes-uuid_primary_key-update_default } | `(-> any) \| mfa \| any` |  | A value to be set on all updates, unless a value is being provided already. |
-| [`filterable?`](#attributes-uuid_primary_key-filterable?){: #attributes-uuid_primary_key-filterable? } | `boolean` | `true` | Whether or not the attribute can be referenced in filters. |
-| [`sortable?`](#attributes-uuid_primary_key-sortable?){: #attributes-uuid_primary_key-sortable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in sorts. |
+| [`filterable?`](#attributes-uuid_primary_key-filterable?){: #attributes-uuid_primary_key-filterable? } | `boolean \| :simple_equality` | `true` | Whether or not the attribute can be referenced in filters. |
+| [`sortable?`](#attributes-uuid_primary_key-sortable?){: #attributes-uuid_primary_key-sortable? } | `boolean` | `true` | Whether or not the attribute can be referenced in sorts. |
 | [`match_other_defaults?`](#attributes-uuid_primary_key-match_other_defaults?){: #attributes-uuid_primary_key-match_other_defaults? } | `boolean` | `false` | Ensures that other attributes that use the same "lazy" default (a function or an mfa), use the same default value. Has no effect unless `default` is a zero argument function. |
 
 
