@@ -48,7 +48,7 @@ defmodule Ash.Resource.Change do
         type:
           {:wrap_list,
            {:spark_function_behaviour, Ash.Resource.Validation, Ash.Resource.Validation.Builtins,
-            {Ash.Resource.Validation.Function, 1}}},
+            {Ash.Resource.Validation.Function, 2}}},
         required: false,
         default: [],
         doc: """

@@ -79,14 +79,14 @@ defmodule Ash.Resource.Validation do
   @optional_callbacks describe: 1, validate: 3, atomic: 3
 
   @validation_type {:spark_function_behaviour, Ash.Resource.Validation,
-                    Ash.Resource.Validation.Builtins, {Ash.Resource.Validation.Function, 1}}
+                    Ash.Resource.Validation.Builtins, {Ash.Resource.Validation.Function, 2}}
 
   @schema [
     validation: [
       type: @validation_type,
       required: true,
       doc:
-        "The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a one argument function that takes the changeset."
+        "The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context."
     ],
     where: [
       type: {:wrap_list, @validation_type},
