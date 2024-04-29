@@ -6,7 +6,7 @@ Create actions are used to create new records in the data layer. For example:
 # on a ticket resource
 create :open do
   accept [:title]
-  change set_attribute(status: :open)
+  change set_attribute(:status, :open)
 end
 ```
 
