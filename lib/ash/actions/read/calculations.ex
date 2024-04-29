@@ -41,7 +41,8 @@ defmodule Ash.Actions.Read.Calculations do
           resource: opts[:resource],
           arguments: arguments,
           type: type,
-          constraints: constraints
+          constraints: constraints,
+          source_context: opts[:context]
         }
 
       if module.has_expression?() do
@@ -52,24 +53,71 @@ defmodule Ash.Actions.Read.Calculations do
             result -> {:ok, result}
           end
 
-        with {:ok, expr} <- expr do
-          case Ash.Expr.eval(expr, record: record, resource: resource) do
+        with {:ok, expr} <- expr,
+             {:ok, expr} <-
+               Ash.Filter.hydrate_refs(expr, %{resource: resource}) do
+          case Ash.Expr.eval(expr,
+                 record: record,
+                 resource: resource,
+                 unknown_on_unknown_refs?: true
+               ) do
             {:ok, result} ->
               {:ok, result}
 
             :unknown ->
-              case module.calculate([record], calc_opts, calc_context) do
-                [result] ->
-                  result
+              expr =
+                Ash.Filter.map(expr, fn
+                  %Ash.Query.Ref{relationship_path: path, attribute: attribute} ->
+                    name =
+                      case attribute do
+                        %{name: name} -> name
+                        name -> name
+                      end
 
-                {:ok, [result]} ->
-                  {:ok, result}
+                    get_in(opts[:refs] || %{}, path ++ [name])
 
-                {:ok, _} ->
-                  {:error, "Invalid calculation return"}
+                  other ->
+                    other
+                end)
+
+              data_layer_result =
+                if Ash.DataLayer.data_layer_can?(resource, :calculate) do
+                  Ash.DataLayer.calculate(resource, [expr], opts[:context] || %{})
+                else
+                  :cant_calculate
+                end
+
+              case data_layer_result do
+                {:ok, result} ->
+                  {:ok, Enum.at(result, 0)}
+
+                :cant_calculate ->
+                  {:error,
+                   "Failed to run calculation in memory, or in the data layer, and no `calculate/3` is defined on #{inspect(module)}. Data layer does not support one-off calculations."}
 
                 {:error, error} ->
-                  {:error, error}
+                  if module.has_calculate?() do
+                    case module.calculate([record], calc_opts, calc_context) do
+                      [result] ->
+                        result
+
+                      {:ok, [result]} ->
+                        {:ok, result}
+
+                      {:ok, _} ->
+                        {:error, "Invalid calculation return"}
+
+                      {:error, error} ->
+                        {:error, error}
+
+                      :unknown ->
+                        {:error,
+                         "Failed to run calculation in memory, or in the data layer. Data layer returned #{inspect(error)}"}
+                    end
+                  else
+                    {:error,
+                     "Failed to run calculation in memory, or in the data layer, and no `calculate/3` is defined on #{inspect(module)}. Data layer returned #{inspect(error)}"}
+                  end
               end
 
             {:error, error} ->
@@ -77,18 +125,42 @@ defmodule Ash.Actions.Read.Calculations do
           end
         end
       else
-        case module.calculate([record], calc_opts, calc_context) do
-          [result] ->
-            {:ok, result}
+        primary_key = Ash.Resource.Info.primary_key(resource)
 
-          {:ok, [result]} ->
-            {:ok, result}
+        if module.has_calculate?() do
+          if Enum.all?(primary_key, &(not is_nil(Map.get(record, &1)))) do
+            case Ash.load(record, [{calculation.name, arguments}],
+                   actor: opts[:actor],
+                   domain: opts[:domain],
+                   tenant: opts[:tenant],
+                   authorize?: opts[:authorize?],
+                   tracer: opts[:tracer],
+                   resource: opts[:resource],
+                   arguments: arguments,
+                   type: type,
+                   constraints: constraints,
+                   source_context: opts[:context]
+                 ) do
+              {:ok, record} -> {:ok, Map.get(record, calculation.name)}
+              {:error, error} -> {:error, error}
+            end
+          else
+            case module.calculate([record], calc_opts, calc_context) do
+              [result] ->
+                {:ok, result}
 
-          {:ok, _} ->
-            {:error, "Invalid calculation return"}
+              {:ok, [result]} ->
+                {:ok, result}
 
-          {:error, error} ->
-            {:error, error}
+              {:ok, _} ->
+                {:error, "Invalid calculation return"}
+
+              {:error, error} ->
+                {:error, error}
+            end
+          end
+        else
+          {:error, "Module #{inspect(module)} does not have an expression or calculate function"}
         end
       end
     else

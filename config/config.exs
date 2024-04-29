@@ -15,6 +15,8 @@ if Mix.env() == :dev do
 end
 
 if Mix.env() == :test do
+  config :logger, level: :warning
+
   config :ash, :ash_domains, [
     Ash.Test.Flow.Domain,
     Ash.Test.Support.PolicyRbac.Domain,

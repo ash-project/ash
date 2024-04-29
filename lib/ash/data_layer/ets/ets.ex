@@ -181,6 +181,7 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :expression_calculation_sort), do: true
   def can?(_, :multitenancy), do: true
   def can?(_, :upsert), do: true
+  def can?(_, :calculate), do: true
   def can?(_, :aggregate_filter), do: true
   def can?(_, :aggregate_sort), do: true
   def can?(_, {:aggregate_relationship, _}), do: true
@@ -1333,6 +1334,20 @@ defmodule Ash.DataLayer.Ets do
     else
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  @impl true
+  def calculate(resource, expressions, context) do
+    Enum.reduce_while(expressions, {:ok, []}, fn expression, {:ok, results} ->
+      case Ash.Expr.eval(expression, resource: resource, context: context) do
+        {:ok, result} -> {:cont, {:ok, [result | results]}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, results} -> {:ok, Enum.reverse(results)}
+      {:error, error} -> {:error, error}
     end
   end
 

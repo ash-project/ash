@@ -1097,7 +1097,7 @@ change {MyCustomChange, :foo}
 |------|------|---------|------|
 | [`only_when_valid?`](#actions-create-change-only_when_valid?){: #actions-create-change-only_when_valid? } | `boolean` | `false` | If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here. |
 | [`description`](#actions-create-change-description){: #actions-create-change-description } | `String.t` |  | An optional description for the change |
-| [`where`](#actions-create-change-where){: #actions-create-change-where } | `(any -> any) \| module \| list((any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
+| [`where`](#actions-create-change-where){: #actions-create-change-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
 | [`always_atomic?`](#actions-create-change-always_atomic?){: #actions-create-change-always_atomic? } | `boolean` | `false` | By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always. |
 
 
@@ -1132,12 +1132,12 @@ validate changing(:email)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`validation`](#actions-create-validate-validation){: #actions-create-validate-validation .spark-required} | `(any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a one argument function that takes the changeset. |
+| [`validation`](#actions-create-validate-validation){: #actions-create-validate-validation .spark-required} | `(any, any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`where`](#actions-create-validate-where){: #actions-create-validate-where } | `(any -> any) \| module \| list((any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
+| [`where`](#actions-create-validate-where){: #actions-create-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
 | [`only_when_valid?`](#actions-create-validate-only_when_valid?){: #actions-create-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changes. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-create-validate-message){: #actions-create-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#actions-create-validate-description){: #actions-create-validate-description } | `String.t` |  | An optional description for the validation |
@@ -1577,7 +1577,7 @@ change {MyCustomChange, :foo}
 |------|------|---------|------|
 | [`only_when_valid?`](#actions-update-change-only_when_valid?){: #actions-update-change-only_when_valid? } | `boolean` | `false` | If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here. |
 | [`description`](#actions-update-change-description){: #actions-update-change-description } | `String.t` |  | An optional description for the change |
-| [`where`](#actions-update-change-where){: #actions-update-change-where } | `(any -> any) \| module \| list((any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
+| [`where`](#actions-update-change-where){: #actions-update-change-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
 | [`always_atomic?`](#actions-update-change-always_atomic?){: #actions-update-change-always_atomic? } | `boolean` | `false` | By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always. |
 
 
@@ -1612,12 +1612,12 @@ validate changing(:email)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`validation`](#actions-update-validate-validation){: #actions-update-validate-validation .spark-required} | `(any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a one argument function that takes the changeset. |
+| [`validation`](#actions-update-validate-validation){: #actions-update-validate-validation .spark-required} | `(any, any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`where`](#actions-update-validate-where){: #actions-update-validate-where } | `(any -> any) \| module \| list((any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
+| [`where`](#actions-update-validate-where){: #actions-update-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
 | [`only_when_valid?`](#actions-update-validate-only_when_valid?){: #actions-update-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changes. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-update-validate-message){: #actions-update-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#actions-update-validate-description){: #actions-update-validate-description } | `String.t` |  | An optional description for the validation |
@@ -1817,7 +1817,7 @@ change {MyCustomChange, :foo}
 |------|------|---------|------|
 | [`only_when_valid?`](#actions-destroy-change-only_when_valid?){: #actions-destroy-change-only_when_valid? } | `boolean` | `false` | If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here. |
 | [`description`](#actions-destroy-change-description){: #actions-destroy-change-description } | `String.t` |  | An optional description for the change |
-| [`where`](#actions-destroy-change-where){: #actions-destroy-change-where } | `(any -> any) \| module \| list((any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
+| [`where`](#actions-destroy-change-where){: #actions-destroy-change-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
 | [`always_atomic?`](#actions-destroy-change-always_atomic?){: #actions-destroy-change-always_atomic? } | `boolean` | `false` | By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always. |
 
 
@@ -1852,12 +1852,12 @@ validate changing(:email)
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`validation`](#actions-destroy-validate-validation){: #actions-destroy-validate-validation .spark-required} | `(any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a one argument function that takes the changeset. |
+| [`validation`](#actions-destroy-validate-validation){: #actions-destroy-validate-validation .spark-required} | `(any, any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`where`](#actions-destroy-validate-where){: #actions-destroy-validate-where } | `(any -> any) \| module \| list((any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
+| [`where`](#actions-destroy-validate-where){: #actions-destroy-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
 | [`only_when_valid?`](#actions-destroy-validate-only_when_valid?){: #actions-destroy-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changes. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#actions-destroy-validate-message){: #actions-destroy-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#actions-destroy-validate-description){: #actions-destroy-validate-description } | `String.t` |  | An optional description for the validation |
@@ -2257,7 +2257,7 @@ change {MyCustomChange, :foo}
 | [`on`](#changes-change-on){: #changes-change-on } | `:create \| :update \| :destroy \| list(:create \| :update \| :destroy)` | `[:create, :update]` | The action types the change should run on. Destroy actions are omitted by default as most changes don't make sense for a destroy. |
 | [`only_when_valid?`](#changes-change-only_when_valid?){: #changes-change-only_when_valid? } | `boolean` | `false` | If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here. |
 | [`description`](#changes-change-description){: #changes-change-description } | `String.t` |  | An optional description for the change |
-| [`where`](#changes-change-where){: #changes-change-where } | `(any -> any) \| module \| list((any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
+| [`where`](#changes-change-where){: #changes-change-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
 | [`always_atomic?`](#changes-change-always_atomic?){: #changes-change-always_atomic? } | `boolean` | `false` | By default, changes are only run atomically if all changes will be run atomically or if there is no `change/3` callback defined. Set this to `true` to run it atomically always. |
 
 
@@ -2376,12 +2376,12 @@ validate at_least_one_of_present([:first_name, :last_name])
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`validation`](#validations-validate-validation){: #validations-validate-validation .spark-required} | `(any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a one argument function that takes the changeset. |
+| [`validation`](#validations-validate-validation){: #validations-validate-validation .spark-required} | `(any, any -> any) \| module` |  | The module (or module and opts) that implements the `Ash.Resource.Validation` behaviour. Also accepts a function that receives the changeset and its context. |
 ### Options
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`where`](#validations-validate-where){: #validations-validate-where } | `(any -> any) \| module \| list((any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
+| [`where`](#validations-validate-where){: #validations-validate-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this validation to apply. Any of these validations failing will result in this validation being ignored. |
 | [`on`](#validations-validate-on){: #validations-validate-on } | `:create \| :update \| :destroy \| list(:create \| :update \| :destroy)` | `[:create, :update]` | The action types the validation should run on. Many validations don't make sense in the context of deletion, so by default it is not included. |
 | [`only_when_valid?`](#validations-validate-only_when_valid?){: #validations-validate-only_when_valid? } | `boolean` | `false` | If the validation should only run on valid changes. Useful for expensive validations or validations that depend on valid data. |
 | [`message`](#validations-validate-message){: #validations-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |

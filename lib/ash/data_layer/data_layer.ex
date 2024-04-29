@@ -268,6 +268,8 @@ defmodule Ash.DataLayer do
   @callback in_transaction?(Ash.Resource.t()) :: boolean
   @callback source(Ash.Resource.t()) :: String.t()
   @callback rollback(Ash.Resource.t(), term) :: no_return
+  @callback calculate(Ash.Resource.t(), list(Ash.Expr.t()), context :: map) ::
+              {:ok, term} | {:error, term}
   @callback can?(Ash.Resource.t() | Spark.Dsl.t(), feature()) :: boolean
   @callback set_context(Ash.Resource.t(), data_layer_query(), map) ::
               {:ok, data_layer_query()} | {:error, term}
@@ -284,6 +286,7 @@ defmodule Ash.DataLayer do
                       create: 2,
                       update: 2,
                       set_context: 3,
+                      calculate: 3,
                       destroy: 2,
                       filter: 3,
                       sort: 3,
@@ -334,6 +337,12 @@ defmodule Ash.DataLayer do
   @spec data_layer_functions(Ash.Resource.t()) :: map
   def data_layer_functions(resource) do
     Ash.DataLayer.functions(resource)
+  end
+
+  @spec calculate(Ash.Resource.t(), list(Ash.Expr.t()), context :: map) ::
+          {:ok, list(term)} | {:error, Ash.Error.t()}
+  def calculate(resource, exprs, context) do
+    data_layer(resource).calculate(resource, exprs, context)
   end
 
   @doc "Wraps the execution of the function in a transaction with the resource's data_layer"
