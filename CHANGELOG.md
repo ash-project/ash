@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.37](https://github.com/ash-project/ash/compare/v3.0.0-rc.36...v3.0.0-rc.37) (2024-04-29)
+
+
+
+
+### Bug Fixes:
+
+* properly intercept thrown errors in `Ash.bulk_create`
+
+* Changeset.present? to be false when belongs_to is set to nil (#1067)
+
+* fix simple_equality in attribute type
+
+### Improvements:
+
+* Changeset.attributes_present? to attribute_present? (#1066)
+
 ## [v3.0.0-rc.36](https://github.com/ash-project/ash/compare/v3.0.0-rc.35...v3.0.0-rc.36) (2024-04-28)
 
 
