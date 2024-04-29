@@ -1632,7 +1632,7 @@ defmodule Ash.Changeset do
 
     not is_nil(arg_or_attribute_value) ||
       belongs_to_attr_of_rel_being_managed?(attribute, changeset, true) ||
-      is_belongs_to_rel_being_managed?(attribute, changeset)
+      is_belongs_to_rel_being_managed?(attribute, changeset, true)
   end
 
   @doc """
@@ -1658,7 +1658,7 @@ defmodule Ash.Changeset do
 
     not is_nil(attribute_value) ||
       belongs_to_attr_of_rel_being_managed?(attribute, changeset, true) ||
-      is_belongs_to_rel_being_managed?(attribute, changeset)
+      is_belongs_to_rel_being_managed?(attribute, changeset, true)
   end
 
   def prepare_changeset_for_action(changeset, action, opts) do
@@ -2765,22 +2765,27 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp is_belongs_to_rel_being_managed?(attribute, changeset) do
-    Enum.any?(changeset.relationships, fn {key, _} ->
+  defp is_belongs_to_rel_being_managed?(attribute, changeset, only_if_relating?) do
+    Enum.any?(changeset.relationships, fn {key, [{rels, _}]} ->
       relationship = Ash.Resource.Info.relationship(changeset.resource, key)
-      relationship.type == :belongs_to && relationship.name == attribute
+
+      relationship.type == :belongs_to && relationship.name == attribute &&
+        (not only_if_relating? || rels != [])
     end)
   end
 
   defp belongs_to_attr_of_rel_being_managed?(attribute, changeset, only_if_relating? \\ false) do
-    do_belongs_to_attr_of_rel_being_managed?(changeset, attribute) ||
+    do_belongs_to_attr_of_rel_being_managed?(changeset, attribute, only_if_relating?) ||
       belongs_to_attr_of_being_managed_through?(changeset, attribute, only_if_relating?)
   end
 
-  defp do_belongs_to_attr_of_rel_being_managed?(changeset, attribute) do
-    Enum.any?(changeset.relationships, fn {key, _} ->
+  defp do_belongs_to_attr_of_rel_being_managed?(changeset, attribute, only_if_relating?) do
+    Enum.any?(changeset.relationships, fn {key, [{rels, _}]} ->
       relationship = Ash.Resource.Info.relationship(changeset.resource, key)
-      relationship.type == :belongs_to && relationship.source_attribute == attribute
+
+      relationship.type == :belongs_to &&
+        relationship.source_attribute == attribute &&
+        (not only_if_relating? || rels != [])
     end)
   end
 
