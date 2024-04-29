@@ -5,6 +5,23 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.38](https://github.com/ash-project/ash/compare/v3.0.0-rc.37...v3.0.0-rc.38) (2024-04-29)
+
+
+
+
+### Bug Fixes:
+
+* solve for custom expressions and one-off calculations
+
+### Improvements:
+
+* support new data layer capability `calculate/3`
+
+* add debug logging for ets data layer
+
+* pass context to anonymous validate functions (#1070)
+
 ## [v3.0.0-rc.37](https://github.com/ash-project/ash/compare/v3.0.0-rc.36...v3.0.0-rc.37) (2024-04-29)
 
 
