@@ -397,7 +397,7 @@ defmodule Ash.Type.Union do
                    true <- has_key?(value, attr.name) do
                 update_key(value, attr.name, fn value ->
                   if is_map(value) && !is_struct(value) do
-                    Keyword.values(value)
+                    Map.values(value)
                   else
                     value
                   end

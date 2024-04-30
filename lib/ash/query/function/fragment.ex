@@ -8,7 +8,7 @@ defmodule Ash.Query.Function.Fragment do
   Documentation + available intervals inspired by the corresponding ecto interval implementation
   """
 
-  use Ash.Query.Function, name: :fragment
+  use Ash.Query.Function, name: :fragment, no_inspect?: true
 
   # Varargs is special, and should only be used in rare circumstances (like this one)
   # no type casting or help can be provided for these functions.
@@ -16,7 +16,7 @@ defmodule Ash.Query.Function.Fragment do
 
   def private?, do: true
 
-  def new([fragment | rest]) when is_binary(fragment) do
+  def new([fragment | rest] = args) when is_binary(fragment) do
     fragment = "(" <> fragment <> ")"
     split = split_fragment(fragment)
 
@@ -25,7 +25,7 @@ defmodule Ash.Query.Function.Fragment do
        "fragment(...) expects extra arguments in the same amount of question marks in string. " <>
          "It received #{Enum.count(split, &(&1 == :slot))} extra argument(s) but expected #{length(rest)}"}
     else
-      {:ok, %__MODULE__{arguments: merge_fragment(split, rest)}}
+      {:ok, %__MODULE__{arguments: merge_fragment(split, rest), extra: %{original: args}}}
     end
   end
 
@@ -87,4 +87,16 @@ defmodule Ash.Query.Function.Fragment do
 
   defp split_fragment(<<first::utf8, rest::binary>>, consumed),
     do: split_fragment(rest, consumed <> <<first::utf8>>)
+
+  defimpl Inspect do
+    import Inspect.Algebra
+
+    def inspect(%{extra: %{original: args}}, opts) do
+      container_doc("fragment(", args, ")", opts, &to_doc/2, separator: ",")
+    end
+
+    def inspect(%{arguments: args}, opts) do
+      container_doc("fragment(", args, ")", opts, &to_doc/2, separator: ",")
+    end
+  end
 end
