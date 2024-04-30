@@ -5,8 +5,6 @@ defmodule Ash.Resource.Validation.AttributesPresent do
   alias Ash.Resource.Validation.Present
   import Ash.Expr
 
-  def opt_schema, do: Present.opt_schema()
-
   @impl true
   def init(opts) do
     Present.init(opts)
@@ -27,10 +25,10 @@ defmodule Ash.Resource.Validation.AttributesPresent do
   end
 
   @impl true
-  def atomic(_changeset, opts, context) do
+  def atomic(changeset, opts, context) do
     values =
       Enum.map(opts[:attributes], fn attr ->
-        expr(^atomic_ref(attr))
+        expr(^Ash.Changeset.atomic_ref(changeset, attr))
       end)
 
     Present.atomic_for_values(opts, context, values)

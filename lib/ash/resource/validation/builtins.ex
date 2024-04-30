@@ -269,7 +269,7 @@ defmodule Ash.Resource.Validation.Builtins do
 
   ## Options
 
-  #{Spark.Options.docs(Ash.Resource.Validation.AttributesPresent.opt_schema())}
+  #{Spark.OptionsHelpers.docs(@present_opts)}
   """
   @spec attributes_present(attributes :: atom | list(atom), opts :: Keyword.t()) ::
           Validation.ref()
@@ -334,7 +334,7 @@ defmodule Ash.Resource.Validation.Builtins do
 
   ## Options
 
-  #{String.replace(Spark.Options.docs(Ash.Resource.Validation.AttributesPresent.opt_schema()), "present", "absent")}
+  #{String.replace(Spark.OptionsHelpers.docs(@present_opts), "present", "absent")}
   """
   @spec attributes_absent(attributes :: atom | list(atom), opts :: Keyword.t()) ::
           Validation.ref()
