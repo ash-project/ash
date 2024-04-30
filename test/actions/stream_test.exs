@@ -58,6 +58,44 @@ defmodule Ash.Test.Actions.StreamTest do
     assert count == 10
   end
 
+  test "records can be streamed using limit/offset strategy with no pagination, count % batch_size != 0" do
+    1..10
+    |> Stream.map(&%{title: "title#{&1}"})
+    |> Ash.bulk_create!(Post, :create)
+
+    count =
+      Post
+      |> Ash.Query.for_read(:read_with_no_pagination)
+      |> Ash.stream!(batch_size: 4, stream_with: :offset)
+      |> Enum.count()
+
+    assert count == 10
+  end
+
+  test "records can be streamed using limit/offset strategy with no pagination, count % batch_size == 0" do
+    1..10
+    |> Stream.map(&%{title: "title#{&1}"})
+    |> Ash.bulk_create!(Post, :create)
+
+    count =
+      Post
+      |> Ash.Query.for_read(:read_with_no_pagination)
+      |> Ash.stream!(batch_size: 5, stream_with: :offset)
+      |> Enum.count()
+
+    assert count == 10
+  end
+
+  test "terminates when using limit/offset with no pagination if there are no results" do
+    count =
+      Post
+      |> Ash.Query.for_read(:read_with_no_pagination)
+      |> Ash.stream!(batch_size: 5, stream_with: :offset)
+      |> Enum.count()
+
+    assert count == 0
+  end
+
   test "records can be streamed using full_read strategy" do
     1..10
     |> Stream.map(&%{title: "title#{&1}"})
