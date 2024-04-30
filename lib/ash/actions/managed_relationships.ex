@@ -590,49 +590,54 @@ defmodule Ash.Actions.ManagedRelationships do
       end
 
     inputs
-    |> Enum.with_index()
+    |> Stream.with_index()
     |> Enum.reduce_while(
       {:ok, [], [], []},
       fn {input, input_index}, {:ok, current_value, all_notifications, all_used} ->
-        case handle_input(
-               record,
-               current_value,
-               original_value,
-               relationship,
-               input,
-               pkeys,
-               changeset,
-               actor,
-               index,
-               opts
-             ) do
-          {:ok, new_value, notifications, used} ->
-            {:cont, {:ok, new_value, all_notifications ++ notifications, all_used ++ used}}
+        try do
+          case handle_input(
+                 record,
+                 current_value,
+                 original_value,
+                 relationship,
+                 input,
+                 pkeys,
+                 changeset,
+                 actor,
+                 index,
+                 opts
+               ) do
+            {:ok, new_value, notifications, used} ->
+              {:cont, {:ok, new_value, all_notifications ++ notifications, all_used ++ used}}
 
-          {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
-            {:halt, {:error, error}}
+            {:error, %Ash.Error.Changes.InvalidRelationship{} = error} ->
+              {:halt, {:error, error}}
 
-          {:error, error} ->
-            case Keyword.fetch(opts[:meta] || [], :inputs_was_list?) do
-              {:ok, false} ->
-                {:halt,
-                 {:error,
-                  Ash.Error.set_path(
-                    error,
-                    opts[:error_path] ||
-                      [
-                        opts[:meta][:id] || relationship.name
-                      ]
-                  )}}
+            {:error, error} ->
+              case Keyword.fetch(opts[:meta] || [], :inputs_was_list?) do
+                {:ok, false} ->
+                  {:halt,
+                   {:error,
+                    Ash.Error.set_path(
+                      error,
+                      opts[:error_path] ||
+                        [
+                          opts[:meta][:id] || relationship.name
+                        ]
+                    )}}
 
-              _ ->
-                {:halt,
-                 {:error,
-                  Ash.Error.set_path(
-                    error,
-                    opts[:error_path] || [opts[:meta][:id] || relationship.name, input_index]
-                  )}}
-            end
+                _ ->
+                  {:halt,
+                   {:error,
+                    Ash.Error.set_path(
+                      error,
+                      opts[:error_path] || [opts[:meta][:id] || relationship.name, input_index]
+                    )}}
+              end
+          end
+        catch
+          {DBConnection, ref, error} ->
+            throw({DBConnection, ref, set_error_path(error, relationship, input_index, opts)})
         end
       end
     )
@@ -663,11 +668,7 @@ defmodule Ash.Actions.ManagedRelationships do
             {:error, error}
 
           {:error, error} ->
-            {:error,
-             Ash.Error.set_path(
-               error,
-               opts[:error_path] || [opts[:meta][:id] || relationship.name]
-             )}
+            {:error, set_error_path(error, relationship, 0, opts)}
         end
 
       {:error, error} ->
@@ -769,6 +770,9 @@ defmodule Ash.Actions.ManagedRelationships do
            opts[:error_path] || [opts[:meta][:id] || relationship.name]
          )}
     end
+  catch
+    {DBConnection, ref, error} ->
+      throw({DBConnection, ref, set_error_path(error, relationship, 0, opts)})
   end
 
   defp handle_input(
@@ -811,6 +815,25 @@ defmodule Ash.Actions.ManagedRelationships do
       end
     else
       handle_update(record, current_value, relationship, match, input, changeset, actor, opts)
+    end
+  end
+
+  defp set_error_path(error, relationship, input_index, opts) do
+    case Keyword.fetch(opts[:meta] || [], :inputs_was_list?) do
+      {:ok, false} ->
+        Ash.Error.set_path(
+          error,
+          opts[:error_path] ||
+            [
+              opts[:meta][:id] || relationship.name
+            ]
+        )
+
+      _ ->
+        Ash.Error.set_path(
+          error,
+          opts[:error_path] || [opts[:meta][:id] || relationship.name, input_index]
+        )
     end
   end
 
