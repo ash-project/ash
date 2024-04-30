@@ -102,6 +102,18 @@ defmodule Ash.Test.Actions.BulkCreateTest do
         change set_attribute(:title, arg(:a_title))
       end
 
+      create :create_with_before_transaction do
+        change before_transaction(fn changeset, _context ->
+                 title = Ash.Changeset.get_attribute(changeset, :title)
+
+                 Ash.Changeset.force_change_attribute(
+                   changeset,
+                   :title,
+                   "before_transaction_" <> title
+                 )
+               end)
+      end
+
       create :create_with_after_action do
         change after_action(fn _changeset, result, _context ->
                  {:ok, %{result | title: result.title <> "_stuff"}}
@@ -409,6 +421,23 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                upsert?: true,
                upsert_identity: :unique_title,
                upsert_fields: {:replace_all_except, [:title, :title3]},
+               sorted?: true,
+               authorize?: false
+             )
+  end
+
+  test "runs before transaction hooks" do
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "before_transaction_title1"},
+               %{title: "before_transaction_title2"}
+             ]
+           } =
+             Ash.bulk_create!(
+               [%{title: "title1"}, %{title: "title2"}],
+               Post,
+               :create_with_before_transaction,
+               return_records?: true,
                sorted?: true,
                authorize?: false
              )

@@ -107,6 +107,20 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
         change set_attribute(:title2, arg(:a_title))
       end
 
+      update :update_with_before_transaction do
+        require_atomic? false
+
+        change before_transaction(fn changeset, _context ->
+                 title = Ash.Changeset.get_attribute(changeset, :title)
+
+                 Ash.Changeset.force_change_attribute(
+                   changeset,
+                   :title,
+                   "before_transaction_" <> title
+                 )
+               end)
+      end
+
       update :update_with_after_action do
         require_atomic? false
 
@@ -362,6 +376,33 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                return_errors?: true,
                authorize?: false
              )
+  end
+
+  test "runs before transaction hooks" do
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "before_transaction_title1", title2: "updated value"},
+               %{title: "before_transaction_title2", title2: "updated value"}
+             ]
+           } =
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+               return_stream?: true,
+               return_records?: true,
+               authorize?: false
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_update!(:update_with_before_transaction, %{title2: "updated value"},
+               resource: Post,
+               strategy: :stream,
+               return_records?: true,
+               return_errors?: true,
+               authorize?: false
+             )
+             |> Map.update!(:records, fn records ->
+               Enum.sort_by(records, & &1.title)
+             end)
   end
 
   test "runs after action hooks" do
