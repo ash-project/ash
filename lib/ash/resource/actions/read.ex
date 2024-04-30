@@ -121,7 +121,7 @@ defmodule Ash.Resource.Actions.Read do
     required?: [
       type: :boolean,
       doc:
-        "Whether or not pagination can be disabled (by passing `page: false` to `Ash.Api.read!/2`). Only relevant if some pagination configuration is supplied.",
+        "Whether or not pagination can be disabled (by passing `page: false` to `Ash.Api.read!/2`, or by having `required?: false, default_limit: nil` set). Only relevant if some pagination configuration is supplied.",
       default: true
     ]
   ]
