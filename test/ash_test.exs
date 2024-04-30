@@ -1,5 +1,6 @@
 defmodule Ash.Test.AshTest do
   @moduledoc false
+
   use ExUnit.Case, async: true
 
   defmodule Domain do
@@ -52,102 +53,324 @@ defmodule Ash.Test.AshTest do
   end
 
   describe "create/1" do
-    test "with a {resource, args} as first argument" do
-      assert {:ok, %User{name: "John"}} = Ash.create({User, name: "John"})
-      assert {:ok, %User{name: "John"}} = Ash.create({User, %{name: "John"}})
+    test "with a changeset as first argument" do
+      assert {:ok, %User{name: nil}} =
+               User
+               |> Ash.Changeset.new()
+               |> Ash.create()
+    end
+
+    test "with a resource as first argument" do
+      assert {:ok, %User{name: nil}} = Ash.create(User)
     end
   end
 
   describe "create/2" do
-    test "with a {record, args} as first argument and explicit action" do
-      assert {:ok, %User{name: "John"}} =
-               Ash.create({User, name: "John"}, action: :create)
+    test "with a changeset as first argument, with params as second argument" do
+      assert {:ok, %User{name: "Alice"}} =
+               User
+               |> Ash.Changeset.new()
+               |> Ash.create(%{name: "Alice"})
 
-      assert {:ok, %User{name: "John"}} =
-               Ash.create({User, %{name: "John"}}, action: :create)
+      assert_raise ArgumentError, fn ->
+        User
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.for_create(:create)
+        |> Ash.create(%{name: "Alice"})
+      end
+    end
 
-      assert {:ok, %User{name: "John", state: :awake}} =
-               Ash.create({User, name: "John"}, action: :create_awake)
+    test "with a changeset as first argument, with opts as second argument" do
+      assert {:ok, %User{name: nil}} =
+               User
+               |> Ash.Changeset.new()
+               |> Ash.create(action: :create)
+    end
 
-      assert {:ok, %User{name: "John", state: :awake}} =
-               Ash.create({User, %{name: "John"}}, action: :create_awake)
+    test "with a resource as first argument, with params as second argument" do
+      assert {:ok, %User{name: "Alice"}} = Ash.create(User, %{name: "Alice"})
+    end
+
+    test "with a resource as first argument, with opts as second argument" do
+      assert {:ok, %User{name: nil}} = Ash.create(User, action: :create)
+    end
+  end
+
+  describe "create/3" do
+    test "with a changeset as first argument, then params and opts" do
+      assert {:ok, %User{name: "Alice"}} =
+               User
+               |> Ash.Changeset.new()
+               |> Ash.create(%{name: "Alice"})
+
+      assert {:ok, %User{name: "Alice", state: :awake}} =
+               User
+               |> Ash.Changeset.new()
+               |> Ash.create(%{name: "Alice"}, action: :create_awake)
+
+      assert_raise ArgumentError, fn ->
+        User
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.for_create(:create)
+        |> Ash.create(%{name: "Alice"})
+      end
+    end
+
+    test "with a changeset as first argument, with params and opts" do
+      assert {:ok, %User{name: "Alice"}} =
+               User
+               |> Ash.Changeset.new()
+               |> Ash.create(%{name: "Alice"}, action: :create)
+    end
+
+    test "with a record as first argument, then params and opts" do
+      assert {:ok, %User{name: "Alice"}} =
+               Ash.create(User, %{name: "Alice"}, action: :create)
+
+      assert {:ok, %User{name: "Alice", state: :awake}} =
+               Ash.create(User, %{name: "Alice"}, action: :create_awake)
     end
   end
 
   describe "create!/1" do
-    test "with a {resource, args} as first argument" do
-      assert %User{name: "John"} = Ash.create!({User, name: "John"})
-      assert %User{name: "John"} = Ash.create!({User, %{name: "John"}})
+    test "with a changeset as first argument" do
+      assert %User{name: nil} =
+               User
+               |> Ash.Changeset.new()
+               |> Ash.create!()
+    end
+
+    test "with a resource as first argument" do
+      assert %User{name: nil} = Ash.create!(User)
     end
   end
 
   describe "create!/2" do
-    test "with a {record, args} as first argument and explicit action" do
-      assert %User{name: "John"} =
-               Ash.create!({User, name: "John"}, action: :create)
+    test "with a changeset as first argument, with params as second argument" do
+      assert %User{name: "Alice"} =
+               User
+               |> Ash.Changeset.new()
+               |> Ash.create!(%{name: "Alice"})
 
-      assert %User{name: "John"} =
-               Ash.create!({User, %{name: "John"}}, action: :create)
+      assert_raise ArgumentError, fn ->
+        User
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.for_create(:create)
+        |> Ash.create!(%{name: "Alice"})
+      end
+    end
 
-      assert %User{name: "John", state: :awake} =
-               Ash.create!({User, name: "John"}, action: :create_awake)
+    test "with a changeset as first argument, with opts as second argument" do
+      assert %User{name: nil} =
+               User
+               |> Ash.Changeset.new()
+               |> Ash.create!(action: :create)
+    end
 
-      assert %User{name: "John", state: :awake} =
-               Ash.create!({User, %{name: "John"}}, action: :create_awake)
+    test "with a resource as first argument, with params as second argument" do
+      assert %User{name: "Alice"} = Ash.create!(User, %{name: "Alice"})
+    end
+
+    test "with a resource as first argument, with opts as second argument" do
+      assert %User{name: nil} = Ash.create!(User, action: :create)
+    end
+  end
+
+  describe "create!/3" do
+    test "with a changeset as first argument, then params and opts" do
+      assert %User{name: "Alice"} =
+               User
+               |> Ash.Changeset.new()
+               |> Ash.create!(%{name: "Alice"})
+
+      assert %User{name: "Alice", state: :awake} =
+               User
+               |> Ash.Changeset.new()
+               |> Ash.create!(%{name: "Alice"}, action: :create_awake)
+
+      assert_raise ArgumentError, fn ->
+        User
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.for_create(:create)
+        |> Ash.create!(%{name: "Alice"})
+      end
+    end
+
+    test "with a record as first argument, then params and opts" do
+      assert %User{name: "Alice"} =
+               Ash.create!(User, %{name: "Alice"}, action: :create)
+
+      assert %User{name: "Alice", state: :awake} =
+               Ash.create!(User, %{name: "Alice"}, action: :create_awake)
     end
   end
 
   describe "update/1" do
-    test "with a {record, args} as first argument" do
-      user = Ash.create!({User, name: "John"})
+    test "with a changeset as first argument" do
+      user = Ash.create!(User, %{name: "Alice"})
 
-      assert {:ok, %User{name: "Jane"}} = Ash.update({user, name: "Jane"})
-      assert {:ok, %User{name: "Jane"}} = Ash.update({user, %{name: "Jane"}})
+      assert {:ok, %User{name: "Alice"}} =
+               user
+               |> Ash.Changeset.new()
+               |> Ash.update()
+    end
+
+    test "with a record as first argument" do
+      user = Ash.create!(User, %{name: "Alice"})
+
+      assert {:ok, %User{name: "Alice"}} = Ash.update(user)
     end
   end
 
   describe "update/2" do
-    test "with a {record, args} as first argument and explicit action" do
-      user = Ash.create!({User, name: "John"})
+    test "with a changeset as first argument, with params as second argument" do
+      user = Ash.create!(User, %{name: "Alice"})
 
-      assert {:ok, %User{name: "Jane"}} =
-               Ash.update({user, name: "Jane"}, action: :update)
+      assert {:ok, %User{name: "Bob"}} =
+               user
+               |> Ash.Changeset.new()
+               |> Ash.update(%{name: "Bob"})
 
-      assert {:ok, %User{name: "Jane"}} =
-               Ash.update({user, %{name: "Jane"}}, action: :update)
+      assert_raise ArgumentError, fn ->
+        user
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.for_update(:update)
+        |> Ash.update(%{name: "Bob"})
+      end
+    end
 
-      assert {:ok, %User{name: "John", state: :awake}} =
-               Ash.update({user, state: :awake}, action: :update_state)
+    test "with a changeset as first argument, with opts as second argument" do
+      user = Ash.create!(User, %{name: "Alice"})
 
-      assert {:ok, %User{name: "John", state: :awake}} =
-               Ash.update({user, %{state: :awake}}, action: :update_state)
+      assert %User{name: "Alice"} =
+               user
+               |> Ash.Changeset.new()
+               |> Ash.update!(action: :update)
+    end
+
+    test "with a record as first argument, with params as second argument" do
+      user = Ash.create!(User, %{name: "Alice"})
+
+      assert {:ok, %User{name: "Bob"}} = Ash.update(user, %{name: "Bob"})
+    end
+
+    test "with a record as first argument, with opts as second argument" do
+      user = Ash.create!(User, %{name: "Alice"})
+
+      assert {:ok, %User{name: "Alice"}} = Ash.update(user, action: :update)
+    end
+  end
+
+  describe "update/3" do
+    test "with a changeset as first argument, then params and opts" do
+      user = Ash.create!(User, %{name: "Alice"})
+
+      assert {:ok, %User{name: "Bob"}} =
+               user
+               |> Ash.Changeset.new()
+               |> Ash.update(%{name: "Bob"}, action: :update)
+
+      assert {:ok, %User{name: "Alice", state: :awake}} =
+               user
+               |> Ash.Changeset.new()
+               |> Ash.update(%{state: :awake}, action: :update_state)
+
+      assert_raise ArgumentError, fn ->
+        user
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.for_update(:update)
+        |> Ash.update(%{name: "Bob"})
+      end
+    end
+
+    test "with a record as first argument, then params and opts" do
+      user = Ash.create!(User, %{name: "Alice"})
+
+      assert {:ok, %User{name: "Bob"}} =
+               Ash.update(user, %{name: "Bob"}, action: :update)
+
+      assert {:ok, %User{name: "Alice", state: :awake}} =
+               Ash.update(user, %{state: :awake}, action: :update_state)
     end
   end
 
   describe "update!/1" do
-    test "with a {record, args} as first argument" do
-      user = Ash.create!({User, name: "John"})
+    test "with a changeset as first argument" do
+      user = Ash.create!(User, %{name: "Alice"})
 
-      assert %User{name: "Jane"} = Ash.update!({user, name: "Jane"})
-      assert %User{name: "Jane"} = Ash.update!({user, %{name: "Jane"}})
+      assert %User{name: "Alice"} =
+               user
+               |> Ash.Changeset.new()
+               |> Ash.update!()
+    end
+
+    test "with a record as first argument" do
+      user = Ash.create!(User, %{name: "Alice"})
+
+      assert %User{name: "Alice"} = Ash.update!(user)
     end
   end
 
   describe "update!/2" do
-    test "with a {record, args} as first argument and explicit action" do
-      user = Ash.create!({User, name: "John"})
+    test "with a changeset as first argument, with params as second argument" do
+      user = Ash.create!(User, %{name: "Alice"})
 
-      assert %User{name: "Jane"} =
-               Ash.update!({user, name: "Jane"}, action: :update)
+      assert %User{name: "Bob"} =
+               user
+               |> Ash.Changeset.new()
+               |> Ash.update!(%{name: "Bob"})
 
-      assert %User{name: "Jane"} =
-               Ash.update!({user, %{name: "Jane"}}, action: :update)
+      assert_raise ArgumentError, fn ->
+        user
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.for_update(:update)
+        |> Ash.update!(%{name: "Bob"})
+      end
+    end
 
-      assert %User{name: "John", state: :awake} =
-               Ash.update!({user, state: :awake}, action: :update_state)
+    test "with a record as first argument, with params as second argument" do
+      user = Ash.create!(User, %{name: "Alice"})
 
-      assert %User{name: "John", state: :awake} =
-               Ash.update!({user, %{state: :awake}}, action: :update_state)
+      assert %User{name: "Bob"} = Ash.update!(user, %{name: "Bob"})
+    end
+
+    test "with a record as first argument, with opts as second argument" do
+      user = Ash.create!(User, %{name: "Alice"})
+
+      assert %User{name: "Alice"} = Ash.update!(user, action: :update)
+    end
+  end
+
+  describe "update!/3" do
+    test "with a changeset as first argument, then params and opts" do
+      user = Ash.create!(User, %{name: "Alice"})
+
+      assert %User{name: "Bob"} =
+               user
+               |> Ash.Changeset.new()
+               |> Ash.update!(%{name: "Bob"}, action: :update)
+
+      assert %User{name: "Alice", state: :awake} =
+               user
+               |> Ash.Changeset.new()
+               |> Ash.update!(%{state: :awake}, action: :update_state)
+
+      assert_raise ArgumentError, fn ->
+        user
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.for_update(:update)
+        |> Ash.update!(%{name: "Bob"})
+      end
+    end
+
+    test "with a record as first argument and explicit action" do
+      user = Ash.create!(User, %{name: "Alice"})
+
+      assert %User{name: "Bob"} =
+               Ash.update!(user, %{name: "Bob"}, action: :update)
+
+      assert %User{name: "Alice", state: :awake} =
+               Ash.update!(user, %{state: :awake}, action: :update_state)
     end
   end
 end

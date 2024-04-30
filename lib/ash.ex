@@ -1981,33 +1981,16 @@ defmodule Ash do
   Create a record or raises an error. See `create/2` for more information.
   """
   @doc spark_opts: [{1, @create_opts_schema}]
-  @spec create!(Ash.Changeset.t() | resource_with_args(), Keyword.t()) ::
+  @spec create!(
+          changset_or_resource :: Ash.Changeset.t() | Ash.Changeset.t(),
+          params_or_opts :: map() | Keyword.t(),
+          opts :: Keyword.t()
+        ) ::
           Ash.Resource.record()
           | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | no_return
-  def create!(changeset_or_resource_with_args, opts \\ [])
-
-  def create!({resource, args}, opts) do
-    Ash.Helpers.expect_resource!(resource)
-    Ash.Helpers.expect_options!(opts)
-
-    changeset_opts = Keyword.take(opts, Keyword.keys(Ash.Changeset.for_create_opts()))
-    create_opts = Keyword.take(opts, Keyword.keys(@create_opts_schema))
-
-    action = opts[:action] || Ash.Resource.Info.primary_action!(resource, :create).name
-    args = Enum.into(args, %{})
-
-    resource
-    |> Ash.Changeset.for_create(action, args, changeset_opts)
-    |> create!(create_opts)
-  end
-
-  def create!(changeset, opts) do
-    Ash.Helpers.expect_changeset!(changeset)
-    Ash.Helpers.expect_options!(opts)
-
-    changeset
-    |> create(opts)
+  def create!(changeset_or_resource, params \\ %{}, opts \\ []) do
+    create(changeset_or_resource, params, opts)
     |> Ash.Helpers.unwrap_or_raise!()
   end
 
@@ -2017,31 +2000,41 @@ defmodule Ash do
   #{Spark.Options.docs(@create_opts_schema)}
   """
   @doc spark_opts: [{1, @create_opts_schema}]
-  @spec create(Ash.Changeset.t() | resource_with_args(), Keyword.t()) ::
+  @spec create(
+          changset_or_resource :: Ash.Changeset.t() | Ash.Changeset.t(),
+          params_or_opts :: map() | Keyword.t(),
+          opts :: Keyword.t()
+        ) ::
           {:ok, Ash.Resource.record()}
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
-  def create(changeset_or_resource_with_argument, opts \\ [])
+  def create(changeset_or_resource, params_or_opts \\ %{}, opts \\ [])
 
-  def create({resource, args}, opts) do
-    Ash.Helpers.expect_resource!(resource)
-    Ash.Helpers.expect_options!(opts)
+  def create(%Ash.Changeset{} = changeset, params_or_opts, opts) do
+    {params, opts} = Ash.Helpers.get_params_and_opts(params_or_opts, opts)
 
-    changeset_opts = Keyword.take(opts, Keyword.keys(Ash.Changeset.for_create_opts()))
-    create_opts = Keyword.take(opts, Keyword.keys(@create_opts_schema))
-
-    action = opts[:action] || Ash.Resource.Info.primary_action!(resource, :create).name
-    args = Enum.into(args, %{})
-
-    resource
-    |> Ash.Changeset.for_create(action, args, changeset_opts)
-    |> create(create_opts)
-  end
-
-  def create(changeset, opts) do
-    Ash.Helpers.expect_changeset!(changeset)
     Ash.Helpers.expect_options!(opts)
     domain = Ash.Helpers.domain!(changeset, opts)
+
+    changeset =
+      cond do
+        changeset.__validated_for_action__ && params != %{} ->
+          raise ArgumentError,
+            message: """
+            params should not be provided for a changeset
+            that has already been validated for an action
+            """
+
+        is_nil(changeset.__validated_for_action__) ->
+          action =
+            opts[:action] ||
+              Ash.Resource.Info.primary_action!(changeset.resource, :create).name
+
+          Ash.Changeset.for_create(changeset, action, params, opts)
+
+        true ->
+          changeset
+      end
 
     with {:ok, opts} <- Spark.Options.validate(opts, @create_opts_schema),
          {:ok, resource} <- Ash.Domain.Info.resource(domain, changeset.resource),
@@ -2050,6 +2043,22 @@ defmodule Ash do
     else
       {:error, error} -> {:error, Ash.Error.to_error_class(error)}
     end
+  end
+
+  def create(resource, params_or_opts, opts) when is_atom(resource) do
+    {params, opts} = Ash.Helpers.get_params_and_opts(params_or_opts, opts)
+
+    Ash.Helpers.expect_resource!(resource)
+    Ash.Helpers.expect_options!(opts)
+
+    changeset_opts = Keyword.take(opts, Keyword.keys(Ash.Changeset.for_create_opts()))
+    create_opts = Keyword.take(opts, Keyword.keys(@create_opts_schema))
+
+    action = opts[:action] || Ash.Resource.Info.primary_action!(resource, :create).name
+
+    resource
+    |> Ash.Changeset.for_create(action, params, changeset_opts)
+    |> create(create_opts)
   end
 
   @doc """
@@ -2377,35 +2386,17 @@ defmodule Ash do
   @doc """
   Update a record. See `update/2` for more information.
   """
-  @spec update!(Ash.Changeset.t() | record_with_args(), opts :: Keyword.t()) ::
+  @doc spark_opts: [{1, @update_opts_schema}]
+  @spec update!(
+          changeset_or_record :: Ash.Changeset.t() | Ash.Resource.record(),
+          params_or_opts :: map() | Keyword.t(),
+          opts :: Keyword.t()
+        ) ::
           Ash.Resource.record()
           | {Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | no_return
-  def update!(changeset_or_record_with_args, opts \\ [])
-
-  def update!({record, args}, opts) do
-    Ash.Helpers.expect_record!(record)
-    Ash.Helpers.expect_options!(opts)
-
-    changeset_opts = Keyword.take(opts, Keyword.keys(Ash.Changeset.for_update_opts()))
-    update_opts = Keyword.take(opts, Keyword.keys(@update_opts_schema))
-
-    action = opts[:action] || Ash.Resource.Info.primary_action!(record, :create).name
-    args = Enum.into(args, %{})
-
-    record
-    |> Ash.Changeset.for_update(action, args, changeset_opts)
-    |> update!(update_opts)
-  end
-
-  @doc spark_opts: [{1, @update_opts_schema}]
-  def update!(changeset, opts) do
-    Ash.Helpers.expect_changeset!(changeset)
-    Ash.Helpers.expect_options!(opts)
-    opts = Spark.Options.validate!(opts, @update_opts_schema)
-
-    changeset
-    |> update(opts)
+  def update!(changeset_or_record, params_or_opts \\ %{}, opts \\ []) do
+    update(changeset_or_record, params_or_opts, opts)
     |> Ash.Helpers.unwrap_or_raise!()
   end
 
@@ -2414,30 +2405,40 @@ defmodule Ash do
 
   #{Spark.Options.docs(@update_opts_schema)}
   """
-  @spec update(Ash.Changeset.t() | record_with_args(), opts :: Keyword.t()) ::
+  @spec update(
+          changeset_or_record :: Ash.Changeset.t() | Ash.Resource.record(),
+          params_or_opts :: map() | Keyword.t(),
+          opts :: Keyword.t()
+        ) ::
           {:ok, Ash.Resource.record()}
           | {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
           | {:error, term}
-  def update(changeset_or_record_with_args, opts \\ [])
-
-  def update({record, args}, opts) do
-    Ash.Helpers.expect_record!(record)
-    Ash.Helpers.expect_options!(opts)
-
-    changeset_opts = Keyword.take(opts, Keyword.keys(Ash.Changeset.for_update_opts()))
-    update_opts = Keyword.take(opts, Keyword.keys(@update_opts_schema))
-
-    action = opts[:action] || Ash.Resource.Info.primary_action!(record, :update).name
-    args = Enum.into(args, %{})
-
-    record
-    |> Ash.Changeset.for_update(action, args, changeset_opts)
-    |> update(update_opts)
-  end
+  def update(changeset_or_record, params_or_opts \\ %{}, opts \\ [])
 
   @doc spark_opts: [{1, @update_opts_schema}]
-  def update(changeset, opts) do
-    Ash.Helpers.expect_changeset!(changeset)
+  def update(%Ash.Changeset{} = changeset, params_or_opts, opts) do
+    {params, opts} = Ash.Helpers.get_params_and_opts(params_or_opts, opts)
+
+    changeset =
+      cond do
+        changeset.__validated_for_action__ && params != %{} ->
+          raise ArgumentError,
+            message: """
+            params should not be provided for a changeset
+            that has already been validated for an action
+            """
+
+        is_nil(changeset.__validated_for_action__) ->
+          action =
+            opts[:action] ||
+              Ash.Resource.Info.primary_action!(changeset.resource, :update).name
+
+          Ash.Changeset.for_update(changeset, action, params, opts)
+
+        true ->
+          changeset
+      end
+
     Ash.Helpers.expect_options!(opts)
     domain = Ash.Helpers.domain!(changeset, opts)
 
@@ -2453,6 +2454,23 @@ defmodule Ash do
       {:error, error} ->
         {:error, Ash.Error.to_error_class(error)}
     end
+  end
+
+  def update(record, params_or_opts, opts) do
+    {params, opts} = Ash.Helpers.get_params_and_opts(params_or_opts, opts)
+
+    Ash.Helpers.expect_record!(record)
+    Ash.Helpers.expect_options!(opts)
+    Ash.Helpers.expect_map_or_nil!(opts[:input])
+
+    changeset_opts = Keyword.take(opts, Keyword.keys(Ash.Changeset.for_update_opts()))
+    update_opts = Keyword.take(opts, Keyword.keys(@update_opts_schema))
+
+    action = opts[:action] || Ash.Resource.Info.primary_action!(record, :update).name
+
+    record
+    |> Ash.Changeset.for_update(action, params, changeset_opts)
+    |> update(update_opts)
   end
 
   @doc """

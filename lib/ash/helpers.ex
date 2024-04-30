@@ -178,6 +178,24 @@ defmodule Ash.Helpers do
     end
   end
 
+  defmacro expect_map_or_nil!(map_or_nil) do
+    formatted = format_caller(__CALLER__)
+
+    quote generated: true, bind_quoted: [map_or_nil: map_or_nil, formatted: formatted] do
+      case map_or_nil do
+        nil ->
+          :ok
+
+        map when is_map(map) ->
+          :ok
+
+        other ->
+          raise ArgumentError,
+                "Expected a keyword list in #{formatted}, got: #{inspect(other)}"
+      end
+    end
+  end
+
   def resource_from_query_or_stream(domain, query_or_stream, opts) do
     resource =
       opts[:resource] ||
@@ -248,6 +266,17 @@ defmodule Ash.Helpers do
               {:ok, action}
           end
         end
+    end
+  end
+
+  @doc """
+  Returns {params, opts} from ambigous inputs.
+  """
+  def get_params_and_opts(params_or_opts, opts) do
+    if opts == [] && Keyword.keyword?(params_or_opts) do
+      {%{}, params_or_opts}
+    else
+      {params_or_opts, opts}
     end
   end
 
