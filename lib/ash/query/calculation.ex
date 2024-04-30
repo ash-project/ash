@@ -96,24 +96,10 @@ defmodule Ash.Query.Calculation do
     import Inspect.Algebra
 
     def inspect(%{module: module, opts: calculation_opts, context: context}, _opts) do
-      context =
-        Map.drop(context, [
-          :actor,
-          :authorize?,
-          :all_referenced_calcs_support_expressions?,
-          :filter_requests,
-          :initial_limit,
-          :initial_offset,
-          :context,
-          :tenant,
-          :tracer,
-          :ash
-        ])
-
-      if context == %{} do
+      if context.arguments == %{} do
         module.describe(calculation_opts)
       else
-        concat([module.describe(calculation_opts), " - ", inspect(context)])
+        concat([module.describe(calculation_opts), " - ", inspect(context.arguments)])
       end
     end
   end

@@ -40,10 +40,6 @@ defmodule Ash.Query.Function do
   end
 
   def new(mod, args) do
-    if Enum.at(args, 1) == Ash.Error.Changes.Required do
-      raise "WHAT!"
-    end
-
     args = List.wrap(args)
 
     case mod.args() do
@@ -207,7 +203,8 @@ defmodule Ash.Query.Function do
         name: unquote(opts[:name]),
         embedded?: false,
         __function__?: true,
-        __predicate__?: unquote(opts[:predicate?] || false)
+        __predicate__?: unquote(opts[:predicate?] || false),
+        extra: %{}
       ]
 
       @impl Ash.Query.Function
