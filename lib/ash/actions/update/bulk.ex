@@ -1318,7 +1318,7 @@ defmodule Ash.Actions.Update.Bulk do
             if new_error_count != starting_error_count do
               Ash.DataLayer.rollback(
                 resource,
-                {:error, Enum.take(new_errors, new_error_count - starting_error_count)}
+                Enum.take(new_errors, new_error_count - starting_error_count)
               )
             else
               result
