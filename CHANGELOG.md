@@ -5,6 +5,25 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.39](https://github.com/ash-project/ash/compare/v3.0.0-rc.38...v3.0.0-rc.39) (2024-04-30)
+
+
+
+
+### Bug Fixes:
+
+* remove debugging code
+
+* don't call `Keyword` functions on maps in unions
+
+### Improvements:
+
+* make `Ash.Filter.map` more consistent
+
+* better inspect behavior for calculations
+
+* better inspect behavior for fragments
+
 ## [v3.0.0-rc.38](https://github.com/ash-project/ash/compare/v3.0.0-rc.37...v3.0.0-rc.38) (2024-04-29)
 
 
