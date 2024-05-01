@@ -33,6 +33,9 @@ defmodule Ash.Actions.Read.Relationships do
 
       {relationship, _related_query, {:error, error}}, _ ->
         {:halt, {:error, Ash.Error.set_path(error, relationship.name)}}
+
+      {:__exception__, error}, _ ->
+        {:error, Ash.Error.to_ash_error(error)}
     end)
   end
 
@@ -145,7 +148,7 @@ defmodule Ash.Actions.Read.Relationships do
       |> Ash.Query.sort(relationship.sort)
       |> Ash.Query.do_filter(relationship.filter)
       |> Ash.Query.set_context(relationship.context)
-      |> hydrate_refs(relationship.source)
+      |> hydrate_refs(query.context[:private][:actor], relationship.source)
       |> with_lateral_join_query(query, relationship, records)
 
     if !related_query.context[:data_layer][:lateral_join_source] &&
@@ -181,7 +184,7 @@ defmodule Ash.Actions.Read.Relationships do
               relationship.destination_attribute_on_join_resource
             ])
             |> Map.put(:domain, join_relationship.domain || related_query.domain)
-            |> hydrate_refs(relationship.source)
+            |> hydrate_refs(source_query.context[:private][:actor], relationship.source)
 
           if source_query.context[:private][:authorize?] do
             case Ash.can(
@@ -253,12 +256,15 @@ defmodule Ash.Actions.Read.Relationships do
     end
   end
 
-  defp hydrate_refs(query, parent) do
-    case Ash.Filter.hydrate_refs(query.filter, %{
-           resource: query.resource,
-           parent_stack: [parent],
-           public?: false
-         }) do
+  defp hydrate_refs(query, actor, parent) do
+    query.filter
+    |> Ash.Expr.fill_template(actor, %{}, query.context)
+    |> Ash.Filter.hydrate_refs(%{
+      resource: query.resource,
+      parent_stack: [parent],
+      public?: false
+    })
+    |> case do
       {:ok, hydrated} ->
         %{query | filter: hydrated}
 
