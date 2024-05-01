@@ -9,6 +9,7 @@ Ash is a declarative framework with deep extensibility. We provide a suite of ex
 It is not a web framework, like Phoenix or Rails. It is a framework for building your application layer, independent of how it is exposed or consumed. It is not an **alternative** to frameworks like Phoenix, rather a **complement** to them.
 
 > #### Model your domain, derive the rest {: .info}
+>
 > Ash derives significant portions of your application directly from your resources, with little to no effort required. This allows you to focus on what matters most: your business logic.
 > We leverage the best of the Elixir ecosystem under the hood, providing a single unified tool-chain for our users.
 
@@ -25,6 +26,7 @@ The fundamental idea behind Ash is that when the various components of your syst
 Ash has many use cases, with varying degrees of complexity. Ash helps you on day 1 of your project, removing boiler plate and allowing you to focus on the essential complexity of your application. It also helps you on year 5, lending consistency, code reuse, and maintainability.
 
 > #### Ash is a force multiplier {: .tip}
+>
 > Things that once took days or weeks can be done in hours, and to a degree of quality that would have been unreasonable before. Entire classes of bugs are eliminated. And the best part is, you can do all of this without sacrificing the flexibility, robustness and ecosystem that Elixir is known for.
 
 ## Watch the ElixirConf 2023 Talk

@@ -4,10 +4,11 @@
 ![Elixir CI](https://github.com/ash-project/ash/workflows/Ash%20CI/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Hex version badge](https://img.shields.io/hexpm/v/ash.svg)](https://hex.pm/packages/ash)
+[![Documentation](https://img.shields.io/badge/hexdocs-purple)]
 
 # Ash Framework Documentation
 
-Welcome! Here you will find everything you need to know to get started with and use Ash.
+Welcome! Here you will find everything you need to know to get started with and use Ash. This documentation is best viewed on [hexdocs](https://hexdocs.pm/ash).
 
 ## Dive In
 
