@@ -187,9 +187,6 @@ defmodule Ash.Actions.Sort do
           Ash.Type.embedded_type?(attribute.type) ->
             {sorts, ["Cannot sort on embedded types" | errors]}
 
-          match?({:array, _}, attribute.type) ->
-            {sorts, ["Cannot sort on array types" | errors]}
-
           !Ash.DataLayer.data_layer_can?(
             resource,
             {:sort, Ash.Type.storage_type(attribute.type, attribute.constraints)}
