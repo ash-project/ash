@@ -126,8 +126,12 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       end
 
       create :create_with_after_transaction do
-        change after_transaction(fn _changeset, {:ok, result}, _context ->
-                 {:ok, %{result | title: result.title <> "_stuff"}}
+        change after_transaction(fn
+                 _changeset, {:ok, result}, _context ->
+                   {:ok, %{result | title: result.title <> "_stuff"}}
+
+                 _changeset, {:error, error}, _context ->
+                   send(self(), {:error, error})
                end)
       end
 
@@ -455,7 +459,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
              )
   end
 
-  test "runs after transaction hooks" do
+  test "runs after transaction hooks on success" do
     assert %Ash.BulkResult{records: [%{title: "title1_stuff"}, %{title: "title2_stuff"}]} =
              Ash.bulk_create!(
                [%{title: "title1"}, %{title: "title2"}],
@@ -465,6 +469,20 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                sorted?: true,
                authorize?: false
              )
+  end
+
+  test "runs after transaction hooks on failure" do
+    assert %Ash.BulkResult{error_count: 2} =
+             Ash.bulk_create(
+               [%{title: 1}, %{title: 2}],
+               Post,
+               :create_with_after_transaction,
+               sorted?: true,
+               authorize?: false
+             )
+
+    assert_receive {:error, _error}
+    assert_receive {:error, _error}
   end
 
   describe "authorization" do

@@ -78,8 +78,14 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       destroy :destroy_with_after_transaction do
         require_atomic? false
 
-        change after_transaction(fn _changeset, {:ok, result}, _context ->
-                 {:ok, %{result | title: result.title <> "_stuff"}}
+        argument :a_title, :string
+
+        change after_transaction(fn
+                 _changeset, {:ok, result}, _context ->
+                   {:ok, %{result | title: result.title <> "_stuff"}}
+
+                 _changeset, {:error, error}, _context ->
+                   send(self(), {:error, error})
                end)
       end
 
@@ -275,7 +281,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     assert [] = Ash.read!(Post)
   end
 
-  test "runs after transaction hooks" do
+  test "runs after transaction hooks on success" do
     assert %Ash.BulkResult{
              records: [
                %{title: "title1_stuff"},
@@ -300,6 +306,27 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              end)
 
     assert [] = Ash.read!(Post)
+  end
+
+  test "runs after transaction hooks on failure" do
+    assert %Ash.BulkResult{
+             error_count: 1,
+             errors: [%Ash.Error.Invalid{}]
+           } =
+             Ash.bulk_create!([%{title: "title1"}], Post, :create,
+               return_stream?: true,
+               return_records?: true
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_destroy(:destroy_with_after_transaction, %{a_title: %{invalid: :value}},
+               resource: Post,
+               strategy: :stream,
+               return_errors?: true
+             )
+
+    assert_receive {:error, _error}
   end
 
   test "soft destroys" do
