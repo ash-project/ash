@@ -123,7 +123,9 @@ defmodule Ash.Resource.Attribute do
     ],
     default: [
       type: {:or, [{:mfa_or_fun, 0}, :literal]},
-      doc: "A value to be set on all creates, unless a value is being provided already."
+      doc: """
+      A value to be set on all creates, unless a value is being provided already.  Note: The default value is casted according to the type's Ash.Type.* module, before it is saved.  For `:string`, for example, if `constraints: [allow_empty?: _]` is false, the value `\"\"` will be cast to `nil`.  See the `:constraints` option, the `:allow_nil?` option, and the relevant `Ash.Type.*` documentation.
+      """
     ],
     update_default: [
       type: {:or, [{:mfa_or_fun, 0}, :literal]},
