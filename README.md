@@ -6,7 +6,7 @@
 [![Hex version badge](https://img.shields.io/hexpm/v/ash.svg)](https://hex.pm/packages/ash)
 [![Hexdocs badge](https://img.shields.io/badge/docs-hexdocs-purple)](https://hexdocs.pm/ash)
 
-# Ash Framework Documentation
+# Ash Framework
 
 Welcome! Here you will find everything you need to know to get started with and use Ash. This documentation is best viewed on [hexdocs](https://hexdocs.pm/ash).
 
