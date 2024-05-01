@@ -1,6 +1,6 @@
 <!-- livebook:{"persist_outputs":true} -->
 
-# Cookbook: Optimistic Locking
+# Optimistic Locking
 
 ```elixir
 Mix.install([{:ash, "~> 3.0.0-rc.40"}])

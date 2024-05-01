@@ -43,7 +43,6 @@ defmodule Ash.MixProject do
       extras: [
         {"README.md", title: "Home"},
         "documentation/tutorials/get-started.md",
-        "documentation/cookbook/optimistic_locking.livemd",
         "documentation/topics/about_ash/what-is-ash.md",
         "documentation/topics/about_ash/design-principles.md",
         "documentation/topics/about_ash/contributing-to-ash.md",
@@ -80,7 +79,7 @@ defmodule Ash.MixProject do
         "documentation/topics/security/policies.md",
         "documentation/topics/reference/glossary.md",
         "documentation/topics/reference/expressions.md",
-        "documentation/how-to/use-resources-without-data-layers.md",
+        "documentation/how-to/optimistic-locking.livemd",
         "documentation/dsls/DSL:-Ash.Resource.md",
         "documentation/dsls/DSL:-Ash.Domain.md",
         "documentation/dsls/DSL:-Ash.Notifier.PubSub.md",
@@ -96,70 +95,20 @@ defmodule Ash.MixProject do
           "documentation/home.md",
           "documentation/tutorials/get-started.md"
         ],
-        Tutorials: [],
-        Cookbook: [
-          "documentation/cookbook/optimistic_locking.livemd"
-        ],
+        Tutorials: ~r"documentation/tutorials",
         "About Ash": [
-          "documentation/topics/about_ash/what-is-ash.md",
-          "documentation/topics/about_ash/design-principles.md",
-          "documentation/topics/about_ash/contributing-to-ash.md",
+          ~r"documentation/topics/about_ash",
           "CHANGELOG.md"
         ],
-        Resources: [
-          "documentation/topics/resources/domains.md",
-          "documentation/topics/resources/attributes.md",
-          "documentation/topics/resources/calculations.md",
-          "documentation/topics/resources/aggregates.md",
-          "documentation/topics/resources/embedded-resources.md",
-          "documentation/topics/resources/code-interfaces.md",
-          "documentation/topics/resources/identities.md",
-          "documentation/topics/resources/relationships.md",
-          "documentation/topics/resources/validations.md",
-          "documentation/topics/resources/changes.md",
-          "documentation/topics/resources/notifiers.md"
-        ],
-        Actions: [
-          "documentation/topics/actions/actions.md",
-          "documentation/topics/actions/read-actions.md",
-          "documentation/topics/actions/create-actions.md",
-          "documentation/topics/actions/update-actions.md",
-          "documentation/topics/actions/destroy-actions.md",
-          "documentation/topics/actions/generic-actions.md",
-          "documentation/topics/actions/manual-actions.md"
-        ],
-        Security: [
-          "documentation/topics/security/actors-and-authorization.md",
-          "documentation/topics/security/policies.md",
-          "documentation/topics/security/sensitive-data.md"
-        ],
-        Development: [
-          "documentation/topics/development/project-structure.md",
-          "documentation/topics/development/error-handling.md",
-          "documentation/topics/development/testing.md",
-          "documentation/topics/development/development-utilities.md",
-          "documentation/topics/development/upgrading-to-3.0.md"
-        ],
-        Advanced: [
-          "documentation/topics/advanced/reactor.md",
-          "documentation/topics/advanced/monitoring.md",
-          "documentation/topics/advanced/timeouts.md",
-          "documentation/topics/advanced/multitenancy.md",
-          "documentation/topics/advanced/writing-extensions.md"
-        ],
-        "How To": [
-          "documentation/how-to/use-resources-without-data-layers.md"
-        ],
+        Resources: ~r"documentation/topics/resources",
+        Actions: ~r"documentation/topics/actions",
+        Security: ~r"documentation/topics/security",
+        Development: ~r"documentation/topics/development",
+        Advanced: ~r"documentation/topics/advanced",
+        "How To": ~r"documentation/how-to",
         Reference: [
-          "documentation/topics/reference/expressions.md",
-          "documentation/topics/reference/glossary.md",
-          "documentation/dsls/DSL:-Ash.Resource.md",
-          "documentation/dsls/DSL:-Ash.Domain.md",
-          "documentation/dsls/DSL:-Ash.Reactor.md",
-          "documentation/dsls/DSL:-Ash.Notifier.PubSub.md",
-          "documentation/dsls/DSL:-Ash.Policy.Authorizer.md",
-          "documentation/dsls/DSL:-Ash.DataLayer.Ets.md",
-          "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md"
+          ~r"documentation/topics/reference",
+          ~r"documentation/dsls"
         ]
       ],
       skip_undefined_reference_warnings_on: [

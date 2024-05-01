@@ -95,7 +95,7 @@ Welcome! Here you will find everything you need to know to get started with and 
 
 ## How To
 
-- [Use Resources without Data Layers](documentation/how-to/use-resources-without-data-layers.md)
+- [Optimistic Locking](documentation/how-to/optimistic-locking.livemd)
 
 ---
 
