@@ -14,6 +14,7 @@ Welcome! Here you will find everything you need to know to get started with and 
 
 - [What is Ash?](documentation/topics/about_ash/what-is-ash.md)
 - [Get Started](documentation/tutorials/get-started.md)
+- [See the roadmap](https://github.com/orgs/ash-project/projects/3)
 
 ## About the Documentation
 
