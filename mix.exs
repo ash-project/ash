@@ -36,13 +36,14 @@ defmodule Ash.MixProject do
 
   defp docs do
     [
-      main: "home",
+      main: "readme",
       source_ref: "v#{@version}",
       logo: "logos/small-logo.png",
       extra_section: "GUIDES",
       extras: [
-        {"documentation/home.md", title: "Home"},
+        {"README.md", title: "Home"},
         "documentation/tutorials/get-started.md",
+        "documentation/cookbook/optimistic_locking.livemd",
         "documentation/topics/about_ash/what-is-ash.md",
         "documentation/topics/about_ash/design-principles.md",
         "documentation/topics/about_ash/contributing-to-ash.md",
@@ -96,6 +97,9 @@ defmodule Ash.MixProject do
           "documentation/tutorials/get-started.md"
         ],
         Tutorials: [],
+        Cookbook: [
+          "documentation/cookbook/optimistic_locking.livemd"
+        ],
         "About Ash": [
           "documentation/topics/about_ash/what-is-ash.md",
           "documentation/topics/about_ash/design-principles.md",

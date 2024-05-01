@@ -1,0 +1,19 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Cookbook: Optimistic Locking
+
+```elixir
+Mix.install([{:ash, "~> 3.0.0-rc.40"}])
+```
+
+## Section
+
+```elixir
+1 + 2 == 2
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+false
+```
