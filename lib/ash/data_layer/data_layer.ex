@@ -1,6 +1,6 @@
 defmodule Ash.DataLayer do
   @moduledoc """
-  The interface for being an ash data layer.
+  The behaviour for backing resource actions with persistence layers.
   """
 
   alias Spark.Dsl.Extension
