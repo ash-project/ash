@@ -1082,6 +1082,7 @@ defmodule Ash.Actions.Update.Bulk do
       case Ash.can(query, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,
+             pre_flight?: false,
              atomic_changeset: atomic_changeset,
              filter_with: opts[:authorize_query_with] || :filter,
              run_queries?: false,
@@ -1113,6 +1114,7 @@ defmodule Ash.Actions.Update.Bulk do
              return_forbidden_error?: true,
              maybe_is: false,
              atomic_changeset: changeset,
+             pre_flight?: false,
              no_check?: true,
              on_must_pass_strict_check:
                {:error,
@@ -1739,7 +1741,11 @@ defmodule Ash.Actions.Update.Bulk do
       batch
       |> Enum.map(fn changeset ->
         if changeset.valid? do
-          case Ash.can(changeset, opts[:actor], return_forbidden_error?: true, maybe_is: false) do
+          case Ash.can(changeset, opts[:actor],
+                 return_forbidden_error?: true,
+                 maybe_is: false,
+                 pre_flight?: false
+               ) do
             {:ok, true} ->
               changeset
 

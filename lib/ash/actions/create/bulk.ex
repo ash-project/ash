@@ -807,6 +807,7 @@ defmodule Ash.Actions.Create.Bulk do
           case Ash.can(changeset, opts[:actor],
                  return_forbidden_error?: true,
                  run_queries?: false,
+                 pre_flight?: false,
                  maybe_is: false,
                  alter_source?: true
                ) do

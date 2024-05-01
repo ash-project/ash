@@ -797,6 +797,7 @@ defmodule Ash.Actions.Read do
       case Ash.can(query, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,
+             pre_flight?: false,
              run_queries?: false,
              alter_source?: true
            ) do

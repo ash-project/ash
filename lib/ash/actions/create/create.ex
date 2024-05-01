@@ -142,6 +142,7 @@ defmodule Ash.Actions.Create do
     if opts[:authorize?] do
       case Ash.can(changeset, opts[:actor],
              alter_source?: true,
+             pre_flight?: false,
              return_forbidden_error?: true,
              maybe_is: false
            ) do

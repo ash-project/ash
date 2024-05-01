@@ -110,6 +110,7 @@ defmodule Ash.Actions.Aggregate do
     if agg_authorize? do
       case Ash.can(query, opts[:actor],
              return_forbidden_error?: true,
+             pre_flight?: false,
              maybe_is: false,
              run_queries?: false,
              alter_source?: true

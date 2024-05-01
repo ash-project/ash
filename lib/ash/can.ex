@@ -82,6 +82,22 @@ defmodule Ash.Can do
 
     subject = %{subject | domain: domain}
 
+    pre_flight? = Keyword.get(opts, :pre_flight, true)
+
+    subject =
+      case subject do
+        %Ash.Query{} ->
+          Ash.Query.set_context(subject, %{private: %{pre_flight_authorization?: pre_flight?}})
+
+        %Ash.Changeset{} ->
+          Ash.Changeset.set_context(subject, %{private: %{pre_flight_authorization?: pre_flight?}})
+
+        %Ash.ActionInput{} ->
+          Ash.ActionInput.set_context(subject, %{
+            private: %{pre_flight_authorization?: pre_flight?}
+          })
+      end
+
     case Ash.Domain.Info.resource(domain, resource) do
       {:ok, _} ->
         domain

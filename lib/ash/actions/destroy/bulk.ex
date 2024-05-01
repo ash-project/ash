@@ -910,6 +910,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     if opts[:authorize?] && opts[:authorize_query?] do
       case Ash.can(query, opts[:actor],
              return_forbidden_error?: true,
+             pre_flight?: false,
              atomic_changeset: atomic_changeset,
              filter_with: opts[:authorize_query_with] || :filter,
              run_queries?: false,
@@ -937,6 +938,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     if opts[:authorize?] do
       case Ash.can(changeset, opts[:actor],
              return_forbidden_error?: true,
+             pre_flight?: false,
              maybe_is: false,
              atomic_changeset: changeset,
              no_check?: true,
@@ -1439,6 +1441,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                  changeset,
                  opts[:actor],
                  return_forbidden_error?: true,
+                 pre_flight?: false,
                  maybe_is: false
                ) do
             {:ok, true} ->

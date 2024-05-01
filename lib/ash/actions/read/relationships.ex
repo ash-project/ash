@@ -188,6 +188,7 @@ defmodule Ash.Actions.Read.Relationships do
                    through_query,
                    source_query.context[:private][:actor],
                    return_forbidden_error?: true,
+                   pre_flight?: false,
                    alter_source?: true,
                    run_queries?: false,
                    base_query: through_query

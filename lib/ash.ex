@@ -761,6 +761,12 @@ defmodule Ash do
       doc:
         "If set to `:error`, the query will raise an error on a match. If set to `:filter` the query will filter out unauthorized access."
     ],
+    pre_flight?: [
+      type: :boolean,
+      default: true,
+      doc:
+        "Whether or not this is a pre_flight check (which may perform optimized in-memory checks) or the final proper check."
+    ],
     run_queries?: [
       type: :boolean,
       doc: "Whether or not to run queries. If set to `true`, `:maybe` will not be returned.",

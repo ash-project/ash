@@ -279,6 +279,7 @@ defmodule Ash.Actions.Update do
       case Ash.can(changeset, opts[:actor],
              alter_source?: true,
              return_forbidden_error?: true,
+             pre_flight?: false,
              maybe_is: false
            ) do
         {:ok, true, changeset} ->

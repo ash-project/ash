@@ -921,6 +921,7 @@ defmodule Ash.Filter do
           |> Ash.Query.select([])
           |> Ash.can(actor,
             run_queries?: false,
+            pre_flight?: false,
             alter_source?: true,
             no_check?: true,
             return_forbidden_error?: true,
