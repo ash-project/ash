@@ -453,6 +453,9 @@ defmodule Ash.Actions.Read do
         {:error, %Ash.Query{} = query} ->
           {:error, query}
 
+        {:ok, %Ash.Query{valid?: false} = query} ->
+          {:error, query}
+
         %Ash.Query{} = query ->
           {:error, query}
 
