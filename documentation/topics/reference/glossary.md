@@ -55,7 +55,7 @@ See `Ash.Changeset` for more.
 
 ## Domain
 
-A method of broadly separating resources into different [domains](https://en.wikipedia.org/wiki/Domain_(software_engineering)), A.K.A [bounded contexts](https://martinfowler.com/bliki/BoundedContext.html).
+A method of broadly separating resources into different [domains](<https://en.wikipedia.org/wiki/Domain_(software_engineering)>), A.K.A [bounded contexts](https://martinfowler.com/bliki/BoundedContext.html).
 
 See the [Domains guide](/documentation/topics/domains.md) for more.
 
@@ -102,6 +102,10 @@ See the [Policies guide](/documentation/topics/security/policies.md) for more.
 The tools and functions used for reading and filtering stored data, from the data layer.
 
 See `Ash.Query` for more.
+
+## Record
+
+A record is an "instance" of a resource. Keep in mind that this is not an "instance" in a mutable/object-oriented sense, but rather a snapshot of the data at a given point in time. When you call a read action, you get back records. You can provide a record to an update action to determine what data is being updated.
 
 ## Relationship
 
