@@ -1,11 +1,6 @@
 defmodule Ash.DataLayer do
   @moduledoc """
   The interface for being an ash data layer.
-
-  This is a large behaviour, and this capability is not complete, but the idea
-  is to have a large amount of optional callbacks, and use the `can?/2` callback
-  to ensure that the engine only ever tries to interact with the data layer in ways
-  that it supports.
   """
 
   alias Spark.Dsl.Extension
