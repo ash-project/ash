@@ -73,6 +73,7 @@ jobs:
       - uses: team-alembic/staple-actions/actions/mix-docs@main
         with:
           mix-env: dev
+          use-cache?: false
       - uses: actions/upload-pages-artifact@v1
         with:
           path: doc/
