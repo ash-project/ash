@@ -80,6 +80,7 @@ defmodule Ash.Actions.Update.Bulk do
                     resource: query.resource,
                     action: action,
                     requested_strategies: opts[:strategy],
+                    not_atomic_reason: reason,
                     not_stream_reason: "could not stream the query",
                     footer: "Non stream reason:\n\n" <> Exception.message(exception)
                   )
