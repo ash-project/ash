@@ -4,7 +4,7 @@
 ![Elixir CI](https://github.com/ash-project/ash/workflows/Ash%20CI/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Hex version badge](https://img.shields.io/hexpm/v/ash.svg)](https://hex.pm/packages/ash)
-[![Hexdocs badge](https://img.shields.io/badge/documentation-hex-purple)](https://hexdocs.pm/ash)
+[![Hexdocs badge](https://img.shields.io/badge/docs-hex-purple)](https://hexdocs.pm/ash)
 
 # Ash Framework Documentation
 
