@@ -16,13 +16,16 @@ defmodule Ash.Actions.Update.Bulk do
     opts = set_strategy(opts, query.resource)
 
     query =
-      if query.action do
+      if query.__validated_for_action__ do
         query
       else
         query =
           Ash.Query.for_read(
             query,
-            Ash.Resource.Info.primary_action!(query.resource, :read).name
+            Ash.Resource.Info.primary_action!(query.resource, :read).name,
+            %{},
+            actor: opts[:actor],
+            tenant: opts[:tenant]
           )
 
         {query, _opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, query, opts)
