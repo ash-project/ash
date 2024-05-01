@@ -324,6 +324,10 @@ defmodule Ash do
   def create_opts, do: @create_opts_schema
 
   @shared_bulk_opts_schema [
+    read_action: [
+      type: :atom,
+      doc: "The action to use when building the read query."
+    ],
     assume_casted?: [
       type: :boolean,
       default: false,

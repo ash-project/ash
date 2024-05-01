@@ -22,7 +22,7 @@ defmodule Ash.Actions.Update.Bulk do
         query =
           Ash.Query.for_read(
             query,
-            Ash.Resource.Info.primary_action!(query.resource, :read).name,
+            get_read_action(query.resource, opts).name,
             %{},
             actor: opts[:actor],
             tenant: opts[:tenant]
@@ -785,6 +785,7 @@ defmodule Ash.Actions.Update.Bulk do
   defp do_run(domain, stream, action, input, opts, metadata_key, context_key, not_atomic_reason) do
     resource = opts[:resource]
     opts = Ash.Actions.Helpers.set_opts(opts, domain)
+    read_action = get_read_action(resource, opts)
 
     {_, opts} =
       Ash.Actions.Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
@@ -797,7 +798,7 @@ defmodule Ash.Actions.Update.Bulk do
         Enum.empty?(Ash.Resource.Info.primary_key(resource)) ->
           {:not_atomic, "cannot atomically update a stream without a primary key"}
 
-        !Ash.Resource.Info.primary_action(resource, :read) ->
+        !read_action ->
           {:not_atomic, "cannot atomically update a stream without a primary read action"}
 
         Ash.DataLayer.data_layer_can?(resource, :update_query) ->
@@ -812,7 +813,7 @@ defmodule Ash.Actions.Update.Bulk do
         query =
           resource
           |> Ash.Query.new()
-          |> Map.put(:action, Ash.Resource.Info.primary_action!(resource, :read))
+          |> Map.put(:action, read_action)
 
         case Ash.Actions.Read.Stream.stream_strategy(
                query,
@@ -899,7 +900,7 @@ defmodule Ash.Actions.Update.Bulk do
         pkeys = [or: Enum.map(batch, &Map.take(&1, pkey))]
 
         resource
-        |> Ash.Query.for_read(Ash.Resource.Info.primary_action!(resource, :read).name, %{},
+        |> Ash.Query.for_read(get_read_action(resource, opts).name, %{},
           actor: opts[:actor],
           authorize?: false,
           context: atomic_changeset.context,
@@ -2453,5 +2454,15 @@ defmodule Ash.Actions.Update.Bulk do
       arguments,
       context
     )
+  end
+
+  defp get_read_action(resource, opts) do
+    case opts[:read_action] do
+      nil ->
+        Ash.Resource.Info.primary_action!(resource, :read)
+
+      action ->
+        Ash.Resource.Info.action(resource, action)
+    end
   end
 end
