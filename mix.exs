@@ -3,8 +3,7 @@ defmodule Ash.MixProject do
   use Mix.Project
 
   @description """
-  A resource declaration and interaction library. Built with pluggable data layers, and
-  designed to be used by multiple front ends.
+  A declarative, extensible framework for building Elixir applications.
   """
 
   @version "3.0.0-rc.40"
