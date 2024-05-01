@@ -1278,6 +1278,25 @@ defmodule Ash.Actions.Update.Bulk do
          metadata_key,
          base_changeset
        ) do
+    %{
+      must_return_records?: must_return_records_for_changes?,
+      batch: batch,
+      changes: changes
+    } =
+      run_action_changes(
+        batch,
+        all_changes,
+        action,
+        opts[:actor],
+        opts[:authorize?],
+        opts[:tracer],
+        opts[:tenant],
+        context_key
+      )
+
+    batch =
+      Enum.map(batch, &Ash.Changeset.run_before_transaction_hooks/1)
+
     if opts[:transaction] == :batch &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
       context = batch |> Enum.at(0) |> Kernel.||(%{}) |> Map.get(:context)
@@ -1312,7 +1331,9 @@ defmodule Ash.Actions.Update.Bulk do
                 ref,
                 metadata_key,
                 context_key,
-                base_changeset
+                base_changeset,
+                must_return_records_for_changes?,
+                changes
               )
 
             {new_errors, new_error_count} = Process.get({:bulk_update_errors, ref}) || {[], 0}
@@ -1368,7 +1389,9 @@ defmodule Ash.Actions.Update.Bulk do
         ref,
         metadata_key,
         context_key,
-        base_changeset
+        base_changeset,
+        must_return_records_for_changes?,
+        changes
       )
     end
   end
@@ -1383,29 +1406,15 @@ defmodule Ash.Actions.Update.Bulk do
          ref,
          metadata_key,
          context_key,
-         base_changeset
+         base_changeset,
+         must_return_records_for_changes?,
+         changes
        ) do
     must_return_records? =
       opts[:notify?] ||
         Enum.any?(batch, fn item ->
           item.after_action != []
         end)
-
-    %{
-      must_return_records?: must_return_records_for_changes?,
-      batch: batch,
-      changes: changes
-    } =
-      run_action_changes(
-        batch,
-        all_changes,
-        action,
-        opts[:actor],
-        opts[:authorize?],
-        opts[:tracer],
-        opts[:tenant],
-        context_key
-      )
 
     batch =
       batch

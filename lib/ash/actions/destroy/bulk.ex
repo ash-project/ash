@@ -1043,6 +1043,24 @@ defmodule Ash.Actions.Destroy.Bulk do
   end
 
   defp handle_batch(batch, domain, resource, action, all_changes, opts, ref, base_changeset) do
+    %{
+      must_return_records?: must_return_records_for_changes?,
+      batch: batch,
+      changes: changes
+    } =
+      run_action_changes(
+        batch,
+        all_changes,
+        action,
+        opts[:actor],
+        opts[:authorize?],
+        opts[:tracer],
+        opts[:tenant]
+      )
+
+    batch =
+      Enum.map(batch, &Ash.Changeset.run_before_transaction_hooks/1)
+
     if opts[:transaction] == :batch &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
       context = batch |> Enum.at(0) |> Kernel.||(%{}) |> Map.get(:context)
@@ -1071,7 +1089,9 @@ defmodule Ash.Actions.Destroy.Bulk do
               opts,
               all_changes,
               ref,
-              base_changeset
+              base_changeset,
+              must_return_records_for_changes?,
+              changes
             )
           end,
           opts[:timeout],
@@ -1104,31 +1124,38 @@ defmodule Ash.Actions.Destroy.Bulk do
         end
       end
     else
-      do_handle_batch(batch, domain, resource, action, opts, all_changes, ref, base_changeset)
+      do_handle_batch(
+        batch,
+        domain,
+        resource,
+        action,
+        opts,
+        all_changes,
+        ref,
+        base_changeset,
+        must_return_records_for_changes?,
+        changes
+      )
     end
   end
 
-  defp do_handle_batch(batch, domain, resource, action, opts, all_changes, ref, base_changeset) do
+  defp do_handle_batch(
+         batch,
+         domain,
+         resource,
+         action,
+         opts,
+         all_changes,
+         ref,
+         base_changeset,
+         must_return_records_for_changes?,
+         changes
+       ) do
     must_return_records? =
       opts[:notify?] ||
         Enum.any?(batch, fn item ->
           item.after_action != []
         end)
-
-    %{
-      must_return_records?: must_return_records_for_changes?,
-      batch: batch,
-      changes: changes
-    } =
-      run_action_changes(
-        batch,
-        all_changes,
-        action,
-        opts[:actor],
-        opts[:authorize?],
-        opts[:tracer],
-        opts[:tenant]
-      )
 
     batch =
       batch

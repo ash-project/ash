@@ -901,19 +901,19 @@ defmodule Ash.Test.Actions.LoadTest do
   end
 
   test "it returns error with invalid keys" do
-     post =
-       Post
-       |> Ash.Changeset.for_create(:create, %{title: "post1", category: "foo"})
-       |> Ash.create!()
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "post1", category: "foo"})
+      |> Ash.create!()
 
-     assert_raise Ash.Error.Invalid, ~r/:invalid_key is not a valid load/, fn ->
-       post |> Ash.load!([:invalid_key])
-     end
+    assert_raise Ash.Error.Invalid, ~r/:invalid_key is not a valid load/, fn ->
+      post |> Ash.load!([:invalid_key])
+    end
 
-     assert_raise Ash.Error.Invalid, ~r/:invalid_key is not a valid load/, fn ->
-       Post.get_by_id!(post.id, load: [:invalid_key])
-     end
-   end
+    assert_raise Ash.Error.Invalid, ~r/:invalid_key is not a valid load/, fn ->
+      Post.get_by_id!(post.id, load: [:invalid_key])
+    end
+  end
 
   describe "loading through attributes" do
     test "can load calculations through attributes" do
