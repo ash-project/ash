@@ -447,7 +447,7 @@ defmodule Ash.Actions.Read do
            {:ok, count} <- maybe_await(count) do
         {:ok, results, count, before_notifications ++ after_notifications}
       else
-        {%{valid?: false} = query, before_notifications} ->
+        {:ok, {%{valid?: false} = query, before_notifications}} ->
           {:error, query, before_notifications}
 
         {:error, %Ash.Query{} = query} ->
