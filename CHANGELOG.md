@@ -5,6 +5,45 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.40](https://github.com/ash-project/ash/compare/v3.0.0-rc.39...v3.0.0-rc.40) (2024-05-01)
+
+
+
+
+### Bug Fixes:
+
+* properly execute before_batch callbacks in bulk actions
+
+* missing pattern match on error query in read
+
+* remove debugging code
+
+* don't call `Keyword` functions on maps in unions
+
+* streaming with limit/offset and no pagination (#1080)
+
+* don't pass an error tuple to rollback in bulk update (#1079)
+
+* union array argument/attribute handling when current attribute is (#1023)
+
+### Improvements:
+
+* add pre_flight option for Ash.can
+
+* make `Ash.Filter.map` more consistent
+
+* better inspect behavior for calculations
+
+* better inspect behavior for fragments
+
+* better create/update first argument (#1060)
+
+* better create/update first argument
+
+* create/update params no more an opts
+
+* raise if changeset already validated
+
 ## [v3.0.0-rc.39](https://github.com/ash-project/ash/compare/v3.0.0-rc.38...v3.0.0-rc.39) (2024-04-30)
 
 
