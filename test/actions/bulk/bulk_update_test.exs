@@ -143,8 +143,12 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       update :update_with_after_transaction do
         require_atomic? false
 
-        change after_transaction(fn _changeset, {:ok, result}, _context ->
-                 {:ok, %{result | title: result.title <> "_stuff"}}
+        change after_transaction(fn
+                 _changeset, {:ok, result}, _context ->
+                   {:ok, %{result | title: result.title <> "_stuff"}}
+
+                 _changeset, {:error, error}, _context ->
+                   send(self(), {:error, error})
                end)
       end
 
@@ -432,7 +436,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              end)
   end
 
-  test "runs after transaction hooks" do
+  test "runs after transaction hooks on success" do
     assert %Ash.BulkResult{
              records: [
                %{title: "title1_stuff", title2: "updated value"},
@@ -457,6 +461,28 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Map.update!(:records, fn records ->
                Enum.sort_by(records, & &1.title)
              end)
+  end
+
+  test "runs after transaction hooks on failure" do
+    assert %Ash.BulkResult{error_count: 2} =
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+               return_stream?: true,
+               return_records?: true,
+               authorize?: false
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_update(:update_with_after_transaction, %{title2: 3},
+               resource: Post,
+               strategy: :stream,
+               return_records?: true,
+               return_errors?: true,
+               authorize?: false
+             )
+
+    assert_receive {:error, _}
+    assert_receive {:error, _}
   end
 
   describe "authorization" do
