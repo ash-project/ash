@@ -257,7 +257,7 @@ defmodule Ash do
       type: :boolean,
       default: false,
       doc: """
-      Use this if you're running ash actions in your own transaction and you want notifications to happen still.
+      Use this if you're running ash actions in your own transaction and you want to manually handle sending notifications.
 
       If a transaction is ongoing, and this is false, notifications will be discarded, otherwise
       the return value is `{:ok, result, notifications}` (or `{:ok, notifications}`)
@@ -408,8 +408,10 @@ defmodule Ash do
       type: :boolean,
       default: false,
       doc: """
-      Whether or not to send notifications out. If this is set to `true` then the data layer must return
+      Whether or not to generate any notifications. If this is set to `true` then the data layer must return
       the results from each batch. This may be intensive for large bulk actions.
+
+      Notifications will be automatically sent unless `return_notifications?` is set to `true`.
       """
     ],
     transaction: [
