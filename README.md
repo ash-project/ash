@@ -30,7 +30,7 @@ Welcome! Here you will find everything you need to know to get started with and 
 
 ---
 
-[**Reference**](#reference) documentation is produced automatically from our source code. It comes in the form of module documentation and DSL documentation. This documentation is **information-oriented**. Use the sidebar and the searchbar to find relevant reference information.
+[**Reference**](#reference) documentation is produced automatically from our source code. It comes in the form of module documentation and DSL documentation. This documentation is **information-oriented**. Use the sidebar and the search bar to find relevant reference information.
 
 ## Tutorials
 
