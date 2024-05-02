@@ -2,7 +2,28 @@
 
 Identities are a way to declare that a record (an instance of a resource) can be uniquely identified by a set of attributes. This information can be used in various ways throughout the framework. The primary key of the resource does not need to be listed as an identity.
 
-## Using Ash.get
+## Defining an identity
+
+Identities are defined at the top level of a resource module, eg.
+
+```elixir
+defmodule MyApp.MyResource do
+  use Ash.Resource #, ...
+  # ...
+
+  identities do
+    # If the `email` attribute must be unique across all records
+    identity :unique_email, [:email]
+
+    # If the `username` attribute must be unique for every record with a given `site` value
+    identity :special_usernames, [:username, :site]
+  end
+end
+```
+
+See `d:Ash.Resource.Dsl.identities` for the full range of options available when defining identities.
+
+## Using `Ash.get`
 
 This will allow these fields to be passed to `Ash.get/3`, e.g `Ash.get(Resource, %{email: "foo"})`.
 
