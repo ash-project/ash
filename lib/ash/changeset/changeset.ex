@@ -3272,7 +3272,7 @@ defmodule Ash.Changeset do
     )
     |> case do
       {:ok, new_result} ->
-        {:ok, new_result}
+        {:ok, %{new_result | after_transaction: []}}
 
       {:error, error} ->
         {:error, error}
