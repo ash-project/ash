@@ -207,6 +207,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       attribute :title, :string, allow_nil?: false, public?: true
       attribute :title2, :string, public?: true
       attribute :title3, :string, public?: true
+      attribute :title4, :string, public?: true
       attribute :hidden_attribute, :string, public?: true
 
       attribute :before_batch_size, :integer
@@ -214,6 +215,10 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       attribute :change_batch_size, :integer
 
       timestamps()
+    end
+
+    validations do
+      validate match(:title4, ~r/^[a-z]+$/)
     end
   end
 
@@ -435,6 +440,26 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              end)
              |> Ash.bulk_update(:update, %{title2: %{invalid: :value}},
                strategy: :stream,
+               resource: Post,
+               return_errors?: true,
+               authorize?: false
+             )
+  end
+
+  test "runs global validations with atomic_batches strategy" do
+    assert %Ash.BulkResult{
+             error_count: 1
+           } =
+             Ash.bulk_create!([%{title: "title1"}], Post, :create,
+               return_stream?: true,
+               return_records?: true,
+               authorize?: false
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_update(:update, %{title4: "INVALID"},
+               strategy: :atomic_batches,
                resource: Post,
                return_errors?: true,
                authorize?: false
