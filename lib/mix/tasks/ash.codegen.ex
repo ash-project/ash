@@ -15,7 +15,7 @@ defmodule Mix.Tasks.Ash.Codegen do
           {nil, argv}
 
         [first | rest] ->
-          {first, rest}
+          {String.trim(first), rest}
 
         [] ->
           {nil, []}
