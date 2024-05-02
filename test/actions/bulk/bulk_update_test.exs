@@ -168,6 +168,10 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
         change set_context(%{authorize?: arg(:authorize?)})
       end
+
+      update :update_with_match do
+        validate match(:title4, ~r/^[a-z]+$/)
+      end
     end
 
     identities do
@@ -215,10 +219,6 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       attribute :change_batch_size, :integer
 
       timestamps()
-    end
-
-    validations do
-      validate match(:title4, ~r/^[a-z]+$/)
     end
   end
 
@@ -446,7 +446,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              )
   end
 
-  test "runs global validations with atomic_batches strategy" do
+  test "runs match validation with atomic_batches strategy" do
     assert %Ash.BulkResult{
              error_count: 1
            } =
@@ -458,7 +458,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
              |> Stream.map(fn {:ok, result} ->
                result
              end)
-             |> Ash.bulk_update(:update, %{title4: "INVALID"},
+             |> Ash.bulk_update(:update_with_match, %{title4: "INVALID"},
                strategy: :atomic_batches,
                resource: Post,
                return_errors?: true,
