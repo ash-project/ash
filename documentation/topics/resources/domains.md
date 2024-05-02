@@ -41,13 +41,13 @@ defmodule MyApp.Tweets do
     resource MyApp.Tweets.Tweet do
       # define a function called `tweet` that uses
       # the `:create` action on MyApp.Tweets.Tweet
-      define :tweet, :create, args: [:text]
+      define :tweet, action: :create, args: [:text]
     end
 
     resource MyApp.Tweets.Comment do
       # define a function called `comment` that uses
       # the `:create` action on MyApp.Tweets.Comment
-      define :comment, :create, args: [:tweet_id, :text]
+      define :comment, action: :create, args: [:tweet_id, :text]
     end
   end
 end
