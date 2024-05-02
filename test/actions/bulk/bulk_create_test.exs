@@ -4,6 +4,14 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
   alias Ash.Test.Domain, as: Domain
 
+  defmodule Notifier do
+    use Ash.Notifier
+
+    def notify(notification) do
+      send(self(), {:notification, notification})
+    end
+  end
+
   defmodule AddAfterToTitle do
     use Ash.Resource.Change
 
@@ -63,6 +71,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     use Ash.Resource,
       domain: Domain,
       data_layer: Ash.DataLayer.Ets,
+      notifiers: [Notifier],
       authorizers: [Ash.Policy.Authorizer]
 
     alias Ash.Test.Actions.BulkCreateTest.Org
@@ -698,10 +707,39 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  tenant: org.id,
                  authorize?: true,
                  return_stream?: true,
-                 notify?: true,
                  return_notifications?: true
                )
                |> Enum.to_list()
+    end
+
+    test "notifications are sent with notify?: true" do
+      org =
+        Org
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+
+      assert [{:ok, %{title: "title1"}}, {:ok, %{title: "title2"}}] =
+               [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
+               |> Ash.bulk_create!(
+                 Post,
+                 :create_with_policy,
+                 authorize?: true,
+                 tenant: org.id,
+                 notify?: true,
+                 return_stream?: true,
+                 return_records?: true
+               )
+               |> Enum.to_list()
+               |> Enum.sort_by(fn
+                 {:ok, v} ->
+                   v.title
+
+                 _ ->
+                   nil
+               end)
+
+      assert_received {:notification, %{data: %{title: "title1"}}}
+      assert_received {:notification, %{data: %{title: "title2"}}}
     end
 
     test "by returning records, you get the records in the stream" do
@@ -748,7 +786,6 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  :create_with_policy,
                  authorize?: true,
                  tenant: org.id,
-                 notify?: true,
                  return_stream?: true,
                  return_notifications?: true,
                  return_records?: true
@@ -785,7 +822,6 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  Post,
                  :create_with_policy,
                  authorize?: true,
-                 notify?: true,
                  tenant: org.id,
                  return_stream?: true,
                  return_notifications?: true,

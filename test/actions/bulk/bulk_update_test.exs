@@ -4,6 +4,14 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
   alias Ash.Test.Domain, as: Domain
 
+  defmodule Notifier do
+    use Ash.Notifier
+
+    def notify(notification) do
+      send(self(), {:notification, notification})
+    end
+  end
+
   defmodule AddAfterToTitle do
     use Ash.Resource.Change
 
@@ -78,6 +86,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     use Ash.Resource,
       domain: Domain,
       data_layer: Ash.DataLayer.Ets,
+      notifiers: [Notifier],
       authorizers: [Ash.Policy.Authorizer]
 
     ets do
@@ -222,6 +231,55 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                resource: Post,
                strategy: :atomic_batches,
                return_records?: true,
+               return_errors?: true,
+               authorize?: false
+             )
+  end
+
+  test "sends notifications" do
+    assert %Ash.BulkResult{records: [%{title2: "updated value"}, %{title2: "updated value"}]} =
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+               return_stream?: true,
+               return_records?: true,
+               authorize?: false
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_update!(:update, %{title2: "updated value"},
+               resource: Post,
+               strategy: :atomic_batches,
+               return_records?: true,
+               notify?: true,
+               return_errors?: true,
+               authorize?: false
+             )
+
+    assert_received {:notification, %{data: %{title: "title2"}}}
+    assert_received {:notification, %{data: %{title: "title2"}}}
+  end
+
+  test "notifications can be returned" do
+    assert %Ash.BulkResult{
+             records: [%{title2: "updated value"}, %{title2: "updated value"}],
+             notifications: [
+               %{data: %{title2: "updated value"}},
+               %{data: %{title2: "updated value"}}
+             ]
+           } =
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+               return_stream?: true,
+               return_records?: true,
+               authorize?: false
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_update!(:update, %{title2: "updated value"},
+               resource: Post,
+               strategy: :atomic_batches,
+               return_records?: true,
+               return_notifications?: true,
                return_errors?: true,
                authorize?: false
              )

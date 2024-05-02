@@ -5,6 +5,14 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
   require Ash.Query
   alias Ash.Test.Domain, as: Domain
 
+  defmodule Notifier do
+    use Ash.Notifier
+
+    def notify(notification) do
+      send(self(), {:notification, notification})
+    end
+  end
+
   defmodule AddAfterToTitle do
     use Ash.Resource.Change
 
@@ -29,6 +37,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     @moduledoc false
     use Ash.Resource,
       domain: Domain,
+      notifiers: [Notifier],
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Policy.Authorizer]
 
@@ -150,6 +159,45 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              )
 
     assert [] = Ash.read!(Post)
+  end
+
+  test "sends notifications" do
+    assert %Ash.BulkResult{records: [%{}, %{}]} =
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+               return_stream?: true,
+               return_records?: true
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_destroy!(:destroy, %{},
+               resource: Post,
+               strategy: :stream,
+               notify?: true,
+               return_records?: true,
+               return_errors?: true
+             )
+
+    assert_received {:notification, %{data: %{title: "title1"}}}
+    assert_received {:notification, %{data: %{title: "title2"}}}
+  end
+
+  test "notifications can be returned" do
+    assert %Ash.BulkResult{records: [%{}, %{}], notifications: [%{}, %{}]} =
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+               return_stream?: true,
+               return_records?: true
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_destroy!(:destroy, %{},
+               resource: Post,
+               strategy: :stream,
+               return_notifications?: true,
+               return_records?: true,
+               return_errors?: true
+             )
   end
 
   test "runs changes" do

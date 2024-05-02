@@ -8,6 +8,13 @@ defmodule Ash.Actions.Create.Bulk do
   def run(domain, resource, action, inputs, opts) do
     action = Ash.Resource.Info.action(resource, action)
 
+    opts =
+      if opts[:return_notifications?] do
+        Keyword.put(opts, :notify?, true)
+      else
+        opts
+      end
+
     if !action do
       raise Ash.Error.Invalid.NoSuchAction, resource: resource, action: action, type: :create
     end
@@ -179,9 +186,9 @@ defmodule Ash.Actions.Create.Bulk do
           else
             if opts[:notify?] do
               Ash.Notifier.notify(Process.delete({:bulk_create_notifications, ref}))
+            else
+              []
             end
-
-            []
           end
 
         {errors, error_count} = Process.get({:bulk_create_errors, ref}) || {[], 0}
@@ -612,11 +619,11 @@ defmodule Ash.Actions.Create.Bulk do
                   process_notifications ++ bulk_notifications
                 else
                   if opts[:transaction] && opts[:transaction] != :all do
-                    Ash.Notifier.notify(bulk_notifications)
-                    Ash.Notifier.notify(process_notifications)
+                    Ash.Notifier.notify(bulk_notifications) ++
+                      Ash.Notifier.notify(process_notifications)
+                  else
+                    []
                   end
-
-                  []
                 end
               end
 

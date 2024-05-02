@@ -11,6 +11,13 @@ defmodule Ash.Actions.Destroy.Bulk do
       when is_atom(action) and not is_nil(action) do
     resource = opts[:resource]
 
+    opts =
+      if opts[:return_notifications?] do
+        Keyword.put(opts, :notify?, true)
+      else
+        opts
+      end
+
     run(
       domain,
       stream,
@@ -46,6 +53,13 @@ defmodule Ash.Actions.Destroy.Bulk do
     opts = set_strategy(opts, query.resource)
 
     opts = select(opts, query.resource)
+
+    opts =
+      if opts[:return_notifications?] do
+        Keyword.put(opts, :notify?, true)
+      else
+        opts
+      end
 
     query =
       if query.__validated_for_action__ do
@@ -277,6 +291,13 @@ defmodule Ash.Actions.Destroy.Bulk do
     resource = opts[:resource]
 
     opts = select(opts, resource)
+
+    opts =
+      if opts[:return_notifications?] do
+        Keyword.put(opts, :notify?, true)
+      else
+        opts
+      end
 
     opts = set_strategy(opts, resource, Keyword.get(opts, :input_was_stream?, true))
 

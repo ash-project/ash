@@ -15,6 +15,13 @@ defmodule Ash.Actions.Update.Bulk do
   def run(domain, %Ash.Query{} = query, action, input, opts, not_atomic_reason) do
     opts = set_strategy(opts, query.resource)
 
+    opts =
+      if opts[:return_notifications?] do
+        Keyword.put(opts, :notify?, true)
+      else
+        opts
+      end
+
     query =
       if query.__validated_for_action__ do
         query
@@ -254,6 +261,13 @@ defmodule Ash.Actions.Update.Bulk do
     resource = opts[:resource]
 
     opts = set_strategy(opts, resource, Keyword.get(opts, :input_was_stream?, true))
+
+    opts =
+      if opts[:return_notifications?] do
+        Keyword.put(opts, :notify?, true)
+      else
+        opts
+      end
 
     not_atomic_reason =
       not_atomic_reason ||
