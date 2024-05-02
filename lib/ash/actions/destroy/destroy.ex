@@ -281,7 +281,7 @@ defmodule Ash.Actions.Destroy do
   end
 
   defp validate_manual_action_return_result!(other, resource, action) do
-    raise Ash.Error.Framework.AssumptionFailed,
+    raise Ash.Error.Framework.InvalidReturnType,
       message: """
       Manual action #{inspect(action.name)} on #{inspect(resource)} returned an invalid result.
 
