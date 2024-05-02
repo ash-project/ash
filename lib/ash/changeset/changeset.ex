@@ -214,6 +214,20 @@ defmodule Ash.Changeset do
 
   @type around_transaction_fun :: (t -> {:ok, Ash.Resource.record()} | {:error, any})
 
+  @phases [
+    :atomic,
+    :pending,
+    :validate,
+    :before_action,
+    :after_action,
+    :before_transaction,
+    :after_transaction,
+    :around_action,
+    :around_transaction
+  ]
+
+  @type phase :: unquote(Enum.reduce(@phases, &{:|, [], [&1, &2]}))
+
   @type t :: %__MODULE__{
           __validated_for_action__: atom | nil,
           action: Ash.Resource.Actions.action() | nil,
@@ -237,16 +251,7 @@ defmodule Ash.Changeset do
             nil | (t, error :: any -> :ignore | t | (error :: any) | {error :: any, t}),
           invalid_keys: MapSet.t(),
           params: %{optional(atom | binary) => any},
-          phase:
-            :atomic
-            | :pending
-            | :validate
-            | :before_transaction
-            | :before_action
-            | :after_action
-            | :after_transaction
-            | :around_action
-            | :around_transaction,
+          phase: phase(),
           relationships: %{
             optional(atom) =>
               %{optional(atom | binary) => any} | [%{optional(atom | binary) => any}]
@@ -4835,7 +4840,7 @@ defmodule Ash.Changeset do
   end
 
   @doc """
-  Adds an after_transaction hook to the changeset.
+  Adds an after_transaction hook to the changeset. Cannot be called within other hooks.
 
   `after_transaction` hooks differ from `after_action` hooks in that they are run
   on success *and* failure of the action or some previous hook.
@@ -4849,10 +4854,17 @@ defmodule Ash.Changeset do
           Keyword.t()
         ) :: t()
   def after_transaction(changeset, func, opts \\ []) do
-    if opts[:prepend?] do
-      %{changeset | after_transaction: [func | changeset.after_transaction]}
+    if changeset.phase in [:pending, :validate] do
+      if opts[:prepend?] do
+        %{changeset | after_transaction: [func | changeset.after_transaction]}
+      else
+        %{changeset | after_transaction: changeset.after_transaction ++ [func]}
+      end
     else
-      %{changeset | after_transaction: changeset.after_transaction ++ [func]}
+      Ash.Changeset.add_error(
+        changeset,
+        "Cannot add after_transaction hooks inside of other hooks, or in atomic hooks. Current phase: #{inspect(changeset.phase)}."
+      )
     end
   end
 
@@ -5293,9 +5305,6 @@ defmodule Ash.Changeset do
 
   defp set_phase(changeset, phase) when changeset.phase == phase, do: changeset
 
-  defp set_phase(changeset, phase)
-       when phase in ~w[atomic pending validate before_action after_action before_transaction after_transaction around_action around_transaction]a,
-       do: %{changeset | phase: phase}
-
+  defp set_phase(changeset, phase) when phase in @phases, do: %{changeset | phase: phase}
   defp clear_phase(changeset), do: %{changeset | phase: :pending}
 end

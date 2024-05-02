@@ -119,6 +119,8 @@ The format for sorting on calculations that take input has been swapped. Previou
 
 `Ash.Changeset.new/2` has been removed. `Ash.Changeset.new/1` is still available for creating a new changeset, but attributes and arguments should, with few exceptions, be passed to the relevant `Ash.Changeset.for_<action_type>` functions, _not_ to `Ash.Changeset.new/2`. Removing the second argument helps clarify the purpose of `Ash.Changeset.new/1`.
 
+`Ash.Changeset.after_transaction/2` can no longer be called from within other lifecycle hooks. We need to know whether or not an after action hook, before we start processing any hooks.
+
 `Ash.Changeset.manage_relationship/4` no longer uses `:all` to signal that all changes will be sent to the join relationship. Instead, use `:*`.
 
 `Ash.Changeset.filter` now accepts expressions. The value of the filter is no longer a simple equality map, but rather a regular Ash expression. We add to it on successive calls to `Ash.Changeset.filter`. Additionally, this value is stored in `changeset.filter` instead of `changeset.filters`.
