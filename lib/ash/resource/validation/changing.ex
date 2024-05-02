@@ -56,7 +56,7 @@ defmodule Ash.Resource.Validation.Changing do
   @impl true
   def atomic(_changeset, opts, context) do
     {:atomic, [opts[:field]],
-     Ash.Expr.expr(^atomic_ref(opts[:attribute]) != ^ref(opts[:attribute])),
+     Ash.Expr.expr(^atomic_ref(opts[:attribute]) == ^ref(opts[:attribute])),
      Ash.Expr.expr(
        error(^InvalidAttribute, %{
          field: ^opts[:field],

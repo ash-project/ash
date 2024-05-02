@@ -94,14 +94,13 @@ defmodule Ash.Resource.Validation.Present do
   end
 
   def atomic_for_values(opts, context, values) do
+    attribute_count = length(opts[:attributes])
     nil_count = expr(count_nils(^values))
 
     opts
     |> Keyword.delete(:attributes)
     |> Enum.map(fn
       {:exactly, exactly} ->
-        attribute_count = length(opts[:attributes])
-
         message =
           cond do
             context[:message] ->
@@ -137,7 +136,7 @@ defmodule Ash.Resource.Validation.Present do
              })
            )}
         else
-          exactly_nil = Enum.count(opts[:attributes]) - exactly
+          exactly_nil = attribute_count - exactly
 
           {:atomic, opts[:attributes], expr(^nil_count != ^exactly_nil),
            expr(
@@ -151,11 +150,9 @@ defmodule Ash.Resource.Validation.Present do
         end
 
       {:at_least, at_least} ->
-        attributes = Enum.map(opts[:attributes], fn attr -> expr(^atomic_ref(attr)) end)
+        at_most_nil = attribute_count - at_least
 
-        at_most_nil = Enum.count(opts[:attributes]) - at_least
-
-        {:atomic, opts[:attributes], expr(count_nils(^attributes) > ^at_most_nil),
+        {:atomic, opts[:attributes], expr(^nil_count > ^at_most_nil),
          expr(
            error(^InvalidAttribute, %{
              field: ^Enum.at(opts[:attributes], 0),
@@ -166,10 +163,9 @@ defmodule Ash.Resource.Validation.Present do
          )}
 
       {:at_most, at_most} ->
-        attributes = Enum.map(opts[:attributes], fn attr -> expr(^atomic_ref(attr)) end)
-        at_least_nil = Enum.count(opts[:attributes]) - at_most
+        at_least_nil = attribute_count - at_most
 
-        {:atomic, opts[:attributes], expr(count_nils(^attributes) < ^at_least_nil),
+        {:atomic, opts[:attributes], expr(^nil_count < ^at_least_nil),
          expr(
            error(^InvalidAttribute, %{
              field: ^Enum.at(opts[:attributes], 0),
