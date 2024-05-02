@@ -129,19 +129,16 @@ defmodule Ash.Actions.Read.Calculations do
 
         if module.has_calculate?() do
           if Enum.all?(primary_key, &(not is_nil(Map.get(record, &1)))) do
-            case Ash.load(record, [{calculation.name, arguments}],
+            case Ash.load(record, [{calculation, arguments}],
                    actor: opts[:actor],
                    domain: opts[:domain],
                    tenant: opts[:tenant],
                    authorize?: opts[:authorize?],
                    tracer: opts[:tracer],
                    resource: opts[:resource],
-                   arguments: arguments,
-                   type: type,
-                   constraints: constraints,
-                   source_context: opts[:context]
+                   context: opts[:context] || %{}
                  ) do
-              {:ok, record} -> {:ok, Map.get(record, calculation.name)}
+              {:ok, record} -> {:ok, Map.get(record, calculation)}
               {:error, error} -> {:error, error}
             end
           else

@@ -34,6 +34,11 @@ defmodule Ash.Test.CodeInterfaceTest do
       )
 
       define_calculation(:full_name_record, calculation: :full_name, args: [:_record])
+
+      define_calculation(:full_name_functional_record,
+        calculation: :full_name_functional,
+        args: [:_record]
+      )
     end
 
     actions do
@@ -78,6 +83,15 @@ defmodule Ash.Test.CodeInterfaceTest do
         public?(true)
         argument :separator, :string, default: " ", allow_nil?: false
       end
+
+      calculate :full_name_functional,
+                :string,
+                fn records, _ ->
+                  Enum.map(records, fn record ->
+                    record.first_name <> " " <> record.last_name
+                  end)
+                end,
+                load: [:first_name, :last_name]
     end
 
     attributes do
@@ -305,6 +319,7 @@ defmodule Ash.Test.CodeInterfaceTest do
         |> Ash.create!()
 
       assert "Zach Daniel" = User.full_name_record!(user)
+      assert "Zach Daniel" = User.full_name_functional_record!(user)
     end
   end
 
