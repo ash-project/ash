@@ -4,14 +4,13 @@ defmodule Ash.Policy.Check.Resource do
 
   @impl true
   def describe(options) do
-    operator =
-      if is_list(options[:resource]) do
-        "in"
-      else
-        "=="
+    {operator, resource} =
+      case options[:resource] do
+        [resource] -> {"==", resource}
+        resources -> {"in", resources}
       end
 
-    "resource #{operator} #{inspect(options[:resource])}"
+    "resource #{operator} #{resource}"
   end
 
   @impl true
@@ -19,6 +18,6 @@ defmodule Ash.Policy.Check.Resource do
 
   @impl true
   def match?(_actor, %{resource: resource}, options) do
-    resource in List.wrap(options[:resource])
+    resource in options[:resource]
   end
 end
