@@ -59,7 +59,7 @@ defmodule Ash.Policy.Check.ChangingAttributes do
               end
           end
         else
-          {:cont, expr}
+          {:halt, false}
         end
       end
     end)
