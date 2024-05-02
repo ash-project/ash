@@ -42,6 +42,23 @@ defmodule Ash.Error do
   end
 
   def to_error_class(value, opts) do
+    value =
+      value
+      |> List.wrap()
+      |> Enum.map(fn
+        %Ash.Changeset{} = changeset ->
+          to_error_class(changeset, opts)
+
+        %Ash.Query{} = query ->
+          to_error_class(query, opts)
+
+        %Ash.ActionInput{} = action_input ->
+          to_error_class(action_input, opts)
+
+        other ->
+          other
+      end)
+
     class = to_class(value, opts)
 
     class =

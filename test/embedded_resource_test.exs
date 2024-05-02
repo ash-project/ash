@@ -322,7 +322,7 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
 
   test "embedded resources run validations on create" do
     msg =
-      ~r/Invalid value provided for last_name: exactly 2 of first_name,last_name must be present/
+      ~r/Invalid value provided for last_name: exactly 2 of "first_name,last_name" must be present/
 
     assert_raise Ash.Error.Invalid,
                  msg,

@@ -149,6 +149,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
                  _changeset, {:error, error}, _context ->
                    send(self(), {:error, error})
+                   {:error, error}
                end)
       end
 

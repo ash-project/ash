@@ -998,7 +998,6 @@ defmodule Ash.Actions.Update.Bulk do
               context_key
             )
           )
-          |> reject_and_maybe_store_errors(ref, opts)
           |> handle_batch(
             domain,
             resource,
@@ -1299,8 +1298,31 @@ defmodule Ash.Actions.Update.Bulk do
         context_key
       )
 
-    batch =
-      Enum.map(batch, &Ash.Changeset.run_before_transaction_hooks/1)
+    {batch, must_be_simple} =
+      Enum.reduce(batch, {[], []}, fn changeset, {batch, must_be_simple} ->
+        if changeset.after_transaction in [[], nil] do
+          changeset = Ash.Changeset.run_before_transaction_hooks(changeset)
+          {[changeset | batch], must_be_simple}
+        else
+          {batch, [%{changeset | __validated_for_action__: action.name} | must_be_simple]}
+        end
+      end)
+
+    must_be_simple_results =
+      Enum.flat_map(must_be_simple, fn changeset ->
+        case Ash.Actions.Update.run(domain, changeset, action, opts) do
+          {:ok, result} ->
+            [
+              Ash.Resource.set_metadata(result, %{
+                metadata_key => changeset.context |> Map.get(context_key) |> Map.get(:index)
+              })
+            ]
+
+          {:error, error} ->
+            store_error(ref, error, opts)
+            []
+        end
+      end)
 
     if opts[:transaction] == :batch &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
@@ -1338,7 +1360,8 @@ defmodule Ash.Actions.Update.Bulk do
                 context_key,
                 base_changeset,
                 must_return_records_for_changes?,
-                changes
+                changes,
+                must_be_simple_results
               )
 
             {new_errors, new_error_count} = Process.get({:bulk_update_errors, ref}) || {[], 0}
@@ -1396,7 +1419,8 @@ defmodule Ash.Actions.Update.Bulk do
         context_key,
         base_changeset,
         must_return_records_for_changes?,
-        changes
+        changes,
+        must_be_simple_results
       )
     end
   end
@@ -1413,7 +1437,8 @@ defmodule Ash.Actions.Update.Bulk do
          context_key,
          base_changeset,
          must_return_records_for_changes?,
-         changes
+         changes,
+         must_be_simple_results
        ) do
     must_return_records? =
       opts[:notify?] ||
@@ -1459,6 +1484,7 @@ defmodule Ash.Actions.Update.Bulk do
       domain,
       base_changeset
     )
+    |> Stream.concat(must_be_simple_results)
     |> then(fn stream ->
       if opts[:return_stream?] do
         stream
@@ -1681,17 +1707,6 @@ defmodule Ash.Actions.Update.Bulk do
 
       _changeset ->
         false
-    end)
-  end
-
-  defp reject_and_maybe_store_errors(stream, ref, opts) do
-    Enum.reject(stream, fn changeset ->
-      if changeset.valid? do
-        false
-      else
-        store_error(ref, changeset, opts)
-        true
-      end
     end)
   end
 

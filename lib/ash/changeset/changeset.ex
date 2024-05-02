@@ -555,7 +555,8 @@ defmodule Ash.Changeset do
       changeset = set_phase(changeset, :atomic)
 
       with :ok <- verify_notifiers_support_atomic(resource, action),
-           %Ash.Changeset{} = changeset <- atomic_params(changeset, action, params, opts),
+           %Ash.Changeset{} = changeset <-
+             atomic_params(changeset, action, params, opts),
            %Ash.Changeset{} = changeset <- atomic_changes(changeset, action),
            %Ash.Changeset{} = changeset <- atomic_defaults(changeset),
            %Ash.Changeset{} = changeset <- atomic_update(changeset, opts[:atomic_update] || []),
@@ -1393,7 +1394,12 @@ defmodule Ash.Changeset do
 
     case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
       {:atomic, value} ->
-        value = set_error_field(value, attribute.name)
+        value =
+          if attribute.primary_key? do
+            value
+          else
+            set_error_field(value, attribute.name)
+          end
 
         %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
         |> record_atomic_update_for_atomic_upgrade(attribute.name, value)
@@ -3272,7 +3278,7 @@ defmodule Ash.Changeset do
     )
     |> case do
       {:ok, new_result} ->
-        {:ok, %{new_result | after_transaction: []}}
+        {:ok, new_result}
 
       {:error, error} ->
         {:error, error}

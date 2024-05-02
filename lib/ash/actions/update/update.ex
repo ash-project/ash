@@ -11,8 +11,20 @@ defmodule Ash.Actions.Update do
           | {:ok, Ash.Resource.record()}
           | {:error, Ash.Changeset.t()}
           | {:error, term}
-  def run(domain, %{valid?: false} = changeset, _action, _opts) do
-    {:error, Ash.Error.to_error_class(changeset.errors, changeset: %{changeset | domain: domain})}
+  def run(domain, %{valid?: false, errors: errors} = changeset, action, opts) do
+    changeset = changeset(changeset, domain, action, opts)
+    errors = Helpers.process_errors(changeset, errors)
+
+    case Ash.Changeset.run_after_transactions(
+           {:error, Ash.Error.to_error_class(errors, changeset: changeset)},
+           changeset
+         ) do
+      {:ok, result} ->
+        {:ok, result}
+
+      {:error, error} ->
+        {:error, Ash.Error.to_error_class(error, changeset: %{changeset | domain: domain})}
+    end
   end
 
   def run(domain, changeset, action, opts) do
@@ -49,6 +61,10 @@ defmodule Ash.Actions.Update do
 
           !Enum.empty?(changeset.around_transaction) ->
             {{:not_atomic, "cannot atomically run a changeset with an around_transaction hook"},
+             nil}
+
+          !Enum.empty?(changeset.after_transaction) ->
+            {{:not_atomic, "cannot atomically run a changeset with an after_transaction hook"},
              nil}
 
           !primary_read ->

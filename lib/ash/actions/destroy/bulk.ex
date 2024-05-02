@@ -804,7 +804,6 @@ defmodule Ash.Actions.Destroy.Bulk do
               domain
             )
           )
-          |> reject_and_maybe_store_errors(ref, opts)
           |> handle_batch(domain, resource, action, all_changes, opts, ref, base_changeset)
         after
           if opts[:notify?] && !opts[:return_notifications?] do
@@ -1061,8 +1060,39 @@ defmodule Ash.Actions.Destroy.Bulk do
         opts[:tenant]
       )
 
-    batch =
-      Enum.map(batch, &Ash.Changeset.run_before_transaction_hooks/1)
+    {batch, must_be_simple} =
+      Enum.reduce(batch, {[], []}, fn changeset, {batch, must_be_simple} ->
+        if changeset.after_transaction in [[], nil] do
+          changeset = Ash.Changeset.run_before_transaction_hooks(changeset)
+          {[changeset | batch], must_be_simple}
+        else
+          {batch, [%{changeset | __validated_for_action__: action.name} | must_be_simple]}
+        end
+      end)
+
+    must_be_simple_results =
+      Enum.flat_map(must_be_simple, fn changeset ->
+        case Ash.Actions.Destroy.run(
+               domain,
+               changeset,
+               action,
+               Keyword.put(opts, :return_destroyed?, opts[:return_records?])
+             ) do
+          :ok ->
+            []
+
+          {:ok, result} when not is_list(result) ->
+            [
+              Ash.Resource.set_metadata(result, %{
+                bulk_destroy_index: changeset.context.bulk_destroy.index
+              })
+            ]
+
+          {:error, error} ->
+            store_error(ref, error, opts)
+            []
+        end
+      end)
 
     if opts[:transaction] == :batch &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
@@ -1094,7 +1124,8 @@ defmodule Ash.Actions.Destroy.Bulk do
               ref,
               base_changeset,
               must_return_records_for_changes?,
-              changes
+              changes,
+              must_be_simple_results
             )
           end,
           opts[:timeout],
@@ -1137,7 +1168,8 @@ defmodule Ash.Actions.Destroy.Bulk do
         ref,
         base_changeset,
         must_return_records_for_changes?,
-        changes
+        changes,
+        must_be_simple_results
       )
     end
   end
@@ -1152,7 +1184,8 @@ defmodule Ash.Actions.Destroy.Bulk do
          ref,
          base_changeset,
          must_return_records_for_changes?,
-         changes
+         changes,
+         must_be_simple_results
        ) do
     must_return_records? =
       opts[:notify?] ||
@@ -1195,6 +1228,7 @@ defmodule Ash.Actions.Destroy.Bulk do
       resource,
       base_changeset
     )
+    |> Stream.concat(must_be_simple_results)
     |> then(fn stream ->
       if opts[:return_stream?] do
         stream
@@ -1399,17 +1433,6 @@ defmodule Ash.Actions.Destroy.Bulk do
 
       _changeset ->
         false
-    end)
-  end
-
-  defp reject_and_maybe_store_errors(stream, ref, opts) do
-    Enum.reject(stream, fn changeset ->
-      if changeset.valid? do
-        false
-      else
-        store_error(ref, changeset, opts)
-        true
-      end
     end)
   end
 

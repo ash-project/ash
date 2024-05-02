@@ -98,13 +98,13 @@ defmodule Ash.Test.Actions.ValidationTest do
     |> Ash.Changeset.for_create(:create, %{foo: true, status: "foo"})
     |> Ash.create!()
 
-    assert_raise(Ash.Error.Invalid, ~r/status: must not equal foo/, fn ->
+    assert_raise(Ash.Error.Invalid, ~r/status: must not equal \"foo\"/, fn ->
       Profile
       |> Ash.Changeset.for_create(:create, %{foo: false, status: "foo"})
       |> Ash.create!()
     end)
 
-    assert_raise(Ash.Error.Invalid, ~r/status: must equal foo/, fn ->
+    assert_raise(Ash.Error.Invalid, ~r/status: must equal \"foo\"/, fn ->
       Profile
       |> Ash.Changeset.for_create(:create, %{foo: true, status: "bar"})
       |> Ash.create!()
@@ -164,7 +164,7 @@ defmodule Ash.Test.Actions.ValidationTest do
     end
 
     test "it fails if the value is not in the list" do
-      assert_raise(Ash.Error.Invalid, ~r/expected one of foo, bar/, fn ->
+      assert_raise(Ash.Error.Invalid, ~r/expected one of \"foo, bar\"/, fn ->
         Profile
         |> Ash.Changeset.for_create(:create, %{status: "blart"})
         |> Ash.create!()

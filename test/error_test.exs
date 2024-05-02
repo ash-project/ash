@@ -37,7 +37,7 @@ defmodule Ash.Test.ErrorTest do
     end
 
     test "returns exception if it is a map/struct with class: :special wrapped in a list" do
-      assert [%{class: :special}] =
+      assert %{class: :special} =
                Ash.Error.to_error_class([SpecialError.exception([])], [])
     end
 

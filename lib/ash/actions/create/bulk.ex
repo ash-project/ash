@@ -144,7 +144,6 @@ defmodule Ash.Actions.Create.Bulk do
                 argument_names
               )
             )
-            |> reject_and_maybe_store_errors(ref, opts)
             |> handle_batch(
               domain,
               resource,
@@ -357,8 +356,38 @@ defmodule Ash.Actions.Create.Bulk do
         opts[:tenant]
       )
 
-    batch =
-      Enum.map(batch, &Ash.Changeset.run_before_transaction_hooks/1)
+    {batch, must_be_simple} =
+      batch
+      |> Stream.map(fn changeset ->
+        {changeset, _} =
+          Ash.Actions.ManagedRelationships.validate_required_belongs_to({changeset, []})
+
+        changeset
+      end)
+      |> Enum.reduce({[], []}, fn changeset, {batch, must_be_simple} ->
+        if changeset.after_transaction in [[], nil] do
+          changeset = Ash.Changeset.run_before_transaction_hooks(changeset)
+          {[changeset | batch], must_be_simple}
+        else
+          {batch, [%{changeset | __validated_for_action__: action.name} | must_be_simple]}
+        end
+      end)
+
+    must_be_simple_results =
+      Enum.flat_map(must_be_simple, fn changeset ->
+        case Ash.Actions.Create.run(domain, changeset, action, opts) do
+          {:ok, result} ->
+            [
+              Ash.Resource.set_metadata(result, %{
+                bulk_create_index: changeset.context.bulk_create.index
+              })
+            ]
+
+          {:error, error} ->
+            store_error(ref, error, opts)
+            []
+        end
+      end)
 
     if opts[:transaction] == :batch &&
          Ash.DataLayer.data_layer_can?(resource, :transact) do
@@ -390,7 +419,8 @@ defmodule Ash.Actions.Create.Bulk do
               data_layer_can_bulk?,
               ref,
               changes,
-              must_return_records_for_changes?
+              must_return_records_for_changes?,
+              must_be_simple_results
             )
           end,
           opts[:timeout],
@@ -435,7 +465,8 @@ defmodule Ash.Actions.Create.Bulk do
         data_layer_can_bulk?,
         ref,
         changes,
-        must_return_records_for_changes?
+        must_return_records_for_changes?,
+        must_be_simple_results
       )
     end
   end
@@ -450,7 +481,8 @@ defmodule Ash.Actions.Create.Bulk do
          data_layer_can_bulk?,
          ref,
          changes,
-         must_return_records_for_changes?
+         must_return_records_for_changes?,
+         must_be_simple_results
        ) do
     must_return_records? =
       opts[:notify?] ||
@@ -492,6 +524,7 @@ defmodule Ash.Actions.Create.Bulk do
       domain,
       resource
     )
+    |> Stream.concat(must_be_simple_results)
     |> then(fn stream ->
       if opts[:return_stream?] do
         stream
@@ -752,17 +785,6 @@ defmodule Ash.Actions.Create.Bulk do
     end)
   end
 
-  defp reject_and_maybe_store_errors(stream, ref, opts) do
-    Enum.reject(stream, fn changeset ->
-      if changeset.valid? do
-        false
-      else
-        store_error(ref, changeset, opts)
-        true
-      end
-    end)
-  end
-
   defp store_error(_ref, empty, _opts) when empty in [[], nil], do: :ok
 
   defp store_error(ref, error, opts) do
@@ -778,7 +800,7 @@ defmodule Ash.Actions.Create.Bulk do
               changeset
 
             other ->
-              Ash.Error.to_ash_error(other)
+              Ash.Error.to_error_class(other)
           end
 
         Process.put(

@@ -89,9 +89,10 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
       create :create_with_change do
         change fn changeset, _ ->
-          title = Ash.Changeset.get_attribute(changeset, :title)
-          Ash.Changeset.force_change_attribute(changeset, :title, title <> "_stuff")
-        end
+                 title = Ash.Changeset.get_attribute(changeset, :title)
+                 Ash.Changeset.force_change_attribute(changeset, :title, title <> "_stuff")
+               end,
+               only_when_valid?: true
       end
 
       create :create_with_argument do
@@ -201,11 +202,17 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   end
 
   test "runs changes" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
     assert %Ash.BulkResult{records: [%{title: "title1_stuff"}, %{title: "title2_stuff"}]} =
              Ash.bulk_create!(
                [%{title: "title1"}, %{title: "title2"}],
                Post,
                :create_with_change,
+               tenant: org.id,
                return_records?: true,
                authorize?: false,
                sorted?: true
@@ -213,18 +220,29 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   end
 
   test "accepts arguments" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
     assert %Ash.BulkResult{records: [%{title: "title1"}, %{title: "title2"}]} =
              Ash.bulk_create!(
                [%{a_title: "title1"}, %{a_title: "title2"}],
                Post,
                :create_with_argument,
                return_records?: true,
+               tenant: org.id,
                sorted?: true,
                authorize?: false
              )
   end
 
   test "runs after batch hooks" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
     assert %Ash.BulkResult{
              records: [%{title: "before_title1_after"}, %{title: "before_title2_after"}]
            } =
@@ -232,6 +250,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                [%{title: "title1"}, %{title: "title2"}],
                Post,
                :create_with_after_batch,
+               tenant: org.id,
                return_records?: true,
                sorted?: true,
                authorize?: false
@@ -239,11 +258,17 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   end
 
   test "will return error count" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
     assert %Ash.BulkResult{records: [%{title: "title1_stuff"}], error_count: 1, errors: nil} =
              Ash.bulk_create!(
                [%{title: "title1"}, %{title: %{foo: :bar}}],
                Post,
                :create_with_change,
+               tenant: org.id,
                return_records?: true,
                sorted?: true,
                authorize?: false
@@ -251,6 +276,11 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   end
 
   test "will return errors on request" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
     assert %Ash.BulkResult{
              records: [%{title: "title1_stuff"}],
              error_count: 1,
@@ -260,6 +290,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                [%{title: "title1"}, %{title: %{foo: :bar}}],
                Post,
                :create_with_change,
+               tenant: org.id,
                return_records?: true,
                return_errors?: true,
                sorted?: true,
@@ -268,6 +299,11 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   end
 
   test "can upsert with list" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
     assert %Ash.BulkResult{
              records: [
                %{title: "title1", title2: "changes", title3: "wont"},
@@ -281,6 +317,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                ],
                Post,
                :create,
+               tenant: org.id,
                return_records?: true,
                sorted?: true,
                authorize?: false
@@ -300,6 +337,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                Post,
                :create,
                return_records?: true,
+               tenant: org.id,
                upsert?: true,
                upsert_identity: :unique_title,
                upsert_fields: [:title2],
@@ -309,6 +347,11 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   end
 
   test "can upsert with :replace" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
     assert %Ash.BulkResult{
              records: [
                %{title: "title1", title2: "changes", title3: "wont"},
@@ -322,6 +365,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                ],
                Post,
                :create,
+               tenant: org.id,
                return_records?: true,
                sorted?: true,
                authorize?: false
@@ -342,6 +386,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                :create,
                return_records?: true,
                upsert?: true,
+               tenant: org.id,
                upsert_identity: :unique_title,
                upsert_fields: {:replace, [:title2]},
                sorted?: true,
@@ -350,6 +395,11 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   end
 
   test "can upsert with :replace_all" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
     assert %Ash.BulkResult{
              records: [
                %{title: "title1", title2: "changes", title3: "changes"},
@@ -364,6 +414,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                Post,
                :create,
                return_records?: true,
+               tenant: org.id,
                sorted?: true,
                authorize?: false
              )
@@ -382,6 +433,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                Post,
                :create,
                return_records?: true,
+               tenant: org.id,
                upsert?: true,
                upsert_identity: :unique_title,
                upsert_fields: :replace_all,
@@ -391,6 +443,11 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   end
 
   test "can upsert with :replace_all_except" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
     assert %Ash.BulkResult{
              records: [
                %{title: "title1", title2: "changes", title3: "wont"},
@@ -404,6 +461,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                ],
                Post,
                :create,
+               tenant: org.id,
                return_records?: true,
                sorted?: true,
                authorize?: false
@@ -423,6 +481,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                Post,
                :create,
                return_records?: true,
+               tenant: org.id,
                upsert?: true,
                upsert_identity: :unique_title,
                upsert_fields: {:replace_all_except, [:title, :title3]},
@@ -432,6 +491,11 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   end
 
   test "runs before transaction hooks" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
     assert %Ash.BulkResult{
              records: [
                %{title: "before_transaction_title1"},
@@ -442,6 +506,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                [%{title: "title1"}, %{title: "title2"}],
                Post,
                :create_with_before_transaction,
+               tenant: org.id,
                return_records?: true,
                sorted?: true,
                authorize?: false
@@ -449,11 +514,17 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   end
 
   test "runs after action hooks" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
     assert %Ash.BulkResult{records: [%{title: "title1_stuff"}, %{title: "title2_stuff"}]} =
              Ash.bulk_create!(
                [%{title: "title1"}, %{title: "title2"}],
                Post,
                :create_with_after_action,
+               tenant: org.id,
                return_records?: true,
                sorted?: true,
                authorize?: false
@@ -461,25 +532,40 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   end
 
   test "runs after transaction hooks on success" do
-    assert %Ash.BulkResult{records: [%{title: "title1_stuff"}, %{title: "title2_stuff"}]} =
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
+    assert %Ash.BulkResult{
+             records: [%{title: "title1_stuff"}, %{title: "title2_stuff"}]
+           } =
              Ash.bulk_create!(
                [%{title: "title1"}, %{title: "title2"}],
                Post,
                :create_with_after_transaction,
+               tenant: org.id,
                return_records?: true,
+               return_errors?: true,
                sorted?: true,
                authorize?: false
              )
   end
 
   test "runs after transaction hooks on failure" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
     assert %Ash.BulkResult{error_count: 2} =
              Ash.bulk_create(
                [%{title: 1}, %{title: 2}],
                Post,
                :create_with_after_transaction,
                sorted?: true,
-               authorize?: false
+               authorize?: false,
+               tenant: org.id
              )
 
     assert_receive {:error, _error}
@@ -488,18 +574,30 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
   describe "authorization" do
     test "policy success results in successes" do
+      org =
+        Org
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+
       assert %Ash.BulkResult{records: [%{title: "title1"}, %{title: "title2"}]} =
                Ash.bulk_create!(
                  [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}],
                  Post,
                  :create_with_policy,
+                 tenant: org.id,
                  authorize?: true,
+                 return_errors?: true,
                  return_records?: true,
                  sorted?: true
                )
     end
 
     test "field authorization is run" do
+      org =
+        Org
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+
       assert %Ash.BulkResult{
                records: [
                  %{hidden_attribute: %Ash.ForbiddenField{}, hidden_calc: %Ash.ForbiddenField{}},
@@ -507,10 +605,14 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                ]
              } =
                Ash.bulk_create!(
-                 [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}],
+                 [
+                   %{title: "title1", authorize?: true},
+                   %{title: "title2", authorize?: true}
+                 ],
                  Post,
                  :create_with_policy,
                  authorize?: true,
+                 tenant: org.id,
                  return_records?: true,
                  sorted?: true,
                  load: [:hidden_calc]
@@ -518,9 +620,17 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
 
     test "policy failure results in failures" do
+      org =
+        Org
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+
       assert %Ash.BulkResult{errors: [_, _]} =
                Ash.bulk_create(
-                 [%{title: "title1", authorize?: false}, %{title: "title2", authorize?: false}],
+                 [
+                   %{title: "title1", authorize?: false, org_id: org.id},
+                   %{title: "title2", authorize?: false, org_id: org.id}
+                 ],
                  Post,
                  :create_with_policy,
                  authorize?: true,
@@ -533,8 +643,16 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
   describe "streaming" do
     test "by default nothing is returned in the stream" do
+      org =
+        Org
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+
       assert [] =
-               [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
+               [
+                 %{title: "title1", authorize?: true, org_id: org.id},
+                 %{title: "title2", authorize?: true, org_id: org.id}
+               ]
                |> Ash.bulk_create!(
                  Post,
                  :create_with_policy,
@@ -545,11 +663,17 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
 
     test "batch size is honored while streaming" do
+      org =
+        Org
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+
       assert [_] =
                [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
                |> Ash.bulk_create!(
                  Post,
                  :create_with_policy,
+                 tenant: org.id,
                  authorize?: true,
                  batch_size: 1,
                  return_records?: true,
@@ -561,11 +685,17 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
 
     test "by returning notifications, you get the notifications in the stream" do
+      org =
+        Org
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+
       assert [{:notification, _}, {:notification, _}] =
                [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
                |> Ash.bulk_create!(
                  Post,
                  :create_with_policy,
+                 tenant: org.id,
                  authorize?: true,
                  return_stream?: true,
                  notify?: true,
@@ -575,12 +705,18 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
 
     test "by returning records, you get the records in the stream" do
+      org =
+        Org
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+
       assert [{:ok, %{title: "title1"}}, {:ok, %{title: "title2"}}] =
                [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
                |> Ash.bulk_create!(
                  Post,
                  :create_with_policy,
                  authorize?: true,
+                 tenant: org.id,
                  return_stream?: true,
                  return_records?: true
                )
@@ -595,6 +731,11 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
 
     test "by returning notifications and records, you get them both in the stream" do
+      org =
+        Org
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+
       assert [
                {:notification, _},
                {:notification, _},
@@ -606,6 +747,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  Post,
                  :create_with_policy,
                  authorize?: true,
+                 tenant: org.id,
                  notify?: true,
                  return_stream?: true,
                  return_notifications?: true,
@@ -625,6 +767,11 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
 
     test "any errors are also returned in the stream" do
+      org =
+        Org
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+
       assert [
                {:error, %Ash.Changeset{}},
                {:notification, _},
@@ -639,6 +786,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  :create_with_policy,
                  authorize?: true,
                  notify?: true,
+                 tenant: org.id,
                  return_stream?: true,
                  return_notifications?: true,
                  return_records?: true,
