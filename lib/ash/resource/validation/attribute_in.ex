@@ -46,7 +46,8 @@ defmodule Ash.Resource.Validation.AttributeIn do
 
   @impl true
   def atomic(_changeset, opts, context) do
-    {:atomic, [opts[:attribute]], Ash.Expr.expr(^atomic_ref(opts[:attribute]) in ^opts[:list]),
+    {:atomic, [opts[:attribute]],
+     Ash.Expr.expr(^atomic_ref(opts[:attribute]) not in ^opts[:list]),
      Ash.Expr.expr(
        error(^InvalidAttribute, %{
          field: ^opts[:attribute],
