@@ -47,7 +47,7 @@ defmodule Ash.Policy.Check.Builtins do
   """
   @spec action_type(Ash.Resource.Actions.action_type()) :: Ash.Policy.Check.ref()
   def action_type(action_type) do
-    {Ash.Policy.Check.ActionType, type: action_type}
+    {Ash.Policy.Check.ActionType, type: List.wrap(action_type)}
   end
 
   @doc """
@@ -57,7 +57,7 @@ defmodule Ash.Policy.Check.Builtins do
   """
   @spec action(atom | list(atom)) :: Ash.Policy.Check.ref()
   def action(action) do
-    {Ash.Policy.Check.Action, action: action}
+    {Ash.Policy.Check.Action, action: List.wrap(action)}
   end
 
   @doc """
@@ -65,7 +65,7 @@ defmodule Ash.Policy.Check.Builtins do
   """
   @spec resource(atom | list(atom)) :: Ash.Policy.Check.ref()
   def resource(resource) do
-    {Ash.Policy.Check.Resource, resource: resource}
+    {Ash.Policy.Check.Resource, resource: List.wrap(resource)}
   end
 
   @doc """
@@ -244,7 +244,7 @@ defmodule Ash.Policy.Check.Builtins do
   """
   def changing_attributes(opts) do
     opts =
-      Enum.map(opts, fn opt ->
+      Enum.map(List.wrap(opts), fn opt ->
         if is_atom(opt) do
           {opt, []}
         else
@@ -269,12 +269,12 @@ defmodule Ash.Policy.Check.Builtins do
 
   @doc "This check is true when the specified relationship is changing"
   def changing_relationship(relationship) do
-    changing_relationships(List.wrap(relationship))
+    changing_relationships(relationship)
   end
 
   @doc "This check is true when the specified relationships are changing"
   def changing_relationships(relationships) do
-    {Ash.Policy.Check.ChangingRelationships, relationships: relationships}
+    {Ash.Policy.Check.ChangingRelationships, relationships: List.wrap(relationships)}
   end
 
   @doc "This check is true when the specified function returns true"
