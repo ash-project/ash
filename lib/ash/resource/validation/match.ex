@@ -75,6 +75,21 @@ defmodule Ash.Resource.Validation.Match do
         {:not_atomic, "can't match on an atomic expression"}
 
       true ->
+        changeset =
+          if Keyword.has_key?(changeset.atomics, opts[:attribute]) do
+            %{
+              changeset
+              | attributes:
+                  Map.put(
+                    changeset.attributes,
+                    opts[:attribute],
+                    changeset.atomics[opts[:attribute]]
+                  )
+            }
+          else
+            changeset
+          end
+
         validate(changeset, opts, context)
     end
   end

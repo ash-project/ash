@@ -374,9 +374,9 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     create_records = fn count ->
       Stream.iterate(1, &(&1 + 1))
       |> Stream.map(fn i -> %{title: "title#{i}"} end)
+      |> Stream.take(count)
       |> Ash.bulk_create!(Post, :create, return_stream?: true, return_records?: true)
       |> Stream.map(fn {:ok, result} -> result end)
-      |> Stream.take(count)
     end
 
     update_records = fn records, opts ->
@@ -459,7 +459,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                result
              end)
              |> Ash.bulk_update(:update_with_match, %{title4: "INVALID"},
-               strategy: :atomic_batches,
+               strategy: :atomic,
                resource: Post,
                return_errors?: true,
                authorize?: false
