@@ -5,6 +5,51 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.41](https://github.com/ash-project/ash/compare/v3.0.0-rc.40...v3.0.0-rc.41) (2024-05-03)
+
+
+
+
+### Features:
+
+* add read_action option to bulk actions (#1088)
+
+### Bug Fixes:
+
+* various fixes around bulk actions, types, error handling
+
+* fix match validation when performed atomically
+
+* ensure only the intended failing test fails (#1105)
+
+* trim spaces from codegen name (#1106)
+
+* set `notify?: true` when `return_notifications?: true` is set
+
+* fix `changing_attributes` for multiple attributes (#1101)
+
+* use `InvalidReturnType`, not `AssumptionFailed` for callback returns
+
+* enforce that transaction hooks are not added from other hooks
+
+* fixes to some atomic validations (#1094)
+
+* multiple small bugs when loading for calculate
+
+* run changesets w/ `after_transaction` hooks through standard logic
+
+* properly hydrate refs in related query
+
+* properly express not atomic reason in bulk updates
+
+* properly set actor on query in bulk update
+
+* no need to restrict sorting on arrays
+
+### Improvements:
+
+* normalise `List.wrap` usage for policy checks (#1103)
+
 ## [v3.0.0-rc.40](https://github.com/ash-project/ash/compare/v3.0.0-rc.39...v3.0.0-rc.40) (2024-05-01)
 
 
