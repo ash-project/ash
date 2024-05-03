@@ -1411,5 +1411,39 @@ defmodule Ash.Test.Actions.LoadTest do
                ]
              } = author1.posts
     end
+
+    test "returns error when requesting count" do
+      Author
+      |> Ash.Changeset.for_create(:create, %{name: "a"})
+      |> Ash.create!()
+
+      paginated_posts =
+        Post
+        |> Ash.Query.page(limit: 1, count: true)
+
+      assert {:error,
+              %Ash.Error.Unknown{
+                errors: [
+                  %Ash.Error.Unknown.UnknownError{
+                    error: "Cannot request count when paginating relationships"
+                  }
+                ]
+              }} =
+               Author
+               |> Ash.Query.load(posts: paginated_posts)
+               |> Ash.read()
+
+      assert {:error,
+              %Ash.Error.Unknown{
+                errors: [
+                  %Ash.Error.Unknown.UnknownError{
+                    error: "Cannot request count when paginating relationships"
+                  }
+                ]
+              }} =
+               Author
+               |> Ash.read!()
+               |> Ash.load(posts: paginated_posts)
+    end
   end
 end

@@ -1618,40 +1618,48 @@ defmodule Ash.Actions.Read do
          relationship_path_filters,
          opts
        ) do
-    if action.pagination &&
-         page &&
-         (page[:count] == true ||
-            (page[:count] != false and action.pagination.countable == :by_default)) do
-      with {:ok, filter} <-
-             filter_with_related(
-               query,
-               opts[:authorize?],
-               relationship_path_filters
-             ),
-           query <-
-             query
-             |> Ash.Query.unset([:sort, :distinct_sort, :lock, :load, :limit, :offset, :page])
-             |> Ash.Query.limit(query_before_pagination.limit)
-             |> Ash.Query.offset(query_before_pagination.offset)
-             |> Map.put(:filter, filter),
-           {:ok, data_layer_query} <- Ash.Query.data_layer_query(query) do
-        if Ash.DataLayer.in_transaction?(resource) || !Ash.DataLayer.can?(:async_engine, resource) do
-          case do_fetch_count(query, data_layer_query) do
-            {:ok, count} -> {:ok, {:ok, count}}
-            {:error, error} -> {:error, error}
+    needs_count? =
+      action.pagination && page &&
+        (page[:count] == true ||
+           (page[:count] != false and action.pagination.countable == :by_default))
+
+    cond do
+      Map.has_key?(query.context, :accessing_from) and needs_count? ->
+        {:error, "Cannot request count when paginating relationships"}
+
+      needs_count? ->
+        with {:ok, filter} <-
+               filter_with_related(
+                 query,
+                 opts[:authorize?],
+                 relationship_path_filters
+               ),
+             query <-
+               query
+               |> Ash.Query.unset([:sort, :distinct_sort, :lock, :load, :limit, :offset, :page])
+               |> Ash.Query.limit(query_before_pagination.limit)
+               |> Ash.Query.offset(query_before_pagination.offset)
+               |> Map.put(:filter, filter),
+             {:ok, data_layer_query} <- Ash.Query.data_layer_query(query) do
+          if Ash.DataLayer.in_transaction?(resource) ||
+               !Ash.DataLayer.can?(:async_engine, resource) do
+            case do_fetch_count(query, data_layer_query) do
+              {:ok, count} -> {:ok, {:ok, count}}
+              {:error, error} -> {:error, error}
+            end
+          else
+            {:ok,
+             Ash.ProcessHelpers.async(
+               fn ->
+                 do_fetch_count(query, data_layer_query)
+               end,
+               opts
+             )}
           end
-        else
-          {:ok,
-           Ash.ProcessHelpers.async(
-             fn ->
-               do_fetch_count(query, data_layer_query)
-             end,
-             opts
-           )}
         end
-      end
-    else
-      {:ok, {:ok, nil}}
+
+      true ->
+        {:ok, {:ok, nil}}
     end
   end
 
