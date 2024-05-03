@@ -82,7 +82,7 @@ defmodule Ash.Can do
 
     subject = %{subject | domain: domain}
 
-    pre_flight? = Keyword.get(opts, :pre_flight, true)
+    pre_flight? = Keyword.get(opts, :pre_flight?, true)
 
     subject =
       case subject do

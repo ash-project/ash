@@ -1358,8 +1358,7 @@ defmodule Ash.Actions.Update.Bulk do
         Ash.DataLayer.transaction(
           List.wrap(resource) ++ action.touches_resources,
           fn ->
-            {_starting_errors, starting_error_count} =
-              Process.get({:bulk_update_errors, ref}) || {[], 0}
+            tmp_ref = make_ref()
 
             result =
               do_handle_batch(
@@ -1369,7 +1368,7 @@ defmodule Ash.Actions.Update.Bulk do
                 action,
                 opts,
                 all_changes,
-                ref,
+                tmp_ref,
                 metadata_key,
                 context_key,
                 base_changeset,
@@ -1378,16 +1377,12 @@ defmodule Ash.Actions.Update.Bulk do
                 must_be_simple_results
               )
 
-            {new_errors, new_error_count} = Process.get({:bulk_update_errors, ref}) || {[], 0}
+            {new_errors, new_error_count} =
+              Process.delete({:bulk_update_errors, tmp_ref}) || {[], 0}
 
-            if new_error_count != starting_error_count do
-              Ash.DataLayer.rollback(
-                resource,
-                Enum.take(new_errors, new_error_count - starting_error_count)
-              )
-            else
-              result
-            end
+            store_error(ref, new_errors, opts, new_error_count)
+
+            result
           end,
           opts[:timeout],
           %{
@@ -1733,7 +1728,7 @@ defmodule Ash.Actions.Update.Bulk do
 
     Process.put(
       {:bulk_update_errors, ref},
-      {errors, count + error_count}
+      {errors, count + (error_count || 1)}
     )
   end
 
@@ -1746,14 +1741,14 @@ defmodule Ash.Actions.Update.Bulk do
       if opts[:return_errors?] do
         {errors, count} = Process.get({:bulk_update_errors, ref}) || {[], 0}
 
-        error =
+        new_errors =
           error
           |> List.wrap()
-          |> Ash.Error.to_ash_error()
+          |> Enum.map(&Ash.Error.to_ash_error/1)
 
         Process.put(
           {:bulk_update_errors, ref},
-          {[error | errors], count + add}
+          {new_errors ++ errors, count + add}
         )
       else
         {errors, count} = Process.get({:bulk_update_errors, ref}) || {[], 0}
@@ -1871,6 +1866,14 @@ defmodule Ash.Actions.Update.Bulk do
       if changeset.valid? do
         {changeset, %{notifications: new_notifications}} =
           Ash.Changeset.run_before_actions(changeset)
+
+        changeset =
+          changeset
+          |> Ash.Changeset.handle_allow_nil_atomics(opts[:actor])
+          |> Ash.Changeset.require_values(
+            :update,
+            true
+          )
 
         changed? =
           Ash.Changeset.changing_attributes?(changeset) or

@@ -969,7 +969,8 @@ defmodule Ash.Type do
   def cast_atomic(type, term, constraints) do
     type = get_type(type)
 
-    with {:ok, value} <- maybe_cast_input(type, term, constraints) do
+    with {:ok, value} <-
+           maybe_cast_input(type, term, constraints) do
       type.cast_atomic(value, constraints)
     end
   end

@@ -130,6 +130,17 @@ defmodule Ash.Actions.Create.Bulk do
 
     argument_names = Enum.map(action.arguments, & &1.name)
 
+    belongs_to_attrs =
+      resource
+      |> Ash.Resource.Info.relationships()
+      |> Enum.filter(&(&1.type == :belongs_to))
+      |> Enum.map(& &1.source_attribute)
+
+    required_attrs_list =
+      resource
+      |> Ash.Resource.Info.attributes()
+      |> Enum.reject(&(&1.allow_nil? || &1.generated? || &1.name in belongs_to_attrs))
+
     changeset_stream =
       inputs
       |> Stream.with_index()
@@ -158,7 +169,8 @@ defmodule Ash.Actions.Create.Bulk do
               all_changes,
               data_layer_can_bulk?,
               opts,
-              ref
+              ref,
+              required_attrs_list
             )
           after
             if opts[:notify?] && !opts[:return_notifications?] do
@@ -346,7 +358,8 @@ defmodule Ash.Actions.Create.Bulk do
          all_changes,
          data_layer_can_bulk?,
          opts,
-         ref
+         ref,
+         required_attrs_list
        ) do
     %{
       must_return_records?: must_return_records_for_changes?,
@@ -369,7 +382,12 @@ defmodule Ash.Actions.Create.Bulk do
         {changeset, _} =
           Ash.Actions.ManagedRelationships.validate_required_belongs_to({changeset, []})
 
-        changeset
+        Ash.Changeset.require_values(
+          changeset,
+          :create,
+          true,
+          required_attrs_list
+        )
       end)
       |> Enum.reduce({[], []}, fn changeset, {batch, must_be_simple} ->
         if changeset.after_transaction in [[], nil] do
@@ -416,19 +434,29 @@ defmodule Ash.Actions.Create.Bulk do
         Ash.DataLayer.transaction(
           List.wrap(resource) ++ action.touches_resources,
           fn ->
-            do_handle_batch(
-              batch,
-              domain,
-              resource,
-              action,
-              opts,
-              all_changes,
-              data_layer_can_bulk?,
-              ref,
-              changes,
-              must_return_records_for_changes?,
-              must_be_simple_results
-            )
+            tmp_ref = make_ref()
+
+            result =
+              do_handle_batch(
+                batch,
+                domain,
+                resource,
+                action,
+                opts,
+                all_changes,
+                data_layer_can_bulk?,
+                ref,
+                changes,
+                must_return_records_for_changes?,
+                must_be_simple_results
+              )
+
+            {new_errors, new_error_count} =
+              Process.delete({:bulk_create_errors, tmp_ref}) || {[], 0}
+
+            store_error(ref, new_errors, new_error_count)
+
+            result
           end,
           opts[:timeout],
           %{
@@ -801,18 +829,14 @@ defmodule Ash.Actions.Create.Bulk do
       if opts[:return_errors?] do
         {errors, count} = Process.get({:bulk_create_errors, ref}) || {[], 0}
 
-        error =
-          case error do
-            %Ash.Changeset{} = changeset ->
-              changeset
-
-            other ->
-              Ash.Error.to_error_class(other)
-          end
+        new_errors =
+          error
+          |> List.wrap()
+          |> Enum.map(&Ash.Error.to_ash_error/1)
 
         Process.put(
           {:bulk_create_errors, ref},
-          {[error | errors], count + 1}
+          {new_errors ++ errors, count + Enum.count(new_errors)}
         )
       else
         {errors, count} = Process.get({:bulk_create_errors, ref}) || {[], 0}

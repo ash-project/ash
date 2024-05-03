@@ -1135,19 +1135,29 @@ defmodule Ash.Actions.Destroy.Bulk do
         Ash.DataLayer.transaction(
           List.wrap(resource) ++ action.touches_resources,
           fn ->
-            do_handle_batch(
-              batch,
-              domain,
-              resource,
-              action,
-              opts,
-              all_changes,
-              ref,
-              base_changeset,
-              must_return_records_for_changes?,
-              changes,
-              must_be_simple_results
-            )
+            tmp_ref = make_ref()
+
+            result =
+              do_handle_batch(
+                batch,
+                domain,
+                resource,
+                action,
+                opts,
+                all_changes,
+                tmp_ref,
+                base_changeset,
+                must_return_records_for_changes?,
+                changes,
+                must_be_simple_results
+              )
+
+            {new_errors, new_error_count} =
+              Process.delete({:bulk_destroy_errors, tmp_ref}) || {[], 0}
+
+            store_error(ref, new_errors, opts, new_error_count)
+
+            result
           end,
           opts[:timeout],
           %{
@@ -1473,14 +1483,14 @@ defmodule Ash.Actions.Destroy.Bulk do
       if opts[:return_errors?] do
         {errors, count} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
 
-        error =
+        new_errors =
           error
           |> List.wrap()
-          |> Ash.Error.to_ash_error()
+          |> Enum.map(&Ash.Error.to_ash_error/1)
 
         Process.put(
           {:bulk_destroy_errors, ref},
-          {[error | errors], count + add}
+          {new_errors ++ errors, count + add}
         )
       else
         {errors, count} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}

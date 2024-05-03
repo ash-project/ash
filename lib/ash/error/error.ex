@@ -41,6 +41,10 @@ defmodule Ash.Error do
     to_error_class(errors, Keyword.put(opts, :action_input, %{action_input | errors: []}))
   end
 
+  def to_error_class([item], opts) do
+    to_error_class(item, opts)
+  end
+
   def to_error_class(value, opts) do
     value =
       value
