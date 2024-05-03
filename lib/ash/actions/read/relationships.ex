@@ -176,6 +176,7 @@ defmodule Ash.Actions.Read.Relationships do
               actor: source_query.context[:private][:actor],
               tracer: source_query.context[:private][:tracer]
             )
+            |> Ash.Query.set_tenant(source_query.tenant)
             |> Ash.Query.set_context(%{
               accessing_from: %{source: relationship.source, name: relationship.join_relationship}
             })
