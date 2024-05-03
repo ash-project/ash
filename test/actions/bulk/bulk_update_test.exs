@@ -81,6 +81,26 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
+  defmodule AtomicallyRequireActor do
+    use Ash.Resource.Change
+
+    def change(changeset, _, context) do
+      if context.actor do
+        changeset
+      else
+        Ash.Changeset.add_error(changeset, "actor is required")
+      end
+    end
+
+    def atomic(changeset, _, context) do
+      if context.actor do
+        {:atomic, changeset, %{}}
+      else
+        {:atomic, Ash.Changeset.add_error(changeset, "actor is required"), %{}}
+      end
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -167,6 +187,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
         argument :authorize?, :boolean, allow_nil?: false
 
         change set_context(%{authorize?: arg(:authorize?)})
+        change AtomicallyRequireActor
       end
 
       update :update_with_match do
@@ -584,6 +605,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                  :update_with_policy,
                  %{title2: "updated value", authorize?: true},
                  authorize?: true,
+                 actor: %{foo: :bar},
                  resource: Post,
                  return_records?: true,
                  return_errors?: true
@@ -616,6 +638,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                  :update_with_policy,
                  %{title2: "updated value", authorize?: true},
                  authorize?: true,
+                 actor: %{foo: :bar},
                  resource: Post,
                  return_records?: true,
                  return_errors?: true,
@@ -638,6 +661,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                  %{title2: "updated value", authorize?: false},
                  strategy: :atomic,
                  authorize?: true,
+                 actor: %{foo: :bar},
                  resource: Post,
                  return_records?: true,
                  return_errors?: true
@@ -659,6 +683,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                  :update_with_policy,
                  %{title2: "updated value", authorize?: false},
                  strategy: :stream,
+                 actor: %{foo: :bar},
                  authorize?: true,
                  resource: Post,
                  return_records?: true,
