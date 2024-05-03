@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.42](https://github.com/ash-project/ash/compare/v3.0.0-rc.41...v3.0.0-rc.42) (2024-05-03)
+
+
+
+
+### Bug Fixes:
+
+* ensure transaction is rolled back on data layer errors during streaming
+
 ## [v3.0.0-rc.41](https://github.com/ash-project/ash/compare/v3.0.0-rc.40...v3.0.0-rc.41) (2024-05-03)
 
 
