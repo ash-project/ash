@@ -90,7 +90,7 @@ Ash.Changeset.for_create(..., tenant: %MyApp.Organization{id: id})
 # in Organization resource
 
 defimpl Ash.ToTenant do
-  def to_tenant(resource, %MyApp.Accounts.Organization{id: id}) do
+  def to_tenant(%{id: id}, resource) do
     if Ash.Resource.Info.data_layer(resource) == AshPostgres.DataLayer
       && Ash.Resource.Info.multitenancy_strategy(resource) == :context do
       "org_#{id}"
