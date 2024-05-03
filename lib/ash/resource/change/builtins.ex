@@ -363,7 +363,7 @@ defmodule Ash.Resource.Change.Builtins do
   ## Example
 
       change before_action(fn changeset, _context ->
-        Logger.debug("About to execute #{changeset.action.name} on #{inspect(changeset.resource)})
+        Logger.debug("About to execute #{changeset.action.name} on #{inspect(changeset.resource)}")
 
         changeset
       end)
@@ -390,7 +390,7 @@ defmodule Ash.Resource.Change.Builtins do
   ## Example
 
       change before_transaction(fn changeset, _context ->
-        Logger.debug("About to execute transaction for #{changeset.action.name} on #{inspect(changeset.resource)})
+        Logger.debug("About to execute transaction for #{changeset.action.name} on #{inspect(changeset.resource)}")
 
         changeset
       end)
