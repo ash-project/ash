@@ -777,6 +777,54 @@ defmodule Ash.Test.Actions.LoadTest do
       assert Enum.sort([category1.id, category2.id]) == Enum.sort([id1, id2])
     end
 
+    test "it allows loading filtered many to many relationships with lateral joins" do
+      category1 =
+        Category
+        |> Ash.Changeset.for_create(:create, %{name: "1"})
+        |> Ash.create!()
+
+      category2 =
+        Category
+        |> Ash.Changeset.for_create(:create, %{name: "2"})
+        |> Ash.create!()
+
+      category3 =
+        Category
+        |> Ash.Changeset.for_create(:create, %{name: "3"})
+        |> Ash.create!()
+
+      category4 =
+        Category
+        |> Ash.Changeset.for_create(:create, %{name: "4"})
+        |> Ash.create!()
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post1"})
+        |> Ash.Changeset.manage_relationship(
+          :categories,
+          [category1, category2, category3, category4],
+          type: :append_and_remove
+        )
+        |> Ash.create!()
+
+      category_query =
+        Category
+        |> Ash.Query.filter(name > "1")
+        |> Ash.Query.sort(:name)
+        |> Ash.Query.limit(2)
+
+      [post] =
+        Post
+        |> Ash.Query.load(categories: category_query)
+        |> Ash.Query.filter(id == ^post.id)
+        |> Ash.read!(authorize?: true)
+
+      assert [%{id: id1}, %{id: id2}] = post.categories
+
+      assert [category2.id, category3.id] == [id1, id2]
+    end
+
     test "it allows loading nested many to many relationships lazily" do
       category1 =
         Category

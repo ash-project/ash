@@ -497,7 +497,7 @@ defmodule Ash.DataLayer.Ets do
                     {destination_attribute, [in: join_attrs]}
                   ])
                 else
-                  Ash.Filter.add_to_filter(query.filter, [
+                  Ash.Filter.add_to_filter!(query.filter, [
                     {destination_attribute, [in: join_attrs]}
                   ])
                 end
