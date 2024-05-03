@@ -8,7 +8,7 @@ In Ash, actions are the primary way to interact with your resources. There are f
 * [Destroy](documentation/topics/actions/destroy-actions.md)
 * [Generic](documentation/topics/actions/generic-actions.md)
 
-Each action has its own set of options, ways of calling it, and ways of customizing it. See the relevant guide for specifics on each action type. This topic focuses on idiomatic ways to use actions, and concepts that cross all action types.
+All actions can be run in a transaction. Create, update and destroy actions are run in a transaction by _default_, whereas read and generic actions require opting in with `transaction? true` in the action definition. Each action has its own set of options, ways of calling it, and ways of customizing it. See the relevant guide for specifics on each action type. This topic focuses on idiomatic ways to use actions, and concepts that cross all action types. 
 
 ## Primary Actions
 
