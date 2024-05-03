@@ -174,9 +174,9 @@ defmodule Ash.Actions.Read.Relationships do
               %{},
               authorize?: source_query.context[:private][:authorize?],
               actor: source_query.context[:private][:actor],
+              tenant: source_query.tenant,
               tracer: source_query.context[:private][:tracer]
             )
-            |> Ash.Query.set_tenant(source_query.tenant)
             |> Ash.Query.set_context(%{
               accessing_from: %{source: relationship.source, name: relationship.join_relationship}
             })
