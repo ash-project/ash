@@ -643,8 +643,8 @@ defmodule Ash.Actions.Destroy.Bulk do
             Keyword.update(
               opts,
               :context,
-              %{private: context_cs.private},
-              &Map.put(&1, :private, context_cs.private)
+              %{private: context_cs.context.private},
+              &Map.put(&1, :private, context_cs.context.private)
             )
 
           Ash.Changeset.fully_atomic_changeset(resource, action, input, opts)
