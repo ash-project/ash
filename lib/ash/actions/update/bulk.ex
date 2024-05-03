@@ -54,6 +54,14 @@ defmodule Ash.Actions.Update.Bulk do
           changeset
 
         Ash.DataLayer.data_layer_can?(query.resource, :update_query) ->
+          opts =
+            Keyword.update(
+              opts,
+              :context,
+              %{private: query.context.private},
+              &Map.put(&1, :private, query.context.private)
+            )
+
           Ash.Changeset.fully_atomic_changeset(query.resource, action, input, opts)
 
         true ->
@@ -801,7 +809,7 @@ defmodule Ash.Actions.Update.Bulk do
     opts = Ash.Actions.Helpers.set_opts(opts, domain)
     read_action = get_read_action(resource, opts)
 
-    {_, opts} =
+    {context_cs, opts} =
       Ash.Actions.Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
 
     fully_atomic_changeset =
@@ -816,6 +824,14 @@ defmodule Ash.Actions.Update.Bulk do
           {:not_atomic, "cannot atomically update a stream without a primary read action"}
 
         Ash.DataLayer.data_layer_can?(resource, :update_query) ->
+          opts =
+            Keyword.update(
+              opts,
+              :context,
+              %{private: context_cs.context.private},
+              &Map.put(&1, :private, context_cs.context.private)
+            )
+
           Ash.Changeset.fully_atomic_changeset(resource, action, input, opts)
 
         true ->

@@ -93,6 +93,14 @@ defmodule Ash.Actions.Destroy.Bulk do
           changeset
 
         Ash.DataLayer.data_layer_can?(query.resource, :destroy_query) ->
+          opts =
+            Keyword.update(
+              opts,
+              :context,
+              %{private: query.context.private},
+              &Map.put(&1, :private, query.context.private)
+            )
+
           Ash.Changeset.fully_atomic_changeset(query.resource, action, input, opts)
 
         true ->
@@ -616,7 +624,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     resource = opts[:resource]
     opts = Ash.Actions.Helpers.set_opts(opts, domain)
 
-    {_, opts} =
+    {context_cs, opts} =
       Ash.Actions.Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
 
     fully_atomic_changeset =
@@ -631,6 +639,14 @@ defmodule Ash.Actions.Destroy.Bulk do
           {:not_atomic, "cannot atomically destroy a stream without a primary read action"}
 
         Ash.DataLayer.data_layer_can?(resource, :destroy_query) ->
+          opts =
+            Keyword.update(
+              opts,
+              :context,
+              %{private: context_cs.private},
+              &Map.put(&1, :private, context_cs.private)
+            )
+
           Ash.Changeset.fully_atomic_changeset(resource, action, input, opts)
 
         true ->

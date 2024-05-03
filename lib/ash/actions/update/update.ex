@@ -88,6 +88,7 @@ defmodule Ash.Actions.Update do
                 opts
                 |> Keyword.merge(
                   assume_casted?: true,
+                  context: changeset.context_changes,
                   notify?: true,
                   atomics:
                     Keyword.merge(

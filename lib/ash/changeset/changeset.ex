@@ -63,6 +63,7 @@ defmodule Ash.Changeset do
     before_action: [],
     before_transaction: [],
     context: %{},
+    context_changes: %{},
     defaults: [],
     errors: [],
     params: %{},
@@ -544,6 +545,7 @@ defmodule Ash.Changeset do
       changeset =
         resource
         |> Ash.Changeset.new()
+        |> Map.put(:context, opts[:context] || %{})
         |> Map.put(:params, params)
         |> Map.put(:action, action)
         |> Map.put(:action_type, action.type)
@@ -1349,7 +1351,7 @@ defmodule Ash.Changeset do
 
   ```elixir
   change fn changeset, _ ->
-    Ash.Changeset.set_attribute(changeset, :score, changeset.data.score + 1)
+    Ash.Changeset.change_attribute(changeset, :score, changeset.data.score + 1)
   end
   ```
 
@@ -3553,7 +3555,14 @@ defmodule Ash.Changeset do
 
   def set_context(changeset, map) do
     %{changeset | context: Ash.Helpers.deep_merge_maps(changeset.context, map)}
+    |> store_context_changes(map)
   end
+
+  defp store_context_changes(%{phase: :pending} = changeset, map) do
+    %{changeset | context_changes: Ash.Helpers.deep_merge_maps(changeset.context_changes, map)}
+  end
+
+  defp store_context_changes(changeset, _), do: changeset
 
   @type manage_relationship_type ::
           :append_and_remove | :append | :remove | :direct_control | :create
