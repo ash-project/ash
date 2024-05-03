@@ -1703,7 +1703,9 @@ defmodule Ash.Actions.Destroy.Bulk do
                 [changeset] = batch
 
                 result =
-                  Ash.DataLayer.destroy(resource, changeset)
+                  resource
+                  |> Ash.DataLayer.destroy(changeset)
+                  |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
 
                 case result do
                   :ok ->

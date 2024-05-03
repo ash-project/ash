@@ -1257,8 +1257,10 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp error_stream(ref) do
+    the_errors = Process.delete({:bulk_update_errors, ref})
+
     Stream.resource(
-      fn -> Process.delete({:bulk_update_errors, ref}) end,
+      fn -> the_errors end,
       fn
         {errors, _count} ->
           {Stream.map(errors || [], &{:error, &1}), []}
@@ -1271,8 +1273,10 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp notification_stream(ref) do
+    the_notifications = Process.delete({:bulk_update_notifications, ref})
+
     Stream.resource(
-      fn -> Process.delete({:bulk_update_notifications, ref}) end,
+      fn -> the_notifications end,
       fn
         [] ->
           {:halt, []}
@@ -1493,15 +1497,15 @@ defmodule Ash.Actions.Update.Bulk do
       domain,
       base_changeset
     )
-    |> Stream.concat(must_be_simple_results)
     |> then(fn stream ->
       if opts[:return_stream?] do
         stream
+        |> Stream.concat(must_be_simple_results)
         |> Stream.map(&{:ok, &1})
         |> Stream.concat(error_stream(ref))
         |> Stream.concat(notification_stream(ref))
       else
-        stream
+        Enum.concat(stream, must_be_simple_results)
       end
     end)
   end
@@ -2004,7 +2008,10 @@ defmodule Ash.Actions.Update.Bulk do
                   batch,
                   {:ok, []},
                   fn changeset, {:ok, results} ->
-                    case Ash.DataLayer.update(resource, changeset) do
+                    resource
+                    |> Ash.DataLayer.update(changeset)
+                    |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
+                    |> case do
                       {:ok, result} ->
                         result =
                           Ash.Resource.put_metadata(

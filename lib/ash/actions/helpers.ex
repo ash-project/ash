@@ -14,6 +14,9 @@ defmodule Ash.Actions.Helpers do
         %Ash.Query{} = query ->
           Ash.DataLayer.rollback(resource, Ash.Query.add_error(query, error))
 
+        %Ash.ActionInput{} = action_input ->
+          Ash.DataLayer.rollback(resource, Ash.ActionInput.add_error(action_input, error))
+
         _ ->
           Ash.DataLayer.rollback(resource, Ash.Error.to_error_class(error))
       end
