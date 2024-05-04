@@ -3,7 +3,7 @@
 # Optimistic Locking
 
 ```elixir
-Mix.install([{:ash, path: "~/dev/ash/ash"}], consolidate_protocols: false)
+Mix.install([{:ash, "~> 3.0.0-rc.44"}], consolidate_protocols: false)
 ```
 
 ## What is optimistic locking?
