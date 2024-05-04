@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.43](https://github.com/ash-project/ash/compare/v3.0.0-rc.42...v3.0.0-rc.43) (2024-05-04)
+
+
+
+
+### Bug Fixes:
+
+* more fixes for atomic changeset context setting
+
+* missing tenant for many_to_many read (#1107)
+
+* make lateral join filtering in ETS data layer work (#1111)
+
+* properly retain context from initial changeset in fully atomic changeset
+
 ## [v3.0.0-rc.42](https://github.com/ash-project/ash/compare/v3.0.0-rc.41...v3.0.0-rc.42) (2024-05-03)
 
 
