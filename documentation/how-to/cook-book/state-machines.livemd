@@ -1,0 +1,345 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# State Machines
+
+```elixir
+Mix.install(
+  [
+    {:ash, "~> 3.0.0-rc"},
+    {:ash_state_machine, "~> 0.2.3-rc"},
+    {:kino, "~> 0.12"}
+  ],
+  consolidate_protocols: false
+)
+
+Logger.configure(level: :warning)
+```
+
+## What is a state machine?
+
+A state machine is a program who's purpose is to manage an internal "state". The simplest example of a state machine could be a program representing a light switch. A light switch might have two states, "on" and "off". You can transition from "on" to "off", and back.
+
+```mermaid
+classDiagram
+
+class Switch {
+  state on | off
+  turnOn() off -> on
+  turnOff() on -> off
+}
+```
+
+To build state machines with `Ash.Resource`, we use [`AshStateMachine`](https://hexdocs.pm/ash_state_machine).
+
+When we refer to "state machines" in AshStateMachine, we're referring to a specific type of state machine known as a "Finite State Machine".
+It is "finite", because there are a statically known list of states that the machine may be in at any time, just like the `Switch` example above.
+
+### Why should we use state machines?
+
+#### Flexible
+
+State machines are a *simple* and *powerful* way to represent complex workflows. They are flexible to modifications over time by adding new states, or new transitions between states.
+
+#### Migrateable
+
+State machines typically contain additional data about the state that they are in, or past states that they have been in, and this state must be migrated over time. When representing data as state machines, it becomes simple to do things like "update all `package` records that are in the `pending_shipment` state".
+
+#### Easy to reason about for humans
+
+State machines, when compared to things like workflows, are easy for people to reason about. We have an intuition for things like "the package is currently `on_its_way`, with a `current_location` of New York, New York", or "your package is now `out_for_delivery` with an ETA of 6PM".
+
+#### Compatible with any storage mechanism
+
+Since state machines are backed by simple state, you can often avoid any fancy workflow runners or complex storage mechanisms. You can store them in a database table, a json blob, a CSV file, at the end of the day its just a `:state` field and accompanying additional fields.
+
+### What does AshStateMachine do differently than other implementations?
+
+AshStateMachine is an [`Ash.Resource`](https://hexdocs.pm/ash/Ash.Resource.html) extension, meaning it *enhances a resource* with state machine capabilities. In `Ash`, all modifications go through [*actions*](actions.html). In accordance with this, `AshStateMachine` offers a DSL for declaring *valid states and transitions*, but does not, itself, *perform* those transitions. You will use a change called `transition_state/1` in an action to move from one state to the other. Lets see it in action!
+
+Modify the setup block and configure the log level to debug to see logs from the ETS data layer.
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+Logger.configure(level: :debug)
+```
+
+## Define a state machine
+
+<!-- livebook:{"disable_formatting":true} -->
+
+```elixir
+defmodule Package do
+  use Ash.Resource,
+    domain: Domain,
+    extensions: [AshStateMachine],
+    data_layer: Ash.DataLayer.Ets
+
+  state_machine do
+    initial_states [:awaiting_shipment]
+    default_initial_state :awaiting_shipment
+
+    transitions do
+      transition :shipped, from: [:awaiting_shipment, :awaiting_return], to: :on_its_way
+      transition :refused, from: :on_its_way, to: :awaiting_shipment
+      transition :accepted, from: :on_its_way, to: :delivered
+      transition :lost, from: [:on_its_way, :awaiting_return, :awaiting_shipment], to: :lost
+    end
+  end
+
+  attributes do
+    uuid_primary_key(:id)
+    attribute :from_address, :string, allow_nil?: false
+    attribute :to_address, :string, allow_nil?: false
+    attribute :refused?, :boolean, default: false
+    attribute :got_signature?, :boolean
+    attribute :lost_in_state, :atom do
+      constraints one_of: [:on_its_way, :awaiting_return, :awaiting_shipment]
+    end
+  end
+
+  actions do
+    defaults([:read, create: [:from_address, :to_address]])
+
+    update :shipped do
+      change transition_state(:on_its_way)
+    end
+
+    update :lost do
+      # set `lost_in_state` to the current state (before updating)
+      change atomic_update(:lost_in_state, expr(state))
+      change transition_state(:lost)
+    end
+
+    update :refused do
+      # swap the from and to address (In real life it is massively more complex than this 😂)
+      change atomic_update(:from_address, expr(to_address))
+      change atomic_update(:to_address, expr(from_address))
+
+      # set some additional attributes
+      change set_attribute(:refused?, true)
+      change transition_state(:awaiting_shipment)
+    end
+
+    update :accepted do
+      accept [:got_signature?]
+    end
+  end
+end
+
+defmodule Domain do
+  use Ash.Domain,
+    validate_config_inclusion?: false
+
+  resources do
+    resource Package do
+      define :create_package, action: :create, args: [:from_address, :to_address]
+      define :package_shipped, action: :shipped
+      define :package_lost, action: :lost
+      define :package_refused, action: :refused
+      define :package_accepted, action: :accepted, args: [:got_signature?]
+    end
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Domain, <<70, 79, 82, 49, 0, 3, 61, ...>>,
+ [
+   Ash.Domain.Dsl.Resources.Resource,
+   Ash.Domain.Dsl.Resources.Options,
+   Ash.Domain.Dsl,
+   %{opts: [], entities: [...]},
+   Ash.Domain.Dsl,
+   Ash.Domain.Dsl.Resources.Options,
+   ...
+ ]}
+```
+
+## Now lets see what our state machine looks like
+
+```elixir
+mermaid = AshStateMachine.Charts.mermaid_flowchart(Package)
+
+Kino.Shorts.mermaid("""
+#{mermaid}
+""")
+```
+
+<!-- livebook:{"output":true} -->
+
+```mermaid
+flowchart TD
+awaiting_shipment --> |shipped| on_its_way
+on_its_way --> |refused| awaiting_shipment
+on_its_way --> |accepted| delivered
+on_its_way --> |lost| lost
+awaiting_shipment --> |lost| lost
+
+```
+
+## Moving through states
+
+```elixir
+package = Domain.create_package!("my house", "your house")
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+#Package<
+  __meta__: #Ecto.Schema.Metadata<:loaded>,
+  id: "fa66c0be-1629-4015-ae2c-43137fb9508e",
+  from_address: "my house",
+  to_address: "your house",
+  refused?: false,
+  got_signature?: nil,
+  lost_in_state: nil,
+  state: :awaiting_shipment,
+  aggregates: %{},
+  calculations: %{},
+  ...
+>
+```
+
+```elixir
+# do a valid transition
+package = Domain.package_shipped!(package)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+#Package<
+  __meta__: #Ecto.Schema.Metadata<:loaded>,
+  id: "fa66c0be-1629-4015-ae2c-43137fb9508e",
+  from_address: "my house",
+  to_address: "your house",
+  refused?: false,
+  got_signature?: nil,
+  lost_in_state: nil,
+  state: :on_its_way,
+  aggregates: %{},
+  calculations: %{},
+  ...
+>
+```
+
+```elixir
+# try do an invalid transition
+Domain.package_shipped(package)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:error,
+ %Ash.Error.Invalid{
+   changeset: #Ash.Changeset<
+     domain: Domain,
+     action_type: :update,
+     action: :shipped,
+     attributes: %{},
+     relationships: %{},
+     errors: [
+       %AshStateMachine.Errors.NoMatchingTransition{
+         action: :shipped,
+         target: :on_its_way,
+         old_state: :on_its_way,
+         splode: Ash.Error,
+         bread_crumbs: [],
+         vars: [],
+         path: [],
+         stacktrace: #Splode.Stacktrace<>,
+         class: :invalid
+       }
+     ],
+     data: #Package<
+       __meta__: #Ecto.Schema.Metadata<:loaded>,
+       id: "fa66c0be-1629-4015-ae2c-43137fb9508e",
+       from_address: "my house",
+       to_address: "your house",
+       refused?: false,
+       got_signature?: nil,
+       lost_in_state: nil,
+       state: :on_its_way,
+       aggregates: %{},
+       calculations: %{},
+       ...
+     >,
+     context: %{state_machine: %{attempted_change: :on_its_way}},
+     valid?: false
+   >,
+   query: nil,
+   action_input: nil,
+   errors: [
+     %AshStateMachine.Errors.NoMatchingTransition{
+       action: :shipped,
+       target: :on_its_way,
+       old_state: :on_its_way,
+       splode: Ash.Error,
+       bread_crumbs: [],
+       vars: [],
+       path: [],
+       stacktrace: #Splode.Stacktrace<>,
+       class: :invalid
+     }
+   ],
+   splode: Ash.Error,
+   bread_crumbs: [],
+   vars: [],
+   path: [],
+   stacktrace: #Splode.Stacktrace<>,
+   class: :invalid
+ }}
+```
+
+```elixir
+# notice how smart we can make our state machines using actions
+# The from/to addresses were swapped, and `refused?` was set to true
+package = Domain.package_refused!(package)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+#Package<
+  __meta__: #Ecto.Schema.Metadata<:loaded>,
+  id: "fa66c0be-1629-4015-ae2c-43137fb9508e",
+  from_address: "your house",
+  to_address: "my house",
+  refused?: true,
+  got_signature?: nil,
+  lost_in_state: nil,
+  state: :awaiting_shipment,
+  aggregates: %{},
+  calculations: %{},
+  ...
+>
+```
+
+```elixir
+# and now our package can finish its journey back to us!
+
+Domain.package_accepted!(package, true)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+#Package<
+  __meta__: #Ecto.Schema.Metadata<:loaded>,
+  id: "fa66c0be-1629-4015-ae2c-43137fb9508e",
+  from_address: "your house",
+  to_address: "my house",
+  refused?: true,
+  got_signature?: true,
+  lost_in_state: nil,
+  state: :awaiting_shipment,
+  aggregates: %{},
+  calculations: %{},
+  ...
+>
+```

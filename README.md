@@ -94,11 +94,10 @@ Welcome! Here you will find everything you need to know to get started with and 
 
 ---
 
-## How To
-
-### CookBook
+## CookBook
 
 - [Optimistic Locking](documentation/how-to/cook-book/optimistic-locking.livemd)
+- [State Machines](documentation/how-to/cook-book/state-machines.livemd)
 
 ---
 
