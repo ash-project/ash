@@ -399,6 +399,7 @@ defmodule Ash.DataLayer.Ets do
     |> Ash.Query.set_context(%{private: %{internal?: true}})
     |> Ash.Query.unset(:load)
     |> Ash.Query.unset(:select)
+    |> Ash.Query.unset(:page)
     |> Ash.Actions.Read.unpaginated_read(nil, authorize?: false)
     |> case do
       {:error, error} ->
@@ -461,6 +462,7 @@ defmodule Ash.DataLayer.Ets do
 
     source_query
     |> Ash.Query.unset(:load)
+    |> Ash.Query.unset(:page)
     |> Ash.Query.filter(^ref(source_attribute) in ^source_attributes)
     |> Ash.Query.set_context(%{private: %{internal?: true}})
     |> Ash.Query.set_domain(query.domain)

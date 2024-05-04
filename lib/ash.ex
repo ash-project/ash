@@ -70,7 +70,7 @@ defmodule Ash do
                       [
                         page: [
                           doc: "Pagination options, see the pagination docs for more",
-                          type: {:custom, __MODULE__, :page_opts, []}
+                          type: {:custom, Ash.Page, :page_opts, []}
                         ],
                         load: [
                           type: :any,
@@ -149,53 +149,6 @@ defmodule Ash do
 
   @doc false
   def stream_opts, do: @stream_opts
-
-  @offset_page_opts [
-    offset: [
-      type: :non_neg_integer,
-      doc: "The number of records to skip from the beginning of the query"
-    ],
-    limit: [
-      type: :pos_integer,
-      doc: "The number of records to include in the page"
-    ],
-    filter: [
-      type: :any,
-      doc: """
-      A filter to apply for pagination purposes, that should not be considered in the full count.
-
-      This is used by the liveview paginator to only fetch the records that were *already* on the
-      page when refreshing data, to avoid pages jittering.
-      """
-    ],
-    count: [
-      type: :boolean,
-      doc: "Whether or not to return the page with a full count of all records"
-    ]
-  ]
-
-  @keyset_page_opts [
-    before: [
-      type: :string,
-      doc: "Get records that appear before the provided keyset (mutually exclusive with `after`)"
-    ],
-    after: [
-      type: :string,
-      doc: "Get records that appear after the provided keyset (mutually exclusive with `before`)"
-    ],
-    limit: [
-      type: :pos_integer,
-      doc: "How many records to include in the page"
-    ],
-    filter: [
-      type: :any,
-      doc: "See the `filter` option for offset pagination, this behaves the same."
-    ],
-    count: [
-      type: :boolean,
-      doc: "Whether or not to return the page with a full count of all records"
-    ]
-  ]
 
   @load_opts_schema Spark.Options.merge(
                       [
@@ -1506,11 +1459,13 @@ defmodule Ash do
   def page(%Ash.Page.Keyset{results: [], before: before, rerun: {query, opts}}, :prev)
       when not is_nil(before) do
     new_page_opts =
-      opts[:page]
+      query.page
       |> Keyword.delete(:before)
       |> Keyword.put(:after, before)
 
-    read(query, Keyword.put(opts, :page, new_page_opts))
+    query
+    |> Ash.Query.page(new_page_opts)
+    |> read(opts)
   end
 
   def page(%Ash.Page.Keyset{}, n) when is_integer(n) do
@@ -1528,11 +1483,13 @@ defmodule Ash do
       |> Map.get(:keyset)
 
     new_page_opts =
-      opts[:page]
+      query.page
       |> Keyword.delete(:before)
       |> Keyword.put(:after, last_keyset)
 
-    case read(query, Keyword.put(opts, :page, new_page_opts)) do
+    query = Ash.Query.page(query, new_page_opts)
+
+    case read(query, opts) do
       {:ok, %{results: []}} ->
         {:ok, page}
 
@@ -1549,11 +1506,13 @@ defmodule Ash do
       |> Map.get(:keyset)
 
     new_page_opts =
-      opts[:page]
+      query.page
       |> Keyword.put(:before, first_keyset)
       |> Keyword.delete(:after)
 
-    case read(query, Keyword.put(opts, :page, new_page_opts)) do
+    query = Ash.Query.page(query, new_page_opts)
+
+    case read(query, opts) do
       {:ok, %{results: []}} ->
         {:ok, page}
 
@@ -1564,13 +1523,15 @@ defmodule Ash do
 
   def page(%Ash.Page.Keyset{rerun: {query, opts}}, :first) do
     page_opts =
-      if opts[:page][:count] do
+      if query.page[:count] do
         [count: true]
       else
         []
       end
 
-    read(query, Keyword.put(opts, :page, page_opts))
+    query
+    |> Ash.Query.page(page_opts)
+    |> read(opts)
   end
 
   def page(%Ash.Page.Keyset{rerun: {query, opts}}, :self) do
@@ -1600,14 +1561,14 @@ defmodule Ash do
           end
 
         :self ->
-          opts[:page]
+          query.page
 
         page_num when is_integer(page_num) ->
           [offset: (page_num - 1) * limit, limit: limit]
       end
 
     page_opts =
-      if opts[:page][:count] do
+      if query.page[:count] do
         Keyword.put(page_opts, :count, true)
       else
         page_opts
@@ -1616,7 +1577,9 @@ defmodule Ash do
     if request == :last && !count do
       {:error, "Cannot fetch last page without counting"}
     else
-      read(query, Keyword.put(opts, :page, page_opts))
+      query
+      |> Ash.Query.page(page_opts)
+      |> read(opts)
     end
   end
 
@@ -1824,10 +1787,10 @@ defmodule Ash do
   ## Pagination
 
   #### Limit/offset pagination
-  #{Spark.Options.docs(@offset_page_opts)}
+  #{Spark.Options.docs(Ash.Page.Offset.page_opts())}
 
   #### Keyset pagination
-  #{Spark.Options.docs(@keyset_page_opts)}
+  #{Spark.Options.docs(Ash.Page.Keyset.page_opts())}
   """
   @spec read(Ash.Query.t() | Ash.Resource.t(), Keyword.t()) ::
           {:ok, list(Ash.Resource.record()) | Ash.Page.page()} | {:error, term}
@@ -1849,7 +1812,7 @@ defmodule Ash do
 
     with {:ok, opts} <- Spark.Options.validate(opts, @read_opts_schema),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
-         {:ok, action} <- Ash.Helpers.pagination_check(action, query.resource, opts),
+         {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
          {:ok, results} <- Ash.Actions.Read.run(query, action, opts) do
       {:ok, results}
@@ -1920,7 +1883,7 @@ defmodule Ash do
 
     with {:ok, opts} <- Spark.Options.validate(opts, @read_one_opts_schema),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
-         {:ok, action} <- Ash.Helpers.pagination_check(action, query.resource, opts),
+         {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
          {:ok, result} <- do_read_one(query, action, opts) do
       {:ok, result}
@@ -1961,7 +1924,7 @@ defmodule Ash do
 
     with {:ok, opts} <- Spark.Options.validate(opts, @read_one_opts_schema),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
-         {:ok, action} <- Ash.Helpers.pagination_check(action, query.resource, opts),
+         {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
          {:ok, result} <- do_read_one(query, action, opts) do
       {:ok, result}
@@ -2554,29 +2517,4 @@ defmodule Ash do
 
   @doc false
   def stream_opt_keys, do: Keyword.keys(@stream_opts)
-
-  @doc false
-  # This is a custom validator for an options schema
-  def page_opts(page_opts) do
-    if page_opts in [false, nil] do
-      {:ok, page_opts}
-    else
-      if page_opts[:after] || page_opts[:before] do
-        validate_or_error(page_opts, @keyset_page_opts)
-      else
-        if page_opts[:offset] do
-          validate_or_error(page_opts, @offset_page_opts)
-        else
-          validate_or_error(page_opts, @keyset_page_opts)
-        end
-      end
-    end
-  end
-
-  defp validate_or_error(opts, schema) do
-    case Spark.Options.validate(opts, schema) do
-      {:ok, value} -> {:ok, value}
-      {:error, error} -> {:error, Exception.message(error)}
-    end
-  end
 end

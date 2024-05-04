@@ -15,6 +15,10 @@ defmodule Ash.Actions.Read do
     run(query, action, Keyword.put(opts, :skip_pagination?, true))
   end
 
+  def read_and_return_unpaged(query, action \\ nil, opts \\ []) do
+    run(query, action, Keyword.put(opts, :return_unpaged?, true))
+  end
+
   @spec run(Ash.Query.t(), Ash.Resource.Actions.action(), Keyword.t()) ::
           {:ok, Ash.Page.page() | list(Ash.Resource.record())}
           | {:ok, Ash.Page.page() | list(Ash.Resource.record()), Ash.Query.t()}
@@ -143,10 +147,15 @@ defmodule Ash.Actions.Read do
         query.domain
       )
 
-    page_opts = page_opts(action, opts)
+    page_opts =
+      if Keyword.has_key?(opts, :page) do
+        page_opts(action, opts[:page])
+      else
+        page_opts(action, query.page)
+      end
 
     query =
-      if opts[:page] do
+      if page_opts do
         query
         |> Ash.Query.set_context(%{
           initial_limit: query.limit,
@@ -162,12 +171,13 @@ defmodule Ash.Actions.Read do
         query
       end
 
-    opts = Keyword.put(opts, :page, page_opts)
+    opts = Keyword.delete(opts, :page)
+    query = Ash.Query.page(query, page_opts)
 
     query =
-      if opts[:page] && opts[:page][:limit] &&
-           (opts[:page][:before] || opts[:page][:after] ||
-              (action.pagination.keyset? && !opts[:page][:offset])) do
+      if query.page && query.page[:limit] &&
+           (query.page[:before] || query.page[:after] ||
+              (action.pagination.keyset? && !query.page[:offset])) do
         load_and_select_sort(query)
       else
         query
@@ -421,7 +431,7 @@ defmodule Ash.Actions.Read do
                relationship_path_filters,
                opts
              ),
-           {:ok, query} <- paginate(query, action, opts[:page], opts[:skip_pagination?]),
+           {:ok, query} <- paginate(query, action, opts[:skip_pagination?]),
            {:ok, data_layer_query} <-
              Ash.Query.data_layer_query(query, data_layer_calculations: data_layer_calculations),
            {:ok, results} <-
@@ -1238,10 +1248,13 @@ defmodule Ash.Actions.Read do
       action.pagination == false ->
         data
 
-      opts[:page] == false ->
+      original_query.page == false ->
         data
 
-      opts[:page][:limit] ->
+      opts[:return_unpaged?] && original_query.page[:limit] ->
+        Ash.Page.Unpaged.new(data, count, opts)
+
+      original_query.page[:limit] ->
         to_page(data, action, count, sort, original_query, opts)
 
       true ->
@@ -1251,7 +1264,7 @@ defmodule Ash.Actions.Read do
 
   @doc false
   def to_page(data, action, count, sort, original_query, opts) do
-    page_opts = opts[:page]
+    page_opts = original_query.page
 
     {data, rest} =
       if page_opts[:limit] do
@@ -1600,45 +1613,53 @@ defmodule Ash.Actions.Read do
   defp maybe_await(other), do: other
 
   defp fetch_count(
-         %{action: action, resource: resource} = query,
+         %{action: action, resource: resource, page: page} = query,
          query_before_pagination,
          relationship_path_filters,
          opts
        ) do
-    if action.pagination &&
-         opts[:page] &&
-         (opts[:page][:count] == true ||
-            (opts[:page][:count] != false and action.pagination.countable == :by_default)) do
-      with {:ok, filter} <-
-             filter_with_related(
-               query,
-               opts[:authorize?],
-               relationship_path_filters
-             ),
-           query <-
-             query
-             |> Ash.Query.unset([:sort, :distinct_sort, :lock, :load, :limit, :offset])
-             |> Ash.Query.limit(query_before_pagination.limit)
-             |> Ash.Query.offset(query_before_pagination.offset)
-             |> Map.put(:filter, filter),
-           {:ok, data_layer_query} <- Ash.Query.data_layer_query(query) do
-        if Ash.DataLayer.in_transaction?(resource) || !Ash.DataLayer.can?(:async_engine, resource) do
-          case do_fetch_count(query, data_layer_query) do
-            {:ok, count} -> {:ok, {:ok, count}}
-            {:error, error} -> {:error, error}
+    needs_count? =
+      action.pagination && page &&
+        (page[:count] == true ||
+           (page[:count] != false and action.pagination.countable == :by_default))
+
+    cond do
+      Map.has_key?(query.context, :accessing_from) and needs_count? ->
+        {:error, "Cannot request count when paginating relationships"}
+
+      needs_count? ->
+        with {:ok, filter} <-
+               filter_with_related(
+                 query,
+                 opts[:authorize?],
+                 relationship_path_filters
+               ),
+             query <-
+               query
+               |> Ash.Query.unset([:sort, :distinct_sort, :lock, :load, :limit, :offset, :page])
+               |> Ash.Query.limit(query_before_pagination.limit)
+               |> Ash.Query.offset(query_before_pagination.offset)
+               |> Map.put(:filter, filter),
+             {:ok, data_layer_query} <- Ash.Query.data_layer_query(query) do
+          if Ash.DataLayer.in_transaction?(resource) ||
+               !Ash.DataLayer.can?(:async_engine, resource) do
+            case do_fetch_count(query, data_layer_query) do
+              {:ok, count} -> {:ok, {:ok, count}}
+              {:error, error} -> {:error, error}
+            end
+          else
+            {:ok,
+             Ash.ProcessHelpers.async(
+               fn ->
+                 do_fetch_count(query, data_layer_query)
+               end,
+               opts
+             )}
           end
-        else
-          {:ok,
-           Ash.ProcessHelpers.async(
-             fn ->
-               do_fetch_count(query, data_layer_query)
-             end,
-             opts
-           )}
         end
-      end
-    else
-      {:ok, {:ok, nil}}
+
+      true ->
+        {:ok, {:ok, nil}}
     end
   end
 
@@ -1790,33 +1811,35 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  def page_opts(action, opts) do
+  def page_opts(action, page_opts) do
     cond do
       action.pagination == false ->
         nil
 
-      Keyword.keyword?(opts[:page]) && !Keyword.has_key?(opts[:page], :limit) &&
+      Keyword.keyword?(page_opts) && !Keyword.has_key?(page_opts, :limit) &&
           action.pagination.default_limit ->
-        Keyword.put(opts[:page], :limit, action.pagination.default_limit)
+        Keyword.put(page_opts, :limit, action.pagination.default_limit)
 
-      is_nil(opts[:page]) and action.pagination.required? ->
+      is_nil(page_opts) and action.pagination.required? ->
         if action.pagination.default_limit do
           [limit: action.pagination.default_limit]
         else
-          opts[:page]
+          page_opts
         end
 
       true ->
-        opts[:page]
+        page_opts
     end
   end
 
   @doc false
-  def paginate(starting_query, _action, _page_opts, true) do
+  def paginate(starting_query, _action, true) do
     {:ok, starting_query}
   end
 
-  def paginate(starting_query, action, page_opts, _skip?) do
+  def paginate(starting_query, action, _skip?) do
+    page_opts = starting_query.page
+
     cond do
       action.pagination == false && page_opts ->
         {:error, "Pagination is not supported"}

@@ -921,4 +921,69 @@ defmodule Ash.Actions.PaginationTest do
                |> Map.get(:posts)
     end
   end
+
+  describe "Query.page/2" do
+    setup do
+      users =
+        for i <- 0..9 do
+          user = Ash.create!(Ash.Changeset.for_create(User, :create, %{name: "#{i}"}))
+
+          if i != 0 do
+            for x <- 1..i do
+              Ash.create!(
+                Ash.Changeset.for_create(Post, :create, %{body: "#{i}-#{x}", user_id: user.id})
+              )
+            end
+          end
+        end
+
+      [users: users]
+    end
+
+    test "works with offset pagination" do
+      assert User
+             |> Ash.Query.page(false)
+             |> Ash.read!(action: :optional_offset)
+             |> Enum.count() == 10
+
+      assert User
+             |> Ash.Query.page(limit: 5)
+             |> Ash.read!(action: :optional_offset)
+             |> Map.fetch!(:results)
+             |> Enum.count() == 5
+    end
+
+    test "works with keyset pagination" do
+      assert User
+             |> Ash.Query.page(false)
+             |> Ash.read!(action: :optional_keyset)
+             |> Enum.count() == 10
+
+      assert User
+             |> Ash.Query.page(limit: 5)
+             |> Ash.read!(action: :optional_keyset)
+             |> Map.fetch!(:results)
+             |> Enum.count() == 5
+    end
+
+    test "allows retrieving the pages with Ash.page!/2" do
+      assert %{results: [%{name: "4"}]} =
+               page =
+               User
+               |> Ash.Query.sort(name: :desc)
+               |> Ash.Query.filter(name in ["4", "3", "2", "1", "0"])
+               |> Ash.Query.page(limit: 1)
+               |> Ash.read!()
+
+      assert %{results: [%{name: "3"}]} = Ash.page!(page, :next)
+    end
+
+    test "gets overridden by opts" do
+      assert User
+             |> Ash.Query.page(limit: 5)
+             |> Ash.read!(page: [limit: 3])
+             |> Map.fetch!(:results)
+             |> Enum.count() == 3
+    end
+  end
 end

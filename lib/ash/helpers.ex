@@ -280,11 +280,16 @@ defmodule Ash.Helpers do
     end
   end
 
-  def pagination_check(action, resource, opts) do
-    if Keyword.get(opts, :page) && Keyword.get(opts, :page) != [] && !Map.get(action, :pagination) do
+  def pagination_check(action, query, opts) do
+    page = query.page || opts[:page]
+
+    if page && page != [] && !Map.get(action, :pagination) do
       {:error,
        Ash.Error.to_error_class(
-         Ash.Error.Invalid.PaginationNotSupported.exception(resource: resource, action: action)
+         Ash.Error.Invalid.PaginationNotSupported.exception(
+           resource: query.resource,
+           action: action
+         )
        )}
     else
       {:ok, action}
