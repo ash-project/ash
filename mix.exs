@@ -67,6 +67,7 @@ defmodule Ash.MixProject do
         "documentation/topics/actions/manual-actions.md",
         "documentation/topics/advanced/reactor.md",
         "documentation/topics/advanced/monitoring.md",
+        "documentation/topics/advanced/pagination.livemd",
         "documentation/topics/advanced/timeouts.md",
         "documentation/topics/advanced/multitenancy.md",
         "documentation/topics/advanced/writing-extensions.md",

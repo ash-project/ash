@@ -1,0 +1,1040 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Pagination
+
+```elixir
+Mix.install([{:ash, "~> 3.0"}], consolidate_protocols: false)
+Logger.configure(level: :warning)
+```
+
+## Pagination in Ash
+
+Ash has built-in support for two kinds of pagination: `offset` and `keyset`. You can perform pagination by passing the `:page` option to read actions, or using `Ash.Query.page/2` on the query. The page options vary depending on which kind of pagination you want to perform.
+
+Pagination support is configured on a per-action basis. A single action can support both kinds of pagination if desired, but typically you would use one or the other. Read actions generated with `defaults [:read]` support both offset and keyset pagination, for other `read` actions you have to configure the [`pagination` section](https://hexdocs.pm/ash/dsl-ash-resource.html#actions-read-pagination).
+
+> ### Check the updated query return type!
+>
+> Pagination will modify the return type of calling the query action.
+>
+> Without pagination, Ash will return a list of records.
+>
+> But _with_ pagination, Ash will return an `Ash.Page.Offset` struct (for offset pagination) or `Ash.Page.Keyset` struct (for keyset pagination). Both structs contain the list of records in the `results` key of the struct.
+
+## Offset Pagination
+
+Offset pagination is done via providing a `limit` and an `offset` when making queries.
+
+* The `limit` determines how many records should be returned in the query.
+* The `offset` describes how many records from the beginning should be skipped.
+
+### Pros of offset pagination
+
+* Simple to think about
+* Possible to skip to a page by number. E.g the 5th page of 10 records is `offset: 40`
+* Easy to reason about what page you are currently on (if the total number of records is requested)
+* Can go to the last page (though data may have changed between calculating the last page details, and requesting it)
+
+### Cons of offset pagination
+
+* Does not perform well on large datasets (if you have to ask if your dataset is "large", it probably isn't)
+* When moving between pages, if data was created or deleted, individual records may be missing or appear on multiple pages
+
+## Keyset Pagination
+
+Keyset pagination is done via providing an `after` or `before` option, as well as a `limit`.
+
+* The `limit` determines how many records should be returned in the query.
+* The `after` or `before` value should be a `keyset` value that has been returned from a previous request. Keyset values are returned whenever there is any read action on a resource that supports keyset pagination, and they are stored in the `__metadata__` key of each record.
+
+> ### Keysets are directly tied to the sorting applied to the query
+>
+> You can't change the sort applied to a request being paginated, and use the same keyset. If you want to change the sort, but *keep* the record who's keyset you are using in the `before` or `after` option, you must first request the individual record, with the new sort applied. Then, you can use the new keyset.
+
+### Pros of keyset pagination
+
+* Performs very well on large datasets (assuming indices exist on the columns being sorted on)
+* Behaves well as data changes. The record specified will always be the first or last item in the page
+
+### Cons of keyset paginations
+
+* A bit more complex to use
+* Can't go to a specific page number
+
+## Counting records
+
+When calling an action that uses pagination, the full count of records can be requested by adding the option `count: true` to the page options.
+Note that this will perform a second query to fetch the count, which can be expensive on large data sets.
+
+## Relationship pagination
+
+In addition to paginating root data, Ash is also capable of paginating relationships when you load them. To do this, pass a custom query in the load and call `Ash.Query.page/2` on it.
+
+This can be leveraged by extensions to provide arbitrarily nested pagination, or it can be used directly in code to split data processing when dealing with relationship with a high cardinality.
+
+## Pagination example
+
+Modify the setup block and configure the log level to `:debug` to see logs from the ETS data layer.
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+Logger.configure(level: :debug)
+```
+
+### Define some resources for our purpose
+
+```elixir
+defmodule Post do
+  use Ash.Resource,
+    domain: Domain,
+    data_layer: Ash.DataLayer.Ets
+
+  attributes do
+    uuid_primary_key(:id)
+    attribute(:title, :string, allow_nil?: false)
+    attribute(:text, :string, allow_nil?: false)
+  end
+
+  actions do
+    defaults(create: [:title, :text])
+
+    read :read do
+      primary?(true)
+      prepare(build(sort: :title))
+
+      pagination do
+        required?(false)
+        offset?(true)
+        keyset?(true)
+        countable(true)
+      end
+    end
+
+    read :keyset do
+      prepare(build(sort: :title))
+      pagination(keyset?: true)
+    end
+
+    update :add_comment do
+      require_atomic?(false)
+      argument(:comment, :string, allow_nil?: false)
+      change(manage_relationship(:comment, :comments, value_is_key: :text, type: :create))
+    end
+  end
+
+  relationships do
+    has_many(:comments, Comment, sort: [:created_at])
+  end
+end
+
+defmodule Comment do
+  use Ash.Resource,
+    domain: Domain,
+    data_layer: Ash.DataLayer.Ets
+
+  attributes do
+    uuid_primary_key(:id)
+    attribute(:text, :string, allow_nil?: false)
+    create_timestamp(:created_at)
+  end
+
+  actions do
+    defaults([:read, create: [:text, :post_id], update: [:text, :post_id]])
+  end
+
+  relationships do
+    belongs_to(:post, Post, sort: [:created_at])
+  end
+end
+
+defmodule Domain do
+  use Ash.Domain,
+    validate_config_inclusion?: false
+
+  resources do
+    resource Post do
+      define(:list_posts, action: :read)
+      define(:list_posts_with_keyset, action: :keyset)
+      define(:create_post, action: :create, args: [:title, :text])
+      define(:add_comment_to_post, action: :add_comment, args: [:comment])
+    end
+
+    resource(Comment)
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Domain, <<70, 79, 82, 49, 0, 2, 31, ...>>,
+ [
+   Ash.Domain.Dsl.Resources.Resource,
+   Ash.Domain.Dsl.Resources.Options,
+   Ash.Domain.Dsl,
+   %{opts: [], entities: [...]},
+   Ash.Domain.Dsl,
+   Ash.Domain.Dsl.Resources.Options,
+   ...
+ ]}
+```
+
+### Create 5 posts with 5 comments each
+
+```elixir
+for post_idx <- 1..5 do
+  post = Domain.create_post!("post #{post_idx}", "text #{post_idx}")
+
+  for comment_idx <- 1..5 do
+    Domain.add_comment_to_post!(post, "comment #{comment_idx}")
+  end
+end
+
+Domain.list_posts!(load: :comments)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  #Post<
+    comments: [
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "6cdea87b-cb69-4dc5-9ff3-54fb46bd70b0",
+        text: "comment 1",
+        created_at: ~U[2024-05-28 21:32:59.013913Z],
+        post_id: "6eb22ea7-184c-4cae-9054-0d1a0474db61",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "c653e92c-fe2f-4011-84c8-ace28ebbb207",
+        text: "comment 2",
+        created_at: ~U[2024-05-28 21:32:59.021204Z],
+        post_id: "6eb22ea7-184c-4cae-9054-0d1a0474db61",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "aa207735-0a02-4b51-b5f6-69564a2a6365",
+        text: "comment 3",
+        created_at: ~U[2024-05-28 21:32:59.022890Z],
+        post_id: "6eb22ea7-184c-4cae-9054-0d1a0474db61",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "09f9cdfe-5a88-4f6a-a8d9-2f8aa312efb8",
+        text: "comment 4",
+        created_at: ~U[2024-05-28 21:32:59.024526Z],
+        post_id: "6eb22ea7-184c-4cae-9054-0d1a0474db61",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "9b92edf4-e79e-4870-9dd0-9130863a9715",
+        text: "comment 5",
+        created_at: ~U[2024-05-28 21:32:59.026132Z],
+        post_id: "6eb22ea7-184c-4cae-9054-0d1a0474db61",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >
+    ],
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "6eb22ea7-184c-4cae-9054-0d1a0474db61",
+    title: "post 1",
+    text: "text 1",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >,
+  #Post<
+    comments: [
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "9a87a3a0-6930-4920-9345-8227b861c2ed",
+        text: "comment 1",
+        created_at: ~U[2024-05-28 21:32:59.028515Z],
+        post_id: "78cd10f0-a509-4602-861f-24652c68d54b",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "a5107151-5519-4925-ab73-aef75274cd4a",
+        text: "comment 2",
+        created_at: ~U[2024-05-28 21:32:59.030176Z],
+        post_id: "78cd10f0-a509-4602-861f-24652c68d54b",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "0d7e9835-25a0-4df9-bb41-06aa964dc677",
+        text: "comment 3",
+        created_at: ~U[2024-05-28 21:32:59.031780Z],
+        post_id: "78cd10f0-a509-4602-861f-24652c68d54b",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "7c6663a8-6a36-4c9a-a947-a70436add8be",
+        text: "comment 4",
+        created_at: ~U[2024-05-28 21:32:59.033389Z],
+        post_id: "78cd10f0-a509-4602-861f-24652c68d54b",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "4a54ee7f-18fe-401b-9a86-7c768bc52a1d",
+        text: "comment 5",
+        created_at: ~U[2024-05-28 21:32:59.034976Z],
+        post_id: "78cd10f0-a509-4602-861f-24652c68d54b",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >
+    ],
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "78cd10f0-a509-4602-861f-24652c68d54b",
+    title: "post 2",
+    text: "text 2",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >,
+  #Post<
+    comments: [
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "9d01f179-4220-4796-bb7d-63527385e36b",
+        text: "comment 1",
+        created_at: ~U[2024-05-28 21:32:59.037470Z],
+        post_id: "ab8e9909-2a6c-42d7-bae9-09fad4356ea4",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "49b7a671-bc6f-4772-b8f8-73b2a4c75b34",
+        text: "comment 2",
+        created_at: ~U[2024-05-28 21:32:59.039117Z],
+        post_id: "ab8e9909-2a6c-42d7-bae9-09fad4356ea4",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "7d2ee81c-696f-4190-8d1a-45702bfaaef2",
+        text: "comment 3",
+        created_at: ~U[2024-05-28 21:32:59.040795Z],
+        post_id: "ab8e9909-2a6c-42d7-bae9-09fad4356ea4",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "98d80b57-b911-44f5-9a63-5db90c1a0d57",
+        text: "comment 4",
+        created_at: ~U[2024-05-28 21:32:59.042457Z],
+        post_id: "ab8e9909-2a6c-42d7-bae9-09fad4356ea4",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "a0f08863-ec7f-4eba-b9f5-f9d7764dc934",
+        text: "comment 5",
+        created_at: ~U[2024-05-28 21:32:59.044061Z],
+        post_id: "ab8e9909-2a6c-42d7-bae9-09fad4356ea4",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >
+    ],
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "ab8e9909-2a6c-42d7-bae9-09fad4356ea4",
+    title: "post 3",
+    text: "text 3",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >,
+  #Post<
+    comments: [
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "2a57aa5f-0431-4d7b-a054-3bf0fc6cb2e8",
+        text: "comment 1",
+        created_at: ~U[2024-05-28 21:32:59.046395Z],
+        post_id: "91d639c2-4a2c-4931-b446-543e118644f1",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "1604094f-864e-4df3-9365-a16a77ace0ba",
+        text: "comment 2",
+        created_at: ~U[2024-05-28 21:32:59.048111Z],
+        post_id: "91d639c2-4a2c-4931-b446-543e118644f1",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "6153ecb4-4668-4afb-94c8-b1e57ed1a187",
+        text: "comment 3",
+        created_at: ~U[2024-05-28 21:32:59.049749Z],
+        post_id: "91d639c2-4a2c-4931-b446-543e118644f1",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "0844db43-39f7-41c3-aa74-41238b0882c9",
+        text: "comment 4",
+        created_at: ~U[2024-05-28 21:32:59.051385Z],
+        post_id: "91d639c2-4a2c-4931-b446-543e118644f1",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "b22db803-cad0-4d90-ada1-944f0abdd304",
+        text: "comment 5",
+        created_at: ~U[2024-05-28 21:32:59.053563Z],
+        post_id: "91d639c2-4a2c-4931-b446-543e118644f1",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >
+    ],
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "91d639c2-4a2c-4931-b446-543e118644f1",
+    title: "post 4",
+    text: "text 4",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >,
+  #Post<
+    comments: [
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "7b5fc51b-8e68-441e-bcd0-e52a0158e779",
+        text: "comment 1",
+        created_at: ~U[2024-05-28 21:32:59.056055Z],
+        post_id: "b0b20225-17f0-4bd1-8bd1-681e63ee26a8",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "e3f01413-c79c-44ef-abd9-6cb27a3b31fc",
+        text: "comment 2",
+        created_at: ~U[2024-05-28 21:32:59.057708Z],
+        post_id: "b0b20225-17f0-4bd1-8bd1-681e63ee26a8",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "a461c559-5036-4113-93be-3f531af4d2f3",
+        text: "comment 3",
+        created_at: ~U[2024-05-28 21:32:59.059418Z],
+        post_id: "b0b20225-17f0-4bd1-8bd1-681e63ee26a8",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "a704a781-3ff2-479c-b428-d8a414223f00",
+        text: "comment 4",
+        created_at: ~U[2024-05-28 21:32:59.061034Z],
+        post_id: "b0b20225-17f0-4bd1-8bd1-681e63ee26a8",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >,
+      #Comment<
+        post: #Ash.NotLoaded<:relationship, field: :post>,
+        __meta__: #Ecto.Schema.Metadata<:loaded>,
+        id: "2d9e9279-ef21-4dd4-bdc6-adc3597fefb2",
+        text: "comment 5",
+        created_at: ~U[2024-05-28 21:32:59.062631Z],
+        post_id: "b0b20225-17f0-4bd1-8bd1-681e63ee26a8",
+        aggregates: %{},
+        calculations: %{},
+        ...
+      >
+    ],
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "b0b20225-17f0-4bd1-8bd1-681e63ee26a8",
+    title: "post 5",
+    text: "text 5",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >
+]
+```
+
+## Offset pagination
+
+When using offset pagination, a `%Ash.Page.Offset{}` struct is returned from read actions.
+
+```elixir
+page = Domain.list_posts!(page: [limit: 2])
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+%Ash.Page.Offset{
+  results: [
+    #Post<
+      comments: #Ash.NotLoaded<:relationship, field: :comments>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "6eb22ea7-184c-4cae-9054-0d1a0474db61",
+      title: "post 1",
+      text: "text 1",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >,
+    #Post<
+      comments: #Ash.NotLoaded<:relationship, field: :comments>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "78cd10f0-a509-4602-861f-24652c68d54b",
+      title: "post 2",
+      text: "text 2",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >
+  ],
+  limit: 2,
+  offset: 0,
+  count: nil,
+  rerun: {#Ash.Query<
+     resource: Post,
+     sort: [title: :asc],
+     select: [:id, :title, :text],
+     page: [limit: 2]
+   >, [authorize?: true, reuse_values?: false, return_query?: false]},
+  more?: true
+}
+```
+
+You can find the results in the `results` field of the page
+
+```elixir
+page.results
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  #Post<
+    comments: #Ash.NotLoaded<:relationship, field: :comments>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "6eb22ea7-184c-4cae-9054-0d1a0474db61",
+    title: "post 1",
+    text: "text 1",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >,
+  #Post<
+    comments: #Ash.NotLoaded<:relationship, field: :comments>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "78cd10f0-a509-4602-861f-24652c68d54b",
+    title: "post 2",
+    text: "text 2",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >
+]
+```
+
+The `more?` field contains a boolean indicating if there are more pages available
+
+```elixir
+page.more?
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+true
+```
+
+### Retrieving the next page
+
+You can calculate the next offset with the information available in the page and pass it in the page options to retrieve the following page
+
+```elixir
+next_offset = page.offset + page.limit
+second_page = Domain.list_posts!(page: [limit: 2, offset: next_offset])
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+%Ash.Page.Offset{
+  results: [
+    #Post<
+      comments: #Ash.NotLoaded<:relationship, field: :comments>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "ab8e9909-2a6c-42d7-bae9-09fad4356ea4",
+      title: "post 3",
+      text: "text 3",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >,
+    #Post<
+      comments: #Ash.NotLoaded<:relationship, field: :comments>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "91d639c2-4a2c-4931-b446-543e118644f1",
+      title: "post 4",
+      text: "text 4",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >
+  ],
+  limit: 2,
+  offset: 2,
+  count: nil,
+  rerun: {#Ash.Query<
+     resource: Post,
+     sort: [title: :asc],
+     select: [:id, :title, :text],
+     page: [limit: 2, offset: 2]
+   >, [authorize?: true, reuse_values?: false, return_query?: false]},
+  more?: true
+}
+```
+
+If you have the current page in memory, you can also use `Ash.page!/2` to navigate between pages.
+
+```elixir
+last_page = Ash.page!(second_page, :next)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+%Ash.Page.Offset{
+  results: [
+    #Post<
+      comments: #Ash.NotLoaded<:relationship, field: :comments>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "b0b20225-17f0-4bd1-8bd1-681e63ee26a8",
+      title: "post 5",
+      text: "text 5",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >
+  ],
+  limit: 2,
+  offset: 4,
+  count: nil,
+  rerun: {#Ash.Query<
+     resource: Post,
+     sort: [title: :asc],
+     select: [:title, :id, :text],
+     page: [offset: 4, limit: 2]
+   >, [authorize?: true, reuse_values?: false, return_query?: false]},
+  more?: false
+}
+```
+
+And since we had 5 posts, this should be the last page:
+
+```elixir
+last_page.more?
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+false
+```
+
+### Keyset pagination
+
+When using keyset pagination, a `%Ash.Page.Keyset{}` struct is returned from read actions.
+
+```elixir
+page = Domain.list_posts_with_keyset!(page: [limit: 2])
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+%Ash.Page.Keyset{
+  results: [
+    #Post<
+      comments: #Ash.NotLoaded<:relationship, field: :comments>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "6eb22ea7-184c-4cae-9054-0d1a0474db61",
+      title: "post 1",
+      text: "text 1",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >,
+    #Post<
+      comments: #Ash.NotLoaded<:relationship, field: :comments>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "78cd10f0-a509-4602-861f-24652c68d54b",
+      title: "post 2",
+      text: "text 2",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >
+  ],
+  count: nil,
+  before: nil,
+  after: nil,
+  limit: 2,
+  rerun: {#Ash.Query<
+     resource: Post,
+     sort: [title: :asc],
+     select: [:id, :title, :text],
+     page: [limit: 2]
+   >, [authorize?: true, reuse_values?: false, return_query?: false]},
+  more?: true
+}
+```
+
+`results` and `more?` work in the same way as offset pagination
+
+```elixir
+page.results
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  #Post<
+    comments: #Ash.NotLoaded<:relationship, field: :comments>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "6eb22ea7-184c-4cae-9054-0d1a0474db61",
+    title: "post 1",
+    text: "text 1",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >,
+  #Post<
+    comments: #Ash.NotLoaded<:relationship, field: :comments>,
+    __meta__: #Ecto.Schema.Metadata<:loaded>,
+    id: "78cd10f0-a509-4602-861f-24652c68d54b",
+    title: "post 2",
+    text: "text 2",
+    aggregates: %{},
+    calculations: %{},
+    ...
+  >
+]
+```
+
+### Retrieving the next page
+
+To retrieve the next page, you have to pass the keyset of the last record in the current page. The keyset is stored in `record.__metadata__.keyset`.
+
+```elixir
+last_keyset =
+  page.results
+  |> List.last()
+  |> Map.get(:__metadata__)
+  |> Map.get(:keyset)
+
+second_page = Domain.list_posts_with_keyset!(page: [limit: 2, after: last_keyset])
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+%Ash.Page.Keyset{
+  results: [
+    #Post<
+      comments: #Ash.NotLoaded<:relationship, field: :comments>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "ab8e9909-2a6c-42d7-bae9-09fad4356ea4",
+      title: "post 3",
+      text: "text 3",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >,
+    #Post<
+      comments: #Ash.NotLoaded<:relationship, field: :comments>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "91d639c2-4a2c-4931-b446-543e118644f1",
+      title: "post 4",
+      text: "text 4",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >
+  ],
+  count: nil,
+  before: nil,
+  after: "g2wAAAACbQAAAAZwb3N0IDJtAAAAJDc4Y2QxMGYwLWE1MDktNDYwMi04NjFmLTI0NjUyYzY4ZDU0Ymo=",
+  limit: 2,
+  rerun: {#Ash.Query<
+     resource: Post,
+     sort: [title: :asc],
+     select: [:id, :title, :text],
+     page: [
+       limit: 2,
+       after: "g2wAAAACbQAAAAZwb3N0IDJtAAAAJDc4Y2QxMGYwLWE1MDktNDYwMi04NjFmLTI0NjUyYzY4ZDU0Ymo="
+     ]
+   >, [authorize?: true, reuse_values?: false, return_query?: false]},
+  more?: true
+}
+```
+
+`Ash.page!/2` works with keyset pagination too
+
+```elixir
+last_page = Ash.page!(second_page, :next)
+
+last_page.more?
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+false
+```
+
+### Actions supporting both offset and keyset pagination
+
+If an action supports both offset and keyset pagination (e.g. default read actions), offset pagination is used by default when page options only contain `limit`. However, the records will have the keyset in the metadata, so keyset pagination can be performed on next pages.
+
+```elixir
+%Ash.Page.Offset{results: [_, last]} = Domain.list_posts!(page: [limit: 2])
+
+Domain.list_posts!(page: [limit: 2, after: last.__metadata__.keyset])
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+%Ash.Page.Keyset{
+  results: [
+    #Post<
+      comments: #Ash.NotLoaded<:relationship, field: :comments>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "ab8e9909-2a6c-42d7-bae9-09fad4356ea4",
+      title: "post 3",
+      text: "text 3",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >,
+    #Post<
+      comments: #Ash.NotLoaded<:relationship, field: :comments>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "91d639c2-4a2c-4931-b446-543e118644f1",
+      title: "post 4",
+      text: "text 4",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >
+  ],
+  count: nil,
+  before: nil,
+  after: "g2wAAAACbQAAAAZwb3N0IDJtAAAAJDc4Y2QxMGYwLWE1MDktNDYwMi04NjFmLTI0NjUyYzY4ZDU0Ymo=",
+  limit: 2,
+  rerun: {#Ash.Query<
+     resource: Post,
+     sort: [title: :asc],
+     select: [:id, :title, :text],
+     page: [
+       limit: 2,
+       after: "g2wAAAACbQAAAAZwb3N0IDJtAAAAJDc4Y2QxMGYwLWE1MDktNDYwMi04NjFmLTI0NjUyYzY4ZDU0Ymo="
+     ]
+   >, [authorize?: true, reuse_values?: false, return_query?: false]},
+  more?: true
+}
+```
+
+### Retrieving count
+
+Both `%Ash.Page.Offset{}` and `%Ash.Page.Keyset{}` have a `count` field that contains the total count of the items that are being paginated when `count: true` is passed in the page options.
+
+```elixir
+page = Domain.list_posts!(page: [limit: 2, count: true])
+
+page.count
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+5
+```
+
+### Relationship pagination
+
+To paginate a relationship, pass a query customized with the page options to the load statement. This works both on paginated and unpaginated root data, and relationships can load arbitrarily nested paginated relationships.
+
+```elixir
+paginated_comments =
+  Comment
+  |> Ash.Query.page(limit: 2)
+
+first_post =
+  Domain.list_posts!(load: [comments: paginated_comments])
+  |> List.first()
+
+first_post.comments
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+%Ash.Page.Offset{
+  results: [
+    #Comment<
+      post: #Ash.NotLoaded<:relationship, field: :post>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "6cdea87b-cb69-4dc5-9ff3-54fb46bd70b0",
+      text: "comment 1",
+      created_at: ~U[2024-05-28 21:32:59.013913Z],
+      post_id: "6eb22ea7-184c-4cae-9054-0d1a0474db61",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >,
+    #Comment<
+      post: #Ash.NotLoaded<:relationship, field: :post>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "c653e92c-fe2f-4011-84c8-ace28ebbb207",
+      text: "comment 2",
+      created_at: ~U[2024-05-28 21:32:59.021204Z],
+      post_id: "6eb22ea7-184c-4cae-9054-0d1a0474db61",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >
+  ],
+  limit: 2,
+  offset: 0,
+  count: nil,
+  rerun: {#Ash.Query<resource: Comment, sort: [created_at: :asc], page: [limit: 2]>,
+   [authorize?: true, actor: nil, tracer: []]},
+  more?: true
+}
+```
+
+You can use all the methods describe above to navigate relationship pages and retrieve their count
+
+```elixir
+second = Ash.page!(first_post.comments, :next)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+%Ash.Page.Offset{
+  results: [
+    #Comment<
+      post: #Ash.NotLoaded<:relationship, field: :post>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "aa207735-0a02-4b51-b5f6-69564a2a6365",
+      text: "comment 3",
+      created_at: ~U[2024-05-28 21:32:59.022890Z],
+      post_id: "6eb22ea7-184c-4cae-9054-0d1a0474db61",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >,
+    #Comment<
+      post: #Ash.NotLoaded<:relationship, field: :post>,
+      __meta__: #Ecto.Schema.Metadata<:loaded>,
+      id: "09f9cdfe-5a88-4f6a-a8d9-2f8aa312efb8",
+      text: "comment 4",
+      created_at: ~U[2024-05-28 21:32:59.024526Z],
+      post_id: "6eb22ea7-184c-4cae-9054-0d1a0474db61",
+      aggregates: %{},
+      calculations: %{},
+      ...
+    >
+  ],
+  limit: 2,
+  offset: 2,
+  count: nil,
+  rerun: {#Ash.Query<
+     resource: Comment,
+     sort: [created_at: :asc],
+     select: [:id, :text, :created_at, :post_id],
+     page: [offset: 2, limit: 2]
+   >, [reuse_values?: false, return_query?: false, authorize?: true, actor: nil, tracer: []]},
+  more?: true
+}
+```
