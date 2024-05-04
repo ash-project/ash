@@ -3,7 +3,8 @@
 # Optimistic Locking
 
 ```elixir
-Mix.install([{:ash, "~> 3.0.0-rc.44"}], consolidate_protocols: false)
+Mix.install([{:ash, "~> 3.0.0-rc"}], consolidate_protocols: false)
+Logger.configure(level: :debug)
 ```
 
 ## What is optimistic locking?
@@ -23,6 +24,16 @@ With optimistic locking, the user will instead get an error message that the rec
 Optimistic locking can make actions safe to run concurrently even if they can't be performed in a single query(atomically), by returning an error if the resource in the data layer does not have the same version as the one being edited.
 
 This tells the user that they need to reload and try again.
+
+### Want to see how it works
+
+Modify the setup block and configure the log level to debug to see logs from the ETS data layer.
+
+<!-- livebook:{"force_markdown":true} -->
+
+```elixir
+Logger.configure(level: :debug)
+```
 
 ## Define a resource with a version attribute
 
@@ -66,7 +77,7 @@ end
 <!-- livebook:{"output":true} -->
 
 ```
-{:module, Domain, <<70, 79, 82, 49, 0, 2, 14, ...>>,
+{:module, Domain, <<70, 79, 82, 49, 0, 1, 254, ...>>,
  [
    Ash.Domain.Dsl.Resources.Resource,
    Ash.Domain.Dsl.Resources.Options,
@@ -92,45 +103,427 @@ Domain.update_address(address, %{county: "Miami-Dade"})
 
 ```
 
-01:16:03.966 [debug] Creating Address:
+06:59:29.507 [debug] Creating Address:
 
 %{
-  id: "afbd75b9-fe19-40df-8128-092ff1393859",
+  id: "8b79d3c4-807d-4756-a46e-eae7da020122",
   version: 1,
   state: "FL",
   county: "Pinellas"
 }
 
+:error
+{:ok,
+ %{
+   extra: %{},
+   name: :if,
+   arguments: [
+     %{
+       left: %{
+         attribute: %{
+           default: 1,
+           name: :version,
+           type: Ash.Type.Integer,
+           description: nil,
+           source: :version,
+           __struct__: Ash.Resource.Attribute,
+           constraints: [],
+           primary_key?: false,
+           public?: false,
+           sensitive?: false,
+           allow_nil?: false,
+           update_default: nil,
+           writable?: true,
+           generated?: false,
+           always_select?: false,
+           match_other_defaults?: false,
+           filterable?: true,
+           sortable?: true
+         },
+         resource: Address,
+         __struct__: Ash.Query.Ref,
+         simple_equality?: nil,
+         relationship_path: [],
+         input?: false,
+         bare?: nil
+       },
+       right: 1,
+       operator: :==,
+       __struct__: Ash.Query.Operator.Eq,
+       embedded?: false,
+       __predicate__?: true,
+       __operator__?: true
+     },
+     %{
+       left: %{
+         attribute: %{
+           default: 1,
+           name: :version,
+           type: Ash.Type.Integer,
+           description: nil,
+           source: :version,
+           __struct__: Ash.Resource.Attribute,
+           constraints: [],
+           primary_key?: false,
+           public?: false,
+           sensitive?: false,
+           allow_nil?: false,
+           update_default: nil,
+           writable?: true,
+           generated?: false,
+           always_select?: false,
+           match_other_defaults?: false,
+           filterable?: true,
+           sortable?: true
+         },
+         resource: Address,
+         __struct__: Ash.Query.Ref,
+         simple_equality?: nil,
+         relationship_path: [],
+         input?: false,
+         bare?: nil
+       },
+       right: 1,
+       operator: :+,
+       __struct__: Ash.Query.Operator.Basic.Plus,
+       embedded?: false,
+       __predicate__?: false,
+       __operator__?: true
+     },
+     %{
+       extra: %{},
+       name: :error,
+       arguments: [
+         Ash.Error.Changes.StaleRecord,
+         %{filter: %{version: 1}, resource: "Address"}
+       ],
+       __struct__: Ash.Query.Function.Error,
+       embedded?: false,
+       __predicate__?: false,
+       __function__?: true
+     }
+   ],
+   __struct__: Ash.Query.Function.If,
+   embedded?: false,
+   __predicate__?: false,
+   __function__?: true
+ }}
+%{
+  extra: %{},
+  name: :if,
+  arguments: [
+    %{
+      left: %{
+        attribute: %{
+          default: 1,
+          name: :version,
+          type: Ash.Type.Integer,
+          description: nil,
+          source: :version,
+          __struct__: Ash.Resource.Attribute,
+          constraints: [],
+          primary_key?: false,
+          public?: false,
+          sensitive?: false,
+          allow_nil?: false,
+          update_default: nil,
+          writable?: true,
+          generated?: false,
+          always_select?: false,
+          match_other_defaults?: false,
+          filterable?: true,
+          sortable?: true
+        },
+        resource: Address,
+        __struct__: Ash.Query.Ref,
+        simple_equality?: nil,
+        relationship_path: [],
+        input?: false,
+        bare?: nil
+      },
+      right: 1,
+      operator: :==,
+      __struct__: Ash.Query.Operator.Eq,
+      embedded?: false,
+      __predicate__?: true,
+      __operator__?: true
+    },
+    %{
+      left: %{
+        attribute: %{
+          default: 1,
+          name: :version,
+          type: Ash.Type.Integer,
+          description: nil,
+          source: :version,
+          __struct__: Ash.Resource.Attribute,
+          constraints: [],
+          primary_key?: false,
+          public?: false,
+          sensitive?: false,
+          allow_nil?: false,
+          update_default: nil,
+          writable?: true,
+          generated?: false,
+          always_select?: false,
+          match_other_defaults?: false,
+          filterable?: true,
+          sortable?: true
+        },
+        resource: Address,
+        __struct__: Ash.Query.Ref,
+        simple_equality?: nil,
+        relationship_path: [],
+        input?: false,
+        bare?: nil
+      },
+      right: 1,
+      operator: :+,
+      __struct__: Ash.Query.Operator.Basic.Plus,
+      embedded?: false,
+      __predicate__?: false,
+      __operator__?: true
+    },
+    %{
+      extra: %{},
+      name: :error,
+      arguments: [
+        Ash.Error.Changes.StaleRecord,
+        %{filter: %{version: 1}, resource: "Address"}
+      ],
+      __struct__: Ash.Query.Function.Error,
+      embedded?: false,
+      __predicate__?: false,
+      __function__?: true
+    }
+  ],
+  __struct__: Ash.Query.Function.If,
+  embedded?: false,
+  __predicate__?: false,
+  __function__?: true
+}
+true
+:error
 
-01:16:03.968 [debug] ETS: Updating Address matching filter `id == "afbd75b9-fe19-40df-8128-092ff1393859"`:
+06:59:29.515 [debug] ETS: Updating Address matching filter `id == "8b79d3c4-807d-4756-a46e-eae7da020122"`:
 
 %{
-  version: cond do
-    version == 1 ->
-      version + 1
-    true ->
-      error(
-        Ash.Error.Changes.Required,
-        %{type: :attribute, resource: Address, field: :version}
-      )
-  end,
+  version: required!(if version == 1 do
+    version + 1
+  else
+    error(
+      Ash.Error.Changes.StaleRecord,
+      %{filter: %{version: 1}, resource: "Address"}
+    )
+  end),
   state: "NC",
   county: "Guilford"
 }
 
+:error
+{:ok,
+ %{
+   extra: %{},
+   name: :if,
+   arguments: [
+     %{
+       left: %{
+         attribute: %{
+           default: 1,
+           name: :version,
+           type: Ash.Type.Integer,
+           description: nil,
+           source: :version,
+           __struct__: Ash.Resource.Attribute,
+           constraints: [],
+           primary_key?: false,
+           public?: false,
+           sensitive?: false,
+           allow_nil?: false,
+           update_default: nil,
+           writable?: true,
+           generated?: false,
+           always_select?: false,
+           match_other_defaults?: false,
+           filterable?: true,
+           sortable?: true
+         },
+         resource: Address,
+         __struct__: Ash.Query.Ref,
+         simple_equality?: nil,
+         relationship_path: [],
+         input?: false,
+         bare?: nil
+       },
+       right: 1,
+       operator: :==,
+       __struct__: Ash.Query.Operator.Eq,
+       embedded?: false,
+       __predicate__?: true,
+       __operator__?: true
+     },
+     %{
+       left: %{
+         attribute: %{
+           default: 1,
+           name: :version,
+           type: Ash.Type.Integer,
+           description: nil,
+           source: :version,
+           __struct__: Ash.Resource.Attribute,
+           constraints: [],
+           primary_key?: false,
+           public?: false,
+           sensitive?: false,
+           allow_nil?: false,
+           update_default: nil,
+           writable?: true,
+           generated?: false,
+           always_select?: false,
+           match_other_defaults?: false,
+           filterable?: true,
+           sortable?: true
+         },
+         resource: Address,
+         __struct__: Ash.Query.Ref,
+         simple_equality?: nil,
+         relationship_path: [],
+         input?: false,
+         bare?: nil
+       },
+       right: 1,
+       operator: :+,
+       __struct__: Ash.Query.Operator.Basic.Plus,
+       embedded?: false,
+       __predicate__?: false,
+       __operator__?: true
+     },
+     %{
+       extra: %{},
+       name: :error,
+       arguments: [
+         Ash.Error.Changes.StaleRecord,
+         %{filter: %{version: 1}, resource: "Address"}
+       ],
+       __struct__: Ash.Query.Function.Error,
+       embedded?: false,
+       __predicate__?: false,
+       __function__?: true
+     }
+   ],
+   __struct__: Ash.Query.Function.If,
+   embedded?: false,
+   __predicate__?: false,
+   __function__?: true
+ }}
+%{
+  extra: %{},
+  name: :if,
+  arguments: [
+    %{
+      left: %{
+        attribute: %{
+          default: 1,
+          name: :version,
+          type: Ash.Type.Integer,
+          description: nil,
+          source: :version,
+          __struct__: Ash.Resource.Attribute,
+          constraints: [],
+          primary_key?: false,
+          public?: false,
+          sensitive?: false,
+          allow_nil?: false,
+          update_default: nil,
+          writable?: true,
+          generated?: false,
+          always_select?: false,
+          match_other_defaults?: false,
+          filterable?: true,
+          sortable?: true
+        },
+        resource: Address,
+        __struct__: Ash.Query.Ref,
+        simple_equality?: nil,
+        relationship_path: [],
+        input?: false,
+        bare?: nil
+      },
+      right: 1,
+      operator: :==,
+      __struct__: Ash.Query.Operator.Eq,
+      embedded?: false,
+      __predicate__?: true,
+      __operator__?: true
+    },
+    %{
+      left: %{
+        attribute: %{
+          default: 1,
+          name: :version,
+          type: Ash.Type.Integer,
+          description: nil,
+          source: :version,
+          __struct__: Ash.Resource.Attribute,
+          constraints: [],
+          primary_key?: false,
+          public?: false,
+          sensitive?: false,
+          allow_nil?: false,
+          update_default: nil,
+          writable?: true,
+          generated?: false,
+          always_select?: false,
+          match_other_defaults?: false,
+          filterable?: true,
+          sortable?: true
+        },
+        resource: Address,
+        __struct__: Ash.Query.Ref,
+        simple_equality?: nil,
+        relationship_path: [],
+        input?: false,
+        bare?: nil
+      },
+      right: 1,
+      operator: :+,
+      __struct__: Ash.Query.Operator.Basic.Plus,
+      embedded?: false,
+      __predicate__?: false,
+      __operator__?: true
+    },
+    %{
+      extra: %{},
+      name: :error,
+      arguments: [
+        Ash.Error.Changes.StaleRecord,
+        %{filter: %{version: 1}, resource: "Address"}
+      ],
+      __struct__: Ash.Query.Function.Error,
+      embedded?: false,
+      __predicate__?: false,
+      __function__?: true
+    }
+  ],
+  __struct__: Ash.Query.Function.If,
+  embedded?: false,
+  __predicate__?: false,
+  __function__?: true
+}
+true
+:error
 
-01:16:03.973 [debug] ETS: Updating Address matching filter `id == "afbd75b9-fe19-40df-8128-092ff1393859"`:
+06:59:29.527 [debug] ETS: Updating Address matching filter `id == "8b79d3c4-807d-4756-a46e-eae7da020122"`:
 
 %{
-  version: cond do
-    version == 1 ->
-      version + 1
-    true ->
-      error(
-        Ash.Error.Changes.Required,
-        %{type: :attribute, resource: Address, field: :version}
-      )
-  end,
+  version: required!(if version == 1 do
+    version + 1
+  else
+    error(
+      Ash.Error.Changes.StaleRecord,
+      %{filter: %{version: 1}, resource: "Address"}
+    )
+  end),
   county: "Miami-Dade"
 }
 
@@ -187,74 +580,9 @@ end
 <!-- livebook:{"output":true} -->
 
 ```
-
-01:16:07.827 [debug] Creating Address:
-
-%{
-  id: "b51203e0-6770-4e43-90d0-2c8acfe3c890",
-  version: 1,
-  state: "FL",
-  county: "Pinellas"
-}
-
-
-01:16:07.831 [debug] ETS: Updating Address matching filter `id == "b51203e0-6770-4e43-90d0-2c8acfe3c890"`:
-
-%{
-  version: cond do
-    version == 1 ->
-      version + 1
-    true ->
-      error(
-        Ash.Error.Changes.Required,
-        %{type: :attribute, resource: Address, field: :version}
-      )
-  end,
-  state: "NC",
-  county: "Guilford"
-}
-
-
-01:16:07.835 [debug] ETS: Updating Address matching filter `id == "b51203e0-6770-4e43-90d0-2c8acfe3c890"`:
-
-%{
-  version: cond do
-    version == 1 ->
-      version + 1
-    true ->
-      error(
-        Ash.Error.Changes.Required,
-        %{type: :attribute, resource: Address, field: :version}
-      )
-  end,
-  county: "Miami-Dade"
-}
-
-
-01:16:07.839 [debug] ETS: Updating Address matching filter `id == "b51203e0-6770-4e43-90d0-2c8acfe3c890"`:
-
-%{
-  version: cond do
-    version == 2 ->
-      version + 1
-    true ->
-      error(
-        Ash.Error.Changes.Required,
-        %{type: :attribute, resource: Address, field: :version}
-      )
-  end,
-  county: "Miami-Dade"
-}
-
-
-```
-
-<!-- livebook:{"output":true} -->
-
-```
 #Address<
   __meta__: #Ecto.Schema.Metadata<:loaded>,
-  id: "b51203e0-6770-4e43-90d0-2c8acfe3c890",
+  id: "f2bdbd9e-4946-4df5-8608-0777900e1b47",
   version: 3,
   state: "NC",
   county: "Miami-Dade",

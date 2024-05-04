@@ -61,89 +61,90 @@ defmodule Ash.Query.Function.If do
     import Inspect.Algebra
 
     def inspect(%{arguments: [condition, when_true, when_false]}, opts) do
-      required_attr = is_attribute_is_nil(condition)
-
-      if required_attr && is_required_error(when_true) do
-        "required!(#{required_attr})"
+      with {:ok, required_expr} <- is_thing_is_nil(condition),
+           true <- required_expr == when_false,
+           true <- is_required_error(when_true) do
+        concat(["required!(", to_doc(required_expr, opts), ")"])
       else
-        {conds, final} = extract_cases(when_false)
+        _ ->
+          {conds, final} = extract_cases(when_false)
 
-        case conds do
-          [] ->
-            if is_nil(final) do
-              concat([
-                nest(
-                  concat([
-                    group(concat(["if ", to_doc(condition, opts), " do"])),
-                    line(),
-                    to_doc(when_true, opts)
-                  ]),
-                  2
-                ),
-                line(),
-                "end"
-              ])
-            else
-              concat([
-                nest(
-                  concat([
-                    group(concat(["if ", to_doc(condition, opts), " do"])),
-                    line(),
-                    to_doc(when_true, opts)
-                  ]),
-                  2
-                ),
-                line(),
-                "else",
-                nest(
-                  concat([
-                    line(),
-                    to_doc(when_false, opts)
-                  ]),
-                  2
-                ),
-                line(),
-                "end"
-              ])
-            end
-
-          conds ->
-            conds = conds ++ [{true, when_true}]
-
-            concat(
-              [
-                "cond do"
-              ] ++
-                Enum.flat_map(conds, fn {cond, when_true} ->
-                  [
-                    nest(concat([line(), to_doc(cond, opts), " ->"]), 2),
-                    nest(concat([line(), to_doc(when_true, opts)]), 4)
-                  ]
-                end) ++
-                [
+          case conds do
+            [] ->
+              if is_nil(final) do
+                concat([
+                  nest(
+                    concat([
+                      group(concat(["if ", to_doc(condition, opts), " do"])),
+                      line(),
+                      to_doc(when_true, opts)
+                    ]),
+                    2
+                  ),
                   line(),
                   "end"
-                ]
-            )
-        end
+                ])
+              else
+                concat([
+                  nest(
+                    concat([
+                      group(concat(["if ", to_doc(condition, opts), " do"])),
+                      line(),
+                      to_doc(when_true, opts)
+                    ]),
+                    2
+                  ),
+                  line(),
+                  "else",
+                  nest(
+                    concat([
+                      line(),
+                      to_doc(when_false, opts)
+                    ]),
+                    2
+                  ),
+                  line(),
+                  "end"
+                ])
+              end
+
+            conds ->
+              conds = [{condition, when_true} | conds ++ [{true, when_true}]]
+
+              concat(
+                [
+                  "cond do"
+                ] ++
+                  Enum.flat_map(conds, fn {cond, when_true} ->
+                    [
+                      nest(concat([line(), to_doc(cond, opts), " ->"]), 2),
+                      nest(concat([line(), to_doc(when_true, opts)]), 4)
+                    ]
+                  end) ++
+                  [
+                    line(),
+                    "end"
+                  ]
+              )
+          end
       end
     end
 
-    defp is_attribute_is_nil(%{name: :is_nil, args: [%Ash.Query.Ref{attribute: attribute}]}) do
-      case attribute do
-        %{name: name} -> name
-        name -> name
-      end
+    defp is_thing_is_nil(%{name: :is_nil, args: [thing]}) do
+      {:ok, thing}
     end
 
-    defp is_attribute_is_nil(%{name: :is_nil, arguments: [%Ash.Query.Ref{attribute: attribute}]}) do
-      case attribute do
-        %{name: name} -> name
-        name -> name
-      end
+    defp is_thing_is_nil(%{name: :is_nil, arguments: [thing]}) do
+      {:ok, thing}
     end
 
-    defp is_attribute_is_nil(_), do: nil
+    defp is_thing_is_nil(%{operator: :is_nil, left: thing, right: true}) do
+      {:ok, thing}
+    end
+
+    defp is_thing_is_nil(_) do
+      :error
+    end
 
     defp is_required_error(%{name: :error, args: [Ash.Error.Changes.Required | _]}), do: true
     defp is_required_error(%{name: :error, arguments: [Ash.Error.Changes.Required | _]}), do: true
