@@ -78,9 +78,13 @@ defmodule Ash.Resource do
         end
 
       contained_in_domain =
-        domains
-        |> Enum.flat_map(&Ash.Domain.Info.resources/1)
-        |> Enum.any?(&(&1 == module))
+        if Ash.Domain.Info.allow_unregistered?(domain) do
+          true
+        else
+          domains
+          |> Enum.flat_map(&Ash.Domain.Info.resources/1)
+          |> Enum.any?(&(&1 == module))
+        end
 
       if !contained_in_domain do
         IO.warn("""

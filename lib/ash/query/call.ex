@@ -7,47 +7,9 @@ defmodule Ash.Query.Call do
     import Inspect.Algebra
     import Ash.Query.InspectHelpers
 
-    def inspect(%{name: :if, operator?: false, args: [condition, blocks]} = call, opts) do
-      if Keyword.keyword?(blocks) do
-        if Keyword.has_key?(blocks, :else) do
-          concat([
-            nest(
-              concat([
-                group(concat(["if ", to_doc(condition, opts), " do"])),
-                line(),
-                to_doc(blocks[:do], opts)
-              ]),
-              2
-            ),
-            line(),
-            "else",
-            nest(
-              concat([
-                line(),
-                to_doc(blocks[:else], opts)
-              ]),
-              2
-            ),
-            line(),
-            "end"
-          ])
-        else
-          concat([
-            nest(
-              concat([
-                group(concat(["if ", to_doc(condition, opts), " do"])),
-                line(),
-                to_doc(blocks[:do], opts)
-              ]),
-              2
-            ),
-            line(),
-            "end"
-          ])
-        end
-      else
-        do_inspect(call, opts)
-      end
+    def inspect(%{name: :if, operator?: false, args: args}, opts) do
+      {:ok, if_expr} = Ash.Query.Function.If.new(args)
+      to_doc(if_expr, opts)
     end
 
     def inspect(call, inspect_opts) do

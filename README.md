@@ -96,7 +96,9 @@ Welcome! Here you will find everything you need to know to get started with and 
 
 ## How To
 
-- [Optimistic Locking](documentation/how-to/optimistic-locking.livemd)
+### CookBook
+
+- [Optimistic Locking](documentation/how-to/cook-book/optimistic-locking.livemd)
 
 ---
 

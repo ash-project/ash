@@ -51,6 +51,7 @@ defmodule Ash.Changeset do
     :timeout,
     invalid_keys: MapSet.new(),
     filter: nil,
+    added_filter: nil,
     action_failed?: false,
     atomics: [],
     atomic_validations: [],
@@ -245,6 +246,8 @@ defmodule Ash.Changeset do
           before_action: [before_action_fun | {around_action_fun, map}],
           before_transaction: [before_transaction_fun | {before_transaction_fun, map}],
           context: map,
+          filter: Ash.Filter.t() | nil,
+          added_filter: Ash.Filter.t() | nil,
           data: Ash.Resource.record() | nil,
           defaults: [atom],
           errors: [Ash.Error.t()],
@@ -545,6 +548,13 @@ defmodule Ash.Changeset do
       changeset =
         resource
         |> Ash.Changeset.new()
+        |> then(fn changeset ->
+          if data = opts[:data] do
+            Map.put(changeset, :data, data)
+          else
+            Map.put(changeset, :data, %OriginalDataNotAvailable{})
+          end
+        end)
         |> Map.put(:context, opts[:context] || %{})
         |> Map.put(:params, params)
         |> Map.put(:action, action)
@@ -5122,12 +5132,13 @@ defmodule Ash.Changeset do
                resource: changeset.resource,
                public?: false
              }),
-           {:ok, expression} <-
+           {:ok, full_expression} <-
              Ash.Filter.add_to_filter(
                changeset.filter,
                expression
              ) do
-        %{changeset | filter: expression}
+        %{changeset | filter: full_expression}
+        |> record_added_filter(expression)
       else
         {:error, error} ->
           Ash.Changeset.add_error(changeset, error)
@@ -5140,6 +5151,18 @@ defmodule Ash.Changeset do
       changeset
     end
   end
+
+  defp record_added_filter(%{phase: :pending} = changeset, expression) do
+    case Ash.Filter.add_to_filter(changeset.added_filter, expression) do
+      {:ok, new_added_filter} ->
+        %{changeset | added_filter: new_added_filter}
+
+      {:error, error} ->
+        Ash.Changeset.add_error(changeset, Ash.Error.to_ash_error(error))
+    end
+  end
+
+  defp record_added_filter(changeset, _), do: changeset
 
   @doc """
   Adds an error to the changesets errors list, and marks the change as `valid?: false`.

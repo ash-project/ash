@@ -78,7 +78,7 @@ defmodule Ash.MixProject do
         "documentation/topics/security/policies.md",
         "documentation/topics/reference/glossary.md",
         "documentation/topics/reference/expressions.md",
-        "documentation/how-to/optimistic-locking.livemd",
+        "documentation/how-to/cook-book/optimistic-locking.livemd",
         "documentation/dsls/DSL:-Ash.Resource.md",
         "documentation/dsls/DSL:-Ash.Domain.md",
         "documentation/dsls/DSL:-Ash.Notifier.PubSub.md",
@@ -104,6 +104,7 @@ defmodule Ash.MixProject do
         Security: ~r"documentation/topics/security",
         Development: ~r"documentation/topics/development",
         Advanced: ~r"documentation/topics/advanced",
+        "Cook book": ~r"documentation/how-to/cook-book",
         "How To": ~r"documentation/how-to",
         Reference: [
           ~r"documentation/topics/reference",

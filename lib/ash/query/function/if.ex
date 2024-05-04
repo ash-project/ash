@@ -2,7 +2,7 @@ defmodule Ash.Query.Function.If do
   @moduledoc """
   If predicate is truthy, then the second argument is returned, otherwise the third.
   """
-  use Ash.Query.Function, name: :if
+  use Ash.Query.Function, name: :if, no_inspect?: true
   import Ash.Expr, only: [expr?: 1]
 
   def args, do: [[:boolean, :any], [:boolean, :any, :any]]
@@ -54,6 +54,115 @@ defmodule Ash.Query.Function.If do
       {:ok, fun}
     else
       {:ok, when_true}
+    end
+  end
+
+  defimpl Inspect do
+    import Inspect.Algebra
+
+    def inspect(%{arguments: [condition, when_true, when_false]}, opts) do
+      required_attr = is_attribute_is_nil(condition)
+
+      if required_attr && is_required_error(when_true) do
+        "required!(#{required_attr})"
+      else
+        {conds, final} = extract_cases(when_false)
+
+        case conds do
+          [] ->
+            if is_nil(final) do
+              concat([
+                nest(
+                  concat([
+                    group(concat(["if ", to_doc(condition, opts), " do"])),
+                    line(),
+                    to_doc(when_true, opts)
+                  ]),
+                  2
+                ),
+                line(),
+                "end"
+              ])
+            else
+              concat([
+                nest(
+                  concat([
+                    group(concat(["if ", to_doc(condition, opts), " do"])),
+                    line(),
+                    to_doc(when_true, opts)
+                  ]),
+                  2
+                ),
+                line(),
+                "else",
+                nest(
+                  concat([
+                    line(),
+                    to_doc(when_false, opts)
+                  ]),
+                  2
+                ),
+                line(),
+                "end"
+              ])
+            end
+
+          conds ->
+            conds = conds ++ [{true, when_true}]
+
+            concat(
+              [
+                "cond do"
+              ] ++
+                Enum.flat_map(conds, fn {cond, when_true} ->
+                  [
+                    nest(concat([line(), to_doc(cond, opts), " ->"]), 2),
+                    nest(concat([line(), to_doc(when_true, opts)]), 4)
+                  ]
+                end) ++
+                [
+                  line(),
+                  "end"
+                ]
+            )
+        end
+      end
+    end
+
+    defp is_attribute_is_nil(%{name: :is_nil, args: [%Ash.Query.Ref{attribute: attribute}]}) do
+      case attribute do
+        %{name: name} -> name
+        name -> name
+      end
+    end
+
+    defp is_attribute_is_nil(%{name: :is_nil, arguments: [%Ash.Query.Ref{attribute: attribute}]}) do
+      case attribute do
+        %{name: name} -> name
+        name -> name
+      end
+    end
+
+    defp is_attribute_is_nil(_), do: nil
+
+    defp is_required_error(%{name: :error, args: [Ash.Error.Changes.Required | _]}), do: true
+    defp is_required_error(%{name: :error, arguments: [Ash.Error.Changes.Required | _]}), do: true
+
+    defp is_required_error(_), do: false
+
+    defp extract_cases(other, list_acc \\ [])
+
+    defp extract_cases(%{name: :if, arguments: [condition, when_true, when_false]}, list_acc) do
+      extract_cases(when_false, [{condition, when_true} | list_acc])
+    end
+
+    defp extract_cases(%{name: :if, args: [condition, blocks]}, list_acc) do
+      {:ok, if_func} = Ash.Query.Function.If.new([condition, blocks])
+      extract_cases(if_func, list_acc)
+    end
+
+    defp extract_cases(other, list_acc) do
+      {Enum.reverse(list_acc), other}
     end
   end
 end

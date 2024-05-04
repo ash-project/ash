@@ -30,8 +30,8 @@ defmodule Ash.Resource.Change.OptimisticLock do
                  ^ref(opts[:attribute]) + 1
                else
                  error(Ash.Error.Changes.StaleRecord, %{
-                   resource: changeset.resource,
-                   filters: %{
+                   resource: ^inspect(changeset.resource),
+                   filter: %{
                      ^opts[:attribute] => ^Map.get(data, opts[:attribute])
                    }
                  })

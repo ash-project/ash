@@ -1,0 +1,236 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Optimistic Locking
+
+```elixir
+Mix.install([{:ash, path: "~/dev/ash/ash"}], consolidate_protocols: false)
+```
+
+## What is optimistic locking?
+
+Optimistic Locking is the process of only allowing an update to occur if the version of a record that you have in memory is the same as the version in the database. Otherwise, an error is returned.
+
+Optimistic locking may used for two primary purposes:
+
+### User Experience
+
+For example, if a user is editing a form that contains `State` and `County` fields, and they change the `County`, while another user has used the form to change the `State`, you could end up with a mismatch between `State` and `County`.
+
+With optimistic locking, the user will instead get an error message that the record has been changed since they last looked.
+
+### Concurrency Safety
+
+Optimistic locking can make actions safe to run concurrently even if they can't be performed in a single query(atomically), by returning an error if the resource in the data layer does not have the same version as the one being edited.
+
+This tells the user that they need to reload and try again.
+
+## Define a resource with a version attribute
+
+```elixir
+defmodule Address do
+  use Ash.Resource,
+    domain: Domain,
+    data_layer: Ash.DataLayer.Ets
+
+  attributes do
+    uuid_primary_key(:id)
+    attribute(:version, :integer, allow_nil?: false, default: 1)
+    attribute(:state, :string, allow_nil?: false)
+    attribute(:county, :string, allow_nil?: false)
+  end
+
+  actions do
+    defaults([:read, create: [:state, :county]])
+
+    update :update do
+      accept([:state, :county])
+      change(optimistic_lock(:version))
+    end
+  end
+end
+
+defmodule Domain do
+  use Ash.Domain,
+    validate_config_inclusion?: false
+
+  resources do
+    resource Address do
+      define(:get_address, action: :read, get_by: [:id])
+      define(:create_address, action: :create, args: [:state, :county])
+      define(:update_address, action: :update)
+    end
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Domain, <<70, 79, 82, 49, 0, 1, 254, ...>>,
+ [
+   Ash.Domain.Dsl.Resources.Resource,
+   Ash.Domain.Dsl.Resources.Options,
+   Ash.Domain.Dsl,
+   %{opts: [], entities: [...]},
+   Ash.Domain.Dsl,
+   Ash.Domain.Dsl.Resources.Options,
+   ...
+ ]}
+```
+
+## Trigger a StaleRecord error
+
+```elixir
+address = Domain.create_address!("FL", "Pinellas")
+Domain.update_address!(address, %{state: "NC", county: "Guilford"})
+
+# `address` still has a version of `1`, so our optimistic lock should catch it!
+Domain.update_address!(address, %{county: "Miami-Dade"})
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+
+00:49:51.884 [debug] Creating Address:
+
+%{
+  id: "b85fee47-95c0-448f-a58f-db32bfe74c21",
+  version: 1,
+  state: "FL",
+  county: "Pinellas"
+}
+
+
+00:49:51.884 [debug] ETS: Updating Address matching filter `id == "b85fee47-95c0-448f-a58f-db32bfe74c21"`:
+
+%{
+  version: cond do
+    version == 1 ->
+      version + 1
+    true ->
+      error(
+        Ash.Error.Changes.Required,
+        %{type: :attribute, resource: Address, field: :version}
+      )
+  end,
+  state: "NC",
+  county: "Guilford"
+}
+
+
+00:49:51.885 [debug] ETS: Updating Address matching filter `id == "b85fee47-95c0-448f-a58f-db32bfe74c21"`:
+
+%{
+  version: cond do
+    version == 1 ->
+      version + 1
+    true ->
+      error(
+        Ash.Error.Changes.Required,
+        %{type: :attribute, resource: Address, field: :version}
+      )
+  end,
+  county: "Miami-Dade"
+}
+
+
+```
+
+## Refetching a record to get the latest version
+
+```elixir
+address = Domain.create_address!("FL", "Pinellas")
+Domain.update_address!(address, %{state: "NC", county: "Guilford"})
+
+case Domain.update_address(address, %{county: "Miami-Dade"}) do
+  {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Changes.StaleRecord{}]}} ->
+    # In a liveview, you wouldn't jsut refetch and resubmit
+    # you would show the user an error and have them submit the form again
+    address = Domain.get_address!(address.id)
+    Domain.update_address!(address, %{county: "Miami-Dade"})
+
+  {:ok, domain} ->
+    domain
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+
+00:49:54.130 [debug] Creating Address:
+
+%{
+  id: "3abe99b5-c9ab-4348-af00-8f53e44b3ce6",
+  version: 1,
+  state: "FL",
+  county: "Pinellas"
+}
+
+
+00:49:54.136 [debug] ETS: Updating Address matching filter `id == "3abe99b5-c9ab-4348-af00-8f53e44b3ce6"`:
+
+%{
+  version: cond do
+    version == 1 ->
+      version + 1
+    true ->
+      error(
+        Ash.Error.Changes.Required,
+        %{type: :attribute, resource: Address, field: :version}
+      )
+  end,
+  state: "NC",
+  county: "Guilford"
+}
+
+
+00:49:54.138 [debug] ETS: Updating Address matching filter `id == "3abe99b5-c9ab-4348-af00-8f53e44b3ce6"`:
+
+%{
+  version: cond do
+    version == 1 ->
+      version + 1
+    true ->
+      error(
+        Ash.Error.Changes.Required,
+        %{type: :attribute, resource: Address, field: :version}
+      )
+  end,
+  county: "Miami-Dade"
+}
+
+
+00:49:54.141 [debug] ETS: Updating Address matching filter `id == "3abe99b5-c9ab-4348-af00-8f53e44b3ce6"`:
+
+%{
+  version: cond do
+    version == 2 ->
+      version + 1
+    true ->
+      error(
+        Ash.Error.Changes.Required,
+        %{type: :attribute, resource: Address, field: :version}
+      )
+  end,
+  county: "Miami-Dade"
+}
+
+
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+#Address<
+  __meta__: #Ecto.Schema.Metadata<:loaded>,
+  id: "3abe99b5-c9ab-4348-af00-8f53e44b3ce6",
+  version: 3,
+  state: "NC",
+  county: "Miami-Dade",
+  aggregates: %{},
+  calculations: %{},
+  ...
+>
+```
