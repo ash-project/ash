@@ -66,7 +66,7 @@ end
 <!-- livebook:{"output":true} -->
 
 ```
-{:module, Domain, <<70, 79, 82, 49, 0, 1, 254, ...>>,
+{:module, Domain, <<70, 79, 82, 49, 0, 2, 14, ...>>,
  [
    Ash.Domain.Dsl.Resources.Resource,
    Ash.Domain.Dsl.Resources.Options,
@@ -85,24 +85,24 @@ address = Domain.create_address!("FL", "Pinellas")
 Domain.update_address!(address, %{state: "NC", county: "Guilford"})
 
 # `address` still has a version of `1`, so our optimistic lock should catch it!
-Domain.update_address!(address, %{county: "Miami-Dade"})
+Domain.update_address(address, %{county: "Miami-Dade"})
 ```
 
 <!-- livebook:{"output":true} -->
 
 ```
 
-00:49:51.884 [debug] Creating Address:
+01:16:03.966 [debug] Creating Address:
 
 %{
-  id: "b85fee47-95c0-448f-a58f-db32bfe74c21",
+  id: "afbd75b9-fe19-40df-8128-092ff1393859",
   version: 1,
   state: "FL",
   county: "Pinellas"
 }
 
 
-00:49:51.884 [debug] ETS: Updating Address matching filter `id == "b85fee47-95c0-448f-a58f-db32bfe74c21"`:
+01:16:03.968 [debug] ETS: Updating Address matching filter `id == "afbd75b9-fe19-40df-8128-092ff1393859"`:
 
 %{
   version: cond do
@@ -119,7 +119,7 @@ Domain.update_address!(address, %{county: "Miami-Dade"})
 }
 
 
-00:49:51.885 [debug] ETS: Updating Address matching filter `id == "b85fee47-95c0-448f-a58f-db32bfe74c21"`:
+01:16:03.973 [debug] ETS: Updating Address matching filter `id == "afbd75b9-fe19-40df-8128-092ff1393859"`:
 
 %{
   version: cond do
@@ -135,6 +135,35 @@ Domain.update_address!(address, %{county: "Miami-Dade"})
 }
 
 
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:error,
+ %Ash.Error.Invalid{
+   changeset: nil,
+   query: nil,
+   action_input: nil,
+   errors: [
+     %Ash.Error.Changes.StaleRecord{
+       resource: "Address",
+       filter: %{"version" => 1},
+       splode: Ash.Error,
+       bread_crumbs: [],
+       vars: [],
+       path: [],
+       stacktrace: #Splode.Stacktrace<>,
+       class: :invalid
+     }
+   ],
+   splode: Ash.Error,
+   bread_crumbs: [],
+   vars: [],
+   path: [],
+   stacktrace: #Splode.Stacktrace<>,
+   class: :invalid
+ }}
 ```
 
 ## Refetching a record to get the latest version
@@ -159,17 +188,17 @@ end
 
 ```
 
-00:49:54.130 [debug] Creating Address:
+01:16:07.827 [debug] Creating Address:
 
 %{
-  id: "3abe99b5-c9ab-4348-af00-8f53e44b3ce6",
+  id: "b51203e0-6770-4e43-90d0-2c8acfe3c890",
   version: 1,
   state: "FL",
   county: "Pinellas"
 }
 
 
-00:49:54.136 [debug] ETS: Updating Address matching filter `id == "3abe99b5-c9ab-4348-af00-8f53e44b3ce6"`:
+01:16:07.831 [debug] ETS: Updating Address matching filter `id == "b51203e0-6770-4e43-90d0-2c8acfe3c890"`:
 
 %{
   version: cond do
@@ -186,7 +215,7 @@ end
 }
 
 
-00:49:54.138 [debug] ETS: Updating Address matching filter `id == "3abe99b5-c9ab-4348-af00-8f53e44b3ce6"`:
+01:16:07.835 [debug] ETS: Updating Address matching filter `id == "b51203e0-6770-4e43-90d0-2c8acfe3c890"`:
 
 %{
   version: cond do
@@ -202,7 +231,7 @@ end
 }
 
 
-00:49:54.141 [debug] ETS: Updating Address matching filter `id == "3abe99b5-c9ab-4348-af00-8f53e44b3ce6"`:
+01:16:07.839 [debug] ETS: Updating Address matching filter `id == "b51203e0-6770-4e43-90d0-2c8acfe3c890"`:
 
 %{
   version: cond do
@@ -225,7 +254,7 @@ end
 ```
 #Address<
   __meta__: #Ecto.Schema.Metadata<:loaded>,
-  id: "3abe99b5-c9ab-4348-af00-8f53e44b3ce6",
+  id: "b51203e0-6770-4e43-90d0-2c8acfe3c890",
   version: 3,
   state: "NC",
   county: "Miami-Dade",
