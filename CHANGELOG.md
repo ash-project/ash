@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.44](https://github.com/ash-project/ash/compare/v3.0.0-rc.43...v3.0.0-rc.44) (2024-05-04)
+
+
+
+
+### Bug Fixes:
+
+* small logic fixes for optimistic locking error case
+
 ## [v3.0.0-rc.43](https://github.com/ash-project/ash/compare/v3.0.0-rc.42...v3.0.0-rc.43) (2024-05-04)
 
 
