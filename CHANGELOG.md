@@ -5,6 +5,15 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.45](https://github.com/ash-project/ash/compare/v3.0.0-rc.44...v3.0.0-rc.45) (2024-05-04)
+
+
+
+
+### Features:
+
+* add relationship pagination (#1050)
+
 ## [v3.0.0-rc.44](https://github.com/ash-project/ash/compare/v3.0.0-rc.43...v3.0.0-rc.44) (2024-05-04)
 
 
