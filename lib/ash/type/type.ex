@@ -813,7 +813,11 @@ defmodule Ash.Type do
         |> Enum.with_index()
         |> Enum.reduce({[], []}, fn {item, index}, {items, errors} ->
           if type.custom_apply_constraints_array?() do
-            {[item | items], errors}
+            if is_nil(item) && not nil_items? do
+              {[item | items], [[message: "no nil values", index: index] | errors]}
+            else
+              {[item | items], errors}
+            end
           else
             case apply_constraints(type, item, item_constraints) do
               {:ok, value} ->
