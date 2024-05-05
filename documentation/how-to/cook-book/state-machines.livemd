@@ -16,9 +16,7 @@ Mix.install(
 Logger.configure(level: :warning)
 ```
 
-## State Machines
-
-### Steps to define a state machine
+## Steps to define a state machine
 
 * Add the `AshStateMachine` extension
 * Add the `state_machine` DSL block
@@ -32,7 +30,7 @@ Logger.configure(level: :warning)
   * The `to` option, set to a state, list of states, or `:*` to indicate any state
 * Add or modify the actions mentioned in your transitions, to use `change transition_state/1` or `AshStateMachine.transition_state` to modify the state attribute
 
-### Need more context?
+## Need more context?
 
 See the [AshStateMachine Documentation](https://hexdocs.pm/ash_state_machine)
 
@@ -62,7 +60,6 @@ defmodule Package do
     end
   end
 
-  # Standard Ash Attributes
   attributes do
     uuid_primary_key :id
     attribute :from_address, :string, allow_nil?: false
@@ -309,17 +306,6 @@ Domain.package_accepted!(package, true)
 Package
 |> AshStateMachine.Charts.mermaid_flowchart()
 |> Kino.Shorts.mermaid()
-```
-
-<!-- livebook:{"output":true} -->
-
-```mermaid
-flowchart TD
-awaiting_shipment --> |shipped| on_its_way
-on_its_way --> |refused| awaiting_shipment
-on_its_way --> |accepted| delivered
-on_its_way --> |lost| lost
-awaiting_shipment --> |lost| lost
 ```
 
 ```elixir

@@ -44,17 +44,7 @@ defmodule Ash.Resource.Change.Builtins do
   @doc """
   Apply an "optimistic lock" on a record being updated or destroyed.
 
-  This is modeled after ecto's implementation of optimistic locking, so to
-  read more, see their documentation: https://hexdocs.pm/ecto/Ecto.Changeset.html#optimistic_lock/3
-
-  The primary difference is that we leave it to you to increment the field being used for optimistic locking
-  yourself. So in ecto you might do `Changeset.optimistic_lock(changeset, :foo)` and that would add 1 to the `:foo` attribute
-  automatically. In Ash, you would combine this with the `increment/1` change.
-
-  ```elixir
-  change optimistic_lock(:foo)
-  change increment(:foo)
-  ```
+  See `Ash.Resource.Change.OptimisticLock` for more.
   """
   def optimistic_lock(attribute) do
     {Ash.Resource.Change.OptimisticLock, attribute: attribute}

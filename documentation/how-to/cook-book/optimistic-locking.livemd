@@ -4,38 +4,32 @@
 
 ```elixir
 Mix.install([{:ash, "~> 3.0.0-rc"}], consolidate_protocols: false)
+# Set to `:debug` if you want to see ETS logs
 Logger.configure(level: :warning)
 ```
 
-## What is optimistic locking?
+## Steps to add optimistic locking to an `Ash.Resource`
 
-Optimistic Locking is the process of only allowing an update to occur if the version of a record that you have in memory is the same as the version in the database. Otherwise, an error is returned.
+* Add a `:version` attribute to your resource. 
+  * This will typically be an `:integer`
+  * with a default of `1`
+  * and `allow_nil?: false`
+* If you want optimistic locking to occur for *specific actions*:
+  * Add `change optimistic_lock(:version)` to those specific actions
+* If you want optimistic locking to occur for *all actions*:
+  * Add a global `changes` block, if you do not have one
+  * Add `change optimistic_lock(:version)`
+* If you want to apply optimistic locking to *many but not all actions*:
+  * Add a global `changes` block, if you do not have one
+  * Add `change optimistic_lock(:version), where: action_is(:list, :of, :actions, ...)`
 
-Optimistic locking may used for two primary purposes:
+## Need more context?
 
-### User Experience
-
-For example, if a user is editing a form that contains `State` and `County` fields, and they change the `County`, while another user has used the form to change the `State`, you could end up with a mismatch between `State` and `County`.
-
-With optimistic locking, the user will instead get an error message that the record has been changed since they last looked.
-
-### Concurrency Safety
-
-Optimistic locking can make actions safe to run concurrently even if they can't be performed in a single query(atomically), by returning an error if the resource in the data layer does not have the same version as the one being edited.
-
-This tells the user that they need to reload and try again.
-
-### Want to see how it works
-
-Modify the setup block and configure the log level to debug to see logs from the ETS data layer.
-
-<!-- livebook:{"force_markdown":true} -->
-
-```elixir
-Logger.configure(level: :debug)
-```
+See the documentation for [Ash.Resource.Change.OptimisticLock](https://hexdocs.pm/Ash.Resource.Change.OptimisticLock.html)
 
 ## Define a resource with a version attribute
+
+<!-- livebook:{"disable_formatting":true} -->
 
 ```elixir
 defmodule Address do
@@ -44,20 +38,30 @@ defmodule Address do
     data_layer: Ash.DataLayer.Ets
 
   attributes do
-    uuid_primary_key(:id)
-    attribute(:version, :integer, allow_nil?: false, default: 1)
-    attribute(:state, :string, allow_nil?: false)
-    attribute(:county, :string, allow_nil?: false)
+    uuid_primary_key :id
+    attribute :version, :integer, allow_nil?: false, default: 1
+    attribute :state, :string, allow_nil?: false
+    attribute :county, :string, allow_nil?: false
   end
 
   actions do
-    defaults([:read, create: [:state, :county]])
+    defaults [:read, create: [:state, :county]]
 
     update :update do
-      accept([:state, :county])
-      change(optimistic_lock(:version))
+      accept [:state, :county]
+      change optimistic_lock(:version)
     end
   end
+
+  # apply to all actions
+  # changes do
+  #   change optimistic_lock(:version)
+  # end
+
+  # apply to a list of actions
+  # changes do
+  #   change optimistic_lock(:version), where: action_is([:list, :of, :actions])
+  # end
 end
 
 defmodule Domain do
@@ -89,7 +93,7 @@ end
  ]}
 ```
 
-## Trigger a StaleRecord error
+## Triggering a StaleRecord error
 
 ```elixir
 address = Domain.create_address!("FL", "Pinellas")
@@ -136,7 +140,7 @@ Domain.update_address!(address, %{state: "NC", county: "Guilford"})
 
 case Domain.update_address(address, %{county: "Miami-Dade"}) do
   {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Changes.StaleRecord{}]}} ->
-    # In a liveview, you wouldn't jsut refetch and resubmit
+    # In a liveview, you wouldn't just refetch and resubmit
     # you would show the user an error and have them submit the form again
     address = Domain.get_address!(address.id)
     Domain.update_address!(address, %{county: "Miami-Dade"})
@@ -151,7 +155,7 @@ end
 ```
 #Address<
   __meta__: #Ecto.Schema.Metadata<:loaded>,
-  id: "b4b1c187-6d0b-478a-a090-ec39cf58d114",
+  id: "9f5d247e-fc44-41d1-80b4-8553c63855bb",
   version: 3,
   state: "NC",
   county: "Miami-Dade",
