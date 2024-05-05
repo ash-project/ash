@@ -25,7 +25,7 @@ Logger.configure(level: :warning)
 
 ## Need more context?
 
-See the documentation for [Ash.Resource.Change.OptimisticLock](https://hexdocs.pm/ash/Ash.Resource.Change.OptimisticLock.html)
+See the documentation for `Ash.Resource.Change.OptimisticLock`
 
 ## Define a resource with a version attribute
 
