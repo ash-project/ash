@@ -96,8 +96,7 @@ Welcome! Here you will find everything you need to know to get started with and 
 
 ## CookBook
 
-- [Optimistic Locking](documentation/how-to/cook-book/optimistic-locking.livemd)
-- [State Machines](documentation/how-to/cook-book/state-machines.livemd)
+- [Optimistic Locking](documentation/how-to/cook-book/preventing-concurrent-writes.livemd)
 
 ---
 

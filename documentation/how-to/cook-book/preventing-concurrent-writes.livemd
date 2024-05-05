@@ -1,6 +1,6 @@
 <!-- livebook:{"persist_outputs":true} -->
 
-# Optimistic Locking
+# Preventing Concurrent Writes
 
 ```elixir
 Mix.install([{:ash, "~> 3.0.0-rc"}], consolidate_protocols: false)
@@ -8,26 +8,33 @@ Mix.install([{:ash, "~> 3.0.0-rc"}], consolidate_protocols: false)
 Logger.configure(level: :warning)
 ```
 
-## Steps to add optimistic locking to an `Ash.Resource`
+## Adding Optimistic Locking
 
-* Add a `:version` attribute to your resource.
-  * This will typically be an `:integer`
-  * with a default of `1`
-  * and `allow_nil?: false`
-* If you want optimistic locking to occur for *specific actions*:
-  * Add `change optimistic_lock(:version)` to those specific actions
-* If you want optimistic locking to occur for *all actions*:
-  * Add a global `changes` block, if you do not have one
-  * Add `change optimistic_lock(:version)`
-* If you want to apply optimistic locking to *many but not all actions*:
-  * Add a global `changes` block, if you do not have one
-  * Add `change optimistic_lock(:version), where: action_is(:list, :of, :actions, ...)`
+1. Add a `:version` attribute to your resource.
+   1. This will typically be an `:integer`
+   2. with a default of `1`
+   3. and `allow_nil?: false`
+2. If you want optimistic locking to occur for _specific actions_:
+   1. Add `change optimistic_lock(:version)` to those specific actions
+3. If you want optimistic locking to occur for _all actions_:
+   1. Add a global `changes` block, if you do not have one
+   2. Add `change optimistic_lock(:version), on: [:create, :update, :destroy]`
+   3. Note that we list the action types, because `:destroy` is not in the list of action types a change runs on by default.
+4. If you want to apply optimistic locking to _many but not all actions_:
+   1. Add a global `changes` block, if you do not have one
+   2. Add `change optimistic_lock(:version), where: action_is([:list, :of, :actions])`
+
+## Using a record with optimistic locking
+
+When you update a record, if the version in memory does not match the version in the database, the update will fail with a `Ash.Error.Changes.StaleRecord`.
+
+If you are using this in a liveview, for example, you might show a flash message to the user explaining that the record has been updated by someone else, and ask that they refresh the page, or press some button to refetch the record, or to manually merge their changes etc.
 
 ## Need more context?
 
 See the documentation for `Ash.Resource.Change.OptimisticLock`
 
-## Define a resource with a version attribute
+## Example
 
 <!-- livebook:{"disable_formatting":true} -->
 
