@@ -12,59 +12,31 @@ Mix.install(
   consolidate_protocols: false
 )
 
+# set to `:debug` if you'd like to see ETS logs
 Logger.configure(level: :warning)
 ```
 
-## What is a state machine?
+## State Machines
 
-A state machine is a program who's purpose is to manage an internal "state". The simplest example of a state machine could be a program representing a light switch. A light switch might have two states, "on" and "off". You can transition from "on" to "off", and back.
+### Steps to define a state machine
 
-```mermaid
-classDiagram
+* Add the `AshStateMachine` extension
+* Add the `state_machine` DSL block
+* Configure `state_machine.initial_states` to the allowed list of starting states
+* Configure `state_machine.default_initial_state` to the default initial state
+* Add the `state_machine.transitions` block
+* Add transitions to the `state_machine.transitions` block.
+* A transition consists of:
+  * The action or `:*` to indicate any action
+  * The `from` option, set to a state, list of states, or `:*` to indicate any state
+  * The `to` option, set to a state, list of states, or `:*` to indicate any state
+* Add or modify the actions mentioned in your transitions, to use `change transition_state/1` or `AshStateMachine.transition_state` to modify the state attribute
 
-class Switch {
-  state on | off
-  turnOn() off -> on
-  turnOff() on -> off
-}
-```
+### Need more context?
 
-To build state machines with `Ash.Resource`, we use [`AshStateMachine`](https://hexdocs.pm/ash_state_machine).
+See the [AshStateMachine Documentation](https://hexdocs.pm/ash_state_machine)
 
-When we refer to "state machines" in AshStateMachine, we're referring to a specific type of state machine known as a "Finite State Machine".
-It is "finite", because there are a statically known list of states that the machine may be in at any time, just like the `Switch` example above.
-
-### Why should we use state machines?
-
-#### Flexible
-
-State machines are a *simple* and *powerful* way to represent complex workflows. They are flexible to modifications over time by adding new states, or new transitions between states.
-
-#### Migrateable
-
-State machines typically contain additional data about the state that they are in, or past states that they have been in, and this state must be migrated over time. When representing data as state machines, it becomes simple to do things like "update all `package` records that are in the `pending_shipment` state".
-
-#### Easy to reason about for humans
-
-State machines, when compared to things like workflows, are easy for people to reason about. We have an intuition for things like "the package is currently `on_its_way`, with a `current_location` of New York, New York", or "your package is now `out_for_delivery` with an ETA of 6PM".
-
-#### Compatible with any storage mechanism
-
-Since state machines are backed by simple state, you can often avoid any fancy workflow runners or complex storage mechanisms. You can store them in a database table, a json blob, a CSV file, at the end of the day its just a `:state` field and accompanying additional fields.
-
-### What does AshStateMachine do differently than other implementations?
-
-AshStateMachine is an [`Ash.Resource`](https://hexdocs.pm/ash/Ash.Resource.html) extension, meaning it *enhances a resource* with state machine capabilities. In `Ash`, all modifications go through [*actions*](actions.html). In accordance with this, `AshStateMachine` offers a DSL for declaring *valid states and transitions*, but does not, itself, *perform* those transitions. You will use a change called `transition_state/1` in an action to move from one state to the other. Lets see it in action!
-
-Modify the setup block and configure the log level to debug to see logs from the ETS data layer.
-
-<!-- livebook:{"force_markdown":true} -->
-
-```elixir
-Logger.configure(level: :debug)
-```
-
-## Define a state machine
+## Example
 
 <!-- livebook:{"disable_formatting":true} -->
 
@@ -76,9 +48,12 @@ defmodule Package do
     data_layer: Ash.DataLayer.Ets
 
   state_machine do
+    # all valid initial states
     initial_states [:awaiting_shipment]
+    # the default initial state
     default_initial_state :awaiting_shipment
 
+    # all valid state transitions
     transitions do
       transition :shipped, from: [:awaiting_shipment, :awaiting_return], to: :on_its_way
       transition :refused, from: :on_its_way, to: :awaiting_shipment
@@ -87,8 +62,9 @@ defmodule Package do
     end
   end
 
+  # Standard Ash Attributes
   attributes do
-    uuid_primary_key(:id)
+    uuid_primary_key :id
     attribute :from_address, :string, allow_nil?: false
     attribute :to_address, :string, allow_nil?: false
     attribute :refused?, :boolean, default: false
@@ -99,30 +75,33 @@ defmodule Package do
   end
 
   actions do
-    defaults([:read, create: [:from_address, :to_address]])
+    defaults [:read, create: [:from_address, :to_address]]
 
     update :shipped do
+      # use `change transition_state/1` to set the state
       change transition_state(:on_its_way)
     end
 
     update :lost do
-      # set `lost_in_state` to the current state (before updating)
+      # other updates can be made, in addition to modifying the state
+      # Here, we set `lost_in_state` to the current state (before updating)
       change atomic_update(:lost_in_state, expr(state))
       change transition_state(:lost)
     end
 
     update :refused do
-      # swap the from and to address (In real life it is massively more complex than this 😂)
+      # swap the from and to address
       change atomic_update(:from_address, expr(to_address))
       change atomic_update(:to_address, expr(from_address))
 
-      # set some additional attributes
+      # set an additional attribute values
       change set_attribute(:refused?, true)
       change transition_state(:awaiting_shipment)
     end
 
     update :accepted do
       accept [:got_signature?]
+      change transition_state(:delivered)
     end
   end
 end
@@ -158,29 +137,7 @@ end
  ]}
 ```
 
-## Now lets see what our state machine looks like
-
-```elixir
-mermaid = AshStateMachine.Charts.mermaid_flowchart(Package)
-
-Kino.Shorts.mermaid("""
-#{mermaid}
-""")
-```
-
-<!-- livebook:{"output":true} -->
-
-```mermaid
-flowchart TD
-awaiting_shipment --> |shipped| on_its_way
-on_its_way --> |refused| awaiting_shipment
-on_its_way --> |accepted| delivered
-on_its_way --> |lost| lost
-awaiting_shipment --> |lost| lost
-
-```
-
-## Moving through states
+## Use actions to move through states
 
 ```elixir
 package = Domain.create_package!("my house", "your house")
@@ -191,7 +148,7 @@ package = Domain.create_package!("my house", "your house")
 ```
 #Package<
   __meta__: #Ecto.Schema.Metadata<:loaded>,
-  id: "fa66c0be-1629-4015-ae2c-43137fb9508e",
+  id: "51d55836-dd79-4885-9fb0-409e027dc3ca",
   from_address: "my house",
   to_address: "your house",
   refused?: false,
@@ -214,7 +171,7 @@ package = Domain.package_shipped!(package)
 ```
 #Package<
   __meta__: #Ecto.Schema.Metadata<:loaded>,
-  id: "fa66c0be-1629-4015-ae2c-43137fb9508e",
+  id: "51d55836-dd79-4885-9fb0-409e027dc3ca",
   from_address: "my house",
   to_address: "your house",
   refused?: false,
@@ -228,7 +185,7 @@ package = Domain.package_shipped!(package)
 ```
 
 ```elixir
-# try do an invalid transition
+# try an invalid transition
 Domain.package_shipped(package)
 ```
 
@@ -258,7 +215,7 @@ Domain.package_shipped(package)
      ],
      data: #Package<
        __meta__: #Ecto.Schema.Metadata<:loaded>,
-       id: "fa66c0be-1629-4015-ae2c-43137fb9508e",
+       id: "51d55836-dd79-4885-9fb0-409e027dc3ca",
        from_address: "my house",
        to_address: "your house",
        refused?: false,
@@ -307,7 +264,7 @@ package = Domain.package_refused!(package)
 ```
 #Package<
   __meta__: #Ecto.Schema.Metadata<:loaded>,
-  id: "fa66c0be-1629-4015-ae2c-43137fb9508e",
+  id: "51d55836-dd79-4885-9fb0-409e027dc3ca",
   from_address: "your house",
   to_address: "my house",
   refused?: true,
@@ -323,6 +280,7 @@ package = Domain.package_refused!(package)
 ```elixir
 # and now our package can finish its journey back to us!
 
+package = Domain.package_shipped!(package)
 Domain.package_accepted!(package, true)
 ```
 
@@ -331,15 +289,81 @@ Domain.package_accepted!(package, true)
 ```
 #Package<
   __meta__: #Ecto.Schema.Metadata<:loaded>,
-  id: "fa66c0be-1629-4015-ae2c-43137fb9508e",
+  id: "51d55836-dd79-4885-9fb0-409e027dc3ca",
   from_address: "your house",
   to_address: "my house",
   refused?: true,
   got_signature?: true,
   lost_in_state: nil,
-  state: :awaiting_shipment,
+  state: :delivered,
   aggregates: %{},
   calculations: %{},
   ...
 >
+```
+
+## Introspection Examples
+
+```elixir
+# Generate charts (use `mix ash_state_machine.generate_flow_charts`)
+Package
+|> AshStateMachine.Charts.mermaid_flowchart()
+|> Kino.Shorts.mermaid()
+```
+
+<!-- livebook:{"output":true} -->
+
+```mermaid
+flowchart TD
+awaiting_shipment --> |shipped| on_its_way
+on_its_way --> |refused| awaiting_shipment
+on_its_way --> |accepted| delivered
+on_its_way --> |lost| lost
+awaiting_shipment --> |lost| lost
+```
+
+```elixir
+# List all potential states
+AshStateMachine.Info.state_machine_all_states(Package)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[:awaiting_shipment, :awaiting_return, :on_its_way, :delivered, :lost]
+```
+
+```elixir
+# See all state transitions
+AshStateMachine.Info.state_machine_transitions(Package)
+|> Enum.map(&Map.take(&1, [:action, :from, :to]))
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  %{from: [:awaiting_shipment, :awaiting_return], to: [:on_its_way], action: :shipped},
+  %{from: [:on_its_way], to: [:awaiting_shipment], action: :refused},
+  %{from: [:on_its_way], to: [:delivered], action: :accepted},
+  %{from: [:on_its_way, :awaiting_return, :awaiting_shipment], to: [:lost], action: :lost}
+]
+```
+
+```elixir
+# See all state transitions for a given action
+AshStateMachine.Info.state_machine_transitions(Package, :accepted)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  %AshStateMachine.Transition{
+    action: :accepted,
+    from: [:on_its_way],
+    to: [:delivered],
+    __identifier__: -576460752303416382
+  }
+]
 ```
