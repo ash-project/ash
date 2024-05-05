@@ -10,7 +10,7 @@ Logger.configure(level: :warning)
 
 ## Steps to add optimistic locking to an `Ash.Resource`
 
-* Add a `:version` attribute to your resource. 
+* Add a `:version` attribute to your resource.
   * This will typically be an `:integer`
   * with a default of `1`
   * and `allow_nil?: false`
@@ -25,7 +25,7 @@ Logger.configure(level: :warning)
 
 ## Need more context?
 
-See the documentation for [Ash.Resource.Change.OptimisticLock](https://hexdocs.pm/Ash.Resource.Change.OptimisticLock.html)
+See the documentation for [Ash.Resource.Change.OptimisticLock](https://hexdocs.pm/ash/Ash.Resource.Change.OptimisticLock.html)
 
 ## Define a resource with a version attribute
 
