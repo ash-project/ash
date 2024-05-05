@@ -1,6 +1,6 @@
 <!-- livebook:{"persist_outputs":true} -->
 
-# How to preven concurrent writes
+# How to prevent concurrent writes
 
 ```elixir
 Mix.install([{:ash, "~> 3.0.0-rc"}], consolidate_protocols: false)
