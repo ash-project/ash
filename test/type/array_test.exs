@@ -31,7 +31,7 @@ defmodule Ash.Test.Type.ArrayTest do
              Ash.Type.apply_constraints(
                {:array, :string},
                ["something", nil, nil, "something else"],
-               @default_constraints ++ [remove_nil_items?: true]
+               Keyword.put(@default_constraints, :remove_nil_items?, true)
              )
   end
 end
