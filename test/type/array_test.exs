@@ -4,6 +4,7 @@ defmodule Ash.Test.Type.ArrayTest do
 
   @default_constraints [
     nil_items?: false,
+    remove_nil_items?: false,
     empty_values: [""]
   ]
 
@@ -22,6 +23,15 @@ defmodule Ash.Test.Type.ArrayTest do
                {:array, :string},
                ["something", ""],
                @default_constraints
+             )
+  end
+
+  test "it removes nil values instead of erroring with remove_nil_items?: true" do
+    assert {:ok, ["something", "something else"]} =
+             Ash.Type.apply_constraints(
+               {:array, :string},
+               ["something", nil, nil, "something else"],
+               Keyword.put(@default_constraints, :remove_nil_items?, true)
              )
   end
 end
