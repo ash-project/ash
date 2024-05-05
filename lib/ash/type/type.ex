@@ -812,31 +812,35 @@ defmodule Ash.Type do
         term
         |> Enum.with_index()
         |> Enum.reduce({[], []}, fn {item, index}, {items, errors} ->
-          if is_nil(item) && not nil_items? do
-            {[item | items], [[message: "no nil values", index: index] | errors]}
-          else
-            if type.custom_apply_constraints_array?() do
-              {[item | items], errors}
+          if type.custom_apply_constraints_array?() do
+            if is_nil(item) && not nil_items? do
+              {[item | items], [[message: "no nil values", index: index] | errors]}
             else
-              case apply_constraints(type, item, item_constraints) do
-                {:ok, value} ->
+              {[item | items], errors}
+            end
+          else
+            case apply_constraints(type, item, item_constraints) do
+              {:ok, value} ->
+                if is_nil(value) && not nil_items? do
+                  {[value | items], [[message: "no nil values", index: index] | errors]}
+                else
                   {[value | items], errors}
+                end
 
-                {:error, new_errors} ->
-                  new_errors =
-                    new_errors
-                    |> List.wrap()
-                    |> Ash.Helpers.flatten_preserving_keywords()
-                    |> Enum.map(fn
-                      string when is_binary(string) ->
-                        [message: string, index: index]
+              {:error, new_errors} ->
+                new_errors =
+                  new_errors
+                  |> List.wrap()
+                  |> Ash.Helpers.flatten_preserving_keywords()
+                  |> Enum.map(fn
+                    string when is_binary(string) ->
+                      [message: string, index: index]
 
-                      vars ->
-                        Keyword.put(vars, :index, index)
-                    end)
+                    vars ->
+                      Keyword.put(vars, :index, index)
+                  end)
 
-                  {[item | items], List.wrap(new_errors) ++ errors}
-              end
+                {[item | items], List.wrap(new_errors) ++ errors}
             end
           end
         end)
