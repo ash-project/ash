@@ -182,6 +182,19 @@ defmodule Ash.Filter do
 
   Maps are also accepted, as are maps with string keys. Technically, a list of
   `[{"string_key", value}]` would also work.
+
+  ### Filter Functions
+
+  A set of built-in helper functions are provided for more complex filtering.
+
+  Example
+
+  ```elixir
+  Ash.Query.filter(Helpdesk.Support.Ticket, contains(subject, "2"))
+  ```
+
+  The `contains/2` macro is provided by the `Ash.Filter.Functions.Contains` module.
+  See other modules in the `Ash.Filter.Functions` namespace for more functions.
   """
 
   @builtin_operators Enum.map(@operators, &{&1.operator(), &1}) ++ @operator_aliases
