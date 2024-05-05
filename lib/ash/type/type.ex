@@ -2,19 +2,24 @@ defmodule Ash.Type do
   @array_constraints [
     min_length: [
       type: :non_neg_integer,
-      doc: "A minimum length for the items"
+      doc: "A minimum length for the items."
     ],
     items: [
       type: :any,
-      doc: "A schema for individual items"
+      doc: "A schema for individual items."
     ],
     max_length: [
       type: :non_neg_integer,
-      doc: "A maximum length for the items"
+      doc: "A maximum length for the items."
     ],
     nil_items?: [
       type: :boolean,
-      doc: "Whether or not the list can contain nil items",
+      doc: "Whether or not the list can contain nil items.",
+      default: false
+    ],
+    remove_nil_items?: [
+      type: :boolean,
+      doc: "Whether or not to remove the nil items from the list instead of adding errors.",
       default: false
     ],
     empty_values: [
@@ -808,24 +813,17 @@ defmodule Ash.Type do
     case list_constraint_errors do
       [] ->
         nil_items? = Keyword.get(constraints, :nil_items?, false)
+        remove_nil_items? = Keyword.get(constraints, :remove_nil_items?, false)
 
         term
         |> Enum.with_index()
         |> Enum.reduce({[], []}, fn {item, index}, {items, errors} ->
           if type.custom_apply_constraints_array?() do
-            if is_nil(item) && not nil_items? do
-              {[item | items], [[message: "no nil values", index: index] | errors]}
-            else
-              {[item | items], errors}
-            end
+            maybe_handle_nil_item(item, index, items, errors, nil_items?, remove_nil_items?)
           else
             case apply_constraints(type, item, item_constraints) do
               {:ok, value} ->
-                if is_nil(value) && not nil_items? do
-                  {[value | items], [[message: "no nil values", index: index] | errors]}
-                else
-                  {[value | items], errors}
-                end
+                maybe_handle_nil_item(value, index, items, errors, nil_items?, remove_nil_items?)
 
               {:error, new_errors} ->
                 new_errors =
@@ -876,6 +874,18 @@ defmodule Ash.Type do
     case type.apply_constraints(term, constraints) do
       :ok -> {:ok, term}
       other -> other
+    end
+  end
+
+  defp maybe_handle_nil_item(item, index, rest, errors, nil_items?, remove_nil_items?) do
+    if is_nil(item) && not nil_items? do
+      if remove_nil_items? do
+        {rest, errors}
+      else
+        {[item | rest], [[message: "no nil values", index: index] | errors]}
+      end
+    else
+      {[item | rest], errors}
     end
   end
 
