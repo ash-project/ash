@@ -104,7 +104,7 @@ defmodule Ash.MixProject do
         Security: ~r"documentation/topics/security",
         Development: ~r"documentation/topics/development",
         Advanced: ~r"documentation/topics/advanced",
-        "Cook Book": ~r"documentation/how-to/cook-book",
+        # "Cook Book": ~r"documentation/how-to/cook-book",
         "How To": ~r"documentation/how-to",
         Reference: [
           ~r"documentation/topics/reference",

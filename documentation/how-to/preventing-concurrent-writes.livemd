@@ -1,6 +1,6 @@
 <!-- livebook:{"persist_outputs":true} -->
 
-# How to prevent concurrent writes
+# Prevent concurrent writes
 
 ```elixir
 Mix.install([{:ash, "~> 3.0.0-rc"}], consolidate_protocols: false)
@@ -8,13 +8,15 @@ Mix.install([{:ash, "~> 3.0.0-rc"}], consolidate_protocols: false)
 Logger.configure(level: :warning)
 ```
 
-## Preventing Concurrent Writes
+## Introduction
 
 Often, when working with resources, we want to ensure that a record has not been edited since we last read it. We may want this for UX reasons, or for ensuring data consistency, etc.
 
 To ensure that a record hasn't been updated since the last time we read it, we use Optimistic Locking.
 
-## Adding Optimistic Locking
+For more information, see the documentation for `Ash.Resource.Change.OptimisticLock`.
+
+## Add Optimistic Locking
 
 1. Add a `:version` attribute to your resource.
    1. This will typically be an `:integer`
@@ -29,10 +31,6 @@ To ensure that a record hasn't been updated since the last time we read it, we u
 4. If you want to apply optimistic locking to _many but not all actions_:
    1. Add a global `changes` block, if you do not have one
    2. Add `change optimistic_lock(:version), where: action_is([:list, :of, :actions])`
-
-## Need more context?
-
-See the documentation for `Ash.Resource.Change.OptimisticLock`
 
 ## Examples
 

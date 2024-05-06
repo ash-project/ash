@@ -94,7 +94,7 @@ Welcome! Here you will find everything you need to know to get started with and 
 
 ---
 
-## CookBook
+## How-to
 
 - [Optimistic Locking](documentation/how-to/cook-book/preventing-concurrent-writes.livemd)
 
