@@ -20,14 +20,15 @@ For more information, see the documentation for `Ash.Resource.Change.OptimisticL
 
 1. Add a `:version` attribute to your resource.
    - This will typically be an `:integer` with a default of `1` and `allow_nil?: false`
-2. If you want optimistic locking to occur for _specific actions_:
-   1. Add `change optimistic_lock(:version)` to those specific actions
-3. If you want optimistic locking to occur for _all action types_:
-   1. Add a global `changes` block to the resource, if you do not have one
-   2. Add `change optimistic_lock(:version), on: [:create, :update, :destroy]`
-4. If you want to apply optimistic locking to _many but not all actions_:
-   1. Add a global `changes` block to the resource, if you do not have one
-   2. Add `change optimistic_lock(:version), where: action_is([:action1, :action2, :action3])`
+2. Add `change optimistic_lock(:version)`. Where you add it depends on which actions you want to prevent concurrent writes for:
+   - If you want optimistic locking to occur for _specific actions_:
+      1. Add `change optimistic_lock(:version)` to those specific actions
+   - If you want optimistic locking to occur for _all action types_:
+      1. Add a global `changes` block to the resource, if you do not have one
+      2. Add `change optimistic_lock(:version), on: [:create, :update, :destroy]`
+   - If you want to apply optimistic locking to _many but not all actions_:
+      1. Add a global `changes` block to the resource, if you do not have one
+      2. Add `change optimistic_lock(:version), where: action_is([:action1, :action2, :action3])`
 
 ## Examples
 
