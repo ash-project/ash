@@ -543,7 +543,13 @@ defmodule Ash.Type do
       if constraints[:nil_items?] do
         StreamData.one_of([StreamData.constant(nil), generator])
       else
-        generator
+        if type in [Ash.Type.String, :string, Ash.Type.CiString, :ci_string] &&
+             !item_constraints(constraints)[:allow_empty?] do
+          generator
+          |> StreamData.filter(&(&1 != ""))
+        else
+          generator
+        end
       end
 
     StreamData.list_of(generator, Keyword.take(constraints, [:max_length, :min_length]))
