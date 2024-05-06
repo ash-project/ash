@@ -271,6 +271,31 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule DummyCalc do
+    use Ash.Resource.Calculation
+
+    def load(_, _, _) do
+      []
+    end
+
+    def calculate(list, _opts, _context) do
+      send(self(), :dummy_calc_calculated)
+      Enum.map(list, fn _ -> "foo" end)
+    end
+  end
+
+  defmodule DummyCalc2 do
+    use Ash.Resource.Calculation
+
+    def load(_, _, _) do
+      [:dummy_calc]
+    end
+
+    def calculate(list, _opts, _context) do
+      Enum.map(list, fn _ -> "bar" end)
+    end
+  end
+
   defmodule Role do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
@@ -602,6 +627,14 @@ defmodule Ash.Test.CalculationTest do
       end
 
       calculate :roles_have_user, :boolean, RolesHaveUser do
+        public?(true)
+      end
+
+      calculate :dummy_calc, :string, DummyCalc do
+        public?(true)
+      end
+
+      calculate :dummy_calc2, :string, DummyCalc2 do
         public?(true)
       end
     end
@@ -943,6 +976,16 @@ defmodule Ash.Test.CalculationTest do
              "brian cranston brian cranston",
              "zach daniel zach daniel"
            ]
+  end
+
+  test "loads calculations once even if they're needed from other calculations in the same load" do
+    User
+    |> Ash.read!()
+    |> Ash.load!([:dummy_calc, :dummy_calc2])
+
+    # DummyCalc should be only loaded once
+    assert_receive :dummy_calc_calculated
+    refute_receive :dummy_calc_calculated
   end
 
   test "nested calculations are loaded if necessary" do
