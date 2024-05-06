@@ -11,7 +11,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [
+        project:
+          [
             { org: "ash-project", name: "ash_postgres" },
             { org: "ash-project", name: "ash_csv" },
             { org: "ash-project", name: "ash_double_entry" },
@@ -33,7 +34,7 @@ jobs:
         elixir: ["1.16.0"]
     services:
       pg:
-        image: postgres:13
+        image: postgres:16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
