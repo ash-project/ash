@@ -4,7 +4,8 @@ defmodule Ash.Resource.Change.OptimisticLock do
 
   ## What is Optimistic Locking?
 
-  Optimistic Locking is the process of only allowing an update to occur if the version of a record that you have in memory is the same as the version in the database. Otherwise, an error is returned.
+  Optimistic Locking is the process of only allowing an update to occur if the version of a record that you have in memory is the same as the version in the database.
+  Otherwise, an error is returned. On success, it increments the version while performing the action.
 
   Optimistic locking may used for two primary purposes:
 
@@ -16,7 +17,7 @@ defmodule Ash.Resource.Change.OptimisticLock do
 
   ### Concurrency Safety
 
-  Optimistic locking can make actions safe to run concurrently even if they can't be performed in a single query(atomically), by returning an error if the resource in the data layer does not have the same version as the one being edited.
+  Optimistic locking can make actions safe to run concurrently even if they can't be performed in a single query (atomically), by returning an error if the resource in the data layer does not have the same version as the one being edited.
 
   This tells the user that they need to reload and try again.
   """

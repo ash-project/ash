@@ -18,8 +18,7 @@ For more information, see the documentation for `Ash.Resource.Change.OptimisticL
 
 ## Add Optimistic Locking
 
-1. Add a `:version` attribute to your resource.
-   - This will typically be an `:integer` with a default of `1` and `allow_nil?: false`
+1. Add a `:version` attribute to your resource, of type `:integer`, with a default of `1` and `allow_nil?: false`
 2. Add `change optimistic_lock(:version)`. Where you add it depends on which actions you want to prevent concurrent writes for:
    - If you want optimistic locking to occur for _specific actions_:
       1. Add `change optimistic_lock(:version)` to those specific actions
