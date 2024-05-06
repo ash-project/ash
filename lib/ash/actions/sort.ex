@@ -359,13 +359,24 @@ defmodule Ash.Actions.Sort do
 
   * `:domain` - The domain to use if data needs to be loaded
   * `:lazy?` - Whether to use already loaded values or to re-load them when necessary. Defaults to `false`
+  * `:resource` - The resource being sorted.
   """
   def runtime_sort(results, sort, opts \\ [])
   def runtime_sort([], _empty, _), do: []
   def runtime_sort(results, empty, _) when empty in [nil, []], do: results
   def runtime_sort([single_result], _, _), do: [single_result]
 
-  def runtime_sort([%resource{} | _] = results, [{field, direction} | rest], opts) do
+  def runtime_sort(results, [{field, direction}], opts) do
+    resource = get_resource(results, opts)
+
+    results
+    |> load_field(field, resource, opts)
+    |> Enum.sort_by(&resolve_field(&1, field, resource, domain: opts), to_sort_by_fun(direction))
+  end
+
+  def runtime_sort(results, [{field, direction} | rest], opts) do
+    resource = get_resource(results, opts)
+
     results
     |> load_field(field, resource, opts)
     |> Enum.group_by(&resolve_field(&1, field, resource, domain: opts))
@@ -374,6 +385,23 @@ defmodule Ash.Actions.Sort do
       runtime_sort(records, rest, Keyword.put(opts, :rekey?, false))
     end)
     |> maybe_rekey(results, resource, Keyword.get(opts, :rekey?, true))
+  end
+
+  defp get_resource(results, opts) do
+    case opts[:resource] do
+      nil ->
+        case results do
+          [%resource{} | _] ->
+            resource
+
+          _other ->
+            raise ArgumentError,
+                  "Resource must be provided when sorting a value that is not a simple list of records"
+        end
+
+      resource ->
+        resource
+    end
   end
 
   defp maybe_rekey(new_results, results, resource, true) do
@@ -404,16 +432,24 @@ defmodule Ash.Actions.Sort do
   end
 
   defp load_field(records, field, resource, opts) do
-    if is_nil(opts[:domain]) || (opts[:lazy?] && Ash.Resource.loaded?(records, field)) do
+    if is_nil(opts[:domain]) do
       records
     else
-      query =
-        resource
-        |> Ash.Query.select([])
-        |> Ash.Query.load(field)
-        |> Ash.Query.set_context(%{private: %{internal?: true}})
+      records
+      |> Stream.chunk_every(100)
+      |> Stream.flat_map(fn batch ->
+        query =
+          resource
+          |> Ash.Query.select([])
+          |> Ash.Query.load(field)
+          |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-      opts[:domain].load!(records, query)
+        Ash.load!(batch, query,
+          domain: opts[:domain],
+          reuse_values?: true,
+          lazy?: opts[:lazy?] || false
+        )
+      end)
     end
   end
 
