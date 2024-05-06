@@ -545,7 +545,12 @@ defmodule Ash.Type do
         StreamData.one_of([StreamData.constant(nil), generator])
       else
         generator
-        |> StreamData.filter(&(Ash.Type.apply_constraints(type, &1, item_constraints) != nil))
+        |> StreamData.filter(fn value ->
+          case Ash.Type.apply_constraints(type, value, item_constraints) do
+            {:ok, value} -> value != nil
+            _ -> false
+          end
+        end)
       end
 
     StreamData.list_of(generator, Keyword.take(constraints, [:max_length, :min_length]))
