@@ -83,15 +83,17 @@ defmodule MyApp.Extensions.Base do
     ]
   }
 
-  defmodule Info do
-    use Spark.InfoGenerator, extension: MyApp.Extensions.Base, sections: [:base]
 
-    # This will define `base_timestamps?/1`.
-  end
 
   use Spark.Dsl.Extension,
     transformers: [MyApp.Extensions.Base.AddTimestamps],
     sections: [@base]
+end
+
+defmodule MyApp.Extensions.Base.Info do
+  use Spark.InfoGenerator, extension: MyApp.Extensions.Base, sections: [:base]
+
+  # This will define `base_timestamps?/1`.
 end
 ```
 
