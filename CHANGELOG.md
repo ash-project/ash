@@ -5,6 +5,21 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v3.0.0-rc.46](https://github.com/ash-project/ash/compare/v3.0.0-rc.45...v3.0.0-rc.46) (2024-05-06)
+
+
+
+
+### Features:
+
+* add new remove_nil_items? array type constraint (#1116)
+
+### Bug Fixes:
+
+* better performance and ability to add a stream to runtime sort logic
+
+* run array type nil check after item constraints (#1115)
+
 ## [v3.0.0-rc.45](https://github.com/ash-project/ash/compare/v3.0.0-rc.44...v3.0.0-rc.45) (2024-05-04)
 
 
