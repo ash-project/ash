@@ -25,11 +25,11 @@ For more information, see the documentation for `Ash.Resource.Change.OptimisticL
 2. If you want optimistic locking to occur for _specific actions_:
    1. Add `change optimistic_lock(:version)` to those specific actions
 3. If you want optimistic locking to occur for _all actions_:
-   1. Add a global `changes` block, if you do not have one
+   1. Add a global `changes` block to the resource, if you do not have one
    2. Add `change optimistic_lock(:version), on: [:create, :update, :destroy]`
    3. Note that we list the action types, because `:destroy` is not in the list of action types a change runs on by default.
 4. If you want to apply optimistic locking to _many but not all actions_:
-   1. Add a global `changes` block, if you do not have one
+   1. Add a global `changes` block to the resource, if you do not have one
    2. Add `change optimistic_lock(:version), where: action_is([:list, :of, :actions])`
 
 ## Examples
