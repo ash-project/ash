@@ -145,6 +145,22 @@ defmodule Ash.Filter do
   Ash.Query.filter(resource, first_name == "Zar" or last_name == "Doz" or (high_score > 10 and high_score < -10))
   ```
 
+  ### Expressions
+
+  More complex filters can be built using Ash Expressions.
+
+  Examples
+
+  ```elixir
+  # Filter based on the contents of a string attribute
+  Ash.Query.filter(Helpdesk.Support.Ticket, contains(subject, "2"))
+  # Filter based on the attribute of a joined relationship:
+  Ash.Query.filter(Helpdesk.Support.Ticket, representative.name == ^name)
+  ```
+
+  See the [Expressions guide](/documentation/topics/reference/expressions.md)
+  guide for more information.
+
   ### Keyword list syntax
 
   A filter is a nested keyword list (with some exceptions, like `true` for
