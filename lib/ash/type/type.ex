@@ -548,7 +548,7 @@ defmodule Ash.Type do
         |> StreamData.filter(fn value ->
           case Ash.Type.apply_constraints(type, value, item_constraints) do
             {:ok, value} -> value != nil
-            _ -> false
+            _ -> true
           end
         end)
       end
