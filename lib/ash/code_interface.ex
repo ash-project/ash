@@ -480,7 +480,7 @@ defmodule Ash.CodeInterface do
             {params, opts} =
               if opts == [] && Keyword.keyword?(params_or_opts),
                 do:
-                  {%{},
+                  {if(params_or_opts != [], do: %{}, else: []),
                    Spark.Options.validate!(
                      params_or_opts,
                      unquote(Macro.escape(interface_options))
@@ -665,7 +665,7 @@ defmodule Ash.CodeInterface do
                   changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
                   changeset =
-                    if is_map(params) || Keyword.keyword?(params) do
+                    if is_map(params) do
                       changeset
                       |> Kernel.||(unquote(resource))
                       |> case do
@@ -979,10 +979,6 @@ defmodule Ash.CodeInterface do
                           raise ArgumentError,
                                 "Changeset #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
 
-                        %other_resource{} when other_resource != unquote(resource) ->
-                          raise ArgumentError,
-                                "Record #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
-
                         %struct{} = record when struct == unquote(resource) ->
                           {filters, params} = Map.split(params, unquote(filter_keys))
 
@@ -997,6 +993,16 @@ defmodule Ash.CodeInterface do
 
                         %Ash.Query{} = query ->
                           {:atomic, :query, query}
+
+                        %other_resource{} when other_resource != unquote(resource) ->
+                          raise ArgumentError,
+                                "Record #{inspect(record)} does not match expected resource #{inspect(unquote(resource))}."
+
+                        [{_key, _val} | _] = id ->
+                          {:atomic, :id, id}
+
+                        list when is_list(list) ->
+                          {:atomic, :stream, list}
 
                         other ->
                           if Keyword.keyword?(other) || is_map(other) do

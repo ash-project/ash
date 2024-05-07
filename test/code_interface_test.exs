@@ -220,6 +220,10 @@ defmodule Ash.Test.CodeInterfaceTest do
                  context: @context
                )
     end
+
+    test "bulk_create can be take an empty list" do
+      assert %Ash.BulkResult{status: :success} = User.bulk_create!([])
+    end
   end
 
   describe "update actions" do
@@ -266,6 +270,10 @@ defmodule Ash.Test.CodeInterfaceTest do
 
       Enum.map(result.records, &assert(&1.first_name == "different_bob"))
     end
+
+    test "bulk update can take an empty list" do
+      assert %Ash.BulkResult{status: :success} = User.update([], %{first_name: "other_bob"})
+    end
   end
 
   describe "destroy actions" do
@@ -293,6 +301,10 @@ defmodule Ash.Test.CodeInterfaceTest do
       bob4 = User.create!("bob", context: @context)
 
       assert %Ash.BulkResult{status: :success} = User.destroy!([bob3, bob4], context: @context)
+    end
+
+    test "bulk destroy can take an empty list" do
+      assert %Ash.BulkResult{status: :success} = User.destroy([])
     end
   end
 

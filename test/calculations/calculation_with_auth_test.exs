@@ -1,4 +1,4 @@
-defmodule Ash.Test.Resource.CalculationsTest do
+defmodule Ash.Test.Resource.CalculationWithAuthTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
