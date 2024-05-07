@@ -1311,7 +1311,7 @@ defmodule Ash.Actions.Read.Calculations do
   defp find_equivalent_calculation(query, calculation) do
     Enum.find_value(query.calculations, :error, fn {_, other_calc} ->
       if other_calc.module == calculation.module and other_calc.opts == calculation.opts and
-           other_calc.context == calculation.context do
+           other_calc.context.arguments == calculation.context.arguments do
         {:ok, other_calc}
       end
     end)
