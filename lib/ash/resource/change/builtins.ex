@@ -286,6 +286,42 @@ defmodule Ash.Resource.Change.Builtins do
     {Ash.Resource.Change.Select, target: value, ensure?: true}
   end
 
+  @doc """
+  Cascade this resource's destroy action to a related resource's destroy action.
+
+  Adds an after-action hook that explicitly calls destroy on any records related
+  via the named relationship.  It will optimise for bulk destroys where
+  possible.
+
+  > #### Beware database constraints {: .warning}
+  >
+  > Think carefully before using this change with data layers which enforce
+  > referential integrity (ie PostgreSQL and SQLite) and you may need to defer
+  > constraints for the relationship in question.
+  >
+  > See also:
+  >   1. [`postgres.references.reference.deferrable` DSL](https://hexdocs.pm/ash_postgres/dsl-ashpostgres-datalayer.html#postgres-references-reference-deferrable)
+  >   2. [`sqlite.references.reference.deferrable` DSL](https://hexdocs.pm/ash_sqlite/dsl-ashsqlite-datalayer.html#sqlite-references-reference-deferrable)
+  >   3. [PostgreSQL's `SET CONSTRAINTS` documentation](https://www.postgresql.org/docs/current/sql-set-constraints.html)
+  >   4. [SQLite's `PRAGMA defer_foreign_keys` documentation](https://www.sqlite.org/pragma.html#pragma_defer_foreign_keys)
+
+  > #### Cascading notifications {: .tip}
+  >
+  > By default notifications are disabled for the related destroy. This is to avoid potentially sending a **lot** of notifications for high-cardinality relationships.
+
+  ## Options
+
+  #{Ash.Resource.Change.CascadeDestroy.opt_schema() |> Keyword.delete(:resource) |> Spark.Options.docs()}
+
+  ## Example
+
+      change cascade_destroy(:relationship)
+  """
+  @spec cascade_destroy(relationship :: atom) :: Ash.Resource.Change.ref()
+  def cascade_destroy(relationship, opts \\ []) do
+    {Ash.Resource.Change.CascadeDestroy, Keyword.put(opts, :relationship, relationship)}
+  end
+
   @doc ~S"""
   Directly attach an `after_action` function to the current change.
 
