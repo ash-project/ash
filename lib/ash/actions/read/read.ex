@@ -326,7 +326,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp do_read(%{action: action} = query, calculations_at_runtime, calculations_in_query, opts) do
+  defp do_read(%{action: action} = query, _calculations_at_runtime, calculations_in_query, opts) do
     maybe_in_transaction(query, opts, fn ->
       with {:ok, %{valid?: true} = query} <- handle_multitenancy(query),
            {:ok, sort} <-
@@ -353,11 +353,11 @@ defmodule Ash.Actions.Read do
            pre_authorization_query <- query,
            {:ok, query} <- authorize_query(query, opts),
            query_before_pagination <- query,
-           query <-
-             Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
-               query,
-               calculations_at_runtime ++ calculations_in_query
-             ),
+           # query <-
+           #   Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
+           #     query,
+           #     calculations_at_runtime ++ calculations_in_query
+           #   ),
            {:ok, data_layer_calculations} <- hydrate_calculations(query, calculations_in_query),
            {:ok, relationship_path_filters} <-
              Ash.Filter.relationship_filters(
@@ -635,18 +635,18 @@ defmodule Ash.Actions.Read do
   defp load(
          initial_data,
          query,
-         calculations_at_runtime,
+         _calculations_at_runtime,
          calculations_in_query,
          missing_pkeys?,
          opts
        ) do
     must_be_reselected = List.wrap(query.select) -- Ash.Resource.Info.primary_key(query.resource)
 
-    query =
-      Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
-        query,
-        calculations_at_runtime ++ calculations_in_query
-      )
+    # query =
+    #   Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
+    #     query,
+    #     calculations_at_runtime ++ calculations_in_query
+    #   )
 
     if missing_pkeys? ||
          (Enum.empty?(must_be_reselected) && Enum.empty?(query.aggregates) &&

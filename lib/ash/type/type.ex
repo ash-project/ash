@@ -295,6 +295,9 @@ defmodule Ash.Type do
           calc_name: term(),
           calc_load: term(),
           calc_path: list(atom),
+          reuse_values?: boolean,
+          strict_loads?: boolean,
+          initial_data: term(),
           relationship_path: list(atom)
         }
 
