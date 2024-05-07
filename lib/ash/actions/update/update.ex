@@ -171,11 +171,12 @@ defmodule Ash.Actions.Update do
                  Ash.Error.Changes.StaleRecord.exception(
                    resource: fully_atomic_changeset.resource,
                    filters: Map.take(changeset.data, primary_key)
-                 )
+                 ),
+                 changeset: atomic_changeset
                )}
 
             %Ash.BulkResult{status: :error, errors: errors} ->
-              {:error, Ash.Error.to_error_class(errors)}
+              {:error, Ash.Error.to_error_class(errors, changeset: atomic_changeset)}
           end
 
         other ->
