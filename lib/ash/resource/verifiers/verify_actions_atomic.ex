@@ -36,6 +36,8 @@ defmodule Ash.Resource.Verifiers.VerifyActionsAtomic do
 
         change_warnings =
           action.changes
+          |> Enum.concat(Ash.Resource.Info.changes(dsl, action.type))
+          |> Enum.concat(Ash.Resource.Info.validations(dsl, action.type))
           |> Enum.map(fn
             %{change: {module, _}} ->
               module
