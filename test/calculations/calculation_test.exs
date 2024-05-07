@@ -988,6 +988,17 @@ defmodule Ash.Test.CalculationTest do
     refute_receive :dummy_calc_calculated
   end
 
+  test "loads calculations once if they're needed from other calculations if reuse_values?: true" do
+    User
+    |> Ash.read!()
+    |> Ash.load!([:dummy_calc])
+    |> Ash.load!([:dummy_calc2], reuse_values?: true)
+
+    # DummyCalc should be only loaded once
+    assert_receive :dummy_calc_calculated
+    refute_receive :dummy_calc_calculated
+  end
+
   test "nested calculations are loaded if necessary" do
     best_friends_names =
       User
