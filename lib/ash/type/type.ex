@@ -546,9 +546,13 @@ defmodule Ash.Type do
       else
         generator
         |> StreamData.filter(fn value ->
-          case Ash.Type.apply_constraints(type, value, item_constraints) do
-            {:ok, value} -> value != nil
-            _ -> true
+          if Ash.Type.embedded_type?(type) do
+            true
+          else
+            case Ash.Type.apply_constraints(type, value, item_constraints) do
+              {:ok, value} -> value != nil
+              _ -> true
+            end
           end
         end)
       end
