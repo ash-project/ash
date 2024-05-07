@@ -759,6 +759,15 @@ defmodule Ash.Test.CalculationTest do
       end
     end
 
+    preparations do
+      prepare fn query, _ ->
+        Ash.Query.before_action(query, fn query ->
+          send(self(), :product_read)
+          query
+        end)
+      end
+    end
+
     ets do
       private?(true)
     end
@@ -1484,5 +1493,26 @@ defmodule Ash.Test.CalculationTest do
       |> Ash.create!()
 
     Ash.load!(warranty, user_first_name: [assert_strict?: true])
+  end
+
+  test "doesn't load relationships if there is no need", %{user1: user1} do
+    product =
+      Product
+      |> Ash.Changeset.for_create(:create, %{name: "SuperFoo3000", user_id: user1.id})
+      |> Ash.create!()
+
+    warranty =
+      Warranty
+      |> Ash.Changeset.for_create(:create, %{product_id: product.id})
+      |> Ash.create!()
+
+    warranty = %{warranty | product: product}
+
+    Ash.load!(warranty, [user_first_name: [assert_strict?: true]], reuse_values?: false)
+
+    assert_received(:product_read)
+
+    Ash.load!(warranty, [user_first_name: [assert_strict?: true]], reuse_values?: true)
+    refute_received(:product_read)
   end
 end

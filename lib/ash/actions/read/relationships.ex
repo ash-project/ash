@@ -87,6 +87,8 @@ defmodule Ash.Actions.Read.Relationships do
 
   defp with_related_queries(load, query, records, lazy?) do
     Stream.map(load, fn {relationship_name, related_query} ->
+      lazy? = lazy? || related_query.context[:private][:lazy?]
+
       if lazy? && Ash.Resource.loaded?(records, relationship_name, lists: :any) do
         relationship = Ash.Resource.Info.relationship(query.resource, relationship_name)
 

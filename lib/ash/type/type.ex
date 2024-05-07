@@ -295,8 +295,7 @@ defmodule Ash.Type do
           calc_name: term(),
           calc_load: term(),
           calc_path: list(atom),
-          relationship_path: list(atom),
-          initial_data: {:ok, list(Ash.Resource.record())} | :error
+          relationship_path: list(atom)
         }
 
   @callback storage_type() :: Ecto.Type.t()

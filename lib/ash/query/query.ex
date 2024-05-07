@@ -1191,7 +1191,10 @@ defmodule Ash.Query do
         context[:calc_path],
         context[:calc_name],
         context[:calc_load],
-        context[:relationship_path]
+        context[:relationship_path],
+        :error,
+        context[:strict_loads?],
+        context[:reuse_values?]
       )
     else
       load(left, right)
