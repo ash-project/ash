@@ -38,6 +38,8 @@ To make this change you will need to do two things:
 
 - `code_interface.define_for` is now `code_interface.domain`. Additionally, it is set automatically if the `domain` option is specified on `use Ash.Resource`.
 
+- `domain.execution.timeout` used to default to 30 seconds, but now it defaults to `:infinity`. This is because a timeout requires copying memory across process boundaries, and is an unnecessary expense a _vast_ majority of the time. We recommend putting timeouts on specific actions that may need them.
+
 - `actions.create.reject`, `actions.update.reject` and `actions.destroy.reject` have been removed. Blacklisting inputs makes it too easy to make mistakes. Instead, specify an explicit `accept` list.
 
 - `relationships.belongs_to.attribute_writable?` no longer makes the underlying attribute both public and writable. It defaults to the value of `writable?` on the relationship (which itself defaults to `true`), and only controls the generated attributes `writable? true` property. So now, by default, it will be `true`, which is safe when coupled with changes to the `default_accept`, discussed below. Generally, this means you should be safe to remove any occurrences of `attribute_writable? true`.
