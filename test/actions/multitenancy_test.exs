@@ -163,6 +163,31 @@ defmodule Ash.Actions.MultitenancyTest do
     end
   end
 
+  defmodule OtherThingName do
+    use Ash.Resource.Calculation
+
+    def load(_, _, _) do
+      [other_thing: [:name]]
+    end
+
+    def calculate(records, _, _) do
+      Enum.map(records, &(&1.other_thing && &1.other_thing.name))
+    end
+  end
+
+  defmodule OtherThingNameReversed do
+    use Ash.Resource.Calculation
+
+    def calculate(records, _, _) do
+      # Normally you would just load :other_thing in the load callback
+      # This simulates cases where you're conditionally loading based on
+      # runtime conditions so you do it manually in the calculation
+      records
+      |> Ash.load!(:other_thing_name)
+      |> Enum.map(&(&1.other_thing_name && String.reverse(&1.other_thing_name)))
+    end
+  end
+
   defmodule MultitenantThing do
     @doc false
 
@@ -193,6 +218,15 @@ defmodule Ash.Actions.MultitenancyTest do
       attribute :name, :string do
         public?(true)
       end
+    end
+
+    relationships do
+      belongs_to :other_thing, MultitenantThing, public?: true
+    end
+
+    calculations do
+      calculate :other_thing_name, :string, OtherThingName, public?: true
+      calculate :other_thing_name_reversed, :string, OtherThingNameReversed, public?: true
     end
 
     def parse_tenant(id), do: "tenant_#{id}"
@@ -352,6 +386,24 @@ defmodule Ash.Actions.MultitenancyTest do
       |> Ash.create!()
       |> Ash.Changeset.for_update(:update, %{}, tenant: tenant1)
       |> Ash.destroy!()
+    end
+
+    test "tenant is set on data in calculations", %{tenant1: tenant1} do
+      thing1 =
+        MultitenantThing
+        |> Ash.Changeset.for_create(:create, %{name: "foo"}, tenant: tenant1)
+        |> Ash.create!()
+
+      thing2 =
+        MultitenantThing
+        |> Ash.Changeset.for_create(:create, %{name: "bar", other_thing_id: thing1.id},
+          tenant: tenant1
+        )
+        |> Ash.create!()
+
+      %{other_thing_name_reversed: "oof"} =
+        MultitenantThing
+        |> Ash.get!(thing2.id, tenant: tenant1, load: :other_thing_name_reversed)
     end
   end
 
