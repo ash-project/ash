@@ -707,13 +707,13 @@ defmodule Ash.Actions.Read.Calculations do
            unknown_on_unknown_refs?: true
          ) do
       {:ok, result} ->
-        %{
+        {:ok, %{
           calculation
           | module: Ash.Resource.Calculation.Literal,
             opts: [value: result],
             required_loads: [],
             select: []
-        }
+        }}
 
       _ ->
         :error
