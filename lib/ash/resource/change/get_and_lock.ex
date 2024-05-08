@@ -14,8 +14,8 @@ defmodule Ash.Resource.Change.GetAndLock do
              changeset.resource,
              pkey_values,
              domain: changeset.domain,
-             tracer: context[:tracer],
-             tenant: context[:tenant],
+             tracer: context.tracer,
+             tenant: context.tenant,
              authorize?: false,
              lock: opts[:lock]
            ) do
