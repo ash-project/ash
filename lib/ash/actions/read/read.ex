@@ -1368,7 +1368,8 @@ defmodule Ash.Actions.Read do
       pkey = Ash.Resource.Info.primary_key(original_query.resource)
       # we have to assume they are all there and in the same order. Not my
       # favorite thing, but no way around it in the short term.
-      if Enum.empty?(pkey) || missing_pkeys? do
+      if Ash.Resource.Info.embedded?(original_query.resource) || Enum.empty?(pkey) ||
+           missing_pkeys? do
         Enum.zip_with([data, data_with_selected], fn [record, match] ->
           record
           |> Map.merge(Map.take(match, fields_from_data))
