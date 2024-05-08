@@ -303,7 +303,9 @@ defmodule Ash.Actions.Read do
 
         data
         |> Helpers.restrict_field_access(query)
-        |> attach_fields(opts[:initial_data], initial_query, missing_pkeys?)
+        |> add_tenant(query)
+        |> attach_fields(opts[:initial_data], initial_query, query, missing_pkeys?)
+        |> cleanup_field_auth(query)
         |> add_page(
           query.action,
           count,
@@ -473,6 +475,103 @@ defmodule Ash.Actions.Read do
           {:error, error}
       end
     end)
+  end
+
+  @doc false
+  def cleanup_field_auth(records, query, top_level? \\ true)
+
+  def cleanup_field_auth(
+        records,
+        %{context: %{private: %{loading_relationship?: true}}},
+        _top_level?
+      ) do
+    records
+  end
+
+  def cleanup_field_auth(nil, _query, _top_level?), do: nil
+  def cleanup_field_auth(%Ash.NotLoaded{} = not_loaded, _query, _top_level?), do: not_loaded
+
+  def cleanup_field_auth(%struct{results: results} = page, query, top_level?)
+      when struct in [Ash.Page.Keyset, Ash.Page.Offset] do
+    %{page | results: cleanup_field_auth(results, query, top_level?)}
+  end
+
+  def cleanup_field_auth(records, %{resource: resource} = query, top_level?)
+      when is_list(records) do
+    records =
+      if top_level? do
+        records
+      else
+        query =
+          Ash.Query.set_context(query, %{private: %{cleaning_up_field_auth?: true}})
+
+        Helpers.restrict_field_access(records, query)
+      end
+
+    records =
+      Enum.reduce(query.load, records, fn {name, related_query}, records ->
+        Enum.map(records, fn record ->
+          Map.update!(record, name, &cleanup_field_auth(&1, related_query, false))
+        end)
+      end)
+
+    records =
+      Enum.reduce(
+        query.load_through[:attribute] || %{},
+        records,
+        fn {attr_name, further_load}, records ->
+          attribute = Ash.Resource.Info.attribute(resource, attr_name)
+
+          Enum.map(records, fn record ->
+            Map.update!(record, attribute.name, fn value ->
+              Ash.Type.rewrite(
+                attribute.type,
+                value,
+                [{:cleanup_field_auth, further_load}],
+                attribute.constraints
+              )
+            end)
+          end)
+        end
+      )
+
+    Enum.reduce(
+      query.load_through[:calculation] || %{},
+      records,
+      fn {calc_name, further_load}, records ->
+        Enum.map(records, fn record ->
+          case Map.get(query.calculations, calc_name) do
+            %{load: load, type: type, constraints: constraints} when not is_nil(load) ->
+              Map.update!(record, load, fn value ->
+                Ash.Type.rewrite(
+                  type,
+                  value,
+                  [{:cleanup_field_auth, further_load}],
+                  constraints
+                )
+              end)
+
+            %{load: nil, name: name, type: type, constraints: constraints} ->
+              Map.update!(record, :calculations, fn calculations ->
+                Map.update!(calculations, name, fn value ->
+                  Ash.Type.rewrite(
+                    type,
+                    value,
+                    [{:cleanup_field_auth, further_load}],
+                    constraints
+                  )
+                end)
+              end)
+          end
+        end)
+      end
+    )
+  end
+
+  def cleanup_field_auth(record, query, top_level?) do
+    [record]
+    |> cleanup_field_auth(query, top_level?)
+    |> Enum.at(0)
   end
 
   defp agg_refs(query, calculations_in_query) do
@@ -762,7 +861,8 @@ defmodule Ash.Actions.Read do
              true
            ) do
       results
-      |> attach_fields(initial_data, query, false)
+      |> attach_fields(initial_data, query, query, false)
+      |> cleanup_field_auth(query)
       |> compute_expression_at_runtime_for_missing_records(query, data_layer_calculations)
       |> case do
         {:ok, result} ->
@@ -1329,6 +1429,7 @@ defmodule Ash.Actions.Read do
          data,
          nil,
          _original_query,
+         _query,
          _missing_pkeys?
        ) do
     data
@@ -1338,6 +1439,7 @@ defmodule Ash.Actions.Read do
          data_with_selected,
          data,
          original_query,
+         query,
          missing_pkeys?
        ) do
     {aggregates_in_data, aggregates_in_aggregates} =
@@ -1360,6 +1462,12 @@ defmodule Ash.Actions.Read do
 
     fields_from_calculations =
       Enum.map(calculations_in_calculations, & &1.name)
+
+    fields_from_calculations =
+      query.calculations
+      |> Map.keys()
+      |> Enum.filter(&match?({:__ash_fields_are_visible__, _}, &1))
+      |> Enum.concat(fields_from_calculations)
 
     if Enum.empty?(fields_from_calculations) and Enum.empty?(fields_from_aggregates) and
          Enum.empty?(fields_from_data) do

@@ -326,6 +326,15 @@ defmodule Ash.EmbeddableType do
               {:cont, {:ok, acc}}
 
             {:ok, value} ->
+              value =
+                case value do
+                  %Ash.ForbiddenField{original_value: original_value} ->
+                    original_value
+
+                  other ->
+                    other
+                end
+
               case Ash.Type.dump_to_embedded(
                      attribute.type,
                      value,
@@ -380,7 +389,12 @@ defmodule Ash.EmbeddableType do
           constraints[:destroy_action] ||
             Ash.Resource.Info.primary_action!(__MODULE__, :destroy).name
 
-        case Ash.destroy(old_value, action: action, domain: ShadowDomain) do
+        old_value
+        |> Ash.Changeset.new()
+        |> Ash.EmbeddableType.copy_source(constraints)
+        |> Ash.Changeset.for_destroy(action, %{}, domain: ShadowDomain)
+        |> Ash.destroy()
+        |> case do
           :ok -> {:ok, nil}
           {:error, error} -> {:error, Ash.EmbeddableType.handle_errors(error)}
         end
@@ -547,12 +561,16 @@ defmodule Ash.EmbeddableType do
       def load(record, load, _constraints, %{domain: domain} = context) do
         opts = Ash.Context.to_opts(context, domain: domain)
 
-        attribute_loads = __MODULE__ |> Ash.Resource.Info.attributes() |> Enum.map(& &1.name)
+        attribute_loads =
+          __MODULE__ |> Ash.Resource.Info.public_attributes() |> Enum.map(& &1.name)
 
         load =
           case load do
-            %Ash.Query{} -> Ash.Query.ensure_selected(load, attribute_loads)
-            load_statement -> attribute_loads ++ List.wrap(load_statement)
+            %Ash.Query{} ->
+              Ash.Query.ensure_selected(load, attribute_loads)
+
+            load_statement ->
+              __MODULE__ |> Ash.Query.select(attribute_loads) |> Ash.Query.load(load_statement)
           end
 
         Ash.load(record, load, opts)

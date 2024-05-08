@@ -635,6 +635,12 @@ defmodule Ash.Actions.Helpers do
     Ash.Query.ensure_selected(query, select)
   end
 
+  def restrict_field_access(result, %Ash.Query{
+        context: %{private: %{loading_relationship?: true}}
+      }) do
+    result
+  end
+
   def restrict_field_access({:ok, record, instructions}, query_or_changeset) do
     {:ok, restrict_field_access(record, query_or_changeset), instructions}
   end
@@ -649,8 +655,16 @@ defmodule Ash.Actions.Helpers do
     Enum.map(records, &restrict_field_access(&1, query_or_changeset))
   end
 
+  def restrict_field_access(%struct{results: results} = page, query_or_changeset)
+      when struct in [Ash.Page.Keyset, Ash.Page.Offset] do
+    %{page | results: restrict_field_access(results, query_or_changeset)}
+  end
+
   def restrict_field_access(%_{} = record, query_or_changeset) do
-    if internal?(query_or_changeset) do
+    embedded? = Ash.Resource.Info.embedded?(query_or_changeset.resource)
+
+    if internal?(query_or_changeset) ||
+         (embedded? && !query_or_changeset.context[:private][:cleaning_up_field_auth?]) do
       record
     else
       record.calculations
@@ -667,8 +681,19 @@ defmodule Ash.Actions.Helpers do
                   %Ash.Resource.Calculation{} -> :calculation
                 end
 
+              forbidden_field =
+                if embedded? && type == :attribute do
+                  %Ash.ForbiddenField{
+                    field: field,
+                    type: type,
+                    original_value: Map.get(record, field)
+                  }
+                else
+                  %Ash.ForbiddenField{field: field, type: type}
+                end
+
               record
-              |> Map.put(field, %Ash.ForbiddenField{field: field, type: type})
+              |> Map.put(field, forbidden_field)
               |> replace_dynamic_loads(field, type, query_or_changeset)
             end)
           end

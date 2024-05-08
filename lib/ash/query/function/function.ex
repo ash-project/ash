@@ -121,10 +121,6 @@ defmodule Ash.Query.Function do
   end
 
   def try_cast_arguments(configured_args, args) do
-    if Enum.at(args, 1) == Ash.Error.Changes.Required do
-      raise "WHAT!"
-    end
-
     args
     |> Enum.zip(configured_args)
     |> Enum.reduce_while({:ok, []}, fn

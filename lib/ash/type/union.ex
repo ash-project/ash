@@ -325,6 +325,9 @@ defmodule Ash.Type.Union do
   def rewrite(value, rewrites, constraints) do
     type_rewrites =
       Enum.flat_map(rewrites, fn
+        {:cleanup_field_auth, further} ->
+          [{:cleanup_field_auth, further[value.type] || []}]
+
         {{[first | path_rest], data, name, load}, source} ->
           if first == value.type do
             [{{path_rest, data, name, load}, source}]

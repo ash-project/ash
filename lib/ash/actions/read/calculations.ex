@@ -369,6 +369,7 @@ defmodule Ash.Actions.Read.Calculations do
 
   def rewrite([], records), do: records
   def rewrite(_rewrites, nil), do: nil
+  def rewrite(_rewrites, []), do: []
 
   def rewrite(rewrites, record) when not is_list(record) do
     rewrites
@@ -376,12 +377,23 @@ defmodule Ash.Actions.Read.Calculations do
     |> Enum.at(0)
   end
 
-  def rewrite(rewrites, records) do
+  def rewrite(rewrites, [%resource{} | _] = records) do
     rewrites
-    |> Enum.sort_by(fn {{path, _, _, _}, _} ->
-      Enum.count(path)
+    |> Enum.sort_by(fn
+      {{path, _, _, _}, _} ->
+        Enum.count(path)
+
+      _ ->
+        :infinity
     end)
     |> Enum.reduce(records, fn
+      {:cleanup_field_auth, further_load}, records ->
+        query =
+          resource
+          |> Ash.Query.load(further_load)
+
+        Ash.Actions.Read.cleanup_field_auth(records, query, false)
+
       {{path, data, calc_name, calc_load}, source}, records when path != [] ->
         rewrite_at_path(records, {{path, data, calc_name, calc_load}, source})
 
@@ -1641,9 +1653,15 @@ defmodule Ash.Actions.Read.Calculations do
     |> Enum.reduce([], fn
       %{
         name: {:__ash_fields_are_visible__, fields},
+        module: module,
         opts: opts
       },
-      deselect_fields ->
+      deselect_fields
+      when module in [
+             Ash.Resource.Calculation.Expression,
+             Ash.Resource.Calculation.RuntimeExpression,
+             Ash.Resource.Calculation.Literal
+           ] ->
         value =
           if Keyword.has_key?(opts, :expr) do
             # expression

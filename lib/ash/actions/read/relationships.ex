@@ -150,6 +150,7 @@ defmodule Ash.Actions.Read.Relationships do
       |> Ash.Query.sort(relationship.sort)
       |> Ash.Query.do_filter(relationship.filter)
       |> Ash.Query.set_context(relationship.context)
+      |> Ash.Query.set_context(%{private: %{loading_relationship?: true}})
       |> hydrate_refs(query.context[:private][:actor], relationship.source)
       |> with_lateral_join_query(query, relationship, records)
 
