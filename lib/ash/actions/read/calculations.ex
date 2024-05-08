@@ -707,13 +707,14 @@ defmodule Ash.Actions.Read.Calculations do
            unknown_on_unknown_refs?: true
          ) do
       {:ok, result} ->
-        {:ok, %{
-          calculation
-          | module: Ash.Resource.Calculation.Literal,
-            opts: [value: result],
-            required_loads: [],
-            select: []
-        }}
+        {:ok,
+         %{
+           calculation
+           | module: Ash.Resource.Calculation.Literal,
+             opts: [value: result],
+             required_loads: [],
+             select: []
+         }}
 
       _ ->
         :error
@@ -947,6 +948,13 @@ defmodule Ash.Actions.Read.Calculations do
         end
 
       attr = Ash.Resource.Info.attribute(query.resource, load) ->
+        depended_on_fields = query.context[:private][:depended_on_fields] || []
+
+        query =
+          Ash.Query.set_context(query, %{
+            private: %{depended_on_fields: [attr.name | depended_on_fields]}
+          })
+
         case Map.fetch(query.load_through[:attribute] || %{}, attr.name) do
           :error ->
             query =
@@ -1627,6 +1635,8 @@ defmodule Ash.Actions.Read.Calculations do
   # The field may be reselected later as a calculation dependency
   # this is an optimization not a guarantee
   def deselect_known_forbidden_fields(ash_query, calculations_at_runtime) do
+    depended_on_fields = ash_query.context[:private][:depended_on_fields] || []
+
     calculations_at_runtime
     |> Enum.reduce([], fn
       %{
@@ -1652,6 +1662,8 @@ defmodule Ash.Actions.Read.Calculations do
       _, deselect_fields ->
         deselect_fields
     end)
+    |> Enum.uniq()
+    |> Kernel.--(depended_on_fields)
     |> then(&unload_forbidden_fields(ash_query, &1))
   end
 
