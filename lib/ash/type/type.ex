@@ -1181,6 +1181,7 @@ defmodule Ash.Type do
   end
 
   def rewrite(type, item, rewrites, constraints) when not is_list(item) do
+    type = get_type(type)
     type.rewrite(item, rewrites, constraints)
   end
 
