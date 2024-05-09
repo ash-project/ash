@@ -72,7 +72,7 @@ defmodule Ash.Query.Calculation do
         arguments: opts[:arguments],
         type: type,
         constraints: constraints,
-        source_context: opts[:source_context]
+        source_context: opts[:source_context] || %{}
       }
 
       {:ok,

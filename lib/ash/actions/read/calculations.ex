@@ -42,7 +42,7 @@ defmodule Ash.Actions.Read.Calculations do
           arguments: arguments,
           type: type,
           constraints: constraints,
-          source_context: opts[:context]
+          source_context: opts[:context] || %{}
         }
 
       if module.has_expression?() do

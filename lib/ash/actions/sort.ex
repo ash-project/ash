@@ -342,7 +342,7 @@ defmodule Ash.Actions.Sort do
              sortable?: calc.sortable?,
              sensitive?: calc.sensitive?,
              load: calc.load,
-             source_context: context
+             source_context: context || %{}
            ) do
       calc = Map.put(calc, :load, field)
       {sorts ++ [{calc, order}], errors}
