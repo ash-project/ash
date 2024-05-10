@@ -179,7 +179,7 @@ defmodule Ash.Generator do
     arguments = Enum.reject(action.arguments, &find_manage_change(&1, action))
 
     resource
-    |> Ash.Resource.Info.public_attributes()
+    |> Ash.Resource.Info.attributes()
     |> Enum.filter(&(&1.name in action.accept))
     |> set_allow_nil(action)
     |> Enum.concat(arguments)
