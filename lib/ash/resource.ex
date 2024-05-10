@@ -78,7 +78,7 @@ defmodule Ash.Resource do
         end
 
       contained_in_domain =
-        if Ash.Domain.Info.allow_unregistered?(domain) do
+        if is_nil(domain) || Ash.Domain.Info.allow_unregistered?(domain) do
           true
         else
           domains

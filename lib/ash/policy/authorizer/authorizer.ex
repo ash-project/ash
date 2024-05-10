@@ -376,9 +376,14 @@ defmodule Ash.Policy.Authorizer do
     Ash.Policy.Authorizer.Transformers.CacheFieldPolicies
   ]
 
+  @verifiers [
+    Ash.Policy.Authorizer.Verifiers.VerifyInAuthorizers
+  ]
+
   use Spark.Dsl.Extension,
     sections: @sections,
-    transformers: @transformers
+    transformers: @transformers,
+    verifiers: @verifiers
 
   @impl true
   def exception({:changeset_doesnt_match_filter, filter}, state) do

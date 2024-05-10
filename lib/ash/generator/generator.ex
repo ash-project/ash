@@ -274,7 +274,7 @@ defmodule Ash.Generator do
         {required, optional}
       else
         if attribute.allow_nil? || !is_nil(default) do
-          options = [attribute_generator(attribute)]
+          options = [attribute_generator(attribute, attribute.allow_nil?)]
 
           options =
             if attribute.allow_nil? do
@@ -301,7 +301,11 @@ defmodule Ash.Generator do
              StreamData.one_of(options)
            )}
         else
-          {Map.put(required, attribute.name, attribute_generator(attribute)), optional}
+          {Map.put(
+             required,
+             attribute.name,
+             attribute_generator(attribute, attribute.allow_nil?)
+           ), optional}
         end
       end
     end)
@@ -311,7 +315,18 @@ defmodule Ash.Generator do
     |> do_mixed_map()
   end
 
-  defp attribute_generator(attribute) do
+  defp attribute_generator(attribute, false) do
+    attribute.type
+    |> Ash.Type.generator(attribute.constraints)
+    |> StreamData.filter(fn item ->
+      case Ash.Type.apply_constraints(attribute.type, item, attribute.constraints) do
+        {:ok, nil} -> false
+        _ -> true
+      end
+    end)
+  end
+
+  defp attribute_generator(attribute, true) do
     Ash.Type.generator(attribute.type, attribute.constraints)
   end
 

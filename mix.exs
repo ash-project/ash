@@ -79,6 +79,7 @@ defmodule Ash.MixProject do
         "documentation/topics/security/policies.md",
         "documentation/topics/reference/glossary.md",
         "documentation/topics/reference/expressions.md",
+        "documentation/how-to/test-resources.livemd",
         "documentation/how-to/encrypt-attributes.livemd",
         "documentation/how-to/prevent-concurrent-writes.livemd",
         "documentation/how-to/wrap-external-apis.livemd",
