@@ -259,6 +259,17 @@ defmodule Ash.Actions.Destroy.Bulk do
                   data_layer_context: opts[:data_layer_context] || %{}
                 }
               )
+              |> case do
+                {:ok, bulk_result} ->
+                  bulk_result
+
+                {:error, error} ->
+                  %Ash.BulkResult{
+                    status: :error,
+                    error_count: 1,
+                    errors: [Ash.Error.to_error_class(error)]
+                  }
+              end
             else
               do_atomic_destroy(query, atomic_changeset, has_after_batch_hooks?, input, opts)
             end
