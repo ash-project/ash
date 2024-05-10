@@ -245,6 +245,14 @@ defmodule Ash.Test.Actions.LoadTest do
         end
       end
 
+      read :required_pagination do
+        pagination do
+          offset? true
+          default_limit 20
+          countable :by_default
+        end
+      end
+
       read :all_access
     end
 
@@ -1444,6 +1452,27 @@ defmodule Ash.Test.Actions.LoadTest do
                Author
                |> Ash.read!()
                |> Ash.load(posts: paginated_posts)
+    end
+
+    test "doesn't honor required? pagination to maintain backwards compatibility" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "a"})
+        |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "b"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.create!()
+
+      posts =
+        Post
+        |> Ash.Query.for_read(:required_pagination)
+
+      assert [_post] =
+               Author
+               |> Ash.read!()
+               |> Ash.load!(posts: posts)
     end
   end
 end

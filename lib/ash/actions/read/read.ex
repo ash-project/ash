@@ -147,11 +147,13 @@ defmodule Ash.Actions.Read do
         query.domain
       )
 
+    relationship? = Map.has_key?(query.context, :accessing_from)
+
     page_opts =
       if Keyword.has_key?(opts, :page) do
-        page_opts(action, opts[:page])
+        page_opts(action, opts[:page], relationship?)
       else
-        page_opts(action, query.page)
+        page_opts(action, query.page, relationship?)
       end
 
     query =
@@ -1920,7 +1922,7 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  def page_opts(action, page_opts) do
+  def page_opts(action, page_opts, relationship?) do
     cond do
       action.pagination == false ->
         nil
@@ -1929,7 +1931,7 @@ defmodule Ash.Actions.Read do
           action.pagination.default_limit ->
         Keyword.put(page_opts, :limit, action.pagination.default_limit)
 
-      is_nil(page_opts) and action.pagination.required? ->
+      is_nil(page_opts) and action.pagination.required? and not relationship? ->
         if action.pagination.default_limit do
           [limit: action.pagination.default_limit]
         else
