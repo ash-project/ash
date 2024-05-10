@@ -1,6 +1,6 @@
 # Changes
 
-Changes are the primary way of customizing action behavior. If you are familiar with `Plug`, you can think of an `Ash.Resource.Change` as the equivalent of a `Plug` for changesets. At its most basic, a change will take a changeset and return a new changeset. Changes can be simple, like setting or modifying an attribute value, or more complex, attaching hooks to be executed within the lifecycle of the action.
+Changes are the primary way of customizing create/update/destroy action behavior. If you are familiar with `Plug`, you can think of an `Ash.Resource.Change` as the equivalent of a `Plug` for changesets. At its most basic, a change will take a changeset and return a new changeset. Changes can be simple, like setting or modifying an attribute value, or more complex, attaching hooks to be executed within the lifecycle of the action.
 
 ## Builtin Changes
 
@@ -23,10 +23,10 @@ change optimistic_lock(:version)
 
 ```elixir
 defmodule MyApp.Changes.Slugify do
-  # transform and validate opts
 
   use Ash.Resource.Change
 
+  # transform and validate opts
   @impl true
   def init(opts) do
     if is_atom(opts[:attribute]) do
@@ -99,7 +99,7 @@ changes do
 end
 ```
 
-The changes section allows you to add changes across multiple actions of a changeset.
+The changes section allows you to add changes across multiple actions of a resource.
 
 > ### Running on destroy actions {: .warning}
 >

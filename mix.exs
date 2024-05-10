@@ -52,6 +52,7 @@ defmodule Ash.MixProject do
         "documentation/topics/resources/aggregates.md",
         "documentation/topics/resources/validations.md",
         "documentation/topics/resources/changes.md",
+        "documentation/topics/resources/preparations.md",
         "documentation/topics/resources/code-interfaces.md",
         "documentation/topics/resources/embedded-resources.md",
         "documentation/topics/resources/identities.md",

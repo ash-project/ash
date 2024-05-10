@@ -57,6 +57,7 @@ Welcome! Here you will find everything you need to know to get started with and 
 - [Identities](documentation/topics/resources/identities.md)
 - [Validations](documentation/topics/resources/validations.md)
 - [Changes](documentation/topics/resources/changes.md)
+- [Preparations](documentation/topics/resources/preparations.md)
 - [Embedded Resources](documentation/topics/resources/embedded-resources.md)
 - [Notifiers](documentation/topics/resources/notifiers.md)
 
