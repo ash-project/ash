@@ -1197,6 +1197,33 @@ defmodule Ash do
   so assuming `:maybe` is `true` is fine. The actual action invocation will be properly checked regardless.
   If you have runtime checks, you may need to use `can` instead of `can?`, or configure what `:maybe` means.
 
+  ### Accepted inputs
+
+  You can pass many different inputs as the subject to `can/3`.
+
+  ```elixir
+  # Can this user run this query.
+  Ash.Query.t()
+
+  # Can this user run this changeset.
+  Ash.Changeset.t()
+
+  # Can this user run this action.
+  Ash.ActionInput.t()
+
+  # Can this user run this action.
+  {Ash.Resource.t(), :action}
+
+  # Can this user run this action.
+  {Ash.Resource.t(), %Action{}}
+
+  # Can this user run this action with this input.
+  {Ash.Resource.t(), :atom, %{...input}}
+
+  # Can this user run this action with this input.
+  {Ash.Resource.t(), %Action{}, %{...input}}
+  ```
+
   ### Options
 
   #{Spark.Options.docs(@can_opts)}
