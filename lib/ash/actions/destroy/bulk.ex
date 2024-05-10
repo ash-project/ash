@@ -284,24 +284,20 @@ defmodule Ash.Actions.Destroy.Bulk do
           if opts[:return_notifications?] do
             %{bulk_result | notifications: notifications}
           else
-            if opts[:return_notifications?] do
-              bulk_result
+            if notify? do
+              notifications =
+                (bulk_result.notifications || []) ++ Process.get(:ash_notifications, [])
+
+              remaining_notifications = Ash.Notifier.notify(notifications)
+              Process.delete(:ash_notifications) || []
+
+              Ash.Actions.Helpers.warn_missed!(atomic_changeset.resource, action, %{
+                resource_notifications: remaining_notifications
+              })
+
+              %{bulk_result | notifications: notifications}
             else
-              if notify? do
-                notifications =
-                  (bulk_result.notifications || []) ++ Process.get(:ash_notifications, [])
-
-                remaining_notifications = Ash.Notifier.notify(notifications)
-                Process.delete(:ash_notifications) || []
-
-                Ash.Actions.Helpers.warn_missed!(atomic_changeset.resource, action, %{
-                  resource_notifications: remaining_notifications
-                })
-
-                %{bulk_result | notifications: notifications}
-              else
-                %{bulk_result | notifications: []}
-              end
+              %{bulk_result | notifications: []}
             end
           end
         after
