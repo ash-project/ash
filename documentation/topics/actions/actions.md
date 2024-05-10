@@ -2,13 +2,13 @@
 
 In Ash, actions are the primary way to interact with your resources. There are five types of actions:
 
-* [Read](documentation/topics/actions/read-actions.md)
-* [Create](documentation/topics/actions/create-actions.md)
-* [Update](documentation/topics/actions/update-actions.md)
-* [Destroy](documentation/topics/actions/destroy-actions.md)
-* [Generic](documentation/topics/actions/generic-actions.md)
+- [Read](documentation/topics/actions/read-actions.md)
+- [Create](documentation/topics/actions/create-actions.md)
+- [Update](documentation/topics/actions/update-actions.md)
+- [Destroy](documentation/topics/actions/destroy-actions.md)
+- [Generic](documentation/topics/actions/generic-actions.md)
 
-All actions can be run in a transaction. Create, update and destroy actions are run in a transaction by _default_, whereas read and generic actions require opting in with `transaction? true` in the action definition. Each action has its own set of options, ways of calling it, and ways of customizing it. See the relevant guide for specifics on each action type. This topic focuses on idiomatic ways to use actions, and concepts that cross all action types. 
+All actions can be run in a transaction. Create, update and destroy actions are run in a transaction by _default_, whereas read and generic actions require opting in with `transaction? true` in the action definition. Each action has its own set of options, ways of calling it, and ways of customizing it. See the relevant guide for specifics on each action type. This topic focuses on idiomatic ways to use actions, and concepts that cross all action types.
 
 ## Primary Actions
 
@@ -30,6 +30,41 @@ read :action_name do
   primary? true
 end
 ```
+
+## Accepting Inputs
+
+[Create](documentation/topics/actions/create-actions.md) and [Update](documentation/topics/actions/update-actions.md) actions can accept attributes as input. There are two primary ways that you annotate this.
+
+### Using `accept` in specific actions
+
+Each action can define what it accepts, for example:
+
+```elixir
+create :create do
+  accept [:name, :description]
+end
+```
+
+You could then pass in `%{name: "a name", description: "a description"}` to this action.
+
+### Using `default_accept` for all actions
+
+The resource can have a `default_accept`, declared in its `actions` block, which will be used as the accept list for `create` and `destroy` actions, if they don't define one.
+
+```elixir
+actions do
+  default_accept [:name, :description]
+
+  create :create
+  update :update
+
+  update :special_update do
+    accept [:something_else]
+  end
+end
+```
+
+In the example above, you can provide `%{name: "a name", description: "a description"}` to both the `:create` and `:update` actions, but only `%{something_else: "some_value"}` to `:special_update`.
 
 ## Idiomatic Actions
 
