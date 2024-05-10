@@ -1,3 +1,7 @@
+# Changelog
+
+<!-- changelog -->
+
 ## [v3.0.0](https://github.com/ash-project/ash/compare/v3.0.0...2.0)
 
 ## 3.0
