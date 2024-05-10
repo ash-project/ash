@@ -11,9 +11,9 @@ defmodule Ash.Resource.Change.CascadeDestroy do
       required: false,
       default: :destroy
     ],
-    notify?: [
+    return_notifications?: [
       type: :boolean,
-      doc: "Emit notifications for each destroyed record?",
+      doc: "Return notifications for all destroyed records?",
       required: false,
       default: false
     ]
@@ -64,8 +64,11 @@ defmodule Ash.Resource.Change.CascadeDestroy do
     with {:ok, opts} <- Spark.Options.validate(opts, @option_schema),
          {:ok, opts} <- validate_relationship_and_action(opts, changeset.resource) do
       Ash.Changeset.after_action(changeset, fn _changeset, result ->
-        destroy_related([result], opts, context)
-        {:ok, result}
+        case {destroy_related([result], opts, context), opts[:return_notifications?]} do
+          {_, false} -> {:ok, result}
+          {%{notifications: []}, true} -> {:ok, result}
+          {%{notifications: notifications}, true} -> {:ok, result, notifications}
+        end
       end)
     else
       {:error, reason} ->
@@ -83,10 +86,13 @@ defmodule Ash.Resource.Change.CascadeDestroy do
     with {:ok, opts} <- Spark.Options.validate(opts, @option_schema),
          {:ok, opts} <- validate_relationship_and_action(opts, resource) do
       records = Enum.map(changesets_and_results, &elem(&1, 1))
+      result = Enum.map(records, &{:ok, &1})
 
-      destroy_related(records, opts, context)
-
-      Enum.map(records, &{:ok, &1})
+      case {destroy_related(records, opts, context), opts[:return_notifications?]} do
+        {_, false} -> result
+        {%{notifications: []}, true} -> result
+        {%{notifications: notifications}, true} -> Enum.concat(result, notifications)
+      end
     else
       {:error, reason} -> [{:error, reason}]
     end
@@ -146,7 +152,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
         domain: opts[:domain],
         return_errors?: true,
         strategy: [:stream, :atomic, :atomic_batches],
-        notify?: opts[:notify?]
+        return_notifications?: opts[:return_notifications?]
       )
 
     case related_query(data, opts[:relationship]) do

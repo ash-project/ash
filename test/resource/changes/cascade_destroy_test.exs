@@ -34,7 +34,7 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
 
       destroy :destroy do
         primary? true
-        change cascade_destroy(:posts, notify?: true)
+        change cascade_destroy(:posts, return_notifications?: true)
       end
     end
 
