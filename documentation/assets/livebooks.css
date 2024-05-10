@@ -1,0 +1,3 @@
+.livebook-badge-container + pre {
+  display: none;
+}

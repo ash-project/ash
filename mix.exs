@@ -79,7 +79,8 @@ defmodule Ash.MixProject do
         "documentation/topics/security/policies.md",
         "documentation/topics/reference/glossary.md",
         "documentation/topics/reference/expressions.md",
-        "documentation/how-to/preventing-concurrent-writes.livemd",
+        "documentation/how-to/encrypt-attributes.livemd",
+        "documentation/how-to/prevent-concurrent-writes.livemd",
         "documentation/dsls/DSL:-Ash.Resource.md",
         "documentation/dsls/DSL:-Ash.Domain.md",
         "documentation/dsls/DSL:-Ash.Notifier.PubSub.md",
@@ -111,6 +112,7 @@ defmodule Ash.MixProject do
           ~r"documentation/dsls"
         ]
       ],
+      assets: ["documentation/assets"],
       skip_undefined_reference_warnings_on: [
         "CHANGELOG.md",
         "documentation/topics/reference/glossary.md",
@@ -132,6 +134,7 @@ defmodule Ash.MixProject do
       before_closing_head_tag: fn type ->
         if type == :html do
           """
+          <link rel="stylesheet" href="assets/livebooks.css">
           <script>
             if (location.hostname === "hexdocs.pm") {
               var script = document.createElement("script");

@@ -1,0 +1,134 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Encrypt Attributes
+
+```elixir
+Mix.install([{:ash, "~> 3.0.0-rc"}, {:ash_cloak, "~> 0.1.0-rc"}, {:cloak, "~> 1.1"}],
+  consolidate_protocols: false
+)
+
+Application.put_env(:my_app, MyApp.Vault,
+  ciphers: [
+    default: {
+      Cloak.Ciphers.AES.GCM,
+      tag: "AES.GCM.V1",
+      key: Base.decode64!("ETpvtowVAL7JmcxfqJ+XVQWzKrt1ynAkC0vT7AxfyNU="),
+      iv_length: 12
+    }
+  ]
+)
+
+defmodule MyApp.Vault do
+  use Cloak.Vault, otp_app: :my_app
+end
+
+MyApp.Vault.start_link()
+```
+
+## Introduction
+
+When dealing with PII or other sensitive data, we often want to encrypt this data, and control access to the decrypted values.
+
+To do this in `Ash`, we do that with `AshCloak`. See the getting started guide in `AshCloak` for installation instructions.
+
+## Encrypting attributes
+
+1. If you have not yet, follow the getting started guide for `AshCloak` and `Cloak`
+2. Add the `AshCloak` extension to your resource
+3. Configure the attributes that should be encrypted
+4. Add any other additional desired configuration (provided by `AshCloak`)
+
+## Examples
+
+<!-- livebook:{"disable_formatting":true} -->
+
+```elixir
+defmodule User do
+  use Ash.Resource,
+    domain: Domain,
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshCloak]
+
+  cloak do
+    vault MyApp.Vault
+    attributes [:ssn]
+  end
+
+  attributes do
+    uuid_primary_key :id
+    attribute :ssn, :string, allow_nil?: false
+  end
+
+  actions do
+    defaults [:read, create: [:ssn], update: [:ssn]]
+  end
+end
+
+defmodule Domain do
+  use Ash.Domain,
+    validate_config_inclusion?: false
+
+  resources do
+    resource User do
+      define(:create_user, action: :create, args: [:ssn])
+      define(:update_user, action: :update, args: [:ssn])
+      define(:list_users, action: :read)
+    end
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Domain, <<70, 79, 82, 49, 0, 1, 255, ...>>,
+ [
+   Ash.Domain.Dsl.Resources.Resource,
+   Ash.Domain.Dsl.Resources.Options,
+   Ash.Domain.Dsl,
+   %{opts: [], entities: [...]},
+   Ash.Domain.Dsl,
+   Ash.Domain.Dsl.Resources.Options,
+   ...
+ ]}
+```
+
+## Data is encrypted when modified and is *not displayed* when inspecting.
+
+```elixir
+user = Domain.create_user!("111-11-1111")
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+#User<
+  __meta__: #Ecto.Schema.Metadata<:loaded>,
+  id: "bc5284fe-294a-485e-8585-06130a4bca4e",
+  aggregates: %{},
+  calculations: %{},
+  ...
+>
+```
+
+```elixir
+# AshCloak turned ssn into a calculation
+user.ssn
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+#Ash.NotLoaded<:calculation, field: :ssn>
+```
+
+```elixir
+# Load the value to decrypt it on-demand
+Ash.load!(user, :ssn).ssn
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"111-11-1111"
+```

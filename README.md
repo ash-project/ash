@@ -97,7 +97,8 @@ Welcome! Here you will find everything you need to know to get started with and 
 
 ## How-to
 
-- [Optimistic Locking](documentation/how-to/cook-book/preventing-concurrent-writes.livemd)
+- [Encrypt Attributes](documentation/how-to/encrypt-attributes.livemd)
+- [Prevent Concurrent Writes](documentation/how-to/prevent-concurrent-writes.livemd)
 
 ---
 
