@@ -297,6 +297,10 @@ defmodule Ash.Actions.Destroy.Bulk do
 
               %{bulk_result | notifications: notifications}
             else
+              Ash.Actions.Helpers.warn_missed!(atomic_changeset.resource, action, %{
+                resource_notifications: notifications
+              })
+
               %{bulk_result | notifications: []}
             end
           end
