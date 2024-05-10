@@ -3,7 +3,7 @@
 # Encrypt Attributes
 
 ```elixir
-Mix.install([{:ash, "~> 3.0.0-rc"}, {:ash_cloak, "~> 0.1.0-rc"}, {:cloak, "~> 1.1"}],
+Mix.install([{:ash, "~> 3.0"}, {:ash_cloak, "~> 0.1.0"}, {:cloak, "~> 1.1"}],
   consolidate_protocols: false
 )
 

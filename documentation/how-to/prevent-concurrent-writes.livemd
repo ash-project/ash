@@ -3,7 +3,7 @@
 # Prevent concurrent writes
 
 ```elixir
-Mix.install([{:ash, "~> 3.0.0-rc"}], consolidate_protocols: false)
+Mix.install([{:ash, "~> 3.0"}], consolidate_protocols: false)
 # Set to `:debug` if you want to see ETS logs
 Logger.configure(level: :warning)
 ```

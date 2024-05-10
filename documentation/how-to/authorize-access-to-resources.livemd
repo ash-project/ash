@@ -5,7 +5,7 @@
 ```elixir
 Mix.install(
   [
-    {:ash, path: "~/dev/ash/ash"},
+    {:ash, "~> 3.0"},
     {:simple_sat, "~> 0.1"},
     {:kino, "~> 0.12"}
   ],

@@ -5,7 +5,7 @@
 ```elixir
 Mix.install(
   [
-    {:ash, "~> 3.0.0-rc"},
+    {:ash, "~> 3.0"},
     {:req, "~> 0.4.0"}
   ],
   consolidate_protocols: false
@@ -26,7 +26,7 @@ This guide covers reading data from the external API, not creating/updating it. 
 
 1. Create a resource for interacting with the given API
 2. Create a manual read action
-3. In this manual action, we will: 
+3. In this manual action, we will:
    1. call the target API
    2. transform the results
    3. apply query operations to simulate capabilities provided by Ash
@@ -53,7 +53,7 @@ defmodule Doc do
     read :search do
       primary? true
       argument :query, :string, allow_nil?: false
-      prepare fn query, _ -> 
+      prepare fn query, _ ->
         # We require that they limit the results to some reasonable set
         # (because this API is huge)
         cond do
