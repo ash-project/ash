@@ -5,7 +5,8 @@ defmodule Ash.Policy.Authorizer.Verifiers.VerifyInAuthorizers do
   def verify(dsl) do
     module = Spark.Dsl.Verifier.get_persisted(dsl, :module)
 
-    if Ash.Policy.Authorizer in List.wrap(Ash.Resource.Info.authorizers(module)) do
+    if !Ash.Resource.Info.resource?(module) ||
+         Ash.Policy.Authorizer in List.wrap(Ash.Resource.Info.authorizers(module)) do
       :ok
     else
       {:error,
