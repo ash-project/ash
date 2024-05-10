@@ -81,6 +81,7 @@ defmodule Ash.MixProject do
         "documentation/topics/reference/expressions.md",
         "documentation/how-to/encrypt-attributes.livemd",
         "documentation/how-to/prevent-concurrent-writes.livemd",
+        "documentation/how-to/wrap-external-apis.livemd",
         "documentation/dsls/DSL:-Ash.Resource.md",
         "documentation/dsls/DSL:-Ash.Domain.md",
         "documentation/dsls/DSL:-Ash.Notifier.PubSub.md",
