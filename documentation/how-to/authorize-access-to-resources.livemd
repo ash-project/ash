@@ -1,0 +1,297 @@
+<!-- livebook:{"persist_outputs":true} -->
+
+# Authorize Access to Resources
+
+```elixir
+Mix.install(
+  [
+    {:ash, path: "~/dev/ash/ash"},
+    {:simple_sat, "~> 0.1"},
+    {:kino, "~> 0.12"}
+  ],
+  consolidate_protocols: false
+)
+
+Logger.configure(level: :warning)
+Application.put_env(:ash, :policies, show_policy_breakdowns?: true)
+```
+
+## Introduction
+
+A key feature of Ash is the ability to build security directly into your resources. We do this with policies.
+
+Because how you write policies is *extremely* situational, this how-to guide provides a list of "considerations" as opposed to "instructions".
+
+For more context, read the [policies guide](https://hexdocs.pm/ash/policies.html#policies).
+
+## Writing Policies
+
+1. Consider whether or not you want to adopt a specific style of authorization, like [ACL](https://en.wikipedia.org/wiki/Access-control_list), or [RBAC](https://en.wikipedia.org/wiki/Role-based_access_control). For standard RBAC, look into [AshRbac](https://hexdocs.pm/ash_rbac/getting_started.html), and you may not need to write any of your own policies at that point
+2. Determine if there are any `bypass` policies to add (admin users, super users, etc.). Consider placing this on the domain, instead of the resource
+3. Begin by making an inventory of each action on your resource, and under what conditions a given actor may be allowed to perform them. If all actions of a given type have the same criteria, we will typically use the `action_type(:type)` condition
+4. Armed with this inventory, begin to write policies. Start simple, write a policy per action type, and add a description of what your policy accomplishes.
+5. Find patterns, like cross-cutting checks that exist in all policies, that can be expressed as smaller, simpler policies
+6. Determine if any field policies are required to prohibit access to attributes/calculations/aggregates
+7. Finally, you can confirm your understanding of the authorization flow for a given resource by generating policy charts with `mix ash.generate_policy_charts` (field policies are not currently included in the generated charts)
+
+## Example
+
+<!-- livebook:{"disable_formatting":true} -->
+
+```elixir
+defmodule User do
+  use Ash.Resource,
+    domain: Domain,
+    data_layer: Ash.DataLayer.Ets
+
+  actions do
+    defaults [:read, create: [:admin?]]
+  end
+
+  attributes do
+    uuid_primary_key :id
+    attribute :admin?, :boolean do
+      allow_nil? false
+      default false
+    end
+  end
+end
+
+defmodule Tweet do
+  use Ash.Resource,
+    domain: Domain,
+    data_layer: Ash.DataLayer.Ets,
+    authorizers: [Ash.Policy.Authorizer]
+
+  attributes do
+    uuid_primary_key :id
+    attribute :text, :string do
+      allow_nil? false
+      constraints max_length: 144
+      public? true
+    end
+
+    attribute :hidden?, :boolean do
+      allow_nil? false
+      default false
+      public? true
+    end
+
+    attribute :private_note, :string do
+      sensitive? true
+      public? true
+    end
+  end
+
+  calculations do
+    calculate :tweet_length, :integer, expr(string_length(text)) do
+      public? true
+    end
+  end
+
+  relationships do
+    belongs_to :user, User, allow_nil?: false
+  end
+
+  actions do
+    defaults [:read, update: [:text, :hidden?, :private_note]]
+
+    create :create do
+      primary? true
+      accept [:text, :hidden?, :private_note]
+      change relate_actor(:user)
+    end
+  end
+
+  policies do
+    # action_type-based policies
+    policy action_type(:read) do
+      # each policy has a description
+      description "If a tweet is hidden, only the author can read it. Otherwise, anyone can."
+      # first check this. If true, then this policy passes
+      authorize_if relates_to_actor_via(:user)
+      # the check this. If false, then this policy fails
+      forbid_if expr(hidden? == true)
+      # otherwise, this policy passes
+      authorize_if always()
+    end
+
+    # blanket allow-listing of creates
+    policy action_type(:create) do
+      description "Anyone can create a tweet"
+      authorize_if always()
+    end
+
+    policy action_type(:update) do
+      description "Only an admin or the user who tweeted can edit their tweet"
+      # first check this. If true, then this policy passes
+      authorize_if actor_attribute_equals(:admin?, true)
+      # then check this. If true, then this policy passes
+      authorize_if relates_to_actor_via(:user)
+      # otherwise, there is nothing left to check and no decision, so *this policy fails*
+    end
+  end
+
+
+  field_policies do
+    # anyone can see these fields
+    field_policy [:text, :tweet_length] do
+      description "Public tweet fields are visible"
+      authorize_if always()
+    end
+
+    field_policy [:hidden?, :private_note] do
+      description "hidden? and private_note are only visible to the author"
+      authorize_if relates_to_actor_via(:user)
+    end
+  end
+end
+
+defmodule Domain do
+  use Ash.Domain,
+    validate_config_inclusion?: false
+
+  resources do
+    resource Tweet do
+      define :create_tweet, action: :create, args: [:text]
+      define :update_tweet, action: :update, args: [:text]
+      define :list_tweets, action: :read
+      define :get_tweet, action: :read, get_by: [:id]
+    end
+
+    resource User do
+      define :create_user, action: :create
+    end
+  end
+end
+
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Domain, <<70, 79, 82, 49, 0, 2, 117, ...>>,
+ [
+   Ash.Domain.Dsl.Resources.Resource,
+   Ash.Domain.Dsl.Resources.Options,
+   Ash.Domain.Dsl,
+   %{opts: [], entities: [...]},
+   Ash.Domain.Dsl,
+   Ash.Domain.Dsl.Resources.Options,
+   ...
+ ]}
+```
+
+## Interacting with resources that have policies
+
+```elixir
+# doing forbidden things produces an `Ash.Error.Forbidden`
+user = Domain.create_user!()
+other_user = Domain.create_user!()
+
+tweet = Domain.create_tweet!("hello world!", actor: user)
+Domain.update_tweet!(tweet, "Goodbye world", actor: other_user)
+```
+
+```elixir
+# Reading data applies policies as filters
+
+user = Domain.create_user!()
+other_user = Domain.create_user!()
+
+my_hidden_tweet = Domain.create_tweet!("hello world!", %{hidden?: true}, actor: user)
+
+other_users_hidden_tweet =
+  Domain.create_tweet!("hello world!", %{hidden?: true}, actor: other_user)
+
+my_tweet = Domain.create_tweet!("hello world!", actor: user)
+other_users_tweet = Domain.create_tweet!("hello world!", actor: other_user)
+
+tweet_ids = Domain.list_tweets!(actor: user) |> Enum.map(& &1.id)
+
+# I see my own hidden tweets, and other users non-hidden tweets
+true = my_hidden_tweet.id in tweet_ids
+true = other_users_tweet.id in tweet_ids
+
+# but not other users hidden tweets
+false = other_users_hidden_tweet.id in tweet_ids
+
+:ok
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+:ok
+```
+
+```elixir
+# Field policies return hidden fields as `%Ash.ForbiddenField{}`
+
+user = Domain.create_user!()
+other_user = Domain.create_user!()
+
+other_users_tweet =
+  Domain.create_tweet!("hello world!", %{private_note: "you can't see this!"}, actor: other_user)
+
+%Ash.ForbiddenField{} = Domain.get_tweet!(other_users_tweet.id, actor: user).private_note
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+#Ash.ForbiddenField<field: :private_note, type: :attribute, ...>
+```
+
+```elixir
+Tweet
+|> Ash.Policy.Chart.Mermaid.chart()
+|> Kino.Shorts.mermaid()
+```
+
+<!-- livebook:{"output":true} -->
+
+```mermaid
+flowchart TB
+subgraph at least one policy applies
+direction TB
+at_least_one_policy["action.type == :read
+or action.type == :create
+or action.type == :update"]
+end
+at_least_one_policy--False-->Forbidden
+at_least_one_policy--True-->0_conditions
+subgraph Policy 1[If a tweet is hidden, only the author can read it. Otherwise, anyone can.]
+direction TB
+0_conditions{"action.type == :read"}
+0_checks_0{"record.user == actor"}
+0_checks_1{"hidden? == true"}
+end
+0_conditions--True-->0_checks_0
+0_conditions--False-->1_conditions
+0_checks_0--True-->1_conditions
+0_checks_0--False-->0_checks_1
+0_checks_1--True-->Forbidden
+0_checks_1--False-->1_conditions
+subgraph Policy 2[Anyone can create a tweet]
+direction TB
+1_conditions{"action.type == :create"}
+end
+subgraph Policy 3[Only an admin or the user who tweeted can edit their tweet]
+direction TB
+2_conditions{"action.type == :update"}
+2_checks_0{"actor.admin? == true"}
+2_checks_1{"record.user == actor"}
+end
+2_conditions--True-->2_checks_0
+2_conditions--False-->Authorized
+2_checks_0--True-->Authorized
+2_checks_0--False-->2_checks_1
+2_checks_1--True-->Authorized
+2_checks_1--False-->Forbidden
+subgraph results[Results]
+Authorized([Authorized])
+Forbidden([Forbidden])
+end
+1_conditions--Or-->2_conditions
+```

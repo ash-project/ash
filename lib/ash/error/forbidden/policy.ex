@@ -114,17 +114,24 @@ defmodule Ash.Error.Forbidden.Policy do
   """
   def get_breakdown(facts, filter, policies, opts \\ []) do
     must_pass_strict_check? =
-      if opts[:must_pass_strict_check?] do
-        """
-        Breakdown
+      if opts[:must_pass_strict_check?] && Enum.any?(policies, &(&1.access_type == :runtime)) do
+        if Keyword.get(opts, :help_text?, true) do
+          """
 
-        Scenario must pass strict check only, meaning `runtime` policies cannot be checked.
+          Scenario must pass strict check only, meaning `runtime` policies cannot be checked.
 
-        This requirement is generally used for filtering on related resources, when we can't fetch those
-        related resources to run `runtime` policies. For this reason, you generally want your primary read
-        actions on your resources to have standard policies which can be checked statically (like `actor_attribute_equals`)
-        in addition to filter policies, like `expr(foo == :bar)`.
-        """
+
+          This requirement is generally used for filtering on related resources, when we can't fetch those
+          related resources to run `runtime` policies. For this reason, you generally want your primary read
+          actions on your resources to have standard policies which can be checked statically (like `actor_attribute_equals`)
+          in addition to filter policies, like `expr(foo == :bar)`.
+          """
+        else
+          """
+
+          Scenario must pass strict check only, meaning `runtime` policies cannot be checked.
+          """
+        end
       else
         ""
       end
@@ -171,7 +178,7 @@ defmodule Ash.Error.Forbidden.Policy do
 
     [must_pass_strict_check?, filter, policy_explanation]
     |> Enum.filter(& &1)
-    |> Enum.intersperse("\n\n")
+    |> Enum.intersperse("\n")
   end
 
   defp nicely_formatted_filter([{:or, list}]) when is_list(list) do

@@ -1861,7 +1861,8 @@ defmodule Ash.Actions.Read do
           authorizer,
           opts[:actor],
           query.resource,
-          query.action
+          query.action,
+          query.domain
         )
 
       context = Ash.Authorizer.strict_check_context(authorizer, data)

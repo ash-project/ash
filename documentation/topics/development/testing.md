@@ -1,5 +1,7 @@
 # Testing
 
+Take a look at [the how-to guide](/documentation/how-to/test-resources.livemd) for a practical look at writing tests
+
 The configuration you likely want to add to your `config/test.exs` is:
 
 ```elixir

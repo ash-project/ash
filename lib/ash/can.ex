@@ -274,7 +274,8 @@ defmodule Ash.Can do
                 authorizer.initial_state(
                   actor,
                   subject.resource,
-                  subject.action
+                  subject.action,
+                  domain
                 )
 
               context = %{domain: domain, query: nil, changeset: nil, action_input: nil}
@@ -360,7 +361,8 @@ defmodule Ash.Can do
           authorizer.initial_state(
             actor,
             subject.resource,
-            subject.action
+            subject.action,
+            domain
           )
 
         context = %{domain: domain, query: nil, changeset: nil, action_input: nil}
@@ -414,7 +416,7 @@ defmodule Ash.Can do
                 Failed when authorizing #{inspect(subject.resource)}.#{subject.action.name}
                 """
 
-              {:filter, _authorizer, filter} ->
+              {:filter, authorizer_state, filter} ->
                 filter =
                   if opts[:atomic_changeset] do
                     Ash.Expr.fill_template(
@@ -519,7 +521,11 @@ defmodule Ash.Can do
                   end
 
                 if opts[:no_check?] || !match?(%Ash.Query{}, subject) do
-                  Ash.Authorizer.exception(authorizer, :must_pass_strict_check, authorizer_state)
+                  Ash.Authorizer.exception(
+                    authorizer,
+                    :must_pass_strict_check,
+                    authorizer_state
+                  )
                 else
                   if opts[:alter_source?] do
                     query_with_hook =

@@ -3,7 +3,7 @@
 # Test Resources
 
 ```elixir
-Mix.install([{:ash, path: "~/dev/ash/ash"}, {:simple_sat, "~> 0.1"}],
+Mix.install([{:ash, "~> 3.0.0-rc}, {:simple_sat, "~> 0.1"}],
   consolidate_protocols: false
 )
 
@@ -70,7 +70,7 @@ defmodule Tweet do
       constraints max_length: 144
       public? true
     end
-    
+
     attribute :hidden?, :boolean do
       allow_nil? false
       default false

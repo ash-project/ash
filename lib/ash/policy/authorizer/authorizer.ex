@@ -449,11 +449,13 @@ defmodule Ash.Policy.Authorizer do
   end
 
   @impl true
-  def initial_state(actor, resource, action) do
+  def initial_state(actor, resource, action, domain) do
     %__MODULE__{
       resource: resource,
       actor: actor,
-      action: action
+      action: action,
+      domain: domain,
+      policies: Ash.Policy.Info.policies(domain, resource)
     }
   end
 
@@ -529,7 +531,7 @@ defmodule Ash.Policy.Authorizer do
 
   defp authorizer_acc(authorizer, resource, context) do
     %{
-      stack: [{resource, [], context.query.action}],
+      stack: [{resource, [], context.query.action, context.query.domain}],
       authorizers: %{
         {resource, context.query.action} => %{authorizer | query: context.query}
       },
@@ -604,6 +606,7 @@ defmodule Ash.Policy.Authorizer do
              authorizer.resource,
              field_name,
              context.query.action,
+             context.query.domain,
              acc
            ) do
         {:none, acc} ->
@@ -689,13 +692,13 @@ defmodule Ash.Policy.Authorizer do
 
       %Ash.Query.Exists{expr: expr, at_path: at_path, path: path} = exists ->
         full_path = at_path ++ path
-        [{resource, current_path, _} | _] = acc.stack
+        [{resource, current_path, _, domain} | _] = acc.stack
         {resource, action} = related_with_action(resource, full_path)
 
         {expr, acc} =
           replace_refs(expr, %{
             acc
-            | stack: [{resource, current_path ++ full_path, action} | acc.stack]
+            | stack: [{resource, current_path ++ full_path, action, domain} | acc.stack]
           })
 
         {%{exists | expr: expr}, %{acc | stack: tl(acc.stack)}}
@@ -729,22 +732,22 @@ defmodule Ash.Policy.Authorizer do
            relationship_path: relationship_path,
            resource: resource
          } = ref,
-         %{stack: [{parent, _path, _action} | _]} = acc
+         %{stack: [{parent, _path, _action, domain} | _]} = acc
        )
        when struct in [Ash.Resource.Attribute, Ash.Resource.Aggregate, Ash.Resource.Calculation] do
     action =
       Map.get(Ash.Resource.Info.relationship(parent, relationship_path) || %{}, :relationship) ||
         Ash.Resource.Info.primary_action!(resource, :read)
 
-    expression_for_ref(resource, name, action, ref, acc)
+    expression_for_ref(resource, name, action, domain, ref, acc)
   end
 
   defp do_replace_ref(
          %{attribute: %struct{name: name}} = ref,
-         %{stack: [{resource, _path, action} | _]} = acc
+         %{stack: [{resource, _path, action, domain} | _]} = acc
        )
        when struct in [Ash.Resource.Attribute, Ash.Resource.Aggregate, Ash.Resource.Calculation] do
-    expression_for_ref(resource, name, action, ref, acc)
+    expression_for_ref(resource, name, action, domain, ref, acc)
   end
 
   defp do_replace_ref(ref, acc) do
@@ -769,8 +772,8 @@ defmodule Ash.Policy.Authorizer do
     end
   end
 
-  defp expression_for_ref(resource, field, action, ref, acc) do
-    case field_condition(resource, field, action, acc) do
+  defp expression_for_ref(resource, field, action, domain, ref, acc) do
+    case field_condition(resource, field, action, domain, acc) do
       {:none, acc} ->
         {%{ref | input?: false}, acc}
 
@@ -788,7 +791,7 @@ defmodule Ash.Policy.Authorizer do
     end
   end
 
-  defp field_condition(resource, field, action, acc) do
+  defp field_condition(resource, field, action, domain, acc) do
     if Ash.Policy.Authorizer in Ash.Resource.Info.authorizers(resource) do
       {authorizer, acc} =
         case Map.fetch(acc.authorizers, {resource, action}) do
@@ -796,7 +799,7 @@ defmodule Ash.Policy.Authorizer do
             {authorizer, acc}
 
           :error ->
-            authorizer = initial_state(acc.actor, resource, action)
+            authorizer = initial_state(acc.actor, resource, action, domain)
 
             {authorizer,
              %{acc | authorizers: Map.put(acc.authorizers, {resource, action}, authorizer)}}
