@@ -16,7 +16,7 @@ Mix.install(
 
 Wrapping external APIs in Ash resources can allow you to leverage the rich and consistent interface provided by `Ash.Resource` for interactions with external services.
 
-While there are a few approaches to how you might do this, including the still in progress [AshJsonApiWrapper](https://github.com/ash-project/ash_json_api_wrapper), but here we will leverage "manual actions" as this is fully supported by Ash, and is the commonly used approach.
+There are a few approaches to how you might do this, including the still in progress [AshJsonApiWrapper](https://github.com/ash-project/ash_json_api_wrapper). Here we will leverage "manual actions" as this is fully supported by Ash, and is the commonly used approach.
 
 This approach is most appropriate when you are working with an API that exposes some data, like entities, list of entities, etc. For this example, we will be interacting with https://openlibrary.org, which allows for us to search and list books.
 
