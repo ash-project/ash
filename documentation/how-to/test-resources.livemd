@@ -30,7 +30,7 @@ While you don't necessarily need to follow all steps below, we show the various 
 
 * Add tests for action inputs using property testing
 * Add tests for calling action invocation using property testing
-* Add explicit tests for action inputs/invocation using property testing.
+* Add explicit tests for action inputs/invocation.
 * Add tests for our calculations
 * Test policies "in isolation" using `Ash.can?` (or `Domain.can_*`, provided by code interfaces)
 
