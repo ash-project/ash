@@ -105,6 +105,10 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
         change set_context(%{authorize?: arg(:authorize?)})
       end
 
+      destroy :destroy_with_filter do
+        change filter(expr(title == "foo"))
+      end
+
       destroy :soft do
         require_atomic? false
         soft? true
@@ -480,5 +484,43 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                  return_errors?: true
                )
     end
+  end
+
+  test "respects filter with atomics" do
+    assert %Ash.BulkResult{records: [%{title: "foo"}]} =
+             Ash.bulk_create!([%{title: "foo"}, %{title: "bar"}], Post, :create,
+               return_stream?: true,
+               return_records?: true
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_destroy!(:destroy_with_filter, %{},
+               resource: Post,
+               strategy: :atomic_batches,
+               return_records?: true,
+               return_errors?: true
+             )
+
+    assert [%{title: "bar"}] = Ash.read!(Post)
+  end
+
+  test "respects filter with stream" do
+    assert %Ash.BulkResult{records: [%{title: "foo"}]} =
+             Ash.bulk_create!([%{title: "foo"}, %{title: "bar"}], Post, :create,
+               return_stream?: true,
+               return_records?: true
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_destroy!(:destroy_with_filter, %{},
+               resource: Post,
+               strategy: :stream,
+               return_records?: true,
+               return_errors?: true
+             )
+
+    assert [%{title: "bar"}] = Ash.read!(Post)
   end
 end
