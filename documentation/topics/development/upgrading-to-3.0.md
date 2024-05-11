@@ -4,9 +4,9 @@
 
 Other packages have had a major version bump in addition to Ash core. While _all packages_ have been changed to refer to `domain` instead of `api`, they did not receive a major version bump because there were no special breaking changes to account for when using that package. You will also need to factor in the following upgrade guides, if you use those packages.
 
-- [AshPostgres](https://github.com/ash-project/ash_postgres/blob/main/documentation/topics/development/upgrading-to-2.0.md)
-- [AshJsonApi](https://github.com/ash-project/ash_json_api/blob/main/documentation/topics/upgrade.md)
-- [AshGraphql](https://github.com/ash-project/ash_graphql/blob/main/documentation/topics/upgrade.md)
+- [AshPostgres](https://hexdocs.pm/ash_postgres/upgrading-to-2-0.html)
+- [AshJsonApi](https://hexdocs.pm/ash_json_api/upgrade.html)
+- [AshGraphql](https://hexdocs.pm/ash_graphql/upgrade.html)
 
 ## Upgrading to 3.0
 
