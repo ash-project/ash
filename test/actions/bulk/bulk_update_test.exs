@@ -193,6 +193,10 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       update :update_with_match do
         validate match(:title4, ~r/^[a-z]+$/)
       end
+
+      update :update_with_filter do
+        change filter(expr(title == "foo"))
+      end
     end
 
     identities do
@@ -688,6 +692,52 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                  resource: Post,
                  return_records?: true,
                  return_errors?: true
+               )
+    end
+
+    test "respects filter when using atomic" do
+      assert %Ash.BulkResult{
+               records: [
+                 %{title: "foo", title2: "updated value"}
+               ]
+             } =
+               Ash.bulk_create!([%{title: "foo"}, %{title: "bar"}], Post, :create,
+                 return_stream?: true,
+                 return_records?: true,
+                 authorize?: false
+               )
+               |> Stream.map(fn {:ok, result} ->
+                 result
+               end)
+               |> Ash.bulk_update!(:update_with_filter, %{title2: "updated value"},
+                 resource: Post,
+                 strategy: :atomic_batches,
+                 return_records?: true,
+                 return_errors?: true,
+                 authorize?: false
+               )
+    end
+
+    test "respects filter when using stream" do
+      assert %Ash.BulkResult{
+               records: [
+                 %{title: "foo", title2: "updated value"}
+               ]
+             } =
+               Ash.bulk_create!([%{title: "foo"}, %{title: "bar"}], Post, :create,
+                 return_stream?: true,
+                 return_records?: true,
+                 authorize?: false
+               )
+               |> Stream.map(fn {:ok, result} ->
+                 result
+               end)
+               |> Ash.bulk_update!(:update_with_filter, %{title2: "updated value"},
+                 resource: Post,
+                 strategy: :stream,
+                 return_records?: true,
+                 return_errors?: true,
+                 authorize?: false
                )
     end
   end
