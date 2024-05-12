@@ -747,7 +747,7 @@ defmodule Ash.CodeInterface do
                 end
 
               resolve_subject =
-                if Enum.empty?(filter_keys) do
+                if Enum.empty?(filter_keys) and interface.require_reference? do
                   quote do
                     {changeset_opts, opts} =
                       Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
