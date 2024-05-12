@@ -5,6 +5,11 @@ defmodule Ash.Error.Changes.StaleRecord do
   use Splode.Error, fields: [:resource, :filter], class: :invalid
 
   def message(error) do
-    "Attempted to update stale record of #{inspect(error.resource)} with filter `#{inspect(error.filter)}`"
+    "Attempted to update stale record of #{inspect(error.resource)}#{filter(error.filter)}"
   end
+
+  defp filter(nil), do: ""
+  defp filter(%Ash.Filter{expression: nil}), do: ""
+  defp filter(%Ash.Filter{expression: expr}), do: " with filter: #{inspect(expr)}"
+  defp filter(other), do: " with filter: #{inspect(other)}"
 end

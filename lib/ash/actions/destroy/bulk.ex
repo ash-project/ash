@@ -1752,6 +1752,9 @@ defmodule Ash.Actions.Destroy.Bulk do
             end
 
           case result do
+            {:error, %Ash.Error.Changes.StaleRecord{}} ->
+              []
+
             {:ok, result} ->
               result
 

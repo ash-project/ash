@@ -717,28 +717,28 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                  authorize?: false
                )
     end
+  end
 
-    test "respects filter when using stream" do
-      assert %Ash.BulkResult{
-               records: [
-                 %{title: "foo", title2: "updated value"}
-               ]
-             } =
-               Ash.bulk_create!([%{title: "foo"}, %{title: "bar"}], Post, :create,
-                 return_stream?: true,
-                 return_records?: true,
-                 authorize?: false
-               )
-               |> Stream.map(fn {:ok, result} ->
-                 result
-               end)
-               |> Ash.bulk_update!(:update_with_filter, %{title2: "updated value"},
-                 resource: Post,
-                 strategy: :stream,
-                 return_records?: true,
-                 return_errors?: true,
-                 authorize?: false
-               )
-    end
+  test "respects filter when using stream" do
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "foo", title2: "updated value"}
+             ]
+           } =
+             Ash.bulk_create!([%{title: "foo"}, %{title: "bar"}], Post, :create,
+               return_stream?: true,
+               return_records?: true,
+               authorize?: false
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_update!(:update_with_filter, %{title2: "updated value"},
+               resource: Post,
+               strategy: :stream,
+               return_records?: true,
+               return_errors?: true,
+               authorize?: false
+             )
   end
 end

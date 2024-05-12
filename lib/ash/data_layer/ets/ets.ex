@@ -1239,20 +1239,48 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
-  def destroy(resource, %{data: record} = changeset) do
-    do_destroy(resource, record, changeset.tenant)
+  def destroy(resource, %{data: record, filter: filter} = changeset) do
+    do_destroy(resource, record, changeset.tenant, filter, changeset.domain)
   end
 
-  defp do_destroy(resource, record, tenant) do
-    pkey = Map.take(record, Ash.Resource.Info.primary_key(resource))
+  defp do_destroy(resource, record, tenant, filter, domain) do
+    with {:ok, table} <- wrap_or_create_table(resource, tenant) do
+      pkey = Map.take(record, Ash.Resource.Info.primary_key(resource))
 
-    with {:ok, table} <- wrap_or_create_table(resource, tenant),
-         {:ok, _} <- ETS.Set.delete(table, pkey) do
-      :ok
-    else
-      {:error, error} -> {:error, error}
+      if has_filter?(filter) do
+        case ETS.Set.get(table, pkey) do
+          {:ok, {_key, record}} when is_map(record) ->
+            with {:ok, record} <- cast_record(record, resource),
+                 {:ok, [_]} <- filter_matches([record], filter, domain) do
+              with {:ok, _} <- ETS.Set.delete(table, pkey) do
+                :ok
+              end
+            else
+              {:ok, []} ->
+                {:error,
+                 Ash.Error.Changes.StaleRecord.exception(
+                   resource: resource,
+                   filter: filter
+                 )}
+
+              {:error, error} ->
+                {:error, error}
+            end
+
+          {:error, error} ->
+            {:error, error}
+        end
+      else
+        with {:ok, _} <- ETS.Set.delete(table, pkey) do
+          :ok
+        end
+      end
     end
   end
+
+  defp has_filter?(filter) when filter in [nil, true], do: false
+  defp has_filter?(%Ash.Filter{expression: expression}) when expression == true, do: false
+  defp has_filter?(_filter), do: true
 
   @doc false
   @impl true
@@ -1369,25 +1397,38 @@ defmodule Ash.DataLayer.Ets do
       {:ok, casted} ->
         case ETS.Set.get(table, pkey) do
           {:ok, {_key, record}} when is_map(record) ->
-            case atomics do
-              empty when empty in [nil, []] ->
-                data = Map.merge(record, casted)
+            with {:ok, casted_record} <- cast_record(record, resource),
+                 {:ok, [casted_record]} <-
+                   filter_matches([casted_record], changeset_filter, domain) do
+              case atomics do
+                empty when empty in [nil, []] ->
+                  data = Map.merge(record, casted)
 
-                put_data(table, pkey, data)
-
-              atomics ->
-                with {:ok, casted_existing} <- cast_record(record, resource),
-                     {:ok, atomics} <- make_atomics(atomics, resource, domain, casted_existing) do
-                  data = record |> Map.merge(casted) |> Map.merge(atomics)
                   put_data(table, pkey, data)
-                end
+
+                atomics ->
+                  with {:ok, atomics} <- make_atomics(atomics, resource, domain, casted_record) do
+                    data = record |> Map.merge(casted) |> Map.merge(atomics)
+                    put_data(table, pkey, data)
+                  end
+              end
+            else
+              {:error, error} ->
+                {:error, error}
+
+              {:ok, []} ->
+                {:error,
+                 Ash.Error.Changes.StaleRecord.exception(
+                   resource: resource,
+                   filter: changeset_filter
+                 )}
             end
 
           {:ok, _} ->
             {:error,
              Ash.Error.Changes.StaleRecord.exception(
                resource: record.__struct__,
-               filters: changeset_filter
+               filter: changeset_filter
              )}
 
           other ->

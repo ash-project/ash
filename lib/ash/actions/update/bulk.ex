@@ -945,6 +945,7 @@ defmodule Ash.Actions.Update.Bulk do
         )
         |> Ash.Query.set_context(%{private: %{internal?: true}})
         |> Ash.Query.filter(^pkeys)
+        |> Ash.Query.filter(^atomic_changeset.filter)
         |> Ash.Query.select([])
         |> then(fn query ->
           run(domain, query, action.name, input,
@@ -2042,13 +2043,23 @@ defmodule Ash.Actions.Update.Bulk do
                             changeset.context[context_key].index
                           )
 
-                        {:cont, {:ok, results ++ [result]}}
+                        {:cont, {:ok, [result | results]}}
+
+                      {:error, %Ash.Error.Changes.StaleRecord{}} ->
+                        {:cont, {:ok, results}}
 
                       {:error, error} ->
                         {:halt, {:error, error}}
                     end
                   end
                 )
+                |> case do
+                  {:ok, results} ->
+                    {:ok, Enum.reverse(results)}
+
+                  {:error, error} ->
+                    {:error, error}
+                end
             end
 
           case result do

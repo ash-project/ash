@@ -3,6 +3,14 @@ defmodule Ash.Actions.Helpers do
   require Logger
   require Ash.Flags
 
+  def rollback_if_in_transaction(
+        {:error, %Ash.Error.Changes.StaleRecord{} = error},
+        _resource,
+        _changeset
+      ) do
+    {:error, error}
+  end
+
   def rollback_if_in_transaction({:error, error}, resource, changeset) do
     error = Ash.Error.to_ash_error(error)
 
