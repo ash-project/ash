@@ -73,6 +73,52 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
     actions do
       default_accept :*
 
+      defaults [:read]
+
+      create :create_with_actor do
+        change relate_actor(:author)
+      end
+
+      create :create_with_actor_field do
+        change relate_actor(:account, field: :account)
+      end
+
+      create :create_possibly_without_actor do
+        change relate_actor(:author, allow_nil?: true)
+      end
+    end
+  end
+
+  defmodule PostRequiringActor do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :text, :string do
+        public?(true)
+      end
+    end
+
+    relationships do
+      belongs_to :author, Ash.Test.Resource.Changes.RelateActorTest.Author do
+        public?(true)
+        allow_nil? false
+      end
+
+      belongs_to :account, Ash.Test.Resource.Changes.RelateActorTest.Account do
+        public?(true)
+        allow_nil? true
+      end
+    end
+
+    actions do
+      default_accept :*
+
+      defaults [:read]
+
       create :create_with_actor do
         change relate_actor(:author)
       end
@@ -108,6 +154,28 @@ defmodule Ash.Test.Resource.Changes.RelateActorTest do
       |> Ash.create()
 
     assert changeset.errors |> Enum.count() == 1
+  end
+
+  test "relate_actor change works with streaming bulk create" do
+    actor =
+      Author
+      |> Ash.Changeset.for_create(:create)
+      |> Ash.create!()
+
+    actor_id = actor.id
+
+    assert %Ash.BulkResult{
+             records: [
+               %{author_id: ^actor_id}
+             ],
+             errors: []
+           } =
+             [%{text: "foo"}]
+             |> Ash.bulk_create!(PostRequiringActor, :create_with_actor,
+               actor: actor,
+               return_errors?: true,
+               return_records?: true
+             )
   end
 
   test "relate_actor change with field" do

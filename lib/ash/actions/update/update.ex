@@ -531,6 +531,7 @@ defmodule Ash.Actions.Update do
         {:ok, updated, instructions}
         |> Helpers.load(changeset, domain,
           actor: opts[:actor],
+          reuse_values?: true,
           authorize?: opts[:authorize?],
           tracer: opts[:tracer]
         )

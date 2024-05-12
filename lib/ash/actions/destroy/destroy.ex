@@ -164,6 +164,7 @@ defmodule Ash.Actions.Destroy do
         changeset ->
           case Helpers.load({:ok, changeset.data, %{}}, changeset, domain,
                  actor: opts[:actor],
+                 reuse_values?: true,
                  authorize?: opts[:authorize?],
                  tracer: opts[:tracer]
                ) do

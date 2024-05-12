@@ -98,7 +98,7 @@ define name
 ```
 
 
-Defines a function with the corresponding name and arguments. See the [code interface guide](/documentation/topics/topics/code-interfaces.md) for more.
+Defines a function with the corresponding name and arguments. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
 
 
 
@@ -141,7 +141,7 @@ define_calculation name
 ```
 
 
-Defines a function with the corresponding name and arguments, that evaluates a calculation. Use `:_record` to take an instance of a record. See the [code interface guide](/documentation/topics/topics/code-interfaces.md) for more.
+Defines a function with the corresponding name and arguments, that evaluates a calculation. Use `:_record` to take an instance of a record. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
 
 
 
@@ -167,7 +167,7 @@ define_calculation :referral_link, User, args: [{:arg, :id}, {:ref, :id}]
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`calculation`](#resources-resource-define_calculation-calculation){: #resources-resource-define_calculation-calculation } | `atom` |  | The name of the calculation that will be evaluated. Defaults to the same name as the function. |
-| [`args`](#resources-resource-define_calculation-args){: #resources-resource-define_calculation-args } | `any` | `[]` | Supply field or argument values referenced by the calculation, in the form of :name, `{:arg, :name}` and/or `{:ref, :name}`. See the [code interface guide](/documentation/topics/topics/code-interfaces.md) for more. |
+| [`args`](#resources-resource-define_calculation-args){: #resources-resource-define_calculation-args } | `any` | `[]` | Supply field or argument values referenced by the calculation, in the form of :name, `{:arg, :name}` and/or `{:ref, :name}`. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more. |
 
 
 

@@ -21,7 +21,7 @@ defmodule Ash.Resource.CalculationInterface do
       type: :any,
       default: [],
       doc: """
-      Supply field or argument values referenced by the calculation, in the form of :name, `{:arg, :name}` and/or `{:ref, :name}`. See the [code interface guide](/documentation/topics/topics/code-interfaces.md) for more.
+      Supply field or argument values referenced by the calculation, in the form of :name, `{:arg, :name}` and/or `{:ref, :name}`. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
       """
     ]
   ]

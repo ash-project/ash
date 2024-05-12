@@ -5,8 +5,8 @@ defmodule Ash.Actions.Create.Bulk do
           | {:ok, [Ash.Resource.record()]}
           | {:ok, [Ash.Resource.record()], [Ash.Notifier.Notification.t()]}
           | {:error, term}
-  def run(domain, resource, action, inputs, opts) do
-    action = Ash.Resource.Info.action(resource, action)
+  def run(domain, resource, action_name, inputs, opts) do
+    action = Ash.Resource.Info.action(resource, action_name)
 
     opts =
       if opts[:return_notifications?] do
@@ -16,7 +16,7 @@ defmodule Ash.Actions.Create.Bulk do
       end
 
     if !action do
-      raise Ash.Error.Invalid.NoSuchAction, resource: resource, action: action, type: :create
+      raise Ash.Error.Invalid.NoSuchAction, resource: resource, action: action_name, type: :create
     end
 
     if opts[:transaction] == :all && opts[:return_stream?] do
@@ -379,9 +379,6 @@ defmodule Ash.Actions.Create.Bulk do
     {batch, must_be_simple} =
       batch
       |> Stream.map(fn changeset ->
-        {changeset, _} =
-          Ash.Actions.ManagedRelationships.validate_required_belongs_to({changeset, []})
-
         Ash.Changeset.require_values(
           changeset,
           :create,
@@ -962,6 +959,9 @@ defmodule Ash.Actions.Create.Bulk do
                 {Ash.Changeset.add_error(changeset, error), new_notifications}
 
               {changeset, manage_instructions} ->
+                {changeset, _} =
+                  Ash.Actions.ManagedRelationships.validate_required_belongs_to({changeset, []})
+
                 {changeset, manage_instructions.notifications}
             end
           else

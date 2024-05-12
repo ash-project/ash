@@ -1287,7 +1287,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`manual`](#actions-read-manual){: #actions-read-manual } | `(any, any, any -> any) \| module` |  | Delegates running of the query to the provided module. Accepts a module or module and opts, or a function that takes the ash query, the data layer query, and context. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
-| [`get?`](#actions-read-get?){: #actions-read-get? } | `boolean` | `false` | Expresses that this action innately only returns a single result. Used by extensions to validate and/or modify behavior. Causes code interfaces to return a single value instead of a list. See the [code interface guide](/documentation/topics/topics/code-interfaces.md) for more. |
+| [`get?`](#actions-read-get?){: #actions-read-get? } | `boolean` | `false` | Expresses that this action innately only returns a single result. Used by extensions to validate and/or modify behavior. Causes code interfaces to return a single value instead of a list. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more. |
 | [`modify_query`](#actions-read-modify_query){: #actions-read-modify_query } | `mfa \| (any, any -> any)` |  | Allows direct manipulation of the data layer query via an MFA. The ash query and the data layer query will be provided as additional arguments. The result must be `{:ok, new_data_layer_query} \| {:error, error}`. |
 | [`get_by`](#actions-read-get_by){: #actions-read-get_by } | `atom \| list(atom)` |  | A helper to automatically generate a "get by X" action. Sets `get?` to true, add args for each of the specified fields, and adds a filter for each of the arguments. |
 | [`timeout`](#actions-read-timeout){: #actions-read-timeout } | `pos_integer` |  | The maximum amount of time, in milliseconds, that the action is allowed to run for. Ignored if the data layer doesn't support transactions *and* async is disabled. |
@@ -1974,7 +1974,7 @@ Target: `Ash.Resource.Actions.Destroy`
 
 
 ## code_interface
-Functions that will be defined on the resource. See the [code interface guide](/documentation/topics/topics/code-interfaces.md) for more.
+Functions that will be defined on the resource. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
 
 
 ### Nested DSLs
@@ -2009,7 +2009,7 @@ define name
 ```
 
 
-Defines a function with the corresponding name and arguments. See the [code interface guide](/documentation/topics/topics/code-interfaces.md) for more.
+Defines a function with the corresponding name and arguments. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
 
 
 
@@ -2052,7 +2052,7 @@ define_calculation name
 ```
 
 
-Defines a function with the corresponding name and arguments, that evaluates a calculation. Use `:_record` to take an instance of a record. See the [code interface guide](/documentation/topics/topics/code-interfaces.md) for more.
+Defines a function with the corresponding name and arguments, that evaluates a calculation. Use `:_record` to take an instance of a record. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
 
 
 
@@ -2078,7 +2078,7 @@ define_calculation :referral_link, args: [{:arg, :id}, {:ref, :id}]
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`calculation`](#code_interface-define_calculation-calculation){: #code_interface-define_calculation-calculation } | `atom` |  | The name of the calculation that will be evaluated. Defaults to the same name as the function. |
-| [`args`](#code_interface-define_calculation-args){: #code_interface-define_calculation-args } | `any` | `[]` | Supply field or argument values referenced by the calculation, in the form of :name, `{:arg, :name}` and/or `{:ref, :name}`. See the [code interface guide](/documentation/topics/topics/code-interfaces.md) for more. |
+| [`args`](#code_interface-define_calculation-args){: #code_interface-define_calculation-args } | `any` | `[]` | Supply field or argument values referenced by the calculation, in the form of :name, `{:arg, :name}` and/or `{:ref, :name}`. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more. |
 
 
 

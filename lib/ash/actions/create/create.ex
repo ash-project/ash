@@ -418,6 +418,7 @@ defmodule Ash.Actions.Create do
         {:ok, created, instructions}
         |> Helpers.load(changeset, domain,
           actor: opts[:actor],
+          reuse_values?: true,
           authorize?: opts[:authorize?],
           tracer: opts[:tracer]
         )

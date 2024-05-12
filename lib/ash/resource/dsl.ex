@@ -841,7 +841,7 @@ defmodule Ash.Resource.Dsl do
   @define_calculation %Spark.Dsl.Entity{
     name: :define_calculation,
     describe: """
-    Defines a function with the corresponding name and arguments, that evaluates a calculation. Use `:_record` to take an instance of a record. See the [code interface guide](/documentation/topics/topics/code-interfaces.md) for more.
+    Defines a function with the corresponding name and arguments, that evaluates a calculation. Use `:_record` to take an instance of a record. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
     """,
     examples: [
       "define_calculation :referral_link, args: [:id]",
@@ -856,7 +856,7 @@ defmodule Ash.Resource.Dsl do
   @define %Spark.Dsl.Entity{
     name: :define,
     describe: """
-    Defines a function with the corresponding name and arguments. See the [code interface guide](/documentation/topics/topics/code-interfaces.md) for more.
+    Defines a function with the corresponding name and arguments. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
     """,
     examples: [
       "define :get_user_by_id, action: :get_by_id, args: [:id], get?: true"
@@ -870,7 +870,7 @@ defmodule Ash.Resource.Dsl do
   @code_interface %Spark.Dsl.Section{
     name: :code_interface,
     describe: """
-    Functions that will be defined on the resource. See the [code interface guide](/documentation/topics/topics/code-interfaces.md) for more.
+    Functions that will be defined on the resource. See the [code interface guide](/documentation/topics/resources/code-interfaces.md) for more.
     """,
     examples: [
       """
