@@ -19,7 +19,7 @@ defmodule Ash.Reactor.CreateStep do
       |> maybe_set_kw(:tenant, arguments[:tenant])
 
     action_options =
-      [return_notifications?: true]
+      [return_notifications?: true, domain: options[:domain]]
       |> maybe_set_kw(:authorize?, options[:authorize?])
 
     changeset =
@@ -38,7 +38,7 @@ defmodule Ash.Reactor.CreateStep do
       end
 
     changeset
-    |> options[:domain].create(action_options)
+    |> Ash.create(action_options)
     |> case do
       {:ok, record} ->
         {:ok, store_changeset_in_metadata(context.current_step.name, record, changeset)}
@@ -62,7 +62,7 @@ defmodule Ash.Reactor.CreateStep do
       |> maybe_set_kw(:tenant, arguments[:tenant])
 
     action_options =
-      [return_notifications?: true, return_destroyed?: false]
+      [return_notifications?: true, return_destroyed?: false, domain: options[:domain]]
       |> maybe_set_kw(:authorize?, options[:authorize?])
 
     attributes =
@@ -70,7 +70,7 @@ defmodule Ash.Reactor.CreateStep do
 
     record
     |> Changeset.for_destroy(options[:undo_action], attributes, changeset_options)
-    |> options[:domain].destroy(action_options)
+    |> Ash.destroy(action_options)
     # We always want to discard the notifications.
     |> case do
       :ok -> :ok

@@ -6,6 +6,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Create do
   alias Reactor.{Argument, Builder}
   alias Spark.{Dsl.Transformer, Error.DslError}
   import Ash.Reactor.BuilderUtils
+  import Reactor.Template, only: :macros
 
   @doc false
   @impl true
@@ -20,10 +21,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Create do
           module when is_atom(module) ->
             Argument.from_value(:initial, module)
 
-          template
-          when is_struct(template, Reactor.Template.Input) or
-                 is_struct(template, Reactor.Template.Result) or
-                 is_struct(template, Reactor.Template.Value) ->
+          template when is_template(template) ->
             %Argument{name: :initial, source: template}
         end
 
