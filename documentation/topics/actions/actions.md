@@ -98,7 +98,9 @@ end
 
 # in the resource
 
-defaults [:read, ...]
+actions do 
+  defaults [:read, ...]
+end
 ```
 
 And here is the "right way", where the rules about getting the top tickets have been moved into the resource as a nicely named action, and included in the `code_interface` of that resource. The reality of the situation is that `top_tickets/1` is meant to be obsoleted by your Ash resource! Here is how it _should_ be done.
@@ -110,14 +112,16 @@ code_interface do
   define :top, args: [:user_id]
 end
 
-read :top do
-  argument :user_id, :uuid do
-    allow_nil? false
+actions do 
+  read :top do
+    argument :user_id, :uuid do
+      allow_nil? false
+    end
+
+    prepare build(limit: 10, sort: [opened_at: :desc])
+
+    filter expr(priority in [:medium, :high] and representative_id == ^arg(:user_id) and status == :open)
   end
-
-  prepare build(limit: 10, sort: [opened_at: :desc])
-
-  filter expr(priority in [:medium, :high] and representative_id == ^arg(:user_id) and status == :open)
 end
 ```
 
