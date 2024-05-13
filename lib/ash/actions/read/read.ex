@@ -491,6 +491,7 @@ defmodule Ash.Actions.Read do
   end
 
   def cleanup_field_auth(nil, _query, _top_level?), do: nil
+  def cleanup_field_auth([], _query, _top_level?), do: []
   def cleanup_field_auth(%Ash.NotLoaded{} = not_loaded, _query, _top_level?), do: not_loaded
 
   def cleanup_field_auth([%resource{} | _] = records, [], top_level?),
