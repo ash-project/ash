@@ -418,7 +418,12 @@ defmodule Ash.EmbeddableType do
               constraints[:destroy_action] ||
                 Ash.Resource.Info.primary_action!(__MODULE__, :destroy).name
 
-            case Ash.destroy(old_value, action: action, domain: ShadowDomain) do
+            old_value
+            |> Ash.Changeset.new()
+            |> Ash.EmbeddableType.copy_source(constraints)
+            |> Ash.Changeset.for_destroy(action, %{}, domain: ShadowDomain)
+            |> Ash.destroy()
+            |> case do
               :ok ->
                 {:ok, new_value}
 
@@ -742,7 +747,12 @@ defmodule Ash.EmbeddableType do
           end
         end)
         |> Enum.reduce_while(:ok, fn {record, index}, :ok ->
-          case Ash.destroy(record, action: destroy_action, domain: ShadowDomain) do
+          record
+          |> Ash.Changeset.new()
+          |> Ash.EmbeddableType.copy_source(constraints)
+          |> Ash.Changeset.for_destroy(destroy_action, %{}, domain: ShadowDomain)
+          |> Ash.destroy()
+          |> case do
             :ok ->
               {:cont, :ok}
 
