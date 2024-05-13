@@ -346,7 +346,7 @@ defmodule Ash.MixProject do
       # Used for aggregatable and standardized exceptions
       {:splode, "~> 0.2"},
       # Testing Utilities
-      {:stream_data, "~> 0.6"},
+      {:stream_data, "~> 1.0"},
 
       # SAT Solvers
       {:picosat_elixir, "~> 0.2", optional: true},
