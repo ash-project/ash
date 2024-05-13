@@ -574,7 +574,8 @@ defmodule Ash.Actions.Read do
   end
 
   def cleanup_field_auth(record, query, top_level?) do
-    [record]
+    record
+    |> List.wrap()
     |> cleanup_field_auth(query, top_level?)
     |> Enum.at(0)
   end
