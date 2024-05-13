@@ -1984,7 +1984,7 @@ defmodule Ash do
   """
   @doc spark_opts: [{1, @create_opts_schema}]
   @spec create!(
-          changset_or_resource :: Ash.Changeset.t() | Ash.Changeset.t(),
+          changset_or_resource :: Ash.Changeset.t() | Ash.Resource.t(),
           params_or_opts :: map() | Keyword.t(),
           opts :: Keyword.t()
         ) ::
@@ -2003,7 +2003,7 @@ defmodule Ash do
   """
   @doc spark_opts: [{1, @create_opts_schema}]
   @spec create(
-          changset_or_resource :: Ash.Changeset.t() | Ash.Changeset.t(),
+          changset_or_resource :: Ash.Changeset.t() | Ash.Resource.t(),
           params_or_opts :: map() | Keyword.t(),
           opts :: Keyword.t()
         ) ::
