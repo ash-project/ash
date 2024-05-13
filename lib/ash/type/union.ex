@@ -365,7 +365,14 @@ defmodule Ash.Type.Union do
 
     inner_constraints =
       if Ash.Type.embedded_type?(type) do
-        Keyword.put(inner_constraints, :__union_tag__, constraints[:types][type_name][:tag])
+        case constraints[:__source__] do
+          %Ash.Changeset{} = source ->
+            Keyword.put(inner_constraints, :__source__, source)
+
+          _ ->
+            inner_constraints
+        end
+        |> Keyword.put(:__union_tag__, constraints[:types][type_name][:tag])
       else
         inner_constraints
       end
