@@ -226,6 +226,201 @@ Target: `Ash.Reactor.Dsl.Action`
 
 
 
+## reactor.bulk_create
+```elixir
+bulk_create name, resource, action \\ nil
+```
+
+
+Declares a step which will call a create action on a resource with a collection of inputs.
+
+> ### Check the docs! {: .warning}
+>
+> Make sure to thoroughly read and understand the documentation in `Ash.bulk_create/4` before using. Read each option and note the default values. By default, bulk creates don't return records or errors, and don't emit notifications.
+
+Caveats/differences from `Ash.bulk_create/4`:
+
+1. `max_concurrency` specifies the number of tasks that Ash will start to process batches, and has no effect on Reactor concurrency targets.  It's could be possible to create a very large number of processes if a number of steps are running bulk actions with a high degree of concurrency.
+2. Setting `notify?` to `true` will cause both `notify?` and `return_notifications?` to be set to true in the underlying call to `Ash.bulk_create/4`. Notifications will then be managed by the `Ash.Reactor.Notifications` Reactor middleware.
+3. If you specify an undo action it must be a generic action which takes the bulk result as it's only argument.
+
+> #### Undo behaviour {: .tip}
+>
+> This step has three different modes of undo.
+>
+> * `never` - The result of the action is never undone.  This is the default.
+> * `always` - The `undo_action` will always be called.
+> * `outside_transaction` - The `undo_action` will not be called when running inside a `transaction` block, but will be otherwise.
+
+
+
+### Nested DSLs
+ * [actor](#reactor-bulk_create-actor)
+ * [tenant](#reactor-bulk_create-tenant)
+ * [wait_for](#reactor-bulk_create-wait_for)
+
+
+### Examples
+```
+create :create_posts, MyApp.Post, :create do
+  initial inputs(:titles)
+  actor(result(:get_user))
+  tenant(result(:get_organisation, [:id]))
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#reactor-bulk_create-name){: #reactor-bulk_create-name .spark-required} | `atom` |  | A unique name for the step. |
+| [`resource`](#reactor-bulk_create-resource){: #reactor-bulk_create-resource .spark-required} | `module` |  | The resource to call the action on. |
+| [`action`](#reactor-bulk_create-action){: #reactor-bulk_create-action } | `atom` |  | The name of the action to call on the resource. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`initial`](#reactor-bulk_create-initial){: #reactor-bulk_create-initial .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | A collection of inputs to pass to the create action. Must implement the `Enumerable` protocol. |
+| [`assume_casted?`](#reactor-bulk_create-assume_casted?){: #reactor-bulk_create-assume_casted? } | `boolean` | `false` | Whether or not to cast attributes and arguments as input. This is an optimization for cases where the input is already casted and/or not in need of casting |
+| [`authorize_changeset_with`](#reactor-bulk_create-authorize_changeset_with){: #reactor-bulk_create-authorize_changeset_with } | `:filter \| :error` | `:filter` | If set to `:error`, instead of filtering unauthorized changes, unauthorized changes will raise an appropriate forbidden error |
+| [`authorize_query_with`](#reactor-bulk_create-authorize_query_with){: #reactor-bulk_create-authorize_query_with } | `:filter \| :error` | `:filter` | If set to `:error`, instead of filtering unauthorized query results, unauthorized query results will raise an appropriate forbidden error |
+| [`batch_size`](#reactor-bulk_create-batch_size){: #reactor-bulk_create-batch_size } | `nil \| pos_integer` |  | The number of records to include in each batch. Defaults to the `default_limit` or `max_page_size` of the action, or 100. |
+| [`load`](#reactor-bulk_create-load){: #reactor-bulk_create-load } | `atom \| list(atom)` | `[]` | A load statement to apply to records. Ignored if `return_records?` is not true. |
+| [`max_concurrency`](#reactor-bulk_create-max_concurrency){: #reactor-bulk_create-max_concurrency } | `non_neg_integer` | `0` | If set to a value greater than 0, up to that many tasks will be started to run batches asynchronously. |
+| [`notification_metadata`](#reactor-bulk_create-notification_metadata){: #reactor-bulk_create-notification_metadata } | `map \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` | `%{}` | Metadata to be merged into the metadata field for all notifications sent from this operation. |
+| [`notify?`](#reactor-bulk_create-notify?){: #reactor-bulk_create-notify? } | `boolean` | `false` | Whether or not to generate any notifications. This may be intensive for large bulk actions. |
+| [`read_action`](#reactor-bulk_create-read_action){: #reactor-bulk_create-read_action } | `atom` |  | The action to use when building the read query. |
+| [`return_errors?`](#reactor-bulk_create-return_errors?){: #reactor-bulk_create-return_errors? } | `boolean` | `false` | Whether or not to return all of the errors that occur. Defaults to false to account for large inserts. |
+| [`return_records?`](#reactor-bulk_create-return_records?){: #reactor-bulk_create-return_records? } | `boolean` | `false` | Whether or not to return all of the records that were inserted. Defaults to false to account for large inserts. |
+| [`return_stream?`](#reactor-bulk_create-return_stream?){: #reactor-bulk_create-return_stream? } | `boolean` | `false` | If set to `true`, instead of an `Ash.BulkResult`, a mixed stream is returned. |
+| [`rollback_on_error?`](#reactor-bulk_create-rollback_on_error?){: #reactor-bulk_create-rollback_on_error? } | `boolean` | `true` | Whether or not to rollback the transaction on error, if the resource is in a transaction. |
+| [`select`](#reactor-bulk_create-select){: #reactor-bulk_create-select } | `atom \| list(atom)` |  | A select statement to apply to records. Ignored if `return_records?` is not `true`. |
+| [`skip_unknown_inputs`](#reactor-bulk_create-skip_unknown_inputs){: #reactor-bulk_create-skip_unknown_inputs } | `atom \| list(atom)` |  | A list of inputs that, if provided, will be ignored if they are not recognized by the action. |
+| [`sorted?`](#reactor-bulk_create-sorted?){: #reactor-bulk_create-sorted? } | `boolean` | `false` | Whether or not to sort results by their input position, in cases where `return_records?` is set to `true`. |
+| [`stop_on_error?`](#reactor-bulk_create-stop_on_error?){: #reactor-bulk_create-stop_on_error? } | `boolean` | `false` | If `true`, the first encountered error will stop the action and be returned. Otherwise, errors will be skipped. |
+| [`success_state`](#reactor-bulk_create-success_state){: #reactor-bulk_create-success_state } | `:success \| :partial_success` | `:success` | Bulk results can be entirely or partially successful. Chooses the `Ash.BulkResult` state to consider the step a success. |
+| [`timeout`](#reactor-bulk_create-timeout){: #reactor-bulk_create-timeout } | `timeout` |  | If none is provided, the timeout configured on the domain is used (which defaults to `30_000`). |
+| [`transaction`](#reactor-bulk_create-transaction){: #reactor-bulk_create-transaction } | `:all \| :batch \| false` | `:batch` | Whether or not to wrap the entire execution in a transaction, each batch, or not at all. |
+| [`upsert_fields`](#reactor-bulk_create-upsert_fields){: #reactor-bulk_create-upsert_fields } | `atom \| list(atom)` |  | The fields to upsert. If not set, the action's `upsert_fields` is used. |
+| [`upsert_identity`](#reactor-bulk_create-upsert_identity){: #reactor-bulk_create-upsert_identity } | `atom` |  | The identity to use for the upsert |
+| [`upsert?`](#reactor-bulk_create-upsert?){: #reactor-bulk_create-upsert? } | `boolean` | `false` | Whether or not this action should be executed as an upsert. |
+| [`domain`](#reactor-bulk_create-domain){: #reactor-bulk_create-domain } | `module` |  | The Domain to use when calling the action.  Defaults to the Domain set on the resource or in the `ash` section. |
+| [`async?`](#reactor-bulk_create-async?){: #reactor-bulk_create-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
+| [`authorize?`](#reactor-bulk_create-authorize?){: #reactor-bulk_create-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
+| [`description`](#reactor-bulk_create-description){: #reactor-bulk_create-description } | `String.t` |  | A description for the step |
+| [`undo_action`](#reactor-bulk_create-undo_action){: #reactor-bulk_create-undo_action } | `atom` |  | The name of the action to call on the resource when the step is to be undone. |
+| [`undo`](#reactor-bulk_create-undo){: #reactor-bulk_create-undo } | `:always \| :never \| :outside_transaction` | `:never` | How to handle undoing this action |
+
+
+## reactor.bulk_create.actor
+```elixir
+actor source
+```
+
+
+Specifies the action actor
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-bulk_create-actor-source){: #reactor-bulk_create-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-bulk_create-actor-transform){: #reactor-bulk_create-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Actor`
+
+## reactor.bulk_create.tenant
+```elixir
+tenant source
+```
+
+
+Specifies the action tenant
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-bulk_create-tenant-source){: #reactor-bulk_create-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-bulk_create-tenant-transform){: #reactor-bulk_create-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Tenant`
+
+## reactor.bulk_create.wait_for
+```elixir
+wait_for names
+```
+
+
+Wait for the named step to complete before allowing this one to start.
+
+Desugars to `argument :_, result(step_to_wait_for)`
+
+
+
+
+### Examples
+```
+wait_for :create_user
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#reactor-bulk_create-wait_for-names){: #reactor-bulk_create-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.WaitFor`
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.BulkCreate`
+
+
+
 ## reactor.change
 ```elixir
 change name, change

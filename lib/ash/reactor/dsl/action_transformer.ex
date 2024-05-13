@@ -189,7 +189,7 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
 
   defp validate_entity_input_dupes(_entity, _dsl_state), do: :ok
 
-  defp validate_entity_input_empty(entity, dsl_state) do
+  defp validate_entity_input_empty(entity, dsl_state) when is_map_key(entity, :inputs) do
     entity.inputs
     |> Enum.filter(&Enum.empty?(&1.template))
     |> case do
@@ -222,7 +222,9 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
     end
   end
 
-  defp validate_entity_input_names(entity, action, dsl_state) do
+  defp validate_entity_input_empty(_, _), do: :ok
+
+  defp validate_entity_input_names(entity, action, dsl_state) when is_map_key(entity, :inputs) do
     argument_names = Enum.map(action.arguments, & &1.name)
 
     allowed_input_names =
@@ -291,6 +293,8 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
     end
   end
 
+  defp validate_entity_input_names(_entity, _action, _dsl_state), do: :ok
+
   defp maybe_accept_inputs(input_names, action) when length(action.accepts) > 0,
     do: Enum.filter(input_names, &(&1 in action.accepts))
 
@@ -333,7 +337,7 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
   end
 
   defp get_entity_resource_action(entity, dsl_state) do
-    case Resource.Info.action(entity.resource, entity.action, entity.type) do
+    case Resource.Info.action(entity.resource, entity.action, action_type(entity.type)) do
       nil ->
         suggestions =
           entity.resource
@@ -355,6 +359,13 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
         {:ok, action}
     end
   end
+
+  defp action_type(:bulk_create), do: :create
+  defp action_type(:create), do: :create
+  defp action_type(:read), do: :read
+  defp action_type(:update), do: :update
+  defp action_type(:destroy), do: :destroy
+  defp action_type(:action), do: :action
 
   defp maybe_validate_upsert_identity(entity, dsl_state)
        when entity.upsert? and entity.upsert_identity do

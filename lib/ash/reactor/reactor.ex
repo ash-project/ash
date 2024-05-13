@@ -26,6 +26,7 @@ defmodule Ash.Reactor do
     dsl_patches:
       [
         Ash.Reactor.Dsl.Action,
+        Ash.Reactor.Dsl.BulkCreate,
         Ash.Reactor.Dsl.Change,
         Ash.Reactor.Dsl.Create,
         Ash.Reactor.Dsl.Destroy,
