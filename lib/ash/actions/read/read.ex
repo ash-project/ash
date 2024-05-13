@@ -517,7 +517,12 @@ defmodule Ash.Actions.Read do
     records =
       Enum.reduce(query.load, records, fn {name, related_query}, records ->
         Enum.map(records, fn record ->
-          Map.update!(record, name, &cleanup_field_auth(&1, related_query, false))
+          case record do
+            %Ash.ForbiddenField{} -> record
+            %Ash.NotLoaded{} -> record
+            nil -> record
+            record -> Map.update!(record, name, &cleanup_field_auth(&1, related_query, false))
+          end
         end)
       end)
 
@@ -529,14 +534,26 @@ defmodule Ash.Actions.Read do
           attribute = Ash.Resource.Info.attribute(resource, attr_name)
 
           Enum.map(records, fn record ->
-            Map.update!(record, attribute.name, fn value ->
-              Ash.Type.rewrite(
-                attribute.type,
-                value,
-                [{:cleanup_field_auth, further_load}],
-                attribute.constraints
-              )
-            end)
+            case record do
+              %Ash.ForbiddenField{} ->
+                record
+
+              %Ash.NotLoaded{} ->
+                record
+
+              nil ->
+                record
+
+              record ->
+                Map.update!(record, attribute.name, fn value ->
+                  Ash.Type.rewrite(
+                    attribute.type,
+                    value,
+                    [{:cleanup_field_auth, further_load}],
+                    attribute.constraints
+                  )
+                end)
+            end
           end)
         end
       )
@@ -548,26 +565,50 @@ defmodule Ash.Actions.Read do
         Enum.map(records, fn record ->
           case Map.get(query.calculations, calc_name) do
             %{load: load, type: type, constraints: constraints} when not is_nil(load) ->
-              Map.update!(record, load, fn value ->
-                Ash.Type.rewrite(
-                  type,
-                  value,
-                  [{:cleanup_field_auth, further_load}],
-                  constraints
-                )
-              end)
+              case record do
+                %Ash.ForbiddenField{} ->
+                  record
+
+                %Ash.NotLoaded{} ->
+                  record
+
+                nil ->
+                  record
+
+                record ->
+                  Map.update!(record, load, fn value ->
+                    Ash.Type.rewrite(
+                      type,
+                      value,
+                      [{:cleanup_field_auth, further_load}],
+                      constraints
+                    )
+                  end)
+              end
 
             %{load: nil, name: name, type: type, constraints: constraints} ->
-              Map.update!(record, :calculations, fn calculations ->
-                Map.update!(calculations, name, fn value ->
-                  Ash.Type.rewrite(
-                    type,
-                    value,
-                    [{:cleanup_field_auth, further_load}],
-                    constraints
-                  )
-                end)
-              end)
+              case record do
+                %Ash.ForbiddenField{} ->
+                  record
+
+                %Ash.NotLoaded{} ->
+                  record
+
+                nil ->
+                  record
+
+                record ->
+                  Map.update!(record, :calculations, fn calculations ->
+                    Map.update!(calculations, name, fn value ->
+                      Ash.Type.rewrite(
+                        type,
+                        value,
+                        [{:cleanup_field_auth, further_load}],
+                        constraints
+                      )
+                    end)
+                  end)
+              end
           end
         end)
       end

@@ -400,30 +400,64 @@ defmodule Ash.Actions.Read.Calculations do
       {{_, {:calc, to_name, to_load}, _, _}, source}, records ->
         if to_load do
           Enum.map(records, fn record ->
-            Map.put(record, to_load, Map.get(record.calculations, source))
+            case record do
+              %Ash.NotLoaded{} -> record
+              %Ash.ForbiddenField{} -> record
+              nil -> record
+              record -> Map.put(record, to_load, Map.get(record.calculations, source))
+            end
           end)
         else
           Enum.map(records, fn record ->
-            Map.update!(
-              record,
-              :calculations,
-              &Map.put(&1, to_name, Map.get(record.calculations, source))
-            )
+            case record do
+              %Ash.NotLoaded{} ->
+                record
+
+              %Ash.ForbiddenField{} ->
+                record
+
+              nil ->
+                record
+
+              record ->
+                Map.update!(
+                  record,
+                  :calculations,
+                  &Map.put(&1, to_name, Map.get(record.calculations, source))
+                )
+            end
           end)
         end
 
       {{_, {:agg, to_name, to_load}, _, _}, source}, records ->
         if to_load do
           Enum.map(records, fn record ->
-            Map.put(record, to_load, Map.get(record.calculations, source))
+            case record do
+              %Ash.NotLoaded{} -> record
+              %Ash.ForbiddenField{} -> record
+              nil -> record
+              record -> Map.put(record, to_load, Map.get(record.aggregates, source))
+            end
           end)
         else
           Enum.map(records, fn record ->
-            Map.update!(
-              record,
-              :aggregates,
-              &Map.put(&1, to_name, Map.get(record.calculations, source))
-            )
+            case record do
+              %Ash.NotLoaded{} ->
+                record
+
+              %Ash.ForbiddenField{} ->
+                record
+
+              nil ->
+                record
+
+              record ->
+                Map.update!(
+                  record,
+                  :aggregates,
+                  &Map.put(&1, to_name, Map.get(record.calculations, source))
+                )
+            end
           end)
         end
 
@@ -471,6 +505,8 @@ defmodule Ash.Actions.Read.Calculations do
   end
 
   defp update_at_path(nil, [], _), do: nil
+  defp update_at_path(%Ash.NotLoaded{} = value, _, _), do: value
+  defp update_at_path(%Ash.ForbiddenField{} = value, _, _), do: value
 
   defp update_at_path(records, path, func) when is_list(records) do
     Enum.map(records, &update_at_path(&1, path, func))

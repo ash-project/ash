@@ -15,7 +15,7 @@ defmodule Ash.Type.Term do
   @impl true
   def cast_stored(nil, _), do: {:ok, nil}
   # sobelow_skip ["Misc.BinToTerm"]
-  def cast_stored(value, _), do: {:ok, :erlang.binary_to_term(value, [:safe])}
+  def cast_stored(value, _), do: {:ok, Ash.Helpers.non_executable_binary_to_term(value, [:safe])}
 
   @impl true
 

@@ -2205,6 +2205,7 @@ defmodule Ash.Actions.Update.Bulk do
         Ash.load(
           records,
           List.wrap(changeset.load),
+          reuse_values?: true,
           domain: domain,
           actor: opts[:actor],
           authorize?: opts[:authorize?],

@@ -668,6 +668,14 @@ defmodule Ash.Actions.Helpers do
     %{page | results: restrict_field_access(results, query_or_changeset)}
   end
 
+  def restrict_field_access(%Ash.NotLoaded{} = not_loaded, _query_or_changeset) do
+    not_loaded
+  end
+
+  def restrict_field_access(%Ash.ForbiddenField{} = forbidden_field, _query_or_changeset) do
+    forbidden_field
+  end
+
   def restrict_field_access(%_{} = record, query_or_changeset) do
     embedded? = Ash.Resource.Info.embedded?(query_or_changeset.resource)
 

@@ -1278,6 +1278,7 @@ defmodule Ash.Actions.Create.Bulk do
             records,
             List.wrap(opts[:load]),
             domain: domain,
+            reuse_values?: true,
             actor: opts[:actor],
             authorize?: opts[:authorize?],
             tracer: opts[:tracer]
