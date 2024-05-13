@@ -76,7 +76,7 @@ And then run `mix deps.get && mix deps.compile` to install the dependencies
 
 > ### Picosat installation issues? {: .info}
 >
-> Replace `{:picosat_elixir, "~> 0.2"}` with `{:simple_sat, "~> 0.1"}` to use a simpler (but mildly slower) solver. You can always switch back to `picosat_elixir` later once you're done with the tutorial.
+> If you have trouble compiling `picosat_elixir`, then replace `{:picosat_elixir, "~> 0.2"}` with `{:simple_sat, "~> 0.1"}` to use a simpler (but mildly slower) solver. You can always switch back to `picosat_elixir` later once you're done with the tutorial.
 
 ### Formatting
 
