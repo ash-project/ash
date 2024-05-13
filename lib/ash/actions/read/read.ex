@@ -493,6 +493,9 @@ defmodule Ash.Actions.Read do
   def cleanup_field_auth(nil, _query, _top_level?), do: nil
   def cleanup_field_auth(%Ash.NotLoaded{} = not_loaded, _query, _top_level?), do: not_loaded
 
+  def cleanup_field_auth([%resource{} | _] = records, [], top_level?),
+    do: cleanup_field_auth(records, resource |> Ash.Query.new(), top_level?)
+
   def cleanup_field_auth(%struct{results: results} = page, query, top_level?)
       when struct in [Ash.Page.Keyset, Ash.Page.Offset] do
     %{page | results: cleanup_field_auth(results, query, top_level?)}
