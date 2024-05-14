@@ -23,7 +23,7 @@ lib/ # top level lib folder for your whole project
 │  │  ├─ notification.ex # A resource without additional files
 │  │  ├─ other_file.ex # A non-resource file
 │  │  ├─ ticket/ # A resource with additional files
-│  │  │  ├─ preparations/ # Components of the reosurce, grouped by type
+│  │  │  ├─ preparations/ # Components of the resource, grouped by type
 │  │  │  ├─ changes/
 │  │  │  ├─ checks/
 │  │  ├─ ticket.ex # The resource file
