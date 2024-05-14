@@ -38,7 +38,7 @@
   "spark": {:hex, :spark, "2.1.21", "0c2e5c24bc99f65ee874a563f9f3ba6e5c7c8a79b7de4b3b65af770ca6c8120e", [:mix], [{:jason, "~> 1.4", [hex: :jason, repo: "hexpm", optional: false]}, {:sourceror, "~> 1.0", [hex: :sourceror, repo: "hexpm", optional: false]}], "hexpm", "e8a32fd3138524096553d908f37ddb23f0c7cb731d75018d5f2ad6cb583714ec"},
   "splode": {:hex, :splode, "0.2.4", "71046334c39605095ca4bed5d008372e56454060997da14f9868534c17b84b53", [:mix], [], "hexpm", "ca3b95f0d8d4b482b5357954fec857abd0fa3ea509d623334c1328e7382044c2"},
   "statistex": {:hex, :statistex, "1.0.0", "f3dc93f3c0c6c92e5f291704cf62b99b553253d7969e9a5fa713e5481cd858a5", [:mix], [], "hexpm", "ff9d8bee7035028ab4742ff52fc80a2aa35cece833cf5319009b52f1b5a86c27"},
-  "stream_data": {:hex, :stream_data, "0.6.0", "e87a9a79d7ec23d10ff83eb025141ef4915eeb09d4491f79e52f2562b73e5f47", [:mix], [], "hexpm", "b92b5031b650ca480ced047578f1d57ea6dd563f5b57464ad274718c9c29501c"},
+  "stream_data": {:hex, :stream_data, "1.0.0", "c1380747a4650902732696861d5cb66ad3cb1cc93f31c2c8498bf87cddbabe2d", [:mix], [], "hexpm", "acd53e27c66c617d466f42ec77a7f59e5751f6051583c621ccdb055b9690435d"},
   "telemetry": {:hex, :telemetry, "1.2.1", "68fdfe8d8f05a8428483a97d7aab2f268aaff24b49e0f599faa091f1d4e7f61c", [:rebar3], [], "hexpm", "dad9ce9d8effc621708f99eac538ef1cbe05d6a874dd741de2e689c47feafed5"},
   "typable": {:hex, :typable, "0.3.0", "0431e121d124cd26f312123e313d2689b9a5322b15add65d424c07779eaa3ca1", [:mix], [], "hexpm", "880a0797752da1a4c508ac48f94711e04c86156f498065a83d160eef945858f8"},
   "yamerl": {:hex, :yamerl, "0.10.0", "4ff81fee2f1f6a46f1700c0d880b24d193ddb74bd14ef42cb0bcf46e81ef2f8e", [:rebar3], [], "hexpm", "346adb2963f1051dc837a2364e4acf6eb7d80097c0f53cbdc3046ec8ec4b4e6e"},
