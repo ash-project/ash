@@ -82,4 +82,8 @@ defmodule Ash.Query.Function.StringSplit do
       {:known, String.split(value, delimiter, split_opts)}
     end
   end
+
+  def can_return_nil?(%{arguments: [string]}) do
+    Ash.Expr.can_return_nil?(string)
+  end
 end

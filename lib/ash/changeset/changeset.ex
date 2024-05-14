@@ -1439,7 +1439,7 @@ defmodule Ash.Changeset do
         changeset
       else
         value =
-          if attribute.allow_nil? do
+          if attribute.allow_nil? || not Ash.Expr.can_return_nil?(value) do
             value
           else
             expr(

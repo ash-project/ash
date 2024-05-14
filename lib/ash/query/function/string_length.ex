@@ -18,4 +18,8 @@ defmodule Ash.Query.Function.StringLength do
   def evaluate(%{arguments: [value]}) do
     {:known, String.length(value)}
   end
+
+  def can_return_nil?(%{arguments: [string]}) do
+    Ash.Expr.can_return_nil?(string)
+  end
 end

@@ -72,6 +72,8 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
       attribute :score, :integer do
         public?(true)
       end
+
+      update_timestamp :updated_at
     end
 
     code_interface do
@@ -126,6 +128,8 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
         Author
         |> Ash.Changeset.for_create(:create, %{name: "fred", score: 0})
         |> Ash.create!()
+
+      Logger.configure(level: :debug)
 
       assert Author.increment_score!(author).score == 1
       assert Author.increment_score!(author).score == 2

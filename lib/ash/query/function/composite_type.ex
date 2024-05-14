@@ -37,4 +37,8 @@ defmodule Ash.Query.Function.CompositeType do
         {:error, error}
     end
   end
+
+  def can_return_nil?(%{arguments: [value | _]}) do
+    Ash.Expr.can_return_nil?(value)
+  end
 end

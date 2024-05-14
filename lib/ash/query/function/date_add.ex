@@ -21,4 +21,8 @@ defmodule Ash.Query.Function.DateAdd do
       {:known, truncated}
     end
   end
+
+  def can_return_nil?(%{arguments: [date | _]}) do
+    Ash.Expr.can_return_nil?(date)
+  end
 end

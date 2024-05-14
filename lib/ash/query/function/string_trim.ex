@@ -20,4 +20,8 @@ defmodule Ash.Query.Function.StringTrim do
   def evaluate(%{arguments: [value]}) do
     {:known, String.trim(value)}
   end
+
+  def can_return_nil?(%{arguments: [string]}) do
+    Ash.Expr.can_return_nil?(string)
+  end
 end

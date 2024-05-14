@@ -57,4 +57,8 @@ defmodule Ash.Query.Function.Contains do
   def evaluate(_other) do
     :unknown
   end
+
+  def can_return_nil?(%{arguments: arguments}) do
+    Enum.any?(arguments, &Ash.Expr.can_return_nil?/1)
+  end
 end

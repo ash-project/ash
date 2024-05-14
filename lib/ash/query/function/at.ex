@@ -10,4 +10,8 @@ defmodule Ash.Query.Function.At do
   def evaluate(%{arguments: [list, at]}) do
     {:known, Enum.at(list, at)}
   end
+
+  def can_return_nil?(%{arguments: [value | _]}) do
+    Ash.Expr.can_return_nil?(value)
+  end
 end

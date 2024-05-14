@@ -120,4 +120,7 @@ defmodule Ash.Query.Operator.LessThan do
         end)
     end
   end
+
+  def can_return_nil?(%{left: left, right: right}),
+    do: Ash.Expr.can_return_nil?(left) or Ash.Expr.can_return_nil?(right)
 end

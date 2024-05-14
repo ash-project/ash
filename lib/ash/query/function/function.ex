@@ -13,13 +13,22 @@ defmodule Ash.Query.Function do
   The number and types of arguments supported.
   """
   @callback args() :: [arg] | :var_args
+  @doc "The name of the function"
   @callback name() :: atom
+  @doc "Instantiate a new function with the provided arguments"
   @callback new(list(term)) :: {:ok, term} | {:error, String.t() | Exception.t()}
+  @doc "Evaluate a function when all arguments are known valid values"
   @callback evaluate(func :: map) :: :unknown | {:known, term} | {:error, term}
+  @doc "Evaluate a function when some or no arguments are known valid values"
   @callback partial_evaluate(func) :: {:ok, func} | {:error, term} when func: map
+  @doc "Whether or not the function can be evaluated eagerly. For example, `now()` cannot be."
   @callback eager_evaluate?() :: boolean()
+  @doc "Whether or not the function is a predicate (takes a reference as the first argument, a value as the second, and returns a boolean)"
   @callback predicate?() :: boolean()
+  @doc "Whether or not the function should be usable when parsing input."
   @callback private?() :: boolean
+  @doc "Whether or not the function return nil."
+  @callback can_return_nil?(func :: map) :: boolean()
 
   @doc """
   If `true`, will be allowed to evaluate `nil` inputs.
@@ -224,7 +233,10 @@ defmodule Ash.Query.Function do
       @impl Ash.Query.Function
       def private?, do: false
 
-      defoverridable new: 1, evaluate: 1, private?: 0, evaluate_nil_inputs?: 0
+      @impl Ash.Query.Function
+      def can_return_nil?(_), do: true
+
+      defoverridable new: 1, evaluate: 1, private?: 0, evaluate_nil_inputs?: 0, can_return_nil?: 1
 
       unless unquote(opts[:no_inspect?]) do
         defimpl Inspect do

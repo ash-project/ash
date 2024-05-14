@@ -17,6 +17,9 @@ defmodule Ash.Query.Operator.GreaterThan do
     {:known, Comp.greater_than?(left, right)}
   end
 
+  def can_return_nil?(%{left: left, right: right}),
+    do: Ash.Expr.can_return_nil?(left) or Ash.Expr.can_return_nil?(right)
+
   @impl Ash.Filter.Predicate
   def simplify(%__MODULE__{left: %Ref{} = ref, right: %Date{} = value}) do
     {:ok, op} = Ash.Query.Operator.new(Ash.Query.Operator.LessThan, ref, Date.add(value, 1))

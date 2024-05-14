@@ -32,6 +32,10 @@ defmodule Ash.Query.Function.If do
     super([condition, block, else_block])
   end
 
+  def can_return_nil?(%{arguments: [_ | rest]}) do
+    Enum.any?(rest, &Ash.Expr.can_return_nil?/1)
+  end
+
   def evaluate(%{arguments: [true, when_true, _]}),
     do: {:known, when_true}
 

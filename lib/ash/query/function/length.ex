@@ -24,4 +24,8 @@ defmodule Ash.Query.Function.Length do
   def evaluate(_) do
     {:error, "Cannot use length/1 on non-list inputs"}
   end
+
+  def can_return_nil?(%{arguments: [val]}) do
+    Ash.Expr.can_return_nil?(val)
+  end
 end

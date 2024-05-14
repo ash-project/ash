@@ -76,6 +76,7 @@ defmodule Ash.Test.Filter.FilterTest do
         argument :ids, {:array, :uuid}
 
         filter expr(
+                 # credo:disable-for-next-line Credo.Check.Refactor.NegatedConditionsWithElse
                  if not is_nil(^arg(:ids)) do
                    id in ^arg(:ids)
                  else

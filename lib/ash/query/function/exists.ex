@@ -19,6 +19,8 @@ defmodule Ash.Query.Exists do
     %__MODULE__{path: path, expr: expr, at_path: at_path}
   end
 
+  def can_return_nil?(_), do: false
+
   defimpl Inspect do
     import Inspect.Algebra
 

@@ -10,4 +10,8 @@ defmodule Ash.Query.Function.Minus do
     {:ok, op} = Ash.Query.Operator.Basic.Times.new(val, -1)
     Ash.Query.Operator.evaluate(op)
   end
+
+  def can_return_nil?(%{arguments: [val]}) do
+    Ash.Expr.can_return_nil?(val)
+  end
 end

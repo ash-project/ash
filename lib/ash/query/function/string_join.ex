@@ -59,4 +59,8 @@ defmodule Ash.Query.Function.StringJoin do
       _ -> false
     end)
   end
+
+  def can_return_nil?(%{arguments: [string | _]}) do
+    Ash.Expr.can_return_nil?(string)
+  end
 end

@@ -14,7 +14,11 @@ defmodule Ash.Query.Operator.IsNil do
   def new(nil, false), do: {:ok, false}
 
   def new(left, right) do
-    super(left, right)
+    if right == false and not Ash.Expr.can_return_nil?(left) do
+      {:known, false}
+    else
+      super(left, right)
+    end
   end
 
   @impl Ash.Query.Operator
@@ -54,6 +58,8 @@ defmodule Ash.Query.Operator.IsNil do
         ])
     end
   end
+
+  def can_return_nil?(%{right: right}), do: Ash.Expr.can_return_nil?(right)
 
   @impl Ash.Filter.Predicate
   def compare(%__MODULE__{left: %Ref{} = same_ref, right: true}, %Ash.Query.Operator.Eq{

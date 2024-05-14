@@ -189,6 +189,14 @@ defmodule Ash.Query.Operator.Basic do
           end
         end
 
+        def can_return_nil?(%{operator: :||, right: right}) do
+          Ash.Expr.can_return_nil?(right)
+        end
+
+        def can_return_nil?(%{left: left, right: right} = op) do
+          Ash.Expr.can_return_nil?(left) or Ash.Expr.can_return_nil?(right)
+        end
+
         defp to_decimal(value) when is_float(value) do
           Decimal.from_float(value)
         end

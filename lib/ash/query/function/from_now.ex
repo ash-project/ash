@@ -17,4 +17,6 @@ defmodule Ash.Query.Function.FromNow do
     shifted = Ash.Query.Function.Ago.datetime_add(now, factor, interval)
     {:known, shifted}
   end
+
+  def can_return_nil?(_), do: false
 end

@@ -20,6 +20,10 @@ defmodule Ash.Query.Function.Type do
     end
   end
 
+  def can_return_nil?(%{arguments: [value | _]}) do
+    Ash.Expr.can_return_nil?(value)
+  end
+
   def evaluate(%{arguments: [val, type, constraints]}) do
     case Ash.Type.cast_input(type, val, constraints) do
       {:ok, value} ->

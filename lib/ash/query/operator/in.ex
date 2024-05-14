@@ -21,6 +21,8 @@ defmodule Ash.Query.Operator.In do
 
   def new(left, right), do: {:ok, %__MODULE__{left: left, right: right}}
 
+  def can_return_nil?(%{left: left}), do: Ash.Expr.can_return_nil?(left)
+
   def evaluate(%{left: nil}), do: {:known, nil}
   def evaluate(%{right: nil}), do: {:known, nil}
 

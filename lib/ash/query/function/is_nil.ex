@@ -15,4 +15,6 @@ defmodule Ash.Query.Function.IsNil do
   def evaluate(%{arguments: [val]}) do
     {:known, is_nil(val)}
   end
+
+  def can_return_nil?(_), do: false
 end

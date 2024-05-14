@@ -19,4 +19,8 @@ defmodule Ash.Query.Function.CountNils do
   def evaluate(_) do
     {:error, "Cannot use count_nils/1 on non-list inputs"}
   end
+
+  def can_return_nil?(%{arguments: [date | _]}) do
+    Ash.Expr.can_return_nil?(date)
+  end
 end

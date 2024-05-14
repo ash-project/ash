@@ -24,4 +24,8 @@ defmodule Ash.Query.Function.Round do
   def evaluate(%{arguments: [num, precision]}) do
     {:known, num |> Decimal.round(precision) |> Decimal.normalize()}
   end
+
+  def can_return_nil?(%{arguments: [string]}) do
+    Ash.Expr.can_return_nil?(string)
+  end
 end

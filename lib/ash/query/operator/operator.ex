@@ -47,6 +47,11 @@ defmodule Ash.Query.Operator do
 
   @callback predicate?() :: boolean()
 
+  @doc """
+  Whether or not the operator can evaluate to nil.
+  """
+  @callback can_return_nil?(func :: map) :: boolean()
+
   @doc "Evaluate the operator with provided inputs"
   def evaluate(%mod{left: left, right: right} = op) when is_nil(left) or is_nil(right) do
     if mod.evaluate_nil_inputs?() do
@@ -408,7 +413,10 @@ defmodule Ash.Query.Operator do
         ])
       end
 
-      defoverridable to_string: 2, new: 2, evaluate_nil_inputs?: 0
+      @impl Ash.Query.Operator
+      def can_return_nil?(_), do: true
+
+      defoverridable to_string: 2, new: 2, evaluate_nil_inputs?: 0, can_return_nil?: 1
 
       defimpl Inspect do
         def inspect(%mod{} = op, opts) do

@@ -16,4 +16,8 @@ defmodule Ash.Query.Function.DateTimeAdd do
     shifted = Ash.Query.Function.Ago.datetime_add(datetime, factor, interval)
     {:known, shifted}
   end
+
+  def can_return_nil?(%{arguments: [datetime | _]}) do
+    Ash.Expr.can_return_nil?(datetime)
+  end
 end

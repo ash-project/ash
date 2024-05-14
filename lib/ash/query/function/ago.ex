@@ -66,4 +66,6 @@ defmodule Ash.Query.Function.Ago do
       result
     end
   end
+
+  def can_return_nil?(_), do: false
 end

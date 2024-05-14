@@ -240,6 +240,30 @@ defmodule Ash.Expr do
     end)
   end
 
+  def can_return_nil?(nil), do: true
+
+  def can_return_nil?(%Ash.Query.BooleanExpression{left: left, right: right}) do
+    can_return_nil?(left) || can_return_nil?(right)
+  end
+
+  def can_return_nil?(%Ash.Query.Not{expression: expression}) do
+    can_return_nil?(expression)
+  end
+
+  def can_return_nil?(%Ash.Query.Parent{expr: expr}) do
+    can_return_nil?(expr)
+  end
+
+  def can_return_nil?(%Ash.Query.Exists{}), do: false
+
+  def can_return_nil?(%mod{__predicate__?: _} = pred) do
+    mod.can_return_nil?(pred)
+  end
+
+  def can_return_nil?(%Ash.Query.Ref{attribute: %{allow_nil?: false}}), do: false
+
+  def can_return_nil?(_), do: true
+
   @doc "Whether or not a given template contains an actor reference"
   def template_references?(%BooleanExpression{op: :and, left: left, right: right}, pred) do
     template_references?(left, pred) || template_references?(right, pred)

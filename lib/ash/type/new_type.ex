@@ -80,8 +80,11 @@ defmodule Ash.Type.NewType do
 
   defmacro __using__(opts) do
     case Keyword.keys(opts) -- [:subtype_of, :constraints] do
-      [] -> []
-      keys -> raise ArgumentError, "Unknown options given to `use Ash.Type.NewType`: #{inspect(keys)}"
+      [] ->
+        []
+
+      keys ->
+        raise ArgumentError, "Unknown options given to `use Ash.Type.NewType`: #{inspect(keys)}"
     end
 
     quote bind_quoted: [

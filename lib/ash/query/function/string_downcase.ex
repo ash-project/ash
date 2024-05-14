@@ -22,4 +22,8 @@ defmodule Ash.Query.Function.StringDowncase do
   def evaluate(%{arguments: [value]}) do
     {:known, String.downcase(value)}
   end
+
+  def can_return_nil?(%{arguments: [string]}) do
+    Ash.Expr.can_return_nil?(string)
+  end
 end
