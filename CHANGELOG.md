@@ -9,37 +9,25 @@
 
 ### Features:
 
-* Add `cascade_destroy` to builtin changes.
+* [Ash.Resource.Change.Builtins] Add `cascade_destroy` to builtin changes.
 
 ### Bug Fixes:
 
-* don't eager evaluate exists erroneously
+* [calculations] calculation eager evaluation bug caused `exists` to eager evaluate when we didn't actually have the related data 
 
-* handle nil case (#1163)
+* [field policies] fix field policy rewrite errors on non-success cases (#1163)
 
-* don't attempt to traverse not loaded and forbidden values when rewriting policies
+* [embedded resources] fix embedded resource authorization (#1159) (#1160)
 
-* add __source__ to union inner_constraints (#1160)
+* infinite recursion if query is empty (#1158)
 
-* copy context for the other destroy calls too (#1159)
+* [Ash.DataLayer.Ets] ensure that changeset filters are honored in ETS destroy/update_query
 
-* inifite recursion if query is empty (#1158)
+* [update/destroy actions] don't rollback transactions on stale records, ignore stale records in bulk actions
 
-* cascade_destroy: Always return and explicitly dispatch notifications.
+* [bulk creates] don't check required belongs to fields until after setting them in bulk creation
 
-* Seems like we shouldn't just throw away notifications without being upset about it.
-
-* incorrect result matching in bulk destroy.
-
-* ensure that changeset filters are honored in ETS destroy/update_query
-
-* in simulated bulk actions, a stale record should be ignored
-
-* don't rollback transactions on stale records
-
-* don't check required belongs to fields until after setting them in bulk creation
-
-* check require_reference? when generating update code interface (#1152)
+* [code interface] check require_reference? when generating update code interface (#1152)
 
 ## [v3.0.0](https://github.com/ash-project/ash/compare/v3.0.0...2.0)
 
