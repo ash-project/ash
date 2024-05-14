@@ -168,7 +168,11 @@ defmodule Ash.Query.Operator do
     end)
     |> case do
       nil ->
-        {:error, "Could not cast expression: #{inspect(mod)} #{inspect(left)} #{inspect(right)}"}
+        {:error,
+         Ash.Error.Query.InvalidFilterValue.exception(
+           value: struct(mod, left: left, right: right),
+           message: "No matching types. Possible types: #{inspect(mod.types())}"
+         )}
 
       {:error, error} ->
         {:error, error}

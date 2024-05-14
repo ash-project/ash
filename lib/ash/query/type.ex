@@ -17,7 +17,11 @@ defmodule Ash.Query.Type do
         {:ok, val} -> {:ok, Enum.reverse(val)}
       end
     else
-      :error
+      if is_nil(list) do
+        {:ok, list}
+      else
+        :error
+      end
     end
   end
 

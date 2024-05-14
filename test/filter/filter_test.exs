@@ -71,6 +71,18 @@ defmodule Ash.Test.Filter.FilterTest do
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
+
+      read :with_invalid_value_behind_is_nil_check do
+        argument :ids, {:array, :uuid}
+
+        filter expr(
+                 if not is_nil(^arg(:ids)) do
+                   id in ^arg(:ids)
+                 else
+                   true
+                 end
+               )
+      end
     end
 
     attributes do
@@ -859,6 +871,13 @@ defmodule Ash.Test.Filter.FilterTest do
                |> Ash.Query.for_read(:get_path_search, %{input: %{title: "fred"}})
                |> Ash.read!()
     end
+  end
+
+  test "errors are not produced by eager evaluation" do
+    assert [] =
+             User
+             |> Ash.Query.for_read(:with_invalid_value_behind_is_nil_check, %{})
+             |> Ash.read!()
   end
 
   describe "calls in filters" do
