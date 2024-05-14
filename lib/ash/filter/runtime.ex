@@ -116,6 +116,12 @@ defmodule Ash.Filter.Runtime do
           [] ->
             [record]
 
+          %Ash.NotLoaded{} = not_loaded ->
+            [Ash.Resource.set_metadata(record, %{unflattened_rels: %{rel => not_loaded}})]
+
+          %Ash.ForbiddenField{} = forbidden ->
+            [Ash.Resource.set_metadata(record, %{unflattened_rels: %{rel => forbidden}})]
+
           value when is_list(value) ->
             flatten_many_to_many(record, rel, value, rest)
 
@@ -740,6 +746,9 @@ defmodule Ash.Filter.Runtime do
           %Ash.NotLoaded{} ->
             :unknown
 
+          %Ash.ForbiddenField{} ->
+            :unknown
+
           other ->
             {:ok, other}
         end
@@ -827,6 +836,13 @@ defmodule Ash.Filter.Runtime do
        ) do
     if load do
       case Map.get(record, load) do
+        %Ash.ForbiddenField{} ->
+          if unknown_on_unknown_refs? do
+            :unknown
+          else
+            {:ok, nil}
+          end
+
         %Ash.NotLoaded{} ->
           if unknown_on_unknown_refs? do
             :unknown
@@ -975,8 +991,23 @@ defmodule Ash.Filter.Runtime do
   end
 
   def get_related(
+        %Ash.ForbiddenField{},
+        _,
+        unknown_on_unknown_refs?,
+        _join_filters,
+        _parent_stack,
+        _domain
+      ) do
+    if unknown_on_unknown_refs? do
+      :unknown
+    else
+      []
+    end
+  end
+
+  def get_related(
         %Ash.NotLoaded{},
-        [],
+        _,
         unknown_on_unknown_refs?,
         _join_filters,
         _parent_stack,
@@ -994,6 +1025,125 @@ defmodule Ash.Filter.Runtime do
   end
 
   def get_related(
+        records,
+        [key | rest],
+        unknown_on_unknown_refs?,
+        join_filters,
+        parent_stack,
+        domain
+      )
+      when is_list(records) do
+    {join_filter, rest_join_filters} = Map.pop(join_filters, [])
+
+    rest_join_filters =
+      Enum.reduce(rest_join_filters, %{}, fn {path, filter}, acc ->
+        if List.starts_with?(path, [key]) do
+          Map.put(acc, Enum.drop(path, 1), filter)
+        else
+          acc
+        end
+      end)
+
+    filtered =
+      if Map.has_key?(join_filters, []) do
+        filter_matches(domain, records, join_filter,
+          parent: parent_stack,
+          unknown_on_unknown_refs?: unknown_on_unknown_refs?
+        )
+      else
+        {:ok, records}
+      end
+
+    case filtered do
+      {:ok, matches} ->
+        matches
+        |> Enum.reduce_while([], fn match, acc ->
+          case Map.get(match, key) do
+            %Ash.NotLoaded{} when unknown_on_unknown_refs? ->
+              {:halt, :unknown}
+
+            %Ash.ForbiddenField{} when unknown_on_unknown_refs? ->
+              {:halt, :unknown}
+
+            nil when unknown_on_unknown_refs? ->
+              {:halt, :unknown}
+
+            nil ->
+              {:cont, acc}
+
+            match_keys ->
+              match_keys
+              |> List.wrap()
+              |> Enum.reduce_while([], fn this_match, inner_acc ->
+                case get_related(
+                       this_match,
+                       rest,
+                       unknown_on_unknown_refs?,
+                       rest_join_filters,
+                       [match | parent_stack],
+                       domain
+                     ) do
+                  :unknown -> {:halt, :unknown}
+                  value -> {:cont, inner_acc ++ List.wrap(value)}
+                end
+              end)
+              |> case do
+                :unknown -> {:halt, :unknown}
+                list -> {:cont, acc ++ list}
+              end
+          end
+        end)
+
+      _ ->
+        if unknown_on_unknown_refs? do
+          :unknown
+        else
+          []
+        end
+    end
+  end
+
+  def get_related(
+        record,
+        [key | _] = path,
+        unknown_on_unknown_refs?,
+        join_filters,
+        parent_stack,
+        domain
+      ) do
+    case Map.get(record, key) do
+      %Ash.NotLoaded{} when unknown_on_unknown_refs? ->
+        :unknown
+
+      %Ash.ForbiddenField{} when unknown_on_unknown_refs? ->
+        :unknown
+
+      nil when unknown_on_unknown_refs? ->
+        :unknown
+
+      _value ->
+        case get_related(
+               [record],
+               path,
+               unknown_on_unknown_refs?,
+               join_filters,
+               parent_stack,
+               domain
+             ) do
+          :unknown ->
+            if unknown_on_unknown_refs? do
+              :unknown
+            else
+              []
+            end
+
+          related ->
+            List.wrap(related)
+        end
+    end
+  end
+
+  def old_get_related(
         records,
         [key | rest],
         unknown_on_unknown_refs?,
@@ -1061,43 +1211,6 @@ defmodule Ash.Filter.Runtime do
           :unknown
         else
           []
-        end
-    end
-  end
-
-  def get_related(
-        record,
-        [key | _] = path,
-        unknown_on_unknown_refs?,
-        join_filters,
-        parent_stack,
-        domain
-      ) do
-    case Map.get(record, key) do
-      %Ash.NotLoaded{} when unknown_on_unknown_refs? ->
-        :unknown
-
-      nil when unknown_on_unknown_refs? ->
-        :unknown
-
-      _value ->
-        case get_related(
-               [record],
-               path,
-               unknown_on_unknown_refs?,
-               join_filters,
-               parent_stack,
-               domain
-             ) do
-          :unknown ->
-            if unknown_on_unknown_refs? do
-              :unknown
-            else
-              []
-            end
-
-          related ->
-            List.wrap(related)
         end
     end
   end
