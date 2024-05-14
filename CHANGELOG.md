@@ -2,6 +2,45 @@
 
 <!-- changelog -->
 
+## [v3.0.1](https://github.com/ash-project/ash/compare/v3.0.0...v3.0.1) (2024-05-14)
+
+
+
+
+### Features:
+
+* Add `cascade_destroy` to builtin changes.
+
+### Bug Fixes:
+
+* don't eager evaluate exists erroneously
+
+* handle nil case (#1163)
+
+* don't attempt to traverse not loaded and forbidden values when rewriting policies
+
+* add __source__ to union inner_constraints (#1160)
+
+* copy context for the other destroy calls too (#1159)
+
+* inifite recursion if query is empty (#1158)
+
+* cascade_destroy: Always return and explicitly dispatch notifications.
+
+* Seems like we shouldn't just throw away notifications without being upset about it.
+
+* incorrect result matching in bulk destroy.
+
+* ensure that changeset filters are honored in ETS destroy/update_query
+
+* in simulated bulk actions, a stale record should be ignored
+
+* don't rollback transactions on stale records
+
+* don't check required belongs to fields until after setting them in bulk creation
+
+* check require_reference? when generating update code interface (#1152)
+
 ## [v3.0.0](https://github.com/ash-project/ash/compare/v3.0.0...2.0)
 
 ## 3.0
