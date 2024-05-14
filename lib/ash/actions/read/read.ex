@@ -609,6 +609,9 @@ defmodule Ash.Actions.Read do
                     end)
                   end)
               end
+
+            nil ->
+              record
           end
         end)
       end
