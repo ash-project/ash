@@ -25,7 +25,12 @@ defmodule Ash.Policy.Authorizer do
 
   @check_schema [
     check: [
-      type: {:custom, __MODULE__, :validate_check, []},
+      type:
+        {:or,
+         [
+           {:spark_behaviour, Ash.Policy.Check, Ash.Policy.Check.Builtins},
+           {:custom, __MODULE__, :expr_check, []}
+         ]},
       required: true,
       doc: """
       The check to run. See `Ash.Policy.Check` for more.
@@ -1408,5 +1413,14 @@ defmodule Ash.Policy.Authorizer do
       authorizer
       | policies: Ash.Policy.Info.policies(authorizer.domain, authorizer.resource)
     }
+  end
+
+  def expr_check(expr) when is_function(expr) do
+    {:error,
+     "Inline function checks expect a function with arity 2. Got #{Function.info(expr)[:arity]}"}
+  end
+
+  def expr_check(expr) do
+    {:ok, {Ash.Policy.Check.Expression, expr: expr}}
   end
 end
