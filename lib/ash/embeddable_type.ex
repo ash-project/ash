@@ -260,7 +260,7 @@ defmodule Ash.EmbeddableType do
         __MODULE__
         |> Ash.Resource.Info.attributes()
         |> Enum.reduce_while({:ok, struct(__MODULE__)}, fn attr, {:ok, struct} ->
-          with {:fetch, {:ok, value}} <- {:fetch, fetch_key(value, attr.name)},
+          with {:fetch, {:ok, value}} <- {:fetch, fetch_key(value, attr.source)},
                {:ok, casted} <- Ash.Type.cast_stored(attr.type, value, attr.constraints) do
             {:cont, {:ok, Map.put(struct, attr.name, casted)}}
           else
@@ -347,7 +347,7 @@ defmodule Ash.EmbeddableType do
                   {:cont, {:ok, acc}}
 
                 {:ok, dumped} ->
-                  {:cont, {:ok, Map.put(acc, attribute.name, dumped)}}
+                  {:cont, {:ok, Map.put(acc, attribute.source, dumped)}}
               end
           end
         end)

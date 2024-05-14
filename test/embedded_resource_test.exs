@@ -111,6 +111,10 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
       attribute :score, :integer do
         public?(true)
       end
+
+      attribute :key, :string do
+        source :different_key
+      end
     end
 
     validations do
@@ -261,6 +265,10 @@ defmodule Ash.Test.Changeset.EmbeddedResourceTest do
                }
              )
              |> Ash.create!()
+  end
+
+  test "embedded resources honor the `source` of an attribute" do
+    assert {:ok, %{different_key: "foo"}} = Ash.Type.dump_to_native(Tag, %Tag{key: "foo"}, [])
   end
 
   test "embed_nil_values?: false causes nil values not to be dumped" do
