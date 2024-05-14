@@ -401,6 +401,13 @@ defmodule Ash.Actions.MultitenancyTest do
         )
         |> Ash.create!()
 
+      thing2 =
+        thing2
+        |> Ash.Changeset.for_update(:update, %{name: "bar updated"})
+        |> Ash.update!()
+
+      %{other_thing_name_reversed: "oof"} = Ash.load!(thing2, :other_thing_name_reversed)
+
       %{other_thing_name_reversed: "oof"} =
         MultitenantThing
         |> Ash.get!(thing2.id, tenant: tenant1, load: :other_thing_name_reversed)
