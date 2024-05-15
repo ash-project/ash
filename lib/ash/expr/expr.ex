@@ -84,10 +84,10 @@ defmodule Ash.Expr do
   def arg(name), do: {:_arg, name}
 
   @doc "A template helper for creating a reference"
-  def ref(name), do: {:_ref, [], name}
+  def ref(name) when is_atom(name), do: {:_ref, [], name}
 
   @doc "A template helper for creating a reference to a related path"
-  def ref(path, name), do: {:_ref, path, name}
+  def ref(path, name) when is_list(path) and is_atom(name), do: {:_ref, path, name}
 
   @doc "A template helper for creating a parent reference"
   def parent(expr), do: {:_parent, [], expr}

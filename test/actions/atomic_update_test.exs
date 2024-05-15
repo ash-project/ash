@@ -129,8 +129,6 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
         |> Ash.Changeset.for_create(:create, %{name: "fred", score: 0})
         |> Ash.create!()
 
-      Logger.configure(level: :debug)
-
       assert Author.increment_score!(author).score == 1
       assert Author.increment_score!(author).score == 2
       assert Author.increment_score!(author).score == 3
