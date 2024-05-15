@@ -117,7 +117,7 @@ Most of the time, when you are using an expression, you will actually be creatin
 ^context(:key) # equivalent to `get_in(context, :key)`
 ^context([:key1, :key2]) # equivalent to `get_in(context, [:key1, :key2])`
 ^ref(:key) # equivalent to referring to `key`. Allows for dynamic references
-^ref(:key, [:path]) # equivalent to referring to `path.key`. Allows for dynamic references with dynamic (or static) paths.
+^ref([:path], :key) # equivalent to referring to `path.key`. Allows for dynamic references with dynamic (or static) paths.
 ```
 
 ## Custom Expressions
