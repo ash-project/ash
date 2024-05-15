@@ -2,9 +2,39 @@
 
 <!-- changelog -->
 
+## [v3.0.2](https://github.com/ash-project/ash/compare/v3.0.1...v3.0.2) (2024-05-15)
+
+
+### Improvements:
+
+* [Ash.Expr] add pattern matching for clarity on values accepted by `ref/1` and `ref/2`
+
+* [Ash.Expr] add `can_return_nil?/1` callback to Ash expressions, allowing for various optimizations
+
+* [Ash.Type.NewType] raise argument error on unknown options in `Ash.Type.NewType`. Helps with typos & misunderstandings
+
+* [embedded resources] use the `source` configuration for attributes in embedded resources (it was previously just ignored)
+
+* [Ash.Policy.Authorizer] better type specification for checks, to get better autocomplete and compile time validation
+
+* [Ash.Error.Invalid.NoSuchInput] added a `did_you_mean` field and used it in the error message
+
+### Bug Fixes:
+
+* [Ash.Resource] properly persist simple_notifiers (they were being ignored before)
+
+* [code interface] accept single ids in code interface as subject for destroy/update
+
+* [bulk update] ensure that the `changed?` context is set in after action hooks on batches
+
+* [relationships] allow for inferred domains when authorizing join queries
+
+* [Ash.Expr] don't treat `nil` as not a valid value when type casting lists
+
+* [atomic upgrade] keep data's metadata in atomic upgraded update (#1165)
+
+
 ## [v3.0.1](https://github.com/ash-project/ash/compare/v3.0.0...v3.0.1) (2024-05-14)
-
-
 
 
 ### Features:
@@ -13,7 +43,7 @@
 
 ### Bug Fixes:
 
-* [calculations] calculation eager evaluation bug caused `exists` to eager evaluate when we didn't actually have the related data 
+* [calculations] calculation eager evaluation bug caused `exists` to eager evaluate when we didn't actually have the related data
 
 * [field policies] fix field policy rewrite errors on non-success cases (#1163)
 
