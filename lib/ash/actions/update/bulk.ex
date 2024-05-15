@@ -1493,8 +1493,6 @@ defmodule Ash.Actions.Update.Bulk do
         context_key
       )
 
-    changesets_by_index = index_changesets(batch, context_key)
-
     run_batch(
       resource,
       batch,
@@ -1507,13 +1505,12 @@ defmodule Ash.Actions.Update.Bulk do
       metadata_key,
       context_key
     )
-    |> run_after_action_hooks(opts, domain, ref, changesets_by_index, metadata_key)
+    |> run_after_action_hooks(opts, domain, ref, metadata_key)
     |> process_results(
       changes,
       all_changes,
       opts,
       ref,
-      changesets_by_index,
       batch,
       metadata_key,
       resource,
@@ -1886,192 +1883,199 @@ defmodule Ash.Actions.Update.Bulk do
           Ash.Resource.ManualDestroy.Context
       end
 
-    batch
-    |> Enum.map(fn changeset ->
-      changeset = Ash.Changeset.hydrate_atomic_refs(changeset, opts[:actor], opts)
+    batch =
+      Enum.map(batch, fn changeset ->
+        changeset = Ash.Changeset.hydrate_atomic_refs(changeset, opts[:actor], opts)
 
-      if changeset.valid? do
-        {changeset, %{notifications: new_notifications}} =
-          Ash.Changeset.run_before_actions(changeset)
+        if changeset.valid? do
+          {changeset, %{notifications: new_notifications}} =
+            Ash.Changeset.run_before_actions(changeset)
 
-        changeset =
-          changeset
-          |> Ash.Changeset.handle_allow_nil_atomics(opts[:actor])
-          |> Ash.Changeset.require_values(
-            :update,
-            true
-          )
+          changeset =
+            changeset
+            |> Ash.Changeset.handle_allow_nil_atomics(opts[:actor])
+            |> Ash.Changeset.require_values(
+              :update,
+              true
+            )
 
-        changed? =
-          Ash.Changeset.changing_attributes?(changeset) or
-            not Enum.empty?(changeset.atomics)
+          changed? =
+            Ash.Changeset.changing_attributes?(changeset) or
+              not Enum.empty?(changeset.atomics)
 
-        changeset =
-          Ash.Changeset.put_context(changeset, :changed?, changed?)
+          changeset =
+            Ash.Changeset.put_context(changeset, :changed?, changed?)
 
-        new_notifications = store_notification(ref, new_notifications, opts)
+          new_notifications = store_notification(ref, new_notifications, opts)
 
-        {changeset, manage_notifications} =
-          if changeset.valid? do
-            case Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
-                   changeset,
-                   opts[:actor],
-                   authorize?: opts[:authorize?],
-                   actor: opts[:actor],
-                   tenant: opts[:tenant]
-                 ) do
-              {:error, error} ->
-                {Ash.Changeset.add_error(changeset, error), new_notifications}
+          {changeset, manage_notifications} =
+            if changeset.valid? do
+              case Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
+                     changeset,
+                     opts[:actor],
+                     authorize?: opts[:authorize?],
+                     actor: opts[:actor],
+                     tenant: opts[:tenant]
+                   ) do
+                {:error, error} ->
+                  {Ash.Changeset.add_error(changeset, error), new_notifications}
 
-              {changeset, manage_instructions} ->
-                {changeset, manage_instructions.notifications}
+                {changeset, manage_instructions} ->
+                  {changeset, manage_instructions.notifications}
+              end
+            else
+              {changeset, []}
             end
-          else
-            {changeset, []}
-          end
 
-        store_notification(ref, manage_notifications, opts)
+          store_notification(ref, manage_notifications, opts)
 
-        changeset
-      else
-        changeset
-      end
-    end)
-    |> Enum.reject(fn
-      %{valid?: false} = changeset ->
-        store_error(ref, changeset, opts)
-        true
+          changeset
+        else
+          changeset
+        end
+      end)
 
-      _changeset ->
-        false
-    end)
-    |> case do
-      [] ->
-        []
+    changesets_by_index = index_changesets(batch, context_key)
 
-      batch ->
-        batch
-        |> Enum.group_by(&{&1.atomics, &1.filter})
-        |> Enum.flat_map(fn {_atomics, batch} ->
-          result =
-            case action.manual do
-              {mod, opts} ->
-                if function_exported?(mod, context_key, 3) do
-                  apply(mod, context_key, [
-                    batch,
-                    opts,
-                    struct(context_struct,
-                      actor: opts[:actor],
-                      select: opts[:select],
-                      batch_size: opts[:batch_size],
-                      authorize?: opts[:authorize?],
-                      tracer: opts[:tracer],
-                      domain: domain,
-                      return_records?:
-                        opts[:return_records?] || must_return_records? ||
-                          must_return_records_for_changes?,
-                      tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
-                    )
-                  ])
-                  |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
-                  |> case do
-                    {:ok, result} ->
-                      [result]
+    batch =
+      batch
+      |> Enum.reject(fn
+        %{valid?: false} = changeset ->
+          store_error(ref, changeset, opts)
+          true
 
-                    :ok ->
-                      if opts[:return_records?] do
-                        raise "`#{inspect(mod)}.#{context_key}/3` returned :ok without a result when `return_records?` is true"
-                      else
-                        []
-                      end
+        _changeset ->
+          false
+      end)
+      |> case do
+        [] ->
+          []
 
-                    {:error, error} ->
-                      store_error(ref, error, opts)
-                      []
-
-                    {:notifications, notifications} ->
-                      store_notification(ref, notifications, opts)
-                      []
-                  end
-
-                  [changeset] = batch
-
-                  result =
-                    apply(mod, action.type, [
-                      changeset,
+        batch ->
+          batch
+          |> Enum.group_by(&{&1.atomics, &1.filter})
+          |> Enum.flat_map(fn {_atomics, batch} ->
+            result =
+              case action.manual do
+                {mod, opts} ->
+                  if function_exported?(mod, context_key, 3) do
+                    apply(mod, context_key, [
+                      batch,
                       opts,
-                      struct(context_struct, %{
-                        select: opts[:select],
+                      struct(context_struct,
                         actor: opts[:actor],
-                        tenant: opts[:tenant],
+                        select: opts[:select],
+                        batch_size: opts[:batch_size],
                         authorize?: opts[:authorize?],
                         tracer: opts[:tracer],
-                        domain: domain
-                      })
+                        domain: domain,
+                        return_records?:
+                          opts[:return_records?] || must_return_records? ||
+                            must_return_records_for_changes?,
+                        tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
+                      )
                     ])
+                    |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
+                    |> case do
+                      {:ok, result} ->
+                        [result]
 
-                  case result do
-                    {:ok, result} ->
-                      {:ok,
-                       [
-                         Ash.Resource.put_metadata(
-                           result,
-                           metadata_key,
-                           changeset.context[context_key].index
-                         )
-                       ]}
+                      :ok ->
+                        if opts[:return_records?] do
+                          raise "`#{inspect(mod)}.#{context_key}/3` returned :ok without a result when `return_records?` is true"
+                        else
+                          []
+                        end
+
+                      {:error, error} ->
+                        store_error(ref, error, opts)
+                        []
+
+                      {:notifications, notifications} ->
+                        store_notification(ref, notifications, opts)
+                        []
+                    end
+
+                    [changeset] = batch
+
+                    result =
+                      apply(mod, action.type, [
+                        changeset,
+                        opts,
+                        struct(context_struct, %{
+                          select: opts[:select],
+                          actor: opts[:actor],
+                          tenant: opts[:tenant],
+                          authorize?: opts[:authorize?],
+                          tracer: opts[:tracer],
+                          domain: domain
+                        })
+                      ])
+
+                    case result do
+                      {:ok, result} ->
+                        {:ok,
+                         [
+                           Ash.Resource.put_metadata(
+                             result,
+                             metadata_key,
+                             changeset.context[context_key].index
+                           )
+                         ]}
+
+                      {:error, error} ->
+                        {:error, error}
+                    end
+                  end
+
+                _ ->
+                  Enum.reduce_while(
+                    batch,
+                    {:ok, []},
+                    fn changeset, {:ok, results} ->
+                      resource
+                      |> Ash.DataLayer.update(changeset)
+                      |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
+                      |> case do
+                        {:ok, result} ->
+                          result =
+                            Ash.Resource.put_metadata(
+                              result,
+                              metadata_key,
+                              changeset.context[context_key].index
+                            )
+
+                          {:cont, {:ok, [result | results]}}
+
+                        {:error, %Ash.Error.Changes.StaleRecord{}} ->
+                          {:cont, {:ok, results}}
+
+                        {:error, error} ->
+                          {:halt, {:error, error}}
+                      end
+                    end
+                  )
+                  |> case do
+                    {:ok, results} ->
+                      {:ok, Enum.reverse(results)}
 
                     {:error, error} ->
                       {:error, error}
                   end
-                end
+              end
 
-              _ ->
-                Enum.reduce_while(
-                  batch,
-                  {:ok, []},
-                  fn changeset, {:ok, results} ->
-                    resource
-                    |> Ash.DataLayer.update(changeset)
-                    |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
-                    |> case do
-                      {:ok, result} ->
-                        result =
-                          Ash.Resource.put_metadata(
-                            result,
-                            metadata_key,
-                            changeset.context[context_key].index
-                          )
+            case result do
+              {:ok, result} ->
+                result
 
-                        {:cont, {:ok, [result | results]}}
-
-                      {:error, %Ash.Error.Changes.StaleRecord{}} ->
-                        {:cont, {:ok, results}}
-
-                      {:error, error} ->
-                        {:halt, {:error, error}}
-                    end
-                  end
-                )
-                |> case do
-                  {:ok, results} ->
-                    {:ok, Enum.reverse(results)}
-
-                  {:error, error} ->
-                    {:error, error}
-                end
+              {:error, error} ->
+                store_error(ref, error, opts)
+                []
             end
+          end)
+      end
 
-          case result do
-            {:ok, result} ->
-              result
-
-            {:error, error} ->
-              store_error(ref, error, opts)
-              []
-          end
-        end)
-    end
+    {batch, changesets_by_index}
   end
 
   defp manage_relationships(updated, domain, changeset, engine_opts) do
@@ -2089,47 +2093,48 @@ defmodule Ash.Actions.Update.Bulk do
   end
 
   defp run_after_action_hooks(
-         batch_results,
+         {batch_results, changesets_by_index},
          opts,
          domain,
          ref,
-         changesets_by_index,
          metadata_key
        ) do
-    Enum.flat_map(batch_results, fn result ->
-      changeset = changesets_by_index[result.__metadata__[metadata_key]]
+    results =
+      Enum.flat_map(batch_results, fn result ->
+        changeset = changesets_by_index[result.__metadata__[metadata_key]]
 
-      case manage_relationships(result, domain, changeset,
-             actor: opts[:actor],
-             authorize?: opts[:authorize?]
-           ) do
-        {:ok, result, %{notifications: new_notifications, new_changeset: changeset}} ->
-          store_notification(ref, new_notifications, opts)
+        case manage_relationships(result, domain, changeset,
+               actor: opts[:actor],
+               authorize?: opts[:authorize?]
+             ) do
+          {:ok, result, %{notifications: new_notifications, new_changeset: changeset}} ->
+            store_notification(ref, new_notifications, opts)
 
-          case Ash.Changeset.run_after_actions(result, changeset, []) do
-            {:error, error} ->
-              store_error(ref, error, opts)
-              []
+            case Ash.Changeset.run_after_actions(result, changeset, []) do
+              {:error, error} ->
+                store_error(ref, error, opts)
+                []
 
-            {:ok, result, _changeset, %{notifications: more_new_notifications}} ->
-              store_notification(ref, more_new_notifications, opts)
-              [result]
-          end
+              {:ok, result, _changeset, %{notifications: more_new_notifications}} ->
+                store_notification(ref, more_new_notifications, opts)
+                [result]
+            end
 
-        {:error, error} ->
-          store_error(ref, error, opts)
-          []
-      end
-    end)
+          {:error, error} ->
+            store_error(ref, error, opts)
+            []
+        end
+      end)
+
+    {results, changesets_by_index}
   end
 
   defp process_results(
-         batch,
+         {batch, changesets_by_index},
          changes,
          all_changes,
          opts,
          ref,
-         changesets_by_index,
          changesets,
          metadata_key,
          resource,
