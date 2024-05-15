@@ -4199,8 +4199,8 @@ defmodule Ash.Changeset do
 
               expr(
                 ^this_filter and
-                  (is_nil(^ref(relationship.destination_attribute, [])) or
-                     ^ref(relationship.destination_attribute, []) == ^destination_value)
+                  (is_nil(^ref(relationship.destination_attribute)) or
+                     ^ref(relationship.destination_attribute) == ^destination_value)
               )
             else
               this_filter
