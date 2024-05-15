@@ -483,14 +483,14 @@ end
 
 #### Keep the old behavior
 
-Each calculation can still opt into the old behavior by adding the callback `strict_loads/0` and returning `true`.
+Each calculation can still opt into the old behavior by adding the callback `strict_loads/0` and returning `false`.
 
 ```elixir
 def load(_, _, _) do
   [:relationship]
 end
 
-def strict_loads, do: true
+def strict_loads, do: false
 ```
 
 ---
