@@ -178,7 +178,8 @@ defmodule Ash.Actions.Read.Relationships do
               authorize?: source_query.context[:private][:authorize?],
               actor: source_query.context[:private][:actor],
               tenant: source_query.tenant,
-              tracer: source_query.context[:private][:tracer]
+              tracer: source_query.context[:private][:tracer],
+              domain: join_relationship.domain || related_query.domain
             )
             |> Ash.Query.set_context(%{
               accessing_from: %{source: relationship.source, name: relationship.join_relationship}
@@ -187,7 +188,6 @@ defmodule Ash.Actions.Read.Relationships do
               relationship.source_attribute_on_join_resource,
               relationship.destination_attribute_on_join_resource
             ])
-            |> Map.put(:domain, join_relationship.domain || related_query.domain)
             |> hydrate_refs(source_query.context[:private][:actor], relationship.source)
 
           if source_query.context[:private][:authorize?] do
@@ -400,10 +400,6 @@ defmodule Ash.Actions.Read.Relationships do
         relationship.source_attribute_on_join_resource,
         relationship.destination_attribute_on_join_resource
       ])
-      |> Map.put(
-        :domain,
-        Ash.Domain.Info.related_domain(related_query, join_relationship, related_query.domain)
-      )
 
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
@@ -413,7 +409,13 @@ defmodule Ash.Actions.Read.Relationships do
                authorize?: related_query.context[:private][:authorize?],
                actor: related_query.context[:private][:actor],
                tracer: related_query.context[:private][:tracer],
-               tenant: related_query.tenant
+               tenant: related_query.tenant,
+               domain:
+                 Ash.Domain.Info.related_domain(
+                   related_query,
+                   join_relationship,
+                   related_query.domain
+                 )
              ) do
           {:ok, join_records} ->
             {join_id_mapping, destination_ids} =
