@@ -798,11 +798,7 @@ defmodule Ash.CodeInterface do
                           {:atomic, :stream, list}
 
                         other ->
-                          if Keyword.keyword?(other) || is_map(other) do
-                            {:atomic, :id, other}
-                          else
-                            {:atomic, :stream, other}
-                          end
+                          {:atomic, :id, other}
                       end
                   end
                 else
@@ -1005,11 +1001,7 @@ defmodule Ash.CodeInterface do
                           {:atomic, :stream, list}
 
                         other ->
-                          if Keyword.keyword?(other) || is_map(other) do
-                            {:atomic, :id, other}
-                          else
-                            {:atomic, :stream, other}
-                          end
+                          {:atomic, :id, other}
                       end
                   end
                 else

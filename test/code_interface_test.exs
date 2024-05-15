@@ -303,6 +303,11 @@ defmodule Ash.Test.CodeInterfaceTest do
       assert %Ash.BulkResult{status: :success} = User.destroy!([bob3, bob4], context: @context)
     end
 
+    test "bulk destroy can take an id" do
+      bob1 = User.create!("bob", context: @context)
+      User.destroy!(bob1.id)
+    end
+
     test "bulk destroy can take an empty list" do
       assert %Ash.BulkResult{status: :success} = User.destroy([])
     end
