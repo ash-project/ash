@@ -116,6 +116,8 @@ defmodule Ash.Resource do
             has_domain?: Keyword.has_key?(opts, :domain),
             embed_nil_values?: opts[:embed_nil_values?]
           ] do
+      @persist {:simple_notifiers, List.wrap(opts[:simple_notifiers])}
+
       cond do
         embedded? && has_domain? ->
           raise """
@@ -161,11 +163,6 @@ defmodule Ash.Resource do
   def handle_before_compile(_opts) do
     quote do
       require Ash.Schema
-
-      new_notifiers =
-        @persist[:notifiers] ++ Module.get_attribute(__MODULE__, :simple_notifiers) || []
-
-      @persist {:notifiers, new_notifiers}
 
       Ash.Schema.define_schema()
 

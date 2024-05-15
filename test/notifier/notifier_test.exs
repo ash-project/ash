@@ -24,7 +24,7 @@ defmodule Ash.Test.NotifierTest do
     use Ash.Resource,
       domain: Domain,
       data_layer: Ash.DataLayer.Ets,
-      notifiers: [
+      simple_notifiers: [
         Notifier
       ]
 
@@ -97,7 +97,7 @@ defmodule Ash.Test.NotifierTest do
     use Ash.Resource,
       domain: Domain,
       data_layer: Ash.DataLayer.Ets,
-      notifiers: [
+      simple_notifiers: [
         Notifier
       ]
 
