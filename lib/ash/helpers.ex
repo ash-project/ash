@@ -488,7 +488,7 @@ defmodule Ash.Helpers do
   end
 
   def get_domain(resource, opts) do
-    opts[:domain] || domain_from_resource(resource)
+    domain_from_resource(resource) || opts[:domain]
   end
 
   defp domain_from_resource(resource) do
