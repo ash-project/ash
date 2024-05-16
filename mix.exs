@@ -45,6 +45,7 @@ defmodule Ash.MixProject do
         "documentation/topics/about_ash/what-is-ash.md",
         "documentation/topics/about_ash/design-principles.md",
         "documentation/topics/about_ash/contributing-to-ash.md",
+        "documentation/topics/about_ash/alternatives.md",
         "documentation/topics/resources/domains.md",
         "documentation/topics/resources/attributes.md",
         "documentation/topics/resources/relationships.md",
