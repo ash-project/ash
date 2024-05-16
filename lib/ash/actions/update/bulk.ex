@@ -44,6 +44,10 @@ defmodule Ash.Actions.Update.Bulk do
 
     fully_atomic_changeset =
       cond do
+        !Enum.empty?(query.before_action) || !Enum.empty?(query.after_action) ->
+          {:not_atomic,
+           "cannot atomically update a query if it has `before_action` or `after_action` hooks"}
+
         not_atomic_reason ->
           {:not_atomic, not_atomic_reason}
 

@@ -5119,33 +5119,39 @@ defmodule Ash.Changeset do
     if Ash.DataLayer.data_layer_can?(changeset.resource, :changeset_filter) do
       expression = Ash.Filter.parse!(changeset.resource, expression)
 
-      expression =
-        Ash.Expr.fill_template(
-          expression,
-          changeset.context[:private][:actor],
-          changeset.arguments,
-          changeset.context
-        )
+      actor = changeset.context[:private][:actor]
 
-      with {:ok, expression} <-
-             Ash.Filter.hydrate_refs(expression, %{
-               resource: changeset.resource,
-               public?: false
-             }),
-           {:ok, full_expression} <-
-             Ash.Filter.add_to_filter(
-               changeset.filter,
-               expression
-             ) do
-        %{changeset | filter: full_expression}
-        |> record_added_filter(expression)
+      if is_nil(actor) && Ash.Expr.template_references_actor?(expression) do
+        add_error(changeset, Ash.Error.Changes.ActionRequiresActor.exception([]))
       else
-        {:error, error} ->
-          Ash.Changeset.add_error(changeset, error)
+        expression =
+          Ash.Expr.fill_template(
+            expression,
+            actor,
+            changeset.arguments,
+            changeset.context
+          )
+
+        with {:ok, expression} <-
+               Ash.Filter.hydrate_refs(expression, %{
+                 resource: changeset.resource,
+                 public?: false
+               }),
+             {:ok, full_expression} <-
+               Ash.Filter.add_to_filter(
+                 changeset.filter,
+                 expression
+               ) do
+          %{changeset | filter: full_expression}
+          |> record_added_filter(expression)
+        else
+          {:error, error} ->
+            Ash.Changeset.add_error(changeset, error)
+        end
       end
     else
       IO.warn(
-        "Filters (used by optimistic locking) is not supported in the #{inspect(Ash.DataLayer.data_layer(changeset.resource))} data layer"
+        "changeset.filter is not supported by the #{inspect(Ash.DataLayer.data_layer(changeset.resource))} data layer"
       )
 
       changeset

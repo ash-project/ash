@@ -265,6 +265,10 @@ defmodule Ash.Expr do
   def can_return_nil?(_), do: true
 
   @doc "Whether or not a given template contains an actor reference"
+  def template_references?(%{__struct__: Ash.Filter, expression: expression}, pred) do
+    template_references?(expression, pred)
+  end
+
   def template_references?(%BooleanExpression{op: :and, left: left, right: right}, pred) do
     template_references?(left, pred) || template_references?(right, pred)
   end
