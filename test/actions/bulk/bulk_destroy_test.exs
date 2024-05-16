@@ -114,6 +114,9 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
         soft? true
         change set_attribute(:title2, "archived")
       end
+
+      destroy :forbidden_destroy do
+      end
     end
 
     identities do
@@ -123,6 +126,10 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     end
 
     policies do
+      policy action(:forbidden_destroy) do
+        authorize_if never()
+      end
+
       policy action(:destroy_with_policy) do
         authorize_if context_equals(:authorize?, true)
       end
@@ -522,5 +529,35 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              )
 
     assert [%{title: "bar"}] = Ash.read!(Post)
+  end
+
+  test "validates the passed-in action" do
+    bulk_result =
+      [%{title: "title1"}, %{title: "title2"}]
+      |> Ash.bulk_create!(Post, :create, return_records?: true)
+      |> Map.get(:records)
+      |> Ash.bulk_destroy(:this_is_not_an_actual_destroy_action, %{}, return_errors?: true)
+
+    # I'm not sure exactly what should be returned here, but something should
+    # go wrong when attempting to call an invalid action.
+    # I'm guessing it falls back to using the default destroy action.
+    assert bulk_result.status == :error
+    assert [] != bulk_result.errors
+
+    assert [%{title: "title1"}, %{title: "title2"}] = Ash.read!(Post)
+  end
+
+  test "skipping authorization checks is honoured" do
+    posts =
+      Ash.bulk_create!([%{title: "delete me"}], Post, :create, return_records?: true)
+      |> Map.get(:records)
+
+    result =
+      %Ash.BulkResult{} = Ash.bulk_destroy(posts, :forbidden_destroy, %{}, authorize?: false)
+
+    assert result.status == :success
+    assert result.error_count == 0
+
+    assert [] = Post.read!()
   end
 end
