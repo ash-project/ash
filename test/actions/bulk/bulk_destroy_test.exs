@@ -538,9 +538,6 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       |> Map.get(:records)
       |> Ash.bulk_destroy(:this_is_not_an_actual_destroy_action, %{}, return_errors?: true)
 
-    # I'm not sure exactly what should be returned here, but something should
-    # go wrong when attempting to call an invalid action.
-    # I'm guessing it falls back to using the default destroy action.
     assert bulk_result.status == :error
     assert [] != bulk_result.errors
 
