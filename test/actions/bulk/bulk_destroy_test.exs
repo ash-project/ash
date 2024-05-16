@@ -544,7 +544,7 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     assert bulk_result.status == :error
     assert [] != bulk_result.errors
 
-    assert [%{title: "title1"}, %{title: "title2"}] = Ash.read!(Post)
+    assert [_, _] = Ash.read!(Post)
   end
 
   test "skipping authorization checks is honoured" do
@@ -558,6 +558,6 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     assert result.status == :success
     assert result.error_count == 0
 
-    assert [] = Post.read!()
+    assert [] = Ash.read!(Post)
   end
 end

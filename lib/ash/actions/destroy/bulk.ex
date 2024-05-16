@@ -18,14 +18,20 @@ defmodule Ash.Actions.Destroy.Bulk do
         opts
       end
 
-    run(
-      domain,
-      stream,
-      Ash.Resource.Info.action(resource, action),
-      input,
-      opts,
-      not_atomic_reason
-    )
+    case Ash.Helpers.get_action(resource, opts, :destroy, action) do
+      {:ok, action} ->
+        run(
+          domain,
+          stream,
+          action,
+          input,
+          opts,
+          not_atomic_reason
+        )
+
+      {:error, error} ->
+        %Ash.BulkResult{status: :error, errors: [Ash.Error.to_error_class(error)]}
+    end
   end
 
   def run(domain, stream, nil, input, opts, not_atomic_reason) do
@@ -775,7 +781,7 @@ defmodule Ash.Actions.Destroy.Bulk do
             [
               actor: opts[:actor],
               authorize_query?: false,
-              authorize?: true,
+              authorize?: opts[:authorize?],
               tenant: atomic_changeset.tenant,
               tracer: opts[:tracer],
               atomic_changeset: atomic_changeset,
