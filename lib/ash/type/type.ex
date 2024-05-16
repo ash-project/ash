@@ -537,13 +537,22 @@ defmodule Ash.Type do
   end
 
   defp do_generator({:array, type}, constraints) do
-    generator = do_generator(type, item_constraints(constraints))
+    item_constraints = item_constraints(constraints)
+    generator = do_generator(type, item_constraints)
 
     generator =
       if constraints[:nil_items?] do
         StreamData.one_of([StreamData.constant(nil), generator])
       else
         generator
+        |> StreamData.filter(fn value ->
+          with {:ok, value} <- Ash.Type.cast_input(type, value, item_constraints),
+               {:ok, value} <- Ash.Type.apply_constraints(type, value, item_constraints) do
+            value != nil
+          else
+            _ -> true
+          end
+        end)
       end
 
     StreamData.list_of(generator, Keyword.take(constraints, [:max_length, :min_length]))
