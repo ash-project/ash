@@ -53,16 +53,42 @@ defmodule Ash.Resource.Validation.Changing do
   end
 
   @impl true
-  def atomic(_changeset, opts, context) do
-    {:atomic, [opts[:field]], expr(^atomic_ref(opts[:attribute]) == ^ref(opts[:attribute])),
-     expr(
-       error(^InvalidAttribute, %{
-         field: ^opts[:field],
-         value: ^atomic_ref(opts[:attribute]),
-         message: ^(context.message || "must be changing"),
-         vars: %{field: ^opts[:field]}
-       })
-     )}
+  def atomic(changeset, opts, context) do
+    case Ash.Resource.Info.relationship(changeset.resource, opts[:field]) do
+      nil ->
+        if Ash.Changeset.changing_attribute?(changeset, opts[:field]) do
+          {:atomic, [opts[:field]], expr(^atomic_ref(opts[:field]) == ^ref(opts[:field])),
+           expr(
+             error(^InvalidAttribute, %{
+               field: ^opts[:field],
+               value: ^atomic_ref(opts[:field]),
+               message: ^(context.message || "must be changing"),
+               vars: %{field: ^opts[:field]}
+             })
+           )}
+        else
+          {:error, exception(opts)}
+        end
+
+      %{type: :belongs_to, source_attribute: source_attribute} ->
+        if Ash.Changeset.changing_attribute?(changeset, source_attribute) do
+          {:atomic, [source_attribute],
+           expr(^atomic_ref(source_attribute) == ^ref(source_attribute)),
+           expr(
+             error(^InvalidAttribute, %{
+               field: ^opts[:field],
+               value: ^atomic_ref(opts[:field]),
+               message: ^(context.message || "must be changing"),
+               vars: %{field: ^opts[:field]}
+             })
+           )}
+        else
+          {:error, exception(opts)}
+        end
+
+      relationship ->
+        {:not_atomic, "can't atomically check if #{relationship.name} relationship is changing"}
+    end
   end
 
   @impl true
