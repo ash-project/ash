@@ -828,7 +828,7 @@ defmodule Ash.CodeInterface do
                         |> Enum.concat(changeset_opts)
                         |> Keyword.put(:resource, unquote(resource))
                         |> then(fn bulk_opts ->
-                          if method == :id do
+                          if method == :id || unquote(interface.get?) do
                             bulk_opts
                             |> Keyword.put(:return_records?, true)
                             |> Keyword.put(:return_errors?, true)
@@ -891,7 +891,7 @@ defmodule Ash.CodeInterface do
                         |> Enum.concat(changeset_opts)
                         |> Keyword.put(:resource, unquote(resource))
                         |> then(fn bulk_opts ->
-                          if method == :id do
+                          if method == :id || unquote(interface.get?) do
                             bulk_opts
                             |> Keyword.put(:return_records?, true)
                             |> Keyword.put(:return_errors?, true)
@@ -1031,7 +1031,7 @@ defmodule Ash.CodeInterface do
                         |> Enum.concat(changeset_opts)
                         |> Keyword.put(:resource, unquote(resource))
                         |> then(fn bulk_opts ->
-                          if method == :id do
+                          if method == :id || unquote(interface.get?) do
                             bulk_opts
                             |> Keyword.put(:return_records?, opts[:return_destroyed?])
                             |> Keyword.put(:return_errors?, true)
@@ -1099,7 +1099,7 @@ defmodule Ash.CodeInterface do
                         |> Enum.concat(changeset_opts)
                         |> Keyword.put(:resource, unquote(resource))
                         |> then(fn bulk_opts ->
-                          if method == :id do
+                          if method == :id || unquote(interface.get?) do
                             bulk_opts
                             |> Keyword.put(:return_records?, opts[:return_destroyed?])
                             |> Keyword.put(:return_errors?, true)

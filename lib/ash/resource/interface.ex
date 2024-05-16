@@ -153,6 +153,7 @@ defmodule Ash.Resource.Interface do
     ],
     get?: [
       type: :boolean,
+      default: false,
       doc: """
       Expects to only receive a single result from a read action or a bulk update/destroy, and returns a single result instead of a list. Sets `require_reference?` to false automatically.
       """
