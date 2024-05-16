@@ -3397,7 +3397,7 @@ defmodule Ash.Changeset do
         case result do
           {:ok, new_result, new_notifications} ->
             all_notifications =
-              Enum.map(notifications ++ new_notifications, fn notification ->
+              Enum.map(notifications ++ List.wrap(new_notifications), fn notification ->
                 %{
                   notification
                   | resource: notification.resource || changeset.resource,

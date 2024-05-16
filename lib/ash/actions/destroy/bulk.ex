@@ -282,9 +282,10 @@ defmodule Ash.Actions.Destroy.Bulk do
 
           notifications =
             if notify? do
-              List.wrap(bulk_result.notifications) ++ Process.delete(:ash_notifications)
+              List.wrap(bulk_result.notifications) ++
+                List.wrap(Process.delete(:ash_notifications))
             else
-              List.wrap(bulk_result.notifications)
+              []
             end
 
           if opts[:return_notifications?] do
@@ -401,8 +402,8 @@ defmodule Ash.Actions.Destroy.Bulk do
               %{
                 bulk_result
                 | notifications:
-                    (bulk_result.notifications || []) ++ Process.delete(:ash_notifications) ||
-                      []
+                    (bulk_result.notifications || []) ++
+                      List.wrap(Process.delete(:ash_notifications))
               }
             else
               bulk_result
@@ -1426,7 +1427,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
   defp errors(result, {:error, error}, opts) do
     if opts[:return_errors?] do
-      {result.error_count + 1, [error | result.errors]}
+      {result.error_count + 1, [error | List.wrap(result.errors)]}
     else
       {result.error_count + 1, []}
     end
@@ -1546,9 +1547,9 @@ defmodule Ash.Actions.Destroy.Bulk do
 
       new_notifications =
         if is_list(notification) do
-          notification ++ notifications
+          notification ++ List.wrap(notifications)
         else
-          [notification | notifications]
+          [notification | List.wrap(notifications)]
         end
 
       Process.put({:bulk_destroy_notifications, ref}, new_notifications)

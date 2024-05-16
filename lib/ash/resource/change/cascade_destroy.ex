@@ -90,7 +90,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
 
       case {destroy_related(records, opts, context), opts[:return_notifications?]} do
         {_, false} -> result
-        {%{notifications: []}, true} -> result
+        {%{notifications: empty}, true} when empty in [nil, []] -> result
         {%{notifications: notifications}, true} -> Enum.concat(result, notifications)
       end
     else
