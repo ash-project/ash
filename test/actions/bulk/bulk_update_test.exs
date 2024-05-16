@@ -594,6 +594,11 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     assert_receive {:error, _}
   end
 
+  test "works with empty list without the need to define a domain" do
+    assert %Ash.BulkResult{records: []} =
+             Ash.bulk_update!([], :update, %{title2: 3}, return_records?: true)
+  end
+
   describe "authorization" do
     test "policy success results in successes" do
       assert %Ash.BulkResult{records: [_, _], errors: []} =

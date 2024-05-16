@@ -2255,7 +2255,6 @@ defmodule Ash do
   @doc spark_opts: [{3, @bulk_update_opts_schema}]
   def bulk_update(query_or_stream, action, input, opts \\ []) do
     Ash.Helpers.expect_options!(opts)
-    domain = Ash.Helpers.domain!(query_or_stream, opts)
 
     case query_or_stream do
       [] ->
@@ -2275,6 +2274,8 @@ defmodule Ash do
         end
 
       query_or_stream ->
+        domain = Ash.Helpers.domain!(query_or_stream, opts)
+
         with {:ok, opts} <- Spark.Options.validate(opts, @bulk_update_opts_schema),
              {:ok, resource} <-
                Ash.Helpers.resource_from_query_or_stream(domain, query_or_stream, opts) do
@@ -2353,7 +2354,6 @@ defmodule Ash do
   @doc spark_opts: [{3, @bulk_destroy_opts_schema}]
   def bulk_destroy(query_or_stream, action, input, opts \\ []) do
     Ash.Helpers.expect_options!(opts)
-    domain = Ash.Helpers.domain!(query_or_stream, opts)
 
     case query_or_stream do
       [] ->
@@ -2373,6 +2373,8 @@ defmodule Ash do
         end
 
       query_or_stream ->
+        domain = Ash.Helpers.domain!(query_or_stream, opts)
+
         with {:ok, opts} <- Spark.Options.validate(opts, @bulk_destroy_opts_schema),
              {:ok, resource} <-
                Ash.Helpers.resource_from_query_or_stream(domain, query_or_stream, opts) do

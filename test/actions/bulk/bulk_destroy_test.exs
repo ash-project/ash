@@ -413,6 +413,11 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              end)
   end
 
+  test "works with empty list without the need to define a domain" do
+    assert %Ash.BulkResult{records: []} =
+             Ash.bulk_destroy!([], :destroy, %{}, return_records?: true)
+  end
+
   describe "authorization" do
     test "policy success results in successes" do
       assert %Ash.BulkResult{records: [_, _], errors: []} =
