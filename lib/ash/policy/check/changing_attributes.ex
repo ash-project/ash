@@ -29,7 +29,11 @@ defmodule Ash.Policy.Check.ChangingAttributes do
   def filter(_actor, %{changeset: %Ash.Changeset{} = changeset}, options) do
     Enum.reduce_while(options[:changing], true, fn {attribute, opts}, expr ->
       if Keyword.has_key?(opts, :from) && changeset.action_type == :create do
-        {:halt, false}
+        if opts[:from] == nil do
+          {:halt, false}
+        else
+          {:cont, expr}
+        end
       else
         if Ash.Changeset.changing_attribute?(changeset, attribute) do
           case {Keyword.fetch(opts, :from), Keyword.fetch(opts, :to)} do
