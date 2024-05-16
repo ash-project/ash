@@ -713,10 +713,26 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp run_atomic_validation(
+  defp run_atomic_validation(changeset, %{where: where} = validation, context) do
+    with {:atomic, condition} <- atomic_condition(where, changeset, context) do
+      case condition do
+        false ->
+          changeset
+
+        true ->
+          do_run_atomic_validation(changeset, validation, context)
+
+        where_condition ->
+          do_run_atomic_validation(changeset, validation, context, where_condition)
+      end
+    end
+  end
+
+  defp do_run_atomic_validation(
          changeset,
-         %{validation: {module, validation_opts}, where: where, message: message},
-         context
+         %{validation: {module, validation_opts}, message: message},
+         context,
+         where_condition \\ nil
        ) do
     case List.wrap(
            module.atomic(
@@ -726,42 +742,19 @@ defmodule Ash.Changeset do
            )
          ) do
       [{:atomic, _, _, _} | _] = atomics ->
-        Enum.reduce_while(atomics, changeset, fn
+        Enum.reduce(atomics, changeset, fn
           {:atomic, _fields, condition_expr, error_expr}, changeset ->
+            condition_expr =
+              if where_condition do
+                expr(^where_condition and ^condition_expr)
+              else
+                condition_expr
+              end
+
             condition_expr = rewrite_atomics(changeset, condition_expr)
 
-            Ash.Expr.walk_template(condition_expr, fn
-              {:_atomic_ref, field} ->
-                atomic_ref(changeset, field)
-
-              other ->
-                other
-            end)
-
-            case atomic_condition(where, changeset, context) do
-              {:atomic, condition} ->
-                case condition do
-                  true ->
-                    {:cont, validate_atomically(changeset, condition_expr, error_expr)}
-
-                  false ->
-                    {:cont, changeset}
-
-                  condition ->
-                    condition_expr =
-                      expr(^condition and ^condition_expr)
-
-                    {:cont, validate_atomically(changeset, condition_expr, error_expr)}
-                end
-
-              {:not_atomic, reason} ->
-                {:halt, {:not_atomic, reason}}
-            end
+            validate_atomically(changeset, condition_expr, error_expr)
         end)
-        |> case do
-          {:not_atomic, reason} -> {:not_atomic, reason}
-          changeset -> changeset
-        end
 
       [:ok] ->
         changeset
@@ -884,6 +877,12 @@ defmodule Ash.Changeset do
              validation_opts,
              struct(Ash.Resource.Validation.Context, context)
            ) do
+        :ok ->
+          {:cont, {:atomic, condition}}
+
+        {:error, _} ->
+          {:cont, {:atomic, false}}
+
         {:atomic, _, expr, _as_error} ->
           new_expr =
             if condition == true do

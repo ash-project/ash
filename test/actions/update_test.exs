@@ -117,6 +117,18 @@ defmodule Ash.Test.Actions.UpdateTest do
         validate compare(:score, greater_than_or_equal_to: 0, less_than_or_equal_to: 10)
       end
 
+      update :with_partially_atomic_validation do
+        accept([:name])
+
+        argument :match?, :boolean do
+          allow_nil? false
+        end
+
+        validate match(:name, ~r/[a-z]+/) do
+          where argument_equals(:match?, true)
+        end
+      end
+
       update :duplicate_name do
         require_atomic? false
         change {DuplicateName, []}
@@ -384,6 +396,27 @@ defmodule Ash.Test.Actions.UpdateTest do
         )
 
       assert changeset.valid?
+    end
+
+    test "where condition is considered before checking validation atomicity" do
+      changeset =
+        Ash.Changeset.fully_atomic_changeset(
+          Author,
+          :with_partially_atomic_validation,
+          %{match?: false},
+          eager?: false
+        )
+
+      assert changeset.valid?
+
+      # match validation can't be run atomically if the attribute is not changing
+      assert {:not_atomic, _} =
+               Ash.Changeset.fully_atomic_changeset(
+                 Author,
+                 :with_partially_atomic_validation,
+                 %{match?: true},
+                 eager?: false
+               )
     end
   end
 
