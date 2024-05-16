@@ -10,7 +10,7 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
     use Ash.Notifier
 
     def notify(notification) do
-      if notification.action.type == :destroy do
+      if notification.action.name == :destroy do
         Agent.update(
           Test.Agent,
           &%{&1 | notifications: MapSet.put(&1.notifications, notification.data.id)}
@@ -36,6 +36,13 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
         primary? true
         change cascade_destroy(:posts, return_notifications?: true)
       end
+
+      destroy :no_notification_destroy do
+        change cascade_destroy(:posts,
+                 return_notifications?: true,
+                 action: :no_notification_destroy
+               )
+      end
     end
 
     relationships do
@@ -45,6 +52,7 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
     code_interface do
       define :create
       define :destroy
+      define :no_notification_destroy
       define :read
     end
   end
@@ -72,6 +80,9 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
 
                  changeset
                end)
+      end
+
+      destroy :no_notification_destroy do
       end
     end
 
@@ -125,5 +136,43 @@ defmodule Ash.Test.Resource.Change.CascadeDestroy do
     notified_ids = Agent.get(Test.Agent, & &1.notifications)
 
     assert MapSet.equal?(post_ids, notified_ids)
+  end
+
+  test "does not error when notifications are requested but none are returned - bulk" do
+    author = Author.create!(%{})
+
+    1..Enum.random(3..5)
+    |> Enum.map(fn _ -> Post.create!(%{author_id: author.id}) end)
+
+    # This doesn't work either
+    # Author.no_notification_destroy!([author])
+    Ash.bulk_destroy!([author], :no_notification_destroy, %{})
+
+    assert [] = Post.read!()
+    assert [] = Author.read!()
+  end
+
+  test "does not error when notifications are requested but none are returned - single" do
+    author = Author.create!(%{})
+
+    1..Enum.random(3..5)
+    |> Enum.map(fn _ -> Post.create!(%{author_id: author.id}) end)
+
+    Author.no_notification_destroy!(author)
+
+    assert [] = Post.read!()
+    assert [] = Author.read!()
+  end
+
+  test "does not error when there is nothing to cascade destroy - resource provided" do
+    author = Author.create!(%{})
+    Author.destroy!(author)
+    assert [] = Author.read!()
+  end
+
+  test "does not error when there is nothing to cascade destroy - ID provided" do
+    author = Author.create!(%{})
+    Author.destroy!(author.id)
+    assert [] = Author.read!()
   end
 end
