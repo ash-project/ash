@@ -7,7 +7,7 @@ Most destroy actions are one-liners, for example:
 ```elixir
 destroy :destroy
 # Can be added with the defaults
-defualts [:read, :destroy]
+defaults [:read, :destroy]
 ```
 
 ## Soft Destroy
