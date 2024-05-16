@@ -850,7 +850,7 @@ defmodule Ash.CodeInterface do
                           |> Ash.bulk_update(unquote(action.name), params, bulk_opts)
                           |> case do
                             %Ash.BulkResult{} = result
-                            when method in [:stream, :query] ->
+                            when method in [:stream, :query] and not unquote(interface.get?) ->
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
@@ -913,7 +913,7 @@ defmodule Ash.CodeInterface do
                           |> Ash.bulk_update!(unquote(action.name), params, bulk_opts)
                           |> case do
                             %Ash.BulkResult{} = result
-                            when method in [:stream, :query] ->
+                            when method in [:stream, :query] and not unquote(interface.get?) ->
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
@@ -1053,7 +1053,7 @@ defmodule Ash.CodeInterface do
                           |> Ash.bulk_destroy(unquote(action.name), params, bulk_opts)
                           |> case do
                             %Ash.BulkResult{} = result
-                            when method in [:stream, :query] ->
+                            when method in [:stream, :query] and not unquote(interface.get?) ->
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
@@ -1121,7 +1121,7 @@ defmodule Ash.CodeInterface do
                           |> Ash.bulk_destroy!(unquote(action.name), params, bulk_opts)
                           |> case do
                             %Ash.BulkResult{} = result
-                            when method in [:stream, :query] ->
+                            when method in [:stream, :query] and not unquote(interface.get?) ->
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
