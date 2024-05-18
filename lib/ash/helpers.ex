@@ -597,4 +597,9 @@ defmodule Ash.Helpers do
   end
 
   def deep_merge_maps(_left, right), do: right
+
+  @doc false
+  def redact(_value) do
+    "**redacted**"
+  end
 end
