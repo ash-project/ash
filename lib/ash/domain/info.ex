@@ -8,7 +8,7 @@ defmodule Ash.Domain.Info do
   @doc """
   Gets the resources of a domain module.
   """
-  @spec resources(Ash.Domain.t()) :: list(Ash.Resource.t())
+  @spec resources(Spark.Dsl.t() | Ash.Domain.t()) :: list(Ash.Resource.t())
   def resources(domain) do
     domain
     |> Extension.get_entities([:resources])
@@ -20,7 +20,8 @@ defmodule Ash.Domain.Info do
 
   If you need the resource list at compile time, use `depend_on_resources/1`
   """
-  @spec resource_references(Ash.Domain.t()) :: list(Ash.Domain.Dsl.ResourceReference.t())
+  @spec resource_references(Spark.Dsl.t() | Ash.Domain.t()) ::
+          list(Ash.Domain.Dsl.ResourceReference.t())
   def resource_references(domain) do
     Extension.get_entities(domain, [:resources])
   end

@@ -2021,11 +2021,19 @@ defmodule Ash.Query do
   @build_opts [
     filter: [
       type: :any,
-      doc: "A filter keyword, expression or %Ash.Filter{}"
+      doc: "A filter keyword, map or expression"
+    ],
+    filter_input: [
+      type: :any,
+      doc: "A filter keyword or map, provided as input from an external source"
     ],
     sort: [
       type: :any,
       doc: "A sort list or keyword"
+    ],
+    sort_input: [
+      type: :any,
+      doc: "A sort list or keyword, provided as input from an external source"
     ],
     distinct_sort: [
       type: :any,
@@ -2117,8 +2125,14 @@ defmodule Ash.Query do
       {:filter, value}, query ->
         do_filter(query, value)
 
+      {:filter_input, value}, query ->
+        filter_input(query, value)
+
       {:sort, value}, query ->
         sort(query, value)
+
+      {:sort_input, value}, query ->
+        sort_input(query, value)
 
       {:distinct_sort, value}, query ->
         distinct_sort(query, value)
