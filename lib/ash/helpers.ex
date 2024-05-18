@@ -599,7 +599,11 @@ defmodule Ash.Helpers do
   def deep_merge_maps(_left, right), do: right
 
   @doc false
-  def redact(_value) do
-    "**redacted**"
+  def redact(value) do
+    if Application.get_env(:ash, :show_sensitive?, false) do
+      value
+    else
+      "**redacted**"
+    end
   end
 end
