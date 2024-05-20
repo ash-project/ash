@@ -1420,40 +1420,6 @@ defmodule Ash.Test.Actions.LoadTest do
              } = author1.posts
     end
 
-    test "returns error when requesting count" do
-      Author
-      |> Ash.Changeset.for_create(:create, %{name: "a"})
-      |> Ash.create!()
-
-      paginated_posts =
-        Post
-        |> Ash.Query.page(limit: 1, count: true)
-
-      assert {:error,
-              %Ash.Error.Unknown{
-                errors: [
-                  %Ash.Error.Unknown.UnknownError{
-                    error: "Cannot request count when paginating relationships"
-                  }
-                ]
-              }} =
-               Author
-               |> Ash.Query.load(posts: paginated_posts)
-               |> Ash.read()
-
-      assert {:error,
-              %Ash.Error.Unknown{
-                errors: [
-                  %Ash.Error.Unknown.UnknownError{
-                    error: "Cannot request count when paginating relationships"
-                  }
-                ]
-              }} =
-               Author
-               |> Ash.read!()
-               |> Ash.load(posts: paginated_posts)
-    end
-
     test "doesn't honor required? pagination to maintain backwards compatibility" do
       author =
         Author
@@ -1473,6 +1439,152 @@ defmodule Ash.Test.Actions.LoadTest do
                Author
                |> Ash.read!()
                |> Ash.load!(posts: posts)
+    end
+
+    test "it allows counting has_many relationships" do
+      author1 =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "a"})
+        |> Ash.create!()
+
+      author2 =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "b"})
+        |> Ash.create!()
+
+      for i <- 1..3 do
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "author1 post#{i}", author_id: author1.id})
+        |> Ash.create!()
+      end
+
+      for i <- 1..6 do
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "author2 post#{i}", author_id: author2.id})
+        |> Ash.create!()
+      end
+
+      paginated_posts =
+        Post
+        |> Ash.Query.page(limit: 2, offset: 2, count: true)
+
+      assert [author1, author2] =
+               Author
+               |> Ash.Query.sort(:name)
+               |> Ash.Query.load(posts: paginated_posts)
+               |> Ash.read!()
+
+      assert %Ash.Page.Offset{count: 3} = author1.posts
+      assert %Ash.Page.Offset{count: 6} = author2.posts
+    end
+
+    test "it allows counting many_to_many relationships" do
+      categories =
+        for i <- 1..9 do
+          Category
+          |> Ash.Changeset.for_create(:create, %{name: "category#{i}"})
+          |> Ash.create!()
+        end
+
+      categories_1_to_3 = Enum.take(categories, 3)
+      categories_4_to_9 = Enum.slice(categories, 3..9)
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "a"})
+      |> Ash.Changeset.manage_relationship(:categories, categories_1_to_3,
+        type: :append_and_remove
+      )
+      |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "b"})
+      |> Ash.Changeset.manage_relationship(:categories, categories_4_to_9,
+        type: :append_and_remove
+      )
+      |> Ash.create!()
+
+      paginated_categories =
+        Category
+        |> Ash.Query.page(limit: 2, count: true)
+        |> Ash.Query.sort(:name)
+
+      assert [post1, post2] =
+               Post
+               |> Ash.Query.sort(:title)
+               |> Ash.Query.load(categories: paginated_categories)
+               |> Ash.read!()
+
+      assert %Ash.Page.Offset{count: 3} = post1.categories
+      assert %Ash.Page.Offset{count: 6} = post2.categories
+    end
+
+    test "allows counting nested relationships" do
+      author1 =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "a"})
+        |> Ash.create!()
+
+      _author2 =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "b"})
+        |> Ash.create!()
+
+      categories =
+        for i <- 1..3 do
+          Category
+          |> Ash.Changeset.for_create(:create, %{name: "category#{i}"})
+          |> Ash.create!()
+        end
+
+      for i <- 1..5 do
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "author1 post#{i}", author_id: author1.id})
+        |> Ash.Changeset.manage_relationship(:categories, categories, type: :append_and_remove)
+        |> Ash.create!()
+      end
+
+      paginated_categories =
+        Category
+        |> Ash.Query.page(limit: 1, count: true)
+
+      paginated_posts =
+        Post
+        |> Ash.Query.load(categories: paginated_categories)
+        |> Ash.Query.page(limit: 1, count: true)
+
+      assert %Ash.Page.Offset{results: [author1], count: 2} =
+               Author
+               |> Ash.Query.sort(:name)
+               |> Ash.Query.load(posts: paginated_posts)
+               |> Ash.read!(page: [limit: 1, count: true])
+
+      assert %Ash.Page.Offset{count: 5, results: [%{categories: %Ash.Page.Offset{count: 3}}]} =
+               author1.posts
+    end
+
+    test "doesn't leak the internal count aggregate when counting" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "a"})
+        |> Ash.create!()
+
+      for i <- 1..3 do
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "author1 post#{i}", author_id: author.id})
+        |> Ash.create!()
+      end
+
+      paginated_posts =
+        Post
+        |> Ash.Query.page(limit: 2, offset: 2, count: true)
+
+      assert [author] =
+               Author
+               |> Ash.Query.load(posts: paginated_posts)
+               |> Ash.read!()
+
+      assert %Ash.Page.Offset{count: 3} = author.posts
+      assert %{} == author.aggregates
     end
   end
 end

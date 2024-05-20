@@ -427,6 +427,7 @@ defmodule Ash.Actions.Read do
              ),
            query <- Map.put(query, :filter, filter),
            query <- Ash.Query.unset(query, :calculations),
+           query <- add_relationship_count_aggregates(query),
            {%{valid?: true} = query, before_notifications} <- run_before_action(query),
            {:ok, count} <-
              fetch_count(
@@ -477,6 +478,48 @@ defmodule Ash.Actions.Read do
           {:error, error}
       end
     end)
+  end
+
+  defp add_relationship_count_aggregates(query) do
+    Enum.reduce(query.load, query, fn {relationship_name, related_query}, query ->
+      relationship = Ash.Resource.Info.relationship(query.resource, relationship_name)
+
+      related_query =
+        case related_query do
+          [] -> Ash.Query.new(relationship.destination)
+          query -> query
+        end
+
+      needs_count? = related_query.page && related_query.page[:count] == true
+
+      if needs_count? do
+        related_query =
+          Ash.Query.unset(related_query, [
+            :sort,
+            :distinct,
+            :distinct_sort,
+            :lock,
+            :load,
+            :page,
+            :aggregates
+          ])
+
+        aggregate_name = paginated_relationship_count_aggregate_name(relationship.name)
+
+        query
+        |> Ash.Query.aggregate(aggregate_name, :count, relationship.name,
+          query: related_query,
+          default: 0
+        )
+      else
+        query
+      end
+    end)
+  end
+
+  @doc false
+  def paginated_relationship_count_aggregate_name(relationship_name) do
+    "__paginated_#{relationship_name}_count__"
   end
 
   @doc false
@@ -1403,7 +1446,7 @@ defmodule Ash.Actions.Read do
         data
 
       opts[:return_unpaged?] && original_query.page[:limit] ->
-        Ash.Page.Unpaged.new(data, count, opts)
+        Ash.Page.Unpaged.new(data, opts)
 
       original_query.page[:limit] ->
         to_page(data, action, count, sort, original_query, opts)
@@ -1785,7 +1828,8 @@ defmodule Ash.Actions.Read do
 
     cond do
       Map.has_key?(query.context, :accessing_from) and needs_count? ->
-        {:error, "Cannot request count when paginating relationships"}
+        # Relationship count is fetched by the parent using aggregates, just return nil here
+        {:ok, {:ok, nil}}
 
       needs_count? ->
         with {:ok, filter} <-

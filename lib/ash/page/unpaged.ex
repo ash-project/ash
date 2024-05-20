@@ -3,12 +3,11 @@ defmodule Ash.Page.Unpaged do
   # related records and then paged
   @moduledoc false
 
-  defstruct [:related_records, :count, :opts]
+  defstruct [:related_records, :opts]
 
-  def new(related_records, count, opts) do
+  def new(related_records, opts) do
     %__MODULE__{
       related_records: related_records,
-      count: count,
       opts: Keyword.delete(opts, :return_unpaged?)
     }
   end
