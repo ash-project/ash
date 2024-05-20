@@ -38,6 +38,16 @@ defmodule Ash.Test.Sort.SortTest do
     end
   end
 
+  describe "sort input" do
+    test "simple string sort parses properly" do
+      assert %{sort: [title: :asc, contents: :desc]} = Ash.Query.sort_input(Post, "+title,-contents")
+    end
+
+    test "a list of string sorts parse properly" do
+      assert %{sort: [title: :asc, contents: :desc]} = Ash.Query.sort_input(Post, ["+title", "-contents"])
+    end
+  end
+
   describe "parse_input/2" do
     test "simple string sort parses properly" do
       assert {:ok, [title: :asc, contents: :desc]} =

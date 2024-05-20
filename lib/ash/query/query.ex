@@ -312,25 +312,30 @@ defmodule Ash.Query do
         else
           last_index = Enum.count(List.wrap(query.sort))
 
-          sorts
-          |> List.wrap()
-          |> Enum.with_index(last_index)
-          |> Enum.reduce(query, fn
-            {{sort, direction}, index}, query ->
-              %{
-                query
-                | sort: query.sort ++ [{sort, direction}],
-                  sort_input_indices: query.sort_input_indices ++ [index]
-              }
+          case Ash.Sort.parse_input(query.resource, sorts) do
+            {:ok, sorts} ->
+              sorts
+              |> List.wrap()
+              |> Enum.with_index(last_index)
+              |> Enum.reduce(query, fn
+                {{sort, direction}, index}, query ->
+                  %{
+                    query
+                    | sort: query.sort ++ [{sort, direction}],
+                      sort_input_indices: query.sort_input_indices ++ [index]
+                  }
 
-            {sort, index}, query ->
-              %{
-                query
-                | sort: query.sort ++ [{sort, :asc}],
-                  sort_input_indices: query.sort_input_indices ++ [index]
-              }
-          end)
-          |> validate_sort()
+                {sort, index}, query ->
+                  %{
+                    query
+                    | sort: query.sort ++ [{sort, :asc}],
+                      sort_input_indices: query.sort_input_indices ++ [index]
+                  }
+              end)
+              |> validate_sort()
+            {:error, error} ->
+              Ash.Query.add_error(query, :sort, error)
+          end
         end
       else
         add_error(query, :sort, "Data layer does not support sorting")
