@@ -333,6 +333,7 @@ defmodule Ash.Query do
                   }
               end)
               |> validate_sort()
+
             {:error, error} ->
               Ash.Query.add_error(query, :sort, error)
           end
