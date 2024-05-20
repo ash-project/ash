@@ -163,9 +163,7 @@ defmodule Ash.Generator do
   Generate input meant to be passed into a resource action.
 
   Currently input for arguments that are passed to a `manage_relationship` are excluded, and you will
-  have to generate them yourself by passing your own generators/values down See the module documentation for more.
-
-  This is meant to be used in property testing. If you want to generate a finite list of
+  have to generate them yourself by passing your own generators/values down. See the module documentation for more.
   """
   def action_input(resource_or_record, action, generators \\ %{}) do
     resource =
