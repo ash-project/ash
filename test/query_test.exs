@@ -76,21 +76,6 @@ defmodule Ash.Test.QueryTest do
       refute concat =~ "fred"
       assert concat =~ "**redacted**"
     end
-
-    test "it doesn't hide the value in filters with show_sensitive? config" do
-      Application.put_env(:ash, :show_sensitive?, true)
-
-      equals = Ash.Query.filter(User, email == "fred") |> inspect()
-      assert equals =~ "fred"
-
-      contains = Ash.Query.filter(User, contains(email, "fred")) |> inspect()
-      assert contains =~ "fred"
-
-      concat = Ash.Query.filter(User, email <> "-fred" == "a@b.com-fred") |> inspect()
-      assert concat =~ "fred"
-
-      Application.put_env(:ash, :show_sensitive?, false)
-    end
   end
 
   describe "loading?" do
