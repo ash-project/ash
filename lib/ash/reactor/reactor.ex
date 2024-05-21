@@ -18,7 +18,15 @@ defmodule Ash.Reactor do
       ]
     ]
   }
-  @type action :: Ash.Reactor.Dsl.Create.t() | Ash.Reactor.Dsl.Update.t()
+  @type action ::
+          Ash.Reactor.Dsl.Action.t()
+          | Ash.Reactor.Dsl.BulkCreate.t()
+          | Ash.Reactor.Dsl.BulkUpdate.t()
+          | Ash.Reactor.Dsl.Create.t()
+          | Ash.Reactor.Dsl.Destroy.t()
+          | Ash.Reactor.Dsl.Read.t()
+          | Ash.Reactor.Dsl.ReadOne.t()
+          | Ash.Reactor.Dsl.Update.t()
 
   use Spark.Dsl.Extension,
     sections: [@ash],
@@ -27,6 +35,7 @@ defmodule Ash.Reactor do
       [
         Ash.Reactor.Dsl.Action,
         Ash.Reactor.Dsl.BulkCreate,
+        Ash.Reactor.Dsl.BulkUpdate,
         Ash.Reactor.Dsl.Change,
         Ash.Reactor.Dsl.Create,
         Ash.Reactor.Dsl.Destroy,

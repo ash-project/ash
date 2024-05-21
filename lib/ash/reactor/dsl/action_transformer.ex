@@ -361,6 +361,7 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
   end
 
   defp action_type(:bulk_create), do: :create
+  defp action_type(:bulk_update), do: :update
   defp action_type(:create), do: :create
   defp action_type(:read), do: :read
   defp action_type(:update), do: :update
