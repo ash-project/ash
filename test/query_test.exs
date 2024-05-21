@@ -67,12 +67,12 @@ defmodule Ash.Test.QueryTest do
       equals = Ash.Query.filter(User, email == "fred") |> inspect()
       refute equals =~ "fred"
       assert equals =~ "**redacted**"
+
       contains = Ash.Query.filter(User, contains(email, "fred")) |> inspect()
       refute contains =~ "fred"
       assert contains =~ "**redacted**"
 
       concat = Ash.Query.filter(User, email <> "-fred" == "a@b.com-fred") |> inspect()
-
       refute concat =~ "fred"
       assert concat =~ "**redacted**"
     end

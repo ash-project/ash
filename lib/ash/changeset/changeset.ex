@@ -178,10 +178,12 @@ defmodule Ash.Changeset do
               match?({:ok, _}, Ash.Changeset.fetch_argument(changeset, argument.name))
             end)
             |> Map.new(fn argument ->
+              value = Ash.Changeset.get_argument(changeset, argument.name)
+
               if argument.sensitive? do
-                {argument.name, "**redacted**"}
+                {argument.name, Ash.Helpers.redact(value)}
               else
-                {argument.name, Ash.Changeset.get_argument(changeset, argument.name)}
+                {argument.name, value}
               end
             end)
             |> to_doc(opts)

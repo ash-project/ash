@@ -4092,8 +4092,8 @@ defmodule Ash.Filter do
 
     defp scrub_values(%Ref{} = ref), do: ref
 
-    defp scrub_values(_other) do
-      "**redacted**"
+    defp scrub_values(value) do
+      Ash.Helpers.redact(value)
     end
 
     defp refers_to_sensitive?(expr) do
