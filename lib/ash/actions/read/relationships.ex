@@ -560,13 +560,18 @@ defmodule Ash.Actions.Read.Relationships do
        ) do
     %Ash.Page.Unpaged{
       related_records: related_records,
-      count: count,
       opts: opts
     } = unpaged
 
-    to_page_fun =
+    attach_fun =
       if relationship.cardinality == :many do
-        fn value, record ->
+        fn record, relationship_name, value ->
+          count_key =
+            Ash.Actions.Read.paginated_relationship_count_aggregate_name(relationship.name)
+
+          # Retrieve the count (if present) while deleting it from the record aggregates
+          {count, record} = pop_in(record.aggregates[count_key])
+
           # We scope the lateral join to the specific record, so that next runs of rerun
           # just fetch the entries related to this record
           related_query =
@@ -574,20 +579,28 @@ defmodule Ash.Actions.Read.Relationships do
               data_layer: %{lateral_join_source: {[record], lateral_join_source_path}}
             })
 
-          Ash.Actions.Read.to_page(
-            value,
-            related_query.action,
-            count,
-            related_query.sort,
-            related_query,
-            opts
-          )
+          page =
+            Ash.Actions.Read.to_page(
+              value,
+              related_query.action,
+              count,
+              related_query.sort,
+              related_query,
+              opts
+            )
+
+          attach_related(record, relationship_name, page)
         end
       else
-        fn value, _record -> value end
+        &attach_related/3
       end
 
-    attach_lateral_join_related_records(records, relationship, related_records, to_page_fun)
+    attach_lateral_join_related_records(
+      records,
+      relationship,
+      related_records,
+      attach_fun
+    )
   end
 
   defp do_attach_related_records(
@@ -813,11 +826,15 @@ defmodule Ash.Actions.Read.Relationships do
     Map.put(record, key, default)
   end
 
+  defp attach_related(record, relationship_name, value) do
+    Map.put(record, relationship_name, value)
+  end
+
   defp attach_lateral_join_related_records(
          [%resource{} | _] = records,
          relationship,
          related_records,
-         maybe_to_page_fun \\ fn related_value, _record -> related_value end
+         attach_fun \\ &attach_related/3
        ) do
     source_attribute =
       Ash.Resource.Info.attribute(relationship.source, relationship.source_attribute)
@@ -844,10 +861,10 @@ defmodule Ash.Actions.Read.Relationships do
       Enum.map(records, fn record ->
         with :error <- Map.fetch(values, Map.take(record, primary_key)),
              :error <- Map.fetch(values, Map.get(record, relationship.source_attribute)) do
-          Map.put(record, relationship.name, maybe_to_page_fun.(default, record))
+          attach_fun.(record, relationship.name, default)
         else
           {:ok, value} ->
-            Map.put(record, relationship.name, maybe_to_page_fun.(value, record))
+            attach_fun.(record, relationship.name, value)
         end
       end)
     else
@@ -875,7 +892,7 @@ defmodule Ash.Actions.Read.Relationships do
             end
           ])
 
-        Map.put(record, relationship.name, maybe_to_page_fun.(related, record))
+        attach_fun.(record, relationship.name, related)
       end)
     end
   end
