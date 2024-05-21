@@ -3,7 +3,7 @@
 # Test Resources
 
 ```elixir
-Mix.install([{:ash, "~> 3.0}, {:simple_sat, "~> 0.1"}],
+Mix.install([{:ash, "~> 3.0"}, {:simple_sat, "~> 0.1"}],
   consolidate_protocols: false
 )
 
@@ -175,7 +175,7 @@ defmodule ActionInvocationTest do
     end
 
     # same as the above, but actually call the action. This tests the underlying action implementation
-    # not just intiail validation
+    # not just initial validation
     property "succeeds on all valid input" do
       user = Domain.create_user!()
 
