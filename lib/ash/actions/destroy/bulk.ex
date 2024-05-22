@@ -285,7 +285,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               List.wrap(bulk_result.notifications) ++
                 List.wrap(Process.delete(:ash_notifications))
             else
-              []
+              List.wrap(bulk_result.notifications)
             end
 
           if opts[:return_notifications?] do
@@ -304,9 +304,11 @@ defmodule Ash.Actions.Destroy.Bulk do
 
               %{bulk_result | notifications: notifications}
             else
-              Ash.Actions.Helpers.warn_missed!(atomic_changeset.resource, action, %{
-                resource_notifications: notifications
-              })
+              if opts[:notify?] do
+                Ash.Actions.Helpers.warn_missed!(atomic_changeset.resource, action, %{
+                  resource_notifications: notifications
+                })
+              end
 
               %{bulk_result | notifications: []}
             end

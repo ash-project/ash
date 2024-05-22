@@ -193,6 +193,25 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     assert_received {:notification, %{data: %{title: "title2"}}}
   end
 
+  test "doesn't send notifications if not asked to" do
+    assert %Ash.BulkResult{records: [%{}, %{}]} =
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+               return_stream?: true,
+               return_records?: true
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_destroy!(:destroy, %{},
+               resource: Post,
+               strategy: :stream,
+               return_records?: true,
+               return_errors?: true
+             )
+
+    refute_received {:notification, _}
+  end
+
   test "notifications can be returned" do
     assert %Ash.BulkResult{records: [%{}, %{}], notifications: [%{}, %{}]} =
              Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,

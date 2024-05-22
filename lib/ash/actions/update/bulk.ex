@@ -237,7 +237,7 @@ defmodule Ash.Actions.Update.Bulk do
                   List.wrap(bulk_result.notifications) ++
                     List.wrap(Process.delete(:ash_notifications))
                 else
-                  []
+                  List.wrap(bulk_result.notifications)
                 end
 
               if opts[:return_notifications?] do
