@@ -835,9 +835,9 @@ defmodule Ash.EmbeddableType do
                   {:cont, {:ok, [new | new_uncasted_values]}}
                 else
                   value_updating_from =
-old_values
-            |> List.wrap()
-              |>      Enum.find( fn old_value ->
+                    old_values
+                    |> List.wrap()
+                    |> Enum.find(fn old_value ->
                       Map.take(old_value, pkey_fields) ==
                         pkey
                     end)
