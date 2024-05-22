@@ -1,4 +1,4 @@
-defmodule Ash.Reactor.BulkCreateStep do
+defmodule Ash.Reactor.BulkUpdateStep do
   @moduledoc """
   The Reactor stop which is used to execute create actions in bulk.
   """
@@ -10,19 +10,25 @@ defmodule Ash.Reactor.BulkCreateStep do
   @doc false
   @impl true
   def run(arguments, context, options) do
-    bulk_create_options =
+    bulk_update_options =
       options
       |> Keyword.take([
+        :allow_stream_with,
         :assume_casted?,
+        :atomic_update,
         :authorize_changeset_with,
         :authorize_query_with,
+        :authorize_query?,
         :authorize?,
         :batch_size,
         :domain,
+        :filter,
         :load,
+        :lock,
         :max_concurrency,
         :notify?,
         :read_action,
+        :resource,
         :return_errors?,
         :return_notifications?,
         :return_records?,
@@ -32,11 +38,11 @@ defmodule Ash.Reactor.BulkCreateStep do
         :skip_unknown_inputs,
         :sorted?,
         :stop_on_error?,
+        :strategy,
+        :stream_batch_size,
+        :stream_with,
         :timeout,
-        :transaction,
-        :upsert_fields,
-        :upsert_identity,
-        :upsert?
+        :transaction
       ])
       |> maybe_set_kw(:actor, arguments[:actor])
       |> maybe_set_kw(:tenant, arguments[:tenant])
@@ -52,7 +58,7 @@ defmodule Ash.Reactor.BulkCreateStep do
     return_stream? = options[:return_stream?]
 
     arguments.initial
-    |> Ash.bulk_create(options[:resource], options[:action], bulk_create_options)
+    |> Ash.bulk_update(options[:action], arguments[:input], bulk_update_options)
     |> case do
       result when is_struct(result, BulkResult) ->
         if result.status in success_states do
