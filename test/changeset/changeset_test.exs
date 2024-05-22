@@ -332,6 +332,43 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
   end
 
+  defmodule ResourceWithMultipleConstraintChanges do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :publication_status, :atom do
+        public? true
+        allow_nil? false
+        default :draft
+      end
+
+      attribute :published_at, :utc_datetime_usec, public?: true
+    end
+
+    changes do
+      change set_attribute(:publication_status, :published) do
+        where [
+          attribute_equals(:published_at, nil),
+          compare(:published_at,
+            less_than_or_equal_to: &DateTime.utc_now/0
+          )
+        ]
+      end
+    end
+  end
+
   describe "new" do
     test "it wraps a new resource in a `create` changeset" do
       assert %Ash.Changeset{
@@ -1201,5 +1238,19 @@ defmodule Ash.Test.Changeset.ChangesetTest do
       refute Ash.Changeset.present?(changeset, :author)
       refute Ash.Changeset.present?(changeset, :author_id)
     end
+  end
+
+  test "some test" do
+    resource =
+      ResourceWithMultipleConstraintChanges
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
+    updated_resource =
+      resource
+      |> Ash.Changeset.for_update(:update, %{published_at: ~U[2024-01-01T09:22:22Z]})
+      |> Ash.update!()
+
+    assert :published == updated_resource.publication_status
   end
 end

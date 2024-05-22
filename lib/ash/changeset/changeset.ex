@@ -885,6 +885,20 @@ defmodule Ash.Changeset do
         {:error, _} ->
           {:cont, {:atomic, false}}
 
+        [{:atomic, _, expr, _as_error} | rest] ->
+          exprs = [expr | Enum.map(rest, &elem(&1, 2))]
+
+          new_expr =
+            Enum.reduce(exprs, condition, fn expr, condition ->
+              if condition == true do
+                expr
+              else
+                expr(^condition and ^expr)
+              end
+            end)
+
+          {:cont, {:atomic, new_expr}}
+
         {:atomic, _, expr, _as_error} ->
           new_expr =
             if condition == true do
