@@ -731,6 +731,7 @@ defmodule Ash.EmbeddableType do
             Ash.Resource.Info.primary_action!(__MODULE__, :destroy).name
 
         old_values
+        |> List.wrap()
         |> Enum.with_index()
         |> then(fn list ->
           if Enum.empty?(pkey_fields) do
@@ -834,7 +835,9 @@ defmodule Ash.EmbeddableType do
                   {:cont, {:ok, [new | new_uncasted_values]}}
                 else
                   value_updating_from =
-                    Enum.find(old_values, fn old_value ->
+                    old_values
+                    |> List.wrap()
+                    |> Enum.find(fn old_value ->
                       Map.take(old_value, pkey_fields) ==
                         pkey
                     end)
