@@ -2,6 +2,67 @@
 
 <!-- changelog -->
 
+## [3.0.3](https://github.com/ash-project/ash/compare/v3.0.2...3.0.3) (2024-05-22)
+
+
+
+
+### Features:
+
+* Ash.Reactor: Add `bulk_update` step type. (#1185)
+
+* allow retrieving the count of paginated relationships (#1183)
+
+* Ash.Reactor: Add `bulk_create` step type.
+
+### Bug Fixes:
+
+* properly hydrate and scope sorts
+
+* handle list of atomic conditions (#1194) (#1195)
+
+* handle nil value for old_values (#1191)
+
+* allow all strategies for bulk actions in code interfaces by default
+
+* use `Ash.Sort.parse_input/3` in `Ash.Query.sort_input/2`
+
+* improve Ash.Domain.Info typespecs
+
+* make Ash.Resource.Validation.Changing work correctly in atomics (#1178)
+
+* check the where condition before checking validation atomicity (#1177)
+
+* handle `nil` notification results better
+
+* don't emit after batch notifications if `notify?: false`
+
+* prefer resource domain over option domain (#1176)
+
+* don't require domain for empty stream bulk update and destroy (#1175)
+
+* only return valid non nil values items from generator (#1121)
+
+* properly validate input action on bulk destroy
+
+* allow setting `authorize?: false`
+
+* honor `get?` for bulk update/bulk destroy
+
+### Improvements:
+
+* support anonymous aggregates and calculations in queries
+
+* Implement `show_sensitive?` config (#1180)
+
+* support `filter_input` and `sort_input` in `Ash.Query.build/2`
+
+* add `template_requires_actor` check for changesets
+
+* don't use queries for streaming if they have hooks
+
+* consider `from: nil` in `changing_attributes/1` check
+
 ## [v3.0.2](https://github.com/ash-project/ash/compare/v3.0.1...v3.0.2) (2024-05-15)
 
 
