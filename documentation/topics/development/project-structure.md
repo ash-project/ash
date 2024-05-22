@@ -77,16 +77,19 @@ But this is putting business logic inside of your UI/representation layer. Inste
 
 ```elixir
 defmodule MyApp.Ticket.FetchIssueInfo do
-  use Ash.Resource.Changeo
+  use Ash.Resource.Change
 
   def change(changeset, _, _) do
     Ash.Changeset.before_transaction(changeset, fn changeset ->
-    issue_info = GithubApi.get_issue(changeset.arguments.issue_id)
+      issue_info = GithubApi.get_issue(changeset.arguments.issue_id)
 
-    Ash.Changeset.force_change_attributes(changeset, %{issue_info: %{
-      title: issue_info.title,
-      body: issue_info.body
-    }})
+      Ash.Changeset.force_change_attributes(changeset, %{
+        issue_info: %{
+          title: issue_info.title,
+          body: issue_info.body
+        }
+      })
+    end)
   end
 end
 ```
