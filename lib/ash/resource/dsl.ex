@@ -1430,7 +1430,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Transformers.ManyToManyDestinationAttributeOnJoinResource,
     Ash.Resource.Transformers.CreateJoinRelationship,
     Ash.Resource.Transformers.CachePrimaryKey,
-    Ash.Resource.Transformers.ValidatePrimaryActions,
+    Ash.Resource.Transformers.SetPrimaryActions,
     Ash.Resource.Transformers.DefaultAccept,
     Ash.Resource.Transformers.RequireUniqueFieldNames,
     Ash.Resource.Transformers.SetDefineFor,

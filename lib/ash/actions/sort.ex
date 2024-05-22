@@ -73,56 +73,62 @@ defmodule Ash.Actions.Sort do
       {%Ash.Query.Calculation{sortable?: false} = calc, _order}, {sorts, errors} ->
         {sorts, [UnsortableField.exception(resource: resource, field: calc) | errors]}
 
-      {%Ash.Query.Calculation{
-         name: :__expr_sort__,
-         module: Ash.Resource.Calculation.Expression,
-         opts: [{:expr, expr}]
-       } = calc, order},
-      {sorts, errors} ->
-        expr
-        |> Ash.Filter.list_refs()
-        |> Enum.reduce_while(:ok, fn %{relationship_path: path, attribute: attribute}, :ok ->
-          {ref_attribute, field_name} =
-            case attribute do
-              atom when is_atom(attribute) ->
-                {Ash.Resource.Info.field(Ash.Resource.Info.related(resource, path), attribute),
-                 atom}
+      {%Ash.Query.Calculation{} = calc, order}, {sorts, errors} ->
+        if String.starts_with?(to_string(calc.name), "__expr_sort__") do
+          %{opts: [{:expr, expr}]} = calc
 
-              %struct{} = attribute when struct in [Ash.Query.Aggregate, Ash.Query.Calculation] ->
-                {attribute, attribute}
+          expr
+          |> Ash.Filter.list_refs()
+          |> Enum.reduce_while(:ok, fn %{relationship_path: path, attribute: attribute}, :ok ->
+            {ref_attribute, field_name} =
+              case attribute do
+                atom when is_atom(attribute) ->
+                  {Ash.Resource.Info.field(Ash.Resource.Info.related(resource, path), attribute),
+                   atom}
 
-              other ->
-                {other, other.name}
-            end
+                %struct{} = attribute
+                when struct in [Ash.Query.Aggregate, Ash.Query.Calculation] ->
+                  {attribute, attribute}
 
-          if ref_attribute.sortable? do
-            case find_non_sortable_relationship(resource, path, sort) do
-              nil ->
-                {:cont, :ok}
+                other ->
+                  {other, other.name}
+              end
 
-              {resource, non_sortable_field} ->
-                {:halt, {:error, resource, non_sortable_field}}
-            end
-          else
-            {:halt, {:error, resource, field_name}}
-          end
-        end)
-        |> case do
-          :ok ->
-            if order in @sort_orders do
-              {sorts ++ [{calc, order}], errors}
+            if ref_attribute.sortable? do
+              case find_non_sortable_relationship(resource, path, sort) do
+                nil ->
+                  {:cont, :ok}
+
+                {resource, non_sortable_field} ->
+                  {:halt, {:error, resource, non_sortable_field}}
+              end
             else
-              {sorts, [InvalidSortOrder.exception(order: order) | errors]}
+              {:halt, {:error, resource, field_name}}
             end
+          end)
+          |> case do
+            :ok ->
+              if order in @sort_orders do
+                {sorts ++ [{calc, order}], errors}
+              else
+                {sorts, [InvalidSortOrder.exception(order: order) | errors]}
+              end
 
-          {:error, resource, non_sortable_field} ->
-            {sorts,
-             [UnsortableField.exception(resource: resource, field: non_sortable_field) | errors]}
+            {:error, resource, non_sortable_field} ->
+              {sorts,
+               [UnsortableField.exception(resource: resource, field: non_sortable_field) | errors]}
+          end
+        else
+          if order in @sort_orders do
+            {sorts ++ [{calc, order}], errors}
+          else
+            {sorts, [InvalidSortOrder.exception(order: order) | errors]}
+          end
         end
 
-      {%Ash.Query.Calculation{} = calc, order}, {sorts, errors} ->
+      {%{__struct__: Ash.Query.Aggregate} = agg, order}, {sorts, errors} ->
         if order in @sort_orders do
-          {sorts ++ [{calc, order}], errors}
+          {sorts ++ [{agg, order}], errors}
         else
           {sorts, [InvalidSortOrder.exception(order: order) | errors]}
         end
@@ -178,7 +184,7 @@ defmodule Ash.Actions.Sort do
             end
 
           !attribute ->
-            {sorts, [NoSuchField.exception(attribute: field, resource: resource) | errors]}
+            {sorts, [NoSuchField.exception(field: field, resource: resource) | errors]}
 
           !attribute.sortable? ->
             {sorts,
@@ -371,7 +377,7 @@ defmodule Ash.Actions.Sort do
 
     results
     |> load_field(field, resource, opts)
-    |> Enum.sort_by(&resolve_field(&1, field, resource, domain: opts), to_sort_by_fun(direction))
+    |> Enum.sort_by(&resolve_field(&1, field), to_sort_by_fun(direction))
   end
 
   def runtime_sort(results, [{field, direction} | rest], opts) do
@@ -379,7 +385,7 @@ defmodule Ash.Actions.Sort do
 
     results
     |> load_field(field, resource, opts)
-    |> Enum.group_by(&resolve_field(&1, field, resource, domain: opts))
+    |> Enum.group_by(&resolve_field(&1, field))
     |> Enum.sort_by(fn {key, _value} -> key end, to_sort_by_fun(direction))
     |> Enum.flat_map(fn {_, records} ->
       runtime_sort(records, rest, Keyword.put(opts, :rekey?, false))
@@ -422,7 +428,7 @@ defmodule Ash.Actions.Sort do
   def runtime_distinct([%resource{} | _] = results, [{field, direction} | rest], opts) do
     results
     |> load_field(field, resource, opts)
-    |> Enum.group_by(&resolve_field(&1, field, resource, domain: opts))
+    |> Enum.group_by(&resolve_field(&1, field))
     |> Enum.sort_by(fn {key, _value} -> key end, to_sort_by_fun(direction))
     |> Enum.map(fn {_key, [first | _]} ->
       first
@@ -453,48 +459,20 @@ defmodule Ash.Actions.Sort do
     end
   end
 
-  defp resolve_field(record, %Ash.Query.Calculation{} = calc, resource, opts) do
-    cond do
-      calc.module.has_calculate?() ->
-        context = Map.put(calc.context, :domain, opts[:domain])
-
-        case calc.module.calculate([record], calc.opts, context) do
-          {:ok, [value]} -> value
-          _ -> nil
-        end
-
-      calc.module.has_expression?() ->
-        expression = calc.module.expression(calc.opts, calc.context)
-
-        case Ash.Filter.hydrate_refs(expression, %{
-               resource: resource,
-               aggregates: %{},
-               calculations: %{},
-               public?: false
-             }) do
-          {:ok, expression} ->
-            case Ash.Expr.eval_hydrated(expression, record: record, resource: resource) do
-              {:ok, value} ->
-                value
-
-              _ ->
-                nil
-            end
-
-          _ ->
-            nil
-        end
-
-      true ->
-        nil
-    end
-    |> case do
-      %Ash.ForbiddenField{} -> nil
-      other -> other
+  defp resolve_field(record, %{__struct__: struct} = agg)
+       when struct in [Ash.Query.Calculation, Ash.Query.Aggregate] do
+    if agg.load do
+      Map.get(record, agg.load)
+    else
+      if struct == Ash.Query.Calculation do
+        Map.get(record.calculations, agg.name)
+      else
+        Map.get(record.aggregates, agg.name)
+      end
     end
   end
 
-  defp resolve_field(record, field, _resource, _) do
+  defp resolve_field(record, field) do
     record
     |> Map.get(field)
     |> case do

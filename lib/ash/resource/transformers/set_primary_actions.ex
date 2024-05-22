@@ -1,4 +1,4 @@
-defmodule Ash.Resource.Transformers.ValidatePrimaryActions do
+defmodule Ash.Resource.Transformers.SetPrimaryActions do
   @moduledoc """
   Validates the primary action configuration
 

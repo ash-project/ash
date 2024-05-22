@@ -3,6 +3,8 @@ defmodule Ash.Query.Type do
 
   def try_cast(value, type, constraints \\ [])
 
+  def try_cast(value, nil, _constraints), do: {:ok, value}
+
   def try_cast(list, {:array, type}, constraints) do
     if Enumerable.impl_for(list) do
       list

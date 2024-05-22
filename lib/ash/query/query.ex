@@ -342,7 +342,27 @@ defmodule Ash.Query do
         add_error(query, :sort, "Data layer does not support sorting")
       end
     end
+    |> sequence_expr_sorts()
   end
+
+  # sobelow_skip ["DOS.BinToAtom", "DOS.StringToAtom"]
+  defp sequence_expr_sorts(%{sort: sort} = query) when is_list(sort) and sort != [] do
+    %{
+      query
+      | sort:
+          query.sort
+          |> Enum.with_index()
+          |> Enum.map(fn
+            {{%Ash.Query.Calculation{name: :__expr_sort__} = field, direction}, index} ->
+              {%{field | name: String.to_atom("__expr_sort__#{index}"), load: nil}, direction}
+
+            {other, _} ->
+              other
+          end)
+    }
+  end
+
+  defp sequence_expr_sorts(query), do: query
 
   @doc """
   Attach a filter statement to the query.
@@ -2716,6 +2736,7 @@ defmodule Ash.Query do
         add_error(query, :sort, "Data layer does not support sorting")
       end
     end
+    |> sequence_expr_sorts()
   end
 
   @doc """

@@ -8,29 +8,6 @@ defmodule Ash.Query.Ref do
 
   defimpl Inspect do
     def inspect(ref, _opts) do
-      case ref.attribute do
-        %Ash.Query.Calculation{} ->
-          case Map.drop(ref.attribute.context || %{}, [:context, :ash]) do
-            empty when empty == %{} ->
-              inspect_ref(ref)
-
-            args ->
-              inspect(%Ash.Query.Call{
-                name: ref.attribute.name,
-                relationship_path: ref.relationship_path,
-                args: [args]
-              })
-          end
-
-        %Ash.Query.Aggregate{} ->
-          inspect_ref(ref)
-
-        _ ->
-          inspect_ref(ref)
-      end
-    end
-
-    defp inspect_ref(ref) do
       name =
         case ref.attribute do
           %{name: name} -> name

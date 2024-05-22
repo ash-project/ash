@@ -29,6 +29,6 @@ defmodule Ash.Resource.Transformers.RequireUniqueActionNames do
     {:ok, dsl_state}
   end
 
-  def after?(Ash.Resource.Transformers.ValidatePrimaryActions), do: true
+  def after?(Ash.Resource.Transformers.SetPrimaryActions), do: true
   def after?(_), do: false
 end

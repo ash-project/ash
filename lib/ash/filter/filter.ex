@@ -2844,7 +2844,8 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_expression_part({%Ash.Query.Calculation{} = calc, rest}, context, expression) do
+  defp add_expression_part({%{__struct__: field_struct} = calc, rest}, context, expression)
+       when field_struct in [Ash.Query.Calculation, Ash.Query.Aggregate] do
     case parse_predicates(rest, calc, context) do
       {:ok, nested_statement} ->
         {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
@@ -2854,7 +2855,8 @@ defmodule Ash.Filter do
     end
   end
 
-  defp add_expression_part(%Ash.Query.Calculation{} = calc, _context, expression) do
+  defp add_expression_part(%{__struct__: field_struct} = calc, _context, expression)
+       when field_struct in [Ash.Query.Calculation, Ash.Query.Aggregate] do
     {:ok, BooleanExpression.optimized_new(:and, calc, expression)}
   end
 

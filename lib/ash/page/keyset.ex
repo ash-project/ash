@@ -95,7 +95,8 @@ defmodule Ash.Page.Keyset do
 
     field =
       case field do
-        %Ash.Query.Calculation{} = calc ->
+        %{__struct__: field_struct} = calc
+        when field_struct in [Ash.Query.Calculation, Ash.Query.Aggregate] ->
           calc
 
         field ->
@@ -199,11 +200,18 @@ defmodule Ash.Page.Keyset do
 
   defp field_values(record, sort) do
     Enum.map(sort, fn
-      {%Ash.Query.Calculation{load: load, name: name}, _} ->
+      {%{__struct__: Ash.Query.Calculation, load: load, name: name}, _} ->
         if load do
           Map.get(record, load)
         else
           Map.get(record.calculations, name)
+        end
+
+      {%{__struct__: Ash.Query.Aggregate, load: load, name: name}, _} ->
+        if load do
+          Map.get(record, load)
+        else
+          Map.get(record.aggregates, name)
         end
 
       {field, _} ->

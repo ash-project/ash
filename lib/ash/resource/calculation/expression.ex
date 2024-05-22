@@ -39,8 +39,6 @@ defmodule Ash.Resource.Calculation.Expression do
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, values} ->
       case Ash.Filter.hydrate_refs(expression, %{
              resource: resource,
-             aggregates: %{},
-             calculations: %{},
              public?: false
            }) do
         {:ok, expression} ->

@@ -30,9 +30,9 @@ defmodule Ash.Sort do
   For example:
 
   ```elixir
-  Ash.Query.sort(Ash.Sort.expr_sort(author.full_name, :string))
+  Ash.Query.sort(query, Ash.Sort.expr_sort(author.full_name, :string))
 
-  Ash.Query.sort([{Ash.Sort.expr_sort(author.full_name, :string), :desc_nils_first}])
+  Ash.Query.sort(query, [{Ash.Sort.expr_sort(author.full_name, :string), :desc_nils_first}])
   ```
   """
   @spec expr_sort(Ash.Expr.t(), Ash.Type.t() | nil) :: Ash.Expr.t()
