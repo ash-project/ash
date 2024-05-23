@@ -258,6 +258,8 @@ defmodule Ash.Filter.Runtime do
   defp load_unflattened(record, []), do: record
   defp load_unflattened(nil, _), do: nil
 
+  defp load_unflattened(%Ash.NotLoaded{}, _), do: nil
+
   defp load_unflattened(records, path) when is_list(records) do
     Enum.map(records, &load_unflattened(&1, path))
   end

@@ -6,7 +6,7 @@ defmodule Ash.Error.Query.InvalidCalculationArgument do
 
   def message(error) do
     """
-    Invalid value provided for calculation argument #{error.field} in #{error.calculation}: #{do_message(error)}
+    Invalid value provided for calculation argument #{error.field} in #{error.calculation}#{do_message(error)}
 
     #{inspect(error.value)}
     """

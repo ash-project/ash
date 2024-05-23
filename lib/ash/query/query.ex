@@ -1727,7 +1727,33 @@ defmodule Ash.Query do
                   expr(type(^casted, ^argument.type, ^argument.constraints))
                 )}}
             else
+            cond do
+            is_nil(casted) && argument.allow_nil? ->
+              {:cont, {:ok, Map.put(arg_values, argument.name, nil)}}
+
+            is_nil(casted) && is_nil(argument.default) ->
+              {:halt,
+               {:error,
+                InvalidCalculationArgument.exception(
+                  field: argument.name,
+                  calculation: calculation.name,
+                  message: "is required",
+                  value: value
+                )}}
+
+            is_nil(Map.get(args, argument.name, Map.get(args, to_string(argument.name)))) &&
+                not is_nil(value) ->
+                {:cont,
+                 {:ok,
+                  Map.put(
+                    arg_values,
+                    argument.name,
+                    value
+                  )}}
+              true ->
+
               {:cont, {:ok, Map.put(arg_values, argument.name, casted)}}
+            end
             end
           else
             {:error, error} when is_binary(error) ->

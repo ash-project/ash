@@ -31,6 +31,21 @@ defmodule Ash.Actions.Read.Calculations do
           end
         end)
 
+      primary_key =
+        case Ash.Resource.Info.primary_key(resource) do
+          [] ->
+            nil
+
+          primary_key ->
+            Enum.reduce_while(primary_key, %{}, fn key, acc ->
+              case Map.get(record, key) do
+                nil -> {:halt, nil}
+                %Ash.NotLoaded{} -> {:halt, nil}
+                other -> {:cont, Map.put(acc, key, other)}
+              end
+            end)
+        end
+
       calc_context =
         %Ash.Resource.Calculation.Context{
           actor: opts[:actor],
@@ -56,105 +71,109 @@ defmodule Ash.Actions.Read.Calculations do
         with {:ok, expr} <- expr,
              {:ok, expr} <-
                Ash.Filter.hydrate_refs(expr, %{resource: resource}) do
-          case Ash.Expr.eval(expr,
-                 record: record,
-                 resource: resource,
-                 unknown_on_unknown_refs?: true
-               ) do
-            {:ok, result} ->
-              {:ok, result}
+          if is_nil(primary_key) && requires_primary_key?(expr) do
+            {:error,
+             Ash.Error.Query.CalculationRequiresPrimaryKey.exception(
+               resource: resource,
+               calculation: calculation
+             )}
+          else
+            if !is_nil(primary_key) do
+              case Ash.load(record, [{calculation, arguments}],
+                     actor: opts[:actor],
+                     domain: opts[:domain],
+                     tenant: opts[:tenant],
+                     authorize?: opts[:authorize?],
+                     tracer: opts[:tracer],
+                     resource: opts[:resource],
+                     context: opts[:context] || %{}
+                   ) do
+                {:ok, record} -> {:ok, Map.get(record, calculation)}
+                {:error, error} -> {:error, error}
+              end
+            else
+              expr = replace_refs(expr, Keyword.put(opts, :record, record))
 
-            :unknown ->
-              expr =
-                Ash.Filter.map(expr, fn
-                  %Ash.Query.Ref{relationship_path: path, attribute: attribute} ->
-                    name =
-                      case attribute do
-                        %{name: name} -> name
-                        name -> name
-                      end
-
-                    get_in(opts[:refs] || %{}, path ++ [name])
-
-                  other ->
-                    other
-                end)
-
-              data_layer_result =
-                if Ash.DataLayer.data_layer_can?(resource, :calculate) do
-                  Ash.DataLayer.calculate(resource, [expr], opts[:context] || %{})
-                else
-                  :cant_calculate
+              evaled =
+                try do
+                  Ash.Expr.eval(expr,
+                    record: record,
+                    resource: resource,
+                    unknown_on_unknown_refs?: true
+                  )
+                rescue
+                  _ ->
+                    :unknown
                 end
 
-              case data_layer_result do
+              case evaled do
                 {:ok, result} ->
-                  {:ok, Enum.at(result, 0)}
+                  {:ok, result}
 
-                :cant_calculate ->
-                  {:error,
-                   "Failed to run calculation in memory, or in the data layer, and no `calculate/3` is defined on #{inspect(module)}. Data layer does not support one-off calculations."}
+                :unknown ->
+                  data_layer_result =
+                    if Ash.DataLayer.data_layer_can?(resource, :calculate) do
+                      Ash.DataLayer.calculate(resource, [expr], %{
+                        calculation_context: calc_context,
+                        primary_key: primary_key
+                      })
+                    else
+                      :cant_calculate
+                    end
+
+                  case data_layer_result do
+                    {:ok, result} ->
+                      {:ok, Enum.at(result, 0)}
+
+                    :cant_calculate ->
+                      {:error,
+                       "Failed to run calculation in memory, or in the data layer, and no `calculate/3` is defined on #{inspect(module)}. Data layer does not support one-off calculations."}
+
+                    {:error, error} ->
+                      if module.has_calculate?() do
+                        case module.calculate([record], calc_opts, calc_context) do
+                          [result] ->
+                            result
+
+                          {:ok, [result]} ->
+                            {:ok, result}
+
+                          {:ok, _} ->
+                            {:error, "Invalid calculation return"}
+
+                          {:error, error} ->
+                            {:error, error}
+
+                          :unknown ->
+                            {:error,
+                             "Failed to run calculation in memory, or in the data layer. Data layer returned #{inspect(error)}"}
+                        end
+                      else
+                        {:error,
+                         "Failed to run calculation in memory, or in the data layer, and no `calculate/3` is defined on #{inspect(module)}. Data layer returned #{inspect(error)}"}
+                      end
+                  end
 
                 {:error, error} ->
-                  if module.has_calculate?() do
-                    case module.calculate([record], calc_opts, calc_context) do
-                      [result] ->
-                        result
-
-                      {:ok, [result]} ->
-                        {:ok, result}
-
-                      {:ok, _} ->
-                        {:error, "Invalid calculation return"}
-
-                      {:error, error} ->
-                        {:error, error}
-
-                      :unknown ->
-                        {:error,
-                         "Failed to run calculation in memory, or in the data layer. Data layer returned #{inspect(error)}"}
-                    end
-                  else
-                    {:error,
-                     "Failed to run calculation in memory, or in the data layer, and no `calculate/3` is defined on #{inspect(module)}. Data layer returned #{inspect(error)}"}
-                  end
+                  {:error, error}
               end
-
-            {:error, error} ->
-              {:error, error}
+            end
           end
         end
       else
-        primary_key = Ash.Resource.Info.primary_key(resource)
-
         if module.has_calculate?() do
-          if Enum.all?(primary_key, &(not is_nil(Map.get(record, &1)))) do
-            case Ash.load(record, [{calculation, arguments}],
-                   actor: opts[:actor],
-                   domain: opts[:domain],
-                   tenant: opts[:tenant],
-                   authorize?: opts[:authorize?],
-                   tracer: opts[:tracer],
-                   resource: opts[:resource],
-                   context: opts[:context] || %{}
-                 ) do
-              {:ok, record} -> {:ok, Map.get(record, calculation)}
-              {:error, error} -> {:error, error}
-            end
-          else
-            case module.calculate([record], calc_opts, calc_context) do
-              [result] ->
-                {:ok, result}
+          case module.calculate([record], calc_opts, calc_context) do
+            [result] ->
+              {:ok, result}
 
-              {:ok, [result]} ->
-                {:ok, result}
+            {:ok, [result]} ->
+              {:ok, result}
 
-              {:ok, _} ->
-                {:error, "Invalid calculation return"}
+            {:ok, _} ->
+              {:error, "Invalid calculation return"}
 
-              {:error, error} ->
-                {:error, error}
-            end
+            {:error, error} ->
+              {:error, error}
           end
         else
           {:error, "Module #{inspect(module)} does not have an expression or calculate function"}
@@ -167,6 +186,53 @@ defmodule Ash.Actions.Read.Calculations do
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  defp requires_primary_key?(expr) do
+    Ash.Filter.find_value(expr, fn
+      %Ash.Query.Ref{attribute: %agg_struct{}}
+      when agg_struct in [Ash.Query.Aggregate, Ash.Resource.Aggregate] ->
+        true
+
+      %Ash.Query.Exists{} ->
+        true
+
+      %Ash.Query.Parent{} ->
+        true
+
+      _ ->
+        false
+    end) ||
+      false
+  end
+
+  defp replace_refs(expr, opts) do
+    Ash.Filter.map(expr, fn
+      %Ash.Query.Ref{relationship_path: path, attribute: %Ash.Resource.Attribute{} = attribute} ->
+        name =
+          case attribute do
+            %{name: name} -> name
+            name -> name
+          end
+
+        Ash.Expr.get_path(opts[:record] || %{}, path ++ [name])
+
+      %Ash.Query.Exists{expr: expr} = exists ->
+        %{
+          exists
+          | expr:
+              Ash.Filter.map(expr, fn
+                %Ash.Query.Parent{expr: expr} = parent ->
+                  %{parent | expr: replace_refs(expr, opts)}
+
+                other ->
+                  other
+              end)
+        }
+
+      other ->
+        other
+    end)
   end
 
   def run([], _, _, _calculations_in_query), do: {:ok, []}

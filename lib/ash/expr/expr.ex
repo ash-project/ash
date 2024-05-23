@@ -204,19 +204,20 @@ defmodule Ash.Expr do
     end)
   end
 
-  defp get_path(map, [key]) when is_struct(map) do
+  @doc false
+  def get_path(map, [key]) when is_struct(map) do
     Map.get(map, key)
   end
 
-  defp get_path(map, [key]) when is_map(map) do
+  def get_path(map, [key]) when is_map(map) do
     Map.get(map, key)
   end
 
-  defp get_path(map, [key | rest]) when is_map(map) do
+  def get_path(map, [key | rest]) when is_map(map) do
     get_path(get_path(map, [key]), rest)
   end
 
-  defp get_path(_, _), do: nil
+  def get_path(_, _), do: nil
 
   @doc false
   def template_references_actor?(template) do
