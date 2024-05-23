@@ -11,6 +11,8 @@ defmodule Ash.Resource.Actions.Destroy do
     :error_handler,
     manual: nil,
     require_atomic?: Application.compile_env(:ash, :require_atomic_by_default?, true),
+    atomic_upgrade?: true,
+    atomic_upgrade_with: nil,
     arguments: [],
     touches_resources: [],
     delay_global_validations?: false,
@@ -32,6 +34,8 @@ defmodule Ash.Resource.Actions.Destroy do
           manual: module | nil,
           notifiers: list(module),
           arguments: list(Ash.Resource.Actions.Argument.t()),
+          atomic_upgrade?: boolean(),
+          atomic_upgrade_with: nil | atom(),
           require_atomic?: boolean,
           accept: list(atom),
           require_attributes: list(atom),
@@ -67,6 +71,19 @@ defmodule Ash.Resource.Actions.Destroy do
                   Require that the update be atomic. Only relevant if `soft?` is set to `true`. This means that all changes and validations implement the `atomic` callback. See the guide on atomic updates for more.
                   """,
                   default: Application.compile_env(:ash, :require_atomic_by_default?, true)
+                ],
+                atomic_upgrade?: [
+                  type: :boolean,
+                  doc: """
+                  If set to `true`, atomic upgrades will be performed. See the update actions guide for more.
+                  """,
+                  default: false
+                ],
+                atomic_upgrade_with: [
+                  type: {:one_of, [:atom, nil]},
+                  doc: """
+                  Configure the read action used when performing atomic upgrades. Defaults to the primary read action.
+                  """
                 ]
               ]
               |> Spark.Options.merge(

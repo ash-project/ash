@@ -590,7 +590,7 @@ defmodule Ash do
                           type: :boolean,
                           default: true,
                           doc:
-                            "If true the action will be done atomically if it can, ignoring the in memory transformations and validations. You should not generally need to disable this."
+                            "If true the action will be done atomically if it can (and is configured to do so), ignoring the in memory transformations and validations. You should not generally need to disable this."
                         ]
                       ]
                       |> Spark.Options.merge(@global_opts, "Global Options")

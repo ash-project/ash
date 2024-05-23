@@ -15,6 +15,8 @@ spark_locals_without_parens = [
   args: 1,
   argument: 2,
   argument: 3,
+  atomic_upgrade?: 1,
+  atomic_upgrade_with: 1,
   attribute: 1,
   attribute: 2,
   attribute: 3,

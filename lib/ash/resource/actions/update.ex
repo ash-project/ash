@@ -14,6 +14,8 @@ defmodule Ash.Resource.Actions.Update do
     manual: nil,
     manual?: false,
     require_atomic?: Application.compile_env(:ash, :require_atomic_by_default?, true),
+    atomic_upgrade?: true,
+    atomic_upgrade_with: nil,
     notifiers: [],
     atomics: [],
     delay_global_validations?: false,
@@ -31,6 +33,8 @@ defmodule Ash.Resource.Actions.Update do
           type: :update,
           name: atom,
           manual: module | nil,
+          atomic_upgrade?: boolean(),
+          atomic_upgrade_with: nil | atom(),
           notifiers: list(module),
           accept: list(atom),
           require_attributes: list(atom),
@@ -64,6 +68,19 @@ defmodule Ash.Resource.Actions.Update do
                   Require that the update be atomic. This means that all changes and validations implement the `atomic` callback. See the guide on atomic updates for more.
                   """,
                   default: Application.compile_env(:ash, :require_atomic_by_default?, true)
+                ],
+                atomic_upgrade?: [
+                  type: :boolean,
+                  doc: """
+                  If set to `true`, atomic upgrades will be performed. Ignored if `required_atomic?` is `true`. See the update actions guide for more.
+                  """,
+                  default: false
+                ],
+                atomic_upgrade_with: [
+                  type: {:one_of, [:atom, nil]},
+                  doc: """
+                  Configure the read action used when performing atomic upgrades. Defaults to the primary read action.
+                  """
                 ]
               ]
               |> Spark.Options.merge(

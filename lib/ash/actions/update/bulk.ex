@@ -1355,7 +1355,12 @@ defmodule Ash.Actions.Update.Bulk do
 
     must_be_simple_results =
       Enum.flat_map(must_be_simple, fn changeset ->
-        case Ash.Actions.Update.run(domain, changeset, action, opts) do
+        case Ash.Actions.Update.run(
+               domain,
+               changeset,
+               action,
+               Keyword.put(opts, :atomic_upgrade?, false)
+             ) do
           {:ok, result} ->
             [
               Ash.Resource.set_metadata(result, %{

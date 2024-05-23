@@ -36,10 +36,22 @@ defmodule Ash.Actions.Update do
          action_type: :update
        )}
     else
-      primary_read = Ash.Resource.Info.primary_action(changeset.resource, :read)
+      atomic_upgrade_read =
+        case action.atomic_upgrade_with do
+          nil ->
+            Ash.Resource.Info.primary_action(changeset.resource, :read)
+
+          atomic_upgrade_with ->
+            Ash.Resource.Info.action(changeset.resource, atomic_upgrade_with) ||
+              raise ArgumentError,
+                    "#{inspect(changeset.resource)}.atomic_upgrade_with is set to #{atomic_upgrade_with}, which is not a valid action"
+        end
 
       {fully_atomic_changeset, params} =
         cond do
+          !action.require_atomic? && !action.atomic_upgrade? ->
+            {{:not_atomic, "action has `atomic_upgrade? false`"}, nil}
+
           !Ash.DataLayer.data_layer_can?(changeset.resource, :expr_error) && opts[:authorize?] ->
             {{:not_atomic, "data layer does not support adding errors to a query"}, nil}
 
@@ -67,8 +79,9 @@ defmodule Ash.Actions.Update do
             {{:not_atomic, "cannot atomically run a changeset with an after_transaction hook"},
              nil}
 
-          !primary_read ->
-            {{:not_atomic, "cannot atomically update a record without a primary read action"},
+          !atomic_upgrade_read ->
+            {{:not_atomic,
+              "cannot atomically update a record without a primary read action or a configured `atomic_upgrade_with` action"},
              nil}
 
           opts[:atomic_upgrade?] == false ->
@@ -133,7 +146,7 @@ defmodule Ash.Actions.Update do
           query =
             atomic_changeset.resource
             |> Ash.Query.set_context(%{private: %{internal?: true}})
-            |> Ash.Query.for_read(primary_read.name, %{},
+            |> Ash.Query.for_read(atomic_upgrade_read.name, %{},
               actor: opts[:actor],
               authorize?: false,
               context: atomic_changeset.context,

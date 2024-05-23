@@ -178,3 +178,9 @@ All actions are run in a transaction if the data layer supports it. You can opt 
 - Non-belongs-to relationships are managed, creating/updating/destroying related records.
 - The transaction is closed, if one was opened
 - `after_transaction` hooks are invoked with the result of the transaction (even if it was an error)
+
+## Atomic Upgrade
+
+Update actions that are run as "normal" update actions will, at the time of execution, be "upgraded" to an atomic action if possible. This  means taking the original inputs and building a corresponding atomic action. This behavior is primarily useful for using things like `AshPhoenix.Form`, where you want to validate and see the effects of an action before running it, but want the ultimate invocation to be atomic (i.e concurrency safe).
+
+You can disable this by adding `atomic_upgrade? false` to the action configuration. Additionally, you may want to configure the read action used for atomic upgrades (defaults to the primary read), with `atomic_upgrade_with` option, i.e `atomic_upgrade_with :list_all`
