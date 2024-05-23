@@ -2,6 +2,21 @@
 
 <!-- changelog -->
 
+## [v3.0.6](https://github.com/ash-project/ash/compare/v3.0.5...v3.0.6) (2024-05-23)
+
+
+
+
+### Bug Fixes:
+
+* improve non-atomic-upgrade policy handling
+
+* ensure we have a primary key for certain kinds of calculations:
+
+* handle subquery-requiring calculations in `calculate/2`
+
+* mixup between atomic upsert vs update capability of datalayers (#1198)
+
 ## [v3.0.5](https://github.com/ash-project/ash/compare/v3.0.4...v3.0.5) (2024-05-23)
 
 
