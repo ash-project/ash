@@ -143,6 +143,18 @@ defmodule Ash.Changeset do
           concat("atomics: ", to_doc(changeset.atomics, opts))
         end
 
+      filter =
+        case changeset.filter do
+          nil ->
+            empty()
+
+          %Ash.Filter{expression: nil} ->
+            empty()
+
+          true ->
+            concat("filter: ", to_doc(changeset.filter, opts))
+        end
+
       container_doc(
         "#Ash.Changeset<",
         [
@@ -155,6 +167,7 @@ defmodule Ash.Changeset do
           concat("relationships: ", to_doc(changeset.relationships, opts)),
           arguments(changeset, opts),
           concat("errors: ", to_doc(changeset.errors, opts)),
+          filter,
           concat("data: ", to_doc(changeset.data, opts)),
           context,
           concat("valid?: ", to_doc(changeset.valid?, opts)),

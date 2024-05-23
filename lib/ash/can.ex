@@ -567,7 +567,7 @@ defmodule Ash.Can do
 
           {true, query} when not is_nil(query) ->
             if opts[:run_queries?] do
-              run_queries(subject, opts, authorizers, query)
+              run_queries(subject, actor, opts, authorizers, query)
             else
               if opts[:alter_source?] do
                 {:ok, true, query}
@@ -624,7 +624,7 @@ defmodule Ash.Can do
     end
   end
 
-  defp run_queries(subject, opts, authorizers, query) do
+  defp run_queries(subject, actor, opts, authorizers, query) do
     case subject do
       %Ash.Query{} ->
         if opts[:data] do
@@ -673,10 +673,22 @@ defmodule Ash.Can do
           {:ok, true}
         end
 
-      %Ash.Changeset{data: data, action_type: type, resource: resource, tenant: tenant}
+      %Ash.Changeset{data: data, action_type: type, resource: resource, tenant: tenant} =
+          changeset
       when type in [:update, :destroy] ->
         pkey = Ash.Resource.Info.primary_key(resource)
         pkey_value = Map.take(data, pkey)
+
+        query =
+          Map.update!(query, :filter, fn filter ->
+            Ash.Expr.fill_template(
+              filter,
+              actor,
+              %{},
+              %{},
+              changeset
+            )
+          end)
 
         if pkey_value |> Map.values() |> Enum.any?(&is_nil/1) do
           {:ok, :maybe}

@@ -81,7 +81,11 @@ defmodule Ash.Test.CodeInterfaceTest do
     calculations do
       calculate :full_name, :string, expr(first_name <> ^arg(:separator) <> last_name) do
         public?(true)
-        argument :separator, :string, default: " ", allow_nil?: false, constraints: [allow_empty?: true, trim?: false]
+
+        argument :separator, :string,
+          default: " ",
+          allow_nil?: false,
+          constraints: [allow_empty?: true, trim?: false]
       end
 
       calculate :full_name_functional,

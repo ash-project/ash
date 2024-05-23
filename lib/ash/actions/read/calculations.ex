@@ -78,20 +78,7 @@ defmodule Ash.Actions.Read.Calculations do
                calculation: calculation
              )}
           else
-            if !is_nil(primary_key) do
-              case Ash.load(record, [{calculation, arguments}],
-                     actor: opts[:actor],
-                     domain: opts[:domain],
-                     tenant: opts[:tenant],
-                     authorize?: opts[:authorize?],
-                     tracer: opts[:tracer],
-                     resource: opts[:resource],
-                     context: opts[:context] || %{}
-                   ) do
-                {:ok, record} -> {:ok, Map.get(record, calculation)}
-                {:error, error} -> {:error, error}
-              end
-            else
+            if is_nil(primary_key) do
               expr = replace_refs(expr, Keyword.put(opts, :record, record))
 
               evaled =
@@ -156,6 +143,19 @@ defmodule Ash.Actions.Read.Calculations do
 
                 {:error, error} ->
                   {:error, error}
+              end
+            else
+              case Ash.load(record, [{calculation, arguments}],
+                     actor: opts[:actor],
+                     domain: opts[:domain],
+                     tenant: opts[:tenant],
+                     authorize?: opts[:authorize?],
+                     tracer: opts[:tracer],
+                     resource: opts[:resource],
+                     context: opts[:context] || %{}
+                   ) do
+                {:ok, record} -> {:ok, Map.get(record, calculation)}
+                {:error, error} -> {:error, error}
               end
             end
           end
