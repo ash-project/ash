@@ -2,6 +2,23 @@
 
 <!-- changelog -->
 
+## [v3.0.5](https://github.com/ash-project/ash/compare/v3.0.4...v3.0.5) (2024-05-23)
+
+
+
+
+### Bug Fixes:
+
+* only use `Mix.deps_tree` if defined
+
+### Improvements:
+
+* add `atomic_upgrade?` flag to update/destroy actions
+
+* do not do atomic upgrade by default unless `require_atomic?` is `true`
+
+* allow configuring the read action used by atomic upgrades
+
 ## [v3.0.4](https://github.com/ash-project/ash/compare/v3.0.3...v3.0.4) (2024-05-22)
 
 
