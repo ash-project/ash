@@ -3193,7 +3193,7 @@ defmodule Ash.Changeset do
   def run_before_actions(%{before_action: []} = changeset), do: {changeset, %{notifications: []}}
 
   def run_before_actions(changeset) do
-    can_atomic_upsert? = Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :upsert})
+    can_do_atomic? = data_layer_can_do_atomic_for_changest?(changeset)
 
     Enum.reduce_while(
       changeset.before_action,
@@ -3257,12 +3257,12 @@ defmodule Ash.Changeset do
       {:error, error} ->
         {:error, error}
 
-      {%{atomics: atomics} = changeset, _} when atomics != [] and not can_atomic_upsert? ->
+      {%{atomics: atomics} = changeset, _} when atomics != [] and not can_do_atomic? ->
         Ash.Changeset.add_error(
           changeset,
           Ash.Error.Invalid.AtomicsNotSupported.exception(
             resource: changeset.resource,
-            action_type: :create
+            action_type: changeset.action_type
           )
         )
 
@@ -3324,12 +3324,11 @@ defmodule Ash.Changeset do
       |> set_phase(:before_action)
 
     result =
-      if changeset.atomics != [] &&
-           !Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, :upsert}) do
+      if changeset.atomics != [] && !data_layer_can_do_atomic_for_changest?(changeset) do
         {:error,
          Ash.Error.Invalid.AtomicsNotSupported.exception(
            resource: changeset.resource,
-           action_type: :create
+           action_type: changeset.action_type
          )}
       else
         run_before_actions(changeset)
@@ -3453,6 +3452,11 @@ defmodule Ash.Changeset do
         end
       end
     )
+  end
+
+  defp data_layer_can_do_atomic_for_changest?(changeset) do
+    ability = if changeset.action_type == :update, do: :update, else: :upsert
+    Ash.DataLayer.data_layer_can?(changeset.resource, {:atomic, ability})
   end
 
   @doc "Gets the value of an argument provided to the changeset."
