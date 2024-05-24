@@ -22,6 +22,11 @@ defmodule Ash.Test.Actions.IdentityTest do
       identity :unique_url, [:url] do
         pre_check_with(Domain)
       end
+
+      identity :unique_uniq_nil, [:uniq_nil] do
+        eager_check_with(Domain)
+        nils_distinct?(false)
+      end
     end
 
     actions do
@@ -33,17 +38,22 @@ defmodule Ash.Test.Actions.IdentityTest do
       end
     end
 
+    calculations do
+      calculate :lower_title, :string, expr(string_downcase(title))
+    end
+
     attributes do
       uuid_primary_key :id
       attribute(:title, :string, allow_nil?: false, public?: true)
       attribute(:url, :string, public?: true)
+      attribute(:uniq_nil, :string, public?: true)
     end
   end
 
   describe "eager_check_with" do
     test "will check for an identity mismatch at validation" do
       Post
-      |> Ash.Changeset.for_create(:create, %{title: "fred"}, domain: Domain)
+      |> Ash.Changeset.for_create(:create, %{title: "fred", uniq_nil: "foo"}, domain: Domain)
       |> Ash.create!()
 
       assert %{
@@ -56,12 +66,28 @@ defmodule Ash.Test.Actions.IdentityTest do
                ]
              } = Ash.Changeset.for_create(Post, :create, %{title: "fred"})
     end
+
+    test "honors nils_distinct?" do
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "a"}, domain: Domain)
+      |> Ash.create!()
+
+      assert %{
+               valid?: false,
+               errors: [
+                 %Ash.Error.Changes.InvalidChanges{
+                   fields: [:uniq_nil],
+                   message: "has already been taken"
+                 }
+               ]
+             } = Ash.Changeset.for_create(Post, :create, %{title: "fred"})
+    end
   end
 
   describe "pre_check?" do
     test "will check for an identity mismatch prior to submission" do
       Post
-      |> Ash.Changeset.for_create(:create, %{title: "fred", url: "google.com"}, domain: Domain)
+      |> Ash.Changeset.for_create(:create, %{title: "fred", url: "google.com", uniq_nil: "foo"}, domain: Domain)
       |> Ash.create!()
 
       assert_raise Ash.Error.Invalid, ~r/url: has already been taken/, fn ->

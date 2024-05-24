@@ -482,7 +482,7 @@ defmodule Ash.Filter do
     end
   end
 
-  defp get_keys(value, fields, resource) do
+  defp get_keys(value, fields, resource, nils_distinct? \\ true) do
     original_value = value
 
     Enum.reduce_while(fields, {:ok, %{}}, fn field, {:ok, vals} ->
@@ -490,10 +490,14 @@ defmodule Ash.Filter do
         {:ok, value} ->
           case cast_value(resource, field, value, original_value) do
             {:ok, value} ->
-              {:cont, {:ok, Map.put(vals, field, value)}}
+              if value == nil && nils_distinct? do
+                {:halt, :error}
+              else
+                {:cont, {:ok, Map.put(vals, field, value)}}
+              end
 
-            {:error, error} ->
-              {:halt, {:error, error}}
+            {:error, _error} ->
+              {:halt, :error}
           end
 
         :error ->
@@ -501,10 +505,14 @@ defmodule Ash.Filter do
             {:ok, value} ->
               case cast_value(resource, field, value, original_value) do
                 {:ok, value} ->
-                  {:cont, {:ok, Map.put(vals, field, value)}}
+                  if value == nil && nils_distinct? do
+                    {:halt, :error}
+                  else
+                    {:cont, {:ok, Map.put(vals, field, value)}}
+                  end
 
-                {:error, error} ->
-                  {:error, error}
+                {:error, _error} ->
+                  {:halt, :error}
               end
 
             :error ->
@@ -512,6 +520,23 @@ defmodule Ash.Filter do
           end
       end
     end)
+    |> case do
+      {:ok, values} ->
+        {:ok,
+         Map.new(values, fn
+           {key, nil} ->
+             {key, [is_nil: true]}
+
+           {key, value} ->
+             {key, value}
+         end)}
+
+      :error ->
+        :error
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   defp cast_value(resource, field, value, id) do
@@ -540,7 +565,7 @@ defmodule Ash.Filter do
     |> Enum.find_value(
       :error,
       fn identity ->
-        case get_keys(id, identity.keys, resource) do
+        case get_keys(id, identity.keys, resource, identity.nils_distinct?) do
           {:ok, key} ->
             {:ok, key}
 

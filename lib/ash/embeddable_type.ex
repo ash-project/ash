@@ -610,7 +610,7 @@ defmodule Ash.EmbeddableType do
       def apply_constraints_array(term, constraints) do
         case find_duplicates(
                term,
-               __MODULE__ |> Ash.Resource.Info.unique_keys() |> Enum.map(& &1.keys)
+               __MODULE__ |> Ash.Resource.Info.unique_keys()
              ) do
           nil ->
             if constraints[:sort] do
@@ -659,8 +659,9 @@ defmodule Ash.EmbeddableType do
       defp find_duplicates([], _), do: nil
       defp find_duplicates([_item], _), do: nil
 
-      defp find_duplicates(list, unique_keys) do
-        Enum.find(unique_keys, fn unique_key ->
+      defp find_duplicates(list, unique_key_configs) do
+        Enum.find(unique_key_configs, fn unique_key_config ->
+          unique_key = unique_key_config[:keys]
           attributes = Enum.map(unique_key, &Ash.Resource.Info.attribute(__MODULE__, &1))
 
           if Enum.all?(attributes, &Ash.Type.simple_equality?(&1.type)) do
@@ -671,7 +672,7 @@ defmodule Ash.EmbeddableType do
                 |> Map.take(unique_key)
                 |> Map.values()
 
-              if Enum.any?(value, &is_nil/1) do
+              if unique_key_config.nils_distinct? && Enum.any?(value, &is_nil/1) do
                 []
               else
                 [value]
@@ -697,8 +698,12 @@ defmodule Ash.EmbeddableType do
                       this_value = Map.get(this, attribute.name)
                       other_value = Map.get(other, attribute.name)
 
-                      not is_nil(this_value) and not is_nil(other_value) and
+                      if unique_key_config.nils_distinct? do
+                        not is_nil(this_value) and not is_nil(other_value) and
+                          Ash.Type.equal?(attribute.type, this_value, other_value)
+                      else
                         Ash.Type.equal?(attribute.type, this_value, other_value)
+                      end
                     end)
                   end)
 

@@ -283,7 +283,8 @@ defmodule Ash.Resource.Info do
   end
 
   @doc "A list of unique keys and information for a resource"
-  @spec unique_keys(Spark.Dsl.t() | Ash.Resource.t()) :: list(%{type: atom, keys: list(atom)})
+  @spec unique_keys(Spark.Dsl.t() | Ash.Resource.t()) ::
+          list(%{type: atom, keys: list(atom), nils_distinct?: boolean()})
   def unique_keys(resource) do
     Spark.Dsl.Extension.get_persisted(resource, :unique_keys, [])
   end

@@ -16,9 +16,11 @@ defmodule Ash.Resource.Identity do
     :message,
     :eager_check?,
     :eager_check_with,
+    :where,
     :pre_check?,
     :pre_check_with,
-    :all_tenants?
+    :all_tenants?,
+    nils_distinct?: false
   ]
 
   @schema [
@@ -31,6 +33,17 @@ defmodule Ash.Resource.Identity do
       type: {:wrap_list, :atom},
       required: true,
       doc: "The names of the attributes that uniquely identify this resource."
+    ],
+    where: [
+      type: :any,
+      doc:
+        "A filter that expresses only matching records are unique on the provided keys. Ignored on embedded resources."
+    ],
+    nils_distinct?: [
+      type: :boolean,
+      doc:
+        "Whether or not `nil` values are considered always distinct from eachother. `nil` values won't conflict with eachother unless you set this option to `false`.",
+      default: true
     ],
     eager_check?: [
       type: :boolean,

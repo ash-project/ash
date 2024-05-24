@@ -769,6 +769,7 @@ defmodule Ash.Resource.Dsl do
     describe: """
     Unique identifiers for the resource
     """,
+    imports: [Ash.Expr],
     examples: [
       """
       identities do

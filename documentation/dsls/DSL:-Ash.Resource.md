@@ -2184,6 +2184,8 @@ identity :full_name, [:first_name, :last_name]
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
+| [`where`](#identities-identity-where){: #identities-identity-where } | `any` |  | A filter that expresses only matching records are unique on the provided keys. Ignored on embedded resources. |
+| [`nils_distinct?`](#identities-identity-nils_distinct?){: #identities-identity-nils_distinct? } | `boolean` | `true` | Whether or not `nil` values are considered always distinct from eachother. `nil` values won't conflict with eachother unless you set this option to `false`. |
 | [`eager_check?`](#identities-identity-eager_check?){: #identities-identity-eager_check? } | `boolean` | `false` | Whether or not this identity is validated to be unique at validation time. |
 | [`eager_check_with`](#identities-identity-eager_check_with){: #identities-identity-eager_check_with } | `module` |  | Validates that the unique identity provided is unique at validation time, outside of any transactions, using the domain module provided. Will default to resource's domain. |
 | [`pre_check?`](#identities-identity-pre_check?){: #identities-identity-pre_check? } | `boolean` | `false` | Whether or not this identity is validated to be unique in a before_action hook. |

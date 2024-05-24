@@ -1831,56 +1831,73 @@ defmodule Ash.Changeset do
     if changeset.context[:private][:upsert_identity] == identity.name do
       changeset
     else
-      if Enum.any?(identity.keys, &changing_attribute?(changeset, &1)) do
+      if changeset.action_type == :create ||
+           Enum.any?(identity.keys, &changing_attribute?(changeset, &1)) do
         action = Ash.Resource.Info.primary_action(changeset.resource, :read).name
+
+        if Enum.any?(identity.keys, fn key ->
+             Ash.Resource.Info.calculation(changeset.resource, key)
+           end) do
+          raise ArgumentError, "Cannot pre or eager check an identity based on calculated fields."
+        end
 
         values =
           Enum.map(identity.keys, fn key ->
-            {key, Ash.Changeset.get_attribute(changeset, key)}
+            case Ash.Changeset.get_attribute(changeset, key) do
+              nil ->
+                {key, is_nil: true}
+
+              value ->
+                {key, value}
+            end
           end)
 
-        tenant =
-          if identity.all_tenants? do
-            unless Ash.Resource.Info.multitenancy_global?(changeset.resource) do
-              raise ArgumentError,
-                message: """
-                Cannot pre or eager check an identity that has `all_tenants?: true`
-                unless the resource supports global multitenancy.
-                """
+        if identity.nils_distinct? && Enum.any?(values, &(elem(&1, 1) == [is_nil: true])) do
+          changeset
+        else
+          tenant =
+            if identity.all_tenants? do
+              unless Ash.Resource.Info.multitenancy_global?(changeset.resource) do
+                raise ArgumentError,
+                  message: """
+                  Cannot pre or eager check an identity that has `all_tenants?: true`
+                  unless the resource supports global multitenancy.
+                  """
+              end
+
+              nil
+            else
+              changeset.tenant
             end
 
-            nil
-          else
-            changeset.tenant
+          changeset.resource
+          |> Ash.Query.for_read(action, %{},
+            tenant: tenant,
+            actor: changeset.context[:private][:actor],
+            authorize?: changeset.context[:private][:authorize?],
+            tracer: changeset.context[:private][:tracer],
+            domain: domain
+          )
+          |> Ash.Query.do_filter(values)
+          |> Ash.Query.limit(1)
+          |> Ash.Query.set_context(%{private: %{internal?: true}})
+          |> Ash.read_one(authorize?: false)
+          |> case do
+            {:ok, nil} ->
+              changeset
+
+            {:ok, _} ->
+              error =
+                Ash.Error.Changes.InvalidChanges.exception(
+                  fields: identity.keys,
+                  message: identity.message || "has already been taken"
+                )
+
+              add_error(changeset, error)
+
+            {:error, error} ->
+              add_error(changeset, error)
           end
-
-        changeset.resource
-        |> Ash.Query.for_read(action, %{},
-          tenant: tenant,
-          actor: changeset.context[:private][:actor],
-          authorize?: changeset.context[:private][:authorize?],
-          tracer: changeset.context[:private][:tracer],
-          domain: domain
-        )
-        |> Ash.Query.do_filter(values)
-        |> Ash.Query.limit(1)
-        |> Ash.Query.set_context(%{private: %{internal?: true}})
-        |> Ash.read_one(authorize?: false)
-        |> case do
-          {:ok, nil} ->
-            changeset
-
-          {:ok, _} ->
-            error =
-              Ash.Error.Changes.InvalidChanges.exception(
-                fields: identity.keys,
-                message: identity.message || "has already been taken"
-              )
-
-            add_error(changeset, error)
-
-          {:error, error} ->
-            add_error(changeset, error)
         end
       else
         changeset

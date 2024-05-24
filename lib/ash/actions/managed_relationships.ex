@@ -569,7 +569,14 @@ defmodule Ash.Actions.ManagedRelationships do
         Ash.Resource.Info.primary_key(relationship.destination)
 
       identity ->
-        Ash.Resource.Info.identity(relationship.destination, identity).keys
+        identity = Ash.Resource.Info.identity(relationship.destination, identity)
+
+        if is_nil(identity.where) do
+          identity.keys
+        else
+          raise ArgumentError,
+                "Cannot currently use identities with a `where` statement in managed_relationships. Got #{inspect(relationship.destination)}.#{identity.name}"
+        end
     end)
   end
 

@@ -9,10 +9,10 @@ defmodule Ash.Resource.Verifiers.VerifyIdentityFields do
 
     for identity <- identities do
       for key <- identity.keys do
-        if !Ash.Resource.Info.attribute(dsl, key) do
+        unless Ash.Resource.Info.attribute(dsl, key) || Ash.Resource.Info.calculation(dsl, key) do
           raise Spark.Error.DslError,
             module: Spark.Dsl.Verifier.get_persisted(dsl, :module),
-            message: "All identity keys must be attributes. Got: #{inspect(key)}",
+            message: "All identity keys must be attributes or calculations. Got: #{inspect(key)}",
             path: [:identities, identity.name]
         end
       end

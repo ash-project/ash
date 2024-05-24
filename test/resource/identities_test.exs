@@ -127,7 +127,7 @@ defmodule Ash.Test.Resource.IdentitiesTest do
 
     test "enforce identity constraints on attributes" do
       assert_raise Spark.Error.DslError,
-                   ~r/All identity keys must be attributes. Got: :naem/,
+                   ~r/All identity keys must be attributes or calculations. Got: :naem/,
                    fn ->
                      defmodule Site do
                        @moduledoc false
