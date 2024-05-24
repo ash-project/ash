@@ -2,6 +2,16 @@
 
 <!-- changelog -->
 
+## [v3.0.7](https://github.com/ash-project/ash/compare/v3.0.6...v3.0.7) (2024-05-24)
+
+### Improvements:
+
+- [identities] support `nils_distinct?` on identities
+
+- [identties] support `where` option on `identities`
+
+- [identities] allow calculations in identity keys
+
 ## [v3.0.6](https://github.com/ash-project/ash/compare/v3.0.5...v3.0.6) (2024-05-23)
 
 ### Bug Fixes:
