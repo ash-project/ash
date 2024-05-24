@@ -4,216 +4,137 @@
 
 ## [v3.0.6](https://github.com/ash-project/ash/compare/v3.0.5...v3.0.6) (2024-05-23)
 
-
-
-
 ### Bug Fixes:
 
-* improve non-atomic-upgrade policy handling
+- [policies] don't raise an error when authorizing against previous values without atomic upgrades
 
-* ensure we have a primary key for certain kinds of calculations:
+- [calculations] handle subquery-requiring calculations in `calculate/2`, ensuring we have a primary key
 
-* handle subquery-requiring calculations in `calculate/2`
-
-* mixup between atomic upsert vs update capability of datalayers (#1198)
+- [Ash.DataLayer] resolve mixup between atomic upsert vs update capability of datalayers (#1198)
 
 ## [v3.0.5](https://github.com/ash-project/ash/compare/v3.0.4...v3.0.5) (2024-05-23)
 
-
-
-
 ### Bug Fixes:
 
-* only use `Mix.deps_tree` if defined
+- [mix ash.*] only use `Mix.deps_tree` if defined (its only defined for elixir 1.15+)
 
 ### Improvements:
 
-* add `atomic_upgrade?` flag to update/destroy actions
+- [atomic upgrade] add `atomic_upgrade?` flag to update/destroy actions
 
-* do not do atomic upgrade by default unless `require_atomic?` is `true`
+- [atomic upgrade] do not do atomic upgrade by default unless `require_atomic?` is `true`
 
-* allow configuring the read action used by atomic upgrades
+- [atomic upgrade] allow configuring the read action used by atomic upgrades
 
 ## [v3.0.4](https://github.com/ash-project/ash/compare/v3.0.3...v3.0.4) (2024-05-22)
 
-
-
-
-### Features:
-
-* Ash.Reactor: Add `bulk_update` step type. (#1185)
-
-* allow retrieving the count of paginated relationships (#1183)
-
-* Ash.Reactor: Add `bulk_create` step type.
-
 ### Bug Fixes:
 
-* ensure that all notifications are sent for bulk destroy/update
-
-* properly hydrate and scope sorts
-
-* handle list of atomic conditions (#1194) (#1195)
-
-* handle nil value for old_values (#1191)
-
-* allow all strategies for bulk actions in code interfaces by default
-
-* use `Ash.Sort.parse_input/3` in `Ash.Query.sort_input/2`
-
-* improve Ash.Domain.Info typespecs
-
-* make Ash.Resource.Validation.Changing work correctly in atomics (#1178)
-
-* check the where condition before checking validation atomicity (#1177)
-
-* handle `nil` notification results better
-
-* don't emit after batch notifications if `notify?: false`
-
-* prefer resource domain over option domain (#1176)
-
-* don't require domain for empty stream bulk update and destroy (#1175)
-
-* only return valid non nil values items from generator (#1121)
-
-* properly validate input action on bulk destroy
-
-* allow setting `authorize?: false`
-
-* honor `get?` for bulk update/bulk destroy
-
-### Improvements:
-
-* support anonymous aggregates and calculations in queries
-
-* Implement `show_sensitive?` config (#1180)
-
-* support `filter_input` and `sort_input` in `Ash.Query.build/2`
-
-* add `template_requires_actor` check for changesets
-
-* don't use queries for streaming if they have hooks
-
-* consider `from: nil` in `changing_attributes/1` check
+- [bulk update/destroy] ensure that all notifications are sent
 
 ## [3.0.3](https://github.com/ash-project/ash/compare/v3.0.2...3.0.3) (2024-05-22)
 
-
-
-
 ### Features:
 
-* Ash.Reactor: Add `bulk_update` step type. (#1185)
+- [relationship pagination] allow retrieving the count of paginated relationships (#1183)
 
-* allow retrieving the count of paginated relationships (#1183)
-
-* Ash.Reactor: Add `bulk_create` step type.
+- [Ash.Reactor] Add `bulk_create` step type.
+- [Ash.Reactor] Add `bulk_update` step type. (#1185)
 
 ### Bug Fixes:
 
-* properly hydrate and scope sorts
+- [Ash.Actions.Read] properly hydrate and scope sorts with query context
 
-* handle list of atomic conditions (#1194) (#1195)
+- [Ash.Changeset] handle list of atomic conditions coming from atomic validation implementation (#1194) (#1195)
 
-* handle nil value for old_values (#1191)
+- [embedded resources] handle nil value for old_values when casting arrays (#1191)
 
-* allow all strategies for bulk actions in code interfaces by default
+- [Ash.Query] use `Ash.Sort.parse_input/3` in `Ash.Query.sort_input/2`
 
-* use `Ash.Sort.parse_input/3` in `Ash.Query.sort_input/2`
+- [Ash.Resource.Validation.Changing] works correctly in atomics, and can eagerly detect changing (#1178)
 
-* improve Ash.Domain.Info typespecs
+- [atomic updates] check the where condition before checking validation atomicity (#1177)
 
-* make Ash.Resource.Validation.Changing work correctly in atomics (#1178)
+- [bulk actions] don't emit after batch notifications if `notify?: false`
 
-* check the where condition before checking validation atomicity (#1177)
+- [Ash.Resource] prefer resource domain over option domain (#1176)
 
-* handle `nil` notification results better
+- [bulk update/destroy] don't require domain for empty stream bulk update and destroy (#1175)
 
-* don't emit after batch notifications if `notify?: false`
+- [Ash.Generator] only return valid non nil values items from generator (#1121)
 
-* prefer resource domain over option domain (#1176)
+- [bulk destroy] properly validate action when calling bulk destroy
 
-* don't require domain for empty stream bulk update and destroy (#1175)
-
-* only return valid non nil values items from generator (#1121)
-
-* properly validate input action on bulk destroy
-
-* allow setting `authorize?: false`
-
-* honor `get?` for bulk update/bulk destroy
+- [code interface] allow all strategies for bulk actions in code interfaces by default
+- [code interfaces] honor `get?` for bulk update/bulk destroy
 
 ### Improvements:
 
-* support anonymous aggregates and calculations in queries
+- [Ash.Query] support anonymous aggregates and calculations in sorts
 
-* Implement `show_sensitive?` config (#1180)
+- [sensitive fields] Implement `show_sensitive?` config (#1180)
 
-* support `filter_input` and `sort_input` in `Ash.Query.build/2`
+- [Ash.Query] support `filter_input` and `sort_input` in `Ash.Query.build/2`
 
-* add `template_requires_actor` check for changesets
+- [Ash.Changeset] add `template_requires_actor` check for changesets
 
-* don't use queries for streaming if they have hooks
+- [bulk update/destroy] don't use queries for streaming if they have hooks
 
-* consider `from: nil` in `changing_attributes/1` check
+- [Ash.Policy.Check.ChangingAttributes] consider `from: nil` in `changing_attributes/1` check
 
 ## [v3.0.2](https://github.com/ash-project/ash/compare/v3.0.1...v3.0.2) (2024-05-15)
 
-
 ### Improvements:
 
-* [Ash.Expr] add pattern matching for clarity on values accepted by `ref/1` and `ref/2`
+- [Ash.Expr] add pattern matching for clarity on values accepted by `ref/1` and `ref/2`
 
-* [Ash.Expr] add `can_return_nil?/1` callback to Ash expressions, allowing for various optimizations
+- [Ash.Expr] add `can_return_nil?/1` callback to Ash expressions, allowing for various optimizations
 
-* [Ash.Type.NewType] raise argument error on unknown options in `Ash.Type.NewType`. Helps with typos & misunderstandings
+- [Ash.Type.NewType] raise argument error on unknown options in `Ash.Type.NewType`. Helps with typos & misunderstandings
 
-* [embedded resources] use the `source` configuration for attributes in embedded resources (it was previously just ignored)
+- [embedded resources] use the `source` configuration for attributes in embedded resources (it was previously just ignored)
 
-* [Ash.Policy.Authorizer] better type specification for checks, to get better autocomplete and compile time validation
+- [Ash.Policy.Authorizer] better type specification for checks, to get better autocomplete and compile time validation
 
-* [Ash.Error.Invalid.NoSuchInput] added a `did_you_mean` field and used it in the error message
+- [Ash.Error.Invalid.NoSuchInput] added a `did_you_mean` field and used it in the error message
 
 ### Bug Fixes:
 
-* [Ash.Resource] properly persist simple_notifiers (they were being ignored before)
+- [Ash.Resource] properly persist simple_notifiers (they were being ignored before)
 
-* [code interface] accept single ids in code interface as subject for destroy/update
+- [code interface] accept single ids in code interface as subject for destroy/update
 
-* [bulk update] ensure that the `changed?` context is set in after action hooks on batches
+- [bulk update] ensure that the `changed?` context is set in after action hooks on batches
 
-* [relationships] allow for inferred domains when authorizing join queries
+- [relationships] allow for inferred domains when authorizing join queries
 
-* [Ash.Expr] don't treat `nil` as not a valid value when type casting lists
+- [Ash.Expr] don't treat `nil` as not a valid value when type casting lists
 
-* [atomic upgrade] keep data's metadata in atomic upgraded update (#1165)
-
+- [atomic upgrade] keep data's metadata in atomic upgraded update (#1165)
 
 ## [v3.0.1](https://github.com/ash-project/ash/compare/v3.0.0...v3.0.1) (2024-05-14)
 
-
 ### Features:
 
-* [Ash.Resource.Change.Builtins] Add `cascade_destroy` to builtin changes.
+- [Ash.Resource.Change.Builtins] Add `cascade_destroy` to builtin changes.
 
 ### Bug Fixes:
 
-* [calculations] calculation eager evaluation bug caused `exists` to eager evaluate when we didn't actually have the related data
+- [calculations] calculation eager evaluation bug caused `exists` to eager evaluate when we didn't actually have the related data
 
-* [field policies] fix field policy rewrite errors on non-success cases (#1163)
+- [field policies] fix field policy rewrite errors on non-success cases (#1163)
 
-* [embedded resources] fix embedded resource authorization (#1159) (#1160)
+- [embedded resources] fix embedded resource authorization (#1159) (#1160)
 
-* infinite recursion if query is empty (#1158)
+- infinite recursion if query is empty (#1158)
 
-* [Ash.DataLayer.Ets] ensure that changeset filters are honored in ETS destroy/update_query
+- [Ash.DataLayer.Ets] ensure that changeset filters are honored in ETS destroy/update_query
 
-* [update/destroy actions] don't rollback transactions on stale records, ignore stale records in bulk actions
+- [update/destroy actions] don't rollback transactions on stale records, ignore stale records in bulk actions
 
-* [bulk creates] don't check required belongs to fields until after setting them in bulk creation
+- [bulk creates] don't check required belongs to fields until after setting them in bulk creation
 
-* [code interface] check require_reference? when generating update code interface (#1152)
+- [code interface] check require_reference? when generating update code interface (#1152)
 
 ## [v3.0.0](https://github.com/ash-project/ash/compare/v3.0.0...2.0)
 

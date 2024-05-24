@@ -87,7 +87,9 @@ defmodule Ash.Test.Actions.IdentityTest do
   describe "pre_check?" do
     test "will check for an identity mismatch prior to submission" do
       Post
-      |> Ash.Changeset.for_create(:create, %{title: "fred", url: "google.com", uniq_nil: "foo"}, domain: Domain)
+      |> Ash.Changeset.for_create(:create, %{title: "fred", url: "google.com", uniq_nil: "foo"},
+        domain: Domain
+      )
       |> Ash.create!()
 
       assert_raise Ash.Error.Invalid, ~r/url: has already been taken/, fn ->
