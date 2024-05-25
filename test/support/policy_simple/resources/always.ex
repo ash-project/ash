@@ -1,4 +1,6 @@
 defmodule Ash.Test.Support.PolicySimple.Always do
+  @moduledoc false
+
   use Ash.Resource,
     domain: Ash.Test.Support.PolicySimple.Domain,
     data_layer: Ash.DataLayer.Ets,
