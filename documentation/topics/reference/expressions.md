@@ -74,6 +74,7 @@ For elixir-backed data layers, they will be a function or an MFA that will be ca
 - `exists/2` | `exists(foo.bar, name == "fred")` takes an expression scoped to the destination resource, and checks if any related entry matches. See the section on `exists` below.
 - `path.exists/2` | Same as `exists` but the source of the relationship is itself a nested relationship. See the section on `exists` below.
 - `parent/1` | Allows an expression scoped to a resource to refer to the "outer" context. Used in relationship filters and `exists`
+- `count/2` | `count(posts, filter: [query: [published == true]])` an inline aggregate function to count records in a relationship, scoped by a second optional expression. See the section on Inline Aggregates for more information.
 
 ## DateTime Functions
 
