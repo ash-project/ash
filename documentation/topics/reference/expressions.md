@@ -96,13 +96,15 @@ For elixir-backed data layers, they will be a function or an MFA that will be ca
 
 ## Inline Aggregates
 
-Aggregates can be referenced in-line, with their relationship path specified and any options provided that match the options given to `Ash.Query.Aggregate.new/4`. For example:
+Aggregates such as `count`, `first`, `sum`, etc. can be referenced in-line, with their relationship path specified and any options provided that match the options given to `Ash.Query.Aggregate.new/4`. For example:
 
 ```elixir
 calculate :grade, :decimal, expr(
   count(answers, query: [filter: expr(correct == true)]) /
   count(answers, query: [filter: expr(correct == false)])
 )
+
+calculate :latest_post_published_at, :datetime, expr(max(posts, field: :published_at))
 ```
 
 The available aggregate kinds can also be seen in the `Ash.Query.Aggregate` module documentation.
