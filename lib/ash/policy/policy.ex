@@ -480,13 +480,13 @@ defmodule Ash.Policy.Policy do
             condition_and_policy_expression ->
               case compile_policy_expression(rest, authorizer) do
                 {true, authorizer} ->
-                  {true, authorizer}
-
-                {false, authorizer} ->
                   {condition_and_policy_expression, authorizer}
 
+                {false, authorizer} ->
+                  {false, authorizer}
+
                 {rest, authorizer} ->
-                  {{:or, condition_and_policy_expression, rest}, authorizer}
+                  {{:and, condition_and_policy_expression, rest}, authorizer}
               end
           end
         end

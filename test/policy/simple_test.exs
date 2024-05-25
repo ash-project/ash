@@ -172,4 +172,17 @@ defmodule Ash.Test.Policy.SimpleTest do
     |> Ash.Changeset.for_create(:create, %{name: "Foo"})
     |> Ash.create!()
   end
+
+  test "a final always policy with a forbid if always is properly applied" do
+    user = Ash.create!(Ash.Changeset.for_create(User, :create), authorize?: false)
+
+    Ash.Test.Support.PolicySimple.Always
+    |> Ash.Changeset.for_create(:create, %{user_id: user.id})
+    |> Ash.create!(authorize?: false)
+
+    assert_raise Ash.Error.Forbidden, fn ->
+      Ash.Test.Support.PolicySimple.Always
+      |> Ash.read!(authorize?: true, actor: user)
+    end
+  end
 end

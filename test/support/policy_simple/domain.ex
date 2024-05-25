@@ -11,5 +11,6 @@ defmodule Ash.Test.Support.PolicySimple.Domain do
     resource(Ash.Test.Support.PolicySimple.Trip)
     resource(Ash.Test.Support.PolicySimple.Tweet)
     resource(Ash.Test.Support.PolicySimple.Foo)
+    resource(Ash.Test.Support.PolicySimple.Always)
   end
 end
