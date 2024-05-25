@@ -314,7 +314,7 @@ defmodule Ash.Policy.Policy do
     {condition_expression, authorizer} = condition_expression(condition, authorizer)
 
     case condition_expression do
-      true ->
+      empty when empty in [nil, true] ->
         if bypass? do
           case compile_policy_expression(policies, authorizer) do
             {true, authorizer} ->
@@ -359,57 +359,6 @@ defmodule Ash.Policy.Policy do
 
       false ->
         compile_policy_expression(rest, authorizer)
-
-      nil ->
-        if bypass? do
-          case compile_policy_expression(policies, authorizer) do
-            {true, authorizer} ->
-              {true, authorizer}
-
-            {false, authorizer} ->
-              {at_least_one_policy_expression, authorizer} =
-                at_least_one_policy_expression(Enum.take_while(rest, &(!&1.bypass?)), authorizer)
-
-              rest = compile_policy_expression(rest, authorizer)
-              {:and, rest, at_least_one_policy_expression}
-
-            {policy_expression, authorizer} ->
-              {at_least_one_policy_expression, authorizer} =
-                at_least_one_policy_expression(Enum.take_while(rest, &(!&1.bypass?)), authorizer)
-
-              case compile_policy_expression(rest, authorizer) do
-                {false, authorizer} ->
-                  {policy_expression, authorizer}
-
-                {true, authorizer} ->
-                  {{:or, policy_expression, at_least_one_policy_expression}, authorizer}
-
-                {rest, authorizer} ->
-                  {{:or, policy_expression, {:and, rest, at_least_one_policy_expression}},
-                   authorizer}
-              end
-          end
-        else
-          case compile_policy_expression(policies, authorizer) do
-            {true, authorizer} ->
-              compile_policy_expression(rest, authorizer)
-
-            {false, authorizer} ->
-              {false, authorizer}
-
-            {policy_expression, authorizer} ->
-              case compile_policy_expression(rest, authorizer) do
-                {true, authorizer} ->
-                  {policy_expression, authorizer}
-
-                {false, authorizer} ->
-                  {false, authorizer}
-
-                {rest, authorizer} ->
-                  {{:and, policy_expression, rest}, authorizer}
-              end
-          end
-        end
 
       condition_expression ->
         if bypass? do
@@ -458,36 +407,21 @@ defmodule Ash.Policy.Policy do
               end
           end
         else
-          {condition_and_policy_expression, authorizer} =
-            case compile_policy_expression(policies, authorizer) do
-              {true, authorizer} ->
-                {condition_expression, authorizer}
-
-              {false, authorizer} ->
-                {false, authorizer}
-
-              {policy_expression, authorizer} ->
-                {{:and, condition_expression, policy_expression}, authorizer}
-            end
-
-          case condition_and_policy_expression do
-            false ->
+          case compile_policy_expression(policies, authorizer) do
+            {true, authorizer} ->
               compile_policy_expression(rest, authorizer)
 
-            true ->
-              {true, authorizer}
+            {false, authorizer} ->
+              {rest_expr, authorizer} = compile_policy_expression(rest, authorizer)
 
-            condition_and_policy_expression ->
-              case compile_policy_expression(rest, authorizer) do
-                {true, authorizer} ->
-                  {condition_and_policy_expression, authorizer}
+              {{:and, {:not, condition_expression}, rest_expr}, authorizer}
 
-                {false, authorizer} ->
-                  {false, authorizer}
+            {policy_expression, authorizer} ->
+              {rest_expr, authorizer} = compile_policy_expression(rest, authorizer)
 
-                {rest, authorizer} ->
-                  {{:and, condition_and_policy_expression, rest}, authorizer}
-              end
+              {{:and,
+                {:or, {:not, condition_expression},
+                 {:and, condition_expression, policy_expression}}, rest_expr}, authorizer}
           end
         end
     end

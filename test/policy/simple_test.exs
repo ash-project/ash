@@ -185,4 +185,31 @@ defmodule Ash.Test.Policy.SimpleTest do
       |> Ash.read!(authorize?: true, actor: user)
     end
   end
+
+  test "two filter condition checks combine properly" do
+    user1 = Ash.create!(Ash.Changeset.for_create(User, :create), authorize?: false)
+    user2 = Ash.create!(Ash.Changeset.for_create(User, :create), authorize?: false)
+
+    user1_thing =
+      Ash.Test.Support.PolicySimple.TwoFilters
+      |> Ash.Changeset.for_create(:create, %{user_id: user1.id})
+      |> Ash.create!(authorize?: false)
+
+    user2_thing =
+      Ash.Test.Support.PolicySimple.TwoFilters
+      |> Ash.Changeset.for_create(:create, %{user_id: user2.id})
+      |> Ash.create!(authorize?: false)
+
+    assert [user1_got_thing] =
+             Ash.Test.Support.PolicySimple.TwoFilters
+             |> Ash.read!(authorize?: true, actor: user1)
+
+    assert user1_got_thing.id == user1_thing.id
+
+    assert [user2_got_thing] =
+             Ash.Test.Support.PolicySimple.TwoFilters
+             |> Ash.read!(authorize?: true, actor: user2)
+
+    assert user2_got_thing.id == user2_thing.id
+  end
 end

@@ -1,4 +1,4 @@
-defmodule Ash.Test.Support.PolicySimple.Always do
+defmodule Ash.Test.Support.PolicySimple.TwoFilters do
   @moduledoc false
 
   use Ash.Resource,
@@ -28,8 +28,8 @@ defmodule Ash.Test.Support.PolicySimple.Always do
       authorize_if always()
     end
 
-    policy always() do
-      forbid_if always()
+    policy relates_to_actor_via(:user2) do
+      authorize_if always()
     end
   end
 end
