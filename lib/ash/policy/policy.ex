@@ -151,6 +151,10 @@ defmodule Ash.Policy.Policy do
     fetch_or_strict_check_fact(authorizer, {mod, opts})
   end
 
+  def fetch_or_strict_check_fact(authorizer, {Ash.Policy.Check.Static, opts}) do
+    {:ok, opts[:result], authorizer}
+  end
+
   def fetch_or_strict_check_fact(authorizer, {check_module, opts}) do
     Enum.find_value(authorizer.facts, fn
       {{fact_mod, fact_opts}, result} ->
@@ -210,6 +214,10 @@ defmodule Ash.Policy.Policy do
 
   def fetch_fact(facts, %{check_module: mod, check_opts: opts}) do
     fetch_fact(facts, {mod, opts})
+  end
+
+  def fetch_fact(_facts, {Ash.Policy.Check.Static, opts}) do
+    {:ok, opts[:result]}
   end
 
   def fetch_fact(facts, {mod, opts}) do
