@@ -92,7 +92,6 @@ defmodule Ash.MixProject do
         "documentation/dsls/DSL:-Ash.DataLayer.Ets.md",
         "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md",
         "documentation/dsls/DSL:-Ash.Reactor.md",
-        "documentation/dsls/DSL:-Ash.DataLayer.Mnesia.md",
         "CHANGELOG.md"
       ],
       groups_for_extras: [
