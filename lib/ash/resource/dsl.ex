@@ -1465,6 +1465,7 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.ValidatePrimaryKey,
     Ash.Resource.Verifiers.VerifyAcceptedByDomain,
     Ash.Resource.Verifiers.VerifyActionsAtomic,
+    Ash.Resource.Verifiers.VerifyNotifiers,
     Ash.Resource.Verifiers.VerifyPrimaryKeyPresent,
     Ash.Resource.Verifiers.VerifyGenericActionReactorInputs
   ]
