@@ -101,6 +101,14 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
+  defmodule ManualUpdate do
+    use Ash.Resource.ManualUpdate
+  
+    def update(changeset, _opts, _context) do
+      {:ok, changeset.data}
+    end
+  end
+  
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -117,6 +125,10 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
 
+      update :update_manual do
+        manual ManualUpdate
+      end
+      
       update :update_with_change do
         require_atomic? false
 
@@ -331,6 +343,33 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                result
              end)
              |> Ash.bulk_update!(:update_with_change, %{title2: "updated value"},
+               resource: Post,
+               strategy: :stream,
+               return_records?: true,
+               return_errors?: true,
+               authorize?: false
+             )
+             |> Map.update!(:records, fn records ->
+               Enum.sort_by(records, & &1.title)
+             end)
+  end
+  
+  test "manual updates are supported" do
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "title1"},
+               %{title: "title2"}
+             ]
+           } =
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+               return_stream?: true,
+               return_records?: true,
+               authorize?: false
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_update!(:update_manual, %{},
                resource: Post,
                strategy: :stream,
                return_records?: true,
