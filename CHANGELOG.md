@@ -2,6 +2,20 @@
 
 <!-- changelog -->
 
+## [v3.0.8](https://github.com/ash-project/ash/compare/v3.0.7...v3.0.8) (2024-05-28)
+
+### Bug Fixes:
+
+- [bulk updates] missing `else` caused manual updates not to work with `bulk_update`
+
+- [Ash.Policy.Authorizer] properly compose multiple filter-checks in policy conditions
+
+- [Ash.Policy.Authorizer] properly honor trailing policies that are constantly false
+
+### Improvements:
+
+- [Ash.Notifier] verify notifiers all use the `Ash.Notifier` behaviour
+
 ## [v3.0.7](https://github.com/ash-project/ash/compare/v3.0.6...v3.0.7) (2024-05-24)
 
 ### Improvements:
