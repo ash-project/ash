@@ -205,9 +205,6 @@ Ash.Query.for_read(..)
 would become
 
 ```elixir
-Ash.set_actor(current_user)
-Ash.set_tenant(current_tenant)
-
 Ash.Changeset.for_create!(.., tenant: current_tenant, actor: current_user)
 Ash.Query.for_read(.., tenant: current_tenant, actor: current_user)
 ```
