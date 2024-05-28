@@ -1819,6 +1819,13 @@ defmodule Ash.Actions.Destroy.Bulk do
 
           case Ash.Changeset.run_after_actions(result, changeset, []) do
             {:error, error} ->
+              if opts[:transaction] && opts[:rollback_on_error?] do
+                Ash.DataLayer.rollback(
+                  changeset.resource,
+                  error
+                )
+              end
+
               store_error(ref, error, opts)
               []
 
@@ -1847,7 +1854,15 @@ defmodule Ash.Actions.Destroy.Bulk do
          base_changeset
        ) do
     changes
-    |> run_bulk_after_changes(all_changes, batch, changesets_by_index, changesets, opts, ref)
+    |> run_bulk_after_changes(
+      all_changes,
+      batch,
+      changesets_by_index,
+      changesets,
+      opts,
+      resource,
+      ref
+    )
     |> Enum.flat_map(fn result ->
       changeset = changesets_by_index[result.__metadata__[:bulk_destroy_index]]
 
@@ -1919,6 +1934,7 @@ defmodule Ash.Actions.Destroy.Bulk do
          changesets_by_index,
          changesets,
          opts,
+         resource,
          ref
        ) do
     context =
@@ -1957,7 +1973,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           change_opts,
           context
         )
-        |> handle_after_batch_results(records, ref, opts)
+        |> handle_after_batch_results(records, ref, resource, opts)
       else
         {matches, non_matches} =
           results
@@ -1991,29 +2007,36 @@ defmodule Ash.Actions.Destroy.Bulk do
               }
             )
           )
-          |> handle_after_batch_results(match_records, ref, opts)
+          |> handle_after_batch_results(match_records, ref, resource, opts)
 
         Enum.concat([after_batch_results, non_matches])
       end
     end)
   end
 
-  defp handle_after_batch_results(:ok, match_records, _ref, _options) do
+  defp handle_after_batch_results(:ok, match_records, _ref, _resource, _options) do
     match_records
   end
 
-  defp handle_after_batch_results(results, _match_records, ref, options) do
+  defp handle_after_batch_results(results, _match_records, ref, resource, opts) do
     Enum.flat_map(
       results,
       fn
         %Ash.Notifier.Notification{} = notification ->
-          store_notification(ref, notification, options)
+          store_notification(ref, notification, opts)
 
         {:ok, result} ->
           [result]
 
         {:error, error} ->
-          store_error(ref, error, options)
+          if opts[:transaction] && opts[:rollback_on_error?] do
+            Ash.DataLayer.rollback(
+              resource,
+              error
+            )
+          end
+
+          store_error(ref, error, opts)
           []
       end
     )

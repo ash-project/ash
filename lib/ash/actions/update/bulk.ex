@@ -2121,6 +2121,13 @@ defmodule Ash.Actions.Update.Bulk do
 
             case Ash.Changeset.run_after_actions(result, changeset, []) do
               {:error, error} ->
+                if opts[:transaction] && opts[:rollback_on_error?] do
+                  Ash.DataLayer.rollback(
+                    changeset.resource,
+                    error
+                  )
+                end
+
                 store_error(ref, error, opts)
                 []
 
@@ -2158,6 +2165,7 @@ defmodule Ash.Actions.Update.Bulk do
       changesets,
       opts,
       ref,
+      base_changeset.resource,
       metadata_key
     )
     |> Enum.flat_map(fn result ->
@@ -2240,6 +2248,7 @@ defmodule Ash.Actions.Update.Bulk do
          changesets,
          opts,
          ref,
+         resource,
          metadata_key
        ) do
     context =
@@ -2278,7 +2287,7 @@ defmodule Ash.Actions.Update.Bulk do
           change_opts,
           context
         )
-        |> handle_after_batch_results(records, ref, opts)
+        |> handle_after_batch_results(records, ref, resource, opts)
       else
         {matches, non_matches} =
           results
@@ -2312,27 +2321,34 @@ defmodule Ash.Actions.Update.Bulk do
               }
             )
           )
-          |> handle_after_batch_results(match_records, ref, opts)
+          |> handle_after_batch_results(match_records, ref, resource, opts)
 
         Enum.concat([after_batch_results, non_matches])
       end
     end)
   end
 
-  defp handle_after_batch_results(:ok, matches, _ref, _options), do: matches
+  defp handle_after_batch_results(:ok, matches, _ref, _resource, _options), do: matches
 
-  defp handle_after_batch_results(results, _matches, ref, options) do
+  defp handle_after_batch_results(results, _matches, ref, resource, opts) do
     Enum.flat_map(
       results,
       fn
         %Ash.Notifier.Notification{} = notification ->
-          store_notification(ref, notification, options)
+          store_notification(ref, notification, opts)
 
         {:ok, result} ->
           [result]
 
         {:error, error} ->
-          store_error(ref, error, options)
+          if opts[:transaction] && opts[:rollback_on_error?] do
+            Ash.DataLayer.rollback(
+              resource,
+              error
+            )
+          end
+
+          store_error(ref, error, opts)
           []
       end
     )
