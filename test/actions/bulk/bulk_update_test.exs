@@ -103,12 +103,12 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
   defmodule ManualUpdate do
     use Ash.Resource.ManualUpdate
-  
+
     def update(changeset, _opts, _context) do
       {:ok, changeset.data}
     end
   end
-  
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -128,7 +128,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       update :update_manual do
         manual ManualUpdate
       end
-      
+
       update :update_with_change do
         require_atomic? false
 
@@ -353,7 +353,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                Enum.sort_by(records, & &1.title)
              end)
   end
-  
+
   test "manual updates are supported" do
     assert %Ash.BulkResult{
              records: [

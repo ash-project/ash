@@ -1,4 +1,5 @@
 defmodule Ash.Resource.Verifiers.VerifyNotifiers do
+  @moduledoc false
   use Spark.Dsl.Verifier
 
   def verify(dsl) do
