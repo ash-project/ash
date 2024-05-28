@@ -2004,7 +2004,7 @@ defmodule Ash.Actions.Update.Bulk do
                         store_notification(ref, notifications, opts)
                         []
                     end
-
+                  else
                     [changeset] = batch
 
                     result =
