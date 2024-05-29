@@ -1198,10 +1198,12 @@ defmodule Ash.Actions.Create.Bulk do
           case Ash.Changeset.run_after_actions(result, changeset, []) do
             {:error, error} ->
               if opts[:transaction] && opts[:rollback_on_error?] do
-                Ash.DataLayer.rollback(
-                  changeset.resource,
-                  error
-                )
+                if Ash.DataLayer.in_transaction?(changeset.resource) do
+                  Ash.DataLayer.rollback(
+                    changeset.resource,
+                    error
+                  )
+                end
               end
 
               store_error(ref, error, opts)
@@ -1419,10 +1421,12 @@ defmodule Ash.Actions.Create.Bulk do
 
         {:error, error} ->
           if opts[:transaction] && opts[:rollback_on_error?] do
-            Ash.DataLayer.rollback(
-              resource,
-              error
-            )
+            if Ash.DataLayer.in_transaction?(resource) do
+              Ash.DataLayer.rollback(
+                resource,
+                error
+              )
+            end
           end
 
           store_error(ref, error, opts)
