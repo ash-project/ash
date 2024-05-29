@@ -97,7 +97,7 @@ defmodule Ash.MixProject do
       ],
       groups_for_extras: [
         "Start Here": [
-          "documentation/home.md",
+          "readme.md",
           "documentation/tutorials/get-started.md"
         ],
         Tutorials: ~r"documentation/tutorials",

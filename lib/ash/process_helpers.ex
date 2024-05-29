@@ -43,6 +43,7 @@ defmodule Ash.ProcessHelpers do
               case e do
                 %{stacktrace: %{stacktrace: stacktrace}} when not is_nil(stacktrace) ->
                   update_in(e.stacktrace.stacktrace, &(&1 ++ Enum.drop(stacktrace, 1)))
+
                 _ ->
                   e
               end

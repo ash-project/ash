@@ -209,7 +209,7 @@ defmodule Ash.Actions.Read do
 
     query =
       if opts[:initial_data] do
-        select = source_fields(query) ++ (query.select || [])
+        select = source_fields(query, opts[:lazy?] && opts[:initial_data]) ++ (query.select || [])
 
         select =
           if reuse_values? do
@@ -679,9 +679,18 @@ defmodule Ash.Actions.Read do
     |> Enum.concat(Map.values(query.aggregates))
   end
 
-  defp source_fields(query) do
+  defp source_fields(query, lazy_for_initial_data \\ nil) do
     query
     |> Ash.Query.accessing([:relationships], false)
+    |> then(fn relationships ->
+      if lazy_for_initial_data do
+        Enum.reject(relationships, fn relationship ->
+          Ash.Resource.loaded?(lazy_for_initial_data, relationship, lists: :any)
+        end)
+      else
+        relationships
+      end
+    end)
     |> Enum.flat_map(fn name ->
       case Ash.Resource.Info.relationship(query.resource, name) do
         %{no_attributes?: true} ->
@@ -958,7 +967,7 @@ defmodule Ash.Actions.Read do
              true
            ) do
       results
-      |> attach_fields(initial_data, query, query, false)
+      |> attach_fields(initial_data, query, query, false, true)
       |> cleanup_field_auth(query)
       |> compute_expression_at_runtime_for_missing_records(query, data_layer_calculations)
       |> case do
@@ -1646,7 +1655,8 @@ defmodule Ash.Actions.Read do
          data,
          original_query,
          query,
-         missing_pkeys?
+         missing_pkeys?,
+         no_relationships? \\ false
        ) do
     {aggregates_in_data, aggregates_in_aggregates} =
       original_query.aggregates
@@ -1660,8 +1670,14 @@ defmodule Ash.Actions.Read do
 
     fields_from_data =
       (original_query.select || []) ++
-        Keyword.keys(original_query.load || []) ++
         Enum.map(aggregates_in_data, & &1.load) ++ Enum.map(calculations_in_data, & &1.load)
+
+    fields_from_data =
+      if no_relationships? do
+        fields_from_data
+      else
+        Keyword.keys(original_query.load || []) ++ fields_from_data
+      end
 
     fields_from_aggregates =
       Enum.map(aggregates_in_aggregates, & &1.name)
