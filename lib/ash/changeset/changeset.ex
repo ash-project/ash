@@ -2562,7 +2562,7 @@ defmodule Ash.Changeset do
   end
 
   defp validate(changeset, validation, tracer, metadata, actor) do
-    if validation.module.has_validate? do
+    if validation.module.has_validate?() do
       if validation.before_action? do
         before_action(
           changeset,
