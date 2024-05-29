@@ -707,6 +707,7 @@ defmodule Ash.Test.Actions.LoadTest do
       post = Map.update!(post, :author, &Map.put(&1, :name, "shouldn't change"))
 
       assert post.author.name == "shouldn't change"
+
       author_after_load =
         post |> Ash.load!(:author, authorize?: false, lazy?: true) |> Map.get(:author)
 

@@ -1896,7 +1896,7 @@ defmodule Ash.Actions.Read do
         domain
       ) do
     if authorize? do
-      Filter.update_aggregates(filter, fn aggregate, _ref ->
+      Filter.update_aggregates(filter, fn aggregate, ref ->
         if aggregate.authorize? do
           authorize_aggregate(
             aggregate,
@@ -1905,7 +1905,8 @@ defmodule Ash.Actions.Read do
             authorize?,
             tenant,
             tracer,
-            domain
+            domain,
+            ref.relationship_path
           )
         else
           aggregate
@@ -2640,7 +2641,16 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp authorize_aggregate(aggregate, path_filters, actor, authorize?, tenant, tracer, domain) do
+  defp authorize_aggregate(
+         aggregate,
+         path_filters,
+         actor,
+         authorize?,
+         tenant,
+         tracer,
+         domain,
+         ref_path \\ []
+       ) do
     aggregate = add_calc_context(aggregate, actor, authorize?, tenant, tracer, domain)
     last_relationship = last_relationship(aggregate.resource, aggregate.relationship_path)
 
@@ -2677,7 +2687,8 @@ defmodule Ash.Actions.Read do
              authorize?,
              tenant,
              tracer,
-             domain
+             domain,
+             ref_path
            ) do
       %{
         aggregate
@@ -2704,7 +2715,8 @@ defmodule Ash.Actions.Read do
          _authorize?,
          _tenant,
          _tracer,
-         _domain
+         _domain,
+         _ref_path
        ),
        do: {:ok, nil}
 
@@ -2715,7 +2727,8 @@ defmodule Ash.Actions.Read do
          authorize?,
          tenant,
          tracer,
-         domain
+         domain,
+         ref_path
        ) do
     calc = add_calc_context(field, actor, authorize?, tenant, tracer, domain)
 
@@ -2751,7 +2764,7 @@ defmodule Ash.Actions.Read do
           domain
         )
 
-      case do_filter_with_related(related_resource, expr, path_filters, []) do
+      case do_filter_with_related(related_resource, expr, path_filters, ref_path) do
         {:ok, expr} ->
           {:ok, %{field | module: Ash.Resource.Calculation.Expression, opts: [expr: expr]}}
 
@@ -2770,12 +2783,22 @@ defmodule Ash.Actions.Read do
          authorize?,
          tenant,
          tracer,
-         domain
+         domain,
+         ref_path
        ) do
     field = add_calc_context(field, actor, authorize?, tenant, tracer, domain)
 
     if authorize? && field.authorize? do
-      authorize_aggregate(field, path_filters, actor, authorize?, tenant, tracer, domain)
+      authorize_aggregate(
+        field,
+        path_filters,
+        actor,
+        authorize?,
+        tenant,
+        tracer,
+        domain,
+        ref_path
+      )
     else
       {:ok, agg}
     end
@@ -2788,7 +2811,8 @@ defmodule Ash.Actions.Read do
          authorize?,
          tenant,
          tracer,
-         domain
+         domain,
+         ref_path
        )
        when is_atom(aggregate.field) do
     related_resource = Ash.Resource.Info.related(aggregate.resource, aggregate.relationship_path)
@@ -2816,7 +2840,8 @@ defmodule Ash.Actions.Read do
               authorize?,
               tenant,
               tracer,
-              domain
+              domain,
+              ref_path
             )
 
           {:error, error} ->
@@ -2825,7 +2850,7 @@ defmodule Ash.Actions.Read do
 
       %Ash.Resource.Aggregate{} = resource_aggregate ->
         related_resource =
-          Ash.Resource.Info.related(related_resource, aggregate.relationship_path)
+          Ash.Resource.Info.related(related_resource, ref_path ++ aggregate.relationship_path)
 
         read_action =
           resource_aggregate.read_action ||
@@ -2864,7 +2889,8 @@ defmodule Ash.Actions.Read do
             authorize?,
             tenant,
             tracer,
-            domain
+            domain,
+            ref_path
           )
         else
           {:error, error} ->
@@ -2886,7 +2912,8 @@ defmodule Ash.Actions.Read do
          _authorize?,
          _tenant,
          _tracer,
-         _domain
+         _domain,
+         _ref_path
        )
        when is_atom(aggregate.field) do
     {:ok, aggregate.field}
