@@ -358,7 +358,7 @@ defmodule Ash.Query.Operator do
   end
 
   def operator_symbols do
-    Enum.map(operators(), & &1.operator)
+    Enum.map(operators(), & &1.operator())
   end
 
   defmacro __using__(opts) do

@@ -40,10 +40,11 @@ defmodule Ash.ProcessHelpers do
         e ->
           e =
             if Ash.Error.ash_error?(e) do
-              if e.stacktrace && e.stacktrace.stacktrace do
-                update_in(e.stacktrace.stacktrace, &(&1 ++ Enum.drop(stacktrace, 1)))
-              else
-                e
+              case e do
+                %{stacktrace: %{stacktrace: stacktrace}} when not is_nil(stacktrace) ->
+                  update_in(e.stacktrace.stacktrace, &(&1 ++ Enum.drop(stacktrace, 1)))
+                _ ->
+                  e
               end
             else
               e
