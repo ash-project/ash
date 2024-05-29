@@ -10,10 +10,24 @@ defmodule Ash.Can do
       |> Keyword.put_new(:filter_with, :filter)
 
     case can(action_or_query_or_changeset, domain, actor, opts) do
-      {:ok, :maybe} -> opts[:maybe_is]
-      {:ok, result} -> result
-      {:ok, true, _} -> {:ok, true}
-      {:error, error} -> raise Ash.Error.to_ash_error(error)
+      {:ok, :maybe} ->
+        opts[:maybe_is]
+
+      {:ok, result} ->
+        result
+
+      {:ok, true, _} ->
+        true
+
+      {:ok, false, error} ->
+        if opts[:return_forbidden_error?] do
+          raise Ash.Error.to_ash_error(error)
+        else
+          false
+        end
+
+      {:error, error} ->
+        raise Ash.Error.to_ash_error(error)
     end
   end
 

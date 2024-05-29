@@ -1179,14 +1179,9 @@ defmodule Ash do
 
   @doc spark_opts: [{2, @can_question_mark_opts}]
   def can?(action_or_query_or_changeset, actor, opts \\ []) do
-    case Spark.Options.validate(opts, @can_opts) do
-      {:ok, opts} ->
-        domain = Ash.Helpers.domain!(action_or_query_or_changeset, opts)
-        Ash.Can.can?(action_or_query_or_changeset, domain, actor, opts)
-
-      {:error, error} ->
-        {:error, Ash.Error.to_error_class(error)}
-    end
+    opts = Spark.Options.validate!(opts, @can_opts)
+    domain = Ash.Helpers.domain!(action_or_query_or_changeset, opts)
+    Ash.Can.can?(action_or_query_or_changeset, domain, actor, opts)
   end
 
   @doc """
