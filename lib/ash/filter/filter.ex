@@ -655,10 +655,10 @@ defmodule Ash.Filter do
 
         %BooleanExpression{op: op, left: left, right: right} ->
           cond do
-            op == :ors && !ors? ->
+            op == :or && !ors? ->
               nil
 
-            op == :ands && !ands? ->
+            op == :and && !ands? ->
               nil
 
             true ->
