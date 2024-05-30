@@ -2789,16 +2789,17 @@ defmodule Ash.Actions.Read do
     field = add_calc_context(field, actor, authorize?, tenant, tracer, domain)
 
     if authorize? && field.authorize? do
-      authorize_aggregate(
-        field,
-        path_filters,
-        actor,
-        authorize?,
-        tenant,
-        tracer,
-        domain,
-        ref_path
-      )
+      {:ok,
+       authorize_aggregate(
+         field,
+         path_filters,
+         actor,
+         authorize?,
+         tenant,
+         tracer,
+         domain,
+         ref_path
+       )}
     else
       {:ok, agg}
     end
@@ -2849,15 +2850,15 @@ defmodule Ash.Actions.Read do
         end
 
       %Ash.Resource.Aggregate{} = resource_aggregate ->
-        related_resource =
-          Ash.Resource.Info.related(related_resource, ref_path ++ aggregate.relationship_path)
+        agg_related_resource =
+          Ash.Resource.Info.related(related_resource, resource_aggregate.relationship_path)
 
         read_action =
           resource_aggregate.read_action ||
-            Ash.Resource.Info.primary_action!(related_resource, :read).name
+            Ash.Resource.Info.primary_action!(agg_related_resource, :read).name
 
         with %{valid?: true} = aggregate_query <-
-               Ash.Query.for_read(related_resource, read_action),
+               Ash.Query.for_read(agg_related_resource, read_action),
              %{valid?: true} = aggregate_query <-
                Ash.Query.Aggregate.build_query(aggregate_query,
                  filter: resource_aggregate.filter,
