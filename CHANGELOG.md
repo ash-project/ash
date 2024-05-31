@@ -2,6 +2,29 @@
 
 <!-- changelog -->
 
+## [v3.0.9](https://github.com/ash-project/ash/compare/v3.0.8...v3.0.9) (2024-05-31)
+
+
+
+
+### Bug Fixes:
+
+* use correct boolean operation names in Filter.find/4 (#1214)
+
+* when hydrating nested aggregates, use correct related resource/path pair
+
+* check if in transaction before trying to roll it back
+
+* retain `ref_path` when authorizing aggregates
+
+* ensure that belongs_to relationships are properly not reloaded with `lazy?: true`
+
+* implement rollback on after hooks for bulk actions
+
+### Improvements:
+
+* compatibility with elixir 1.17
+
 ## [v3.0.8](https://github.com/ash-project/ash/compare/v3.0.7...v3.0.8) (2024-05-28)
 
 ### Bug Fixes:
