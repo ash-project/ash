@@ -116,7 +116,6 @@ defmodule Ash.MixProject do
           ~r"documentation/dsls"
         ]
       ],
-      assets: %{"livebook.css" => "documentation/assets/livebook.css"},
       skip_undefined_reference_warnings_on: [
         "CHANGELOG.md",
         "documentation/topics/reference/glossary.md",
@@ -138,7 +137,11 @@ defmodule Ash.MixProject do
       before_closing_head_tag: fn type ->
         if type == :html do
           """
-          <link rel="stylesheet" href="assets/livebooks.css">
+          <style>
+            .livebook-badge-container + pre {
+              display: none;
+            }
+          </style>
           <script>
             if (location.hostname === "hexdocs.pm") {
               var script = document.createElement("script");
