@@ -116,7 +116,7 @@ defmodule Ash.MixProject do
           ~r"documentation/dsls"
         ]
       ],
-      assets: ["documentation/assets"],
+      assets: %{"livebook.css" => "documentation/assets/livebook.css"},
       skip_undefined_reference_warnings_on: [
         "CHANGELOG.md",
         "documentation/topics/reference/glossary.md",
