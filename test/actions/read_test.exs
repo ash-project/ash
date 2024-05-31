@@ -72,6 +72,21 @@ defmodule Ash.Test.Actions.ReadTest do
         prepare(build(load: [:author1, :author2]))
       end
 
+      read :read_authors do
+        prepare(build(load: [:author1, :author2]))
+
+        prepare(
+          after_action(fn _query, records, _context ->
+            authors =
+              Enum.map(records, fn record ->
+                Enum.reject([record.author1, record.author2], &is_nil/1)
+              end)
+
+            {:ok, authors}
+          end)
+        )
+      end
+
       read :get_by_id do
         get_by(:id)
       end
@@ -198,6 +213,11 @@ defmodule Ash.Test.Actions.ReadTest do
     test "it uses the action provided", %{post: post, author1: author1} do
       fetched_post = Ash.get!(Post, post.id, action: :read_with_authors)
       assert ^author1 = strip_metadata(fetched_post.author1)
+    end
+
+    test "it runs preparations", %{post: post, author1: author1} do
+      [author1] = Ash.get!(Post, post.id, action: :read_authors)
+      assert ^author1 = strip_metadata(author1)
     end
   end
 
