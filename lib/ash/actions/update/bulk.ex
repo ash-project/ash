@@ -1966,11 +1966,11 @@ defmodule Ash.Actions.Update.Bulk do
           |> Enum.flat_map(fn {_atomics, batch} ->
             result =
               case action.manual do
-                {mod, opts} ->
+                {mod, manual_opts} ->
                   if function_exported?(mod, context_key, 3) do
                     apply(mod, context_key, [
                       batch,
-                      opts,
+                      manual_opts,
                       struct(context_struct,
                         actor: opts[:actor],
                         select: opts[:select],

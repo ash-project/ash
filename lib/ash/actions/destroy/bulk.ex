@@ -1686,9 +1686,9 @@ defmodule Ash.Actions.Destroy.Bulk do
         |> Enum.flat_map(fn {_atomics, batch} ->
           result =
             case action.manual do
-              {mod, opts} ->
+              {mod, manual_opts} ->
                 if function_exported?(mod, :bulk_destroy, 3) do
-                  mod.bulk_destroy(batch, opts, %{
+                  mod.bulk_destroy(batch, manual_opts, %{
                     actor: opts[:actor],
                     select: opts[:select],
                     batch_size: opts[:batch_size],
