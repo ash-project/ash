@@ -6,6 +6,30 @@ defmodule Ash.Test.Changeset.ChangesetTest do
 
   require Ash.Query
 
+  defmodule Slugify do
+    use Ash.Resource.Change
+
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.before_transaction(changeset, &maybe_slugify_title/1)
+    end
+
+    def maybe_slugify_title(changeset) do
+      case Ash.Changeset.get_attribute(changeset, :title) do
+        title when is_binary(title) ->
+          Ash.Changeset.force_change_new_attribute(
+            changeset,
+            :slug,
+            title
+            |> String.replace(~r/\s+/, "-")
+            |> String.downcase()
+          )
+
+        _ ->
+          changeset
+      end
+    end
+  end
+
   defmodule Category do
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
 
@@ -167,6 +191,37 @@ defmodule Ash.Test.Changeset.ChangesetTest do
         through: Ash.Test.Changeset.ChangesetTest.PostCategory,
         destination_attribute_on_join_resource: :category_id,
         source_attribute_on_join_resource: :post_id
+    end
+  end
+
+  defmodule SlugifiedPost do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, update: :*]
+
+      create :create do
+        change Slugify
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :title, :string do
+        public?(true)
+        allow_nil? false
+      end
+
+      attribute :slug, :string do
+        allow_nil? false
+      end
     end
   end
 
@@ -369,6 +424,14 @@ defmodule Ash.Test.Changeset.ChangesetTest do
     end
   end
 
+  test "before transaction hooks can set values" do
+    post =
+      SlugifiedPost
+      |> Ash.create!(%{title: "Foo Bar"}, action: :create)
+
+    assert post.slug == "foo-bar"
+  end
+
   describe "new" do
     test "it wraps a new resource in a `create` changeset" do
       assert %Ash.Changeset{
@@ -410,6 +473,25 @@ defmodule Ash.Test.Changeset.ChangesetTest do
   end
 
   describe "with_hooks/2" do
+    test "it applies a before_transaction function on a changeset" do
+      capitalize_name = fn changeset = %Ash.Changeset{attributes: %{name: name}} ->
+        %{
+          changeset
+          | attributes: Map.merge(changeset.attributes, %{name: String.capitalize(name)})
+        }
+      end
+
+      changeset =
+        Category
+        |> Ash.Changeset.for_create(:create, %{name: "foo"})
+
+      changeset = %{changeset | before_transaction: [capitalize_name]}
+
+      category = changeset |> Ash.create!()
+
+      assert %Category{name: "Foo"} = category
+    end
+
     test "it applies a before_action function on a changeset" do
       capitalize_name = fn changeset = %Ash.Changeset{attributes: %{name: name}} ->
         %{
