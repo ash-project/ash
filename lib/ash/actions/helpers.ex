@@ -50,7 +50,7 @@ defmodule Ash.Actions.Helpers do
     """
   end
 
-  def validate_calculation_load!(other, _), do: other
+  def validate_calculation_load!(other, _), do: List.wrap(other)
 
   defp set_context(%Ash.Changeset{} = changeset, context),
     do: Ash.Changeset.set_context(changeset, context)
