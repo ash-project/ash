@@ -49,7 +49,7 @@ You could then pass in `%{name: "a name", description: "a description"}` to this
 
 ### Using `default_accept` for all actions
 
-The resource can have a `default_accept`, declared in its `actions` block, which will be used as the accept list for `create` and `destroy` actions, if they don't define one.
+The resource can have a `default_accept`, declared in its `actions` block, which will be used as the accept list for `create` and `update` actions, if they don't define one.
 
 ```elixir
 actions do
