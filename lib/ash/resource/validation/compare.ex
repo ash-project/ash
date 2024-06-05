@@ -55,7 +55,7 @@ defmodule Ash.Resource.Validation.Compare do
       end
 
     case value do
-      {:ok, value} ->
+      {:ok, value} when not is_nil(value) ->
         opts
         |> Keyword.take([
           :greater_than,
