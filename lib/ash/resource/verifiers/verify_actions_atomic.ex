@@ -147,6 +147,17 @@ defmodule Ash.Resource.Verifiers.VerifyActionsAtomic do
   end
 
   defp not_atomic?(Ash.Type.Union, _), do: true
+
+  defp not_atomic?(type, %{type: :update}) when is_atom(type) do
+    type = Ash.Type.get_type(type)
+    Code.ensure_compiled!(type)
+    not function_exported?(type, :cast_atomic, 2)
+  end
+
+  defp not_atomic?({:array, type}, action) do
+    not_atomic?(type, action)
+  end
+
   defp not_atomic?(_, _), do: false
 
   defp non_atomic_message(module, action_name, reason) do
