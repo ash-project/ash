@@ -14,6 +14,12 @@ defmodule Ash.Domain.Verifiers.ValidateRelatedResourceInclusion do
 
     for resource <- resources do
       for relationship <- Ash.Resource.Info.relationships(resource) do
+        if !Ash.Resource.Info.resource?(relationship.destination) do
+          raise """
+          Relationship #{inspect(resource)}.#{relationship.name} has an invalid destination: #{inspect(relationship.destination)}.
+          """
+        end
+
         domain = domain(relationship, dsl)
 
         if !domain do
