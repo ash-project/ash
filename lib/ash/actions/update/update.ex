@@ -5,6 +5,7 @@ defmodule Ash.Actions.Update do
 
   require Ash.Tracer
   require Logger
+  import Ash.Expr
 
   @spec run(Ash.Domain.t(), Ash.Resource.record(), Ash.Resource.Actions.action(), Keyword.t()) ::
           {:ok, Ash.Resource.record(), list(Ash.Notifier.Notification.t())}
@@ -631,7 +632,7 @@ defmodule Ash.Actions.Update do
       {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(changeset.resource)
       attribute_value = apply(m, f, [changeset.to_tenant | a])
 
-      Ash.Changeset.force_change_attribute(changeset, attribute, attribute_value)
+      Ash.Changeset.filter(changeset, expr(^ref(attribute) == ^attribute_value))
     else
       changeset
     end

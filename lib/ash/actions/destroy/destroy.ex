@@ -171,6 +171,8 @@ defmodule Ash.Actions.Destroy do
             {:ok, new_data, _} ->
               changeset = %{changeset | data: new_data}
 
+              changeset = set_tenant(changeset)
+
               if changeset.action.manual do
                 {mod, action_opts} = changeset.action.manual
 
@@ -261,6 +263,20 @@ defmodule Ash.Actions.Destroy do
 
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  defp set_tenant(changeset) do
+    if changeset.tenant &&
+         Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
+      attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
+
+      {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(changeset.resource)
+      attribute_value = apply(m, f, [changeset.to_tenant | a])
+
+      Ash.Changeset.filter(changeset, [{attribute, attribute_value}])
+    else
+      changeset
     end
   end
 

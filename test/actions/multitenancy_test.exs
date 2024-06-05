@@ -380,6 +380,19 @@ defmodule Ash.Actions.MultitenancyTest do
       assert User |> Ash.Query.set_tenant(tenant2) |> Ash.read!() == []
     end
 
+    test "a record for a different tenant cant be updated from the other one", %{
+      tenant1: tenant1,
+      tenant2: tenant2
+    } do
+      assert_raise Ash.Error.Invalid, ~r/Attempted to update stale record/, fn ->
+        User
+        |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+        |> Ash.create!()
+        |> Ash.Changeset.for_update(:update, %{name: "new name"}, tenant: tenant2)
+        |> Ash.update!()
+      end
+    end
+
     test "a record can be destroyed in a tenant", %{tenant1: tenant1} do
       User
       |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)

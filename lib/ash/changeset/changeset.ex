@@ -151,7 +151,7 @@ defmodule Ash.Changeset do
           %Ash.Filter{expression: nil} ->
             empty()
 
-          true ->
+          _ ->
             concat("filter: ", to_doc(changeset.filter, opts))
         end
 
