@@ -230,6 +230,7 @@ defmodule Ash.Test.GeneratorTest do
     meta: %{},
     metadata: %{}
   }
+
   describe "seed_input" do
     test "it returns attributes generated" do
       Author
@@ -238,6 +239,35 @@ defmodule Ash.Test.GeneratorTest do
       |> Enum.each(fn input ->
         seed!(Author, input)
       end)
+    end
+
+    defmodule Factory do
+      def post(params \\ %{}) do
+        defaults = %{
+          name: StreamData.repeatedly(&Ash.UUID.generate/0)
+        }
+
+        Ash.Generator.seed_input(Post, Map.merge(defaults, params))
+      end
+
+      def author(params \\ %{}) do
+        defaults = %{
+          name: StreamData.repeatedly(&Ash.UUID.generate/0),
+          posts: StreamData.list_of(post(), min_length: 1, max_length: 5),
+          meta: %{},
+          metadata: %{}
+        }
+
+        Ash.Generator.seed_input(Author, Map.merge(defaults, params))
+      end
+    end
+
+    test "individual constructors can be supplied" do
+      check all(input <- Factory.author()) do
+        post_count = Enum.count(seed!(Author, input).posts)
+        assert post_count >= 1
+        assert post_count <= 5
+      end
     end
 
     test "it can be used in property testing" do
