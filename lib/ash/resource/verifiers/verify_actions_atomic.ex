@@ -154,10 +154,6 @@ defmodule Ash.Resource.Verifiers.VerifyActionsAtomic do
     not function_exported?(type, :cast_atomic, 2)
   end
 
-  defp not_atomic?({:array, type}, action) do
-    not_atomic?(type, action)
-  end
-
   defp not_atomic?(_, _), do: false
 
   defp non_atomic_message(module, action_name, reason) do

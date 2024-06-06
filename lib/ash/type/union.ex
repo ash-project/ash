@@ -383,7 +383,13 @@ defmodule Ash.Type.Union do
            inner_constraints
          ) do
       {:ok, value} ->
-        {:ok, %Ash.Union{value: value, type: type_name}}
+        case Ash.Type.apply_constraints(type, value, inner_constraints) do
+          {:ok, value} ->
+            {:ok, %Ash.Union{value: value, type: type_name}}
+
+          {:error, other} ->
+            {:error, other}
+        end
 
       error ->
         error
