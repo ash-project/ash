@@ -2,28 +2,43 @@
 
 <!-- changelog -->
 
-## [v3.0.9](https://github.com/ash-project/ash/compare/v3.0.8...v3.0.9) (2024-05-31)
-
-
-
+## [v3.0.10](https://github.com/ash-project/ash/compare/v3.0.9...v3.0.10) (2024-06-06)
 
 ### Bug Fixes:
 
-* use correct boolean operation names in Filter.find/4 (#1214)
+- [Ash.Union] ensure that union types w/ explicit tags have constraints applied
 
-* when hydrating nested aggregates, use correct related resource/path pair
+- [multitenancy] don't update tenant on update, instead enforce it
 
-* check if in transaction before trying to roll it back
+- [compare/2 validation] Do not compare nil values in `compare` validation (#1223)
 
-* retain `ref_path` when authorizing aggregates
-
-* ensure that belongs_to relationships are properly not reloaded with `lazy?: true`
-
-* implement rollback on after hooks for bulk actions
+- [bulk actions] ensure context is properly set on bulk manual action invocations
 
 ### Improvements:
 
-* compatibility with elixir 1.17
+- [Ash.Resource] detect invalid resources placed in relationships on domains verifier
+
+- [Ash.Resource] warn at compile time on types that don't define `atomic_update/2`
+
+## [v3.0.9](https://github.com/ash-project/ash/compare/v3.0.8...v3.0.9) (2024-05-31)
+
+### Bug Fixes:
+
+- [Ash.Filter] use correct boolean operation names in Filter.find/4 (#1214)
+
+- [aggregates] when hydrating nested aggregates, use correct related resource/path pair
+
+- [aggregates] retain `ref_path` when authorizing aggregates
+
+- [relationship loading] ensure that belongs_to relationships are properly not reloaded with `lazy?: true`
+
+- [bulk actions] implement rollback on after hooks for bulk actions
+
+- [bulk actions] check if in transaction before trying to roll it back
+
+### Improvements:
+
+- compatibility with elixir 1.17
 
 ## [v3.0.8](https://github.com/ash-project/ash/compare/v3.0.7...v3.0.8) (2024-05-28)
 
