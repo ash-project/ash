@@ -3539,7 +3539,7 @@ defmodule Ash.Filter do
     case do_hydrate_refs(left, context) do
       {:ok, true} ->
         if expr.op == :or do
-          true
+          {:ok, true}
         else
           do_hydrate_refs(right, context)
         end
@@ -3555,7 +3555,7 @@ defmodule Ash.Filter do
         case do_hydrate_refs(right, context) do
           {:ok, true} ->
             if expr.op == :or do
-              true
+              {:ok, true}
             else
               {:ok, left}
             end
