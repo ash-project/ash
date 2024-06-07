@@ -48,10 +48,6 @@ defmodule Ash.Test.SeedTest do
       uuid_primary_key :id
       attribute :name, :string, public?: true, allow_nil?: false
     end
-
-    relationships do
-      belongs_to :tenant, Ash.Test.SeedTest.Tenant
-    end
   end
 
   defmodule AttributeUser do

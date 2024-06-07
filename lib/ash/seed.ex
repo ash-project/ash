@@ -19,6 +19,7 @@ defmodule Ash.Seed do
   If you want to force `nil` to be accepted and prevent the default value from being set, use the
   `keep_nil/0` function provided here, which returns `:__keep_nil__`. Alternatively, use
   `seed!(Post, %{text: nil})`.
+
   See `seed!/2` for more information.
   """
   def seed!(%{__meta__: %{state: :loaded}} = input) do
