@@ -281,6 +281,12 @@ defmodule Ash.Test.GeneratorTest do
     end
   end
 
+  describe "seed" do
+    test "it seeds correctly a resource" do
+      assert %Author{} = Ash.Generator.seed!(Author, @meta_generator)
+    end
+  end
+
   describe "built in generators" do
     for type <- Enum.uniq(Ash.Type.builtin_types()), type != Ash.Type.Keyword do
       for type <- [{:array, type}, type] do
