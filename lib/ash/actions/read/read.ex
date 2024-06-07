@@ -178,6 +178,8 @@ defmodule Ash.Actions.Read do
 
     query = load_and_select_sort(query)
 
+    query = add_relationship_count_aggregates(query)
+
     pkey = Ash.Resource.Info.primary_key(query.resource)
 
     missing_pkeys? =
