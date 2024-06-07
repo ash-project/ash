@@ -147,7 +147,7 @@ defmodule Ash.Generator do
       seed_input(resource, generators)
       |> Enum.at(0)
 
-    Ash.Seed.seed!(input)
+    Ash.Seed.seed!(resource, input)
   end
 
   @doc """
