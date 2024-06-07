@@ -19,7 +19,6 @@ defmodule Ash.Seed do
   If you want to force `nil` to be accepted and prevent the default value from being set, use the
   `keep_nil/0` function provided here, which returns `:__keep_nil__`. Alternatively, use
   `seed!(Post, %{text: nil})`.
-
   See `seed!/2` for more information.
   """
   def seed!(%{__meta__: %{state: :loaded}} = input) do
@@ -64,19 +63,22 @@ defmodule Ash.Seed do
 
   If a list is provided as input, then you will get back that many results.
   """
-  def seed!(resource, input) when is_list(input) do
-    Enum.map(input, &seed!(resource, &1))
+
+  def seed!(resource, input, opts \\ [])
+
+  def seed!(resource, input, opts) when is_list(input) do
+    Enum.map(input, &seed!(resource, &1, opts))
   end
 
-  def seed!(resource, %resource{} = input) do
+  def seed!(resource, %resource{} = input, _opts) do
     seed!(input)
   end
 
-  def seed!(resource, %other{}) do
+  def seed!(resource, %other{}, _opts) do
     raise "Cannot seed #{inspect(resource)} with an input of type #{inspect(other)}"
   end
 
-  def seed!(%resource{} = record, input) when is_map(input) do
+  def seed!(%resource{} = record, input, opts) when is_map(input) do
     attrs =
       resource
       |> Ash.Resource.Info.attributes()
@@ -100,6 +102,8 @@ defmodule Ash.Seed do
     |> change_attributes(input)
     |> change_relationships(input)
     |> Ash.Changeset.set_defaults(:create, true)
+    |> Ash.Changeset.set_tenant(opts[:tenant])
+    |> maybe_set_attribute_tenant()
     |> create_via_data_layer()
     |> case do
       {:ok, result, _, _} ->
@@ -110,7 +114,7 @@ defmodule Ash.Seed do
     end
   end
 
-  def seed!(resource, input) when is_map(input) do
+  def seed!(resource, input, opts) when is_map(input) do
     attr_input =
       input
       |> Map.new(fn {key, value} ->
@@ -126,6 +130,8 @@ defmodule Ash.Seed do
     |> change_attributes(attr_input)
     |> change_relationships(input)
     |> Ash.Changeset.set_defaults(:create, true)
+    |> Ash.Changeset.set_tenant(opts[:tenant])
+    |> maybe_set_attribute_tenant()
     |> create_via_data_layer()
     |> case do
       {:ok, result, _, _} ->
@@ -314,5 +320,18 @@ defmodule Ash.Seed do
       resource,
       Map.put(input, field, field_value)
     )
+  end
+
+  defp maybe_set_attribute_tenant(changeset) do
+    if changeset.tenant &&
+         Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
+      attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
+      {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(changeset.resource)
+      attribute_value = apply(m, f, [changeset.to_tenant | a])
+
+      Ash.Changeset.force_change_attribute(changeset, attribute, attribute_value)
+    else
+      changeset
+    end
   end
 end
