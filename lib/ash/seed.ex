@@ -87,7 +87,7 @@ defmodule Ash.Seed do
       record
       |> Map.take(attrs)
       |> Map.new(fn {key, value} ->
-        if value == :__keep_nil do
+        if value == :__keep_nil__ do
           {key, nil}
         else
           {key, value}
@@ -111,9 +111,19 @@ defmodule Ash.Seed do
   end
 
   def seed!(resource, input) when is_map(input) do
+    attr_input =
+      input
+      |> Map.new(fn {key, value} ->
+        if value == :__keep_nil__ do
+          {key, nil}
+        else
+          {key, value}
+        end
+      end)
+
     resource
     |> Ash.Changeset.new()
-    |> change_attributes(input)
+    |> change_attributes(attr_input)
     |> change_relationships(input)
     |> Ash.Changeset.set_defaults(:create, true)
     |> create_via_data_layer()
