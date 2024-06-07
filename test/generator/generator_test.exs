@@ -285,6 +285,11 @@ defmodule Ash.Test.GeneratorTest do
     test "it seeds correctly a resource" do
       assert %Author{} = Ash.Generator.seed!(Author, @meta_generator)
     end
+
+    test "it works with the value :__keep_nil__" do
+      assert %Author{metadata: nil} =
+               Ash.Generator.seed!(Author, %{meta: %{}, metadata: keep_nil()})
+    end
   end
 
   describe "built in generators" do
