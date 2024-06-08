@@ -49,10 +49,7 @@ defmodule Ash.Seed do
           Map.put(acc, key, value)
       end)
 
-    seed!(
-      resource,
-      input
-    )
+    seed!(resource, input)
   end
 
   def seed!(records) when is_list(records) do
@@ -63,6 +60,8 @@ defmodule Ash.Seed do
   Performs a direct call to the data layer of a resource with the provided input.
 
   If a list is provided as input, then you will get back that many results.
+
+  To set a tenant, use the tenant option.
   """
 
   def seed!(resource, input, opts \\ [])
