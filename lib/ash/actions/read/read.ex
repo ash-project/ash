@@ -432,7 +432,6 @@ defmodule Ash.Actions.Read do
              ),
            query <- Map.put(query, :filter, filter),
            query <- Ash.Query.unset(query, :calculations),
-           query <- add_relationship_count_aggregates(query),
            {%{valid?: true} = query, before_notifications} <- run_before_action(query),
            {:ok, count} <-
              fetch_count(
@@ -1192,7 +1191,7 @@ defmodule Ash.Actions.Read do
     query.resource
     |> Ash.Resource.Info.attributes()
     |> Enum.filter(fn %{name: name, type: type, constraints: constraints} ->
-      Ash.Type.can_load?(type, constraints) && Ash.Query.selecting?(query, name)
+      Ash.Type.can_load?(type, constraints) && (is_nil(query.select) || name in select)
     end)
     |> Enum.map(& &1.name)
     |> Enum.reduce(query.load_through, fn name, load_through ->

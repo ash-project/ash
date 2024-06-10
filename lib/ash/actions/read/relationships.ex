@@ -921,7 +921,8 @@ defmodule Ash.Actions.Read.Relationships do
           false
 
         limit == 1 && is_nil(relationship.context) && is_nil(relationship.filter) &&
-          is_nil(relationship.sort) && relationship.type != :many_to_many ->
+          is_nil(relationship.sort) && relationship.cardinality != :many &&
+            !Map.get(relationship, :from_many?) ->
           has_parent_expr?(relationship)
 
         limit == 1 && (source_data == :unknown || Enum.count_until(source_data, 2) == 1) &&
