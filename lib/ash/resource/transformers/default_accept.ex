@@ -96,12 +96,18 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
             :ok
 
           invalid_allow_nil_inputs ->
-            raise Spark.Error.DslError,
-              module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
-              path: [:actions, action.name, :allow_nil_input],
-              message: """
-              It is not necessary to allow nil inputs that are not accepted, got: #{inspect(invalid_allow_nil_inputs)}
-              """
+            message =
+              Exception.message(
+                Spark.Error.DslError.exception(
+                  module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
+                  path: [:actions, action.name, :allow_nil_input],
+                  message: """
+                  It is not necessary to allow nil inputs that are not accepted, got: #{inspect(invalid_allow_nil_inputs)}
+                  """
+                )
+              )
+
+            IO.warn(message)
         end
 
         accept
