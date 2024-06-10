@@ -29,7 +29,7 @@ defmodule Ash.Type.Atom do
     StreamData.member_of(one_of)
   end
 
-  def apply_constraints(nil, _), do: :ok
+  def apply_constraints(nil, _), do: {:ok, nil}
 
   def apply_constraints(value, constraints) do
     errors =
