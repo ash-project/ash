@@ -44,4 +44,25 @@ defmodule Ash.Query.Operator.Eq do
       Ash.SatSolver.mutually_exclusive(predicates)
     end)
   end
+
+  @impl Ash.Filter.Predicate
+  def compare(
+        %__MODULE__{left: left, right: left_right},
+        %__MODULE__{left: left, right: right_right}
+      ) do
+    if Comp.equal?(left_right, right_right) do
+      :mutually_inclusive
+    else
+      :mutually_exclusive
+    end
+  end
+
+  def compare(%__MODULE__{} = left, %Ash.Query.Operator.In{} = right) do
+    case Ash.Query.Operator.In.compare(right, left) do
+      :left_includes_right -> :right_includes_left
+      other -> other
+    end
+  end
+
+  def compare(_, _), do: :unknown
 end

@@ -31,38 +31,35 @@ defmodule Ash.Query.Operator.In do
   end
 
   @impl Ash.Filter.Predicate
-  def compare(%__MODULE__{left: left, right: %MapSet{} = left_right}, %__MODULE__{
-        left: left,
-        right: %MapSet{} = right_right
-      }) do
-    if MapSet.equal?(left_right, right_right) do
-      :mutually_inclusive
-    else
-      if MapSet.disjoint?(left_right, right_right) do
-        :mutually_exclusive
-      else
-        :unknown
-      end
+  def compare(
+        %__MODULE__{left: left, right: %MapSet{} = mapset_left},
+        %__MODULE__{left: left, right: %MapSet{} = mapset_right}
+      ) do
+    cond do
+      MapSet.equal?(mapset_left, mapset_right) -> :mutually_inclusive
+      MapSet.disjoint?(mapset_left, mapset_right) -> :mutually_exclusive
+      true -> :unknown
     end
   end
 
-  def compare(%__MODULE__{}, %Ash.Query.Operator.Eq{
-        right: %Ref{}
-      }),
-      do: false
+  def compare(%__MODULE__{}, %Ash.Query.Operator.Eq{right: %Ref{}}) do
+    :unknown
+  end
 
-  def compare(%__MODULE__{left: left, right: %MapSet{} = left_right}, %Ash.Query.Operator.Eq{
-        left: left,
-        right: value
-      }) do
-    if MapSet.member?(left_right, value) do
-      :left_implies_right
+  def compare(
+        %__MODULE__{left: left, right: %MapSet{} = mapset},
+        %Ash.Query.Operator.Eq{left: left, right: value}
+      ) do
+    if MapSet.member?(mapset, value) do
+      :left_includes_right
     else
       :mutually_exclusive
     end
   end
 
-  def compare(_, _), do: :unknown
+  def compare(_, _) do
+    :unknown
+  end
 
   def to_string(%{left: left, right: %MapSet{} = mapset}, opts) do
     import Inspect.Algebra
