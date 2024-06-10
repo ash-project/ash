@@ -72,6 +72,53 @@ defmodule Ash.Resource.Transformers.DefaultAccept do
               """
         end
 
+        action
+        |> Map.get(:require_attributes, [])
+        |> Enum.reject(&(&1 in accept))
+        |> case do
+          [] ->
+            :ok
+
+          invalid_required_attributes ->
+            raise Spark.Error.DslError,
+              module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
+              path: [:actions, action.name, :require_attributes],
+              message: """
+              Cannot require #{inspect(invalid_required_attributes)}, because they are not accepted. You must accept in addition to requiring."
+              """
+        end
+
+        action
+        |> Map.get(:allow_nil_input, [])
+        |> Enum.reject(&(&1 in accept))
+        |> case do
+          [] ->
+            :ok
+
+          invalid_allow_nil_inputs ->
+            raise Spark.Error.DslError,
+              module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
+              path: [:actions, action.name, :allow_nil_input],
+              message: """
+              It is not necessary to allow nil inputs that are not accepted, got: #{inspect(invalid_allow_nil_inputs)}
+              """
+        end
+
+        accept
+        |> Enum.reject(&Ash.Resource.Info.attribute(dsl_state, &1))
+        |> case do
+          [] ->
+            :ok
+
+          invalid_attrs ->
+            raise Spark.Error.DslError,
+              module: Spark.Dsl.Transformer.get_persisted(dsl_state, :module),
+              path: [:actions, action.name, :accept],
+              message: """
+              Cannot accept #{inspect(invalid_attrs)}, because they are not attributes."
+              """
+        end
+
         accept =
           Enum.reject(accept, &(&1 in argument_names))
 
