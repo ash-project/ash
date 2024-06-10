@@ -6,6 +6,79 @@ defmodule Ash.Test.SeedTest do
   require Ash.Query
   alias Ash.Test.Domain, as: Domain
 
+  defmodule Tenant do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true, allow_nil?: false
+    end
+  end
+
+  defmodule ContextUser do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    multitenancy do
+      strategy :context
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true, allow_nil?: false
+    end
+  end
+
+  defmodule AttributeUser do
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    multitenancy do
+      strategy :attribute
+      attribute :tenant_id
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true, allow_nil?: false
+    end
+
+    relationships do
+      belongs_to :tenant, Ash.Test.SeedTest.Tenant
+    end
+  end
+
   defmodule Author do
     @moduledoc false
     use Ash.Resource,
@@ -268,6 +341,33 @@ defmodule Ash.Test.SeedTest do
       assert Enum.count(Ash.read!(Category)) == 2
       assert Enum.count(Ash.read!(Rating)) == 2
       assert Enum.count(Ash.read!(Author)) == 1
+    end
+
+    test "context multitenancy works" do
+      tenant = seed!(%Tenant{name: "Tenant"})
+      tenant_id = tenant.id
+
+      user = seed!(ContextUser, %{name: "User"}, tenant: tenant_id)
+      user_id = user.id
+
+      assert {:ok, %ContextUser{id: ^user_id}} = Ash.get(ContextUser, user_id, tenant: tenant_id)
+
+      assert {:error, %{errors: [%Ash.Error.Query.NotFound{}]}} =
+               Ash.get(ContextUser, user_id, tenant: "random")
+    end
+
+    test "attribute multitenancy works" do
+      tenant = seed!(%Tenant{name: "Tenant"})
+      tenant_id = tenant.id
+
+      user = seed!(AttributeUser, %{name: "User"}, tenant: tenant_id)
+      user_id = user.id
+
+      assert {:ok, %AttributeUser{id: ^user_id}} =
+               Ash.get(AttributeUser, user_id, tenant: tenant_id)
+
+      assert {:error, %{errors: [%Ash.Error.Query.NotFound{}]}} =
+               Ash.get(AttributeUser, user_id, tenant: "random")
     end
   end
 end
