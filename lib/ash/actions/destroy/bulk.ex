@@ -184,6 +184,8 @@ defmodule Ash.Actions.Destroy.Bulk do
         {atomic_changeset, opts} =
           Ash.Actions.Helpers.set_context_and_get_opts(domain, atomic_changeset, opts)
 
+        atomic_changeset = Ash.Actions.Helpers.apply_opts_load(atomic_changeset, opts)
+
         atomic_changeset = %{atomic_changeset | domain: domain}
 
         atomic_changeset =
@@ -503,6 +505,21 @@ defmodule Ash.Actions.Destroy.Bulk do
               {results, []}
             end
 
+          {results, errors, error_count} =
+            case load_data(
+                   results,
+                   atomic_changeset.domain,
+                   atomic_changeset.resource,
+                   atomic_changeset,
+                   opts
+                 ) do
+              {:ok, results} ->
+                {results, [], 0}
+
+              {:error, error} ->
+                {[], List.wrap(error), Enum.count(List.wrap(error))}
+            end
+
           notifications =
             if opts[:notify?] do
               notifications ++
@@ -513,12 +530,29 @@ defmodule Ash.Actions.Destroy.Bulk do
               notifications
             end
 
+          status =
+            case {error_count, results} do
+              {0, []} ->
+                :success
+
+              {0, _results} ->
+                :success
+
+              {_error_count, []} ->
+                :error
+            end
+
           %Ash.BulkResult{
-            status: :success,
-            error_count: 0,
+            status: status,
+            error_count: error_count,
             notifications: notifications,
-            errors: [],
-            records: results
+            errors: errors,
+            records:
+              if opts[:return_records?] do
+                results
+              else
+                []
+              end
           }
 
         {:error, :no_rollback,
@@ -1913,19 +1947,27 @@ defmodule Ash.Actions.Destroy.Bulk do
         resource |> Ash.Resource.Info.public_attributes() |> Enum.map(& &1.name)
       end
 
-    case List.wrap(changeset.load) ++ select do
-      [] ->
-        {:ok, records}
-
-      load ->
+    case Ash.load(records, select,
+           reuse_values?: true,
+           domain: domain,
+           actor: opts[:actor],
+           authorize?: opts[:authorize?],
+           tracer: opts[:tracer]
+         ) do
+      {:ok, records} ->
         Ash.load(
           records,
-          load,
+          List.wrap(changeset.load),
+          reuse_values?: true,
           domain: domain,
           actor: opts[:actor],
           authorize?: opts[:authorize?],
           tracer: opts[:tracer]
         )
+        |> Ash.Actions.Helpers.select(changeset)
+
+      other ->
+        other
     end
   end
 
