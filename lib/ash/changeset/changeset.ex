@@ -3627,14 +3627,6 @@ defmodule Ash.Changeset do
           :append_and_remove | :append | :remove | :direct_control | :create
 
   @spec manage_relationship_opts(manage_relationship_type()) :: Keyword.t()
-  def manage_relationship_opts(:replace) do
-    Logger.warning(
-      "`type: :replace` has been renamed to `:append_and_remove` in 2.0, and it will be removed in 2.1"
-    )
-
-    manage_relationship_opts(:append_and_remove)
-  end
-
   def manage_relationship_opts(:append_and_remove) do
     [
       on_lookup: :relate,
