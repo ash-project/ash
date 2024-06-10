@@ -607,6 +607,288 @@ defmodule Ash.Test.Actions.CreateTest do
     end
   end
 
+  describe "load" do
+    test "allows loading has_many relationship on the changeset" do
+      post1 = Ash.create!(Post, %{title: "Post 1"})
+      post2 = Ash.create!(Post, %{title: "Post 2"})
+
+      load_query =
+        Post
+        |> Ash.Query.sort(title: :asc)
+        |> Ash.Query.select([:title])
+
+      author =
+        Author
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:name, "Author")
+        |> Ash.Changeset.manage_relationship(:posts, [post2, post1], type: :append_and_remove)
+        |> Ash.Changeset.load(posts: load_query)
+        |> Ash.create!()
+
+      assert [%Post{title: "Post 1"}, %Post{title: "Post 2"}] = author.posts
+    end
+
+    test "allows loading has_many relationship on the action options" do
+      post1 = Ash.create!(Post, %{title: "Post 1"})
+      post2 = Ash.create!(Post, %{title: "Post 2"})
+
+      load_query =
+        Post
+        |> Ash.Query.sort(title: :asc)
+        |> Ash.Query.select([:title])
+
+      author =
+        Author
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:name, "Author")
+        |> Ash.Changeset.manage_relationship(:posts, [post2, post1], type: :append_and_remove)
+        |> Ash.create!(load: [posts: load_query])
+
+      assert [%Post{title: "Post 1"}, %Post{title: "Post 2"}] = author.posts
+    end
+
+    test "allows loading paginated has_many relationship on the changeset" do
+      post1 = Ash.create!(Post, %{title: "Post 1"})
+      post2 = Ash.create!(Post, %{title: "Post 2"})
+
+      offset_pagination_query =
+        Post
+        |> Ash.Query.sort(title: :asc)
+        |> Ash.Query.select([:title])
+        |> Ash.Query.page(count: true, limit: 1)
+
+      author =
+        Author
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:name, "Author")
+        |> Ash.Changeset.manage_relationship(:posts, [post2, post1], type: :append_and_remove)
+        |> Ash.Changeset.load(posts: offset_pagination_query)
+        |> Ash.create!()
+
+      assert %Ash.Page.Offset{
+               results: [%Post{title: "Post 1", __metadata__: %{keyset: keyset}}],
+               limit: 1,
+               offset: 0,
+               count: 2,
+               more?: true
+             } = author.posts
+
+      keyset_pagination_query =
+        Post
+        |> Ash.Query.sort(title: :asc)
+        |> Ash.Query.select([:title])
+        |> Ash.Query.page(count: true, limit: 1, after: keyset)
+
+      author =
+        Author
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:name, "Author")
+        |> Ash.Changeset.manage_relationship(:posts, [post2, post1], type: :append_and_remove)
+        |> Ash.Changeset.load(posts: keyset_pagination_query)
+        |> Ash.create!()
+
+      assert %Ash.Page.Keyset{
+               results: [%Post{title: "Post 2"}],
+               limit: 1,
+               count: 2,
+               more?: false,
+               before: nil,
+               after: ^keyset
+             } = author.posts
+    end
+
+    test "allows loading paginated has_many relationship on the action options" do
+      post1 = Ash.create!(Post, %{title: "Post 1"})
+      post2 = Ash.create!(Post, %{title: "Post 2"})
+
+      offset_pagination_query =
+        Post
+        |> Ash.Query.sort(title: :asc)
+        |> Ash.Query.select([:title])
+        |> Ash.Query.page(count: true, limit: 1)
+
+      author =
+        Author
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:name, "Author")
+        |> Ash.Changeset.manage_relationship(:posts, [post2, post1], type: :append_and_remove)
+        |> Ash.create!(load: [posts: offset_pagination_query])
+
+      assert %Ash.Page.Offset{
+               results: [%Post{title: "Post 1", __metadata__: %{keyset: keyset}}],
+               limit: 1,
+               offset: 0,
+               count: 2,
+               more?: true
+             } = author.posts
+
+      keyset_pagination_query =
+        Post
+        |> Ash.Query.sort(title: :asc)
+        |> Ash.Query.select([:title])
+        |> Ash.Query.page(count: true, limit: 1, after: keyset)
+
+      author =
+        Author
+        |> Ash.Changeset.new()
+        |> Ash.Changeset.change_attribute(:name, "Author")
+        |> Ash.Changeset.manage_relationship(:posts, [post2, post1], type: :append_and_remove)
+        |> Ash.create!(load: [posts: keyset_pagination_query])
+
+      assert %Ash.Page.Keyset{
+               results: [%Post{title: "Post 2"}],
+               limit: 1,
+               count: 2,
+               more?: false,
+               before: nil,
+               after: ^keyset
+             } = author.posts
+    end
+
+    test "allows loading many_to_many relationship on the changeset" do
+      related_post1 = Ash.create!(Post, %{title: "Related 1"})
+      related_post2 = Ash.create!(Post, %{title: "Related 2"})
+
+      load_query =
+        Post
+        |> Ash.Query.sort(title: :asc)
+        |> Ash.Query.select([:title])
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Post"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [related_post2, related_post1],
+          type: :append_and_remove
+        )
+        |> Ash.Changeset.load(related_posts: load_query)
+        |> Ash.create!()
+
+      assert [%Post{title: "Related 1"}, %Post{title: "Related 2"}] = post.related_posts
+    end
+
+    test "allows loading many_to_many relationship on the action options" do
+      related_post1 = Ash.create!(Post, %{title: "Related 1"})
+      related_post2 = Ash.create!(Post, %{title: "Related 2"})
+
+      load_query =
+        Post
+        |> Ash.Query.sort(title: :asc)
+        |> Ash.Query.select([:title])
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Post"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [related_post2, related_post1],
+          type: :append_and_remove
+        )
+        |> Ash.create!(load: [related_posts: load_query])
+
+      assert [%Post{title: "Related 1"}, %Post{title: "Related 2"}] = post.related_posts
+    end
+
+    test "allows loading paginated many_to_many relationship on the changeset" do
+      related_post1 = Ash.create!(Post, %{title: "Related 1"})
+      related_post2 = Ash.create!(Post, %{title: "Related 2"})
+
+      offset_pagination_query =
+        Post
+        |> Ash.Query.sort(title: :asc)
+        |> Ash.Query.select([:title])
+        |> Ash.Query.page(count: true, limit: 1)
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Post"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [related_post2, related_post1],
+          type: :append_and_remove
+        )
+        |> Ash.Changeset.load(related_posts: offset_pagination_query)
+        |> Ash.create!()
+
+      assert %Ash.Page.Offset{
+               results: [%Post{title: "Related 1", __metadata__: %{keyset: keyset}}],
+               limit: 1,
+               offset: 0,
+               count: 2,
+               more?: true
+             } = post.related_posts
+
+      keyset_pagination_query =
+        Post
+        |> Ash.Query.sort(title: :asc)
+        |> Ash.Query.select([:title])
+        |> Ash.Query.page(count: true, limit: 1, after: keyset)
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Post"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [related_post2, related_post1],
+          type: :append_and_remove
+        )
+        |> Ash.Changeset.load(related_posts: keyset_pagination_query)
+        |> Ash.create!()
+
+      assert %Ash.Page.Keyset{
+               results: [%Post{title: "Related 2"}],
+               limit: 1,
+               count: 2,
+               more?: false,
+               before: nil,
+               after: ^keyset
+             } = post.related_posts
+    end
+
+    test "allows loading paginated many_to_many relationship on the action options" do
+      related_post1 = Ash.create!(Post, %{title: "Related 1"})
+      related_post2 = Ash.create!(Post, %{title: "Related 2"})
+
+      offset_pagination_query =
+        Post
+        |> Ash.Query.sort(title: :asc)
+        |> Ash.Query.select([:title])
+        |> Ash.Query.page(count: true, limit: 1)
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Post"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [related_post2, related_post1],
+          type: :append_and_remove
+        )
+        |> Ash.create!(load: [related_posts: offset_pagination_query])
+
+      assert %Ash.Page.Offset{
+               results: [%Post{title: "Related 1", __metadata__: %{keyset: keyset}}],
+               limit: 1,
+               offset: 0,
+               count: 2,
+               more?: true
+             } = post.related_posts
+
+      keyset_pagination_query =
+        Post
+        |> Ash.Query.sort(title: :asc)
+        |> Ash.Query.select([:title])
+        |> Ash.Query.page(count: true, limit: 1, after: keyset)
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "Post"})
+        |> Ash.Changeset.manage_relationship(:related_posts, [related_post2, related_post1],
+          type: :append_and_remove
+        )
+        |> Ash.create!(load: [related_posts: keyset_pagination_query])
+
+      assert %Ash.Page.Keyset{
+               results: [%Post{title: "Related 2"}],
+               limit: 1,
+               count: 2,
+               more?: false,
+               before: nil,
+               after: ^keyset
+             } = post.related_posts
+    end
+  end
+
   describe "creating many to many relationships" do
     test "allows creating with a many_to_many relationship" do
       post2 =
