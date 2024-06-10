@@ -1100,4 +1100,35 @@ defmodule Ash.Test.Actions.BulkCreateTest do
              } = post.related_posts
     end
   end
+
+  test "accepts a list of changesets as inputs" do
+    org = Ash.create!(Org, %{})
+    post1 = Ash.create!(Post, %{title: "Post 1"}, tenant: org.id, authorize?: false)
+    post2 = Ash.create!(Post, %{title: "Post 2"}, tenant: org.id, authorize?: false)
+
+    load_query =
+      Post
+      |> Ash.Query.sort(title: :asc)
+      |> Ash.Query.select([:title])
+
+    assert %Ash.BulkResult{records: [author]} =
+             Author
+             |> Ash.Changeset.for_create(:create, %{name: "Author"})
+             |> Ash.Changeset.manage_relationship(:posts, [post2, post1],
+               type: :append_and_remove
+             )
+             |> List.wrap()
+             |> Ash.bulk_create!(Author, :create,
+               return_records?: true,
+               return_errors?: true,
+               authorize?: false,
+               tenant: org.id,
+               load: [posts: load_query]
+             )
+
+    assert %Author{
+             name: "Author",
+             posts: [%Post{title: "Post 1"}, %Post{title: "Post 2"}]
+           } = author
+  end
 end
