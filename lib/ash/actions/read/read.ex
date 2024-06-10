@@ -1191,7 +1191,7 @@ defmodule Ash.Actions.Read do
     query.resource
     |> Ash.Resource.Info.attributes()
     |> Enum.filter(fn %{name: name, type: type, constraints: constraints} ->
-      Ash.Type.can_load?(type, constraints) && (is_nil(query.select) || name in select)
+      Ash.Type.can_load?(type, constraints) && (is_nil(query.select) || name in query.select)
     end)
     |> Enum.map(& &1.name)
     |> Enum.reduce(query.load_through, fn name, load_through ->
