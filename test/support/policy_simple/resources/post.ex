@@ -19,6 +19,12 @@ defmodule Ash.Test.Support.PolicySimple.Post do
       authorize_if(actor_attribute_equals(:admin, true))
       authorize_if(actor_attribute_equals(:manager, true))
     end
+
+    policy action(:say_hello) do
+      authorize_if expr(^actor(:admin) == true)
+      forbid_if expr(^arg(:from_an_admin?))
+      authorize_if always()
+    end
   end
 
   ets do
@@ -45,6 +51,19 @@ defmodule Ash.Test.Support.PolicySimple.Post do
 
       argument :organization, :uuid
       change manage_relationship(:organization, type: :append_and_remove)
+    end
+
+    action :say_hello, :string do
+      argument :to, :string, allow_nil?: false
+      argument :from_an_admin?, :boolean, allow_nil?: false, default: false
+
+      run fn input, _ ->
+        if input.arguments.from_an_admin? do
+          {:ok, "Hello #{input.arguments.to} from an admin!"}
+        else
+          {:ok, "Hello #{input.arguments.to} from an admin!"}
+        end
+      end
     end
   end
 

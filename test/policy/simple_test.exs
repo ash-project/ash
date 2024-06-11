@@ -120,6 +120,24 @@ defmodule Ash.Test.Policy.SimpleTest do
     |> Ash.create!(actor: user)
   end
 
+  test "filter checks work on generic actions when they don't reference anything specifically", %{
+    admin: admin,
+    user: user
+  } do
+    assert_raise Ash.Error.Forbidden, fn ->
+      Post
+      |> Ash.ActionInput.for_action(:say_hello, %{from_an_admin?: true, to: "Fred"}, actor: user)
+      |> Ash.run_action!()
+    end
+
+    assert "Hello Fred from an admin!" ==
+             Post
+             |> Ash.ActionInput.for_action(:say_hello, %{from_an_admin?: true, to: "Fred"},
+               actor: admin
+             )
+             |> Ash.run_action!()
+  end
+
   test "filter checks work with many to many related data and a filter", %{user: user} do
     car1 =
       Car

@@ -32,6 +32,7 @@ defmodule Ash.Policy.FilterCheck do
           required(:domain) => Ash.Domain.t(),
           optional(:query) => Ash.Query.t(),
           optional(:changeset) => Ash.Changeset.t(),
+          optional(:action_input) => Ash.ActionInput.t(),
           optional(any) => any
         }
 
@@ -88,6 +89,34 @@ defmodule Ash.Policy.FilterCheck do
 
           _ ->
             {:ok, :unknown}
+        end
+      end
+
+      defp try_eval(expression, %{
+             resource: resource,
+             action_input: %Ash.ActionInput{} = action_input,
+             actor: actor
+           }) do
+        expression =
+          Ash.Expr.fill_template(
+            expression,
+            actor,
+            action_input.arguments,
+            action_input.context
+          )
+
+        case Ash.Filter.hydrate_refs(expression, %{
+               resource: resource,
+               unknown_on_unknown_refs?: true,
+               aggregates: %{},
+               calculations: %{},
+               public?: false
+             }) do
+          {:ok, hydrated} ->
+            Ash.Expr.eval_hydrated(hydrated, resource: resource, unknown_on_unknown_refs?: true)
+
+          {:error, error} ->
+            {:error, error}
         end
       end
 
@@ -260,6 +289,10 @@ defmodule Ash.Policy.FilterCheck do
   end
 
   def args(%{query: %{arguments: arguments}}) do
+    arguments
+  end
+
+  def args(%{action_input: %{arguments: arguments}}) do
     arguments
   end
 
