@@ -2,6 +2,39 @@
 
 <!-- changelog -->
 
+## [v3.0.11](https://github.com/ash-project/ash/compare/v3.0.10...v3.0.11) (2024-06-11)
+
+
+
+
+### Bug Fixes:
+
+* load relationships on bulk operations (#1234)
+
+* only apply load through for attributes that are being selected directly
+
+* ensure we lateral join with `from_many?: true` or any `:many` cardinality relationships
+
+* correctly load paginated relationships after create, update, delete (#1229)
+
+* return proper `{:ok, value}`  from `Ash.Type.Atom.apply_constraints/2`
+
+* fix the compare/2 implementations (#1232)
+
+* return proper value from short-circuit filter hydration
+
+* fix seed not working when :__keep_nil__ is generated using seed_input (#1228)
+
+* add resource to Ash.Seed.seed! in Ash.Generator.seed! (#1227)
+
+### Improvements:
+
+* use `IO.warn` for allow_nil_inputs error
+
+* validate `require_attributes` and `allow_nil_input` at compile time
+
+* add tenant option to Ash.Seed.seed! (#1230)
+
 ## [v3.0.10](https://github.com/ash-project/ash/compare/v3.0.9...v3.0.10) (2024-06-06)
 
 ### Bug Fixes:
