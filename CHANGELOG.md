@@ -4,36 +4,31 @@
 
 ## [v3.0.11](https://github.com/ash-project/ash/compare/v3.0.10...v3.0.11) (2024-06-11)
 
-
-
-
 ### Bug Fixes:
 
-* load relationships on bulk operations (#1234)
+- [loading through attributes] only apply load through for attributes that are being selected directly
 
-* only apply load through for attributes that are being selected directly
+- [relationship loading] ensure we lateral join with `from_many?: true` or any `:many` cardinality relationships
 
-* ensure we lateral join with `from_many?: true` or any `:many` cardinality relationships
+- [create/update/destroy actions] correctly load paginated relationships after create, update, delete (#1229)
 
-* correctly load paginated relationships after create, update, delete (#1229)
+- [bulk create/update/destroy] load relationships on bulk operations (#1234)
 
-* return proper `{:ok, value}`  from `Ash.Type.Atom.apply_constraints/2`
+- [Ash.Type.Atom] return proper `{:ok, value}` from `Ash.Type.Atom.apply_constraints/2`
 
-* fix the compare/2 implementations (#1232)
+- [Ash.Filter] fix the compare/2 implementations (#1232)
 
-* return proper value from short-circuit filter hydration
+- [Ash.Filter] return proper value from short-circuit filter hydration
 
-* fix seed not working when :__keep_nil__ is generated using seed_input (#1228)
+- [Ash.Seed] fix seed not working when :**keep_nil** is generated using seed_input (#1228)
 
-* add resource to Ash.Seed.seed! in Ash.Generator.seed! (#1227)
+- [Ash.Generator] pass resource to Ash.Seed.seed! in Ash.Generator.seed! (#1227)
 
 ### Improvements:
 
-* use `IO.warn` for allow_nil_inputs error
+- [Ash.Resource] validate `require_attributes` (error) and `allow_nil_input` (warning) at compile time
 
-* validate `require_attributes` and `allow_nil_input` at compile time
-
-* add tenant option to Ash.Seed.seed! (#1230)
+- [Ash.Seed] add tenant option to Ash.Seed.seed! (#1230)
 
 ## [v3.0.10](https://github.com/ash-project/ash/compare/v3.0.9...v3.0.10) (2024-06-06)
 
