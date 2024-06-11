@@ -33,6 +33,66 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     end
   end
 
+  defmodule Author do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :create, :update, :destroy]
+    end
+
+    attributes do
+      uuid_primary_key :id
+
+      attribute :name, :string do
+        public?(true)
+      end
+    end
+
+    relationships do
+      has_many :posts, Ash.Test.Actions.BulkDestroyTest.Post,
+        destination_attribute: :author_id,
+        public?: true
+    end
+  end
+
+  defmodule PostLink do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    attributes do
+      attribute :type, :string do
+        public?(true)
+      end
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    relationships do
+      belongs_to :source_post, Ash.Test.Actions.BulkDestroyTest.Post,
+        primary_key?: true,
+        allow_nil?: false,
+        public?: true
+
+      belongs_to :destination_post, Ash.Test.Actions.BulkDestroyTest.Post,
+        primary_key?: true,
+        allow_nil?: false,
+        public?: true
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -150,6 +210,16 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       attribute :title3, :string, public?: true
 
       timestamps()
+    end
+
+    relationships do
+      belongs_to :author, Author, public?: true
+
+      many_to_many :related_posts, __MODULE__,
+        through: PostLink,
+        source_attribute_on_join_resource: :source_post_id,
+        destination_attribute_on_join_resource: :destination_post_id,
+        public?: true
     end
   end
 
@@ -580,5 +650,61 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     assert result.error_count == 0
 
     assert [] = Ash.read!(Post)
+  end
+
+  describe "load" do
+    test "allows loading has_many relationship" do
+      post1 = Ash.create!(Post, %{title: "Post 1"})
+      post2 = Ash.create!(Post, %{title: "Post 2"})
+
+      load_query =
+        Post
+        |> Ash.Query.sort(title: :asc)
+        |> Ash.Query.select([:title])
+
+      assert %Ash.BulkResult{records: [author]} =
+               Author
+               |> Ash.Changeset.for_create(:create, %{name: "Author"})
+               |> Ash.Changeset.manage_relationship(:posts, [post2, post1],
+                 type: :append_and_remove
+               )
+               |> Ash.create!()
+               |> List.wrap()
+               |> Ash.bulk_destroy!(:destroy, %{},
+                 resource: Author,
+                 return_records?: true,
+                 load: [posts: load_query]
+               )
+
+      assert [%Post{title: "Post 1"}, %Post{title: "Post 2"}] = author.posts
+    end
+
+    test "allows loading many_to_many relationship" do
+      related_post1 = Ash.create!(Post, %{title: "Related 1"})
+      related_post2 = Ash.create!(Post, %{title: "Related 2"})
+
+      load_query =
+        Post
+        |> Ash.Query.sort(title: :asc)
+        |> Ash.Query.select([:title])
+
+      assert %Ash.BulkResult{records: [post]} =
+               Post
+               |> Ash.Changeset.for_create(:create, %{title: "Title"})
+               |> Ash.Changeset.manage_relationship(
+                 :related_posts,
+                 [related_post2, related_post1],
+                 type: :append_and_remove
+               )
+               |> Ash.create!()
+               |> List.wrap()
+               |> Ash.bulk_destroy!(:destroy, %{},
+                 resource: Post,
+                 return_records?: true,
+                 load: [related_posts: load_query]
+               )
+
+      assert [%Post{title: "Related 1"}, %Post{title: "Related 2"}] = post.related_posts
+    end
   end
 end
