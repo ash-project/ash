@@ -65,6 +65,7 @@ defmodule Ash.Resource.Verifiers.ValidateAccept do
       :ok
     else
       raise DslError,
+        module: Spark.Dsl.Verifier.get_persisted(dsl_state, :module),
         message: Enum.join(result, "\n"),
         path: []
     end
