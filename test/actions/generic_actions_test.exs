@@ -29,6 +29,14 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
 
+      action :hello_with_default, :string do
+        argument :name, :string, allow_nil?: false, default: "default"
+
+        run(fn input, _context ->
+          {:ok, "Hello #{input.arguments.name}"}
+        end)
+      end
+
       action :hello, :string do
         argument :name, :string, allow_nil?: false
 
@@ -53,6 +61,10 @@ defmodule Ash.Test.Actions.GenericActionsTest do
       policy action(:hello) do
         authorize_if PassingFredOrGeorge
       end
+
+      policy action(:hello_with_default) do
+        authorize_if always()
+      end
     end
   end
 
@@ -75,6 +87,13 @@ defmodule Ash.Test.Actions.GenericActionsTest do
         |> Ash.ActionInput.for_action(:hello, %{name: %{a: 10}})
         |> Ash.run_action!()
       end
+    end
+
+    test "generic actions set default values for arguments" do
+      assert "Hello default" ==
+               Post
+               |> Ash.ActionInput.for_action(:hello_with_default, %{})
+               |> Ash.run_action!()
     end
 
     test "generic actions don't accept unknown keys" do

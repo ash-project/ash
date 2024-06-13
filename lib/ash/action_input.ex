@@ -68,6 +68,7 @@ defmodule Ash.ActionInput do
 
     input
     |> cast_params(params, opts)
+    |> set_defaults()
     |> require_arguments()
   end
 
@@ -100,6 +101,28 @@ defmodule Ash.ActionInput do
       end
     end)
   end
+
+  defp set_defaults(input) do
+    input.action.arguments
+    |> Enum.reject(&is_nil(&1.default))
+    |> Enum.reduce(input, fn argument, input ->
+      case fetch_argument(input, argument.name) do
+        {:ok, value} when not is_nil(value) ->
+          input
+
+        _ ->
+          if argument.name in input.invalid_keys do
+            input
+          else
+            set_argument(input, argument.name, default(argument))
+          end
+      end
+    end)
+  end
+
+  defp default(%{default: {mod, func, args}}), do: apply(mod, func, args)
+  defp default(%{default: function}) when is_function(function, 0), do: function.()
+  defp default(%{default: value}), do: value
 
   @doc "Gets the value of an argument provided to the input."
   @spec get_argument(t, atom | String.t()) :: term
