@@ -768,7 +768,7 @@ defmodule Ash.Test.Actions.LoadTest do
         Rating
         |> Ash.Changeset.for_create(:create, %{rating: 10})
         |> Ash.Changeset.manage_relationship(:post, post, type: :append_and_remove)
-        |> Domain2.create!()
+        |> Ash.create!()
 
       assert [loaded_rating] =
                author

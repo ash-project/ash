@@ -530,7 +530,7 @@ defmodule Ash.Actions.ManagedRelationships do
               Map.put(
                 record,
                 relationship.join_relationship,
-                Map.get(record.__struct__.__struct__, relationship.join_relationship)
+                Map.get(record.__struct__.__struct__(), relationship.join_relationship)
               )
             else
               record
