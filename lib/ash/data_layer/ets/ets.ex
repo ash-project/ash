@@ -1474,7 +1474,7 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp unload_relationships(resource, record) do
-    empty = resource.__struct__
+    empty = resource.__struct__()
 
     resource
     |> Ash.Resource.Info.relationships()

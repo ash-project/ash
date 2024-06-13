@@ -726,7 +726,7 @@ defmodule Ash.Filter do
         false
     end)
     |> Enum.flat_map(fn %{attribute: calculation} = calculation_ref ->
-      if calculation.module.has_expression? do
+      if calculation.module.has_expression?() do
         expression = calculation.module.expression(calculation.opts, calculation.context)
 
         case hydrate_refs(expression, %{
