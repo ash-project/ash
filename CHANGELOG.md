@@ -5,6 +5,69 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v2.21.15](https://github.com/ash-project/ash/compare/v2.21.14...v2.21.15) (2024-06-13)
+
+
+
+
+### Bug Fixes:
+
+* return `{:ok` tuple when upgrading an expression calc to a literal calc
+
+* use positional loading on embedded resources
+
+* backport fix for `changing_attributes` for multiple attributes (#1102)
+
+* backport fix to `changing_attributes` and atomic validations (#1098)
+
+* union array argument/attribute handling when current attribute is (#1024)
+
+* fix bad backport of validators
+
+* handle rollbacks in nested error formas (backport from 3.0)
+
+* Set tenant for managed relationship changeset (#1043)
+
+* disable atomic upgrade for 2.0
+
+* ensure actor is set when calling `for_read`
+
+* `code_interface` actions accept `@context` for `Ash 2.0` (#1017)
+
+* `code_interface` actions accept `@context` for `Ash 2.0`
+
+* ensure opts properly contain the `tenant`
+
+* properly set tenant on aggregate query
+
+* properly set action_type when preparing changesets (#1012)
+
+* types: can and can? types were only addressing create when using the tuple method, the code also accepts the record for update & destroy
+
+* allow strings in Ash.Type.Enum again
+
+* set tenant in bulk creates after setting up changeset
+
+* properly cast identity keys before comparison
+
+* properly handle lists of errors added by validations
+
+* honor only_when_valid? in bulk actions
+
+* policy ending with authorize_unless had flipped conditional
+
+* properly handle transaction errors from bulk creates
+
+### Improvements:
+
+* Add attributes_present, attributes_absent. (#1046) (#1063)
+
+* support `allow_nil_input` dsl option in update/destroy (#965)
+
+* allow simple check to return error tuple (#958)
+
+* ensure that update defaults are set
+
 ## [v2.21.14](https://github.com/ash-project/ash/compare/v2.21.13...v2.21.14) (2024-04-30)
 
 
