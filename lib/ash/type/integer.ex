@@ -36,7 +36,7 @@ defmodule Ash.Type.Integer do
               error(
                 Ash.Error.Changes.InvalidChanges,
                 message: "must be less than or equal to %{max}",
-                vars: %{max: max}
+                vars: %{max: ^max}
               )
             else
               ^expr
@@ -49,7 +49,7 @@ defmodule Ash.Type.Integer do
               error(
                 Ash.Error.Changes.InvalidChanges,
                 message: "must be greater than or equal to %{min}",
-                vars: %{min: min}
+                vars: %{min: ^min}
               )
             else
               ^expr
@@ -63,14 +63,14 @@ defmodule Ash.Type.Integer do
                 error(
                   Ash.Error.Changes.InvalidChanges,
                   message: "must be greater than or equal to %{min}",
-                  vars: %{min: min}
+                  vars: %{min: ^min}
                 )
 
               ^expr > ^max ->
                 error(
                   Ash.Error.Changes.InvalidChanges,
                   message: "must be less than or equal to %{max}",
-                  vars: %{max: max}
+                  vars: %{max: ^max}
                 )
 
               true ->

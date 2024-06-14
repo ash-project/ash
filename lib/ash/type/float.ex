@@ -122,7 +122,7 @@ defmodule Ash.Type.Float do
               error(
                 Ash.Error.Changes.InvalidChanges,
                 message: "must be less than or equal to %{max}",
-                vars: %{max: max}
+                vars: %{max: ^max}
               )
             else
               ^expr
@@ -135,7 +135,7 @@ defmodule Ash.Type.Float do
               error(
                 Ash.Error.Changes.InvalidChanges,
                 message: "must be greater than or equal to %{min}",
-                vars: %{min: min}
+                vars: %{min: ^min}
               )
             else
               ^expr
@@ -149,8 +149,8 @@ defmodule Ash.Type.Float do
             else
               error(
                 Ash.Error.Changes.InvalidChanges,
-                message: "must be greater than %{min}",
-                vars: %{min: min}
+                message: "must be greater than %{less_than}",
+                vars: %{less_than: ^less_than}
               )
             end
           )
@@ -162,8 +162,8 @@ defmodule Ash.Type.Float do
             else
               error(
                 Ash.Error.Changes.InvalidChanges,
-                message: "must be greater than %{min}",
-                vars: %{min: min}
+                message: "must be greater than %{greater_than}",
+                vars: %{greater_than: ^greater_than}
               )
             end
           )
