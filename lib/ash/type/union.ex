@@ -907,7 +907,7 @@ defmodule Ash.Type.Union do
             {:array, type},
             old_values_by_type[name] || [],
             new_values,
-            items: constraints[:types][name][:constraints]
+            Keyword.put(constraints, :items, constraints[:types][name][:constraints])
           )
 
         case result do
