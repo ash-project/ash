@@ -36,6 +36,12 @@ defmodule Ash.Authorizer do
 
   @optional_callbacks [exception: 2, add_calculations: 3, alter_results: 3, alter_filter: 3]
 
+  defmacro __using__(_) do
+    quote do
+      @behaviour Ash.Authorizer
+    end
+  end
+
   def initial_state(module, actor, resource, action, domain) do
     module.initial_state(actor, resource, action, domain)
   end
