@@ -2,6 +2,23 @@
 
 <!-- changelog -->
 
+## [v3.0.12](https://github.com/ash-project/ash/compare/v3.0.11...v3.0.12) (2024-06-14)
+
+
+
+
+### Bug Fixes:
+
+* fix expression interpolation for cast_atomic for integer, decimal, float
+
+* set default argument values on generic actions
+
+* support `^arg/1` and similar constructions in filter policies on generic actions
+
+### Improvements:
+
+* set a `module` when validating accepts
+
 ## [v3.0.11](https://github.com/ash-project/ash/compare/v3.0.10...v3.0.11) (2024-06-11)
 
 ### Bug Fixes:
