@@ -1353,6 +1353,16 @@ defmodule Ash.Actions.Update.Bulk do
         end
       end)
 
+     batch =
+      Enum.reject(batch, fn
+        %{valid?: false} = changeset ->
+          store_error(ref, changeset, opts)
+          true
+
+        _changeset ->
+          false
+      end)
+
     must_be_simple_results =
       Enum.flat_map(must_be_simple, fn changeset ->
         case Ash.Actions.Update.run(
