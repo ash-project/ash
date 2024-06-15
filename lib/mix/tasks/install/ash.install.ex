@@ -40,19 +40,13 @@ if Code.ensure_loaded?(Igniter) do
         "config.exs",
         :spark,
         [:formatter, :"Ash.Resource", :section_order],
-        @resource_default_section_order,
-        fn x ->
-          x
-        end
+        @resource_default_section_order
       )
       |> Igniter.Config.configure(
         "config.exs",
         :spark,
         [:formatter, :"Ash.Domain", :section_order],
-        @domain_default_section_order,
-        fn x ->
-          x
-        end
+        @domain_default_section_order
       )
       |> then(fn igniter ->
         if "--example" in argv do

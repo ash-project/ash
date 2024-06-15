@@ -358,7 +358,6 @@ defmodule Ash.MixProject do
       {:simple_sat, "~> 0.1 and >= 0.1.1", optional: true},
 
       # Code Generators
-      # {:igniter, "~> 0.1.0", optional: true}
       {:igniter, "~> 0.1"},
 
       # Dev/Test dependencies
