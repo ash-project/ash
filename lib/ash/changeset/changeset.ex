@@ -3095,7 +3095,7 @@ defmodule Ash.Changeset do
     run_around_transaction_hooks(changeset, fn changeset ->
       warn_on_transaction_hooks(changeset, changeset.before_transaction, "before_transaction")
 
-      changeset =
+      changeset_result =
         try do
           {:changeset, run_before_transaction_hooks(changeset)}
         rescue
@@ -3106,7 +3106,7 @@ defmodule Ash.Changeset do
             {:exit, reason}
         end
 
-      case changeset do
+      case changeset_result do
         {:changeset, %{valid?: true} = changeset} ->
           result =
             try do
