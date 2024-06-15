@@ -1353,7 +1353,7 @@ defmodule Ash.Actions.Update.Bulk do
         end
       end)
 
-     batch =
+    batch =
       Enum.reject(batch, fn
         %{valid?: false} = changeset ->
           store_error(ref, changeset, opts)

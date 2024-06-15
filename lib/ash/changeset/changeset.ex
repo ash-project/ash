@@ -3095,11 +3095,9 @@ defmodule Ash.Changeset do
     run_around_transaction_hooks(changeset, fn changeset ->
       warn_on_transaction_hooks(changeset, changeset.before_transaction, "before_transaction")
 
-      changeset = run_before_transaction_hooks(changeset)
-
-      result =
+      changeset =
         try do
-          func.(clear_phase(changeset))
+          {:changeset, run_before_transaction_hooks(changeset)}
         rescue
           exception ->
             {:raise, exception, __STACKTRACE__}
@@ -3108,7 +3106,83 @@ defmodule Ash.Changeset do
             {:exit, reason}
         end
 
-      case result do
+      case changeset do
+        {:changeset, %{valid?: true} = changeset} ->
+          result =
+            try do
+              func.(clear_phase(changeset))
+            rescue
+              exception ->
+                {:raise, exception, __STACKTRACE__}
+            catch
+              :exit, reason ->
+                {:exit, reason}
+            end
+
+          case result do
+            {:exit, reason} ->
+              error = Ash.Error.to_ash_error(reason)
+
+              case run_after_transactions({:error, error}, changeset) do
+                {:ok, result} ->
+                  {:ok, result, %{}}
+
+                {:error, new_error} when new_error == error ->
+                  exit(reason)
+
+                {:error, new_error} ->
+                  exit(new_error)
+              end
+
+            {:raise, exception, stacktrace} ->
+              case run_after_transactions({:error, exception}, changeset) do
+                {:ok, result} ->
+                  {:ok, result, changeset, %{}}
+
+                {:error, error} ->
+                  reraise error, stacktrace
+              end
+
+            {:ok, result, changeset, notifications} ->
+              case run_after_transactions({:ok, result}, changeset) do
+                {:ok, result} ->
+                  {:ok, result, changeset, notifications}
+
+                {:error, error} ->
+                  {:error, error}
+              end
+
+            {:ok, result, notifications} ->
+              case run_after_transactions({:ok, result}, changeset) do
+                {:ok, result} ->
+                  {:ok, result, changeset, notifications}
+
+                {:error, error} ->
+                  {:error, error}
+              end
+
+            {:error, error} ->
+              case run_after_transactions({:error, error}, changeset) do
+                {:ok, result} ->
+                  {:ok, result, changeset, %{}}
+
+                {:error, error} ->
+                  {:error, error}
+              end
+          end
+
+        {:changeset, changeset} ->
+          case run_after_transactions(
+                 {:error, Ash.Error.to_error_class(changeset.errors)},
+                 changeset
+               ) do
+            {:ok, result} ->
+              {:ok, result, changeset, %{}}
+
+            {:error, error} ->
+              {:error, error}
+          end
+
         {:exit, reason} ->
           error = Ash.Error.to_ash_error(reason)
 
@@ -3130,33 +3204,6 @@ defmodule Ash.Changeset do
 
             {:error, error} ->
               reraise error, stacktrace
-          end
-
-        {:ok, result, changeset, notifications} ->
-          case run_after_transactions({:ok, result}, changeset) do
-            {:ok, result} ->
-              {:ok, result, changeset, notifications}
-
-            {:error, error} ->
-              {:error, error}
-          end
-
-        {:ok, result, notifications} ->
-          case run_after_transactions({:ok, result}, changeset) do
-            {:ok, result} ->
-              {:ok, result, changeset, notifications}
-
-            {:error, error} ->
-              {:error, error}
-          end
-
-        {:error, error} ->
-          case run_after_transactions({:error, error}, changeset) do
-            {:ok, result} ->
-              {:ok, result, changeset, %{}}
-
-            {:error, error} ->
-              {:error, error}
           end
       end
     end)
