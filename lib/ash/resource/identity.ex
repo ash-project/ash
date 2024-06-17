@@ -89,6 +89,8 @@ defmodule Ash.Resource.Identity do
           name: atom(),
           keys: list(atom()),
           description: String.t() | nil,
+          where: nil | Ash.Expr.t(),
+          nils_distinct?: boolean(),
           all_tenants?: boolean()
         }
 end

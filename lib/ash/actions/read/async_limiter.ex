@@ -21,32 +21,36 @@ defmodule Ash.Actions.Read.AsyncLimiter do
         func
       )
       when not is_nil(async_limiter) do
-    if Ash.DataLayer.data_layer_can?(resource, :async_engine) && !in_transaction?(query) do
-      claimed? =
-        Agent.get_and_update(async_limiter, fn
-          {limit, limit} ->
-            {false, {limit, limit}}
+    if Application.get_env(:ash, :disable_async?) do
+      func.()
+    else
+      if Ash.DataLayer.data_layer_can?(resource, :async_engine) && !in_transaction?(query) do
+        claimed? =
+          Agent.get_and_update(async_limiter, fn
+            {limit, limit} ->
+              {false, {limit, limit}}
 
-          {count, limit} ->
-            {true, {count + 1, limit}}
-        end)
+            {count, limit} ->
+              {true, {count + 1, limit}}
+          end)
 
-      if claimed? do
-        try do
-          Ash.ProcessHelpers.async(
-            fn ->
-              func.()
-            end,
-            opts
-          )
-        after
-          release(async_limiter)
+        if claimed? do
+          try do
+            Ash.ProcessHelpers.async(
+              fn ->
+                func.()
+              end,
+              opts
+            )
+          after
+            release(async_limiter)
+          end
+        else
+          func.()
         end
       else
         func.()
       end
-    else
-      func.()
     end
   end
 

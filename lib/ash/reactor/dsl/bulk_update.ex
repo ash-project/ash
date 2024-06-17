@@ -44,7 +44,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
             stream_with: nil,
             success_state: :success,
             tenant: [],
-            timeout: 30_000,
+            timeout: :infinity,
             transaction: false,
             transform: nil,
             type: :bulk_update,

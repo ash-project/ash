@@ -346,7 +346,15 @@ defmodule Ash.Actions.Create do
 
                         opts[:upsert?] ->
                           changeset.resource
-                          |> Ash.DataLayer.upsert(changeset, upsert_keys)
+                          |> Ash.DataLayer.upsert(
+                            changeset,
+                            upsert_keys,
+                            (opts[:upsert_identity] || changeset.action.upsert_identity) &&
+                              Ash.Resource.Info.identity(
+                                changeset.resource,
+                                opts[:upsert_identity] || changeset.action.upsert_identity
+                              )
+                          )
                           |> Helpers.rollback_if_in_transaction(
                             changeset.resource,
                             changeset

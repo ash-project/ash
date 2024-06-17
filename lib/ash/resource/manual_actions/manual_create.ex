@@ -15,6 +15,7 @@ defmodule Ash.Resource.ManualCreate do
       :domain,
       :upsert?,
       :upsert_keys,
+      :identity,
       :upsert_fields,
       :return_records?,
       :batch_size
@@ -27,6 +28,7 @@ defmodule Ash.Resource.ManualCreate do
             tracer: list(module),
             authorize?: boolean(),
             domain: Ash.Domain.t(),
+            identity: Ash.Resource.Identity.t() | nil,
             upsert?: boolean(),
             upsert_keys: list(atom),
             upsert_fields: list(atom),

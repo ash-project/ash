@@ -33,7 +33,7 @@ defmodule Ash do
     timeout: [
       type: :timeout,
       doc: """
-      A positive integer, or `:infinity`. If none is provided, the timeout configured on the domain is used (which defaults to `30_000`).
+      A positive integer, or `:infinity`. If none is provided, the timeout configured on the domain is used.
       """
     ],
     tracer: [

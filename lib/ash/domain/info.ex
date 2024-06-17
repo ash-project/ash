@@ -201,7 +201,7 @@ defmodule Ash.Domain.Info do
   @doc "The execution timeout for a domain"
   @spec timeout(Ash.Domain.t()) :: nil | :infinity | integer()
   def timeout(domain) do
-    Extension.get_opt(domain, [:execution], :timeout, 30_000, true)
+    Extension.get_opt(domain, [:execution], :timeout, :infinity, true)
   end
 
   @doc "The short name for a domain"

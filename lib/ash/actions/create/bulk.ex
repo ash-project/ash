@@ -1031,6 +1031,12 @@ defmodule Ash.Actions.Create.Bulk do
                     domain: domain,
                     upsert?: opts[:upsert?] || action.upsert?,
                     upsert_keys: upsert_keys,
+                    identity:
+                      (opts[:upsert_identity] || action.upsert_identity) &&
+                        Ash.Resource.Info.identity(
+                          resource,
+                          opts[:upsert_identity] || action.upsert_identity
+                        ),
                     upsert_fields:
                       Ash.Changeset.expand_upsert_fields(
                         opts[:upsert_fields] || action.upsert_fields,
@@ -1101,6 +1107,12 @@ defmodule Ash.Actions.Create.Bulk do
                     %{
                       select: opts[:select],
                       batch_size: opts[:batch_size],
+                      identity:
+                        (opts[:upsert_identity] || action.upsert_identity) &&
+                          Ash.Resource.Info.identity(
+                            resource,
+                            opts[:upsert_identity] || action.upsert_identity
+                          ),
                       return_records?:
                         opts[:return_records?] || must_return_records? ||
                           must_return_records_for_changes?,

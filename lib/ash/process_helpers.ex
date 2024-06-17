@@ -60,30 +60,34 @@ defmodule Ash.ProcessHelpers do
   Creates a task that will properly transfer the ash context to the new process, and timeout if it takes longer than the given timeout
   """
   def task_with_timeout(fun, resource, timeout, name, tracer) do
-    if !Application.get_env(:ash, :disable_async?) &&
-         (is_nil(resource) ||
-            Ash.DataLayer.data_layer_can?(resource, :async_engine)) && timeout &&
-         timeout != :infinity && !Ash.DataLayer.in_transaction?(resource) do
-      task =
-        async(
-          fun,
-          tracer: tracer
-        )
-
-      try do
-        case Task.await(task, timeout) do
-          {:__exception__, e, stacktrace} ->
-            reraise e, stacktrace
-
-          other ->
-            other
-        end
-      catch
-        :exit, {:timeout, {Task, :await, [^task, timeout]}} ->
-          {:error, Ash.Error.Invalid.Timeout.exception(timeout: timeout, name: name)}
-      end
-    else
+    if Application.get_env(:ash, :disable_async?) do
       fun.()
+    else
+      if (is_nil(resource) ||
+            Ash.DataLayer.data_layer_can?(resource, :async_engine)) && timeout &&
+           timeout != :infinity &&
+           !Ash.DataLayer.in_transaction?(resource) do
+        task =
+          async(
+            fun,
+            tracer: tracer
+          )
+
+        try do
+          case Task.await(task, timeout) do
+            {:__exception__, e, stacktrace} ->
+              reraise e, stacktrace
+
+            other ->
+              other
+          end
+        catch
+          :exit, {:timeout, {Task, :await, [^task, timeout]}} ->
+            {:error, Ash.Error.Invalid.Timeout.exception(timeout: timeout, name: name)}
+        end
+      else
+        fun.()
+      end
     end
   end
 end

@@ -956,11 +956,12 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
-  def upsert(resource, changeset, keys, from_bulk_create? \\ false) do
+  def upsert(resource, changeset, keys, identity, from_bulk_create? \\ false) do
     pkey = Ash.Resource.Info.primary_key(resource)
     keys = keys || pkey
 
-    if Enum.any?(keys, &is_nil(Ash.Changeset.get_attribute(changeset, &1))) do
+    if (is_nil(identity) || !identity.nils_distinct?) &&
+         Enum.any?(keys, &is_nil(Ash.Changeset.get_attribute(changeset, &1))) do
       create(resource, changeset, from_bulk_create?)
     else
       key_filters =
@@ -970,7 +971,16 @@ defmodule Ash.DataLayer.Ets do
              Map.get(changeset.params, to_string(key))}
         end)
 
-      query = Ash.Query.do_filter(resource, and: [key_filters])
+      query =
+        resource
+        |> Ash.Query.do_filter(and: [key_filters])
+        |> then(fn query ->
+          if is_nil(identity) || is_nil(identity.where) do
+            query
+          else
+            Ash.Query.do_filter(query, identity.where)
+          end
+        end)
 
       query =
         if is_nil(changeset.filter) do
@@ -1024,7 +1034,13 @@ defmodule Ash.DataLayer.Ets do
             private: %{upsert_fields: options[:upsert_fields] || []}
           })
 
-        case upsert(resource, changeset, options.upsert_keys, true) do
+        case upsert(
+               resource,
+               changeset,
+               options.upsert_keys,
+               options.identity,
+               true
+             ) do
           {:ok, result} ->
             {:cont,
              {:ok,
@@ -1523,10 +1539,22 @@ defmodule Ash.DataLayer.Ets do
   end
 
   defp bulk_create_operation(
-         %{upsert?: true, upsert_keys: upsert_keys, upsert_fields: upsert_fields},
+         %{
+           upsert?: true,
+           upsert_keys: upsert_keys,
+           upsert_fields: upsert_fields,
+           upsert_where: expr
+         },
          stream
        ) do
-    "Upserting #{Enum.count(stream)} on #{inspect(upsert_keys)}, setting #{inspect(List.wrap(upsert_fields))}"
+    where_expr =
+      if is_nil(expr) do
+        ""
+      else
+        "where #{inspect(expr)}"
+      end
+
+    "Upserting #{Enum.count(stream)} on #{inspect(upsert_keys)} #{where_expr}, setting #{inspect(List.wrap(upsert_fields))}"
   end
 
   defp bulk_create_operation(_options, stream) do

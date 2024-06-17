@@ -169,6 +169,7 @@ defmodule Ash.DataLayer do
           return_records?: boolean,
           upsert?: boolean,
           upsert_keys: nil | list(atom),
+          identity: Ash.Resource.Identity.t() | nil,
           select: list(atom),
           upsert_fields:
             nil
@@ -198,6 +199,13 @@ defmodule Ash.DataLayer do
   @callback create(Ash.Resource.t(), Ash.Changeset.t()) ::
               {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
   @callback upsert(Ash.Resource.t(), Ash.Changeset.t(), list(atom)) ::
+              {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
+  @callback upsert(
+              Ash.Resource.t(),
+              Ash.Changeset.t(),
+              list(atom),
+              Ash.Resource.Identity.t() | nil
+            ) ::
               {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
   @callback update(Ash.Resource.t(), Ash.Changeset.t()) ::
               {:ok, Ash.Resource.record()} | {:error, term} | {:error, :no_rollback, term}
@@ -292,6 +300,7 @@ defmodule Ash.DataLayer do
                       transaction: 4,
                       rollback: 2,
                       upsert: 3,
+                      upsert: 4,
                       functions: 1,
                       in_transaction?: 1,
                       prefer_lateral_join_for_many_to_many?: 0,
@@ -516,12 +525,22 @@ defmodule Ash.DataLayer do
     Ash.DataLayer.data_layer(resource).set_tenant(resource, query, term)
   end
 
-  @spec upsert(Ash.Resource.t(), Ash.Changeset.t(), list(atom)) ::
+  @spec upsert(
+          Ash.Resource.t(),
+          Ash.Changeset.t(),
+          list(atom),
+          identity :: Ash.Resource.Identity.t() | nil
+        ) ::
           {:ok, Ash.Resource.record()} | {:error, term}
-  def upsert(resource, changeset, keys) do
+  def upsert(resource, changeset, keys, identity \\ nil) do
     changeset = %{changeset | tenant: changeset.to_tenant}
+    data_layer = Ash.DataLayer.data_layer(resource)
 
-    Ash.DataLayer.data_layer(resource).upsert(resource, changeset, keys)
+    if function_exported?(data_layer, :upsert, 4) do
+      data_layer.upsert(resource, changeset, keys, identity)
+    else
+      data_layer.upsert(resource, changeset, keys)
+    end
   end
 
   @spec set_context(Ash.Resource.t(), data_layer_query(), map) ::

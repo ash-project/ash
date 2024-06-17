@@ -35,7 +35,7 @@ defmodule Ash.Test.Resource.Changes.LifecycleHooksTest do
         change before_transaction(fn changeset, _context ->
                  send(changeset.arguments.caller, changeset.phase)
 
-                 Ash.Changeset.add_error(changeset, "WHAT")
+                 changeset
                end)
       end
 
