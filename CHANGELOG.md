@@ -2,6 +2,25 @@
 
 <!-- changelog -->
 
+## [v3.0.13](https://github.com/ash-project/ash/compare/v3.0.12...v3.0.13) (2024-06-17)
+
+
+
+
+### Bug Fixes:
+
+* don't start async limiter tasks if async is disabled
+
+* properly set default timeout to `:infinity`
+
+* pass down `identity` when doing upserts, for new feature support
+
+* ensure that `before_transaction` hook errors fail the operation
+
+* ensure that `before_transaction` hook errors still trigger `after_transaction` hooks
+
+* abort bulk updates on before transaction hook errors
+
 ## [v3.0.12](https://github.com/ash-project/ash/compare/v3.0.11...v3.0.12) (2024-06-14)
 
 
