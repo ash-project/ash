@@ -3,10 +3,10 @@ updates:
   - package-ecosystem: mix
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: weekly
       day: thursday
     groups:
       production-dependencies:
-        dependency-type: "production"
+        dependency-type: production
       dev-dependencies:
         dependency-type: development
