@@ -181,6 +181,7 @@ defmodule Ash.Actions.Read.Relationships do
               tracer: source_query.context[:private][:tracer],
               domain: join_relationship.domain || related_query.domain
             )
+            |> Ash.Query.do_filter(join_relationship.filter)
             |> Ash.Query.set_context(%{
               accessing_from: %{source: relationship.source, name: relationship.join_relationship}
             })
@@ -393,6 +394,7 @@ defmodule Ash.Actions.Read.Relationships do
     join_query =
       relationship.through
       |> Ash.Query.filter(^ref(relationship.source_attribute_on_join_resource) in ^record_ids)
+      |> Ash.Query.do_filter(join_relationship.filter)
       |> Ash.Query.set_context(%{
         accessing_from: %{source: relationship.source, name: relationship.join_relationship}
       })
