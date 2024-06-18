@@ -2,6 +2,17 @@
 
 <!-- changelog -->
 
+## [v3.0.15](https://github.com/ash-project/ash/compare/v3.0.14...v3.0.15) (2024-06-18)
+
+
+
+
+### Improvements:
+
+* add optional `matches_type?/2` callback to `Ash.Type`
+
+* add `backwards_compatible_interface?` option to `use Ash.Domain`
+
 ## [v3.0.14](https://github.com/ash-project/ash/compare/v3.0.13...v3.0.14) (2024-06-18)
 
 
