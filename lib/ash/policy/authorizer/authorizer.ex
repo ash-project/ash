@@ -11,12 +11,31 @@ defmodule Ash.Policy.Authorizer do
     :scenarios,
     :real_scenarios,
     :check_scenarios,
+    :subject,
+    context: %{},
     policies: [],
     facts: %{true => true, false => false},
     data_facts: %{}
   ]
 
-  @type t :: %__MODULE__{}
+  @type t :: %__MODULE__{
+          actor: term,
+          resource: Ash.Resource.t(),
+          query: Ash.Query.t() | nil,
+          changeset: Ash.Changeset.t() | nil,
+          action_input: Ash.ActionInput.t() | nil,
+          subject: Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t(),
+          context: map,
+          data: term,
+          action: Ash.Resource.Actions.Action.t(),
+          domain: Ash.Domain.t(),
+          scenarios: [map],
+          real_scenarios: [map],
+          check_scenarios: [map],
+          policies: [term],
+          facts: map(),
+          data_facts: map()
+        }
 
   require Ash.Expr
   require Ash.Sort
@@ -471,7 +490,7 @@ defmodule Ash.Policy.Authorizer do
 
   @impl true
   def check_context(_authorizer) do
-    [:query, :changeset, :data, :domain, :resource]
+    [:query, :changeset, :data, :domain, :resource, :action_input]
   end
 
   @impl true
@@ -481,11 +500,15 @@ defmodule Ash.Policy.Authorizer do
 
   @impl true
   def strict_check(authorizer, context) do
+    subject = context.query || context.changeset || context[:action_input]
+
     %{
       authorizer
       | query: context.query,
         changeset: context.changeset,
         action_input: context[:action_input],
+        subject: subject,
+        context: (subject && subject.context) || %{},
         domain: context.domain
     }
     |> get_policies()

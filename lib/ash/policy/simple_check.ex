@@ -5,14 +5,7 @@ defmodule Ash.Policy.SimpleCheck do
   Define `c:match?/3`, which gets the actor, request context, and opts, and returns true or false
   """
   @type actor :: Ash.Policy.Check.actor()
-  @type context :: %{
-          required(:action) => Ash.Resource.Actions.action(),
-          required(:resource) => Ash.Resource.t(),
-          required(:domain) => Ash.Domain.t(),
-          optional(:query) => Ash.Query.t(),
-          optional(:changeset) => Ash.Changeset.t(),
-          optional(any) => any
-        }
+  @type context :: Ash.Policy.Authorizer.t()
   @type options :: Keyword.t()
 
   @doc "Whether or not the request matches the check"
