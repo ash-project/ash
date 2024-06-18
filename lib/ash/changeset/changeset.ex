@@ -2699,7 +2699,8 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp override_validation_message(error, message) do
+  @doc false
+  def override_validation_message(error, message) do
     case error do
       %{field: field} = error when not is_nil(field) ->
         error
