@@ -24,6 +24,10 @@ defmodule Ash.Type.NaiveDatetime do
   end
 
   @impl true
+  def matches_type?(%NaiveDateTime{}, _), do: true
+  def matches_type?(_, _), do: false
+
+  @impl true
   def cast_atomic(new_value, _constraints) do
     {:atomic, new_value}
   end

@@ -84,6 +84,10 @@ defmodule Ash.Type.CiString do
     {:atomic, new_value}
   end
 
+  @impl true
+  def matches_type?(%Ash.CiString{}, _), do: true
+  def matches_type?(_, _), do: false
+
   def apply_constraints(%Ash.CiString{} = value, constraints) do
     value
     |> Ash.CiString.value()

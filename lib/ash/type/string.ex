@@ -44,6 +44,11 @@ defmodule Ash.Type.String do
   def storage_type(_), do: :string
 
   @impl true
+  def matches_type?(v, _) do
+    is_binary(v)
+  end
+
+  @impl true
   def cast_atomic(expr, constraints) when is_binary(expr) do
     with {:ok, value} <- cast_input(expr, constraints),
          {:ok, value} <- apply_constraints(value, constraints) do

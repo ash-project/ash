@@ -23,7 +23,11 @@ defmodule Ash.Type.Integer do
   require Ash.Expr
 
   @impl true
+  def matches_type?(v, _) do
+    is_integer(v)
+  end
 
+  @impl true
   def cast_atomic(expr, constraints) do
     expr =
       case {constraints[:max], constraints[:max]} do

@@ -39,6 +39,11 @@ defmodule Ash.Type.Struct do
 
   def cast_input(_, _), do: :error
 
+  @impl true
+  def matches_type?(v, _) do
+    is_struct(v)
+  end
+
   @impl Ash.Type
   def load(record, load, _constraints, %{domain: domain} = context) do
     opts = Ash.Context.to_opts(context, domain: domain)

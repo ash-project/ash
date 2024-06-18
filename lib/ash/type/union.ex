@@ -123,6 +123,11 @@ defmodule Ash.Type.Union do
   @impl true
   def constraints, do: @constraints
 
+  @impl true
+  def matches_type?(%Ash.Union{type: type, value: value}, constraints) do
+    Ash.Type.matches_type?(constraints[:types][type], value)
+  end
+
   ## Find the minimal supported type?
   @impl true
   def storage_type(_), do: :map

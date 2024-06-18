@@ -63,6 +63,10 @@ defmodule Ash.Type.Decimal do
   @impl true
   def constraints, do: @constraints
 
+  @impl true
+  def matches_type?(%Decimal{}, _), do: true
+  def matches_type?(_, _), do: false
+
   @doc false
   def decimal(value) do
     case cast_input(value, []) do

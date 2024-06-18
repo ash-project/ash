@@ -20,6 +20,11 @@ defmodule Ash.Type.Boolean do
   end
 
   @impl true
+  def matches_type?(v, _) do
+    is_boolean(v)
+  end
+
+  @impl true
   def cast_atomic(new_value, _constraints) do
     {:atomic, new_value}
   end

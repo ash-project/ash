@@ -31,7 +31,8 @@ defmodule Ash.Domain do
       backwards_compatible_interface?: [
         type: :boolean,
         default: true,
-        doc: "Whether or not to include the 2.0 backwards compatible interface, which includes all of the interaction functions which are now defined on the `Ash` module"
+        doc:
+          "Whether or not to include the 2.0 backwards compatible interface, which includes all of the interaction functions which are now defined on the `Ash` module"
       ]
     ]
 
@@ -89,9 +90,10 @@ defmodule Ash.Domain do
   @impl Spark.Dsl
   def handle_before_compile(_) do
     quote do
-      if @opts[:backards_compatible_interface?] do
+      if Keyword.get(@opts, :backards_compatible_interface?, true) do
         use Ash.Domain.Interface
       end
+
       require Ash.CodeInterface
 
       @default_short_name __MODULE__

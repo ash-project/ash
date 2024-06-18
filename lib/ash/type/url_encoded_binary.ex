@@ -21,6 +21,9 @@ defmodule Ash.Type.UrlEncodedBinary do
   end
 
   @impl true
+  def matches_type?(value, _), do: is_binary(value)
+
+  @impl true
   def cast_input(value, _) when is_binary(value) do
     case Base.url_decode64(value, padding: false) do
       {:ok, decoded} ->

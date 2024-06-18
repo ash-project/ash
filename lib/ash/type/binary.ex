@@ -21,6 +21,11 @@ defmodule Ash.Type.Binary do
   end
 
   @impl true
+  def matches_type?(v, _) do
+    is_binary(v)
+  end
+
+  @impl true
   def cast_atomic(new_value, _constraints) do
     {:atomic, new_value}
   end

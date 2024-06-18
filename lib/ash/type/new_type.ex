@@ -148,6 +148,11 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
+      def matches_type?(type, constraints) do
+        unquote(subtype_of).matches_type?(type, constraints)
+      end
+
+      @impl Ash.Type
       def cast_input(value, constraints) do
         with {:ok, value} <- unquote(subtype_of).cast_input(value, constraints) do
           unquote(subtype_of).apply_constraints(value, constraints)

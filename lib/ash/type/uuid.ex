@@ -16,6 +16,14 @@ defmodule Ash.Type.UUID do
   end
 
   @impl true
+  def matches_type?(v, constraints) do
+    case cast_input(v, constraints) do
+      {:ok, _} -> true
+      _ -> false
+    end
+  end
+
+  @impl true
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(value, _) when is_binary(value) do

@@ -133,6 +133,10 @@ defmodule Ash.Type.Enum do
         match(value)
       end
 
+      @impl true
+      def matches_type?(value, _) when value in @values, do: true
+      def matches_type?(_, _), do: false
+
       @impl Ash.Type
       def cast_stored(nil, _), do: {:ok, nil}
 

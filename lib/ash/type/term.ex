@@ -18,6 +18,9 @@ defmodule Ash.Type.Term do
   def cast_stored(value, _), do: {:ok, Ash.Helpers.non_executable_binary_to_term(value, [:safe])}
 
   @impl true
+  def matches_type?(_, _), do: true
+
+  @impl true
 
   def dump_to_native(nil, _), do: {:ok, nil}
   def dump_to_native(value, _), do: {:ok, :erlang.term_to_binary(value)}

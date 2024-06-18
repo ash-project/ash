@@ -23,6 +23,11 @@ defmodule Ash.Type.Atom do
   def constraints, do: @constraints
 
   @impl true
+  def matches_type?(v, _) do
+    is_atom(v)
+  end
+
+  @impl true
   def generator(constraints) do
     # We don't want to create tons of atoms.
     one_of = constraints[:one_of] || [:example, :atom, :value]

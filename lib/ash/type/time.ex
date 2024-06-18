@@ -22,6 +22,10 @@ defmodule Ash.Type.Time do
   end
 
   @impl true
+  def matches_type?(%Time{}, _), do: true
+  def matches_type?(_, _), do: false
+
+  @impl true
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(value, _) do

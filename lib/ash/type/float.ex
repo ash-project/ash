@@ -50,6 +50,11 @@ defmodule Ash.Type.Float do
   end
 
   @impl true
+  def matches_type?(v, _) do
+    is_float(v)
+  end
+
+  @impl true
   def generator(constraints) do
     constraints
     |> Keyword.take([:min, :max])

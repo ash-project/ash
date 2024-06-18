@@ -70,6 +70,11 @@ defmodule Ash.Type.Keyword do
   def storage_type(_), do: :map
 
   @impl true
+  def matches_type?(v, _constraints) do
+    Keyword.keyword?(v)
+  end
+
+  @impl true
   def cast_input("", _), do: {:ok, nil}
 
   def cast_input(nil, _), do: {:ok, nil}

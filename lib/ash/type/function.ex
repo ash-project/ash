@@ -34,6 +34,11 @@ defmodule Ash.Type.Function do
   end
 
   @impl true
+  def matches_type?(v, _constraints) do
+    is_function(v)
+  end
+
+  @impl true
   def cast_input(value, _) when is_function(value) do
     {:ok, value}
   end

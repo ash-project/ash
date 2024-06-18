@@ -27,6 +27,10 @@ defmodule Ash.Type.DateTime do
   end
 
   @impl true
+  def matches_type?(%DateTime{}, _), do: true
+  def matches_type?(_, _), do: false
+
+  @impl true
   def init(constraints) do
     {precision, constraints} = Keyword.pop(constraints, :precision)
     precision = precision || :second

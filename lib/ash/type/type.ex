@@ -330,6 +330,7 @@ defmodule Ash.Type do
   @callback ecto_type() :: Ecto.Type.t()
   @callback cast_input(term, constraints) ::
               {:ok, term} | error()
+  @callback matches_type?(term, constraints) :: boolean()
   @callback cast_input_array(list(term), constraints) :: {:ok, list(term)} | error()
   @callback cast_stored(term, constraints) :: {:ok, term} | error()
   @callback cast_stored_array(list(term), constraints) ::
@@ -777,6 +778,20 @@ defmodule Ash.Type do
       {:ok, result} -> {:ok, Enum.reverse(result)}
       other -> other
     end
+  end
+
+  @doc """
+  Detects as a best effort if an arbitrary value matches the given type
+  """
+  def matches_type?(type, value, constraints \\ [])
+
+  def matches_type?({:array, type}, value, constraints) when is_list(value) do
+    Enum.all?(value, &matches_type?(type, &1, constraints))
+  end
+
+  def matches_type?(type, value, constraints) do
+    type = Ash.Type.get_type(type)
+    type.matches_type?(value, constraints)
   end
 
   @doc """
@@ -1352,6 +1367,10 @@ defmodule Ash.Type do
       @impl true
       def describe([]), do: String.trim_leading(inspect(__MODULE__), "Ash.Type.")
 
+      @impl true
+      def matches_type?(_, _), do: false
+
+      @impl true
       def describe(constraints) do
         "#{String.trim_leading(inspect(__MODULE__), "Ash.Type.")} | #{inspect(constraints)}"
       end
@@ -1559,6 +1578,7 @@ defmodule Ash.Type do
                      dump_to_native_array: 2,
                      dump_to_embedded: 2,
                      dump_to_embedded_array: 2,
+                     matches_type?: 2,
                      embedded?: 0,
                      ecto_type: 0,
                      merge_load: 4,
