@@ -248,11 +248,11 @@ defmodule Ash.Actions.Read do
           do_read(query, calculations_at_runtime, calculations_in_query, opts)
         end
 
-      data_result =
+      {data_result, query_ran} =
         case data_result do
-          {:ok, result} -> {:ok, result, nil}
-          {:ok, result, count} -> {:ok, result, count}
-          other -> other
+          {:ok, result, query} -> {{:ok, result, nil}, query}
+          {:ok, result, count, query} -> {{:ok, result, count}, query}
+          other -> {other, query}
         end
 
       with {:ok, data, count} <- data_result,
@@ -260,7 +260,7 @@ defmodule Ash.Actions.Read do
            {:ok, data} <-
              load_through_attributes(
                data,
-               %{query | calculations: Map.new(calculations_in_query, &{&1.name, &1})},
+               %{query_ran | calculations: Map.new(calculations_in_query, &{&1.name, &1})},
                query.domain,
                opts[:actor],
                opts[:tracer],
@@ -464,7 +464,7 @@ defmodule Ash.Actions.Read do
            {:ok, results} <- run_authorize_results(query, results),
            {:ok, results, after_notifications} <- run_after_action(query, results),
            {:ok, count} <- maybe_await(count) do
-        {:ok, results, count, before_notifications ++ after_notifications}
+        {:ok, results, count, query, before_notifications ++ after_notifications}
       else
         {%{valid?: false} = query, before_notifications} ->
           {:error, query, before_notifications}
@@ -786,10 +786,10 @@ defmodule Ash.Actions.Read do
           {:ok, func.()}
       end
       |> case do
-        {:ok, {:ok, result, count, notifications}} ->
+        {:ok, {:ok, result, count, query_ran, notifications}} ->
           notify_or_store(query, notifications, notify?)
 
-          {:ok, result, count}
+          {:ok, result, count, query_ran}
 
         {:ok, {:error, error, notifications}} ->
           notify_or_store(query, notifications, notify?)
@@ -857,7 +857,7 @@ defmodule Ash.Actions.Read do
     if missing_pkeys? ||
          (Enum.empty?(must_be_reselected) && Enum.empty?(query.aggregates) &&
             Enum.empty?(calculations_in_query)) do
-      {:ok, initial_data}
+      {:ok, initial_data, query}
     else
       reselect_and_load(
         initial_data,
@@ -973,7 +973,7 @@ defmodule Ash.Actions.Read do
       |> compute_expression_at_runtime_for_missing_records(query, data_layer_calculations)
       |> case do
         {:ok, result} ->
-          {:ok, result, 0}
+          {:ok, result, 0, query}
 
         {:error, error} ->
           {:error, error}
