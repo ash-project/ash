@@ -1,6 +1,12 @@
 version: 2
 updates:
-- package-ecosystem: mix
-  directory: "/"
-  schedule:
-    interval: "daily"
+  - package-ecosystem: mix
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: thursday
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+      dev-dependencies:
+        dependency-type: development
