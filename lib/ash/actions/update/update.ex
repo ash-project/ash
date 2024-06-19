@@ -48,7 +48,7 @@ defmodule Ash.Actions.Update do
                     "#{inspect(changeset.resource)}.atomic_upgrade_with is set to #{atomic_upgrade_with}, which is not a valid action"
         end
 
-      dirty_hooks = changeset.dirty_hook -- [:after_action]
+      dirty_hooks = changeset.dirty_hooks -- [:after_action]
 
       {fully_atomic_changeset, params} =
         cond do
