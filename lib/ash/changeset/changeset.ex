@@ -49,6 +49,7 @@ defmodule Ash.Changeset do
     :tenant,
     :to_tenant,
     :timeout,
+    dirty_hooks: [],
     invalid_keys: MapSet.new(),
     filter: nil,
     added_filter: nil,
@@ -4902,6 +4903,8 @@ defmodule Ash.Changeset do
         ) ::
           t()
   def before_action(changeset, func, opts \\ []) do
+
+    changeset = maybe_dirty_hook(changeset, :before_action)
     if opts[:prepend?] do
       %{changeset | before_action: [func | changeset.before_action]}
     else
@@ -4921,6 +4924,8 @@ defmodule Ash.Changeset do
           Keyword.t()
         ) :: t()
   def before_transaction(changeset, func, opts \\ []) do
+
+    changeset = maybe_dirty_hook(changeset, :before_transaction)
     if opts[:prepend?] do
       %{changeset | before_transaction: [func | changeset.before_transaction]}
     else
@@ -4940,6 +4945,7 @@ defmodule Ash.Changeset do
           Keyword.t()
         ) :: t()
   def after_action(changeset, func, opts \\ []) do
+    changeset = maybe_dirty_hook(changeset, :after_action)
     if opts[:prepend?] do
       %{changeset | after_action: [func | changeset.after_action]}
     else
@@ -4962,6 +4968,8 @@ defmodule Ash.Changeset do
           Keyword.t()
         ) :: t()
   def after_transaction(changeset, func, opts \\ []) do
+    changeset = maybe_dirty_hook(changeset, :after_transaction)
+
     if changeset.phase in [:pending, :validate] do
       if opts[:prepend?] do
         %{changeset | after_transaction: [func | changeset.after_transaction]}
@@ -5046,6 +5054,8 @@ defmodule Ash.Changeset do
 
   @spec around_action(t(), around_action_fun()) :: t()
   def around_action(changeset, func) do
+
+    changeset = maybe_dirty_hook(changeset, :around_action)
     %{changeset | around_action: changeset.around_action ++ [func]}
   end
 
@@ -5120,7 +5130,16 @@ defmodule Ash.Changeset do
 
   @spec around_transaction(t(), around_transaction_fun()) :: t()
   def around_transaction(changeset, func) do
+    changeset = maybe_dirty_hook(changeset, :around_transaction)
     %{changeset | around_transaction: changeset.around_transaction ++ [func]}
+  end
+
+  defp maybe_dirty_hook(changeset, type) do
+    if changeset.phase == :pending do
+      %{changeset | dirty_hooks: Enum.uniq([type | changeset.dirty_hooks])}
+    else
+      changeset
+    end
   end
 
   @doc """

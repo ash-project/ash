@@ -62,23 +62,8 @@ defmodule Ash.Actions.Update do
           !Enum.empty?(changeset.relationships) ->
             {{:not_atomic, "cannot atomically manage relationships"}, nil}
 
-          !Enum.empty?(changeset.before_action) ->
-            {{:not_atomic, "cannot atomically run a changeset with a before_action hook"}, nil}
-
-          !Enum.empty?(changeset.before_transaction) ->
-            {{:not_atomic, "cannot atomically run a changeset with a before_transaction hook"},
-             nil}
-
-          !Enum.empty?(changeset.around_action) ->
-            {{:not_atomic, "cannot atomically run a changeset with an around_action hook"}, nil}
-
-          !Enum.empty?(changeset.around_transaction) ->
-            {{:not_atomic, "cannot atomically run a changeset with an around_transaction hook"},
-             nil}
-
-          !Enum.empty?(changeset.after_transaction) ->
-            {{:not_atomic, "cannot atomically run a changeset with an after_transaction hook"},
-             nil}
+          !Enum.empty?(changeset.dirty_hooks) ->
+            {{:not_atomic, "cannot atomically run a changeset with hooks, got hooks in phases #{inspect(changeset.dirty_hooks)}"}, nil}
 
           !atomic_upgrade_read ->
             {{:not_atomic,
