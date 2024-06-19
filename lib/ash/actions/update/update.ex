@@ -48,6 +48,8 @@ defmodule Ash.Actions.Update do
                     "#{inspect(changeset.resource)}.atomic_upgrade_with is set to #{atomic_upgrade_with}, which is not a valid action"
         end
 
+      dirty_hooks = changeset.dirty_hook -- [:after_action]
+
       {fully_atomic_changeset, params} =
         cond do
           !action.require_atomic? && !action.atomic_upgrade? ->
@@ -62,8 +64,10 @@ defmodule Ash.Actions.Update do
           !Enum.empty?(changeset.relationships) ->
             {{:not_atomic, "cannot atomically manage relationships"}, nil}
 
-          !Enum.empty?(changeset.dirty_hooks) ->
-            {{:not_atomic, "cannot atomically run a changeset with hooks, got hooks in phases #{inspect(changeset.dirty_hooks)}"}, nil}
+          !Enum.empty?(dirty_hooks) ->
+            {{:not_atomic,
+              "cannot atomically run a changeset with hooks in any phase other than `after_action`, got hooks in phases #{inspect(dirty_hooks)}"},
+             nil}
 
           !atomic_upgrade_read ->
             {{:not_atomic,
