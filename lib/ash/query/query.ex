@@ -1829,18 +1829,18 @@ defmodule Ash.Query do
   Set the result of the action. This will prevent running the underlying datalayer behavior
   """
   @spec set_result(t(), term) :: t()
-  def set_result(changeset, result) do
-    set_context(changeset, %{private: %{action_result: result}})
+  def set_result(query, result) do
+    set_context(query, %{private: %{action_result: result}})
   end
 
   @doc """
   Removes a result set previously with `set_result/2`
   """
   @spec clear_result(t()) :: t()
-  def clear_result(changeset) do
+  def clear_result(query) do
     %{
-      changeset
-      | context: Map.update(changeset.context, :private, %{}, &Map.delete(&1, :action_result))
+      query
+      | context: Map.update(query.context, :private, %{}, &Map.delete(&1, :action_result))
     }
   end
 
