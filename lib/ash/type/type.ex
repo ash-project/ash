@@ -789,6 +789,10 @@ defmodule Ash.Type do
     Enum.all?(value, &matches_type?(type, &1, constraints))
   end
 
+  def matches_type?({:array, type}, %MapSet{} = value, constraints) do
+    Enum.all?(value, &matches_type?(type, &1, constraints))
+  end
+
   def matches_type?(type, value, constraints) do
     type = Ash.Type.get_type(type)
     type.matches_type?(value, constraints)
