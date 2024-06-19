@@ -2125,7 +2125,7 @@ defmodule Ash do
   ## Changes/Validations
 
   Changes will be applied in the order they are given on the actions as normal. Any change that exposes
-  the `bulk_change` or `bulk_validate` callback will be applied on the entire list.
+  the `bulk_change` callbacks will be applied on the entire list.
 
   ## After Action Hooks
 

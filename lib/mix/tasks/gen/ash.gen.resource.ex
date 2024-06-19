@@ -24,7 +24,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   @impl Igniter.Mix.Task
   def igniter(igniter, [resource | argv]) do
     resource = Igniter.Code.Module.parse(resource)
-    app_name = Igniter.Code.Application.app_name()
+    app_name = Igniter.Application.app_name()
 
     {options, _, _} =
       OptionParser.parse(argv,
@@ -70,7 +70,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
       |> Ash.Igniter.csv_option(:attribute)
       |> Ash.Igniter.csv_option(:relationship)
       |> Ash.Igniter.csv_option(:extend)
-      |> Keyword.put_new("Ash.Resource")
+      |> Keyword.put_new(:base, "Ash.Resource")
 
     base =
       if options[:base] == "Ash.Resource" do

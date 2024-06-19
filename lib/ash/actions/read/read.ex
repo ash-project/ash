@@ -1220,7 +1220,7 @@ defmodule Ash.Actions.Read do
                        calculation.type,
                        list,
                        load_statement,
-                       calculation.constraints,
+                       calculation.constraints[:items] || [],
                        %{
                          domain: domain,
                          actor: actor,
