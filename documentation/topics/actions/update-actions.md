@@ -67,7 +67,7 @@ Atomic updates are a special case of update actions that can be done atomically.
 >
 > ```elixir
 > update :increment_score do
->   change atomic_update(:score, expr(score + 1)
+>   change atomic_update(:score, expr(score + 1))
 > end
 > ```
 >
