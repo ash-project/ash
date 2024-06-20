@@ -2468,7 +2468,7 @@ defmodule Ash do
     Ash.Helpers.expect_options!(opts)
     Ash.Helpers.expect_map_or_nil!(opts[:input])
 
-    Keyword.put_new(opts, :tenant, Map.get(record.__metadata__, :tenant))
+    opts = Keyword.put_new(opts, :tenant, Map.get(record.__metadata__, :tenant))
 
     changeset_opts = Keyword.take(opts, Keyword.keys(Ash.Changeset.for_update_opts()))
     update_opts = Keyword.take(opts, Keyword.keys(@update_opts_schema))
@@ -2521,7 +2521,7 @@ defmodule Ash do
         record -> record
       end
 
-    Keyword.put_new(opts, :tenant, Map.get(data.__metadata__, :tenant))
+    opts = Keyword.put_new(opts, :tenant, Map.get(data.__metadata__, :tenant))
     Ash.Helpers.expect_options!(opts)
 
     changeset =

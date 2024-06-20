@@ -4903,8 +4903,8 @@ defmodule Ash.Changeset do
         ) ::
           t()
   def before_action(changeset, func, opts \\ []) do
-
     changeset = maybe_dirty_hook(changeset, :before_action)
+
     if opts[:prepend?] do
       %{changeset | before_action: [func | changeset.before_action]}
     else
@@ -4924,8 +4924,8 @@ defmodule Ash.Changeset do
           Keyword.t()
         ) :: t()
   def before_transaction(changeset, func, opts \\ []) do
-
     changeset = maybe_dirty_hook(changeset, :before_transaction)
+
     if opts[:prepend?] do
       %{changeset | before_transaction: [func | changeset.before_transaction]}
     else
@@ -4946,6 +4946,7 @@ defmodule Ash.Changeset do
         ) :: t()
   def after_action(changeset, func, opts \\ []) do
     changeset = maybe_dirty_hook(changeset, :after_action)
+
     if opts[:prepend?] do
       %{changeset | after_action: [func | changeset.after_action]}
     else
@@ -5054,7 +5055,6 @@ defmodule Ash.Changeset do
 
   @spec around_action(t(), around_action_fun()) :: t()
   def around_action(changeset, func) do
-
     changeset = maybe_dirty_hook(changeset, :around_action)
     %{changeset | around_action: changeset.around_action ++ [func]}
   end
