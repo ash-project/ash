@@ -1177,6 +1177,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                Ash.bulk_update!([tag], :add_related_tags, %{related_tags: ["existing"]},
                  resource: MultitenantTag,
                  strategy: :stream,
+                 tenant: tenant,
                  return_records?: true,
                  return_errors?: true,
                  authorize?: false,
@@ -1200,6 +1201,7 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       assert %Ash.BulkResult{records: [tag]} =
                Ash.bulk_update!([tag], :add_related_tags, %{related_tags: ["new"]},
                  resource: MultitenantTag,
+                 tenant: tenant,
                  strategy: :stream,
                  return_records?: true,
                  return_errors?: true,

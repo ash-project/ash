@@ -1018,11 +1018,12 @@ defmodule Ash.Test.Actions.CreateTest do
       tag =
         Ash.create!(MultitenantTag, %{name: "tag 1", related_tags: ["foo", "bar"]},
           action: :create_with_related_tags,
+          tenant: tenant,
           load: [related_tags: offset_pagination_query]
         )
 
       assert %Ash.Page.Offset{
-               results: [%MultitenantTag{name: "foo", __metadata__: %{keyset: keyset}}],
+               results: [%MultitenantTag{name: "bar", __metadata__: %{keyset: keyset}}],
                limit: 1,
                offset: 0,
                count: 2,
@@ -1038,11 +1039,12 @@ defmodule Ash.Test.Actions.CreateTest do
       tag =
         Ash.create!(MultitenantTag, %{name: "tag 2", related_tags: ["foo", "bar"]},
           action: :create_with_related_tags,
+          tenant: tenant,
           load: [related_tags: keyset_pagination_query]
         )
 
       assert %Ash.Page.Keyset{
-               results: [%MultitenantTag{name: "bar"}],
+               results: [%MultitenantTag{name: "foo"}],
                limit: 1,
                count: 2,
                more?: false,

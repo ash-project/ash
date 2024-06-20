@@ -1240,7 +1240,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                )
 
       assert %Ash.Page.Offset{
-               results: [%MultitenantTag{name: "foo", __metadata__: %{keyset: keyset}}],
+               results: [%MultitenantTag{name: "bar", __metadata__: %{keyset: keyset}}],
                limit: 1,
                offset: 0,
                count: 2,
@@ -1266,7 +1266,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                )
 
       assert %Ash.Page.Keyset{
-               results: [%MultitenantTag{name: "bar"}],
+               results: [%MultitenantTag{name: "foo"}],
                limit: 1,
                count: 2,
                more?: false,
