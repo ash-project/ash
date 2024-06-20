@@ -1298,6 +1298,7 @@ defmodule Ash.Actions.Create.Bulk do
              select,
              reuse_values?: true,
              domain: domain,
+             tenant: opts[:tenant],
              actor: opts[:actor],
              authorize?: opts[:authorize?],
              tracer: opts[:tracer]
@@ -1307,6 +1308,7 @@ defmodule Ash.Actions.Create.Bulk do
             records,
             List.wrap(opts[:load]),
             domain: domain,
+            tenant: opts[:tenant],
             reuse_values?: true,
             actor: opts[:actor],
             authorize?: opts[:authorize?],
@@ -1518,7 +1520,9 @@ defmodule Ash.Actions.Create.Bulk do
                       error = Ash.Error.to_ash_error(error)
 
                       if validation.message do
-                        error = Ash.Changeset.override_validation_message(error, validation.message)
+                        error =
+                          Ash.Changeset.override_validation_message(error, validation.message)
+
                         Ash.Changeset.add_error(changeset, error)
                       else
                         Ash.Changeset.add_error(changeset, error)

@@ -280,6 +280,123 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
+  defmodule Tenant do
+    @doc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :create, :update, :destroy]
+    end
+
+    attributes do
+      uuid_primary_key :id, writable?: true
+    end
+
+    defimpl Ash.ToTenant do
+      def to_tenant(tenant, _resource), do: tenant.id
+    end
+  end
+
+  defmodule MultitenantTagLink do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    multitenancy do
+      strategy :attribute
+      attribute :tenant_id
+    end
+
+    attributes do
+      attribute :type, :string do
+        public?(true)
+      end
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    relationships do
+      belongs_to :tenant, Tenant, allow_nil?: false
+
+      belongs_to :source_tag, Ash.Test.Actions.BulkCreateTest.MultitenantTag,
+        primary_key?: true,
+        allow_nil?: false,
+        public?: true
+
+      belongs_to :destination_tag, Ash.Test.Actions.BulkCreateTest.MultitenantTag,
+        primary_key?: true,
+        allow_nil?: false,
+        public?: true
+    end
+  end
+
+  defmodule MultitenantTag do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    multitenancy do
+      strategy :attribute
+      attribute :tenant_id
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, create: :*, update: :*]
+
+      create :create_with_related_tags do
+        argument :related_tags, {:array, :string} do
+          allow_nil? false
+          constraints min_length: 1, items: [min_length: 1]
+        end
+
+        change manage_relationship(:related_tags,
+                 on_lookup: :relate,
+                 on_no_match: :create,
+                 value_is_key: :name,
+                 use_identities: [:name]
+               )
+      end
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, allow_nil?: false, public?: true
+
+      timestamps()
+    end
+
+    relationships do
+      belongs_to :tenant, Tenant, allow_nil?: false
+
+      many_to_many :related_tags, __MODULE__,
+        through: MultitenantTagLink,
+        source_attribute_on_join_resource: :source_tag_id,
+        destination_attribute_on_join_resource: :destination_tag_id,
+        public?: true
+    end
+
+    identities do
+      identity :name, [:name], pre_check_with: Domain
+    end
+  end
+
   test "returns created records" do
     org =
       Org
@@ -1098,6 +1215,64 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                before: nil,
                after: ^keyset
              } = post.related_posts
+    end
+
+    test "allows loading paginated many_to_many relationship for multitenant resources" do
+      tenant = Ash.create!(Tenant, %{})
+      _ = Ash.create!(MultitenantTag, %{name: "foo"}, tenant: tenant)
+
+      offset_pagination_query =
+        MultitenantTag
+        |> Ash.Query.sort(name: :asc)
+        |> Ash.Query.select([:name])
+        |> Ash.Query.page(count: true, limit: 1)
+
+      assert %Ash.BulkResult{records: [tag]} =
+               Ash.bulk_create!(
+                 [%{name: "tag 1", related_tags: ["foo", "bar"]}],
+                 MultitenantTag,
+                 :create_with_related_tags,
+                 return_records?: true,
+                 return_errors?: true,
+                 authorize?: false,
+                 tenant: tenant,
+                 load: [related_tags: offset_pagination_query]
+               )
+
+      assert %Ash.Page.Offset{
+               results: [%MultitenantTag{name: "bar", __metadata__: %{keyset: keyset}}],
+               limit: 1,
+               offset: 0,
+               count: 2,
+               more?: true
+             } = tag.related_tags
+
+      keyset_pagination_query =
+        MultitenantTag
+        |> Ash.Query.sort(name: :asc)
+        |> Ash.Query.select([:name])
+        |> Ash.Query.page(count: true, limit: 1, after: keyset)
+
+      assert %Ash.BulkResult{records: [tag]} =
+               Ash.bulk_create!(
+                 [%{name: "tag 2", related_tags: ["foo", "bar"]}],
+                 MultitenantTag,
+                 :create_with_related_tags,
+                 return_records?: true,
+                 return_errors?: true,
+                 authorize?: false,
+                 tenant: tenant,
+                 load: [related_tags: keyset_pagination_query]
+               )
+
+      assert %Ash.Page.Keyset{
+               results: [%MultitenantTag{name: "foo"}],
+               limit: 1,
+               count: 2,
+               more?: false,
+               before: nil,
+               after: ^keyset
+             } = tag.related_tags
     end
   end
 end

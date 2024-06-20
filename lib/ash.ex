@@ -1695,12 +1695,15 @@ defmodule Ash do
     query =
       case query do
         %Ash.Query{} = query ->
-          Ash.Query.set_tenant(query, query.tenant || Map.get(record.__metadata__, :tenant))
+          Ash.Query.set_tenant(
+            query,
+            opts[:tenant] || query.tenant || Map.get(record.__metadata__, :tenant)
+          )
 
         keyword ->
           resource
           |> Ash.Query.new()
-          |> Ash.Query.set_tenant(Map.get(record.__metadata__, :tenant))
+          |> Ash.Query.set_tenant(opts[:tenant] || Map.get(record.__metadata__, :tenant))
           |> Ash.Query.load(keyword)
       end
 
@@ -2442,6 +2445,8 @@ defmodule Ash do
     Ash.Helpers.expect_options!(opts)
     domain = Ash.Helpers.domain!(changeset, opts)
 
+    opts = Keyword.put_new(opts, :tenant, Map.get(changeset.data.__metadata__, :tenant))
+
     with {:ok, opts} <- Spark.Options.validate(opts, @update_opts_schema),
          {:ok, resource} <- Ash.Domain.Info.resource(domain, changeset.resource),
          {:ok, action} <- Ash.Helpers.get_action(resource, opts, :update, changeset.action),
@@ -2462,6 +2467,8 @@ defmodule Ash do
     Ash.Helpers.expect_record!(record)
     Ash.Helpers.expect_options!(opts)
     Ash.Helpers.expect_map_or_nil!(opts[:input])
+
+    Keyword.put_new(opts, :tenant, Map.get(record.__metadata__, :tenant))
 
     changeset_opts = Keyword.take(opts, Keyword.keys(Ash.Changeset.for_update_opts()))
     update_opts = Keyword.take(opts, Keyword.keys(@update_opts_schema))
@@ -2507,6 +2514,14 @@ defmodule Ash do
   @doc spark_opts: [{1, @destroy_opts_schema}]
   def destroy(changeset_or_record, opts \\ []) do
     Ash.Helpers.expect_changeset_or_record!(changeset_or_record)
+
+    data =
+      case changeset_or_record do
+        %Ash.Changeset{data: data} -> data
+        record -> record
+      end
+
+    Keyword.put_new(opts, :tenant, Map.get(data.__metadata__, :tenant))
     Ash.Helpers.expect_options!(opts)
 
     changeset =

@@ -1950,6 +1950,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     case Ash.load(records, select,
            reuse_values?: true,
            domain: domain,
+           tenant: opts[:tenant],
            actor: opts[:actor],
            authorize?: opts[:authorize?],
            tracer: opts[:tracer]
@@ -1959,6 +1960,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           records,
           List.wrap(changeset.load),
           reuse_values?: true,
+          tenant: opts[:tenant],
           domain: domain,
           actor: opts[:actor],
           authorize?: opts[:authorize?],

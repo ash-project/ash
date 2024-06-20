@@ -647,6 +647,7 @@ defmodule Ash.DataLayer.Ets do
                      |> Ash.Query.load(relationship_path_to_load(relationship_path, field))
                      |> Ash.Query.set_context(%{private: %{internal?: true}}),
                      domain: domain,
+                     tenant: context[:tenant],
                      actor: context[:actor],
                      authorize?: false
                    ),
