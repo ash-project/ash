@@ -4,88 +4,71 @@
 
 ## [v3.0.16](https://github.com/ash-project/ash/compare/v3.0.15...v3.0.16) (2024-06-21)
 
-
-
-
 ### Bug Fixes:
 
-* use the proper opts when calling manual updates in bulk updates
+- [bulk updates] use the proper opts when calling manual updates in bulk updates
 
-* apply pagination at runtime for non lateral join queries
+- [pagination] apply pagination at runtime for non lateral join queries
 
-* consider multitenancy when checking if through-join is unique
+- [multitenancy] consider multitenancy when checking if through-join is unique
 
-* don't run any `before_action` hooks if changeset is invalidated in prior hook
+- [Ash.Changeset] don't run any `before_action` hooks if changeset is invalidated in prior hook
 
-* only prevent atomic upgrade when hooks were explicitly added
-
-* use right argument name in query `set_result`/`clear_result` (#1247)
+- [atomic upgrade] only prevent atomic upgrade when hooks were explicitly added
 
 ### Improvements:
 
-* retain error context on overridden messages
+- [Ash.Error] retain error context on overridden messages
 
 ## [v3.0.15](https://github.com/ash-project/ash/compare/v3.0.14...v3.0.15) (2024-06-18)
 
-
-
-
 ### Improvements:
 
-* add optional `matches_type?/2` callback to `Ash.Type`
+- [Ash.Type] add optional `matches_type?/2` callback to `Ash.Type`
 
-* add `backwards_compatible_interface?` option to `use Ash.Domain`
+- [Ash.Domain] add `backwards_compatible_interface?` option to `use Ash.Domain`
 
 ## [v3.0.14](https://github.com/ash-project/ash/compare/v3.0.13...v3.0.14) (2024-06-18)
 
-
-
-
 ### Bug Fixes:
 
-* apply join relationship filter when loading many_to_many relationships
+- [many-to-many relationships] apply join relationship filter when loading many_to_many relationships
 
-* ensure we honor any computed select changes when loading through attributes
+- [Ash.Query] ensure we honor any computed select changes when loading through attributes
 
 ### Improvements:
 
-* add `subject` and `context` keys to policy context
+- [Ash.Policy.Authorier] add `subject` and `context` keys to policy context
 
 ## [v3.0.13](https://github.com/ash-project/ash/compare/v3.0.12...v3.0.13) (2024-06-17)
 
-
-
-
 ### Bug Fixes:
 
-* don't start async limiter tasks if async is disabled
+- [parallelism] don't start async limiter tasks if async is disabled
 
-* properly set default timeout to `:infinity`
+- [Ash.Domain] properly set default timeout to `:infinity`
 
-* pass down `identity` when doing upserts, for new feature support
+- [upserts] pass down `identity` when doing upserts, for new feature support
 
-* ensure that `before_transaction` hook errors fail the operation
+- [Ash.Changeset] ensure that `before_transaction` hook errors fail the operation
 
-* ensure that `before_transaction` hook errors still trigger `after_transaction` hooks
+- [Ash.Changeset] ensure that `before_transaction` hook errors still trigger `after_transaction` hooks
 
-* abort bulk updates on before transaction hook errors
+- [bulk updates] abort bulk updates on before transaction hook errors
 
 ## [v3.0.12](https://github.com/ash-project/ash/compare/v3.0.11...v3.0.12) (2024-06-14)
 
-
-
-
 ### Bug Fixes:
 
-* fix expression interpolation for cast_atomic for integer, decimal, float
+- [atomic updates] fix expression interpolation for cast_atomic for integer, decimal, float
 
-* set default argument values on generic actions
+- [generic actions] set default argument values on generic actions
 
-* support `^arg/1` and similar constructions in filter policies on generic actions
+- [generic actions] support `^arg/1` and similar constructions in filter policies on generic actions
 
 ### Improvements:
 
-* set a `module` when validating accepts
+- [Ash.Resource] set a `module` when validating accepts
 
 ## [v3.0.11](https://github.com/ash-project/ash/compare/v3.0.10...v3.0.11) (2024-06-11)
 
