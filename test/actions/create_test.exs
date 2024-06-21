@@ -1019,7 +1019,7 @@ defmodule Ash.Test.Actions.CreateTest do
         Ash.create!(MultitenantTag, %{name: "tag 1", related_tags: ["foo", "bar"]},
           action: :create_with_related_tags,
           tenant: tenant,
-          load: [related_tags: offset_pagination_query]
+          load: [related_tags: offset_pagination_query, related_tags_join_assoc: []]
         )
 
       assert %Ash.Page.Offset{
