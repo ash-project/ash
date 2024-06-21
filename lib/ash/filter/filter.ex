@@ -3987,7 +3987,7 @@ defmodule Ash.Filter do
   end
 
   def get_predicate_function(key, resource, public?) do
-    case get_function(key, resource, public?) |> List.wrap() |> Enum.filter(& &1.predicate?) do
+    case get_function(key, resource, public?) |> List.wrap() |> Enum.filter(& &1.predicate?()) do
       [] ->
         nil
 
