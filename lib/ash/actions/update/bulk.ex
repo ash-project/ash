@@ -2020,7 +2020,7 @@ defmodule Ash.Actions.Update.Bulk do
                     result =
                       apply(mod, action.type, [
                         changeset,
-                        opts,
+                        manual_opts,
                         struct(context_struct, %{
                           select: opts[:select],
                           actor: opts[:actor],
