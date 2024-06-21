@@ -163,7 +163,7 @@ defmodule Ash.Actions.Read.Relationships do
   end
 
   defp with_lateral_join_query(related_query, source_query, relationship, records) do
-    if lateral_join?(related_query, relationship, records) do
+    if lateral_join?(related_query, source_query, relationship, records) do
       lateral_join_source_path =
         if relationship.type == :many_to_many do
           join_relationship =
@@ -398,10 +398,12 @@ defmodule Ash.Actions.Read.Relationships do
       |> Ash.Query.set_context(%{
         accessing_from: %{source: relationship.source, name: relationship.join_relationship}
       })
-      |> Ash.Query.select([
-        relationship.source_attribute_on_join_resource,
-        relationship.destination_attribute_on_join_resource
-      ])
+      |> Ash.Query.select(
+        [
+          relationship.source_attribute_on_join_resource,
+          relationship.destination_attribute_on_join_resource
+        ] ++ Ash.Resource.Info.primary_key(join_relationship.destination)
+      )
 
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
@@ -444,11 +446,26 @@ defmodule Ash.Actions.Read.Relationships do
                 {new_mapping, new_destination_ids}
               end)
 
+            related_query =
+              if related_query.page do
+                if Ash.Actions.Sort.sorting_on_identity?(related_query) do
+                  related_query
+                else
+                  Ash.Query.sort(
+                    related_query,
+                    Ash.Resource.Info.primary_key(related_query.resource)
+                  )
+                end
+              else
+                related_query
+              end
+
             related_query
             |> select_destination_attribute(relationship)
             |> Ash.Query.sort(relationship.sort)
             |> Ash.Query.do_filter(relationship.filter)
             |> Ash.Query.filter(^ref(relationship.destination_attribute) in ^destination_ids)
+            |> Map.put(:page, nil)
             |> Ash.Actions.Read.unpaginated_read()
             |> case do
               {:ok, records} ->
@@ -489,7 +506,7 @@ defmodule Ash.Actions.Read.Relationships do
           related_query
           |> select_destination_attribute(relationship)
           |> Ash.Query.filter(^ref(relationship.destination_attribute) in ^destination_attributes)
-          |> Ash.Query.unset([:limit, :offset, :distinct, :distinct_sort])
+          |> Ash.Query.unset([:limit, :offset, :distinct, :distinct_sort, :page])
           |> Ash.Query.set_context(%{
             accessing_from: %{source: relationship.source, name: relationship.name}
           })
@@ -626,6 +643,16 @@ defmodule Ash.Actions.Read.Relationships do
       related_records,
       Ash.Query.set_context(related_query, %{data_layer: %{lateral_join_source: {nil, nil}}})
     )
+    |> Enum.map(fn row ->
+      Map.update!(row, relationship.name, fn related_records ->
+        apply_runtime_query_operations(
+          row,
+          relationship,
+          related_records,
+          related_query
+        )
+      end)
+    end)
   end
 
   defp do_attach_related_records(
@@ -740,6 +767,8 @@ defmodule Ash.Actions.Read.Relationships do
             record,
             relationship.name,
             apply_runtime_query_operations(
+              record,
+              relationship,
               Map.get(related, value) || default,
               related_query
             )
@@ -749,6 +778,8 @@ defmodule Ash.Actions.Read.Relationships do
             record,
             relationship.name,
             apply_runtime_query_operations(
+              record,
+              relationship,
               Enum.at(List.wrap(Map.get(related, value) || default), 0),
               related_query
             )
@@ -768,7 +799,7 @@ defmodule Ash.Actions.Read.Relationships do
           end)
           |> then(fn result ->
             result =
-              apply_runtime_query_operations({:ok, result}, related_query)
+              apply_runtime_query_operations(record, relationship, {:ok, result}, related_query)
 
             put_result(record, result, relationship.name, default)
           end)
@@ -783,7 +814,7 @@ defmodule Ash.Actions.Read.Relationships do
           end)
           |> then(fn result ->
             result =
-              apply_runtime_query_operations(result, related_query)
+              apply_runtime_query_operations(record, relationship, result, related_query)
 
             put_result(record, result, relationship.name, default)
           end)
@@ -792,22 +823,122 @@ defmodule Ash.Actions.Read.Relationships do
     end
   end
 
-  defp apply_runtime_query_operations({:ok, value}, related_query) do
-    {:ok, apply_runtime_query_operations(value, related_query)}
+  defp apply_runtime_query_operations(record, relationship, {:ok, value}, related_query) do
+    {:ok, apply_runtime_query_operations(record, relationship, value, related_query)}
   end
 
-  defp apply_runtime_query_operations(:error, _related_query), do: :error
-  defp apply_runtime_query_operations(empty, _related_query) when empty in [nil, []], do: empty
+  defp apply_runtime_query_operations(_record, _relationship, :error, _related_query), do: :error
 
-  defp apply_runtime_query_operations(value, related_query) when not is_list(value) do
-    [value] |> apply_runtime_query_operations(related_query) |> Enum.at(0)
+  defp apply_runtime_query_operations(_record, _relationship, empty, _related_query)
+       when empty in [nil, []],
+       do: empty
+
+  defp apply_runtime_query_operations(record, relationship, value, related_query)
+       when not is_list(value) do
+    record |> apply_runtime_query_operations(relationship, [value], related_query) |> Enum.at(0)
   end
 
-  defp apply_runtime_query_operations(value, related_query) do
+  defp apply_runtime_query_operations(record, relationship, value, related_query) do
     value
     |> apply_runtime_offset(related_query)
-    # |> apply_runtime_distinct(related_query)
     |> apply_runtime_limit(related_query)
+    |> apply_runtime_pagination(record, relationship, related_query)
+  end
+
+  defp apply_runtime_pagination(
+         value,
+         source_record,
+         relationship,
+         %{page: page_opts} = related_query
+       )
+       when not is_nil(page_opts) do
+    pagination_type =
+      cond do
+        related_query.action.pagination.keyset? && (page_opts[:before] || page_opts[:after]) ->
+          :keyset
+
+        page_opts[:offset] ->
+          :offset
+
+        related_query.action.pagination.offset? && related_query.action.pagination.keyset? ->
+          :offset
+
+        related_query.action.pagination.offset? ->
+          :offset
+
+        true ->
+          :keyset
+      end
+
+    count = Map.get(source_record.aggregates, "__paginated_#{relationship.name}_count__")
+
+    limit =
+      page_opts[:limit] ||
+        related_query.action.pagination.default_limit ||
+        related_query.action.pagination.max_page_size || 250
+
+    value =
+      if pagination_type == :keyset && (page_opts[:before] || page_opts[:after]) do
+        after_or_before =
+          if page_opts[:before] do
+            :before
+          else
+            :after
+          end
+
+        # Apparently dialyzer hated me trying to write this as a *with* statement???
+        # giving up and making it a case statement because I don't have time for this shit
+
+        case Ash.Page.Keyset.filter(
+               related_query,
+               page_opts[:before] || page_opts[:after],
+               related_query.sort,
+               after_or_before
+             ) do
+          {:ok, filter} ->
+            case Ash.Query.do_filter(related_query.resource, filter) do
+              %{valid?: true} = query ->
+                case Ash.Filter.Runtime.filter_matches(
+                       related_query.domain,
+                       value,
+                       query.filter
+                     ) do
+                  {:ok, value} ->
+                    value
+
+                  {:error, error} ->
+                    raise Ash.Error.to_ash_error(error)
+                end
+
+              %{valid?: false, errors: errors} ->
+                raise Ash.Error.to_ash_error(errors)
+            end
+
+          {:error, error} ->
+            raise Ash.Error.to_ash_error(error)
+        end
+      else
+        value
+      end
+
+    {value, rest} =
+      value
+      |> Enum.drop(page_opts[:offset] || 0)
+      |> Enum.split(limit)
+
+    more? = !Enum.empty?(rest)
+
+    case pagination_type do
+      :offset ->
+        Ash.Page.Offset.new(value, count, related_query, more?, [])
+
+      :keyset ->
+        Ash.Page.Keyset.new(value, count, related_query.sort, related_query, more?, [])
+    end
+  end
+
+  defp apply_runtime_pagination(value, _, _, _) do
+    value
   end
 
   defp apply_runtime_offset(value, %{offset: nil}), do: value
@@ -899,7 +1030,7 @@ defmodule Ash.Actions.Read.Relationships do
     end
   end
 
-  defp lateral_join?(%{action: action} = query, relationship, source_data) do
+  defp lateral_join?(%{action: action} = query, source_query, relationship, source_data) do
     if action.manual do
       raise_if_parent_expr!(relationship, "manual actions")
       false
@@ -914,7 +1045,7 @@ defmodule Ash.Actions.Read.Relationships do
       has_page? = query.page not in [nil, false]
 
       cond do
-        is_many_to_many_not_unique_on_join?(relationship) ->
+        is_many_to_many_not_unique_on_join?(relationship, query, source_query) ->
           raise_if_parent_expr!(
             relationship,
             "many to many relationships that don't have unique constraints on their join resource attributes"
@@ -1022,23 +1153,36 @@ defmodule Ash.Actions.Read.Relationships do
     end
   end
 
-  defp is_many_to_many_not_unique_on_join?(%{type: :many_to_many} = relationship) do
-    join_keys =
-      Enum.sort([
+  defp is_many_to_many_not_unique_on_join?(
+         %{type: :many_to_many} = relationship,
+         query,
+         source_query
+       ) do
+    keys =
+      [
         relationship.source_attribute_on_join_resource,
         relationship.destination_attribute_on_join_resource
-      ])
+      ]
+
+    join_keys =
+      if query.tenant && source_query.tenant &&
+           Ash.Resource.Info.multitenancy_strategy(relationship.through) == :attribute do
+        attr = Ash.Resource.Info.multitenancy_attribute(relationship.through)
+        [attr | keys]
+      else
+        keys
+      end
 
     primary_key_is_join_keys? =
-      Enum.sort(Ash.Resource.Info.primary_key(relationship.through)) == join_keys
+      Enum.all?(Ash.Resource.Info.primary_key(relationship.through), &(&1 in join_keys))
 
     is_unique_on_join_keys? =
       Enum.any?(Ash.Resource.Info.identities(relationship.through), fn identity ->
-        Enum.sort(identity.keys) == join_keys
+        Enum.all?(identity.keys, &(&1 in join_keys))
       end)
 
     not (primary_key_is_join_keys? || is_unique_on_join_keys?)
   end
 
-  defp is_many_to_many_not_unique_on_join?(_), do: false
+  defp is_many_to_many_not_unique_on_join?(_, _, _), do: false
 end

@@ -311,7 +311,7 @@ defmodule Ash.Test.Actions.UpdateTest do
     end
 
     relationships do
-      belongs_to :tenant, Tenant, allow_nil?: false
+      belongs_to :tenant, Tenant, allow_nil?: false, primary_key?: true
 
       belongs_to :source_tag, Ash.Test.Actions.UpdateTest.MultitenantTag,
         primary_key?: true,

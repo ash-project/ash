@@ -1510,11 +1510,12 @@ defmodule Ash do
       |> Keyword.delete(:before)
       |> Keyword.put(:after, last_keyset)
 
-    query = Ash.Query.page(query, new_page_opts)
+    query =
+      Ash.Query.page(query, new_page_opts)
 
     case read(query, opts) do
       {:ok, %{results: []}} ->
-        {:ok, page}
+        {:ok, %{page | more?: false}}
 
       other ->
         other
