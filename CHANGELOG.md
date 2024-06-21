@@ -2,6 +2,29 @@
 
 <!-- changelog -->
 
+## [v3.0.16](https://github.com/ash-project/ash/compare/v3.0.15...v3.0.16) (2024-06-21)
+
+
+
+
+### Bug Fixes:
+
+* use the proper opts when calling manual updates in bulk updates
+
+* apply pagination at runtime for non lateral join queries
+
+* consider multitenancy when checking if through-join is unique
+
+* don't run any `before_action` hooks if changeset is invalidated in prior hook
+
+* only prevent atomic upgrade when hooks were explicitly added
+
+* use right argument name in query `set_result`/`clear_result` (#1247)
+
+### Improvements:
+
+* retain error context on overridden messages
+
 ## [v3.0.15](https://github.com/ash-project/ash/compare/v3.0.14...v3.0.15) (2024-06-18)
 
 
