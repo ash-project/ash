@@ -1,6 +1,6 @@
 defmodule Ash.Resource.Igniter do
   def move_to_resource(zipper) do
-    app_name = Igniter.Application.app_name()
+    app_name = Igniter.Project.Application.app_name()
 
     resources = [
       Ash.Resource | Application.get_env(app_name, :base_resources) || []

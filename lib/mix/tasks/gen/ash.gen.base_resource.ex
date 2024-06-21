@@ -8,7 +8,7 @@ defmodule Mix.Tasks.Ash.Gen.BaseResource do
 
     glob = Path.join([base_resource_file, "..", "**", "*.ex"])
 
-    app_name = Igniter.Application.app_name()
+    app_name = Igniter.Project.Application.app_name()
 
     # need `Igniter.glob(igniter, path, filter)` to get all existing or new files that match a path & condition
     # for each file that defines a resource that uses `Ash.Resource`, that is "further down" from this file,
@@ -24,7 +24,7 @@ defmodule Mix.Tasks.Ash.Gen.BaseResource do
       end
     end
     """)
-    |> Igniter.Config.configure(
+    |> Igniter.Project.Config.configure(
       "config.exs",
       app_name,
       [:base_resources],

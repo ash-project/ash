@@ -28,7 +28,7 @@ if Code.ensure_loaded?(Igniter) do
       """)
       |> then(fn igniter ->
         if short_name do
-          Igniter.Config.configure(
+          Igniter.Project.Config.configure(
             igniter,
             "config.exs",
             :ash,

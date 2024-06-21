@@ -33,16 +33,16 @@ if Code.ensure_loaded?(Igniter) do
 
     def igniter(igniter, argv) do
       igniter
-      |> Igniter.Deps.add_dependency(:picosat_elixir, "~> 0.2")
+      |> Igniter.Project.Deps.add_dependency(:picosat_elixir, "~> 0.2")
       |> Igniter.compose_task("spark.install", argv)
-      |> Igniter.Formatter.import_dep(:ash)
-      |> Igniter.Config.configure(
+      |> Igniter.Project.Formatter.import_dep(:ash)
+      |> Igniter.Project.Config.configure(
         "config.exs",
         :spark,
         [:formatter, :"Ash.Resource", :section_order],
         @resource_default_section_order
       )
-      |> Igniter.Config.configure(
+      |> Igniter.Project.Config.configure(
         "config.exs",
         :spark,
         [:formatter, :"Ash.Domain", :section_order],

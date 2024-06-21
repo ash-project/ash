@@ -24,7 +24,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   @impl Igniter.Mix.Task
   def igniter(igniter, [resource | argv]) do
     resource = Igniter.Code.Module.parse(resource)
-    app_name = Igniter.Application.app_name()
+    app_name = Igniter.Project.Application.app_name()
 
     {options, _, _} =
       OptionParser.parse(argv,
