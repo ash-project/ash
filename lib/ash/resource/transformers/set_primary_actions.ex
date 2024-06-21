@@ -97,7 +97,7 @@ defmodule Ash.Resource.Transformers.SetPrimaryActions do
 
       unless type in [:create, :update, :read, :destroy] do
         raise Spark.Error.DslError,
-          path: [:actions, :default_actions, i],
+          path: [:actions, :defaults, i],
           message: "#{type} is not a valid action type"
       end
 

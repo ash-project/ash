@@ -393,7 +393,7 @@ defmodule Ash.Policy.Authorizer do
 
   require Logger
 
-  @behaviour Ash.Authorizer
+  use Ash.Authorizer
 
   @transformers [
     Ash.Policy.Authorizer.Transformers.AddMissingFieldPolicies,

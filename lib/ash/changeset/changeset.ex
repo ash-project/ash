@@ -4749,9 +4749,6 @@ defmodule Ash.Changeset do
             add_invalid_errors(value, :attribute, changeset, attribute, error_or_errors)
             |> store_casted_attribute(attribute.name, last_val, store_casted?)
 
-          :error ->
-            add_invalid_errors(value, :attribute, changeset, attribute)
-
           {:error, error_or_errors} ->
             add_invalid_errors(value, :attribute, changeset, attribute, error_or_errors)
         end

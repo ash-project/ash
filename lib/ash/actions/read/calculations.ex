@@ -182,9 +182,6 @@ defmodule Ash.Actions.Read.Calculations do
     else
       {:calc, nil} ->
         {:error, "No such calculation"}
-
-      {:error, error} ->
-        {:error, error}
     end
   end
 

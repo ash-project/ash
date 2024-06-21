@@ -356,6 +356,9 @@ defmodule Ash.MixProject do
       {:picosat_elixir, "~> 0.2", optional: true},
       {:simple_sat, "~> 0.1 and >= 0.1.1", optional: true},
 
+      # Code Generators
+      {:igniter, "~> 0.1"},
+
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},
       {:ex_doc, "~> 0.32", only: [:dev, :test], runtime: false},

@@ -1584,15 +1584,6 @@ defmodule Ash.Query do
 
           %{query | aggregates: new_aggregates}
         else
-          %{errors: errors} ->
-            add_error(
-              query,
-              :aggregates,
-              Ash.Error.to_ash_error(errors, nil,
-                bread_crumbs: "Loading aggregate: #{inspect(field)} for query: #{inspect(query)}"
-              )
-            )
-
           {:error, error} ->
             add_error(
               query,
