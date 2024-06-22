@@ -58,7 +58,7 @@ defmodule Ash.UUIDv7 do
     timestamp_nanoseconds = System.system_time(:nanosecond)
     timestamp_milliseconds = trunc(timestamp_nanoseconds / 1_000_000)
 
-    nanoseconds = timestamp_nanoseconds - (timestamp_milliseconds * 1_000_000)
+    nanoseconds = timestamp_nanoseconds - timestamp_milliseconds * 1_000_000
     rand_a = trunc(4096 * (nanoseconds / 1_000_000))
 
     <<rand_b::62, _::2>> = :crypto.strong_rand_bytes(8)
@@ -82,12 +82,10 @@ defmodule Ash.UUIDv7 do
 
   """
   @spec extract_timestamp(t | raw) :: integer
-  def extract_timestamp(<<timestamp_ms::big-unsigned-48, @version::4, _::76>>) do
-    timestamp_ms
-  end
+  def extract_timestamp(<<timestamp_ms::big-unsigned-48, @version::4, _::76>>), do: timestamp_ms
 
   def extract_timestamp(<<_::288>> = uuid) do
-    decode(uuid) |> extract_timestamp()
+    uuid |> decode() |> extract_timestamp()
   end
 
   @doc """
@@ -99,7 +97,13 @@ defmodule Ash.UUIDv7 do
       "018e90d8-06e8-7f9f-bfd7-6730ba98a51b"
 
   """
-  @spec encode(raw) :: t
+  @spec encode(t | raw) :: t | :error
+  def encode(
+        <<_, _, _, _, _, _, _, _, ?-, _, _, _, _, ?-, _, _, _, _, ?-, _, _, _, _, ?-, _, _, _, _,
+          _, _, _, _, _, _, _, _>> = hex_uuid
+      ),
+      do: hex_uuid
+
   def encode(
         <<a1::4, a2::4, a3::4, a4::4, a5::4, a6::4, a7::4, a8::4, b1::4, b2::4, b3::4, b4::4,
           c1::4, c2::4, c3::4, c4::4, d1::4, d2::4, d3::4, d4::4, e1::4, e2::4, e3::4, e4::4,
@@ -109,6 +113,8 @@ defmodule Ash.UUIDv7 do
       e(c1), e(c2), e(c3), e(c4), ?-, e(d1), e(d2), e(d3), e(d4), ?-, e(e1), e(e2), e(e3), e(e4),
       e(e5), e(e6), e(e7), e(e8), e(e9), e(e10), e(e11), e(e12)>>
   end
+
+  def encode(_), do: :error
 
   @compile {:inline, e: 1}
 
@@ -138,7 +144,14 @@ defmodule Ash.UUIDv7 do
       <<1, 142, 144, 216, 6, 232, 127, 159, 191, 215, 103, 48, 186, 152, 165, 27>>
 
   """
-  @spec decode(t) :: raw | :error
+  @spec decode(t | raw) :: raw | :error
+  def decode(
+        <<_::4, _::4, _::4, _::4, _::4, _::4, _::4, _::4, _::4, _::4, _::4, _::4, _::4, _::4,
+          _::4, _::4, _::4, _::4, _::4, _::4, _::4, _::4, _::4, _::4, _::4, _::4, _::4, _::4,
+          _::4, _::4, _::4, _::4>> = raw_uuid
+      ),
+      do: raw_uuid
+
   def decode(
         <<a1, a2, a3, a4, a5, a6, a7, a8, ?-, b1, b2, b3, b4, ?-, c1, c2, c3, c4, ?-, d1, d2, d3,
           d4, ?-, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12>>
