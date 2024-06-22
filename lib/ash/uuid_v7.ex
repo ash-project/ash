@@ -54,7 +54,7 @@ defmodule Ash.UUIDv7 do
 
   """
   @spec bingenerate() :: raw
-  def bingenerate() do
+  def bingenerate do
     timestamp_nanoseconds = System.system_time(:nanosecond)
     timestamp_milliseconds = trunc(timestamp_nanoseconds / 1_000_000)
 
