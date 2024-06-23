@@ -47,7 +47,7 @@ MyDomain.create_post!(Post, authorize?: true)
 
 ## Default value of `authorize?`
 
-The default value of `authorize?` is determined by by the `authorization` configuration of the relevant domain. By default, `authorize?` is set to `true` (and so can be ommitted in all of the examples above). If a resource has no authorizers, then all requests will be allowed.
+The default value of `authorize?` is determined by the `authorization` configuration of the relevant domain. By default, `authorize?` is set to `true` (and so can be ommitted in all of the examples above). If a resource has no authorizers, then all requests will be allowed.
 
 ## Authorizers
 
