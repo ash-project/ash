@@ -42,6 +42,7 @@ defmodule Ash.Type do
     boolean: Ash.Type.Boolean,
     struct: Ash.Type.Struct,
     uuid: Ash.Type.UUID,
+    uuid_v7: Ash.Type.UUIDv7,
     binary: Ash.Type.Binary,
     date: Ash.Type.Date,
     time: Ash.Type.Time,

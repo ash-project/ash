@@ -183,6 +183,18 @@ defmodule Ash.Resource.Attribute do
                            |> Keyword.delete(:allow_nil?)
                            |> Ash.OptionsHelpers.hide_all_except([:name])
 
+  @uuid_v7_primary_key_schema @schema
+                              |> Spark.Options.Helpers.set_default!(:public?, true)
+                              |> Spark.Options.Helpers.set_default!(:writable?, false)
+                              |> Spark.Options.Helpers.set_default!(
+                                :default,
+                                &Ash.UUIDv7.generate/0
+                              )
+                              |> Spark.Options.Helpers.set_default!(:primary_key?, true)
+                              |> Spark.Options.Helpers.set_default!(:type, :uuid_v7)
+                              |> Keyword.delete(:allow_nil?)
+                              |> Ash.OptionsHelpers.hide_all_except([:name])
+
   @integer_primary_key_schema @schema
                               |> Spark.Options.Helpers.set_default!(:public?, true)
                               |> Spark.Options.Helpers.set_default!(:writable?, false)
@@ -201,5 +213,6 @@ defmodule Ash.Resource.Attribute do
   def create_timestamp_schema, do: @create_timestamp_schema
   def update_timestamp_schema, do: @update_timestamp_schema
   def uuid_primary_key_schema, do: @uuid_primary_key_schema
+  def uuid_v7_primary_key_schema, do: @uuid_v7_primary_key_schema
   def integer_primary_key_schema, do: @integer_primary_key_schema
 end

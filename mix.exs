@@ -230,6 +230,7 @@ defmodule Ash.MixProject do
           Ash.Vector,
           Ash.Union,
           Ash.UUID,
+          Ash.UUIDv7,
           Ash.NotLoaded,
           Ash.ForbiddenField,
           Ash.Changeset.ManagedRelationshipHelpers,

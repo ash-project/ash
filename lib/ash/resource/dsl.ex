@@ -144,6 +144,30 @@ defmodule Ash.Resource.Dsl do
     transform: {Ash.Resource.Attribute, :transform, []}
   }
 
+  @uuid_v7_primary_key %Spark.Dsl.Entity{
+    name: :uuid_v7_primary_key,
+    describe: """
+    Declares a non writable, non-nil, primary key column of type `uuid_v7`, which defaults to `Ash.UUIDv7.generate/0`.
+
+    Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except for `allow_nil?`, but it sets
+    the following different defaults:
+
+        writable? false
+        public? true
+        default &Ash.UUIDv7.generate/0
+        primary_key? true
+        type :uuid_v7
+    """,
+    examples: [
+      "uuid_v7_primary_key :id"
+    ],
+    args: [:name],
+    target: Ash.Resource.Attribute,
+    schema: Ash.Resource.Attribute.uuid_v7_primary_key_schema(),
+    auto_set_fields: [allow_nil?: false],
+    transform: {Ash.Resource.Attribute, :transform, []}
+  }
+
   @attributes %Spark.Dsl.Section{
     name: :attributes,
     describe: """
@@ -187,7 +211,8 @@ defmodule Ash.Resource.Dsl do
       @create_timestamp,
       @update_timestamp,
       @integer_primary_key,
-      @uuid_primary_key
+      @uuid_primary_key,
+      @uuid_v7_primary_key
     ],
     patchable?: true
   }
