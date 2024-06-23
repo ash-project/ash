@@ -1201,6 +1201,7 @@ defmodule Ash.Actions.Read do
       {:calculation, load_through}, {:ok, results} ->
         load_through
         |> Map.take(Map.keys(query.calculations))
+        |> Enum.reject(fn {_, v} -> is_nil(v) end)
         |> Enum.reduce_while({:ok, results}, fn {name, load_statement}, {:ok, results} ->
           calculation = Map.get(query.calculations, name)
 
@@ -1308,6 +1309,7 @@ defmodule Ash.Actions.Read do
 
       {:attribute, load_through}, {:ok, results} when attrs? ->
         load_through
+        |> Enum.reject(fn {_, v} -> is_nil(v) end)
         |> Enum.reduce_while({:ok, results}, fn {name, load_statement}, {:ok, results} ->
           load_statement =
             if is_map(load_statement) and not is_struct(load_statement) do
