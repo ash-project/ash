@@ -595,11 +595,7 @@ defmodule Ash.Changeset do
            %Ash.Changeset{} = changeset <- atomic_update(changeset, opts[:atomic_update] || []),
            %Ash.Changeset{} = changeset <-
              hydrate_atomic_refs(changeset, opts[:actor], Keyword.take(opts, [:eager?])) do
-        if Enum.empty?(changeset.after_action || []) do
-          changeset
-        else
-          {:error, "Cannot perform a changeset with after action hooks atomically"}
-        end
+        changeset
       else
         {:not_atomic, reason} ->
           {:not_atomic, reason}
