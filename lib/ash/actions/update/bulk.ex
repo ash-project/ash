@@ -44,9 +44,9 @@ defmodule Ash.Actions.Update.Bulk do
 
     fully_atomic_changeset =
       cond do
-        !Enum.empty?(query.before_action) || !Enum.empty?(query.after_action) ->
+        !Enum.empty?(query.before_action) ->
           {:not_atomic,
-           "cannot atomically update a query if it has `before_action` or `after_action` hooks"}
+           "cannot atomically update a query if it has `before_action` hooks"}
 
         not_atomic_reason ->
           {:not_atomic, not_atomic_reason}
@@ -195,7 +195,7 @@ defmodule Ash.Actions.Update.Bulk do
           # having after action hooks. Or perhaps we need to stream the ids and then bulk update
           # them.
           opts =
-            if has_after_batch_hooks? || opts[:notify?] do
+            if has_after_batch_hooks? || !Enum.empty?(atomic_changeset.after_action) || opts[:notify?] do
               Keyword.put(opts, :return_records?, true)
             else
               opts
@@ -465,6 +465,8 @@ defmodule Ash.Actions.Update.Bulk do
 
           results = List.wrap(results)
 
+          IO.inspect(atomic_changeset.after_action, label: "THE HOOKS DUDE!")
+
           {results, notifications} =
             if has_after_batch_hooks? do
               run_atomic_after_batch_hooks(
@@ -478,6 +480,33 @@ defmodule Ash.Actions.Update.Bulk do
               {results, []}
             end
 
+            {results, errors, error_count, notifications} =
+              if Enum.empty?(atomic_changeset.after_action) do
+                {results, [], 0, notifications}
+              else
+                Enum.reduce(results, {[], [], 0, notifications}, fn result, {results, errors, error_count, notifications} ->
+                  case Ash.Changeset.run_after_actions(result, atomic_changeset, []) do
+                    {:error, error} ->
+                      if opts[:transaction] && opts[:rollback_on_error?] do
+                        if Ash.DataLayer.in_transaction?(atomic_changeset.resource) do
+                          Ash.DataLayer.rollback(
+                            atomic_changeset.resource,
+                            error
+                          )
+                        end
+                      end
+
+                      {results, errors ++ List.wrap(error), error_count + Enum.count(List.wrap(error)), notifications}
+
+                    {:ok, result, _changeset, %{notifications: more_new_notifications}} ->
+                      {[result | results], errors, error_count, notifications ++ more_new_notifications}
+                  end
+                end)
+                |> then(fn {results, errors, error_count, notifications} ->
+                  {Enum.reverse(results), errors, error_count, notifications}
+                end)
+              end
+
           {results, errors, error_count} =
             case load_data(
                    results,
@@ -487,10 +516,10 @@ defmodule Ash.Actions.Update.Bulk do
                    opts
                  ) do
               {:ok, results} ->
-                {results, [], 0}
+                {results, errors, error_count}
 
               {:error, error} ->
-                {[], List.wrap(error), Enum.count(List.wrap(error))}
+                {[], errors ++ List.wrap(error), error_count + Enum.count(List.wrap(error))}
             end
 
           notifications =
