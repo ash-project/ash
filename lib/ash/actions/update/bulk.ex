@@ -465,8 +465,6 @@ defmodule Ash.Actions.Update.Bulk do
 
           results = List.wrap(results)
 
-          IO.inspect(atomic_changeset.after_action, label: "THE HOOKS DUDE!")
-
           {results, notifications} =
             if has_after_batch_hooks? do
               run_atomic_after_batch_hooks(
