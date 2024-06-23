@@ -605,9 +605,6 @@ defmodule Ash.Changeset do
       {:not_atomic, reason} ->
         {:not_atomic, reason}
 
-      {:error, error} ->
-        {:error, error}
-
       changeset ->
         clear_phase(changeset)
     end
