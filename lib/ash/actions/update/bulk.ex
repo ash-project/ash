@@ -338,48 +338,54 @@ defmodule Ash.Actions.Update.Bulk do
           true
         end
 
-      Ash.DataLayer.transaction(
-        List.wrap(resource) ++ action.touches_resources,
-        fn ->
-          do_run(
-            domain,
-            stream,
-            action,
-            input,
-            opts,
-            metadata_key,
-            context_key,
-            not_atomic_reason
-          )
-        end,
-        opts[:timeout],
-        %{
-          type: context_key,
-          metadata: %{
-            resource: resource,
-            action: action.name,
-            actor: opts[:actor]
-          },
-          data_layer_context: opts[:data_layer_context] || %{}
-        }
-      )
-      |> case do
-        {:ok, bulk_result} ->
-          bulk_result =
-            if notify? do
-              %{
+      try do
+        Ash.DataLayer.transaction(
+          List.wrap(resource) ++ action.touches_resources,
+          fn ->
+            do_run(
+              domain,
+              stream,
+              action,
+              input,
+              opts,
+              metadata_key,
+              context_key,
+              not_atomic_reason
+            )
+          end,
+          opts[:timeout],
+          %{
+            type: context_key,
+            metadata: %{
+              resource: resource,
+              action: action.name,
+              actor: opts[:actor]
+            },
+            data_layer_context: opts[:data_layer_context] || %{}
+          }
+        )
+        |> case do
+          {:ok, bulk_result} ->
+            bulk_result =
+              if notify? do
+                %{
+                  bulk_result
+                  | notifications:
+                      bulk_result.notifications ++ Process.delete(:ash_notifications) || []
+                }
+              else
                 bulk_result
-                | notifications:
-                    bulk_result.notifications ++ Process.delete(:ash_notifications) || []
-              }
-            else
-              bulk_result
-            end
+              end
 
-          handle_bulk_result(bulk_result, metadata_key, opts)
+            handle_bulk_result(bulk_result, metadata_key, opts)
 
-        {:error, error} ->
-          {:error, error}
+          {:error, error} ->
+            {:error, error}
+        end
+      after
+        if notify? do
+          Process.put(:ash_started_transaction?, false)
+        end
       end
     else
       domain
