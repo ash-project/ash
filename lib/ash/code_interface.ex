@@ -832,6 +832,7 @@ defmodule Ash.CodeInterface do
                             bulk_opts
                             |> Keyword.put(:return_records?, true)
                             |> Keyword.put(:return_errors?, true)
+                            |> Keyword.put(:return_notifications?, true)
                           else
                             bulk_opts
                           end
@@ -849,13 +850,21 @@ defmodule Ash.CodeInterface do
                         {:ok, query} ->
                           query
                           |> Ash.bulk_update(unquote(action.name), params, bulk_opts)
+                          |> then(fn result ->
+                            Ash.Notifier.notify(result.notifications)
+                            result
+                          end)
                           |> case do
                             %Ash.BulkResult{} = result
                             when method in [:stream, :query] and not unquote(interface.get?) ->
                               result
 
-                            %Ash.BulkResult{status: :success, records: [record]} = result ->
-                              {:ok, record}
+                            %Ash.BulkResult{
+                              status: :success,
+                              records: [record],
+                              notifications: notifications
+                            } = result ->
+                              {:ok, record, notifications}
 
                             %Ash.BulkResult{status: :success, records: []} = result ->
                               {:error,
@@ -896,6 +905,7 @@ defmodule Ash.CodeInterface do
                             bulk_opts
                             |> Keyword.put(:return_records?, true)
                             |> Keyword.put(:return_errors?, true)
+                            |> Keyword.put(:return_notifications?, true)
                           else
                             bulk_opts
                           end
@@ -913,12 +923,17 @@ defmodule Ash.CodeInterface do
                         {:ok, query} ->
                           query
                           |> Ash.bulk_update!(unquote(action.name), params, bulk_opts)
+                          |> then(fn result ->
+                            Ash.Notifier.notify(result.notifications)
+                            result
+                          end)
                           |> case do
                             %Ash.BulkResult{} = result
                             when method in [:stream, :query] and not unquote(interface.get?) ->
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
+                              Ash.Notifier.notify(result.notifications)
                               record
 
                             %Ash.BulkResult{status: :success, records: []} = result ->
@@ -1037,6 +1052,7 @@ defmodule Ash.CodeInterface do
                             bulk_opts
                             |> Keyword.put(:return_records?, opts[:return_destroyed?])
                             |> Keyword.put(:return_errors?, true)
+                            |> Keyword.put(:return_notifications?, true)
                           else
                             Keyword.put(bulk_opts, :return_records?, opts[:return_destroyed?])
                           end
@@ -1054,13 +1070,21 @@ defmodule Ash.CodeInterface do
                         {:ok, query} ->
                           query
                           |> Ash.bulk_destroy(unquote(action.name), params, bulk_opts)
+                          |> then(fn result ->
+                            Ash.Notifier.notify(result.notifications)
+                            result
+                          end)
                           |> case do
                             %Ash.BulkResult{} = result
                             when method in [:stream, :query] and not unquote(interface.get?) ->
                               result
 
-                            %Ash.BulkResult{status: :success, records: [record]} = result ->
-                              {:ok, record}
+                            %Ash.BulkResult{
+                              status: :success,
+                              records: [record],
+                              notifications: notifications
+                            } = result ->
+                              {:ok, record, notifications}
 
                             %Ash.BulkResult{status: :success, records: empty} = result
                             when empty in [[], nil] ->
@@ -1106,6 +1130,7 @@ defmodule Ash.CodeInterface do
                             bulk_opts
                             |> Keyword.put(:return_records?, opts[:return_destroyed?])
                             |> Keyword.put(:return_errors?, true)
+                            |> Keyword.put(:return_notifications?, true)
                           else
                             Keyword.put(bulk_opts, :return_records?, opts[:return_destroyed?])
                           end
@@ -1123,12 +1148,17 @@ defmodule Ash.CodeInterface do
                         {:ok, query} ->
                           query
                           |> Ash.bulk_destroy!(unquote(action.name), params, bulk_opts)
+                          |> then(fn result ->
+                            Ash.Notifier.notify(result.notifications)
+                            result
+                          end)
                           |> case do
                             %Ash.BulkResult{} = result
                             when method in [:stream, :query] and not unquote(interface.get?) ->
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
+                              Ash.Notifier.notify(result.notifications)
                               record
 
                             %Ash.BulkResult{status: :success, records: empty} = result
