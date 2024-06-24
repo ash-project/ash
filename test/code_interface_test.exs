@@ -4,9 +4,17 @@ defmodule Ash.Test.CodeInterfaceTest do
 
   alias Ash.Test.Domain, as: Domain
 
+  defmodule Notifier do
+    use Ash.Notifier
+
+    def notify(notification) do
+      send(Application.get_env(__MODULE__, :notifier_test_pid), {:notification, notification})
+    end
+  end
+
   defmodule User do
     @moduledoc false
-    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets, notifiers: [Notifier]
 
     ets do
       private?(true)
@@ -125,6 +133,12 @@ defmodule Ash.Test.CodeInterfaceTest do
   end
 
   @context %{test: "value"}
+
+  setup do
+    Application.put_env(Notifier, :notifier_test_pid, self())
+
+    :ok
+  end
 
   describe "generic actions" do
     test "can be invoked" do
@@ -257,6 +271,19 @@ defmodule Ash.Test.CodeInterfaceTest do
       User
       |> Ash.Query.filter(id == ^bob.id)
       |> User.update!(%{first_name: "bob_updated"})
+    end
+
+    test "can take an id" do
+      bob = User.create!("bob", context: @context)
+      require Ash.Query
+
+      assert_received {:notification, %Ash.Notifier.Notification{}}
+
+      bob = User.update!(bob.id, %{first_name: "bob_updated"})
+
+      assert bob.first_name == "bob_updated"
+
+      assert_received {:notification, %Ash.Notifier.Notification{} = notification}
     end
 
     test "bulk update can take a @context options" do
