@@ -390,39 +390,15 @@ defmodule Ash.Type.Union do
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(%Ash.Union{value: value, type: type_name}, constraints) do
-    type = constraints[:types][type_name][:type]
-    inner_constraints = constraints[:types][type_name][:constraints] || []
+    case try_cast_type(value, constraints, type_name, constraints[:types][type_name], [], false) do
+      {_, {:ok, value}} ->
+        {:ok, value}
 
-    inner_constraints =
-      if Ash.Type.embedded_type?(type) do
-        case constraints[:__source__] do
-          %Ash.Changeset{} = source ->
-            Keyword.put(inner_constraints, :__source__, source)
+      {_, {:expose_error, errors}} ->
+        {:error, errors}
 
-          _ ->
-            inner_constraints
-        end
-        |> Keyword.put(:__union_tag__, constraints[:types][type_name][:tag])
-      else
-        inner_constraints
-      end
-
-    case Ash.Type.cast_input(
-           type,
-           value,
-           inner_constraints
-         ) do
-      {:ok, value} ->
-        case Ash.Type.apply_constraints(type, value, inner_constraints) do
-          {:ok, value} ->
-            {:ok, %Ash.Union{value: value, type: type_name}}
-
-          {:error, other} ->
-            {:error, other}
-        end
-
-      error ->
-        error
+      {_, {:error, error}} ->
+        {:error, error_message(error)}
     end
   end
 
@@ -431,115 +407,7 @@ defmodule Ash.Type.Union do
 
     types
     |> Enum.reduce_while({:error, []}, fn {type_name, config}, {:error, errors} ->
-      type = config[:type]
-
-      if is_map(value) && config[:tag] do
-        tag_value = config[:tag_value]
-
-        value =
-          if Ash.Type.embedded_type?(type) && !is_struct(value) do
-            Enum.reduce(Ash.Resource.Info.attributes(type), value, fn attr, value ->
-              with {:array, _nested_type} <- attr.type,
-                   true <- has_key?(value, attr.name) do
-                update_key(value, attr.name, fn value ->
-                  if is_map(value) && !is_struct(value) do
-                    Map.values(value)
-                  else
-                    value
-                  end
-                end)
-              else
-                _ ->
-                  value
-              end
-            end)
-          else
-            value
-          end
-
-        their_tag_value = get_tag(value, config[:tag])
-
-        tags_equal? = tags_equal?(tag_value, their_tag_value)
-
-        if tags_equal? do
-          value =
-            if Keyword.get(config, :cast_tag?, true) do
-              value
-            else
-              Map.drop(value, [config[:tag], to_string(config[:tag])])
-            end
-
-          config_constraints =
-            if Ash.Type.embedded_type?(config[:type]) do
-              Keyword.put(config[:constraints] || [], :__union_tag__, config[:tag])
-            else
-              config[:constraints] || []
-            end
-
-          constraints_with_source =
-            Ash.Type.include_source(
-              config[:type],
-              constraints[:__source__],
-              config_constraints
-            )
-
-          case Ash.Type.cast_input(
-                 type,
-                 value,
-                 constraints_with_source
-               ) do
-            {:ok, value} ->
-              case Ash.Type.apply_constraints(type, value, constraints_with_source) do
-                {:ok, value} ->
-                  {:halt,
-                   {:ok,
-                    %Ash.Union{
-                      value: value,
-                      type: type_name
-                    }}}
-
-                {:error, other} ->
-                  {:halt, {:expose_error, other}}
-              end
-
-            {:error, other} ->
-              {:halt, {:expose_error, other}}
-
-            :error ->
-              {:halt, {:error, "is not a valid #{type_name}"}}
-          end
-        else
-          {:cont,
-           {:error,
-            Keyword.put(errors, type_name, "#{config[:tag]} does not equal #{config[:tag_value]}")}}
-        end
-      else
-        if config[:tag] do
-          {:cont, {:error, Keyword.put(errors, type_name, "is not a map")}}
-        else
-          case Ash.Type.cast_input(type, value, config[:constraints] || []) do
-            {:ok, value} ->
-              case Ash.Type.apply_constraints(type, value, config[:constraints] || []) do
-                {:ok, value} ->
-                  {:halt,
-                   {:ok,
-                    %Ash.Union{
-                      value: value,
-                      type: type_name
-                    }}}
-
-                {:error, other} ->
-                  {:cont, {:error, Keyword.put(errors, type_name, other)}}
-              end
-
-            {:error, other} ->
-              {:cont, {:error, Keyword.put(errors, type_name, other)}}
-
-            :error ->
-              {:cont, {:error, Keyword.put(errors, type_name, "is invalid")}}
-          end
-        end
-      end
+      try_cast_type(value, constraints, type_name, config, errors)
     end)
     |> case do
       {:error, errors} when is_binary(errors) ->
@@ -556,6 +424,114 @@ defmodule Ash.Type.Union do
 
       value ->
         value
+    end
+  end
+
+  defp try_cast_type(value, constraints, type_name, config, errors, tags_must_match? \\ true) do
+    type = config[:type]
+
+    if is_map(value) && config[:tag] do
+      tag_value = config[:tag_value]
+
+      value =
+        if Ash.Type.embedded_type?(type) && !is_struct(value) do
+          Enum.reduce(Ash.Resource.Info.attributes(type), value, fn attr, value ->
+            with {:array, _nested_type} <- attr.type,
+                 true <- has_key?(value, attr.name) do
+              update_key(value, attr.name, fn value ->
+                if is_map(value) && !is_struct(value) do
+                  Map.values(value)
+                else
+                  value
+                end
+              end)
+            else
+              _ ->
+                value
+            end
+          end)
+        else
+          value
+        end
+
+      if !tags_must_match? || tags_equal?(tag_value, get_tag(value, config[:tag])) do
+        value =
+          if Keyword.get(config, :cast_tag?, true) do
+            value
+          else
+            Map.drop(value, [config[:tag], to_string(config[:tag])])
+          end
+
+        config_constraints =
+          if Ash.Type.embedded_type?(config[:type]) do
+            Keyword.put(config[:constraints] || [], :__union_tag__, config[:tag])
+          else
+            config[:constraints] || []
+          end
+
+        constraints_with_source =
+          Ash.Type.include_source(
+            config[:type],
+            constraints[:__source__],
+            config_constraints
+          )
+
+        case Ash.Type.cast_input(
+               type,
+               value,
+               constraints_with_source
+             ) do
+          {:ok, value} ->
+            case Ash.Type.apply_constraints(type, value, constraints_with_source) do
+              {:ok, value} ->
+                {:halt,
+                 {:ok,
+                  %Ash.Union{
+                    value: value,
+                    type: type_name
+                  }}}
+
+              {:error, other} ->
+                {:halt, {:expose_error, other}}
+            end
+
+          {:error, other} ->
+            {:halt, {:expose_error, other}}
+
+          :error ->
+            {:halt, {:error, "is not a valid #{type_name}"}}
+        end
+      else
+        {:cont,
+         {:error,
+          Keyword.put(errors, type_name, "#{config[:tag]} does not equal #{config[:tag_value]}")}}
+      end
+    else
+      if config[:tag] do
+        {:cont, {:error, Keyword.put(errors, type_name, "is not a map")}}
+      else
+        case Ash.Type.cast_input(type, value, config[:constraints] || []) do
+          {:ok, value} ->
+            case Ash.Type.apply_constraints(type, value, config[:constraints] || []) do
+              {:ok, value} ->
+                {:halt,
+                 {:ok,
+                  %Ash.Union{
+                    value: value,
+                    type: type_name
+                  }}}
+
+              {:error, other} ->
+                {:cont, {:error, Keyword.put(errors, type_name, other)}}
+            end
+
+          {:error, other} ->
+            {:cont, {:error, Keyword.put(errors, type_name, other)}}
+
+          :error ->
+            {:cont, {:error, Keyword.put(errors, type_name, "is invalid")}}
+        end
+      end
     end
   end
 
@@ -830,10 +806,18 @@ defmodule Ash.Type.Union do
             end)
 
           type = constraints[:types][name][:type]
+          type_constraints = constraints[:types][name][:constraints] || []
+
+          type_constraints =
+            if union_tag = constraints[:types][name][:tag] do
+              Keyword.put(type_constraints, :__union_tag__, union_tag)
+            else
+              type_constraints
+            end
 
           item_constraints =
             Ash.Type.include_source({:array, type}, constraints[:__source__],
-              items: constraints[:types][name][:constraints] || []
+              items: type_constraints
             )
 
           result =
@@ -931,13 +915,21 @@ defmodule Ash.Type.Union do
         new_values = Enum.map(new_values, & &1.value)
 
         type = constraints[:types][name][:type]
+        type_constraints = constraints[:types][name][:constraints] || []
+
+        type_constraints =
+          if union_tag = constraints[:types][name][:tag] do
+            Keyword.put(type_constraints, :__union_tag__, union_tag)
+          else
+            type_constraints
+          end
 
         result =
           Ash.Type.handle_change(
             {:array, type},
             old_values_by_type[name] || [],
             new_values,
-            Keyword.put(constraints, :items, constraints[:types][name][:constraints])
+            Keyword.put(constraints, :items, type_constraints)
           )
 
         case result do

@@ -283,7 +283,8 @@ defmodule Ash.Test.CodeInterfaceTest do
 
       assert bob.first_name == "bob_updated"
 
-      assert_received {:notification, %Ash.Notifier.Notification{} = notification}
+      assert_received {:notification,
+                       %Ash.Notifier.Notification{resource: User, action: %{name: :update}}}
     end
 
     test "bulk update can take a @context options" do

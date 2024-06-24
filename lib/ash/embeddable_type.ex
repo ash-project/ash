@@ -731,19 +731,14 @@ defmodule Ash.EmbeddableType do
       def handle_change_array(old_values, new_values, constraints) do
         pkey_fields = Ash.Resource.Info.primary_key(__MODULE__)
 
-        destroy_action =
-          constraints[:destroy_action] ||
-            Ash.Resource.Info.primary_action!(__MODULE__, :destroy).name
-
         old_values
         |> List.wrap()
-        |> Enum.with_index()
         |> then(fn list ->
           if Enum.empty?(pkey_fields) do
             list
           else
             list
-            |> Enum.reject(fn {old_value, _} ->
+            |> Enum.reject(fn old_value ->
               pkey = Map.take(old_value, pkey_fields)
 
               Enum.any?(new_values, fn new_value ->
@@ -752,33 +747,45 @@ defmodule Ash.EmbeddableType do
             end)
           end
         end)
-        |> Enum.reduce_while(:ok, fn {record, index}, :ok ->
-          record
-          |> Ash.Changeset.new()
-          |> Ash.EmbeddableType.copy_source(constraints)
-          |> Ash.Changeset.for_destroy(destroy_action, %{}, domain: ShadowDomain)
-          |> Ash.destroy()
-          |> case do
-            :ok ->
-              {:cont, :ok}
-
-            {:error, error} ->
-              errors =
-                error
-                |> Ash.EmbeddableType.handle_errors()
-                |> Enum.map(fn keyword ->
-                  Keyword.put(keyword, :index, index)
-                end)
-
-              {:halt, {:error, errors}}
-          end
-        end)
         |> case do
-          :ok ->
+          [] ->
             {:ok, new_values}
 
-          {:error, error} ->
-            {:error, error}
+          to_destroy ->
+            destroy_action =
+              constraints[:destroy_action] ||
+                Ash.Resource.Info.primary_action!(__MODULE__, :destroy).name
+
+            {context, opts} =
+              case constraints[:__source__] do
+                %Ash.Changeset{context: context} = source ->
+                  {Map.put(context, :__source__, source),
+                   Ash.Context.to_opts(context[:private] || %{})}
+
+                _ ->
+                  {%{}, []}
+              end
+
+            case Ash.bulk_destroy(
+                   to_destroy,
+                   destroy_action,
+                   %{},
+                   Keyword.merge(opts,
+                     domain: ShadowDomain,
+                     context: context,
+                     sorted?: true,
+                     skip_unknown_inputs: skip_unknown_inputs(constraints),
+                     return_records?: true,
+                     return_errors?: true,
+                     batch_size: 1_000_000_000
+                   )
+                 ) do
+              %Ash.BulkResult{status: :success} ->
+                {:ok, new_values}
+
+              %Ash.BulkResult{errors: errors} ->
+                {:error, Ash.EmbeddableType.handle_errors(errors)}
+            end
         end
       end
 
