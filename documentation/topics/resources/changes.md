@@ -162,7 +162,7 @@ Changes can support being run on batches of changesets, using the `c:Ash.Resourc
 
 > ### batch_change/3 must be defined {: .warning}
 >
-> `c:Ash.Resource.Change.before_batch/3` must be defined for `c:Ash.Resource.Change.before_batch/3` and `c:Ash.Resource.Change.after_batch/3` to be called!
+> `c:Ash.Resource.Change.batch_change/3` must be defined for `c:Ash.Resource.Change.before_batch/3` and `c:Ash.Resource.Change.after_batch/3` to be called!
 
 For some changes, this may not be necessary at all, i.e the `Slugify` example has no benefit from batching. If no batch callbacks are added, your change will be run on a loop over the changesets. For the sake of example, however, we will show what it might look like to implement batching for our `Slugify` example.
 
