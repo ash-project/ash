@@ -1394,28 +1394,32 @@ defmodule Ash.Actions.Destroy.Bulk do
       Task.async_stream(
         stream,
         fn batch ->
-          Process.put(:ash_started_transaction?, true)
-          batch_result = callback.(batch)
-          {errors, _} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
+          try do
+            Process.put(:ash_started_transaction?, true)
+            batch_result = callback.(batch)
+            {errors, _} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
 
-          notifications =
-            if opts[:notify?] do
-              process_notifications = Process.get(:ash_notifications, [])
-              bulk_notifications = Process.get({:bulk_destroy_notifications, ref}) || []
+            notifications =
+              if opts[:notify?] do
+                process_notifications = Process.get(:ash_notifications, [])
+                bulk_notifications = Process.get({:bulk_destroy_notifications, ref}) || []
 
-              if opts[:return_notifications?] do
-                process_notifications ++ bulk_notifications
-              else
-                if opts[:transaction] && opts[:transaction] != :all do
-                  Ash.Notifier.notify(bulk_notifications)
-                  Ash.Notifier.notify(process_notifications)
+                if opts[:return_notifications?] do
+                  process_notifications ++ bulk_notifications
+                else
+                  if opts[:transaction] && opts[:transaction] != :all do
+                    Ash.Notifier.notify(bulk_notifications)
+                    Ash.Notifier.notify(process_notifications)
+                  end
+
+                  []
                 end
-
-                []
               end
-            end
 
-          {batch_result, notifications, errors}
+            {batch_result, notifications, errors}
+          after
+            Process.put(:ash_started_transaction?, false)
+          end
         end,
         timeout: :infinity,
         max_concurrency: max_concurrency
