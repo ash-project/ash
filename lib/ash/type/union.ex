@@ -61,6 +61,31 @@ defmodule Ash.Type.Union do
     ]
   ]
 
+  @impl true
+  def init(constraints) do
+    constraints[:types]
+    |> List.wrap()
+    |> Enum.reduce_while({:ok, []}, fn {name, config}, {:ok, types} ->
+      type = config[:type]
+      constraints = config[:constraints] || []
+
+      case Ash.Type.init(type, constraints) do
+        {:ok, constraints} ->
+          {:cont, {:ok, [{name, Keyword.put(config, :constraints, constraints)} | types]}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, types} ->
+        {:ok, Keyword.put(constraints, :types, Enum.reverse(types))}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
   @doc false
   def union_types(value) do
     {:ok,
