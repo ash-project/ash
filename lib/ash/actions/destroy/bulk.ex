@@ -1211,8 +1211,6 @@ defmodule Ash.Actions.Destroy.Bulk do
         Ash.DataLayer.transaction(
           List.wrap(resource) ++ action.touches_resources,
           fn ->
-            tmp_ref = make_ref()
-
             result =
               do_handle_batch(
                 batch,
@@ -1221,7 +1219,7 @@ defmodule Ash.Actions.Destroy.Bulk do
                 action,
                 opts,
                 all_changes,
-                tmp_ref,
+                ref,
                 base_changeset,
                 must_return_records_for_changes?,
                 changes,
@@ -1229,7 +1227,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               )
 
             {new_errors, new_error_count} =
-              Process.delete({:bulk_destroy_errors, tmp_ref}) || {[], 0}
+              Process.delete({:bulk_destroy_errors, ref}) || {[], 0}
 
             store_error(ref, new_errors, opts, new_error_count)
 
