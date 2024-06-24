@@ -2709,13 +2709,18 @@ defmodule Ash.Filter do
        when is_atom(field) or is_binary(field) do
     cond do
       rel = relationship(context, field) ->
-        context =
-          context
-          |> Map.update!(:relationship_path, fn path -> path ++ [rel.name] end)
-          |> Map.put(:resource, rel.destination)
+        if rel.type != :many_to_many && !Map.get(rel, :no_attributes) &&
+             [rel.destination_attribute] == Ash.Resource.Info.primary_key(rel.destination) do
+          with attr <- attribute(%{public?: true, resource: rel.source}, rel.source_attribute) do
+            add_expression_part({attr.name, nested_statement}, context, expression)
+          end
+        else
+          context =
+            context
+            |> Map.update!(:relationship_path, fn path -> path ++ [rel.name] end)
+            |> Map.put(:resource, rel.destination)
 
-        cond do
-          is_list(nested_statement) || is_map(nested_statement) ->
+          if is_list(nested_statement) || is_map(nested_statement) do
             case parse_expression(nested_statement, context) do
               {:ok, nested_expression} ->
                 {:ok, BooleanExpression.optimized_new(:and, expression, nested_expression)}
@@ -2723,16 +2728,7 @@ defmodule Ash.Filter do
               {:error, error} ->
                 {:error, error}
             end
-
-          rel.type != :many_to_many && !Map.get(rel, :no_attributes) &&
-              [rel.source_attribute] == Ash.Resource.Info.primary_key(rel.destination) ->
-            with attr <- attribute(%{public?: true, resource: rel.source}, rel.source_attribute),
-                 %Ash.Resource.Attribute{type: type, constraints: constraints} = attr,
-                 {:ok, casted} <- Ash.Type.cast_input(type, nested_statement, constraints) do
-              add_expression_part({attr, casted}, %{context | resource: rel.source}, expression)
-            end
-
-          true ->
+          else
             with [field] <- Ash.Resource.Info.primary_key(context.resource),
                  attribute when not is_nil(attribute) <- attribute(context, field),
                  {:ok, casted} <-
@@ -2747,6 +2743,7 @@ defmodule Ash.Filter do
                      "a single value must be castable to the primary key of the resource: #{inspect(context.resource)}"
                  )}
             end
+          end
         end
 
       attr = attribute(context, field) ->
