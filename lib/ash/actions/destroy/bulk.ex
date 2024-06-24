@@ -1259,6 +1259,8 @@ defmodule Ash.Actions.Destroy.Bulk do
         end
       after
         if notify? do
+          Process.put(:ash_started_transaction?, false)
+
           notifications = Process.get(:ash_notifications, [])
           remaining_notifications = Ash.Notifier.notify(notifications)
           Process.delete(:ash_notifications) || []
