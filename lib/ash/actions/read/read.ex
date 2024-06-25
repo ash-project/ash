@@ -1201,6 +1201,7 @@ defmodule Ash.Actions.Read do
       {:calculation, load_through}, {:ok, results} ->
         load_through
         |> Map.take(Map.keys(query.calculations))
+        |> Enum.reject(fn {_, v} -> is_nil(v) end)
         |> Enum.reduce_while({:ok, results}, fn {name, load_statement}, {:ok, results} ->
           calculation = Map.get(query.calculations, name)
 
@@ -1214,10 +1215,10 @@ defmodule Ash.Actions.Read do
             end
 
           case calculation.type do
-            {:array, _} ->
+            {:array, type} ->
               Enum.reduce_while(values, {:ok, []}, fn list, {:ok, acc} ->
                 case Ash.Type.load(
-                       calculation.type,
+                       type,
                        list,
                        load_statement,
                        calculation.constraints[:items] || [],
@@ -1308,6 +1309,7 @@ defmodule Ash.Actions.Read do
 
       {:attribute, load_through}, {:ok, results} when attrs? ->
         load_through
+        |> Enum.reject(fn {_, v} -> is_nil(v) end)
         |> Enum.reduce_while({:ok, results}, fn {name, load_statement}, {:ok, results} ->
           load_statement =
             if is_map(load_statement) and not is_struct(load_statement) do
@@ -1321,13 +1323,13 @@ defmodule Ash.Actions.Read do
           values = Enum.map(results, &Map.get(&1, attribute.name))
 
           case attribute.type do
-            {:array, _} ->
+            {:array, type} ->
               Enum.reduce_while(values, {:ok, []}, fn list, {:ok, acc} ->
                 case Ash.Type.load(
-                       attribute.type,
+                       type,
                        list,
                        load_statement,
-                       attribute.constraints,
+                       attribute.constraints[:items] || [],
                        %{
                          domain: domain,
                          actor: actor,

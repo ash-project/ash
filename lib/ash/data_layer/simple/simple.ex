@@ -17,6 +17,7 @@ defmodule Ash.DataLayer.Simple do
   def can?(_, :destroy), do: true
   def can?(_, :sort), do: true
   def can?(_, :limit), do: true
+  def can?(_, :offset), do: true
   def can?(_, {:sort, _}), do: true
   def can?(_, :filter), do: true
   def can?(_, :boolean_filter), do: true
@@ -28,7 +29,7 @@ defmodule Ash.DataLayer.Simple do
 
   defmodule Query do
     @moduledoc false
-    defstruct [:data, :resource, :filter, :domain, :limit, sort: [], data_set?: false]
+    defstruct [:data, :resource, :filter, :domain, :limit, :offset, sort: [], data_set?: false]
   end
 
   @doc """
@@ -59,7 +60,7 @@ defmodule Ash.DataLayer.Simple do
   end
 
   def run_query(
-        %{data: data, sort: sort, domain: domain, filter: filter, limit: limit},
+        %{data: data, sort: sort, domain: domain, filter: filter, limit: limit, offset: offset},
         _resource
       ) do
     data
@@ -69,6 +70,13 @@ defmodule Ash.DataLayer.Simple do
         {:ok,
          results
          |> Ash.Actions.Sort.runtime_sort(sort, domain: domain)
+         |> then(fn data ->
+           if offset && offset != 0 do
+             Enum.drop(data, offset)
+           else
+             data
+           end
+         end)
          |> then(fn data ->
            if limit do
              Enum.take(data, limit)
@@ -89,6 +97,11 @@ defmodule Ash.DataLayer.Simple do
   @doc false
   def limit(query, limit, _) do
     {:ok, %{query | limit: limit}}
+  end
+
+  @doc false
+  def offset(query, offset, _) do
+    {:ok, %{query | offset: offset}}
   end
 
   @doc false

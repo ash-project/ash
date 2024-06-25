@@ -832,6 +832,7 @@ defmodule Ash.CodeInterface do
                             bulk_opts
                             |> Keyword.put(:return_records?, true)
                             |> Keyword.put(:return_errors?, true)
+                            |> Keyword.put(:notify?, true)
                           else
                             bulk_opts
                           end
@@ -855,7 +856,11 @@ defmodule Ash.CodeInterface do
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
-                              {:ok, record}
+                              if opts[:return_notifications?] do
+                                {:ok, record, result.notifications}
+                              else
+                                {:ok, record}
+                              end
 
                             %Ash.BulkResult{status: :success, records: []} = result ->
                               {:error,
@@ -896,6 +901,7 @@ defmodule Ash.CodeInterface do
                             bulk_opts
                             |> Keyword.put(:return_records?, true)
                             |> Keyword.put(:return_errors?, true)
+                            |> Keyword.put(:notify?, true)
                           else
                             bulk_opts
                           end
@@ -919,7 +925,11 @@ defmodule Ash.CodeInterface do
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
-                              record
+                              if opts[:return_notifications?] do
+                                {record, result.notifications}
+                              else
+                                record
+                              end
 
                             %Ash.BulkResult{status: :success, records: []} = result ->
                               raise Ash.Error.to_error_class(
@@ -1037,6 +1047,7 @@ defmodule Ash.CodeInterface do
                             bulk_opts
                             |> Keyword.put(:return_records?, opts[:return_destroyed?])
                             |> Keyword.put(:return_errors?, true)
+                            |> Keyword.put(:notify?, true)
                           else
                             Keyword.put(bulk_opts, :return_records?, opts[:return_destroyed?])
                           end
@@ -1060,7 +1071,11 @@ defmodule Ash.CodeInterface do
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
-                              {:ok, record}
+                              if opts[:return_notifications?] do
+                                {:ok, record, result.notifications}
+                              else
+                                {:ok, record}
+                              end
 
                             %Ash.BulkResult{status: :success, records: empty} = result
                             when empty in [[], nil] ->
@@ -1073,7 +1088,11 @@ defmodule Ash.CodeInterface do
                                    )
                                  )}
                               else
-                                :ok
+                                if opts[:return_notifications?] do
+                                  {:ok, result.notifications}
+                                else
+                                  :ok
+                                end
                               end
 
                             %Ash.BulkResult{status: :error, errors: errors} ->
@@ -1106,6 +1125,7 @@ defmodule Ash.CodeInterface do
                             bulk_opts
                             |> Keyword.put(:return_records?, opts[:return_destroyed?])
                             |> Keyword.put(:return_errors?, true)
+                            |> Keyword.put(:notify?, true)
                           else
                             Keyword.put(bulk_opts, :return_records?, opts[:return_destroyed?])
                           end
@@ -1129,7 +1149,11 @@ defmodule Ash.CodeInterface do
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
-                              record
+                              if opts[:return_notifications?] do
+                                {record, result.notifications}
+                              else
+                                record
+                              end
 
                             %Ash.BulkResult{status: :success, records: empty} = result
                             when empty in [[], nil] ->
@@ -1141,7 +1165,11 @@ defmodule Ash.CodeInterface do
                                         )
                                       )
                               else
-                                :ok
+                                if opts[:return_notifications?] do
+                                  {:ok, result.notifications}
+                                else
+                                  :ok
+                                end
                               end
                           end
 

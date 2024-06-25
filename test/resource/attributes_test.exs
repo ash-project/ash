@@ -51,6 +51,39 @@ defmodule Ash.Test.Resource.AttributesTest do
 
       assert nil == Ash.Resource.Info.public_attribute(Post, :bar)
     end
+
+    test "uuid_v7 attributes are persisted on the resource properly" do
+      defposts do
+        attributes do
+          uuid_v7_primary_key :other_id
+          attribute :another_id, :uuid_v7
+        end
+      end
+
+      assert [
+               _,
+               %Attribute{
+                 name: :other_id,
+                 primary_key?: true,
+                 public?: true,
+                 sortable?: true,
+                 type: Ash.Type.UUIDv7,
+                 writable?: false
+               },
+               %Attribute{
+                 name: :another_id,
+                 primary_key?: false,
+                 public?: false,
+                 sortable?: true,
+                 type: Ash.Type.UUIDv7,
+                 writable?: true
+               }
+             ] = Ash.Resource.Info.attributes(Post)
+
+      assert [_, %Attribute{name: :other_id}] = Ash.Resource.Info.public_attributes(Post)
+
+      assert %Attribute{name: :other_id} = Ash.Resource.Info.attribute(Post, :other_id)
+    end
   end
 
   describe "validation" do

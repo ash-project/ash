@@ -44,9 +44,8 @@ defmodule Ash.Actions.Update.Bulk do
 
     fully_atomic_changeset =
       cond do
-        !Enum.empty?(query.before_action) || !Enum.empty?(query.after_action) ->
-          {:not_atomic,
-           "cannot atomically update a query if it has `before_action` or `after_action` hooks"}
+        !Enum.empty?(query.before_action) ->
+          {:not_atomic, "cannot atomically update a query if it has `before_action` hooks"}
 
         not_atomic_reason ->
           {:not_atomic, not_atomic_reason}
@@ -195,7 +194,8 @@ defmodule Ash.Actions.Update.Bulk do
           # having after action hooks. Or perhaps we need to stream the ids and then bulk update
           # them.
           opts =
-            if has_after_batch_hooks? || opts[:notify?] do
+            if has_after_batch_hooks? || !Enum.empty?(atomic_changeset.after_action) ||
+                 opts[:notify?] do
               Keyword.put(opts, :return_records?, true)
             else
               opts
@@ -338,48 +338,78 @@ defmodule Ash.Actions.Update.Bulk do
           true
         end
 
-      Ash.DataLayer.transaction(
-        List.wrap(resource) ++ action.touches_resources,
-        fn ->
-          do_run(
-            domain,
-            stream,
-            action,
-            input,
-            opts,
-            metadata_key,
-            context_key,
-            not_atomic_reason
-          )
-        end,
-        opts[:timeout],
-        %{
-          type: context_key,
-          metadata: %{
-            resource: resource,
-            action: action.name,
-            actor: opts[:actor]
-          },
-          data_layer_context: opts[:data_layer_context] || %{}
-        }
-      )
-      |> case do
-        {:ok, bulk_result} ->
-          bulk_result =
-            if notify? do
-              %{
+      try do
+        Ash.DataLayer.transaction(
+          List.wrap(resource) ++ action.touches_resources,
+          fn ->
+            do_run(
+              domain,
+              stream,
+              action,
+              input,
+              Keyword.merge(opts, notify?: opts[:notify?], return_notifications?: opts[:notify?]),
+              metadata_key,
+              context_key,
+              not_atomic_reason
+            )
+          end,
+          opts[:timeout],
+          %{
+            type: context_key,
+            metadata: %{
+              resource: resource,
+              action: action.name,
+              actor: opts[:actor]
+            },
+            data_layer_context: opts[:data_layer_context] || %{}
+          }
+        )
+        |> case do
+          {:ok, bulk_result} ->
+            bulk_result =
+              if notify? do
+                notifications =
+                  if opts[:return_notifications?] do
+                    bulk_result.notifications ++ List.wrap(Process.delete(:ash_notifications))
+                  else
+                    if opts[:notify?] do
+                      remaining_notifications =
+                        Ash.Notifier.notify(
+                          bulk_result.notifications ++
+                            List.wrap(Process.delete(:ash_notifications))
+                        )
+
+                      Ash.Actions.Helpers.warn_missed!(resource, action, %{
+                        resource_notifications: remaining_notifications
+                      })
+                    else
+                      []
+                    end
+                  end
+
+                %{
+                  bulk_result
+                  | notifications: notifications
+                }
+              else
+                Process.put(
+                  :ash_notifications,
+                  List.wrap(Process.get(:ash_notifications)) ++
+                    List.wrap(bulk_result.notifications)
+                )
+
                 bulk_result
-                | notifications:
-                    bulk_result.notifications ++ Process.delete(:ash_notifications) || []
-              }
-            else
-              bulk_result
-            end
+              end
 
-          handle_bulk_result(bulk_result, metadata_key, opts)
+            handle_bulk_result(bulk_result, metadata_key, opts)
 
-        {:error, error} ->
-          {:error, error}
+          {:error, error} ->
+            {:error, error}
+        end
+      after
+        if notify? do
+          Process.put(:ash_started_transaction?, false)
+        end
       end
     else
       domain
@@ -478,6 +508,37 @@ defmodule Ash.Actions.Update.Bulk do
               {results, []}
             end
 
+          {results, errors, error_count, notifications} =
+            if Enum.empty?(atomic_changeset.after_action) do
+              {results, [], 0, notifications}
+            else
+              Enum.reduce(results, {[], [], 0, notifications}, fn result,
+                                                                  {results, errors, error_count,
+                                                                   notifications} ->
+                case Ash.Changeset.run_after_actions(result, atomic_changeset, []) do
+                  {:error, error} ->
+                    if opts[:transaction] && opts[:rollback_on_error?] do
+                      if Ash.DataLayer.in_transaction?(atomic_changeset.resource) do
+                        Ash.DataLayer.rollback(
+                          atomic_changeset.resource,
+                          error
+                        )
+                      end
+                    end
+
+                    {results, errors ++ List.wrap(error),
+                     error_count + Enum.count(List.wrap(error)), notifications}
+
+                  {:ok, result, _changeset, %{notifications: more_new_notifications}} ->
+                    {[result | results], errors, error_count,
+                     notifications ++ more_new_notifications}
+                end
+              end)
+              |> then(fn {results, errors, error_count, notifications} ->
+                {Enum.reverse(results), errors, error_count, notifications}
+              end)
+            end
+
           {results, errors, error_count} =
             case load_data(
                    results,
@@ -487,10 +548,10 @@ defmodule Ash.Actions.Update.Bulk do
                    opts
                  ) do
               {:ok, results} ->
-                {results, [], 0}
+                {results, errors, error_count}
 
               {:error, error} ->
-                {[], List.wrap(error), Enum.count(List.wrap(error))}
+                {[], errors ++ List.wrap(error), error_count + Enum.count(List.wrap(error))}
             end
 
           notifications =
@@ -1428,6 +1489,9 @@ defmodule Ash.Actions.Update.Bulk do
 
             store_error(ref, new_errors, opts, new_error_count)
 
+            notifications = Process.get({:bulk_update_notifications, tmp_ref}) || []
+            store_notification(ref, notifications, opts)
+
             result
           end,
           opts[:timeout],
@@ -1452,6 +1516,7 @@ defmodule Ash.Actions.Update.Bulk do
         end
       after
         if notify? do
+          Process.put(:ash_started_transaction?, false)
           notifications = Process.get(:ash_notifications, [])
           remaining_notifications = Ash.Notifier.notify(notifications)
           Process.delete(:ash_notifications) || []
@@ -1600,28 +1665,32 @@ defmodule Ash.Actions.Update.Bulk do
       Task.async_stream(
         stream,
         fn batch ->
-          Process.put(:ash_started_transaction?, true)
-          batch_result = callback.(batch)
-          {errors, _} = Process.get({:bulk_update_errors, ref}) || {[], 0}
+          try do
+            Process.put(:ash_started_transaction?, true)
+            batch_result = callback.(batch)
+            {errors, _} = Process.get({:bulk_update_errors, ref}) || {[], 0}
 
-          notifications =
-            if opts[:notify?] do
-              process_notifications = Process.get(:ash_notifications, [])
-              bulk_notifications = Process.get({:bulk_update_notifications, ref}) || []
+            notifications =
+              if opts[:notify?] do
+                process_notifications = Process.get(:ash_notifications, [])
+                bulk_notifications = Process.get({:bulk_update_notifications, ref}) || []
 
-              if opts[:return_notifications?] do
-                process_notifications ++ bulk_notifications
-              else
-                if opts[:transaction] && opts[:transaction] != :all do
-                  Ash.Notifier.notify(bulk_notifications)
-                  Ash.Notifier.notify(process_notifications)
+                if opts[:return_notifications?] do
+                  process_notifications ++ bulk_notifications
+                else
+                  if opts[:transaction] && opts[:transaction] != :all do
+                    Ash.Notifier.notify(bulk_notifications)
+                    Ash.Notifier.notify(process_notifications)
+                  end
+
+                  []
                 end
-
-                []
               end
-            end
 
-          {batch_result, notifications, errors}
+            {batch_result, notifications, errors}
+          after
+            Process.put(:ash_started_transaction?, false)
+          end
         end,
         timeout: :infinity,
         max_concurrency: max_concurrency
