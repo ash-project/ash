@@ -329,7 +329,7 @@ defmodule Helpdesk.Support.Ticket.Relationships.TicketsAboveThreshold do
   require Ash.Query
 
   def load(records, _opts, %{query: query, actor: actor, authorize?: authorize?}) do
-    # Use existing records to limit resultds
+    # Use existing records to limit results
     rep_ids = Enum.map(records, & &1.id)
 
     {:ok,
@@ -365,7 +365,7 @@ Lets say the records come from some totally unrelated source, or you can't just 
 
 ```elixir
 def load(records, _opts, %{query: query, ..}) do
-  # fetch the data from the other source, which is capabale of sorting
+  # fetch the data from the other source, which is capable of sorting
   data = get_other_data(data, query.sort)
 
   query
