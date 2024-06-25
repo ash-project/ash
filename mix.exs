@@ -130,8 +130,8 @@ defmodule Ash.MixProject do
         Ash.Resource.Verifiers,
         Ash.Query.Function,
         Ash.Query.Operator,
-        Ash.Resource.Change,
         Ash.Resource.Validation,
+        Ash.Resource.Change,
         Ash.Policy.Check
       ],
       before_closing_head_tag: fn type ->
@@ -186,10 +186,12 @@ defmodule Ash.MixProject do
           Ash.Query.Calculation,
           Ash.Query.Aggregate
         ],
-        Changesets: [
+        Changes: [
           Ash.Changeset,
           Ash.Resource.Change,
-          Ash.Resource.Change.Builtins,
+          Ash.Resource.Change.Builtins
+        ],
+        Validations: [
           Ash.Resource.Validation,
           Ash.Resource.Validation.Builtins
         ],
