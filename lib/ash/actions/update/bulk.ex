@@ -1465,6 +1465,9 @@ defmodule Ash.Actions.Update.Bulk do
 
             store_error(ref, new_errors, opts, new_error_count)
 
+            notifications = Process.get({:bulk_update_notifications, tmp_ref}) || []
+            store_notification(ref, notifications, opts)
+
             result
           end,
           opts[:timeout],
