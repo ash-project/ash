@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  import ExUnit.CaptureLog
+
   alias Ash.Test.Domain, as: Domain
 
   defmodule Notifier do
@@ -329,6 +331,29 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
+  defmodule MnesiaPost do
+    @doc false
+
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia, notifiers: [Notifier]
+
+    mnesia do
+      table :mnesia_post_updates
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, allow_nil?: false, public?: true
+      attribute :title2, :string, public?: true
+
+      timestamps()
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, :create, :update]
+    end
+  end
+
   defmodule Tenant do
     @doc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -488,6 +513,48 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
     assert_received {:notification, %{data: %{title: "title2"}}}
     assert_received {:notification, %{data: %{title: "title2"}}}
+  end
+
+  test "sends notifications with stream strategy in transactions" do
+    capture_log(fn ->
+      Ash.DataLayer.Mnesia.start(Domain, [MnesiaPost])
+    end)
+
+    assert %Ash.BulkResult{records: [%{title2: "updated value"}, %{title2: "updated value"}]} =
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], MnesiaPost, :create,
+               return_stream?: true,
+               return_records?: true,
+               authorize?: false
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_update!(:update, %{title2: "updated value"},
+               resource: MnesiaPost,
+               strategy: :stream,
+               allow_stream_with: :full_read,
+               return_records?: true,
+               notify?: true,
+               return_errors?: true,
+               authorize?: false
+             )
+
+    assert_received {:notification,
+                     %{
+                       data: %{title: "title1"},
+                       changeset: %{attributes: %{title2: "updated value"}}
+                     }}
+
+    assert_received {:notification,
+                     %{
+                       data: %{title: "title2"},
+                       changeset: %{attributes: %{title2: "updated value"}}
+                     }}
+
+    capture_log(fn ->
+      :mnesia.stop()
+      :mnesia.delete_schema([node()])
+    end)
   end
 
   test "notifications can be returned" do
