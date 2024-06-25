@@ -398,7 +398,7 @@ defmodule Ash.Type.Union do
         {:error, errors}
 
       {_, {:error, error}} ->
-        {:error, error_message(error)}
+        {:error, error}
     end
   end
 
