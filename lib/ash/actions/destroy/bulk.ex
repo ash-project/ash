@@ -387,7 +387,14 @@ defmodule Ash.Actions.Destroy.Bulk do
         Ash.DataLayer.transaction(
           List.wrap(resource) ++ action.touches_resources,
           fn ->
-            do_run(domain, stream, action, input, opts, not_atomic_reason)
+            do_run(
+              domain,
+              stream,
+              action,
+              input,
+              Keyword.merge(opts, notify?: opts[:notify?], return_notifications?: opts[:notify?]),
+              not_atomic_reason
+            )
           end,
           opts[:timeout],
           %{
@@ -404,13 +411,36 @@ defmodule Ash.Actions.Destroy.Bulk do
           {:ok, bulk_result} ->
             bulk_result =
               if notify? do
+                notifications =
+                  if opts[:return_notifications?] do
+                    bulk_result.notifications ++ List.wrap(Process.delete(:ash_notifications))
+                  else
+                    if opts[:notify?] do
+                      remaining_notifications =
+                        Ash.Notifier.notify(
+                          bulk_result.notifications ++
+                            List.wrap(Process.delete(:ash_notifications))
+                        )
+
+                      Ash.Actions.Helpers.warn_missed!(resource, action, %{
+                        resource_notifications: remaining_notifications
+                      })
+                    else
+                      []
+                    end
+                  end
+
                 %{
                   bulk_result
-                  | notifications:
-                      (bulk_result.notifications || []) ++
-                        List.wrap(Process.delete(:ash_notifications))
+                  | notifications: notifications
                 }
               else
+                Process.put(
+                  :ash_notifications,
+                  List.wrap(Process.get(:ash_notifications)) ++
+                    List.wrap(bulk_result.notifications)
+                )
+
                 bulk_result
               end
 
@@ -1217,7 +1247,7 @@ defmodule Ash.Actions.Destroy.Bulk do
         Ash.DataLayer.transaction(
           List.wrap(resource) ++ action.touches_resources,
           fn ->
-           tmp_ref = make_ref()
+            tmp_ref = make_ref()
 
             result =
               do_handle_batch(

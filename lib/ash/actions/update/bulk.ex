@@ -347,7 +347,7 @@ defmodule Ash.Actions.Update.Bulk do
               stream,
               action,
               input,
-              opts,
+              Keyword.merge(opts, notify?: opts[:notify?], return_notifications?: opts[:notify?]),
               metadata_key,
               context_key,
               not_atomic_reason
@@ -368,12 +368,36 @@ defmodule Ash.Actions.Update.Bulk do
           {:ok, bulk_result} ->
             bulk_result =
               if notify? do
+                notifications =
+                  if opts[:return_notifications?] do
+                    bulk_result.notifications ++ List.wrap(Process.delete(:ash_notifications))
+                  else
+                    if opts[:notify?] do
+                      remaining_notifications =
+                        Ash.Notifier.notify(
+                          bulk_result.notifications ++
+                            List.wrap(Process.delete(:ash_notifications))
+                        )
+
+                      Ash.Actions.Helpers.warn_missed!(resource, action, %{
+                        resource_notifications: remaining_notifications
+                      })
+                    else
+                      []
+                    end
+                  end
+
                 %{
                   bulk_result
-                  | notifications:
-                      bulk_result.notifications ++ Process.delete(:ash_notifications) || []
+                  | notifications: notifications
                 }
               else
+                Process.put(
+                  :ash_notifications,
+                  List.wrap(Process.get(:ash_notifications)) ++
+                    List.wrap(bulk_result.notifications)
+                )
+
                 bulk_result
               end
 
