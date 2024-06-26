@@ -403,9 +403,17 @@ defmodule Ash.Actions.Read.Calculations do
   defp run_calculation(calculation, ash_query, records) do
     context = Map.put(calculation.context, :domain, ash_query.domain)
 
+    opts =
+      Ash.Expr.fill_template(
+        calculation.opts,
+        calculation.context.actor,
+        calculation.context.arguments,
+        calculation.context.source_context
+      )
+
     records
     |> apply_transient_calculation_values(calculation, ash_query, [])
-    |> calculation.module.calculate(calculation.opts, context)
+    |> calculation.module.calculate(opts, context)
     |> case do
       :unknown ->
         Enum.map(records, fn _ ->
@@ -702,6 +710,11 @@ defmodule Ash.Actions.Read.Calculations do
       if calculation.module.has_expression?() do
         expression =
           calculation.opts
+          |> Ash.Expr.fill_template(
+            calculation.context.actor,
+            calculation.context.arguments,
+            calculation.context.source_context
+          )
           |> calculation.module.expression(calculation.context)
           |> Ash.Expr.fill_template(
             calculation.context.actor,
