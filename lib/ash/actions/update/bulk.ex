@@ -214,7 +214,17 @@ defmodule Ash.Actions.Update.Bulk do
             Ash.DataLayer.transaction(
               List.wrap(atomic_changeset.resource) ++ action.touches_resources,
               fn ->
-                do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts)
+                result =
+                  do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts)
+
+                additional_notifications =
+                  if notify? do
+                    List.wrap(Process.delete(:ash_notifications))
+                  else
+                    []
+                  end
+
+                {result, additional_notifications}
               end,
               opts[:timeout],
               %{
@@ -228,17 +238,12 @@ defmodule Ash.Actions.Update.Bulk do
               }
             )
           else
-            {:ok, do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts)}
+            {:ok,
+              {do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts), []}}
           end
           |> case do
-            {:ok, bulk_result} ->
-              notifications =
-                if notify? do
-                  List.wrap(bulk_result.notifications) ++
-                    List.wrap(Process.delete(:ash_notifications))
-                else
-                  List.wrap(bulk_result.notifications)
-                end
+            {:ok, {bulk_result, additional_notifications}} ->
+              notifications = List.wrap(bulk_result.notifications) ++ additional_notifications
 
               if opts[:return_notifications?] do
                 %{bulk_result | notifications: notifications}
