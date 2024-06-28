@@ -105,6 +105,7 @@ defmodule Ash.Actions.Read.Relationships do
             :domain,
             Ash.Domain.Info.related_domain(related_query, relationship, query.domain)
           )
+          |> Ash.Query.set_tenant(query.tenant)
           |> Ash.Query.set_context(%{
             private: %{async_limiter: query.context[:private][:async_limiter]}
           })}}

@@ -1675,12 +1675,11 @@ defmodule Ash.Filter do
 
     case Ash.Actions.Read.unpaginated_read(query) do
       {:ok, data} ->
-        {:ok,
-         records_to_expression(
-           data,
-           relationship,
-           path
-         )}
+        records_to_expression(
+          data,
+          relationship,
+          path
+        )
 
       {:error, error} ->
         {:error, error}

@@ -2958,8 +2958,7 @@ defmodule Ash.Query do
   end
 
   defp add_tenant(query, ash_query) do
-    with :context <- Ash.Resource.Info.multitenancy_strategy(ash_query.resource),
-         tenant when not is_nil(tenant) <- ash_query.to_tenant,
+    with tenant when not is_nil(tenant) <- ash_query.to_tenant,
          {:ok, query} <- Ash.DataLayer.set_tenant(ash_query.resource, query, ash_query.to_tenant) do
       {:ok, query}
     else
