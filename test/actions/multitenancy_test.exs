@@ -323,8 +323,7 @@ defmodule Ash.Actions.MultitenancyTest do
     end
 
     test "prior filters are not affected by the addition of a multitenancy attribute", %{
-      tenant1: tenant1,
-      tenant2: tenant2
+      tenant1: tenant1
     } do
       user1 =
         User

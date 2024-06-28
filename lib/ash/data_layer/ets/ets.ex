@@ -57,6 +57,7 @@ defmodule Ash.DataLayer.Ets do
       :domain,
       :distinct,
       :distinct_sort,
+      context: %{},
       calculations: [],
       aggregates: [],
       relationships: %{},
@@ -274,6 +275,12 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
+  def set_context(_resource, query, context) do
+    {:ok, %{query | context: context}}
+  end
+
+  @doc false
+  @impl true
   def filter(query, filter, _resource) do
     if query.filter do
       {:ok, %{query | filter: Ash.Filter.add_to_filter!(query.filter, filter)}}
@@ -357,13 +364,15 @@ defmodule Ash.DataLayer.Ets do
           tenant: tenant,
           calculations: calculations,
           aggregates: aggregates,
-          domain: domain
+          domain: domain,
+          context: context
         },
         _resource,
         parent \\ nil
       ) do
     with {:ok, records} <- get_records(resource, tenant),
-         {:ok, records} <- filter_matches(records, filter, domain, tenant, parent),
+         {:ok, records} <-
+           filter_matches(records, filter, domain, context[:private][:tenant], parent),
          records <- Sort.runtime_sort(records, distinct_sort || sort, domain: domain),
          records <- Sort.runtime_distinct(records, distinct, domain: domain),
          records <- Sort.runtime_sort(records, sort, domain: domain),
