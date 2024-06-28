@@ -234,7 +234,8 @@ defmodule Ash.Actions.Destroy.Bulk do
             )
 
           opts =
-            if has_after_batch_hooks? || opts[:notify?] do
+            if has_after_batch_hooks? || !Enum.empty?(atomic_changeset.after_action) ||
+                 opts[:notify?] do
               Keyword.put(opts, :return_records?, true)
             else
               opts
