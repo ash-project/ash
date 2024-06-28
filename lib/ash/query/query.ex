@@ -2905,10 +2905,11 @@ defmodule Ash.Query do
   def data_layer_query(%{resource: resource, domain: domain} = ash_query, opts) do
     query = opts[:initial_query] || Ash.DataLayer.resource_to_query(resource, domain)
 
-    context = ash_query.context
-    |> Map.put(:action, ash_query.action)
-    |> Map.put_new(:private, %{})
-    |> put_in([:private, :tenant], ash_query.tenant)
+    context =
+      ash_query.context
+      |> Map.put(:action, ash_query.action)
+      |> Map.put_new(:private, %{})
+      |> put_in([:private, :tenant], ash_query.tenant)
 
     with {:ok, query} <-
            Ash.DataLayer.set_context(

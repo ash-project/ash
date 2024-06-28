@@ -804,7 +804,7 @@ defmodule Ash.Actions.Read do
       end
     after
       if notify? do
-        Process.put(:ash_started_transaction?, false)
+        Process.delete(:ash_started_transaction?)
       end
     end
   end
