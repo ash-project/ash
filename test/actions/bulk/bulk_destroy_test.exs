@@ -247,6 +247,19 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     end
   end
 
+  setup do
+    capture_log(fn ->
+      Ash.DataLayer.Mnesia.start(Domain, [MnesiaPost])
+    end)
+
+    on_exit(fn ->
+      capture_log(fn ->
+        :mnesia.stop()
+        :mnesia.delete_schema([node()])
+      end)
+    end)
+  end
+
   test "returns destroyed records" do
     assert %Ash.BulkResult{records: [%{}, %{}]} =
              Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
@@ -288,10 +301,6 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
   end
 
   test "sends notifications with stream strategy in transactions" do
-    capture_log(fn ->
-      Ash.DataLayer.Mnesia.start(Domain, [MnesiaPost])
-    end)
-
     assert %Ash.BulkResult{records: [%{}, %{}]} =
              Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], MnesiaPost, :create,
                return_stream?: true,
@@ -319,11 +328,6 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                      %{
                        data: %{title: "title2"}
                      }}
-
-    capture_log(fn ->
-      :mnesia.stop()
-      :mnesia.delete_schema([node()])
-    end)
   end
 
   test "doesn't send notifications if not asked to" do
