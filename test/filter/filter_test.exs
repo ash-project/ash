@@ -649,6 +649,16 @@ defmodule Ash.Test.Filter.FilterTest do
       assert Filter.strict_subset_of?(filter, candidate)
     end
 
+    test "allows to omit the join field for belongs_to relationships" do
+      id1 = Ash.UUID.generate()
+      id2 = Ash.UUID.generate()
+      filter = Filter.parse!(Post, author1: [in: [id1, id2]])
+
+      candidate = Filter.parse!(Post, author1: id1)
+
+      assert Filter.strict_subset_of?(filter, candidate)
+    end
+
     test "raises an error if the underlying parse returns an error" do
       filter = Filter.parse!(Post, points: 1)
 
