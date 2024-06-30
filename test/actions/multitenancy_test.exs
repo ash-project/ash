@@ -7,7 +7,10 @@ defmodule Ash.Actions.MultitenancyTest do
 
   defmodule User do
     @moduledoc false
-    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+    use Ash.Resource,
+      domain: Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
 
     ets do
       private?(true)
@@ -18,9 +21,21 @@ defmodule Ash.Actions.MultitenancyTest do
       attribute(:org_id)
     end
 
+    policies do
+      policy action(:has_policies) do
+        authorize_if relates_to_actor_via(:self)
+      end
+
+      policy always() do
+        authorize_if always()
+      end
+    end
+
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
+
+      read :has_policies
 
       read :allow_global do
         multitenancy(:allow_global)
@@ -51,6 +66,8 @@ defmodule Ash.Actions.MultitenancyTest do
       has_many :comments, Ash.Actions.MultitenancyTest.Comment,
         destination_attribute: :commenter_id,
         public?: true
+
+      has_one :self, __MODULE__, destination_attribute: :id, source_attribute: :id
     end
   end
 
@@ -303,6 +320,20 @@ defmodule Ash.Actions.MultitenancyTest do
       |> Ash.create!()
 
       assert User |> Ash.Query.set_tenant(tenant2) |> Ash.read!() == []
+    end
+
+    test "prior filters are not affected by the addition of a multitenancy attribute", %{
+      tenant1: tenant1
+    } do
+      user1 =
+        User
+        |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+        |> Ash.create!()
+
+      # assert [fetched_user1, fetched_user2] =
+      User
+      |> Ash.Query.for_read(:has_policies, %{}, actor: user1, tenant: tenant1)
+      |> Ash.read!()
     end
 
     test "supports :allow_global multitenancy on the read action", %{

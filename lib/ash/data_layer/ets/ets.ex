@@ -57,6 +57,7 @@ defmodule Ash.DataLayer.Ets do
       :domain,
       :distinct,
       :distinct_sort,
+      context: %{},
       calculations: [],
       aggregates: [],
       relationships: %{},
@@ -274,6 +275,12 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
+  def set_context(_resource, query, context) do
+    {:ok, %{query | context: context}}
+  end
+
+  @doc false
+  @impl true
   def filter(query, filter, _resource) do
     if query.filter do
       {:ok, %{query | filter: Ash.Filter.add_to_filter!(query.filter, filter)}}
@@ -313,11 +320,12 @@ defmodule Ash.DataLayer.Ets do
             resource: resource,
             uniq?: uniq?,
             include_nil?: include_nil?,
-            default_value: default_value
+            default_value: default_value,
+            context: context
           },
           {:ok, acc} ->
             results
-            |> filter_matches(Map.get(query || %{}, :filter), domain)
+            |> filter_matches(Map.get(query || %{}, :filter), domain, context[:tenant])
             |> case do
               {:ok, matches} ->
                 field = field || Enum.at(Ash.Resource.Info.primary_key(resource), 0)
@@ -356,13 +364,15 @@ defmodule Ash.DataLayer.Ets do
           tenant: tenant,
           calculations: calculations,
           aggregates: aggregates,
-          domain: domain
+          domain: domain,
+          context: context
         },
         _resource,
         parent \\ nil
       ) do
     with {:ok, records} <- get_records(resource, tenant),
-         {:ok, records} <- filter_matches(records, filter, domain, parent),
+         {:ok, records} <-
+           filter_matches(records, filter, domain, context[:private][:tenant], parent),
          records <- Sort.runtime_sort(records, distinct_sort || sort, domain: domain),
          records <- Sort.runtime_distinct(records, distinct, domain: domain),
          records <- Sort.runtime_sort(records, sort, domain: domain),
@@ -660,7 +670,8 @@ defmodule Ash.DataLayer.Ets do
                      [record],
                      domain
                    ),
-                 {:ok, filtered} <- filter_matches(related, query.filter, domain),
+                 {:ok, filtered} <-
+                   filter_matches(related, query.filter, domain, context[:tenant]),
                  sorted <- Sort.runtime_sort(filtered, query.sort, domain: domain) do
               field = field || Enum.at(Ash.Resource.Info.primary_key(query.resource), 0)
 
@@ -948,11 +959,11 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp filter_matches(records, filter, domain, parent \\ nil)
-  defp filter_matches(records, nil, _domain, _parent), do: {:ok, records}
+  defp filter_matches(records, filter, domain, _tenant, parent \\ nil)
+  defp filter_matches(records, nil, _domain, _tenant, _parent), do: {:ok, records}
 
-  defp filter_matches(records, filter, domain, parent) do
-    Ash.Filter.Runtime.filter_matches(domain, records, filter, parent: parent)
+  defp filter_matches(records, filter, domain, tenant, parent) do
+    Ash.Filter.Runtime.filter_matches(domain, records, filter, parent: parent, tenant: tenant)
   end
 
   @doc false
@@ -1268,7 +1279,7 @@ defmodule Ash.DataLayer.Ets do
         case ETS.Set.get(table, pkey) do
           {:ok, {_key, record}} when is_map(record) ->
             with {:ok, record} <- cast_record(record, resource),
-                 {:ok, [_]} <- filter_matches([record], filter, domain) do
+                 {:ok, [_]} <- filter_matches([record], filter, domain, tenant) do
               with {:ok, _} <- ETS.Set.delete(table, pkey) do
                 :ok
               end
@@ -1362,6 +1373,7 @@ defmodule Ash.DataLayer.Ets do
              table,
              {pkey, changeset.attributes, changeset.atomics, changeset.filter},
              changeset.domain,
+             changeset.tenant,
              resource
            ),
          {:ok, record} <- cast_record(record, resource) do
@@ -1407,7 +1419,7 @@ defmodule Ash.DataLayer.Ets do
     end)
   end
 
-  defp do_update(table, {pkey, record, atomics, changeset_filter}, domain, resource) do
+  defp do_update(table, {pkey, record, atomics, changeset_filter}, domain, tenant, resource) do
     attributes = resource |> Ash.Resource.Info.attributes()
 
     case dump_to_native(record, attributes) do
@@ -1416,7 +1428,7 @@ defmodule Ash.DataLayer.Ets do
           {:ok, {_key, record}} when is_map(record) ->
             with {:ok, casted_record} <- cast_record(record, resource),
                  {:ok, [casted_record]} <-
-                   filter_matches([casted_record], changeset_filter, domain) do
+                   filter_matches([casted_record], changeset_filter, domain, tenant) do
               case atomics do
                 empty when empty in [nil, []] ->
                   data = Map.merge(record, casted)

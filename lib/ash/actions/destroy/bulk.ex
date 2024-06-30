@@ -196,15 +196,11 @@ defmodule Ash.Actions.Destroy.Bulk do
           end
 
         notify? =
-          if opts[:notify?] do
-            if Process.get(:ash_started_transaction?) do
-              false
-            else
-              Process.put(:ash_started_transaction?, true)
-              true
-            end
-          else
+          if Process.get(:ash_started_transaction?) do
             false
+          else
+            Process.put(:ash_started_transaction?, true)
+            true
           end
 
         try do
@@ -234,7 +230,8 @@ defmodule Ash.Actions.Destroy.Bulk do
             )
 
           opts =
-            if has_after_batch_hooks? || opts[:notify?] do
+            if has_after_batch_hooks? || !Enum.empty?(atomic_changeset.after_action) ||
+                 opts[:notify?] do
               Keyword.put(opts, :return_records?, true)
             else
               opts
@@ -249,71 +246,65 @@ defmodule Ash.Actions.Destroy.Bulk do
                 :bulk_destroy
             end
 
-          bulk_result =
-            if has_after_batch_hooks? && opts[:transaction] do
-              Ash.DataLayer.transaction(
-                List.wrap(atomic_changeset.resource) ++ action.touches_resources,
-                fn ->
-                  do_atomic_destroy(query, atomic_changeset, has_after_batch_hooks?, input, opts)
-                end,
-                opts[:timeout],
-                %{
-                  type: context_key,
-                  metadata: %{
-                    resource: query.resource,
-                    action: atomic_changeset.action.name,
-                    actor: opts[:actor]
-                  },
-                  data_layer_context: opts[:data_layer_context] || %{}
-                }
-              )
-              |> case do
-                {:ok, bulk_result} ->
-                  bulk_result
-
-                {:error, error} ->
-                  %Ash.BulkResult{
-                    status: :error,
-                    error_count: 1,
-                    errors: [Ash.Error.to_error_class(error)]
-                  }
-              end
-            else
-              do_atomic_destroy(query, atomic_changeset, has_after_batch_hooks?, input, opts)
-            end
-
-          notifications =
-            if notify? do
-              List.wrap(bulk_result.notifications) ++
-                List.wrap(Process.delete(:ash_notifications))
-            else
-              List.wrap(bulk_result.notifications)
-            end
-
-          if opts[:return_notifications?] do
-            %{bulk_result | notifications: notifications}
+          if (has_after_batch_hooks? || !Enum.empty?(atomic_changeset.after_action)) &&
+               Keyword.get(opts, :transaction, true) do
+            Ash.DataLayer.transaction(
+              List.wrap(atomic_changeset.resource) ++ action.touches_resources,
+              fn ->
+                do_atomic_destroy(query, atomic_changeset, has_after_batch_hooks?, input, opts)
+              end,
+              opts[:timeout],
+              %{
+                type: context_key,
+                metadata: %{
+                  resource: query.resource,
+                  action: atomic_changeset.action.name,
+                  actor: opts[:actor]
+                },
+                data_layer_context: opts[:data_layer_context] || %{}
+              }
+            )
           else
-            if notify? do
-              notifications =
-                (bulk_result.notifications || []) ++ Process.get(:ash_notifications, [])
+            {:ok, do_atomic_destroy(query, atomic_changeset, has_after_batch_hooks?, input, opts)}
+          end
+          |> case do
+            {:ok, bulk_result} ->
+              if opts[:return_notifications?] do
+                bulk_result
+              else
+                if notify? do
+                  notifications =
+                    List.wrap(Process.delete(:ash_notifications)) ++ bulk_result.notifications
 
-              remaining_notifications = Ash.Notifier.notify(notifications)
-              Process.delete(:ash_notifications) || []
+                  if opts[:notify?] do
+                    remaining_notifications = Ash.Notifier.notify(notifications)
 
-              Ash.Actions.Helpers.warn_missed!(atomic_changeset.resource, action, %{
-                resource_notifications: remaining_notifications
-              })
+                    Ash.Actions.Helpers.warn_missed!(atomic_changeset.resource, action, %{
+                      resource_notifications: remaining_notifications
+                    })
 
-              %{bulk_result | notifications: notifications}
-            else
-              if opts[:notify?] do
-                Ash.Actions.Helpers.warn_missed!(atomic_changeset.resource, action, %{
-                  resource_notifications: notifications
-                })
+                    %{bulk_result | notifications: notifications}
+                  else
+                    %{bulk_result | notifications: []}
+                  end
+                else
+                  process_notifications = List.wrap(Process.get(:ash_notifications, []))
+
+                  Process.put(
+                    :ash_notifications,
+                    process_notifications ++ bulk_result.notifications
+                  )
+
+                  %{bulk_result | notifications: []}
+                end
               end
 
-              %{bulk_result | notifications: []}
-            end
+            {:error, error} ->
+              %Ash.BulkResult{
+                status: :error,
+                errors: [Ash.Error.to_ash_error(error)],
+                error_count: 1
+              }
           end
         after
           if notify? do
@@ -383,40 +374,76 @@ defmodule Ash.Actions.Destroy.Bulk do
           false
         end
 
-      Ash.DataLayer.transaction(
-        List.wrap(resource) ++ action.touches_resources,
-        fn ->
-          do_run(domain, stream, action, input, opts, not_atomic_reason)
-        end,
-        opts[:timeout],
-        %{
-          type: :bulk_destroy,
-          metadata: %{
-            resource: resource,
-            action: action.name,
-            actor: opts[:actor]
-          },
-          data_layer_context: opts[:data_layer_context] || %{}
-        }
-      )
-      |> case do
-        {:ok, bulk_result} ->
-          bulk_result =
-            if notify? do
-              %{
+      try do
+        Ash.DataLayer.transaction(
+          List.wrap(resource) ++ action.touches_resources,
+          fn ->
+            do_run(
+              domain,
+              stream,
+              action,
+              input,
+              Keyword.merge(opts, notify?: opts[:notify?], return_notifications?: opts[:notify?]),
+              not_atomic_reason
+            )
+          end,
+          opts[:timeout],
+          %{
+            type: :bulk_destroy,
+            metadata: %{
+              resource: resource,
+              action: action.name,
+              actor: opts[:actor]
+            },
+            data_layer_context: opts[:data_layer_context] || %{}
+          }
+        )
+        |> case do
+          {:ok, bulk_result} ->
+            bulk_result =
+              if notify? do
+                notifications =
+                  if opts[:return_notifications?] do
+                    bulk_result.notifications ++ List.wrap(Process.delete(:ash_notifications))
+                  else
+                    if opts[:notify?] do
+                      remaining_notifications =
+                        Ash.Notifier.notify(
+                          bulk_result.notifications ++
+                            List.wrap(Process.delete(:ash_notifications))
+                        )
+
+                      Ash.Actions.Helpers.warn_missed!(resource, action, %{
+                        resource_notifications: remaining_notifications
+                      })
+                    else
+                      []
+                    end
+                  end
+
+                %{
+                  bulk_result
+                  | notifications: notifications
+                }
+              else
+                Process.put(
+                  :ash_notifications,
+                  List.wrap(Process.get(:ash_notifications)) ++
+                    List.wrap(bulk_result.notifications)
+                )
+
                 bulk_result
-                | notifications:
-                    (bulk_result.notifications || []) ++
-                      List.wrap(Process.delete(:ash_notifications))
-              }
-            else
-              bulk_result
-            end
+              end
 
-          handle_bulk_result(bulk_result, resource, action, opts)
+            handle_bulk_result(bulk_result, resource, action, opts)
 
-        {:error, error} ->
-          [{:error, error}]
+          {:error, error} ->
+            [{:error, error}]
+        end
+      after
+        if notify? do
+          Process.delete(:ash_started_transaction?)
+        end
       end
     else
       domain
@@ -1233,6 +1260,9 @@ defmodule Ash.Actions.Destroy.Bulk do
 
             store_error(ref, new_errors, opts, new_error_count)
 
+            notifications = Process.get({:bulk_destroy_notifications, tmp_ref}) || []
+            store_notification(ref, notifications, opts)
+
             result
           end,
           opts[:timeout],
@@ -1262,6 +1292,8 @@ defmodule Ash.Actions.Destroy.Bulk do
           Ash.Actions.Helpers.warn_missed!(resource, action, %{
             resource_notifications: remaining_notifications
           })
+
+          Process.delete(:ash_started_transaction?)
         end
       end
     else
@@ -1396,28 +1428,32 @@ defmodule Ash.Actions.Destroy.Bulk do
       Task.async_stream(
         stream,
         fn batch ->
-          Process.put(:ash_started_transaction?, true)
-          batch_result = callback.(batch)
-          {errors, _} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
+          try do
+            Process.put(:ash_started_transaction?, true)
+            batch_result = callback.(batch)
+            {errors, _} = Process.get({:bulk_destroy_errors, ref}) || {[], 0}
 
-          notifications =
-            if opts[:notify?] do
-              process_notifications = Process.get(:ash_notifications, [])
-              bulk_notifications = Process.get({:bulk_destroy_notifications, ref}) || []
+            notifications =
+              if opts[:notify?] do
+                process_notifications = Process.get(:ash_notifications, [])
+                bulk_notifications = Process.get({:bulk_destroy_notifications, ref}) || []
 
-              if opts[:return_notifications?] do
-                process_notifications ++ bulk_notifications
-              else
-                if opts[:transaction] && opts[:transaction] != :all do
-                  Ash.Notifier.notify(bulk_notifications)
-                  Ash.Notifier.notify(process_notifications)
+                if opts[:return_notifications?] do
+                  process_notifications ++ bulk_notifications
+                else
+                  if opts[:transaction] && opts[:transaction] != :all do
+                    Ash.Notifier.notify(bulk_notifications)
+                    Ash.Notifier.notify(process_notifications)
+                  end
+
+                  []
                 end
-
-                []
               end
-            end
 
-          {batch_result, notifications, errors}
+            {batch_result, notifications, errors}
+          after
+            Process.delete(:ash_started_transaction?)
+          end
         end,
         timeout: :infinity,
         max_concurrency: max_concurrency

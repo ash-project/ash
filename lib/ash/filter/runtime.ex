@@ -54,7 +54,7 @@ defmodule Ash.Filter.Runtime do
             |> load_all(refs_to_load)
             |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-          Ash.load!(records, load, authorize?: false, domain: domain)
+          Ash.load!(records, load, authorize?: false, domain: domain, tenant: opts[:tenant])
       end
 
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->

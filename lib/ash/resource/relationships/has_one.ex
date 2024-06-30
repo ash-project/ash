@@ -85,6 +85,9 @@ defmodule Ash.Resource.Relationships.HasOne do
   def opt_schema, do: @opt_schema
 
   def transform(relationship) do
-    {:ok, relationship |> Ash.Resource.Actions.Read.concat_filters()}
+    {:ok,
+     relationship
+     |> Ash.Resource.Actions.Read.concat_filters()
+     |> Map.put(:from_many?, relationship.from_many? || not is_nil(relationship.sort))}
   end
 end

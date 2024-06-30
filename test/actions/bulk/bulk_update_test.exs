@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  import ExUnit.CaptureLog
+
   alias Ash.Test.Domain, as: Domain
 
   defmodule Notifier do
@@ -329,6 +331,41 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
+  defmodule MnesiaPost do
+    @doc false
+
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia, notifiers: [Notifier]
+
+    mnesia do
+      table :mnesia_post_updates
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, allow_nil?: false, public?: true
+      attribute :title2, :string, public?: true
+
+      timestamps()
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, :create, :update]
+
+      update :update_with_after_action do
+        atomic_upgrade? false
+
+        change after_action(fn changeset, result, context ->
+                 result
+                 |> Ash.Changeset.for_update(:other_update, %{}, Ash.Context.to_opts(context))
+                 |> Ash.update()
+               end)
+      end
+
+      update :other_update
+    end
+  end
+
   defmodule Tenant do
     @doc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -448,6 +485,21 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
+  setup do
+    on_exit(fn ->
+      capture_log(fn ->
+        :mnesia.stop()
+        :mnesia.delete_schema([node()])
+      end)
+    end)
+
+    capture_log(fn ->
+      Ash.DataLayer.Mnesia.start(Domain, [MnesiaPost])
+    end)
+
+    :ok
+  end
+
   test "returns updated records" do
     assert %Ash.BulkResult{records: [%{title2: "updated value"}, %{title2: "updated value"}]} =
              Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
@@ -488,6 +540,101 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
     assert_received {:notification, %{data: %{title: "title2"}}}
     assert_received {:notification, %{data: %{title: "title2"}}}
+  end
+
+  test "sends notifications with stream strategy in transactions" do
+    assert %Ash.BulkResult{records: [%{title2: "updated value"}, %{title2: "updated value"}]} =
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], MnesiaPost, :create,
+               return_stream?: true,
+               return_records?: true,
+               authorize?: false
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_update!(:update, %{title2: "updated value"},
+               resource: MnesiaPost,
+               strategy: :stream,
+               allow_stream_with: :full_read,
+               return_records?: true,
+               notify?: true,
+               return_errors?: true,
+               authorize?: false
+             )
+
+    assert_received {:notification,
+                     %{
+                       data: %{title: "title1"},
+                       changeset: %{attributes: %{title2: "updated value"}}
+                     }}
+
+    assert_received {:notification,
+                     %{
+                       data: %{title: "title2"},
+                       changeset: %{attributes: %{title2: "updated value"}}
+                     }}
+  end
+
+  test "sends notifications with after action hooks in stream strategy in transactions" do
+    assert %Ash.BulkResult{records: [%{title2: "updated value"}, %{title2: "updated value"}]} =
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], MnesiaPost, :create,
+               return_stream?: true,
+               return_records?: true,
+               authorize?: false
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_update!(:update_with_after_action, %{title2: "updated value"},
+               resource: MnesiaPost,
+               strategy: :stream,
+               allow_stream_with: :full_read,
+               return_records?: true,
+               notify?: true,
+               return_errors?: true,
+               authorize?: false
+             )
+
+    assert_received {:notification,
+                     %{
+                       data: %{title: "title1"},
+                       changeset: %{attributes: %{title2: "updated value"}}
+                     }}
+
+    assert_received {:notification,
+                     %{
+                       data: %{title: "title2"},
+                       changeset: %{attributes: %{title2: "updated value"}}
+                     }}
+
+    assert_received {:notification, %{changeset: %{action: %{name: :other_update}}}}
+  end
+
+  test "sends notifications with after action hooks with regular updates" do
+    Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], MnesiaPost, :create,
+      return_stream?: true,
+      return_records?: true,
+      authorize?: false
+    )
+    |> Enum.each(fn {:ok, result} ->
+      result
+      |> Ash.Changeset.for_update(:update_with_after_action, %{title2: "updated value"})
+      |> Ash.update!()
+    end)
+
+    assert_received {:notification,
+                     %{
+                       data: %{title: "title1"},
+                       changeset: %{attributes: %{title2: "updated value"}}
+                     }}
+
+    assert_received {:notification,
+                     %{
+                       data: %{title: "title2"},
+                       changeset: %{attributes: %{title2: "updated value"}}
+                     }}
+
+    assert_received {:notification, %{changeset: %{action: %{name: :other_update}}}}
   end
 
   test "notifications can be returned" do

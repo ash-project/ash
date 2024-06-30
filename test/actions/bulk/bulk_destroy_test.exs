@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  import ExUnit.CaptureLog
+
   require Ash.Query
   alias Ash.Test.Domain, as: Domain
 
@@ -223,6 +225,41 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     end
   end
 
+  defmodule MnesiaPost do
+    @doc false
+
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Mnesia, notifiers: [Notifier]
+
+    mnesia do
+      table :mnesia_post_destroys
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, allow_nil?: false, public?: true
+
+      timestamps()
+    end
+
+    actions do
+      default_accept :*
+      defaults [:read, :destroy, :create, :update]
+    end
+  end
+
+  setup do
+    capture_log(fn ->
+      Ash.DataLayer.Mnesia.start(Domain, [MnesiaPost])
+    end)
+
+    on_exit(fn ->
+      capture_log(fn ->
+        :mnesia.stop()
+        :mnesia.delete_schema([node()])
+      end)
+    end)
+  end
+
   test "returns destroyed records" do
     assert %Ash.BulkResult{records: [%{}, %{}]} =
              Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
@@ -261,6 +298,36 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
 
     assert_received {:notification, %{data: %{title: "title1"}}}
     assert_received {:notification, %{data: %{title: "title2"}}}
+  end
+
+  test "sends notifications with stream strategy in transactions" do
+    assert %Ash.BulkResult{records: [%{}, %{}]} =
+             Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], MnesiaPost, :create,
+               return_stream?: true,
+               return_records?: true,
+               authorize?: false
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_destroy!(:destroy, %{},
+               resource: MnesiaPost,
+               strategy: :stream,
+               allow_stream_with: :full_read,
+               return_records?: true,
+               notify?: true,
+               return_errors?: true
+             )
+
+    assert_received {:notification,
+                     %{
+                       data: %{title: "title1"}
+                     }}
+
+    assert_received {:notification,
+                     %{
+                       data: %{title: "title2"}
+                     }}
   end
 
   test "doesn't send notifications if not asked to" do

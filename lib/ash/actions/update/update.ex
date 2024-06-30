@@ -75,7 +75,7 @@ defmodule Ash.Actions.Update do
              nil}
 
           opts[:atomic_upgrade?] == false ->
-            {{:not_atomic, "atomic upgrade was disabled"}, nil}
+            {{:not_atomic, "atomic upgrade was disabled with opts"}, nil}
 
           true ->
             params =
