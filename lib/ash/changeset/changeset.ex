@@ -3020,11 +3020,11 @@ defmodule Ash.Changeset do
           {:ok, value, changeset, instructions}
         else
           if Process.get(:ash_started_transaction?) do
-            current_notifications = Process.get(:ash_notifications, [])
+            current_notifications = List.wrap(Process.get(:ash_notifications, []))
 
             Process.put(
               :ash_notifications,
-              current_notifications ++ (instructions[:notifications] || [])
+              current_notifications ++ List.wrap(instructions[:notifications])
             )
 
             {:ok, value, changeset, Map.put(instructions, :notifications, [])}
