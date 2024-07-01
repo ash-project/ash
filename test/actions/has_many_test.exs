@@ -39,6 +39,23 @@ defmodule Ash.Test.Actions.HasManyTest do
     end
   end
 
+  defmodule MeowCommentRelationship do
+    use Ash.Resource.ManualRelationship
+
+    require Ash.Query
+
+    def load(records, _opts, %{query: query, actor: actor, authorize?: authorize?}) do
+      post_ids = Enum.map(records, & &1.id)
+
+      {:ok,
+       query
+       |> Ash.Query.filter(post_id in ^post_ids)
+       |> Ash.Query.filter(content == "meow")
+       |> Ash.read!(actor: actor, authorize?: authorize?)
+       |> Enum.group_by(& &1.post_id)}
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -69,7 +86,7 @@ defmodule Ash.Test.Actions.HasManyTest do
     end
 
     attributes do
-      uuid_primary_key :id
+      uuid_primary_key :id, type: :uuid_v7
 
       attribute :title, :string do
         public?(true)
@@ -81,6 +98,10 @@ defmodule Ash.Test.Actions.HasManyTest do
         destination_attribute :post_id
         public?(true)
         domain(OtherDomain)
+      end
+
+      has_many :meow_comments, Comment do
+        manual MeowCommentRelationship
       end
     end
   end
@@ -129,5 +150,51 @@ defmodule Ash.Test.Actions.HasManyTest do
       |> Ash.update!()
 
     assert length(post.comments) == 1
+  end
+
+  test "manual relationships work as expected" do
+    post =
+      Post
+      |> Ash.Changeset.for_create(:create, %{
+        title: "buz"
+      })
+      |> Ash.create!()
+
+    post =
+      post
+      |> Ash.Changeset.for_update(:add_comment, %{
+        comment: %{content: "meow"}
+      })
+      |> Ash.update!()
+      |> Ash.load!(:meow_comments)
+
+    assert length(post.meow_comments) == 1
+
+    post =
+      post
+      |> Ash.Changeset.for_update(:add_comment, %{
+        comment: %{content: "bar"}
+      })
+      |> Ash.update!()
+
+    post =
+      post
+      |> Ash.Changeset.for_update(:add_comment, %{
+        comment: %{content: "meow"}
+      })
+      |> Ash.update!()
+      |> Ash.load!(:meow_comments)
+
+    assert length(post.meow_comments) == 2
+
+    post =
+      post
+      |> Ash.Changeset.for_update(:delete_comment, %{
+        comment: Enum.at(post.meow_comments, 0)
+      })
+      |> Ash.update!()
+      |> Ash.load!(:meow_comments)
+
+    assert length(post.meow_comments) == 1
   end
 end

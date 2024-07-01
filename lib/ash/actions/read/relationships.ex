@@ -707,7 +707,7 @@ defmodule Ash.Actions.Read.Relationships do
 
         value =
           Enum.find_value(map, fn {key, value} ->
-            if resource.primary_key_matches?(key, pkey_values) do
+            if resource.primary_key_matches?(Map.from_keys(pkey, key), pkey_values) do
               {:ok, value}
             end
           end) || :error
