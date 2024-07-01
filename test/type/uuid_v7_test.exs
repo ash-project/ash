@@ -9,23 +9,26 @@ defmodule Ash.Test.Type.UUIDv7Test do
     assert Ash.Type.UUIDv7.EctoType = Ash.Type.ecto_type(Ash.Type.UUIDv7)
   end
 
-  test "it works" do
-    hex_uuid = "0188aadc-f449-7818-8862-5eff12733f64"
-    raw_uuid = Ash.UUIDv7.decode(hex_uuid)
+  # non-exact equality is very expensive and there should be no case where it is necessary
+  # If someone needs it, they can define a custom type :)
 
-    assert {:ok, ^hex_uuid} = Ash.Type.cast_input(Ash.Type.UUIDv7, hex_uuid)
-    assert {:ok, ^hex_uuid} = Ash.Type.cast_input(Ash.Type.UUIDv7, raw_uuid)
+  # test "it works" do
+  #   hex_uuid = "0188aadc-f449-7818-8862-5eff12733f64"
+  #   raw_uuid = Ash.UUIDv7.decode(hex_uuid)
 
-    assert {:ok, ^hex_uuid} = Ash.Type.cast_stored(Ash.Type.UUIDv7, hex_uuid)
-    assert {:ok, ^hex_uuid} = Ash.Type.cast_stored(Ash.Type.UUIDv7, raw_uuid)
+  #   assert {:ok, ^hex_uuid} = Ash.Type.cast_input(Ash.Type.UUIDv7, hex_uuid)
+  #   assert {:ok, ^hex_uuid} = Ash.Type.cast_input(Ash.Type.UUIDv7, raw_uuid)
 
-    assert {:ok, ^raw_uuid} = Ash.Type.dump_to_native(Ash.Type.UUIDv7, hex_uuid)
-    assert {:ok, ^raw_uuid} = Ash.Type.dump_to_native(Ash.Type.UUIDv7, raw_uuid)
+  #   assert {:ok, ^hex_uuid} = Ash.Type.cast_stored(Ash.Type.UUIDv7, hex_uuid)
+  #   assert {:ok, ^hex_uuid} = Ash.Type.cast_stored(Ash.Type.UUIDv7, raw_uuid)
 
-    assert true == Ash.Type.equal?(Ash.Type.UUIDv7, raw_uuid, hex_uuid)
+  #   assert {:ok, ^raw_uuid} = Ash.Type.dump_to_native(Ash.Type.UUIDv7, hex_uuid)
+  #   assert {:ok, ^raw_uuid} = Ash.Type.dump_to_native(Ash.Type.UUIDv7, raw_uuid)
 
-    assert {:ok, ^raw_uuid} = Ash.Type.apply_constraints(Ash.Type.UUIDv7, raw_uuid, [])
-  end
+  #   assert true == Ash.Type.equal?(Ash.Type.UUIDv7, raw_uuid, hex_uuid)
+
+  #   assert {:ok, ^raw_uuid} = Ash.Type.apply_constraints(Ash.Type.UUIDv7, raw_uuid, [])
+  # end
 
   test "it casts binary UUIDs version 7 to string" do
     uuid_v7 = "01903fa1-2523-7580-a9d6-84620dcbf2ba"

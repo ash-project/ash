@@ -65,9 +65,6 @@ defmodule Ash.Type.UUIDv7 do
     cast_input(value, constraints)
   end
 
-  @impl true
-  def equal?(term1, term2), do: Ash.UUIDv7.decode(term1) == Ash.UUIDv7.decode(term2)
-
   @compile {:inline, c: 1}
 
   defp c(?0), do: ?0
