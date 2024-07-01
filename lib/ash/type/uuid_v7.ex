@@ -24,6 +24,7 @@ defmodule Ash.Type.UUIDv7 do
   end
 
   @impl true
+  def cast_input(%Ash.CiString{string: string}, constraints), do: cast_input(string, constraints)
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(

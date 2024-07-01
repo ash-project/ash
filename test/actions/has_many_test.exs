@@ -86,7 +86,7 @@ defmodule Ash.Test.Actions.HasManyTest do
     end
 
     attributes do
-      uuid_primary_key :id, type: :uuid_v7
+      uuid_primary_key :id, type: :ci_string
 
       attribute :title, :string do
         public?(true)
