@@ -702,24 +702,53 @@ defmodule Ash.Actions.Read.Relationships do
     else
       pkey = Ash.Resource.Info.primary_key(resource)
 
-      Enum.map(records, fn record ->
-        pkey_values = Map.take(record, pkey)
+      case pkey do
+        [pkey_key] ->
+          Enum.map(records, fn record ->
+            pkey_values = Map.take(record, pkey)
 
-        value =
-          Enum.find_value(map, fn {key, value} ->
-            if resource.primary_key_matches?(Map.from_keys(pkey, key), pkey_values) do
-              {:ok, value}
+            value =
+              Enum.find_value(map, fn {key, value} ->
+                if is_map(key) do
+                  if resource.primary_key_matches?(key, pkey_values) do
+                    {:ok, value}
+                  end
+                else
+                  if resource.primary_key_matches?(%{pkey_key => key}, pkey_values) do
+                    {:ok, value}
+                  end
+                end
+              end) || :error
+
+            case value do
+              {:ok, result} ->
+                Map.put(record, relationship.name, result)
+
+              :error ->
+                Map.put(record, relationship.name, default)
             end
-          end) || :error
+          end)
 
-        case value do
-          {:ok, result} ->
-            Map.put(record, relationship.name, result)
+        _pkeys ->
+          Enum.map(records, fn record ->
+            pkey_values = Map.take(record, pkey)
 
-          :error ->
-            Map.put(record, relationship.name, default)
-        end
-      end)
+            value =
+              Enum.find_value(map, fn {key, value} ->
+                if resource.primary_key_matches?(key, pkey_values) do
+                  {:ok, value}
+                end
+              end) || :error
+
+            case value do
+              {:ok, result} ->
+                Map.put(record, relationship.name, result)
+
+              :error ->
+                Map.put(record, relationship.name, default)
+            end
+          end)
+      end
     end
   end
 
