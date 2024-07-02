@@ -3479,22 +3479,25 @@ defmodule Ash.Changeset do
         case result do
           {:ok, new_result, new_notifications} ->
             all_notifications =
-              Enum.map(List.wrap(notifications) ++ List.wrap(new_notifications), fn notification ->
-                %{
-                  notification
-                  | resource: notification.resource || changeset.resource,
-                    action:
-                      notification.action ||
-                        Ash.Resource.Info.action(
-                          changeset.resource,
-                          changeset.action,
-                          changeset.action_type
-                        ),
-                    data: notification.data || new_result,
-                    changeset: notification.changeset || changeset,
-                    actor: notification.actor || changeset.context[:private][:actor]
-                }
-              end)
+              Enum.map(
+                List.wrap(notifications) ++ List.wrap(new_notifications),
+                fn notification ->
+                  %{
+                    notification
+                    | resource: notification.resource || changeset.resource,
+                      action:
+                        notification.action ||
+                          Ash.Resource.Info.action(
+                            changeset.resource,
+                            changeset.action,
+                            changeset.action_type
+                          ),
+                      data: notification.data || new_result,
+                      changeset: notification.changeset || changeset,
+                      actor: notification.actor || changeset.context[:private][:actor]
+                  }
+                end
+              )
 
             {:cont,
              {:ok, new_result, clear_phase(changeset), %{acc | notifications: all_notifications}}}
