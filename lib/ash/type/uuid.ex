@@ -27,6 +27,7 @@ defmodule Ash.Type.UUID do
   def cast_input(nil, _), do: {:ok, nil}
 
   def cast_input(%Ash.CiString{string: string}, constraints), do: cast_input(string, constraints)
+
   def cast_input(value, _) when is_binary(value) do
     case String.valid?(value) do
       true -> Ecto.Type.cast(Ecto.UUID, String.trim(value))

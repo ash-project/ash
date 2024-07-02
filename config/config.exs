@@ -35,8 +35,7 @@ if Mix.env() == :test do
   config :ash, :validate_domain_config_inclusion?, false
   config :ash, :policies, show_policy_breakdowns?: true
 
-  config :ash, :compatible_foreign_key_types,
-    [
-      {Ash.Type.CiString, Ash.Type.UUID}
-    ]
+  config :ash, :compatible_foreign_key_types, [
+    {Ash.Type.CiString, Ash.Type.UUID}
+  ]
 end
