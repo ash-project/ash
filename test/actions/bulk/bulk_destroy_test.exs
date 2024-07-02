@@ -107,6 +107,10 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
       private? true
     end
 
+    code_interface do
+      define :destroy_with_policy
+    end
+
     actions do
       default_accept :*
       defaults [:destroy, create: :*, update: :*]
@@ -651,6 +655,16 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
                  return_records?: true,
                  return_errors?: true
                )
+    end
+
+    test "policy failure results in failures when using code interface" do
+      Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+        return_stream?: true,
+        return_records?: true
+      )
+      |> Enum.each(fn {:ok, post} ->
+        Post.destroy_with_policy!(post.id, %{authorize?: false}, authorize?: true)
+      end)
     end
   end
 

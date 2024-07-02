@@ -274,7 +274,8 @@ defmodule Ash.Actions.Destroy.Bulk do
               else
                 if notify? do
                   notifications =
-                    List.wrap(Process.delete(:ash_notifications)) ++ List.wrap(bulk_result.notifications)
+                    List.wrap(Process.delete(:ash_notifications)) ++
+                      List.wrap(bulk_result.notifications)
 
                   if opts[:notify?] do
                     remaining_notifications = Ash.Notifier.notify(notifications)

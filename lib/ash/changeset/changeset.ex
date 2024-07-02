@@ -3306,7 +3306,7 @@ defmodule Ash.Changeset do
              {changeset,
               %{
                 instructions
-                | notifications: instructions.notifications ++ List.wrap(notifications)
+                | notifications: List.wrap(instructions.notifications) ++ List.wrap(notifications)
               }}}
 
           changeset ->
@@ -3422,7 +3422,7 @@ defmodule Ash.Changeset do
             run_after_actions(
               result,
               changeset,
-              List.wrap(instructions[:notifications]) ++ before_action_notifications
+              List.wrap(instructions[:notifications]) ++ List.wrap(before_action_notifications)
             )
 
           {:ok, result} ->
@@ -3479,7 +3479,7 @@ defmodule Ash.Changeset do
         case result do
           {:ok, new_result, new_notifications} ->
             all_notifications =
-              Enum.map(notifications ++ List.wrap(new_notifications), fn notification ->
+              Enum.map(List.wrap(notifications) ++ List.wrap(new_notifications), fn notification ->
                 %{
                   notification
                   | resource: notification.resource || changeset.resource,
