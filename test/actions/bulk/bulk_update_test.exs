@@ -1,6 +1,6 @@
 defmodule Ash.Test.Actions.BulkUpdateTest do
   @moduledoc false
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   import ExUnit.CaptureLog
 

@@ -832,6 +832,8 @@ defmodule Ash.CodeInterface do
                             bulk_opts
                             |> Keyword.put(:return_records?, true)
                             |> Keyword.put(:return_errors?, true)
+                            |> Keyword.put_new(:authorize_query_with, :error)
+                            |> Keyword.put_new(:authorize_changeset_with, :error)
                             |> Keyword.put(:notify?, true)
                           else
                             bulk_opts
@@ -901,6 +903,8 @@ defmodule Ash.CodeInterface do
                             bulk_opts
                             |> Keyword.put(:return_records?, true)
                             |> Keyword.put(:return_errors?, true)
+                            |> Keyword.put_new(:authorize_query_with, :error)
+                            |> Keyword.put_new(:authorize_changeset_with, :error)
                             |> Keyword.put(:notify?, true)
                           else
                             bulk_opts
@@ -1047,6 +1051,8 @@ defmodule Ash.CodeInterface do
                             bulk_opts
                             |> Keyword.put(:return_records?, opts[:return_destroyed?])
                             |> Keyword.put(:return_errors?, true)
+                            |> Keyword.put_new(:authorize_query_with, :error)
+                            |> Keyword.put_new(:authorize_changeset_with, :error)
                             |> Keyword.put(:notify?, true)
                           else
                             Keyword.put(bulk_opts, :return_records?, opts[:return_destroyed?])
@@ -1125,6 +1131,8 @@ defmodule Ash.CodeInterface do
                             bulk_opts
                             |> Keyword.put(:return_records?, opts[:return_destroyed?])
                             |> Keyword.put(:return_errors?, true)
+                            |> Keyword.put_new(:authorize_query_with, :error)
+                            |> Keyword.put_new(:authorize_changeset_with, :error)
                             |> Keyword.put(:notify?, true)
                           else
                             Keyword.put(bulk_opts, :return_records?, opts[:return_destroyed?])

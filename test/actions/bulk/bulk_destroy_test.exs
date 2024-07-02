@@ -1,6 +1,6 @@
 defmodule Ash.Test.Actions.BulkDestroyTest do
   @moduledoc false
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   import ExUnit.CaptureLog
 
@@ -663,7 +663,9 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
         return_records?: true
       )
       |> Enum.each(fn {:ok, post} ->
-        Post.destroy_with_policy!(post.id, %{authorize?: false}, authorize?: true)
+        assert_raise Ash.Error.Forbidden, fn ->
+          Post.destroy_with_policy!(post.id, %{authorize?: false})
+        end
       end)
     end
   end

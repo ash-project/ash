@@ -95,7 +95,7 @@ defmodule Ash.Actions.Helpers do
           private: %{
             authorize?: authorize?
           }
-        } ->
+        } when not is_nil(authorize?) ->
           Keyword.put_new(opts, :authorize?, authorize?)
 
         _ ->
@@ -207,7 +207,7 @@ defmodule Ash.Actions.Helpers do
 
   defp add_authorize?(opts, query_or_changeset, domain) do
     opts =
-      if Keyword.has_key?(opts, :authorize?) do
+      if Keyword.has_key?(opts, :authorize?) && opts[:authorize?] != nil do
         opts
       else
         case Process.get(:ash_authorize?) do
