@@ -118,7 +118,7 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
 
       if Code.ensure_loaded?(extension) do
         fun =
-          if function_exported?(extension, :install, 4) do
+          if function_exported?(extension, :install, 5) do
             fn igniter ->
               extension.install(igniter, module, kind_of_thing, path, argv)
               |> simple_add_extension(kind_of_thing, module, extension)
