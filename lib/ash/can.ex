@@ -436,8 +436,8 @@ defmodule Ash.Can do
                     Ash.Expr.fill_template(
                       filter,
                       actor,
-                      %{},
-                      %{},
+                      opts[:atomic_changeset].arguments,
+                      opts[:atomic_changeset].context,
                       opts[:atomic_changeset]
                     )
                   else
@@ -448,7 +448,7 @@ defmodule Ash.Can do
                  {true,
                   apply_filter(
                     query,
-                    subject.resource,
+                    subject,
                     domain,
                     filter,
                     authorizer,
@@ -462,8 +462,8 @@ defmodule Ash.Can do
                     Ash.Expr.fill_template(
                       filter,
                       actor,
-                      %{},
-                      %{},
+                      opts[:atomic_changeset].arguments,
+                      opts[:atomic_changeset].context,
                       opts[:atomic_changeset]
                     )
                   else
@@ -474,7 +474,7 @@ defmodule Ash.Can do
                  {true,
                   apply_filter(
                     query,
-                    subject.resource,
+                    subject,
                     domain,
                     filter,
                     authorizer,
@@ -496,7 +496,7 @@ defmodule Ash.Can do
                   if opts[:alter_source?] || !match?(%Ash.Query{}, subject) do
                     query_with_hook =
                       Ash.Query.authorize_results(
-                        or_query(query, subject.resource, domain),
+                        or_query(query, subject.resource, domain, subject),
                         fn query, results ->
                           context = Map.merge(context, %{data: results, query: query})
 
@@ -545,7 +545,7 @@ defmodule Ash.Can do
                     query_with_hook =
                       query
                       |> apply_filter(
-                        subject.resource,
+                        subject,
                         domain,
                         filter,
                         authorizer,
@@ -614,16 +614,17 @@ defmodule Ash.Can do
     end
   end
 
-  defp apply_filter(query, resource, domain, filter, authorizer, authorizer_state, opts) do
+  defp apply_filter(query, subject, domain, filter, authorizer, authorizer_state, opts) do
+    resource = subject.resource
     filter = Ash.Filter.parse!(resource, filter).expression
 
     case opts[:filter_with] || :filter do
       :filter ->
-        Ash.Query.filter(or_query(query, resource, domain), ^filter)
+        Ash.Query.filter(or_query(query, resource, domain, subject), ^filter)
 
       :error ->
         Ash.Query.filter(
-          or_query(query, resource, domain),
+          or_query(query, resource, domain, subject),
           if ^filter do
             true
           else
@@ -698,8 +699,8 @@ defmodule Ash.Can do
             Ash.Expr.fill_template(
               filter,
               actor,
-              %{},
-              %{},
+              changeset.arguments,
+              changeset.context,
               changeset
             )
           end)
@@ -759,8 +760,8 @@ defmodule Ash.Can do
     end
   end
 
-  defp or_query(query, resource, domain) do
-    query || Ash.Query.new(resource, domain: domain)
+  defp or_query(query, resource, domain, subject) do
+    query || Ash.Query.set_context(Ash.Query.new(resource, domain: domain), subject.context)
   end
 
   defp authorizer_exception([{authorizer, authorizer_state, _context}]) do
