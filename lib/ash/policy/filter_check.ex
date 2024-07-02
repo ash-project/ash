@@ -73,9 +73,15 @@ defmodule Ash.Policy.FilterCheck do
       defp try_strict_check(actor, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
 
+        context =
+          case authorizer.subject do
+            %{context: context} -> context
+            _ -> %{}
+          end
+
         actor
         |> filter(authorizer, opts)
-        |> Ash.Expr.fill_template(actor, Ash.Policy.FilterCheck.args(authorizer))
+        |> Ash.Expr.fill_template(actor, Ash.Policy.FilterCheck.args(authorizer), context)
         |> try_eval(authorizer)
         |> case do
           {:ok, false} ->
@@ -227,20 +233,34 @@ defmodule Ash.Policy.FilterCheck do
       def auto_filter(actor, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
 
+        context =
+          case authorizer.subject do
+            %{context: context} -> context
+            _ -> %{}
+          end
+
         Ash.Expr.fill_template(
           filter(actor, authorizer, opts),
           actor,
-          Ash.Policy.FilterCheck.args(authorizer)
+          Ash.Policy.FilterCheck.args(authorizer),
+          context
         )
       end
 
       def auto_filter_not(actor, authorizer, opts) do
         opts = Keyword.put_new(opts, :resource, authorizer.resource)
 
+        context =
+          case authorizer.subject do
+            %{context: context} -> context
+            _ -> %{}
+          end
+
         Ash.Expr.fill_template(
           reject(actor, authorizer, opts),
           actor,
-          Ash.Policy.FilterCheck.args(authorizer)
+          Ash.Policy.FilterCheck.args(authorizer),
+          context
         )
       end
 
