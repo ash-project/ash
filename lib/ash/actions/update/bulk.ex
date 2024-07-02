@@ -209,7 +209,7 @@ defmodule Ash.Actions.Update.Bulk do
           if (has_after_batch_hooks? || !Enum.empty?(atomic_changeset.after_action)) &&
                Keyword.get(opts, :transaction, true) do
             Ash.DataLayer.transaction(
-              List.wrap(atomic_changeset.resource) ++ action.touches_resources,
+              List.wrap(atomic_changeset.resource) ++ atomic_changeset.action.touches_resources,
               fn ->
                 do_atomic_update(query, atomic_changeset, has_after_batch_hooks?, input, opts)
               end,
