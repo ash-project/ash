@@ -3,7 +3,17 @@ defmodule Ash.Test.Policy.SimpleTest do
   use ExUnit.Case
   require Ash.Query
 
-  alias Ash.Test.Support.PolicySimple.{Car, Domain, Foo, Organization, Post, Trip, Tweet, User}
+  alias Ash.Test.Support.PolicySimple.{
+    Car,
+    Context,
+    Domain,
+    Foo,
+    Organization,
+    Post,
+    Trip,
+    Tweet,
+    User
+  }
 
   setup do
     [
@@ -189,6 +199,15 @@ defmodule Ash.Test.Policy.SimpleTest do
     Foo
     |> Ash.Changeset.for_create(:create, %{name: "Foo"})
     |> Ash.create!()
+  end
+
+  test "checking context using expr works" do
+    %{id: id} =
+      Context
+      |> Ash.Changeset.for_create(:create, %{name: "Foo"})
+      |> Ash.create!()
+
+    assert [%{id: ^id}] = Ash.read!(Context, context: %{name: "Foo"}, authorize?: true)
   end
 
   test "a final always policy with a forbid if always is properly applied" do
