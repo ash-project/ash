@@ -34,8 +34,8 @@ defmodule Ash.Actions.Read.Relationships do
       {relationship, _related_query, {:error, error}}, _ ->
         {:halt, {:error, Ash.Error.set_path(error, relationship.name)}}
 
-      {:__exception__, error}, _ ->
-        {:error, Ash.Error.to_ash_error(error)}
+      {:__exception__, error, stacktrace}, _ ->
+        {:error, Ash.Error.to_ash_error(error, stacktrace)}
     end)
   end
 

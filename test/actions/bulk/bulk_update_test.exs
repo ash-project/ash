@@ -264,6 +264,12 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
         change AtomicallyRequireActor
       end
 
+      update :update_with_policy_without_requiring_actor do
+        argument :authorize?, :boolean, allow_nil?: false
+
+        change set_context(%{authorize?: arg(:authorize?)})
+      end
+
       update :update_with_match do
         validate match(:title4, ~r/^[a-z]+$/)
       end
@@ -295,8 +301,16 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       end
     end
 
+    code_interface do
+      define :update_with_policy_without_requiring_actor
+    end
+
     policies do
       policy action(:update_with_policy) do
+        authorize_if context_equals(:authorize?, true)
+      end
+
+      policy action(:update_with_policy_without_requiring_actor) do
         authorize_if context_equals(:authorize?, true)
       end
 
@@ -1073,6 +1087,18 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                  return_records?: true,
                  return_errors?: true
                )
+    end
+
+    test "policy failure results in failures when using code interface" do
+      Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+        return_stream?: true,
+        return_records?: true
+      )
+      |> Enum.each(fn {:ok, post} ->
+        assert_raise Ash.Error.Forbidden, fn ->
+          Post.update_with_policy_without_requiring_actor!(post.id, %{title2: "updated value", authorize?: false})
+        end
+      end)
     end
 
     test "respects filter when using atomic" do
