@@ -33,10 +33,17 @@ defmodule Mix.Tasks.Ash.Install do
     :execution
   ]
 
+  @impl Igniter.Mix.Task
+  def info(_argv, _source) do
+    %Igniter.Mix.Task.Info{
+      installs: [spark: "~> 2.0"],
+      adds_deps: [picosat_elixir: "~> 0.2"]
+    }
+  end
+
+  @impl Igniter.Mix.Task
   def igniter(igniter, argv) do
     igniter
-    |> Igniter.Project.Deps.add_dependency(:picosat_elixir, "~> 0.2")
-    |> Igniter.compose_task("spark.install", argv)
     |> Igniter.Project.Formatter.import_dep(:ash)
     |> Igniter.Project.Config.configure(
       "config.exs",
