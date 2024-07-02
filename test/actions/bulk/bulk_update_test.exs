@@ -1096,7 +1096,10 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       )
       |> Enum.each(fn {:ok, post} ->
         assert_raise Ash.Error.Forbidden, fn ->
-          Post.update_with_policy_without_requiring_actor!(post.id, %{title2: "updated value", authorize?: false})
+          Post.update_with_policy_without_requiring_actor!(post.id, %{
+            title2: "updated value",
+            authorize?: false
+          })
         end
       end)
     end
