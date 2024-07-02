@@ -360,8 +360,7 @@ defmodule Ash.MixProject do
       {:simple_sat, "~> 0.1 and >= 0.1.1", optional: true},
 
       # Code Generators
-      # {:igniter, "~> 0.2.5"},
-      {:igniter, path: "../igniter", override: true},
+      {:igniter, "~> 0.2.6"},
 
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},
