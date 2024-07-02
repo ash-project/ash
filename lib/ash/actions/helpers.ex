@@ -95,7 +95,8 @@ defmodule Ash.Actions.Helpers do
           private: %{
             authorize?: authorize?
           }
-        } when not is_nil(authorize?) ->
+        }
+        when not is_nil(authorize?) ->
           Keyword.put_new(opts, :authorize?, authorize?)
 
         _ ->
@@ -128,30 +129,25 @@ defmodule Ash.Actions.Helpers do
     opts
     |> add_actor(query_or_changeset, domain)
     |> add_authorize?(query_or_changeset, domain)
-    |> add_tenant()
     |> add_tracer()
   end
 
   def add_context(query_or_changeset, opts) do
-    context = Process.get(:ash_context, %{}) || %{}
     private_context = Map.new(Keyword.take(opts, [:actor, :authorize?, :tracer]))
 
     case query_or_changeset do
       %Ash.ActionInput{} ->
         query_or_changeset
-        |> Ash.ActionInput.set_context(context)
         |> Ash.ActionInput.set_context(%{private: private_context})
         |> Ash.ActionInput.set_tenant(query_or_changeset.tenant || opts[:tenant])
 
       %Ash.Query{} ->
         query_or_changeset
-        |> Ash.Query.set_context(context)
         |> Ash.Query.set_context(%{private: private_context})
         |> Ash.Query.set_tenant(query_or_changeset.tenant || opts[:tenant])
 
       %Ash.Changeset{} ->
         query_or_changeset
-        |> Ash.Changeset.set_context(context)
         |> Ash.Changeset.set_context(%{
           private: private_context
         })
@@ -170,19 +166,6 @@ defmodule Ash.Actions.Helpers do
   end
 
   defp add_actor(opts, query_or_changeset, domain) do
-    opts =
-      if Keyword.has_key?(opts, :actor) do
-        opts
-      else
-        case Process.get(:ash_actor) do
-          {:actor, value} ->
-            Keyword.put(opts, :actor, value)
-
-          _ ->
-            opts
-        end
-      end
-
     if !domain do
       raise Ash.Error.Framework.AssumptionFailed,
         message: "Could not determine domain for action."
@@ -206,19 +189,6 @@ defmodule Ash.Actions.Helpers do
   defp skip_requiring_actor?(_), do: false
 
   defp add_authorize?(opts, query_or_changeset, domain) do
-    opts =
-      if Keyword.has_key?(opts, :authorize?) && opts[:authorize?] != nil do
-        opts
-      else
-        case Process.get(:ash_authorize?) do
-          {:authorize?, value} ->
-            Keyword.put(opts, :authorize?, value)
-
-          _ ->
-            opts
-        end
-      end
-
     if !domain do
       raise Ash.Error.Framework.AssumptionFailed,
         message: "Could not determine domain for action."
@@ -248,30 +218,7 @@ defmodule Ash.Actions.Helpers do
     end
   end
 
-  defp add_tenant(opts) do
-    if Keyword.has_key?(opts, :tenant) do
-      opts
-    else
-      case Process.get(:ash_tenant) do
-        {:tenant, value} ->
-          Keyword.put(opts, :tenant, value)
-
-        _ ->
-          opts
-      end
-    end
-  end
-
   defp add_tracer(opts) do
-    opts =
-      case Process.get(:ash_tracer) do
-        {:tracer, value} ->
-          do_add_tracer(opts, value)
-
-        _ ->
-          opts
-      end
-
     case Application.get_env(:ash, :tracer) do
       nil ->
         opts

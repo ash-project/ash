@@ -57,11 +57,7 @@ defmodule Ash.Actions.Update.Bulk do
           changeset
 
         Ash.DataLayer.data_layer_can?(query.resource, :update_query) ->
-          private_context = %{
-            actor: opts[:actor],
-            tenant: opts[:tenant],
-            authorize?: opts[:authorize?]
-          }
+          private_context = Map.new(Keyword.take(opts, [:actor, :tenant, :authorize]))
 
           opts =
             Keyword.update(
