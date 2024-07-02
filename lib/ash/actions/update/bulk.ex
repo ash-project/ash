@@ -249,7 +249,7 @@ defmodule Ash.Actions.Update.Bulk do
 
                   Process.put(
                     :ash_notifications,
-                    process_notifications ++ bulk_result.notifications
+                    process_notifications ++ List.wrap(bulk_result.notifications)
                   )
 
                   %{bulk_result | notifications: []}
