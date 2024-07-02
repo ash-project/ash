@@ -4149,17 +4149,18 @@ defmodule Ash.Filter do
     path = :lists.droplast(list)
     last = List.last(list)
 
-    case Ash.Resource.Info.relationship(Ash.Resource.Info.related(resource, path), last) do
-      nil ->
+    with related when not is_nil(related) <- Ash.Resource.Info.related(resource, path),
+         relationship when not is_nil(relationship) <-
+           Ash.Resource.Info.relationship(related, last) do
+      relationship
+    else
+      _ ->
         raise """
         Attempted to read relationship path that does not exsist.
 
         Resource: #{inspect(resource)}
         Path: #{inspect(list)}
         """
-
-      relationship ->
-        relationship
     end
   end
 end
