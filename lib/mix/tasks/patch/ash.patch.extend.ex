@@ -1,8 +1,8 @@
-defmodule Mix.Tasks.Ash.Extend do
+defmodule Mix.Tasks.Ash.Patch.Extend do
   @moduledoc """
   Adds an extension or extensions to the domain/resource
 
-  For example: `mix ash.extend My.Domain.Resource Ash.Policy.Authorizer`
+  For example: `mix ash.patch.extend My.Domain.Resource Ash.Policy.Authorizer`
   """
   @shortdoc "Adds an extension or extensions to the given domain/resource"
   require Igniter.Code.Common
@@ -22,61 +22,53 @@ defmodule Mix.Tasks.Ash.Extend do
 
     Enum.reduce(opts[:subjects], igniter, fn subject, igniter ->
       subject = Igniter.Code.Module.parse(subject)
-      path_to_thing = Igniter.Code.Module.proper_location(subject)
 
-      kind_of_thing = kind_of_thing(igniter, path_to_thing)
+      case Igniter.Code.Module.find_module(igniter, subject) do
+        {:error, igniter} ->
+          Igniter.add_issue(igniter, "Could not find module to extend: #{subject}")
 
-      # we currently require that the packages required are already installed
-      # probably pretty low hanging fruit to adjust that
-      {igniter, patchers, _install} =
-        Enum.reduce(extensions, {igniter, [], []}, fn extension, {igniter, patchers, install} ->
-          case patcher(kind_of_thing, subject, extension, path_to_thing, argv) do
-            {fun, new_install} when is_function(fun, 1) ->
-              {igniter, [fun | patchers], install ++ new_install}
+        {:ok, {igniter, source, zipper}} ->
+          case kind_of_thing(zipper) do
+            {:ok, kind_of_thing} ->
+              {igniter, patchers, _install} =
+                Enum.reduce(extensions, {igniter, [], []}, fn extension,
+                                                              {igniter, patchers, install} ->
+                  case patcher(kind_of_thing, subject, extension, source.path, argv) do
+                    {fun, new_install} when is_function(fun, 1) ->
+                      {igniter, [fun | patchers], install ++ new_install}
 
-            {:error, error} ->
-              {Igniter.add_issue(igniter, error), patchers, install}
+                    {:error, error} ->
+                      {Igniter.add_issue(igniter, error), patchers, install}
+                  end
+                end)
+
+              Enum.reduce(patchers, igniter, fn patcher, igniter ->
+                patcher.(igniter)
+              end)
+
+            :error ->
+              Igniter.add_issue(
+                igniter,
+                "Could not determine whether #{subject} is an `Ash.Resource` or an `Ash.Domain`."
+              )
           end
-        end)
-
-      # unless Enum.empty?(install) do
-      #   Mix.Shell.info("""
-      #   Before proceeding, we must install the following packages:
-      #   """)
-      #   Igniter.Install.install(install, argv)
-      # end
-
-      Enum.reduce(patchers, igniter, fn patcher, igniter ->
-        patcher.(igniter)
-      end)
+      end
     end)
   end
 
-  defp kind_of_thing(igniter, path) do
-    igniter = Igniter.include_existing_elixir_file(igniter, path)
-
-    zipper =
-      igniter.rewrite
-      |> Rewrite.source!(path)
-      |> Rewrite.Source.get(:quoted)
-      |> Sourceror.Zipper.zip()
-
-    with {_, :error} <-
-           {Ash.Resource, Igniter.Code.Module.move_to_module_using(zipper, Ash.Resource)},
-         {_, :error} <- {Ash.Domain, Igniter.Code.Module.move_to_module_using(zipper, Ash.Domain)} do
-      raise ArgumentError, """
-      Could not determine whether the thing at #{path} is an `Ash.Resource` or an `Ash.Domain`.
-
-      It is a current limitation of `mix ash.extend` that it requires the module in question to be
-      defined at the "standard" path.
-
-      For example:
-
-      `YourApp.Foo.Bar` -> `lib/your_app/foo/bar.ex`
-      """
+  defp kind_of_thing(zipper) do
+    with {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper) do
+      with {_, :error} <-
+             {Ash.Resource, Igniter.Code.Module.move_to_using(zipper, Ash.Resource)},
+           {_, :error} <-
+             {Ash.Domain, Igniter.Code.Module.move_to_using(zipper, Ash.Domain)} do
+        :error
+      else
+        {kind_of_thing, {:ok, _}} ->
+          {:ok, kind_of_thing}
+      end
     else
-      {kind_of_thing, {:ok, _}} ->
-        kind_of_thing
+      _ -> :error
     end
   end
 
@@ -101,7 +93,7 @@ defmodule Mix.Tasks.Ash.Extend do
           {[], Ash.DataLayer.Mnesia}
 
         {Ash.Resource, "embedded", _} ->
-          {[], &embedded_patcher(&1, module, path)}
+          {[], &embedded_patcher(&1, module)}
 
         {Ash.Resource, "json_api", _} ->
           {[:ash_json_api], AshJsonApi.Resource}
@@ -129,10 +121,10 @@ defmodule Mix.Tasks.Ash.Extend do
           if function_exported?(extension, :install, 4) do
             fn igniter ->
               extension.install(igniter, module, kind_of_thing, path, argv)
-              |> simple_add_extension(kind_of_thing, path, extension)
+              |> simple_add_extension(kind_of_thing, module, extension)
             end
           else
-            &simple_add_extension(&1, kind_of_thing, path, extension)
+            &simple_add_extension(&1, kind_of_thing, module, extension)
           end
 
         {fun, install}
@@ -167,7 +159,7 @@ defmodule Mix.Tasks.Ash.Extend do
     end
   end
 
-  defp embedded_patcher(igniter, resource, path) do
+  defp embedded_patcher(igniter, resource) do
     domain =
       resource
       |> Module.split()
@@ -175,52 +167,50 @@ defmodule Mix.Tasks.Ash.Extend do
       |> Module.concat()
 
     igniter
-    |> remove_domain_option(path)
-    |> Spark.Igniter.add_extension(path, Ash.Resource, :data_layer, :embedded, true)
+    |> remove_domain_option(resource)
+    |> Spark.Igniter.add_extension(resource, Ash.Resource, :data_layer, :embedded, true)
     |> Ash.Domain.Igniter.remove_resource_reference(domain, resource)
     |> Spark.Igniter.update_dsl(
-      Ash.Resource,
-      path,
+      resource,
       [{:section, :actions}, {:option, :defaults}],
-      [:read, :destroy, create: [], update: []],
-      fn x -> x end
+      [:read, :destroy, create: :*, update: :*],
+      fn x -> {:ok, x} end
     )
   end
 
-  defp remove_domain_option(igniter, path) do
-    Igniter.update_elixir_file(igniter, path, fn zipper ->
-      with {:ok, zipper} <- Igniter.Code.Module.move_to_module_using(zipper, Ash.Resource),
-           {:ok, zipper} <- Igniter.Code.Module.move_to_use(zipper, Ash.Resource),
+  defp remove_domain_option(igniter, module) do
+    Igniter.Code.Module.find_and_update_module!(igniter, module, fn zipper ->
+      with {:ok, zipper} <- Igniter.Code.Module.move_to_use(zipper, Ash.Resource),
            {:ok, zipper} <-
              Igniter.Code.Function.update_nth_argument(zipper, 1, fn values_zipper ->
-               values_zipper
-               |> Igniter.Code.Keyword.remove_keyword_key(:domain)
+               Igniter.Code.Keyword.remove_keyword_key(values_zipper, :domain)
              end) do
-        zipper
+        Igniter.Util.Debug.puts_code_at_node(zipper)
+        {:ok, zipper}
       else
         _ ->
-          zipper
+          {:ok, zipper}
       end
     end)
   end
 
-  defp simple_add_extension(igniter, Ash.Resource, path, extension) do
+  defp simple_add_extension(igniter, Ash.Resource, module, extension) do
     cond do
       Spark.implements_behaviour?(extension, Ash.DataLayer) ->
-        Spark.Igniter.add_extension(igniter, path, Ash.Resource, :data_layer, extension, true)
+        Spark.Igniter.add_extension(igniter, module, Ash.Resource, :data_layer, extension, true)
 
       Spark.implements_behaviour?(extension, Ash.Notifier) ->
-        Spark.Igniter.add_extension(igniter, path, Ash.Resource, :notifiers, extension)
+        Spark.Igniter.add_extension(igniter, module, Ash.Resource, :notifiers, extension)
 
       Spark.implements_behaviour?(extension, Ash.Authorizer) ->
-        Spark.Igniter.add_extension(igniter, path, Ash.Resource, :authorizers, extension)
+        Spark.Igniter.add_extension(igniter, module, Ash.Resource, :authorizers, extension)
 
       true ->
         igniter
     end
   end
 
-  defp simple_add_extension(igniter, type, path, extension) do
-    Spark.Igniter.add_extension(igniter, path, type, :extensions, extension)
+  defp simple_add_extension(igniter, type, module, extension) do
+    Spark.Igniter.add_extension(igniter, module, type, :extensions, extension)
   end
 end

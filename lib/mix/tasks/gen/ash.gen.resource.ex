@@ -197,7 +197,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   defp extend(igniter, resource, extensions, argv) do
     Igniter.compose_task(
       igniter,
-      "ash.extend",
+      "ash.patch.extend",
       [inspect(resource), Enum.join(extensions, ",")] ++ argv
     )
   end

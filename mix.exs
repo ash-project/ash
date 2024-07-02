@@ -335,7 +335,7 @@ defmodule Ash.MixProject do
   defp deps do
     [
       # DSLs
-      {:spark, "~> 2.1 and >= 2.1.18"},
+      {:spark, "~> 2.1 and >= 2.2.7"},
       # Ash resources are backed by ecto scheams
       {:ecto, "~> 3.7"},
       # Used by the ETS data layer
@@ -360,7 +360,8 @@ defmodule Ash.MixProject do
       {:simple_sat, "~> 0.1 and >= 0.1.1", optional: true},
 
       # Code Generators
-      {:igniter, "~> 0.2.5"},
+      # {:igniter, "~> 0.2.5"},
+      {:igniter, path: "../igniter", override: true},
 
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},

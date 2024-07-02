@@ -678,7 +678,11 @@ defmodule Ash.Actions.Read do
       expr
       |> Ash.Filter.used_aggregates(:*, true)
       |> Enum.map(fn %Ash.Query.Ref{attribute: aggregate, relationship_path: relationship_path} ->
-        %{aggregate | resource: query.resource, relationship_path: relationship_path ++ aggregate.relationship_path}
+        %{
+          aggregate
+          | resource: query.resource,
+            relationship_path: relationship_path ++ aggregate.relationship_path
+        }
       end)
     end)
     |> Enum.concat(Map.values(query.aggregates))
