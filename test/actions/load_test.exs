@@ -177,6 +177,10 @@ defmodule Ash.Test.Actions.LoadTest do
       end
     end
 
+    aggregates do
+      count :posts_count, :posts
+    end
+
     relationships do
       has_many(:posts, Ash.Test.Actions.LoadTest.Post,
         destination_attribute: :author_id,
@@ -663,6 +667,10 @@ defmodule Ash.Test.Actions.LoadTest do
         |> Ash.Query.filter(posts.id == ^post1.id)
         |> Ash.read!(authorize?: true)
 
+      author = Ash.load!(author, :posts_count, lazy?: true)
+
+      assert author.posts_count == 2
+
       assert Enum.sort(Enum.map(author.posts, &Map.get(&1, :id))) ==
                Enum.sort([post1.id, post2.id])
 
@@ -678,7 +686,9 @@ defmodule Ash.Test.Actions.LoadTest do
 
       author =
         author
-        |> Ash.load!([posts: [:author]], authorize?: true)
+        |> Ash.load!([:posts_count, posts: [:author]], authorize?: true)
+
+      assert author.posts_count == 3
 
       assert Enum.sort(Enum.map(author.posts, &Map.get(&1, :id))) ==
                Enum.sort([post1.id, post2.id, post3.id])
@@ -694,10 +704,12 @@ defmodule Ash.Test.Actions.LoadTest do
 
       author =
         author
-        |> Ash.load!([posts: [:author]], authorize?: true, lazy?: true)
+        |> Ash.load!([:posts_count, posts: [:author]], authorize?: true, lazy?: true)
 
       assert Enum.sort(Enum.map(author.posts, &Map.get(&1, :id))) ==
                Enum.sort([post1.id, post2.id, post3.id])
+
+      assert author.posts_count == 3
 
       for post <- author.posts do
         assert post.author.id == author.id
