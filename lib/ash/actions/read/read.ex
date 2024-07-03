@@ -1159,24 +1159,24 @@ defmodule Ash.Actions.Read do
     query =
       query
       |> Map.update!(:calculations, fn calculations ->
-        keys =
+        loaded_keys =
           calculations
-          |> Enum.reject(fn {_key, calc} ->
+          |> Enum.filter(fn {_key, calc} ->
             Ash.Resource.loaded?(initial_data, calc)
           end)
           |> Enum.map(&elem(&1, 0))
 
-        Map.drop(calculations, keys)
+        Map.drop(calculations, loaded_keys)
       end)
       |> Map.update!(:aggregates, fn aggregates ->
-        keys =
+        loaded_keys =
           aggregates
-          |> Enum.reject(fn {_key, calc} ->
+          |> Enum.filter(fn {_key, calc} ->
             Ash.Resource.loaded?(initial_data, calc)
           end)
           |> Enum.map(&elem(&1, 0))
 
-        Map.drop(aggregates, keys)
+        Map.drop(aggregates, loaded_keys)
       end)
 
     query
