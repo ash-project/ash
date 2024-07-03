@@ -124,6 +124,17 @@ defmodule Ash.Test.Policy.SimpleTest do
     assert ids == Enum.sort([post1.id, post2.id])
   end
 
+  test "filter policies bypassed for calculations", %{user: user} do
+    other_user = Ash.create!(Ash.Changeset.for_create(User, :create), authorize?: false)
+
+    Post
+    |> Ash.Changeset.for_create(:create, %{author: user.id, text: "aaa"})
+    |> Ash.create!(authorize?: false)
+
+    assert %{post_texts: ["aaa"]} =
+             Ash.load!(user, :post_texts, actor: other_user)
+  end
+
   test "authorize_unless properly combines", %{user: user} do
     Car
     |> Ash.Changeset.for_create(:authorize_unless, %{})

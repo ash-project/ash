@@ -50,6 +50,10 @@ defmodule Ash.Test.Support.PolicySimple.User do
               expr(not is_nil(most_recent_car)) do
       public?(true)
     end
+
+    calculate :post_texts,
+              {:array, :string},
+              Ash.Test.Support.PolicySimple.Calculations.PostTexts
   end
 
   relationships do
