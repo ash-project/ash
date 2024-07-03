@@ -203,11 +203,27 @@ defmodule Ash.Test.Policy.SimpleTest do
 
   test "checking context using expr works" do
     %{id: id} =
+      context =
       Context
       |> Ash.Changeset.for_create(:create, %{name: "Foo"})
       |> Ash.create!()
 
     assert [%{id: ^id}] = Ash.read!(Context, context: %{name: "Foo"}, authorize?: true)
+
+    assert %{name: "Bar"} =
+             context
+             |> Ash.Changeset.for_update(:update, %{name: "Bar"},
+               context: %{name: "Foo"},
+               authorize?: true
+             )
+             |> Ash.update!()
+
+    assert {:ok, %{name: "Foo"}} =
+             Domain.update_context(id, "Foo",
+               context: %{name: "Bar"},
+               actor: nil,
+               authorize?: true
+             )
   end
 
   test "a final always policy with a forbid if always is properly applied" do

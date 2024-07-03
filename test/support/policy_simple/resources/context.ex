@@ -7,18 +7,25 @@ defmodule Ash.Test.Support.PolicySimple.Context do
       Ash.Policy.Authorizer
     ]
 
+  alias Ash.Test.Support.PolicySimple.Context.Changes.DoChange
+
   policies do
     policy action_type(:create) do
       authorize_if always()
     end
 
-    policy action_type(:read) do
+    policy action_type([:read, :update]) do
       authorize_if(expr(^context(:name) == name))
+      authorize_if relates_to_actor_via(:user)
     end
   end
 
   ets do
     private?(true)
+  end
+
+  relationships do
+    belongs_to(:user, Ash.Test.Support.PolicySimple.User, public?: true)
   end
 
   attributes do
@@ -28,6 +35,12 @@ defmodule Ash.Test.Support.PolicySimple.Context do
 
   actions do
     default_accept :*
-    defaults [:read, :destroy, create: :*, update: :*]
+    defaults [:read, :destroy, create: :*]
+
+    update :update do
+      require_atomic? false
+      argument :name, :string
+      change DoChange
+    end
   end
 end
