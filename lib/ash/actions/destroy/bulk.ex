@@ -1390,6 +1390,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     |> Map.put(:domain, domain)
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
     |> Ash.Changeset.put_context(:bulk_destroy, %{index: index})
+    |> Ash.Changeset.set_context(opts[:context] || %{})
     |> handle_params(
       Keyword.get(opts, :assume_casted?, false),
       action,

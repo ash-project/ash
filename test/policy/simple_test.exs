@@ -218,8 +218,8 @@ defmodule Ash.Test.Policy.SimpleTest do
              )
              |> Ash.update!()
 
-    assert {:ok, %{name: "Foo"}} =
-             Domain.update_context(id, "Foo",
+    assert %{name: "Foo"} =
+             Domain.update_context!(id, "Foo",
                context: %{name: "Bar"},
                actor: nil,
                authorize?: true
