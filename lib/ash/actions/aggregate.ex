@@ -161,6 +161,23 @@ defmodule Ash.Actions.Aggregate do
             {:halt, {:error, error}}
         end
     end)
+    |> case do
+      {:ok, aggregates} ->
+        {:ok,
+         Enum.map(aggregates, fn aggregate ->
+           Ash.Actions.Read.add_calc_context(
+             aggregate,
+             opts[:actor],
+             opts[:authorize?],
+             opts[:tenant],
+             opts[:tracer],
+             query.domain
+           )
+         end)}
+
+      other ->
+        other
+    end
   end
 
   defp set_opts(query, specified, others) do
