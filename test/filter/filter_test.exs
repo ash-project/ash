@@ -180,6 +180,7 @@ defmodule Ash.Test.Filter.FilterTest do
       belongs_to :author1, User,
         destination_attribute: :id,
         source_attribute: :author1_id,
+        attribute_public?: false,
         public?: true
 
       belongs_to :special_author1, User do
