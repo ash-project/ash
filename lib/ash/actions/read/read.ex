@@ -196,7 +196,8 @@ defmodule Ash.Actions.Read do
         query,
         missing_pkeys?,
         Keyword.fetch(opts, :initial_data),
-        reuse_values?
+        reuse_values?,
+        opts[:authorize?]
       )
 
     query =

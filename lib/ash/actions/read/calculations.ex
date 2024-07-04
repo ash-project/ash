@@ -687,7 +687,14 @@ defmodule Ash.Actions.Read.Calculations do
     end)
   end
 
-  def split_and_load_calculations(domain, ash_query, missing_pkeys?, initial_data, reuse_values?) do
+  def split_and_load_calculations(
+        domain,
+        ash_query,
+        missing_pkeys?,
+        initial_data,
+        reuse_values?,
+        authorize?
+      ) do
     can_expression_calculation? =
       !missing_pkeys? &&
         Ash.DataLayer.data_layer_can?(ash_query.resource, :expression_calculation)
@@ -700,7 +707,8 @@ defmodule Ash.Actions.Read.Calculations do
           calc,
           can_expression_calculation?,
           initial_data,
-          reuse_values?
+          reuse_values?,
+          authorize?
         )
       end)
 
@@ -894,6 +902,7 @@ defmodule Ash.Actions.Read.Calculations do
          can_expression_calculation?,
          initial_data,
          reuse_values?,
+         authorize?,
          calc_path \\ [],
          relationship_path \\ [],
          checked_calculations \\ []
@@ -939,7 +948,8 @@ defmodule Ash.Actions.Read.Calculations do
           can_expression_calculation?,
           [{calculation.module, calculation.opts} | checked_calculations],
           initial_data,
-          reuse_values?
+          reuse_values?,
+          authorize?
         )
       end
     end
@@ -957,7 +967,8 @@ defmodule Ash.Actions.Read.Calculations do
          can_expression_calculation?,
          checked_calculations,
          initial_data,
-         reuse_values?
+         reuse_values?,
+         authorize?
        ) do
     requirements
     |> Enum.map(fn
@@ -981,7 +992,8 @@ defmodule Ash.Actions.Read.Calculations do
         can_expression_calculation?,
         checked_calculations,
         initial_data,
-        reuse_values?
+        reuse_values?,
+        authorize?
       )
     )
   end
@@ -998,7 +1010,8 @@ defmodule Ash.Actions.Read.Calculations do
          can_expression_calculation?,
          checked_calculations,
          initial_data,
-         reuse_values?
+         reuse_values?,
+         authorize?
        ) do
     cond do
       match?(%Ash.Query.Calculation{}, load) ->
@@ -1015,7 +1028,8 @@ defmodule Ash.Actions.Read.Calculations do
           checked_calculations,
           initial_data,
           strict_loads?,
-          reuse_values?
+          reuse_values?,
+          authorize?
         )
 
       match?(%Ash.Query.Aggregate{}, load) ->
@@ -1113,7 +1127,8 @@ defmodule Ash.Actions.Read.Calculations do
                     relationship_path,
                     initial_data,
                     strict_loads?,
-                    reuse_values?
+                    reuse_values?,
+                    authorize?
                   )
                 )
               end)
@@ -1203,7 +1218,8 @@ defmodule Ash.Actions.Read.Calculations do
             can_expression_calculation?,
             checked_calculations,
             initial_data,
-            reuse_values?
+            reuse_values?,
+            authorize?
           )
         else
           {:error, error} ->
@@ -1221,6 +1237,7 @@ defmodule Ash.Actions.Read.Calculations do
               related_query =
                 relationship.destination
                 |> Ash.Query.set_context(%{private: %{lazy?: true}})
+                |> Ash.Query.select([])
                 |> merge_query_load(
                   further,
                   relationship.domain || domain,
@@ -1253,102 +1270,148 @@ defmodule Ash.Actions.Read.Calculations do
               Ash.Query.load(query, [{relationship.name, related_query}])
           end
         else
-          case query.load[relationship.name] do
-            nil ->
-              Ash.Query.load(query, [{relationship.name, further}])
+          current_load = query.load[relationship.name]
 
-            current_load ->
-              if compatible_relationships?(current_load, further) do
-                %{
-                  query
-                  | load:
-                      Keyword.put(
-                        query.load,
-                        relationship.name,
-                        merge_query_load(
-                          current_load,
-                          further,
-                          relationship.domain || domain,
-                          calc_path,
-                          calc_name,
-                          calc_load,
-                          relationship_path ++ [relationship.name],
-                          initial_data,
-                          strict_loads?,
-                          reuse_values?
-                        )
+          if current_load && !authorize? do
+            if compatible_relationships?(current_load, further) do
+              %{
+                query
+                | load:
+                    Keyword.put(
+                      query.load,
+                      relationship.name,
+                      merge_query_load(
+                        current_load,
+                        further,
+                        relationship.domain || domain,
+                        calc_path,
+                        calc_name,
+                        calc_load,
+                        relationship_path ++ [relationship.name],
+                        initial_data,
+                        strict_loads?,
+                        reuse_values?
                       )
-                }
-              else
-                {type, constraints} =
-                  case relationship.cardinality do
-                    :many -> {{:array, :struct}, items: [instance_of: relationship.destination]}
-                    :one -> {:struct, instance_of: relationship.destination}
-                  end
-
-                case Enum.find(query.calculations, fn {_name, existing_calculation} ->
-                       existing_calculation.module == Ash.Resource.Calculation.LoadRelationship &&
-                         existing_calculation.opts[:relationship] == relationship.name &&
-                         compatible_relationships?(existing_calculation.opts[:query], further) &&
-                         match?(%{name: {:__calc_dep__, _}}, existing_calculation)
-                     end) do
-                  nil ->
-                    new_calc_name =
-                      {:__calc_dep__,
-                       [
-                         {calc_path, {:rel, relationship.name}, calc_name, calc_load}
-                       ]}
-
-                    query
-                    |> Ash.Query.calculate(
-                      new_calc_name,
-                      type,
-                      {Ash.Resource.Calculation.LoadRelationship,
-                       relationship: relationship.name,
-                       query: further,
-                       domain: relationship.domain || domain},
-                      %{},
-                      constraints
                     )
-                    |> add_calculation_dependency(calc_name, new_calc_name)
-
-                  {key, existing_calculation} ->
-                    new_calculation =
-                      existing_calculation
-                      |> Map.update!(:opts, fn opts ->
-                        Keyword.update(
-                          opts,
-                          :query,
-                          further,
-                          &merge_query_load(
-                            &1,
-                            further,
-                            relationship.domain || domain,
-                            calc_path,
-                            calc_name,
-                            calc_load,
-                            relationship_path ++ [relationship.name],
-                            initial_data,
-                            strict_loads?,
-                            reuse_values?
-                          )
-                        )
-                      end)
-                      |> Map.update!(:name, fn {:__calc_dep__, paths} ->
-                        {:__calc_dep__,
-                         [{calc_path, {:rel, relationship.name}, calc_name, calc_load} | paths]}
-                      end)
-
-                    query
-                    |> rename_and_replace_calculation(key, new_calculation)
-                    |> add_calculation_dependency(calc_name, new_calculation.name)
-                end
-              end
+              }
+            else
+              add_new_relationship_calc(
+                       relationship,
+                       query,
+                       domain,
+                       calc_name,
+                       calc_load,
+                       calc_path,
+                       strict_loads?,
+                       relationship_path,
+                       initial_data,
+                       reuse_values?,
+                       further
+                     )
+            end
+          else
+            if authorize? do
+              add_new_relationship_calc(
+                       relationship,
+                       query,
+                       domain,
+                       calc_name,
+                       calc_load,
+                       calc_path,
+                       strict_loads?,
+                       relationship_path,
+                       initial_data,
+                       reuse_values?,
+                       further
+                     )
+            else
+              Ash.Query.load(query, [{relationship.name, further}])
+            end
           end
         end
 
       true ->
         raise "unknown load for #{inspect(query)}: #{inspect(load)}"
+    end
+  end
+
+  defp add_new_relationship_calc(
+         relationship,
+         query,
+         domain,
+         calc_name,
+         calc_load,
+         calc_path,
+         strict_loads?,
+         relationship_path,
+         initial_data,
+         reuse_values?,
+         further
+       ) do
+    {type, constraints} =
+      case relationship.cardinality do
+        :many -> {{:array, :struct}, items: [instance_of: relationship.destination]}
+        :one -> {:struct, instance_of: relationship.destination}
+      end
+
+    case Enum.find(query.calculations, fn {_name, existing_calculation} ->
+           existing_calculation.module == Ash.Resource.Calculation.LoadRelationship &&
+             existing_calculation.opts[:relationship] == relationship.name &&
+             existing_calculation.opts[:opts][:authorize?] == false &&
+             compatible_relationships?(existing_calculation.opts[:query], further) &&
+             match?(%{name: {:__calc_dep__, _}}, existing_calculation)
+         end) do
+      nil ->
+        new_calc_name =
+          {:__calc_dep__,
+           [
+             {calc_path, {:rel, relationship.name}, calc_name, calc_load}
+           ]}
+
+        query
+        |> Ash.Query.calculate(
+          new_calc_name,
+          type,
+          {Ash.Resource.Calculation.LoadRelationship,
+           relationship: relationship.name,
+           query: further,
+           opts: [authorize?: false],
+           domain: relationship.domain || domain},
+          %{},
+          constraints
+        )
+        |> add_calculation_dependency(calc_name, new_calc_name)
+
+      {key, existing_calculation} ->
+        new_calculation =
+          existing_calculation
+          |> Map.update!(:opts, fn opts ->
+            Keyword.update(
+              opts,
+              :query,
+              further,
+              &merge_query_load(
+                &1,
+                further,
+                relationship.domain || domain,
+                calc_path,
+                calc_name,
+                calc_load,
+                relationship_path ++ [relationship.name],
+                initial_data,
+                strict_loads?,
+                reuse_values?
+              )
+            )
+          end)
+          |> Map.update!(:name, fn {:__calc_dep__, paths} ->
+            {:__calc_dep__,
+             [{calc_path, {:rel, relationship.name}, calc_name, calc_load} | paths]}
+          end)
+
+        query
+        |> rename_and_replace_calculation(key, new_calculation)
+        |> add_calculation_dependency(calc_name, new_calculation.name)
     end
   end
 
@@ -1406,7 +1469,8 @@ defmodule Ash.Actions.Read.Calculations do
          checked_calculations,
          initial_data,
          strict_loads?,
-         reuse_values?
+         reuse_values?,
+         authorize?
        ) do
     if loaded_and_reusable?(initial_data, relationship_path, calculation, reuse_values?) do
       do_merge_load_through(
@@ -1423,7 +1487,8 @@ defmodule Ash.Actions.Read.Calculations do
         relationship_path,
         initial_data,
         strict_loads?,
-        reuse_values?
+        reuse_values?,
+        authorize?
       )
     else
       case find_equivalent_calculation(query, calculation) do
@@ -1445,7 +1510,8 @@ defmodule Ash.Actions.Read.Calculations do
                 relationship_path,
                 initial_data,
                 strict_loads?,
-                reuse_values?
+                reuse_values?,
+                authorize?
               )
 
             add_calculation_dependency(query, calc_name, equivalent_calculation.name)
@@ -1465,7 +1531,8 @@ defmodule Ash.Actions.Read.Calculations do
                 relationship_path,
                 initial_data,
                 strict_loads?,
-                reuse_values?
+                reuse_values?,
+                authorize?
               )
 
             new_calc_name =
@@ -1514,8 +1581,9 @@ defmodule Ash.Actions.Read.Calculations do
             query,
             new_calculation,
             can_expression_calculation?,
-            relationship_path,
-            relationship_path,
+            initial_data,
+            reuse_values?,
+            authorize?,
             checked_calculations
           )
           |> add_calculation_dependency(calc_name, new_calculation.name)
@@ -1537,7 +1605,8 @@ defmodule Ash.Actions.Read.Calculations do
          relationship_path,
          initial_data,
          strict_loads?,
-         reuse_values?
+         reuse_values?,
+         authorize?
        ) do
     case Map.fetch(
            query.load_through[load_type] || %{},
@@ -1576,7 +1645,8 @@ defmodule Ash.Actions.Read.Calculations do
                 relationship_path,
                 initial_data,
                 strict_loads?,
-                reuse_values?
+                reuse_values?,
+                authorize?
               )
             )
           end)
@@ -1646,7 +1716,8 @@ defmodule Ash.Actions.Read.Calculations do
          relationship_path,
          initial_data,
          strict_loads?,
-         reuse_values?
+         reuse_values?,
+         authorize?
        ) do
     case Ash.Type.merge_load(type, old, new, constraints, %{
            domain: domain,
@@ -1656,6 +1727,7 @@ defmodule Ash.Actions.Read.Calculations do
            relationship_path: relationship_path,
            initial_data: initial_data,
            reuse_values?: reuse_values?,
+           authorize?: authorize?,
            strict_loads?: strict_loads?
          }) do
       {:ok, result} ->
@@ -1685,7 +1757,8 @@ defmodule Ash.Actions.Read.Calculations do
         relationship_path,
         initial_data \\ :error,
         strict_loads? \\ false,
-        reuse_values? \\ false
+        reuse_values? \\ false,
+        authorize? \\ true
       ) do
     can_expression_calculation? =
       Ash.DataLayer.data_layer_can?(left.resource, :expression_calculation)
@@ -1700,11 +1773,12 @@ defmodule Ash.Actions.Read.Calculations do
       calc_load,
       calc_path,
       strict_loads?,
-      relationship_path,
+      calc_path,
       can_expression_calculation?,
-      [],
+      relationship_path,
       initial_data,
-      reuse_values?
+      reuse_values?,
+      authorize?
     )
   end
 

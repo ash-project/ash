@@ -1220,7 +1220,8 @@ defmodule Ash.Query do
         context[:relationship_path],
         :error,
         context[:strict_loads?],
-        context[:reuse_values?]
+        context[:reuse_values?],
+        context[:authorize?]
       )
     else
       load(left, right)
