@@ -1038,7 +1038,7 @@ defmodule Ash.Actions.Read.Calculations do
         else
           aggregate = load
 
-          case find_equivalent_aggregate(query, aggregate) do
+          case find_equivalent_aggregate(query, aggregate, authorize?) do
             {:ok, equivalent_aggregate} ->
               if equivalent_aggregate.load == aggregate.load and
                    equivalent_aggregate.name == aggregate.name do
@@ -1491,7 +1491,7 @@ defmodule Ash.Actions.Read.Calculations do
         authorize?
       )
     else
-      case find_equivalent_calculation(query, calculation) do
+      case find_equivalent_calculation(query, calculation, authorize?) do
         {:ok, equivalent_calculation} ->
           if equivalent_calculation.load == calculation.load and
                equivalent_calculation.name == calculation.name do
@@ -1679,21 +1679,29 @@ defmodule Ash.Actions.Read.Calculations do
     }
   end
 
-  defp find_equivalent_calculation(query, calculation) do
-    Enum.find_value(query.calculations, :error, fn {_, other_calc} ->
-      if other_calc.module == calculation.module and other_calc.opts == calculation.opts and
-           other_calc.context.arguments == calculation.context.arguments do
-        {:ok, other_calc}
-      end
-    end)
+  defp find_equivalent_calculation(query, calculation, authorize?) do
+    if !authorize? || match?({:__calc_dep__, _}, calculation.name) do
+      Enum.find_value(query.calculations, :error, fn {_, other_calc} ->
+        if other_calc.module == calculation.module and other_calc.opts == calculation.opts and
+             other_calc.context.arguments == calculation.context.arguments do
+          {:ok, other_calc}
+        end
+      end)
+    else
+      :error
+    end
   end
 
-  defp find_equivalent_aggregate(query, agg) do
-    Enum.find_value(query.aggregates, :error, fn {_, other_agg} ->
-      if other_agg == agg do
-        {:ok, other_agg}
-      end
-    end)
+  defp find_equivalent_aggregate(query, agg, authorize?) do
+    if !authorize? || match?({:__calc_dep__, _}, agg.name) do
+      Enum.find_value(query.aggregates, :error, fn {_, other_agg} ->
+        if other_agg == agg do
+          {:ok, other_agg}
+        end
+      end)
+    else
+      :error
+    end
   end
 
   defp compatible_relationships?(left, right) do

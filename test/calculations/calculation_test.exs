@@ -990,7 +990,7 @@ defmodule Ash.Test.CalculationTest do
   test "loads calculations once even if they're needed from other calculations in the same load" do
     User
     |> Ash.read!()
-    |> Ash.load!([:dummy_calc, :dummy_calc2], actor: %{})
+    |> Ash.load!([:dummy_calc, :dummy_calc2], actor: %{}, authorize?: false)
 
     # DummyCalc should be only loaded once
     assert_receive :dummy_calc_calculated

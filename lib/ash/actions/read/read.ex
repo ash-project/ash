@@ -1851,6 +1851,15 @@ defmodule Ash.Actions.Read do
         agg.query
       end
 
+    authorize? =
+      case agg.name do
+        {:__calc_dep__, _} ->
+          true
+
+        _ ->
+          authorize?
+      end
+
     %{
       agg
       | context:
@@ -1872,6 +1881,15 @@ defmodule Ash.Actions.Read do
   end
 
   def add_calc_context(calc, actor, authorize?, tenant, tracer, _domain) do
+    authorize? =
+      case calc.name do
+        {:__calc_dep__, _} ->
+          true
+
+        _ ->
+          authorize?
+      end
+
     %{
       calc
       | context: %{
