@@ -1584,6 +1584,8 @@ defmodule Ash.Actions.Read.Calculations do
             initial_data,
             reuse_values?,
             authorize?,
+            calc_path,
+            relationship_path,
             checked_calculations
           )
           |> add_calculation_dependency(calc_name, new_calculation.name)

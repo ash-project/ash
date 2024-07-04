@@ -752,7 +752,7 @@ defmodule Ash.Test.CalculationTest do
     end
 
     @impl true
-    def calculate(records, _, %{arguments: arguments}) do
+    def calculate(records, _, _) do
       Enum.map(records, &String.reverse(&1.user_first_name))
     end
   end
@@ -1524,7 +1524,7 @@ defmodule Ash.Test.CalculationTest do
       |> Ash.Changeset.for_create(:create, %{product_id: product.id})
       |> Ash.create!()
 
-    assert %{user_first_name: "hcaz"} = Ash.load!(warranty, :reversed_user_first_name)
+    assert %{reversed_user_first_name: "hcaz"} = Ash.load!(warranty, :reversed_user_first_name)
   end
 
   test "doesn't load relationships if there is no need", %{user1: user1} do
