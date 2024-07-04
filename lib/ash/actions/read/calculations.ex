@@ -1420,27 +1420,6 @@ defmodule Ash.Actions.Read.Calculations do
       query.calculations
       |> Map.delete(current_key)
       |> Map.put(new_calc.name, new_calc)
-      |> Map.update!(:context, fn context ->
-        Map.update(context, :calculation_dependencies, %{}, fn calculation_dependencies ->
-          Map.new(calculation_dependencies, fn {key, value} ->
-            new_key =
-              if key == current_key do
-                new_calc.name
-              else
-                key
-              end
-
-            {new_key,
-             Enum.map(value, fn depends_on ->
-               if depends_on == current_key do
-                 new_calc.name
-               else
-                 depends_on
-               end
-             end)}
-          end)
-        end)
-      end)
 
     new_load_through =
       if query.load_through[:calculation][current_key] do
@@ -1454,6 +1433,27 @@ defmodule Ash.Actions.Read.Calculations do
       end
 
     %{query | calculations: new_calculations, load_through: new_load_through}
+    |> Map.update!(:context, fn context ->
+      Map.update(context, :calculation_dependencies, %{}, fn calculation_dependencies ->
+        Map.new(calculation_dependencies, fn {key, value} ->
+          new_key =
+            if key == current_key do
+              new_calc.name
+            else
+              key
+            end
+
+          {new_key,
+           Enum.map(value, fn depends_on ->
+             if depends_on == current_key do
+               new_calc.name
+             else
+               depends_on
+             end
+           end)}
+        end)
+      end)
+    end)
   end
 
   defp load_depended_on_calc(
