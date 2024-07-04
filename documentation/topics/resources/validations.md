@@ -70,14 +70,28 @@ end
 
 ## Where
 
-The `where` can be used to perform validations conditionally. This functions by running the validation, and if the validation returns an error, we discard the error and skip the operation. This means that even custom validations can be used in conditions.
+The `where` can be used to perform validations conditionally.
 
-For example:
+The value of the `where` option can either be a validation or a list of validations. All of the `where`-validations must first pass for the main validation to be applied. For expressing complex conditionals, passing a list of built-in validations to `where` can serve as an alternative to writing a custom validation module.
+
+### Examples
+
+```elixir
+validate present(:other_number), where: absent(:that_number)
+```
 
 ```elixir
 validate present(:other_number) do
-  where [{MyApp.Validations.IsPrime, attribute: :foo}]
+  where {MyApp.Validations.IsPrime, attribute: :foo}
 end
+```
+
+```elixir
+validate present(:other_number),
+  where: [
+    numericality(:large_number, greater_than: 100),
+    one_of(:magic_number, [7, 13, 123])
+  ]
 ```
 
 ## Action vs Global Validations
