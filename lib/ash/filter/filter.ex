@@ -2708,46 +2708,53 @@ defmodule Ash.Filter do
        when is_atom(field) or is_binary(field) do
     cond do
       rel = relationship(context, field) ->
-        with relation_type when relation_type != :many_to_many <- rel.type,
-             true <- !Map.get(rel, :no_attributes),
-             [pk] when pk == rel.destination_attribute <-
-               Ash.Resource.Info.primary_key(rel.destination),
-             attr <- attribute(%{public?: true, resource: rel.source}, rel.source_attribute),
-             %Ash.Resource.Attribute{} = attr,
-             {:ok, result} <-
-               add_expression_part({attr.name, nested_statement}, context, expression) do
-          {:ok, result}
-        else
-          _ ->
-            context =
-              context
-              |> Map.update!(:relationship_path, fn path -> path ++ [rel.name] end)
-              |> Map.put(:resource, rel.destination)
-
-            if is_list(nested_statement) || is_map(nested_statement) do
-              case parse_expression(nested_statement, context) do
-                {:ok, nested_expression} ->
-                  {:ok, BooleanExpression.optimized_new(:and, expression, nested_expression)}
-
-                {:error, error} ->
-                  {:error, error}
-              end
+        nested_statement =
+          with relation_type when relation_type != :many_to_many <- rel.type,
+               destination <- rel.destination,
+               dest_attr <- rel.destination_attribute,
+               [pk] when pk == dest_attr <- Ash.Resource.Info.primary_key(destination),
+               attr <- attribute(%{public?: true, resource: destination}, pk),
+               %Ash.Resource.Attribute{} = attr,
+               true <- is_list(nested_statement) || is_map(nested_statement),
+               {kw, _} <- Enum.at(nested_statement, 0),
+               nil <- attribute(%{public?: true, resource: destination}, kw) do
+            if is_list(nested_statement) do
+              [{dest_attr, nested_statement}]
             else
-              with [field] <- Ash.Resource.Info.primary_key(context.resource),
-                   attribute when not is_nil(attribute) <- attribute(context, field),
-                   {:ok, casted} <-
-                     Ash.Type.cast_input(attribute.type, nested_statement, attribute.constraints) do
-                add_expression_part({field, casted}, context, expression)
-              else
-                _other ->
-                  {:error,
-                   InvalidFilterValue.exception(
-                     value: inspect(nested_statement),
-                     message:
-                       "a single value must be castable to the primary key of the resource: #{inspect(context.resource)}"
-                   )}
-              end
+              Map.put(%{}, dest_attr, nested_statement)
             end
+          else
+            _ -> nested_statement
+          end
+
+        context =
+          context
+          |> Map.update!(:relationship_path, fn path -> path ++ [rel.name] end)
+          |> Map.put(:resource, rel.destination)
+
+        if is_list(nested_statement) || is_map(nested_statement) do
+          case parse_expression(nested_statement, context) do
+            {:ok, nested_expression} ->
+              {:ok, BooleanExpression.optimized_new(:and, expression, nested_expression)}
+
+            {:error, error} ->
+              {:error, error}
+          end
+        else
+          with [field] <- Ash.Resource.Info.primary_key(context.resource),
+               attribute when not is_nil(attribute) <- attribute(context, field),
+               {:ok, casted} <-
+                 Ash.Type.cast_input(attribute.type, nested_statement, attribute.constraints) do
+            add_expression_part({field, casted}, context, expression)
+          else
+            _other ->
+              {:error,
+               InvalidFilterValue.exception(
+                 value: inspect(nested_statement),
+                 message:
+                   "a single value must be castable to the primary key of the resource: #{inspect(context.resource)}"
+               )}
+          end
         end
 
       attr = attribute(context, field) ->
