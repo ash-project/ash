@@ -743,6 +743,20 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule ReversedUserFirstNameForWarranty do
+    use Ash.Resource.Calculation
+
+    @impl true
+    def load(_, _, _) do
+      [:user_first_name]
+    end
+
+    @impl true
+    def calculate(records, _, %{arguments: arguments}) do
+      Enum.map(records, &String.reverse(&1.user_first_name))
+    end
+  end
+
   defmodule Product do
     use Ash.Resource,
       domain: Domain,
@@ -810,6 +824,10 @@ defmodule Ash.Test.CalculationTest do
     calculations do
       calculate :user_first_name, :string, UserFirstNameForWarranty do
         argument :assert_strict?, :boolean, default: false
+        public?(true)
+      end
+
+      calculate :reversed_user_first_name, :string, ReversedUserFirstNameForWarranty do
         public?(true)
       end
     end
@@ -1493,6 +1511,20 @@ defmodule Ash.Test.CalculationTest do
       |> Ash.create!()
 
     Ash.load!(warranty, user_first_name: [assert_strict?: true])
+  end
+
+  test "loads relationships in nested calculations", %{user1: user1} do
+    product =
+      Product
+      |> Ash.Changeset.for_create(:create, %{name: "SuperFoo3000", user_id: user1.id})
+      |> Ash.create!()
+
+    warranty =
+      Warranty
+      |> Ash.Changeset.for_create(:create, %{product_id: product.id})
+      |> Ash.create!()
+
+    assert %{user_first_name: "hcaz"} = Ash.load!(warranty, :reversed_user_first_name)
   end
 
   test "doesn't load relationships if there is no need", %{user1: user1} do
