@@ -1221,7 +1221,6 @@ defmodule Ash.Actions.Read.Calculations do
               related_query =
                 relationship.destination
                 |> Ash.Query.set_context(%{private: %{lazy?: true}})
-                |> Ash.Query.select([])
                 |> merge_query_load(
                   further,
                   relationship.domain || domain,
@@ -1254,68 +1253,97 @@ defmodule Ash.Actions.Read.Calculations do
               Ash.Query.load(query, [{relationship.name, related_query}])
           end
         else
-          {type, constraints} =
-            case relationship.cardinality do
-              :many -> {{:array, :struct}, items: [instance_of: relationship.destination]}
-              :one -> {:struct, instance_of: relationship.destination}
-            end
-
-          case Enum.find(query.calculations, fn {_name, existing_calculation} ->
-                 existing_calculation.module == Ash.Resource.Calculation.LoadRelationship &&
-                   existing_calculation.opts[:relationship] == relationship.name &&
-                   compatible_relationships?(existing_calculation.opts[:query], further) &&
-                   match?(%{name: {:__calc_dep__, _}}, existing_calculation)
-               end) do
+          case query.load[relationship.name] do
             nil ->
-              new_calc_name =
-                {:__calc_dep__, [{calc_path, {:rel, relationship.name}, calc_name, calc_load}]}
+              Ash.Query.load(query, [{relationship.name, further}])
 
-              query
-              |> Ash.Query.calculate(
-                new_calc_name,
-                type,
-                {Ash.Resource.Calculation.LoadRelationship,
-                 relationship: relationship.name,
-                 query: further,
-                 opts: [
-                   authorize?: false
-                 ],
-                 domain: relationship.domain || domain},
-                %{},
-                constraints
-              )
-              |> add_calculation_dependency(calc_name, new_calc_name)
+            current_load ->
+              if compatible_relationships?(current_load, further) do
+                %{
+                  query
+                  | load:
+                      Keyword.put(
+                        query.load,
+                        relationship.name,
+                        merge_query_load(
+                          current_load,
+                          further,
+                          relationship.domain || domain,
+                          calc_path,
+                          calc_name,
+                          calc_load,
+                          relationship_path ++ [relationship.name],
+                          initial_data,
+                          strict_loads?,
+                          reuse_values?
+                        )
+                      )
+                }
+              else
+                {type, constraints} =
+                  case relationship.cardinality do
+                    :many -> {{:array, :struct}, items: [instance_of: relationship.destination]}
+                    :one -> {:struct, instance_of: relationship.destination}
+                  end
 
-            {key, existing_calculation} ->
-              new_calculation =
-                existing_calculation
-                |> Map.update!(:opts, fn opts ->
-                  Keyword.update(
-                    opts,
-                    :query,
-                    further,
-                    &merge_query_load(
-                      &1,
-                      further,
-                      relationship.domain || domain,
-                      calc_path,
-                      calc_name,
-                      calc_load,
-                      relationship_path ++ [relationship.name],
-                      initial_data,
-                      strict_loads?,
-                      reuse_values?
+                case Enum.find(query.calculations, fn {_name, existing_calculation} ->
+                       existing_calculation.module == Ash.Resource.Calculation.LoadRelationship &&
+                         existing_calculation.opts[:relationship] == relationship.name &&
+                         compatible_relationships?(existing_calculation.opts[:query], further) &&
+                         match?(%{name: {:__calc_dep__, _}}, existing_calculation)
+                     end) do
+                  nil ->
+                    new_calc_name =
+                      {:__calc_dep__,
+                       [
+                         {calc_path, {:rel, relationship.name}, calc_name, calc_load}
+                       ]}
+
+                    query
+                    |> Ash.Query.calculate(
+                      new_calc_name,
+                      type,
+                      {Ash.Resource.Calculation.LoadRelationship,
+                       relationship: relationship.name,
+                       query: further,
+                       domain: relationship.domain || domain},
+                      %{},
+                      constraints
                     )
-                  )
-                end)
-                |> Map.update!(:name, fn {:__calc_dep__, paths} ->
-                  {:__calc_dep__,
-                   [{calc_path, {:rel, relationship.name}, calc_name, calc_load} | paths]}
-                end)
+                    |> add_calculation_dependency(calc_name, new_calc_name)
 
-              query
-              |> rename_and_replace_calculation(key, new_calculation)
-              |> add_calculation_dependency(calc_name, new_calculation.name)
+                  {key, existing_calculation} ->
+                    new_calculation =
+                      existing_calculation
+                      |> Map.update!(:opts, fn opts ->
+                        Keyword.update(
+                          opts,
+                          :query,
+                          further,
+                          &merge_query_load(
+                            &1,
+                            further,
+                            relationship.domain || domain,
+                            calc_path,
+                            calc_name,
+                            calc_load,
+                            relationship_path ++ [relationship.name],
+                            initial_data,
+                            strict_loads?,
+                            reuse_values?
+                          )
+                        )
+                      end)
+                      |> Map.update!(:name, fn {:__calc_dep__, paths} ->
+                        {:__calc_dep__,
+                         [{calc_path, {:rel, relationship.name}, calc_name, calc_load} | paths]}
+                      end)
+
+                    query
+                    |> rename_and_replace_calculation(key, new_calculation)
+                    |> add_calculation_dependency(calc_name, new_calculation.name)
+                end
+              end
           end
         end
 
@@ -1672,9 +1700,9 @@ defmodule Ash.Actions.Read.Calculations do
       calc_load,
       calc_path,
       strict_loads?,
-      calc_path,
-      can_expression_calculation?,
       relationship_path,
+      can_expression_calculation?,
+      [],
       initial_data,
       reuse_values?
     )

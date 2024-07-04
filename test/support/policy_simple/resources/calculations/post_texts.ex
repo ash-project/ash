@@ -1,5 +1,4 @@
 defmodule Ash.Test.Support.PolicySimple.Calculations.PostTexts do
-  @moduledoc false
   use Ash.Resource.Calculation
 
   @impl true
