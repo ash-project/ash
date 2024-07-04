@@ -57,18 +57,20 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
   end
 
   defp kind_of_thing(zipper) do
-    with {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper) do
-      with {_, :error} <-
-             {Ash.Resource, Igniter.Code.Module.move_to_using(zipper, Ash.Resource)},
-           {_, :error} <-
-             {Ash.Domain, Igniter.Code.Module.move_to_using(zipper, Ash.Domain)} do
+    case Igniter.Code.Common.move_to_do_block(zipper) do
+      {:ok, zipper} ->
+        with {_, :error} <-
+               {Ash.Resource, Igniter.Code.Module.move_to_using(zipper, Ash.Resource)},
+             {_, :error} <-
+               {Ash.Domain, Igniter.Code.Module.move_to_using(zipper, Ash.Domain)} do
+          :error
+        else
+          {kind_of_thing, {:ok, _}} ->
+            {:ok, kind_of_thing}
+        end
+
+      _ ->
         :error
-      else
-        {kind_of_thing, {:ok, _}} ->
-          {:ok, kind_of_thing}
-      end
-    else
-      _ -> :error
     end
   end
 

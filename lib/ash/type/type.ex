@@ -299,7 +299,8 @@ defmodule Ash.Type do
           reuse_values?: boolean,
           strict_loads?: boolean,
           initial_data: term(),
-          relationship_path: list(atom)
+          relationship_path: list(atom),
+          authorize?: boolean
         }
 
   @callback storage_type() :: Ecto.Type.t()

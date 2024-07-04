@@ -1296,34 +1296,34 @@ defmodule Ash.Actions.Read.Calculations do
               }
             else
               add_new_relationship_calc(
-                       relationship,
-                       query,
-                       domain,
-                       calc_name,
-                       calc_load,
-                       calc_path,
-                       strict_loads?,
-                       relationship_path,
-                       initial_data,
-                       reuse_values?,
-                       further
-                     )
+                relationship,
+                query,
+                domain,
+                calc_name,
+                calc_load,
+                calc_path,
+                strict_loads?,
+                relationship_path,
+                initial_data,
+                reuse_values?,
+                further
+              )
             end
           else
             if authorize? do
               add_new_relationship_calc(
-                       relationship,
-                       query,
-                       domain,
-                       calc_name,
-                       calc_load,
-                       calc_path,
-                       strict_loads?,
-                       relationship_path,
-                       initial_data,
-                       reuse_values?,
-                       further
-                     )
+                relationship,
+                query,
+                domain,
+                calc_name,
+                calc_load,
+                calc_path,
+                strict_loads?,
+                relationship_path,
+                initial_data,
+                reuse_values?,
+                further
+              )
             else
               Ash.Query.load(query, [{relationship.name, further}])
             end
