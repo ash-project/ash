@@ -2717,7 +2717,10 @@ defmodule Ash.Filter do
                %Ash.Resource.Attribute{} = attr,
                true <- is_list(nested_statement) || is_map(nested_statement),
                {kw, _} <- Enum.at(nested_statement, 0),
-               nil <- attribute(%{public?: true, resource: destination}, kw) do
+               nil <- aggregate(%{public?: true, resource: destination}, kw),
+               nil <- attribute(%{public?: true, resource: destination}, kw),
+               nil <- calculation(%{public?: true, resource: destination}, kw),
+               nil <- relationship(%{public?: true, resource: destination}, kw) do
             if is_list(nested_statement) do
               [{dest_attr, nested_statement}]
             else
