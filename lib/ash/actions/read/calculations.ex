@@ -1444,7 +1444,7 @@ defmodule Ash.Actions.Read.Calculations do
             end
 
           {new_key,
-           Enum.map(value, fn depends_on ->
+           MapSet.new(value, fn depends_on ->
              if depends_on == current_key do
                new_calc.name
              else
