@@ -311,6 +311,14 @@ defmodule Ash.Actions.MultitenancyTest do
       |> Ash.create!()
     end
 
+    test "an error is produced when a tenant is not specified" do
+      assert_raise Ash.Error.Invalid, ~r/require a tenant to be specified/, fn ->
+        User
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+      end
+    end
+
     test "a record written to one tenant cannot be read from another", %{
       tenant1: tenant1,
       tenant2: tenant2
@@ -409,6 +417,17 @@ defmodule Ash.Actions.MultitenancyTest do
       |> Ash.update!()
 
       assert User |> Ash.Query.set_tenant(tenant2) |> Ash.read!() == []
+    end
+
+    test "updates require a tenant as well", %{tenant1: tenant1} do
+      assert_raise Ash.Error.Invalid, ~r/require a tenant to be specified/, fn ->
+        User
+        |> Ash.Changeset.for_create(:create, %{}, tenant: tenant1)
+        |> Ash.create!()
+        |> Map.update!(:__metadata__, &Map.delete(&1, :tenant))
+        |> Ash.Changeset.for_update(:update, %{})
+        |> Ash.update!()
+      end
     end
 
     test "a record for a different tenant cant be updated from the other one", %{

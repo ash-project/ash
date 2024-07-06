@@ -267,6 +267,14 @@ defmodule Ash.Actions.Destroy do
   end
 
   defp set_tenant(changeset) do
+    changeset =
+      case changeset.data do
+        %{__metadata__: %{tenant: tenant}} ->
+          Ash.Changeset.set_tenant(changeset, tenant)
+
+        _ ->
+          changeset
+      end
     if changeset.tenant &&
          Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
       attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
@@ -276,7 +284,15 @@ defmodule Ash.Actions.Destroy do
 
       Ash.Changeset.filter(changeset, [{attribute, attribute_value}])
     else
-      changeset
+      if is_nil(Ash.Resource.Info.multitenancy_strategy(changeset.resource)) ||
+           Ash.Resource.Info.multitenancy_global?(changeset.resource) || changeset.tenant do
+        changeset
+      else
+        Ash.Changeset.add_error(
+          changeset,
+          Ash.Error.Invalid.TenantRequired.exception(resource: changeset.resource)
+        )
+      end
     end
   end
 

@@ -622,7 +622,15 @@ defmodule Ash.Actions.Update do
 
       Ash.Changeset.filter(changeset, expr(^ref(attribute) == ^attribute_value))
     else
-      changeset
+      if is_nil(Ash.Resource.Info.multitenancy_strategy(changeset.resource)) ||
+           Ash.Resource.Info.multitenancy_global?(changeset.resource) || changeset.tenant do
+        changeset
+      else
+        Ash.Changeset.add_error(
+          changeset,
+          Ash.Error.Invalid.TenantRequired.exception(resource: changeset.resource)
+        )
+      end
     end
   end
 end
