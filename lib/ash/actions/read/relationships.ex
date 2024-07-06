@@ -1075,6 +1075,12 @@ defmodule Ash.Actions.Read.Relationships do
       has_page? = query.page not in [nil, false]
 
       cond do
+        !Ash.DataLayer.data_layer_can?(
+          relationship.source,
+          {:lateral_join, resources}
+        ) ->
+          false
+
         is_many_to_many_not_unique_on_join?(relationship, query, source_query) ->
           raise_if_parent_expr!(
             relationship,
@@ -1083,9 +1089,11 @@ defmodule Ash.Actions.Read.Relationships do
 
           false
 
+        Map.get(relationship, :from_many?) ->
+          true
+
         limit == 1 && is_nil(relationship.context) && is_nil(relationship.filter) &&
-          is_nil(relationship.sort) && relationship.cardinality != :many &&
-            !Map.get(relationship, :from_many?) ->
+          is_nil(relationship.sort) && relationship.cardinality != :many ->
           has_parent_expr?(relationship)
 
         limit == 1 && (source_data == :unknown || Enum.count_until(source_data, 2) == 1) &&
@@ -1094,12 +1102,6 @@ defmodule Ash.Actions.Read.Relationships do
 
         has_parent_expr?(relationship) ->
           true
-
-        !Ash.DataLayer.data_layer_can?(
-          relationship.source,
-          {:lateral_join, resources}
-        ) ->
-          false
 
         relationship.type == :many_to_many &&
             Ash.DataLayer.prefer_lateral_join_for_many_to_many?(
