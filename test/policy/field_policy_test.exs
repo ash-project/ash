@@ -4,7 +4,7 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
 
   require Ash.Query
 
-  alias Ash.Test.Support.PolicyField.{Ticket, User}
+  alias Ash.Test.Support.PolicyField.{Post, Ticket, User}
 
   setup do
     rep =
@@ -43,6 +43,13 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
           Ash.Changeset.for_create(Ticket, :create, %{
             representative_id: rep.id,
             reporter_id: other_user.id
+          })
+        ),
+      post:
+        Ash.create!(
+          Ash.Changeset.for_create(Post, :create, %{
+            representative_id: rep.id,
+            reporter_id: user.id
           })
         )
     ]
@@ -230,11 +237,12 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
     end
   end
 
-  describe "hide_public?" do
-    test "when reading a private value and hide_public? is true, its value is not displayed", %{
-      user: user,
-      ticket: ticket
-    } do
+  describe "private_fields" do
+    test "when reading a private value and private_fields_policy is :hide, its value is not displayed",
+         %{
+           user: user,
+           ticket: ticket
+         } do
       assert %Ash.ForbiddenField{field: :top_secret, type: :attribute} ==
                Ticket
                |> Ash.Query.select(:top_secret)
@@ -244,9 +252,10 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Map.get(:top_secret)
     end
 
-    test "when reading a private value and hide_public? is false, its value is displayed", %{
-      user: user
-    } do
+    test "when reading a private value and private_fields_policy is :show, its value is displayed",
+         %{
+           user: user
+         } do
       assert nil ==
                User
                |> Ash.Query.select(:top_secret)
@@ -254,6 +263,34 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Ash.Query.filter(id == ^user.id)
                |> Ash.read_one!()
                |> Map.get(:top_secret)
+    end
+
+    test "when reading a private value, covered by field policy the user is not supposed to see,
+      it's value is not displayed",
+         %{
+           post: post
+         } do
+      assert %Ash.ForbiddenField{field: :internal_status, type: :attribute} ==
+               Post
+               |> Ash.Query.select(:internal_status)
+               |> Ash.Query.for_read(:read, %{}, authorize?: true)
+               |> Ash.Query.filter(id == ^post.id)
+               |> Ash.read_one!()
+               |> Map.get(:internal_status)
+    end
+
+    test "when reading a private value, covered by field policy the user is can see, its value is displayed",
+         %{
+           user: user,
+           post: post
+         } do
+      assert nil ==
+               Post
+               |> Ash.Query.select(:internal_status)
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
+               |> Ash.Query.filter(id == ^post.id)
+               |> Ash.read_one!()
+               |> Map.get(:internal_status)
     end
   end
 

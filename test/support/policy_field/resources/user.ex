@@ -53,6 +53,8 @@ defmodule Ash.Test.Support.PolicyField.User do
   end
 
   field_policies do
+    private_fields :show
+
     field_policy_bypass :* do
       authorize_if actor_attribute_equals(:role, :admin)
     end

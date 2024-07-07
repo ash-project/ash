@@ -143,8 +143,8 @@ defmodule Ash.Policy.Info do
     |> set_access_type(default_access_type(resource))
   end
 
-  def hide_private?(resource) do
-    Extension.get_opt(resource, [:field_policies], :hide_private?)
+  def private_fields_policy(resource) do
+    Extension.get_opt(resource, [:field_policies], :private_fields)
   end
 
   def policies(domain, resource) do

@@ -358,11 +358,16 @@ defmodule Ash.Policy.Authorizer do
       @field_policy
     ],
     schema: [
-      hide_private?: [
-        type: :boolean,
-        default: Application.compile_env(:ash, :policies)[:hide_private?] || false,
+      private_fields: [
+        type: {:one_of, [:show, :hide, :include]},
+        default: Application.compile_env(:ash, :policies)[:private_fields] || :show,
         doc: """
-        Whether to hide private fields or not for internal functions.
+        Option for how private fields should be handeled by field policies in internal functions.
+
+        - :show will always show private fields
+        - :hide will always hide private fields
+        - :include will let you to write field policies for private fields and private fields
+          will be shown or hidden depending on the outcome of the policy
         """
       ]
     ]
@@ -904,7 +909,12 @@ defmodule Ash.Policy.Authorizer do
       # and we don't need to add any calculations
       {:ok, query_or_changeset, authorizer}
     else
-      only_public? = not Ash.Policy.Info.hide_private?(query_or_changeset.resource)
+      only_public? =
+        case Ash.Policy.Info.private_fields_policy(query_or_changeset.resource) do
+          :include -> false
+          :show -> true
+          :hide -> false
+        end
 
       accessing_fields =
         case query_or_changeset do

@@ -537,10 +537,10 @@ defmodule Ash.Changeset do
   Provide a list of field types to narrow down the returned results.
   """
   def accessing(
-    changeset,
-    types \\ [:attributes, :relationships, :calculations, :attributes],
-    only_public? \\ true
-  ) do
+        changeset,
+        types \\ [:attributes, :relationships, :calculations, :attributes],
+        only_public? \\ true
+      ) do
     changeset.resource
     |> Ash.Query.new()
     |> Ash.Query.load(changeset.load)
