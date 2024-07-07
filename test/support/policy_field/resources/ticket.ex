@@ -17,6 +17,10 @@ defmodule Ash.Test.Support.PolicyField.Ticket do
   attributes do
     uuid_primary_key :id
 
+    attribute :top_secret, :string do
+      public?(false)
+    end
+
     attribute :internal_status, :string do
       public?(true)
     end
@@ -49,6 +53,8 @@ defmodule Ash.Test.Support.PolicyField.Ticket do
   end
 
   field_policies do
+    hide_private? true
+
     field_policy :status do
       authorize_if relates_to_actor_via(:representative)
       authorize_if relates_to_actor_via(:reporter)

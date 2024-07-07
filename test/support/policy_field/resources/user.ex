@@ -26,6 +26,10 @@ defmodule Ash.Test.Support.PolicyField.User do
       public?(true)
       # only you can see your own points
     end
+
+    attribute :top_secret, :string do
+      public?(false)
+    end
   end
 
   relationships do

@@ -536,12 +536,16 @@ defmodule Ash.Changeset do
 
   Provide a list of field types to narrow down the returned results.
   """
-  def accessing(changeset, types \\ [:attributes, :relationships, :calculations, :attributes]) do
+  def accessing(
+    changeset,
+    types \\ [:attributes, :relationships, :calculations, :attributes],
+    only_public? \\ true
+  ) do
     changeset.resource
     |> Ash.Query.new()
     |> Ash.Query.load(changeset.load)
     |> Map.put(:select, changeset.select)
-    |> Ash.Query.accessing(types)
+    |> Ash.Query.accessing(types, only_public?)
   end
 
   @spec fully_atomic_changeset(

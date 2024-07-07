@@ -230,6 +230,33 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
     end
   end
 
+  describe "hide_public?" do
+    test "when reading a private value and hide_public? is true, its value is not displayed", %{
+      user: user,
+      ticket: ticket
+    } do
+      assert %Ash.ForbiddenField{field: :top_secret, type: :attribute} ==
+               Ticket
+               |> Ash.Query.select(:top_secret)
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
+               |> Ash.Query.filter(id == ^ticket.id)
+               |> Ash.read_one!()
+               |> Map.get(:top_secret)
+    end
+
+    test "when reading a private value and hide_public? is false, its value is displayed", %{
+      user: user
+    } do
+      assert nil ==
+               User
+               |> Ash.Query.select(:top_secret)
+               |> Ash.Query.for_read(:read, %{}, authorize?: true, actor: user)
+               |> Ash.Query.filter(id == ^user.id)
+               |> Ash.read_one!()
+               |> Map.get(:top_secret)
+    end
+  end
+
   describe "filters" do
     test "filters are replaced with the appropriate field policies", %{
       representative: representative,
