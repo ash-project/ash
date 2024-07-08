@@ -40,7 +40,9 @@ The actions we will be able to take on these resources include:
 
 ### Create a new project
 
-#### Using Igniter
+<!-- tabs-open -->
+
+### Using Igniter
 
 First, to use `mix igniter.new`, the archive must be installed.
 
@@ -86,7 +88,7 @@ You can skip to [Building your first Ash Domain](#building-your-first-ash-domain
 >
 > If you generate this code, you can browse the rest of the guide, but the code shown will already be present in your application 🥳
 
-#### Using Mix
+### Using Mix
 
 We first create a new project with the `--sup` flag to add a supervision tree. This will be necessary for other follow-up tutorials.
 
@@ -104,6 +106,8 @@ git add -A
 git commit -m "first commit"
 git branch -M main
 ```
+
+<!-- tabs-close -->
 
 Open the project in your text editor, and we'll get started.
 
