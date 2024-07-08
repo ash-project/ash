@@ -29,13 +29,15 @@ MyDomain.create_post!(Post, authorize?: true)
 ```
 
 > ### Set the actor on the query/changeset/input {: .warning}
+>
 > The hooks on a query/changeset/input to an action may need to know the actor, so you
 > need to set the actor when building them, not when calling the action.
+>
 > ```elixir
 > # DO THIS
 >
 > Post
-> |> Ash.Query.for_read(:read, actor: current_user)
+> |> Ash.Query.for_read(:read, %{}, actor: current_user)
 > |> Ash.read!()
 >
 > # DON'T DO THIS
@@ -51,7 +53,7 @@ The default value of `authorize?` is determined by the `authorization` configura
 
 ## Authorizers
 
-Authorizers are in control of what happens during authorization. Generally, you won't need to create your own  authorizer, as the builtin policy authorizer `Ash.Policy.Authorizer` works well for any use case. See the [Policies guide](documentation/topics/security/policies.md) for more.
+Authorizers are in control of what happens during authorization. Generally, you won't need to create your own authorizer, as the builtin policy authorizer `Ash.Policy.Authorizer` works well for any use case. See the [Policies guide](documentation/topics/security/policies.md) for more.
 
 ## Domain Authorization Configuration
 
