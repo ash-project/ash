@@ -1,6 +1,46 @@
 defmodule Ash.Resource.Igniter do
   @moduledoc "Codemods for working with Ash.Resource modules"
 
+  def list_resources(igniter) do
+    app_name = Igniter.Project.Application.app_name()
+
+    resources =
+      [Ash.Resource | List.wrap(Application.get_env(app_name, :base_resources))]
+
+    Igniter.Code.Module.find_all_matching_modules(igniter, fn _mod, zipper ->
+      Enum.any?(resources, fn resource ->
+        zipper
+        |> Igniter.Code.Module.move_to_using(resource)
+        |> case do
+          {:ok, _} ->
+            true
+
+          _ ->
+            false
+        end
+      end)
+    end)
+  end
+
+  def move_to_use_resource(zipper) do
+    app_name = Igniter.Project.Application.app_name()
+
+    resources =
+      [Ash.Resource | List.wrap(Application.get_env(app_name, :base_resources))]
+
+    Enum.find_value(resources, :error, fn resource ->
+      zipper
+      |> Igniter.Code.Module.move_to_using(resource)
+      |> case do
+        {:ok, zipper} ->
+          {:ok, zipper}
+
+        _ ->
+          false
+      end
+    end)
+  end
+
   def add_attribute(igniter, resource, attribute) do
     Igniter.Code.Module.find_and_update_module!(igniter, resource, fn zipper ->
       with {:ok, zipper} <-
