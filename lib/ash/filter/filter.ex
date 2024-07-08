@@ -2851,14 +2851,12 @@ defmodule Ash.Filter do
         end
 
       (op_module = get_operator(field)) && match?([_, _ | _], nested_statement) ->
-        IO.inspect(op_module, label: "op_module")
-
         with {:ok, refs} <-
                hydrate_refs(nested_statement, context),
              refs <- list_refs(refs),
              :ok <- validate_refs(refs, context.root_resource, {field, nested_statement}),
              {:ok, operator} <-
-               Operator.new(op_module, context.root_resource, refs) |> IO.inspect() do
+               Operator.new(op_module, context.root_resource, refs) do
           if is_boolean(operator) do
             {:ok, BooleanExpression.optimized_new(:and, expression, operator)}
           else
