@@ -81,7 +81,7 @@ You can skip to [Building your first Ash Domain](#building-your-first-ash-domain
 > Already know you want to use `AshPostgres`? Use the `--extend` argument.
 >
 > ```bash
-> mix igniter.new helpdesk --install ash --example --extend postgres`
+> mix igniter.new helpdesk --install ash,ash_postgres --example --extend postgres`
 > ```
 >
 > If you generate this code, you can browse the rest of the guide, but the code shown will already be present in your application 🥳
