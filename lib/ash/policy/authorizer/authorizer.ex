@@ -362,12 +362,7 @@ defmodule Ash.Policy.Authorizer do
         type: {:one_of, [:show, :hide, :include]},
         default: Application.compile_env(:ash, :policies)[:private_fields] || :show,
         doc: """
-        Option for how private fields should be handeled by field policies in internal functions.
-
-        - :show will always show private fields
-        - :hide will always hide private fields
-        - :include will let you to write field policies for private fields and private fields
-          will be shown or hidden depending on the outcome of the policy
+        How private fields should be handeled by field policies in internal functions. See the [Policies guide](documentation/topics/security/policies.md#field-policies) for more.
         """
       ]
     ]
