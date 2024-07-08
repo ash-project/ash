@@ -2715,33 +2715,34 @@ defmodule Ash.Filter do
              attr <- attribute(%{public?: true, resource: dest}, pk),
              %Ash.Resource.Attribute{} = attr,
              true <- is_list(nested_statement) or is_map(nested_statement) do
-          Enum.reduce(nested_statement, true, fn {key, val}, acc ->
-            {:ok, expr_part} =
-              if is_nil(aggregate(%{public?: true, resource: dest}, key)) and
-                   is_nil(attribute(%{public?: true, resource: dest}, key)) and
-                   is_nil(calculation(%{public?: true, resource: dest}, key)) and
-                   is_nil(relationship(%{public?: true, resource: dest}, key)) do
-                nested_statement =
-                  if is_list(nested_statement) do
-                    [{dest_attr, {key, val}}]
-                  else
-                    Map.put(%{}, dest_attr, Map.put(%{}, key, val))
-                  end
+          {:ok,
+           Enum.reduce(nested_statement, true, fn {key, val}, acc ->
+             {:ok, expr_part} =
+               if is_nil(aggregate(%{public?: true, resource: dest}, key)) and
+                    is_nil(attribute(%{public?: true, resource: dest}, key)) and
+                    is_nil(calculation(%{public?: true, resource: dest}, key)) and
+                    is_nil(relationship(%{public?: true, resource: dest}, key)) do
+                 nested_statement =
+                   if is_list(nested_statement) do
+                     [{dest_attr, {key, val}}]
+                   else
+                     Map.put(%{}, dest_attr, Map.put(%{}, key, val))
+                   end
 
-                add_expression_part({field, nested_statement}, context, expression)
-              else
-                nested_statement =
-                  if is_list(nested_statement) do
-                    [{key, val}]
-                  else
-                    Map.put(%{}, key, val)
-                  end
+                 add_expression_part({field, nested_statement}, context, expression)
+               else
+                 nested_statement =
+                   if is_list(nested_statement) do
+                     [{key, val}]
+                   else
+                     Map.put(%{}, key, val)
+                   end
 
-                add_expression_part_relationship(rel, nested_statement, context, expression)
-              end
+                 add_expression_part_relationship(rel, nested_statement, context, expression)
+               end
 
-            {:ok, BooleanExpression.optimized_new(:and, acc, expr_part)}
-          end)
+             BooleanExpression.optimized_new(:and, acc, expr_part)
+           end)}
         else
           _ -> add_expression_part_relationship(rel, nested_statement, context, expression)
         end
