@@ -32,7 +32,6 @@ MyDomain.create_post!(Post, authorize?: true)
 >
 > The hooks on a query/changeset/input to an action may need to know the actor, so you
 > need to set the actor when building them, not when calling the action.
->
 > ```elixir
 > # DO THIS
 >
