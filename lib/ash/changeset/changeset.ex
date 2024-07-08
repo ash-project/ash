@@ -224,13 +224,15 @@ defmodule Ash.Changeset do
 
   @type before_transaction_fun :: (t -> t)
 
-  @type around_result ::
+  @type around_action_result ::
           {:ok, Ash.Resource.record(), t(), %{notifications: list(Ash.Notifier.Notification.t())}}
           | {:error, Ash.Error.t()}
-  @type around_callback :: (t() -> around_result)
-  @type around_action_fun :: (t, around_callback -> around_result)
+  @type around_action_callback :: (t -> around_action_result)
+  @type around_action_fun :: (t, around_action_callback -> around_action_result)
 
-  @type around_transaction_fun :: (t -> {:ok, Ash.Resource.record()} | {:error, any})
+  @type around_transaction_result :: {:ok, Ash.Resource.record()} | {:error, any}
+  @type around_transaction_callback :: (t -> around_transaction_result)
+  @type around_transaction_fun :: (t, around_transaction_callback -> around_transaction_result)
 
   @phases [
     :atomic,
