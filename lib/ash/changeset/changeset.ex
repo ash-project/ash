@@ -2312,7 +2312,6 @@ defmodule Ash.Changeset do
     eager? = Keyword.get(opts, :eager?, true)
 
     changeset.atomic_validations
-    |> Enum.reverse()
     |> Enum.reduce_while(changeset, fn {condition_expr, error_expr}, changeset ->
       condition_expr =
         Ash.Expr.fill_template(
