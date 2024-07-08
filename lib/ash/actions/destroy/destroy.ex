@@ -275,6 +275,7 @@ defmodule Ash.Actions.Destroy do
         _ ->
           changeset
       end
+
     if changeset.tenant &&
          Ash.Resource.Info.multitenancy_strategy(changeset.resource) == :attribute do
       attribute = Ash.Resource.Info.multitenancy_attribute(changeset.resource)
