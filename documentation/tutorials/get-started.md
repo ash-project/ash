@@ -70,7 +70,7 @@ Open the project in your text editor, and we'll get started.
 
 You can skip to [Building your first Ash Domain](#building-your-first-ash-domain).
 
-> ### Want to skip to the end? {: .warning}
+> ### Want to skip to the end? {: .info}
 >
 > Add the `--example` flag to get the example code add directly to your app!
 >
