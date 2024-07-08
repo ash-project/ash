@@ -677,6 +677,9 @@ defmodule Ash.Test.Filter.FilterTest do
 
       # relationship
       assert Filter.parse!(Post, author1: [profile: id1])
+
+      # combinations
+      assert Filter.parse!(Post, author1: [eq: 1, has_friend: true])
     end
 
     test "raises an error if the underlying parse returns an error" do
