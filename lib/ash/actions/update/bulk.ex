@@ -463,6 +463,7 @@ defmodule Ash.Actions.Update.Bulk do
            add_changeset_filters(query, atomic_changeset),
          %Ash.Changeset{valid?: true} = atomic_changeset <-
            Ash.Changeset.handle_allow_nil_atomics(atomic_changeset, opts[:actor]),
+         atomic_changeset <- sort_atomic_changes(atomic_changeset),
          {:ok, data_layer_query} <-
            Ash.Query.data_layer_query(query) do
       case Ash.DataLayer.update_query(
@@ -712,6 +713,16 @@ defmodule Ash.Actions.Update.Bulk do
           errors: [Ash.Error.to_error_class(error)]
         }
     end
+  end
+
+  defp sort_atomic_changes(atomic_changeset) do
+    primary_key = Ash.Resource.Info.primary_key(atomic_changeset.resource)
+
+    Map.update!(atomic_changeset, :atomics, fn atomics ->
+      Enum.sort_by(atomics, fn {key, _} ->
+        key not in primary_key
+      end)
+    end)
   end
 
   @doc false
