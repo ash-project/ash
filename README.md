@@ -81,6 +81,7 @@ Welcome! Here you will find everything you need to know to get started with and 
 ### Development
 
 - [Project Structure](documentation/topics/development/project-structure.md)
+- [Generators](documentation/topics/development/generators.md)
 - [Testing](documentation/topics/development/testing.md)
 - [Development Utilities](documentation/topics/development/development-utilities.md)
 - [Upgrading to 3.0](documentation/topics/development/upgrading-to-3.0.md)

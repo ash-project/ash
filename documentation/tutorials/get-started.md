@@ -40,6 +40,54 @@ The actions we will be able to take on these resources include:
 
 ### Create a new project
 
+#### Using Igniter
+
+First, to use `mix igniter.new`, the archive must be installed.
+
+To install it, run
+
+```bash
+mix archive.install hex igniter_new
+```
+
+Then, create a new project:
+
+```elixir
+mix igniter.new helpdesk --install ash && cd helpdesk
+```
+
+It is a good idea to make it a git repository and commit the initial project. You'll be able to see what changes we made, and can save your changes once we're done.
+
+```bash
+# Run in your terminal
+git init
+git add -A
+git commit -m "first commit"
+git branch -M main
+```
+
+Open the project in your text editor, and we'll get started.
+
+You can skip to [Building your first Ash Domain](#building-your-first-ash-domain).
+
+> ### Want to skip to the end? {: .warning}
+>
+> Add the `--example` flag to get the example code add directly to your app!
+>
+> ```bash
+> mix igniter.new helpdesk --install ash --example
+> ```
+>
+> Already know you want to use `AshPostgres`? Use the `--extend` argument.
+>
+> ```bash
+> mix igniter.new helpdesk --install ash --example --extend postgres`
+> ```
+>
+> If you generate this code, you can browse the rest of the guide, but the code shown will already be present in your application 🥳
+
+#### Using Mix
+
 We first create a new project with the `--sup` flag to add a supervision tree. This will be necessary for other follow-up tutorials.
 
 ```bash

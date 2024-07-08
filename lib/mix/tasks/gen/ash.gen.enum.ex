@@ -2,7 +2,11 @@ defmodule Mix.Tasks.Ash.Gen.Enum do
   @moduledoc """
   Generates an Ash.Type.Enum
 
-  For example `mix ash.gen.enum The.Enum.Name list,of,values`
+  ## Example
+
+  ```bash
+  mix ash.gen.enum MyApp.Support.Ticket.Types.Status open,closed --short-name ticket_status
+  ```
 
   ## Options
 

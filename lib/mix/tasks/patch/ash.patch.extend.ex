@@ -2,7 +2,29 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
   @moduledoc """
   Adds an extension or extensions to the domain/resource
 
-  For example: `mix ash.patch.extend My.Domain.Resource Ash.Policy.Authorizer`
+  Extensions can either be a fully qualified module name, or one of the following list, based on the thing being extended
+
+  ### Ash.Domain
+
+  - `json_api` - `AshJsonApi.Domain`
+  - `graphql` - `AshGraphql.Domain`
+
+  ### Ash.Resource
+
+  - `postgres` - `AshPostgres.DataLayer`
+  - `sqlite` - `AshSqlite.DataLayer`
+  - `mysql` - `AshMysql.DataLayer`
+  - `ets` - `Ash.DataLayer.Ets`
+  - `mnesia` - `Ash.DataLayer.Mnesia`
+  - `embedded` - `data_layer: :embedded`
+  - `json_api` - `AshJsonApi.Resource`
+  - `graphql` - `AshGraphql.Resource`
+
+  ## Example
+
+  ```bash
+  mix ash.patch.extend My.Domain.Resource postgres,Ash.Policy.Authorizer
+  ```
   """
   @shortdoc "Adds an extension or extensions to the given domain/resource"
   require Igniter.Code.Common

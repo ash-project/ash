@@ -72,6 +72,7 @@ defmodule Ash.MixProject do
         "documentation/topics/advanced/multitenancy.md",
         "documentation/topics/advanced/writing-extensions.md",
         "documentation/topics/development/project-structure.md",
+        "documentation/topics/development/generators.md",
         "documentation/topics/development/error-handling.md",
         "documentation/topics/development/testing.md",
         "documentation/topics/development/development-utilities.md",

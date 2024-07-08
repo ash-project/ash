@@ -2,7 +2,11 @@ defmodule Mix.Tasks.Ash.Gen.Domain do
   @moduledoc """
   Generates an Ash.Domain
 
-  For example: `mix ash.gen.domain The.Domain`
+  ## Example
+
+  ```bash
+  mix ash.gen.domain MyApp.Accounts
+  ```
   """
 
   @shortdoc "Generates an Ash.Domain"

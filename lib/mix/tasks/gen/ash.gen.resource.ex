@@ -1,10 +1,19 @@
 defmodule Mix.Tasks.Ash.Gen.Resource do
   @moduledoc """
-  Generate and configures an Ash.Resource.
-
-  ## What changes take place?
+  Generate and configure an Ash.Resource.
 
   If the domain does not exist, we create it. If it does, we add the resource to it if it is not already present.
+
+  ## Example
+
+  ```bash
+  mix ash.gen.resource Helpdesk.Support.Ticket \
+    --default-actions read
+    --uuid-primary-key id
+    --attribute subject:string:required:public
+    --relationship belongs_to:representative:Helpdesk.Support.Representative \
+    --extend postgres,graphql
+  ```
 
   ## Options
 
@@ -18,7 +27,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   * `--base` or `-b` - The base module to use for the resource. i.e `-b Ash.Resource`. Requires that the module is in `config :your_app, :base_resources`
   """
 
-  @shortdoc "Generate an Ash.Resource."
+  @shortdoc "Generate and configure an Ash.Resource."
   use Igniter.Mix.Task
 
   @impl Igniter.Mix.Task

@@ -2,7 +2,11 @@ defmodule Mix.Tasks.Ash.Gen.BaseResource do
   @moduledoc """
   Generates a base resource
 
-  For example: `mix ash.gen.base_resource The.Resource.Name`
+  ## Example
+
+  ```bash
+  mix ash.gen.base_resource MyApp.Resource
+  ```
   """
   @shortdoc "Generates a base resource. This is a module that you can use instead of `Ash.Resource`, for consistency."
   use Igniter.Mix.Task
