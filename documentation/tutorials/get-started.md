@@ -42,7 +42,7 @@ The actions we will be able to take on these resources include:
 
 <!-- tabs-open -->
 
-### Using Igniter
+### Using Igniter (recommended)
 
 First, to use `mix igniter.new`, the archive must be installed.
 
@@ -70,14 +70,12 @@ git branch -M main
 
 Open the project in your text editor, and we'll get started.
 
-You can skip to [Building your first Ash Domain](#building-your-first-ash-domain).
-
 > ### Want to skip to the end? {: .info}
 >
 > Add the `--example` flag to get the example code add directly to your app!
 >
 > ```bash
-> mix igniter.new helpdesk --install ash --example
+> mix igniter.new helpdesk --install ash --extend ets --example
 > ```
 >
 > Already know you want to use `AshPostgres`? Use the `--extend` argument.
@@ -107,8 +105,6 @@ git commit -m "first commit"
 git branch -M main
 ```
 
-<!-- tabs-close -->
-
 Open the project in your text editor, and we'll get started.
 
 ### Add Ash to your application
@@ -126,11 +122,7 @@ end
 
 And then run `mix deps.get && mix deps.compile` to install the dependencies
 
-> ### Picosat installation issues? {: .info}
->
-> If you have trouble compiling `picosat_elixir`, then replace `{:picosat_elixir, "~> 0.2"}` with `{:simple_sat, "~> 0.1"}` to use a simpler (but mildly slower) solver. You can always switch back to `picosat_elixir` later once you're done with the tutorial.
-
-### Formatting
+#### Formatting
 
 To ensure that your code stays formatted like the examples here, you can add `:ash` as an import dependency in your `.formatter.exs`:
 
@@ -141,6 +133,12 @@ To ensure that your code stays formatted like the examples here, you can add `:a
   # ...
 ]
 ```
+
+<!-- tabs-close -->
+
+> ### Picosat installation issues? {: .info}
+>
+> If you have trouble compiling `picosat_elixir`, then replace `{:picosat_elixir, "~> 0.2"}` with `{:simple_sat, "~> 0.1"}` to use a simpler (but mildly slower) solver. You can always switch back to `picosat_elixir` later once you're done with the tutorial.
 
 > #### Note {: .neutral}
 >
@@ -405,7 +403,7 @@ Which will raise an error explaining that there is no data to be read for that r
 
 In order to save our data somewhere, we need to add a data layer to our resources. Before we do that, however, let's go over how Ash allows us to work against many different data layers (or even no data layer at all).
 
-Resources without a data layer will implicitly be using `Ash.DataLayer.Simple`, which will just return structs and won't actually store anything. The way that we make our queries return some data is by leveraging `context`, a free-form map available on queries and changesets. The simple data layer looks for `query.context[:data_layer][:data][resource]`. It provides a utility, `Ash.DataLayer.Simple.set_data/2` to set it.
+Resources without a data layer will implicitly be using `Ash.DataLayer.Simple`. This data is not persisted anywhere, and must be provided when running queries. It provides a utility for just this purpose, `Ash.DataLayer.Simple.set_data/2`.
 
 Try the following in `iex`. We will open some tickets, and close some of them, and then use `Ash.DataLayer.Simple.set_data/2` to use those tickets.
 
