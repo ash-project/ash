@@ -17,12 +17,23 @@ defmodule Mix.Tasks.Ash.Gen.Enum do
   use Igniter.Mix.Task
 
   @impl Igniter.Mix.Task
+  def info(_argv, _parent) do
+    %Igniter.Mix.Task.Info{
+      schema: [
+        short_name: :string
+      ],
+      aliases: [
+        s: :short_name
+      ]
+    }
+  end
+
+  @impl Igniter.Mix.Task
   def igniter(igniter, [module_name, types | argv]) do
     enum = Igniter.Code.Module.parse(module_name)
     file_name = Igniter.Code.Module.proper_location(enum)
 
-    {opts, _argv} =
-      OptionParser.parse!(argv, switches: [short_name: :string], aliases: [s: :short_name])
+    opts = options!(argv)
 
     short_name =
       if opts[:short_name] do

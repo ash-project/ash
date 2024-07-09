@@ -31,33 +31,37 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   use Igniter.Mix.Task
 
   @impl Igniter.Mix.Task
+  def info(_argv, _parent) do
+    %Igniter.Mix.Task.Info{
+      schema: [
+        attribute: :keep,
+        relationship: :keep,
+        default_actions: :keep,
+        uuid_primary_key: :string,
+        integer_primary_key: :string,
+        domain: :string,
+        extend: :keep,
+        base: :string
+      ],
+      aliases: [
+        a: :attribute,
+        r: :relationship,
+        da: :default_actions,
+        d: :domain,
+        u: :uuid_primary_key,
+        i: :integer_primary_key,
+        e: :extend,
+        b: :base
+      ]
+    }
+  end
+
+  @impl Igniter.Mix.Task
   def igniter(igniter, [resource | argv]) do
     resource = Igniter.Code.Module.parse(resource)
     app_name = Igniter.Project.Application.app_name()
 
-    {options, _, _} =
-      OptionParser.parse(argv,
-        strict: [
-          attribute: :keep,
-          relationship: :keep,
-          default_actions: :keep,
-          uuid_primary_key: :string,
-          integer_primary_key: :string,
-          domain: :string,
-          extend: :keep,
-          base: :string
-        ],
-        aliases: [
-          a: :attribute,
-          r: :relationship,
-          da: :default_actions,
-          d: :domain,
-          u: :uuid_primary_key,
-          i: :integer_primary_key,
-          e: :extend,
-          b: :base
-        ]
-      )
+    options = options!(argv)
 
     domain =
       case options[:domain] do
