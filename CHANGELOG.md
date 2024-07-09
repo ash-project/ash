@@ -2,6 +2,68 @@
 
 <!-- changelog -->
 
+## [v3.1.0](https://github.com/ash-project/ash/compare/v3.0.16...v3.1.0) (2024-07-09)
+
+### Features:
+
+- [Generators] add `mix ash.install` (call with `mix igniter.install ash`)
+
+- [Generators] add `mix ash.gen.resource`
+
+- [Generators] add `mix ash.gen.base_resource`
+
+- [Generators] add `mix ash.gen.domain`
+
+- [Generators] add `mix ash.extend`
+
+- [Ash.Type.UUIDv7] Add built in `Ash.Type.UUIDv7` type, and `uuid_v7_primary_key` builder
+
+### Bug Fixes:
+
+- [atomics] sort primary key changes ahead of others in atomic changes
+
+- [Ash.Changeet] fix typespec for Changeset.around_transaction/2 (#1292)
+
+- [multitenancy] ensure tenancy is always enforced on create/update/destroy actions
+
+- [loading relationships] lateral join on `from_many? true` relationships
+
+- [calculations] don't reuse calculations/aggregates if `authorize?` is true
+
+- [aggregates] ensure aggregate context is fully configured in `Ash.aggregate`
+
+- [bulk actions] properly transfer changeset.context on streamed batch changesets
+
+- [bulk actions] ensure notifications are dispatched from bulk actions
+
+- [lazy loading] lazy-loading logic for calculations/aggregates was inversed (#1275)
+
+- [error handling] properly match on async task exceptions
+
+- [policies] ensure `context` is available in policy template expressions
+
+- [policies] ensure forbidden errors behave the same when using implicit bulk version of code interface functions
+
+- [manual relationships] compare keys in manual relationships when using 'complex' types (#1270)
+
+- [Ash.Filter] cover more cases in filter input parsing (#1261)
+
+- [has_one relationships] automatically set `from_many?` if a `has_one` has a `sort` applied
+
+- [Ash.Filter] fix match error when synthesizing joins across data layers
+
+- [Ash.DataLayer.Ets] properly support multitenancy when referencing relationships
+
+- [Ash.Type.Union] initialize & validate each subtype of a union
+
+### Improvements:
+
+- [Ash.Type.Enum] allow overriding `cast_stored/2` and `dump_to_native/2`
+
+- [Ash.DataLayer.Simple] support offset in the simple data layer
+
+- [Ash.Changeset] allow after_action hooks in fully atomic changesets
+
 ## [v3.0.16](https://github.com/ash-project/ash/compare/v3.0.15...v3.0.16) (2024-06-21)
 
 ### Bug Fixes:
