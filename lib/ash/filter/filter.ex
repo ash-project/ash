@@ -2709,6 +2709,7 @@ defmodule Ash.Filter do
     cond do
       rel = relationship(context, field) ->
         with rel_type when rel_type != :many_to_many <- rel.type,
+             true <- !Map.get(rel, :no_attributes),
              dest <- rel.destination,
              dest_attr <- rel.destination_attribute,
              [pk] when pk == dest_attr <- Ash.Resource.Info.primary_key(dest),
