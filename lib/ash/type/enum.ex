@@ -235,7 +235,7 @@ defmodule Ash.Type.Enum do
           :error
       end
 
-      defoverridable match: 1, storage_type: 0
+      defoverridable match: 1, storage_type: 0, cast_stored: 2, dump_to_native: 2
     end
   end
 
