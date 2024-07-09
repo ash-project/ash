@@ -58,6 +58,16 @@ Then, create a new project:
 mix igniter.new helpdesk --install ash && cd helpdesk
 ```
 
+If you already know that you want to use Phoenix and Ash together, you can use
+
+```elixir
+# install the archive
+mix archive.install hex phx_new
+
+# use the `--with` flag to generate the project with phx.new and add ash
+mix igniter.new helpdesk --install ash --with phx.new && cd helpdesk
+```
+
 It is a good idea to make it a git repository and commit the initial project. You'll be able to see what changes we made, and can save your changes once we're done.
 
 ```bash
@@ -82,6 +92,18 @@ Open the project in your text editor, and we'll get started.
 >
 > ```bash
 > mix igniter.new helpdesk --install ash,ash_postgres --example --extend postgres`
+> ```
+>
+> Want to start with a Phoenix app setup too? Use the `--with` argument.
+>
+> ```bash
+> mix archive.install hex phx_new
+>
+> mix igniter.new helpdesk \
+>   --install ash,ash_postgres \
+>   --with phx.new \
+>   --extend postgres \
+>   --example
 > ```
 >
 > If you generate this code, you can browse the rest of the guide, but the code shown will already be present in your application 🥳
