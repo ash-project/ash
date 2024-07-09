@@ -64,7 +64,7 @@ If you already know that you want to use Phoenix and Ash together, you can use
 # install the archive
 mix archive.install hex phx_new
 
-# use the `--with` flag to generate the project with phx.new and add ash
+# use the `--with` flag to generate the project with phx.new and add Ash
 mix igniter.new helpdesk --install ash --with phx.new && cd helpdesk
 ```
 
