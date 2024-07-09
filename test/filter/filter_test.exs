@@ -680,6 +680,9 @@ defmodule Ash.Test.Filter.FilterTest do
 
       # combinations
       assert Filter.parse!(Post, author1: [eq: 1, has_friend: true])
+
+      # prefix operator
+      assert Filter.parse!(Post, author1: [in: [id: [id1, id2]]])
     end
 
     test "raises an error if the underlying parse returns an error" do
