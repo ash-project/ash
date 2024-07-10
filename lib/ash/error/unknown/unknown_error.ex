@@ -2,7 +2,7 @@ defmodule Ash.Error.Unknown.UnknownError do
   @moduledoc "Used when an unknown error occurs"
   use Ash.Error.Exception
 
-  use Splode.Error, fields: [:error, :field], class: :unknown
+  use Splode.Error, fields: [:error, :field, :value], class: :unknown
 
   def message(%{error: error}) do
     if is_binary(error) do
