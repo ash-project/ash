@@ -2713,16 +2713,16 @@ defmodule Ash.Filter do
              dest <- rel.destination,
              dest_attr <- rel.destination_attribute,
              [pk] when pk == dest_attr <- Ash.Resource.Info.primary_key(dest),
-             attr <- attribute(%{public?: true, resource: dest}, pk),
+             attr <- attribute(%{public?: context[:public?], resource: dest}, pk),
              %Ash.Resource.Attribute{} = attr,
              true <- is_list(nested_statement) or is_map(nested_statement) do
           {:ok,
            Enum.reduce(nested_statement, true, fn {key, val}, acc ->
              {:ok, expr_part} =
-               if is_nil(aggregate(%{public?: true, resource: dest}, key)) and
-                    is_nil(attribute(%{public?: true, resource: dest}, key)) and
-                    is_nil(calculation(%{public?: true, resource: dest}, key)) and
-                    is_nil(relationship(%{public?: true, resource: dest}, key)) do
+               if is_nil(aggregate(%{public?: context[:public?], resource: dest}, key)) and
+                    is_nil(attribute(%{public?: context[:public?], resource: dest}, key)) and
+                    is_nil(calculation(%{public?: context[:public?], resource: dest}, key)) and
+                    is_nil(relationship(%{public?: context[:public?], resource: dest}, key)) do
                  nested_statement =
                    if is_list(nested_statement) do
                      [{dest_attr, {key, val}}]
