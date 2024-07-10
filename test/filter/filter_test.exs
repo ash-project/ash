@@ -105,6 +105,16 @@ defmodule Ash.Test.Filter.FilterTest do
 
       has_one :profile, Profile, destination_attribute: :user_id, public?: true
     end
+
+    aggregates do
+      count :count_of_posts, :posts, public?: true
+    end
+
+    calculations do
+      calculate :has_friend, :boolean, expr(true) do
+        public? true
+      end
+    end
   end
 
   defmodule PostLink do
@@ -180,6 +190,7 @@ defmodule Ash.Test.Filter.FilterTest do
       belongs_to :author1, User,
         destination_attribute: :id,
         source_attribute: :author1_id,
+        attribute_public?: false,
         public?: true
 
       belongs_to :special_author1, User do
@@ -657,6 +668,18 @@ defmodule Ash.Test.Filter.FilterTest do
       candidate = Filter.parse!(Post, author1: id1)
 
       assert Filter.strict_subset_of?(filter, candidate)
+
+      # aggregate
+      assert Filter.parse!(Post, author1: [count_of_posts: 0])
+
+      # calculation
+      assert Filter.parse!(Post, author1: [has_friend: true])
+
+      # relationship
+      assert Filter.parse!(Post, author1: [profile: id1])
+
+      # combinations
+      assert Filter.parse!(Post, author1: [eq: 1, has_friend: true])
     end
 
     test "raises an error if the underlying parse returns an error" do

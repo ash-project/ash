@@ -2708,46 +2708,44 @@ defmodule Ash.Filter do
        when is_atom(field) or is_binary(field) do
     cond do
       rel = relationship(context, field) ->
-        with relation_type when relation_type != :many_to_many <- rel.type,
+        with rel_type when rel_type != :many_to_many <- rel.type,
              true <- !Map.get(rel, :no_attributes),
-             [pk] when pk == rel.destination_attribute <-
-               Ash.Resource.Info.primary_key(rel.destination),
-             attr <- attribute(%{public?: true, resource: rel.source}, rel.source_attribute),
+             dest <- rel.destination,
+             dest_attr <- rel.destination_attribute,
+             [pk] when pk == dest_attr <- Ash.Resource.Info.primary_key(dest),
+             attr <- attribute(%{public?: true, resource: dest}, pk),
              %Ash.Resource.Attribute{} = attr,
-             {:ok, result} <-
-               add_expression_part({attr.name, nested_statement}, context, expression) do
-          {:ok, result}
+             true <- is_list(nested_statement) or is_map(nested_statement) do
+          {:ok,
+           Enum.reduce(nested_statement, true, fn {key, val}, acc ->
+             {:ok, expr_part} =
+               if is_nil(aggregate(%{public?: true, resource: dest}, key)) and
+                    is_nil(attribute(%{public?: true, resource: dest}, key)) and
+                    is_nil(calculation(%{public?: true, resource: dest}, key)) and
+                    is_nil(relationship(%{public?: true, resource: dest}, key)) do
+                 nested_statement =
+                   if is_list(nested_statement) do
+                     [{dest_attr, {key, val}}]
+                   else
+                     Map.put(%{}, dest_attr, Map.put(%{}, key, val))
+                   end
+
+                 add_expression_part({field, nested_statement}, context, expression)
+               else
+                 nested_statement =
+                   if is_list(nested_statement) do
+                     [{key, val}]
+                   else
+                     Map.put(%{}, key, val)
+                   end
+
+                 add_expression_part_relationship(rel, nested_statement, context, expression)
+               end
+
+             BooleanExpression.optimized_new(:and, acc, expr_part)
+           end)}
         else
-          _ ->
-            context =
-              context
-              |> Map.update!(:relationship_path, fn path -> path ++ [rel.name] end)
-              |> Map.put(:resource, rel.destination)
-
-            if is_list(nested_statement) || is_map(nested_statement) do
-              case parse_expression(nested_statement, context) do
-                {:ok, nested_expression} ->
-                  {:ok, BooleanExpression.optimized_new(:and, expression, nested_expression)}
-
-                {:error, error} ->
-                  {:error, error}
-              end
-            else
-              with [field] <- Ash.Resource.Info.primary_key(context.resource),
-                   attribute when not is_nil(attribute) <- attribute(context, field),
-                   {:ok, casted} <-
-                     Ash.Type.cast_input(attribute.type, nested_statement, attribute.constraints) do
-                add_expression_part({field, casted}, context, expression)
-              else
-                _other ->
-                  {:error,
-                   InvalidFilterValue.exception(
-                     value: inspect(nested_statement),
-                     message:
-                       "a single value must be castable to the primary key of the resource: #{inspect(context.resource)}"
-                   )}
-              end
-            end
+          _ -> add_expression_part_relationship(rel, nested_statement, context, expression)
         end
 
       attr = attribute(context, field) ->
@@ -2854,23 +2852,6 @@ defmodule Ash.Filter do
             {:error, error}
         end
 
-      op_module = get_operator(field) && match?([_, _ | _], nested_statement) ->
-        with {:ok, [left, right]} <- hydrate_refs(nested_statement, context),
-             refs <- list_refs([left, right]),
-             :ok <- validate_refs(refs, context.root_resource, {field, nested_statement}),
-             {:ok, operator} <- Operator.new(op_module, left, right) do
-          if is_boolean(operator) do
-            {:ok, BooleanExpression.optimized_new(:and, expression, operator)}
-          else
-            if is_nil(context.resource) ||
-                 Ash.DataLayer.data_layer_can?(context.resource, {:filter_expr, operator}) do
-              {:ok, BooleanExpression.optimized_new(:and, expression, operator)}
-            else
-              {:error, "data layer does not support the operator #{inspect(operator)}"}
-            end
-          end
-        end
-
       true ->
         {:error,
          NoSuchField.exception(
@@ -2930,6 +2911,38 @@ defmodule Ash.Filter do
 
   defp add_expression_part(value, _context, _expression) do
     {:error, InvalidFilterValue.exception(value: value)}
+  end
+
+  defp add_expression_part_relationship(rel, nested_statement, context, expression) do
+    context =
+      context
+      |> Map.update!(:relationship_path, fn path -> path ++ [rel.name] end)
+      |> Map.put(:resource, rel.destination)
+
+    if is_list(nested_statement) || is_map(nested_statement) do
+      case parse_expression(nested_statement, context) do
+        {:ok, nested_expression} ->
+          {:ok, BooleanExpression.optimized_new(:and, expression, nested_expression)}
+
+        {:error, error} ->
+          {:error, error}
+      end
+    else
+      with [field] <- Ash.Resource.Info.primary_key(context.resource),
+           attribute when not is_nil(attribute) <- attribute(context, field),
+           {:ok, casted} <-
+             Ash.Type.cast_input(attribute.type, nested_statement, attribute.constraints) do
+        add_expression_part({field, casted}, context, expression)
+      else
+        _other ->
+          {:error,
+           InvalidFilterValue.exception(
+             value: inspect(nested_statement),
+             message:
+               "a single value must be castable to the primary key of the resource: #{inspect(context.resource)}"
+           )}
+      end
+    end
   end
 
   defp each_related(_resource, []), do: []
