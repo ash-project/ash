@@ -8,9 +8,9 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
   ```bash
   mix ash.gen.resource Helpdesk.Support.Ticket \
-    --default-actions read
-    --uuid-primary-key id
-    --attribute subject:string:required:public
+    --default-actions read \
+    --uuid-primary-key id \
+    --attribute subject:string:required:public \
     --relationship belongs_to:representative:Helpdesk.Support.Representative \
     --extend postgres,graphql
   ```
