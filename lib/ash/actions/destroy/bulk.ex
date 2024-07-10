@@ -98,6 +98,9 @@ defmodule Ash.Actions.Destroy.Bulk do
         changeset = opts[:atomic_changeset] ->
           changeset
 
+        query.action.manual ->
+          {:not_atomic, "Manual read actions cannot be updated atomically"}
+
         Ash.DataLayer.data_layer_can?(query.resource, :destroy_query) ->
           private_context = Map.new(Keyword.take(opts, [:actor, :tenant, :authorize]))
 
@@ -529,7 +532,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               {results, []}
             end
 
-          {results, errors, error_count} =
+          {results, errors, error_count, notifications} =
             case load_data(
                    results,
                    atomic_changeset.domain,
@@ -538,7 +541,36 @@ defmodule Ash.Actions.Destroy.Bulk do
                    opts
                  ) do
               {:ok, results} ->
-                {results, [], 0}
+                if Enum.empty?(atomic_changeset.after_action) do
+                  {results, [], 0, notifications}
+                else
+                  Enum.reduce(results, {[], [], 0, notifications}, fn result,
+                                                                      {results, errors,
+                                                                       error_count,
+                                                                       notifications} ->
+                    case Ash.Changeset.run_after_actions(result, atomic_changeset, []) do
+                      {:error, error} ->
+                        if opts[:transaction] && opts[:rollback_on_error?] do
+                          if Ash.DataLayer.in_transaction?(atomic_changeset.resource) do
+                            Ash.DataLayer.rollback(
+                              atomic_changeset.resource,
+                              error
+                            )
+                          end
+                        end
+
+                        {results, errors ++ List.wrap(error),
+                         error_count + Enum.count(List.wrap(error)), notifications}
+
+                      {:ok, result, _changeset, %{notifications: more_new_notifications}} ->
+                        {[result | results], errors, error_count,
+                         notifications ++ more_new_notifications}
+                    end
+                  end)
+                  |> then(fn {results, errors, error_count, notifications} ->
+                    {Enum.reverse(results), errors, error_count, notifications}
+                  end)
+                end
 
               {:error, error} ->
                 {[], List.wrap(error), Enum.count(List.wrap(error))}
@@ -708,6 +740,8 @@ defmodule Ash.Actions.Destroy.Bulk do
     resource = opts[:resource]
     opts = Ash.Actions.Helpers.set_opts(opts, domain)
 
+    read_action = get_read_action(resource, opts)
+
     {context_cs, opts} =
       Ash.Actions.Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
 
@@ -721,6 +755,9 @@ defmodule Ash.Actions.Destroy.Bulk do
 
         !Ash.Resource.Info.primary_action(resource, :read) ->
           {:not_atomic, "cannot atomically destroy a stream without a primary read action"}
+
+        read_action.manual ->
+          {:not_atomic, "Manual read actions cannot be updated atomically"}
 
         Ash.DataLayer.data_layer_can?(resource, :destroy_query) ->
           opts =
@@ -822,8 +859,10 @@ defmodule Ash.Actions.Destroy.Bulk do
       fn batch ->
         pkeys = [or: Enum.map(batch, &Map.take(&1, pkey))]
 
+        read_action = get_read_action(resource, opts).name
+
         resource
-        |> Ash.Query.for_read(Ash.Resource.Info.primary_action!(resource, :read).name, %{},
+        |> Ash.Query.for_read(read_action, %{},
           actor: opts[:actor],
           authorize?: false,
           context: atomic_changeset.context,
@@ -852,7 +891,9 @@ defmodule Ash.Actions.Destroy.Bulk do
               resource: opts[:resource],
               return_notifications?: opts[:return_notifications?],
               notify?: opts[:notify?],
+              read_action: read_action,
               return_records?: opts[:return_records?],
+              allow_stream_with: opts[:allow_stream_with],
               strategy: [:atomic]
             ],
             not_atomic_reason
@@ -2318,5 +2359,15 @@ defmodule Ash.Actions.Destroy.Bulk do
       arguments,
       context
     )
+  end
+
+  defp get_read_action(resource, opts) do
+    case opts[:read_action] do
+      nil ->
+        Ash.Resource.Info.primary_action!(resource, :read)
+
+      action ->
+        Ash.Resource.Info.action(resource, action)
+    end
   end
 end

@@ -11,7 +11,11 @@ defmodule Ash.Test.UUIDv7Test do
   test "generate/1 is ordered" do
     uuids =
       for _ <- 1..10_000 do
-        Ash.UUIDv7.generate()
+        uuid = Ash.UUIDv7.generate()
+        # only guaranteed sorted if >= 1 nanosecond apart
+        # can't sleep for one nanoseond AFAIK, so sleep for 1 ms
+        :timer.sleep(1)
+        uuid
       end
 
     assert uuids == Enum.sort(uuids)

@@ -53,6 +53,9 @@ defmodule Ash.Actions.Update.Bulk do
         :atomic not in opts[:strategy] ->
           {:not_atomic, "Not in requested strategies"}
 
+        query.action.manual ->
+          {:not_atomic, "Manual read actions cannot be updated atomically"}
+
         changeset = opts[:atomic_changeset] ->
           changeset
 
@@ -901,6 +904,9 @@ defmodule Ash.Actions.Update.Bulk do
         !read_action ->
           {:not_atomic, "cannot atomically update a stream without a primary read action"}
 
+        read_action.manual ->
+          {:not_atomic, "Manual read actions cannot be updated atomically"}
+
         Ash.DataLayer.data_layer_can?(resource, :update_query) ->
           opts =
             Keyword.update(
@@ -1007,8 +1013,10 @@ defmodule Ash.Actions.Update.Bulk do
       fn batch ->
         pkeys = [or: Enum.map(batch, &Map.take(&1, pkey))]
 
+        read_action = get_read_action(resource, opts).name
+
         resource
-        |> Ash.Query.for_read(get_read_action(resource, opts).name, %{},
+        |> Ash.Query.for_read(read_action, %{},
           actor: opts[:actor],
           authorize?: false,
           context: atomic_changeset.context,
@@ -1036,6 +1044,8 @@ defmodule Ash.Actions.Update.Bulk do
             return_notifications?: opts[:return_notifications?],
             notify?: opts[:notify?],
             return_records?: opts[:return_records?],
+            allow_stream_with: opts[:allow_stream_with],
+            read_action: read_action,
             strategy: [:atomic]
           )
           |> case do
