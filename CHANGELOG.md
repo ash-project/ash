@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.1.1](https://github.com/ash-project/ash/compare/v3.1.0...v3.1.1) (2024-07-10)
+
+
+
+
+### Bug Fixes:
+
+* installer doesn't need to add spark as a dependency, just run its installer
+
 ## [v3.1.0](https://github.com/ash-project/ash/compare/v3.0.16...v3.1.0) (2024-07-09)
 
 ### Features:
