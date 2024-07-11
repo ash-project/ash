@@ -159,17 +159,50 @@ defmodule Ash.Actions.Destroy.Bulk do
             query =
               Ash.Query.do_filter(query, opts[:filter])
 
-            run(
-              domain,
-              Ash.stream!(
-                query,
-                read_opts
-              ),
-              action,
-              input,
-              Keyword.merge(opts, resource: query.resource, input_was_stream?: false),
-              reason
-            )
+            if query.limit && query.limit < (opts[:batch_size] || 100) do
+              case Ash.read(query, read_opts) do
+                {:ok, results} ->
+                  run(
+                    domain,
+                    results,
+                    action,
+                    input,
+                    Keyword.merge(opts,
+                      resource: query.resource,
+                      input_was_stream?: false
+                    ),
+                    reason
+                  )
+
+                {:error, error} ->
+                  %Ash.BulkResult{
+                    status: :error,
+                    error_count: 1,
+                    errors: [Ash.Error.to_error_class(error)]
+                  }
+              end
+            else
+              # We need to figure out a way to capture errors raised by the stream when picking items off somehow
+              # for now, we only go this route if there are potentially more records in the result set than
+              # in the batch size, to solve this problem for atomic upgrades.
+              # we can likely make the stream throw something instead of raising somethign
+              # like `{:stream_error, ...}` if a specific option is passed in.
+              # once we figure this out, we may be able to remove the branch above
+              run(
+                domain,
+                Ash.stream!(
+                  query,
+                  read_opts
+                ),
+                action,
+                input,
+                Keyword.merge(opts,
+                  resource: query.resource,
+                  input_was_stream?: false
+                ),
+                reason
+              )
+            end
         end
 
       %Ash.Changeset{valid?: false, errors: errors} ->
