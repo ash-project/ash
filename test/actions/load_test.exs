@@ -1662,7 +1662,6 @@ defmodule Ash.Test.Actions.LoadTest do
       assert post.contents == loaded_post.contents
     end
 
-    @tag :new
     test "strict?: true option only loads specified fields on related resource for Ash.load" do
       author =
         Author
