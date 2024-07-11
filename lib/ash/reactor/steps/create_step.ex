@@ -12,15 +12,15 @@ defmodule Ash.Reactor.CreateStep do
   def run(arguments, context, options) do
     changeset_options =
       options
+      |> maybe_set_kw(:authorize?, context[:authorize?])
+      |> maybe_set_kw(:actor, context[:actor])
+      |> maybe_set_kw(:tenant, context[:tenant])
+      |> maybe_set_kw(:tracer, context[:tracer])
       |> maybe_set_kw(:authorize?, options[:authorize?])
       |> maybe_set_kw(:upsert_identity, options[:upsert_identity])
       |> maybe_set_kw(:upsert?, options[:upsert?])
       |> maybe_set_kw(:actor, arguments[:actor])
       |> maybe_set_kw(:tenant, arguments[:tenant])
-      |> maybe_set_kw(:authorize?, context[:authorize?])
-      |> maybe_set_kw(:actor, context[:actor])
-      |> maybe_set_kw(:tenant, context[:tenant])
-      |> maybe_set_kw(:tracer, context[:tracer])
 
     action_options =
       [return_notifications?: true, domain: options[:domain]]
@@ -61,13 +61,13 @@ defmodule Ash.Reactor.CreateStep do
   def undo(record, arguments, context, options) do
     changeset_options =
       []
-      |> maybe_set_kw(:authorize?, options[:authorize?])
-      |> maybe_set_kw(:actor, arguments[:actor])
-      |> maybe_set_kw(:tenant, arguments[:tenant])
       |> maybe_set_kw(:authorize?, context[:authorize?])
       |> maybe_set_kw(:actor, context[:actor])
       |> maybe_set_kw(:tenant, context[:tenant])
       |> maybe_set_kw(:tracer, context[:tracer])
+      |> maybe_set_kw(:authorize?, options[:authorize?])
+      |> maybe_set_kw(:actor, arguments[:actor])
+      |> maybe_set_kw(:tenant, arguments[:tenant])
 
     action_options =
       [return_notifications?: true, return_destroyed?: false, domain: options[:domain]]
