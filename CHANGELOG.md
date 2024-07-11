@@ -2,6 +2,20 @@
 
 <!-- changelog -->
 
+## [v3.1.3](https://github.com/ash-project/ash/compare/v3.1.2...v3.1.3) (2024-07-11)
+
+### Bug Fixes:
+
+- [bulk actions] ensure that errors in queries do not raise in atomic upgrades/single atomics
+
+- [Ash.Type.Integer] use correct contraint when validating min int (#1298)
+
+- [Ash.Filter] don't refer to private attributes when parsing filter inputs that refer to relationships (#1280)
+
+### Improvements:
+
+- [Ash.Query] add `strict?` option to `Ash.Query.load` (#1302)
+
 ## [v3.1.2](https://github.com/ash-project/ash/compare/v3.1.1...v3.1.2) (2024-07-10)
 
 ### Bug Fixes:
