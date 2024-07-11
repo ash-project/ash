@@ -1636,7 +1636,6 @@ defmodule Ash.Test.Actions.LoadTest do
       assert %Ash.NotLoaded{} = loaded_post.contents
     end
 
-    @tag :new
     test "all fields are loaded if no fields are specified when using strict?: true" do
       author =
         Author
