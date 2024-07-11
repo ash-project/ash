@@ -154,12 +154,13 @@ defmodule Ash.Actions.Destroy.Bulk do
               end)
               |> Keyword.put(:authorize?, opts[:authorize?] && opts[:authorize_query?])
               |> Keyword.put(:domain, domain)
-              |> Keyword.take(Ash.stream_opt_keys())
 
             query =
               Ash.Query.do_filter(query, opts[:filter])
 
             if query.limit && query.limit < (opts[:batch_size] || 100) do
+              read_opts = Keyword.take(read_opts, Keyword.keys(Ash.read_opts()))
+
               case Ash.read(query, read_opts) do
                 {:ok, results} ->
                   run(
@@ -182,6 +183,8 @@ defmodule Ash.Actions.Destroy.Bulk do
                   }
               end
             else
+              read_opts = Keyword.take(read_opts, Ash.stream_opt_keys())
+
               # We need to figure out a way to capture errors raised by the stream when picking items off somehow
               # for now, we only go this route if there are potentially more records in the result set than
               # in the batch size, to solve this problem for atomic upgrades.

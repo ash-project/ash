@@ -78,16 +78,6 @@ defmodule Ash.Actions.Update.Bulk do
 
     case fully_atomic_changeset do
       {:not_atomic, reason} ->
-        read_opts =
-          Keyword.take(opts, Ash.stream_opt_keys())
-
-        read_opts =
-          if stream_batch_size = opts[:stream_batch_size] do
-            Keyword.put(read_opts, :batch_size, stream_batch_size)
-          else
-            read_opts
-          end
-
         case Ash.Actions.Read.Stream.stream_strategy(
                query,
                nil,
@@ -116,13 +106,20 @@ defmodule Ash.Actions.Update.Bulk do
               Ash.Query.do_filter(query, opts[:filter])
 
             read_opts =
-              Keyword.merge(read_opts,
-                authorize?: opts[:authorize?] && opts[:authorize_query?],
-                domain: domain
-              )
-              |> Keyword.take(Keyword.keys(Ash.read_opts()))
+              opts
+              |> then(fn read_opts ->
+                if opts[:batch_size] do
+                  Keyword.put(read_opts, :batch_size, opts[:stream_batch_size])
+                else
+                  read_opts
+                end
+              end)
+              |> Keyword.put(:authorize?, opts[:authorize?] && opts[:authorize_query?])
+              |> Keyword.put(:domain, domain)
 
             if query.limit && query.limit < (opts[:batch_size] || 100) do
+              read_opts = Keyword.take(read_opts, Keyword.keys(Ash.read_opts()))
+
               case Ash.read(query, read_opts) do
                 {:ok, results} ->
                   run(
@@ -145,6 +142,8 @@ defmodule Ash.Actions.Update.Bulk do
                   }
               end
             else
+              read_opts = Keyword.take(read_opts, Ash.stream_opt_keys())
+
               # We need to figure out a way to capture errors raised by the stream when picking items off somehow
               # for now, we only go this route if there are potentially more records in the result set than
               # in the batch size, to solve this problem for atomic upgrades.
