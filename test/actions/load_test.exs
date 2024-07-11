@@ -1608,5 +1608,106 @@ defmodule Ash.Test.Actions.LoadTest do
       assert %Ash.Page.Offset{count: 3} = author.posts
       assert %{} == author.aggregates
     end
+
+    test "strict?: true option only loads specified fields on related resource" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "a"})
+        |> Ash.create!()
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{
+          title: "author post",
+          contents: "post content",
+          author_id: author.id
+        })
+        |> Ash.create!()
+
+      assert [author] =
+               Author
+               |> Ash.Query.load([posts: [:title]], strict?: true)
+               |> Ash.read!()
+
+      [loaded_post] = author.posts
+
+      assert post.contents == "post content"
+      assert loaded_post.title == "author post"
+      assert %Ash.NotLoaded{} = loaded_post.contents
+    end
+
+    @tag :new
+    test "all fields are loaded if no fields are specified when using strict?: true" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "a"})
+        |> Ash.create!()
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{
+          title: "author post",
+          contents: "post content",
+          author_id: author.id
+        })
+        |> Ash.create!()
+
+      assert [author] =
+               Author
+               |> Ash.Query.load([:posts], strict?: true)
+               |> Ash.read!()
+
+      [loaded_post] = author.posts
+
+      assert post.title == loaded_post.title
+      assert post.contents == loaded_post.contents
+    end
+
+    @tag :new
+    test "strict?: true option only loads specified fields on related resource for Ash.load" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "a"})
+        |> Ash.create!()
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{
+          title: "author post",
+          contents: "post content",
+          author_id: author.id
+        })
+        |> Ash.create!()
+
+      loaded_author = Ash.load!(author, [posts: [:title]], strict?: true)
+      [loaded_post] = loaded_author.posts
+
+      assert post.contents == "post content"
+      assert loaded_post.title == "author post"
+      assert %Ash.NotLoaded{} = loaded_post.contents
+    end
+
+    @tag :new
+    test "all fields are loaded if no fields are specified when using strict?: true for Ash.load" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "a"})
+        |> Ash.create!()
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{
+          title: "author post",
+          contents: "post content",
+          author_id: author.id
+        })
+        |> Ash.create!()
+
+      loaded_author = Ash.load!(author, [:posts], strict?: true)
+      [loaded_post] = loaded_author.posts
+
+      assert post.title == loaded_post.title
+      assert post.contents == loaded_post.contents
+    end
   end
 end

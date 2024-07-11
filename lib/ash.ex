@@ -164,6 +164,11 @@ defmodule Ash do
                           default: false,
                           doc:
                             "Whether calculations are allowed to reuse values that have already been loaded, or must refetch them from the data layer."
+                        ],
+                        strict?: [
+                          type: :boolean,
+                          default: false,
+                          doc: "If set to true, only specified attributes will be loaded."
                         ]
                       ],
                       @global_opts,
@@ -1705,7 +1710,7 @@ defmodule Ash do
           resource
           |> Ash.Query.new()
           |> Ash.Query.set_tenant(opts[:tenant] || Map.get(record.__metadata__, :tenant))
-          |> Ash.Query.load(keyword)
+          |> Ash.Query.load(keyword, opts)
       end
 
     with %{valid?: true} <- query,

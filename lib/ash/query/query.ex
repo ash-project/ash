@@ -1255,16 +1255,27 @@ defmodule Ash.Query do
         ) ::
           t()
 
-  def load(query, %Ash.Query{} = new) do
+  def load(query, load_statement, opts \\ [])
+
+  def load(query, %Ash.Query{} = new, _opts) do
     merge_load(query, new)
   end
 
-  def load(query, fields) when not is_list(fields) do
-    load(query, List.wrap(fields))
+  def load(query, fields, opts) when not is_list(fields) do
+    load(query, List.wrap(fields), opts)
   end
 
-  def load(query, fields) do
-    query = new(query)
+  def load(query, fields, opts) do
+    strict? = Keyword.get(opts, :strict?, false)
+
+    query =
+      if strict? do
+        query
+        |> new()
+        |> select([])
+      else
+        new(query)
+      end
 
     Enum.reduce(fields, query, fn
       %Ash.Query{} = new, query ->
@@ -1290,7 +1301,7 @@ defmodule Ash.Query do
       {field, rest}, query ->
         cond do
           rel = Ash.Resource.Info.relationship(query.resource, field) ->
-            nested_query = load(rel.destination, rest)
+            nested_query = load(rel.destination, rest, opts)
 
             load_relationship(query, [{field, nested_query}])
 
