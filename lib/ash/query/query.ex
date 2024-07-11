@@ -1231,11 +1231,7 @@ defmodule Ash.Query do
   @doc """
   Loads relationships, calculations, or aggregates on the resource.
 
-  Currently, loading attributes has no effects, as all attributes are returned.
-  Before long, we will have the default list to load as the attributes, but if you say
-  `load(query, [:attribute1])`, that will be the only field filled in. This will let
-  data layers make more intelligent "select" statements as well.
-
+  By default, loading attributes has no effects, as all attributes are returned.
 
   ```elixir
   # Loading nested relationships
@@ -1244,6 +1240,35 @@ defmodule Ash.Query do
   # Loading relationships with a query
   Ash.Query.load(query, [comments: [author: author_query]])
   ```
+
+  By passing the `strict?: true` option, only specified attributes will be loaded when passing
+  a list of fields to fetch on a relationship, which allows for more optimized data-fetching.
+
+  The select statement of any queries inside the load statement will not be affected.
+
+  Example:
+  ```elixir
+  Ash.load(category, [:name, posts: [:title, :published_at]], strict?: true)
+  ```
+
+  Here, the only fields that will be loaded on the `posts` relationship are `title` and
+  `published_at`, in addition to any other fields that are required to be loaded, like the
+  primary and relevant foreign keys.
+  This entails that when using `strict?: true` and loading nested relationships, you will also
+  always have to specify all the attributes you want to load alongside the nested relationships.
+
+  Example:
+  ```elixir
+  Ash.load(post, [:title, :published_at, :other_needed_attribute, category: [:name]], strict?: true)
+  ```
+
+  If no fields are specified on a relationship when using `strict?: true`, all attributes will be
+  loaded by default.
+
+  Example:
+  ```elixir
+  Ash.load(category, [:name, :posts], strict?: true)
+  ```
   """
   @spec load(
           t() | Ash.Resource.t(),
@@ -1251,7 +1276,8 @@ defmodule Ash.Query do
           | Ash.Query.Calculation.t()
           | Ash.Query.Aggregate.t()
           | list(atom | Ash.Query.Calculation.t() | Ash.Query.Aggregate.t())
-          | list({atom | Ash.Query.Calculation.t() | Ash.Query.Aggregate.t(), term})
+          | list({atom | Ash.Query.Calculation.t() | Ash.Query.Aggregate.t(), term}),
+          Keyword.t()
         ) ::
           t()
 
