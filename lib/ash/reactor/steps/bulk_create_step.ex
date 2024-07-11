@@ -38,6 +38,10 @@ defmodule Ash.Reactor.BulkCreateStep do
         :upsert_identity,
         :upsert?
       ])
+      |> maybe_set_kw(:authorize?, context[:authorize?])
+      |> maybe_set_kw(:actor, context[:actor])
+      |> maybe_set_kw(:tenant, context[:tenant])
+      |> maybe_set_kw(:tracer, context[:tracer])
       |> maybe_set_kw(:actor, arguments[:actor])
       |> maybe_set_kw(:tenant, arguments[:tenant])
       |> maybe_set_kw(:notification_metadata, arguments[:notification_metadata])
@@ -68,10 +72,15 @@ defmodule Ash.Reactor.BulkCreateStep do
 
   @doc false
   @impl true
-  def undo(bulk_result, arguments, _context, options) when is_struct(bulk_result, BulkResult) do
+  def undo(bulk_result, arguments, context, options) when is_struct(bulk_result, BulkResult) do
     action_options =
       options
-      |> Keyword.take([:authorize?, :domain])
+      |> Keyword.take([:domain])
+      |> maybe_set_kw(:authorize?, context[:authorize?])
+      |> maybe_set_kw(:actor, context[:actor])
+      |> maybe_set_kw(:tenant, context[:tenant])
+      |> maybe_set_kw(:tracer, context[:tracer])
+      |> maybe_set_kw(:authorize?, options[:authorize?])
       |> maybe_set_kw(:actor, arguments[:actor])
       |> maybe_set_kw(:tenant, arguments[:tenant])
 
