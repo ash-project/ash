@@ -1077,10 +1077,18 @@ defmodule Ash.CodeInterface do
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
-                              if opts[:return_notifications?] do
-                                {:ok, record, result.notifications}
+                              if opts[:return_destroyed?] do
+                                if opts[:return_notifications?] do
+                                  {:ok, record, result.notifications}
+                                else
+                                  {:ok, record}
+                                end
                               else
-                                {:ok, record}
+                                if opts[:return_notifications?] do
+                                  {:ok, result.notifications}
+                                else
+                                  :ok
+                                end
                               end
 
                             %Ash.BulkResult{status: :success, records: empty} = result
@@ -1157,10 +1165,18 @@ defmodule Ash.CodeInterface do
                               result
 
                             %Ash.BulkResult{status: :success, records: [record]} = result ->
-                              if opts[:return_notifications?] do
-                                {record, result.notifications}
+                              if opts[:return_destroyed?] do
+                                if opts[:return_notifications?] do
+                                  {record, result.notifications}
+                                else
+                                  record
+                                end
                               else
-                                record
+                                if opts[:return_notifications?] do
+                                  result.notifications
+                                else
+                                  :ok
+                                end
                               end
 
                             %Ash.BulkResult{status: :success, records: empty} = result
