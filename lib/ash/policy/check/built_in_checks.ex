@@ -267,6 +267,39 @@ defmodule Ash.Policy.Check.Builtins do
     {Ash.Policy.Check.RelatingToActor, relationship: relationship}
   end
 
+  @doc """
+  This check passes if the data is being related to the actor via the specified relationship or path of relationships.
+
+  This only supports `belongs_to` and `has_one` relationships. 
+
+  `:target_field` is the field from the last resource in the path to match against the actor.
+
+  `:field` is the field from the actor to match against as the last resource in the path. 
+
+  Multiple values may be given for the `:target_field` and `:field` options but they must have the same number of 
+  elements and respective order.
+
+  For example:
+
+  ```elixir
+  policy action_type(:create) do
+    authorize_if relating_to_actor_via(:owner)
+
+    # Path of relationships:
+    authorize_if relating_to_actor_via([:comment, :post, :creator])
+
+    # When the actor relates to a target field of the last relationship:
+    authorize_if relating_to_actor_via([:comment, :post], target_field: :creator_id)
+
+    # When a field of the actor relates to a target field of the last relationship:
+    authorize_if relating_to_actor_via([:comment, :post], target_field: [:maintainer_id, :role], field: [:id, :role])
+  end
+  """
+  def relating_to_actor_via(relationships, opts \\ []) do
+    opts = Keyword.put(opts, :relationships, relationships)
+    {Ash.Policy.Check.RelatingToActorVia, opts}
+  end
+
   @doc "This check is true when the specified relationship is changing"
   def changing_relationship(relationship) do
     changing_relationships(relationship)
