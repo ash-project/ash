@@ -327,6 +327,8 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       attribute :title4, :string, public?: true
       attribute :hidden_attribute, :string, public?: true
 
+      attribute :score, :integer, public?: true, constraints: [min: 0]
+
       attribute :before_batch_size, :integer
       attribute :after_batch_size, :integer
       attribute :change_batch_size, :integer
@@ -986,6 +988,30 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
   test "works with empty list without the need to define a domain" do
     assert %Ash.BulkResult{records: []} =
              Ash.bulk_update!([], :update, %{title2: 3}, return_records?: true)
+  end
+
+  test "handles numeric constraints correctly" do
+    assert %Ash.BulkResult{
+             records: [%{score: 3}, %{score: 3}]
+           } =
+             Ash.bulk_create!(
+               [%{title: "title1", score: 1}, %{title: "title2", score: 2}],
+               Post,
+               :create,
+               return_stream?: true,
+               return_records?: true,
+               authorize?: false
+             )
+             |> Stream.map(fn {:ok, result} ->
+               result
+             end)
+             |> Ash.bulk_update!(:update, %{score: 3},
+               resource: Post,
+               strategy: :atomic,
+               return_records?: true,
+               return_errors?: true,
+               authorize?: false
+             )
   end
 
   describe "authorization" do
