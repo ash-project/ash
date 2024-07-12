@@ -49,7 +49,7 @@ defmodule Ash.Type.Integer do
 
         {nil, min} ->
           Ash.Expr.expr(
-            if ^expr > ^min do
+            if ^expr < ^min do
               error(
                 Ash.Error.Changes.InvalidChanges,
                 message: "must be greater than or equal to %{min}",
