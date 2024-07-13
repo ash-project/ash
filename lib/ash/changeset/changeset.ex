@@ -2301,8 +2301,6 @@ defmodule Ash.Changeset do
               set_error_field(value, attribute.name)
             end
 
-          value = Ash.Expr.expr(type(^value, ^attribute.type, ^attribute.constraints))
-
           %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
 
         {:error, error} ->

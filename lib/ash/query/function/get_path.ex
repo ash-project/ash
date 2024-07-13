@@ -15,7 +15,7 @@ defmodule Ash.Query.Function.GetPath do
 
   Available in query expressions using bracket syntax, e.g `foo[:bar][:baz]`.
   """
-  use Ash.Query.Function, name: :get_path, predicate?: true, no_inspect?: true
+  use Ash.Query.Function, name: :get_path, no_inspect?: true
 
   def args,
     do: [
