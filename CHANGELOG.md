@@ -2,6 +2,29 @@
 
 <!-- changelog -->
 
+## [v3.1.4](https://github.com/ash-project/ash/compare/v3.1.3...v3.1.4) (2024-07-13)
+
+
+
+
+### Bug Fixes:
+
+* [code interface] properly omit destroyed result in code interfaces
+
+* [Ash.Type.Integer] properly compare `expr` to `min` with `min` integer constraint
+
+* [Ash.Reactor] Make action ctx-values from reactor-ctx take precedence if set. (#1308)
+
+### Improvements:
+
+* [Ash.Resource.Change] support returning a list of atomics from atomic change callbacks
+
+* [Ash.Type] add `cast_atomic_constraints` callback and use it in core types
+
+* [Ash.Expr] improve type signature for `if/3`
+
+* [Ash.Expr] simpler and/or short circuiting
+
 ## [v3.1.3](https://github.com/ash-project/ash/compare/v3.1.2...v3.1.3) (2024-07-11)
 
 ### Bug Fixes:
