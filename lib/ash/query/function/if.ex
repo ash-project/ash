@@ -5,7 +5,7 @@ defmodule Ash.Query.Function.If do
   use Ash.Query.Function, name: :if, no_inspect?: true
   import Ash.Expr, only: [expr?: 1]
 
-  def args, do: [[:boolean, :any], [:boolean, :any, :any]]
+  def args, do: [[:boolean, :any], [:boolean, :any, :same]]
 
   def evaluate_nil_inputs?, do: true
 

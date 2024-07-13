@@ -139,6 +139,9 @@ defmodule Ash.Query.Function do
       {arg, :any}, {:ok, args} ->
         {:cont, {:ok, [arg | args]}}
 
+      {arg, :same}, {:ok, args} ->
+        {:cont, {:ok, [arg | args]}}
+
       {%{__predicate__?: _} = arg, _}, {:ok, args} ->
         {:cont, {:ok, [arg | args]}}
 

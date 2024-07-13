@@ -807,36 +807,42 @@ defmodule Ash.Changeset do
         changeset.context
       )
 
-    with {:atomic, changeset, atomic_changes} <-
+    with {:atomic, changeset, atomic_changes, validations} <-
            atomic_with_changeset(
              module.atomic(changeset, change_opts, struct(Ash.Resource.Change.Context, context)),
              changeset
            ),
          {:atomic, condition} <- atomic_condition(where, changeset, context) do
-      case condition do
-        true ->
-          atomic_update(changeset, atomic_changes)
+      changeset =
+        case condition do
+          true ->
+            atomic_update(changeset, atomic_changes)
 
-        false ->
-          changeset
+          false ->
+            changeset
 
-        condition ->
-          atomic_changes =
-            Map.new(atomic_changes, fn {key, value} ->
-              new_value =
-                expr(
-                  if ^condition do
-                    ^value
-                  else
-                    ^ref(key)
-                  end
-                )
+          condition ->
+            atomic_changes =
+              Map.new(atomic_changes, fn {key, value} ->
+                new_value =
+                  expr(
+                    if ^condition do
+                      ^value
+                    else
+                      ^ref(key)
+                    end
+                  )
 
-              {key, new_value}
-            end)
+                {key, new_value}
+              end)
 
-          atomic_update(changeset, atomic_changes)
-      end
+            atomic_update(changeset, atomic_changes)
+        end
+
+      Enum.reduce(List.wrap(validations), changeset, fn {:atomic, _, condition_expr, error_expr},
+                                                        changeset ->
+        validate_atomically(changeset, condition_expr, error_expr)
+      end)
     else
       {:ok, changeset} ->
         changeset
@@ -849,7 +855,10 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp atomic_with_changeset({:atomic, atomics}, changeset), do: {:atomic, changeset, atomics}
+  defp atomic_with_changeset({:atomic, changeset, atomics}, _changeset),
+    do: {:atomic, changeset, atomics, []}
+
+  defp atomic_with_changeset({:atomic, atomics}, changeset), do: {:atomic, changeset, atomics, []}
   defp atomic_with_changeset(other, _), do: other
 
   defp validate_atomically(changeset, condition_expr, error_expr) do
@@ -2291,6 +2300,8 @@ defmodule Ash.Changeset do
             else
               set_error_field(value, attribute.name)
             end
+
+          value = Ash.Expr.expr(type(^value, ^attribute.type, ^attribute.constraints))
 
           %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
 
