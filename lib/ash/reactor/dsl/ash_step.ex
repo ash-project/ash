@@ -23,7 +23,7 @@ defmodule Ash.Reactor.Dsl.AshStep do
           async?: boolean,
           compensate:
             nil | (any, Reactor.inputs(), Reactor.context() -> :ok | :retry | {:continue, any}),
-          impl: module | {module, keyword},
+          impl: nil | module | {module, keyword},
           max_retries: non_neg_integer() | :infinity,
           name: atom,
           run:

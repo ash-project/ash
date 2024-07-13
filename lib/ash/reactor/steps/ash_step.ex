@@ -30,20 +30,32 @@ defmodule Ash.Reactor.AshStep do
   """
 
   use Reactor.Step
+  import Ash.Reactor.StepUtils
 
   @doc false
   @impl true
   @spec run(Reactor.inputs(), Reactor.context(), keyword) :: {:ok | :error, any}
   def run(arguments, context, options) do
-    case Keyword.fetch!(options, :run) do
-      fun when is_function(fun, 1) ->
-        fun.(arguments)
+    {module, step_opts} = Keyword.get(options, :impl) || {nil, []}
 
-      fun when is_function(fun, 2) ->
-        fun.(arguments, context)
+    if module do
+      options =
+        Enum.reduce(step_opts, options, fn {k, v}, acc ->
+          maybe_set_kw(acc, k, v)
+        end)
 
-      {m, f, a} when is_atom(m) and is_atom(f) and is_list(a) ->
-        apply(m, f, [arguments, context] ++ a)
+      module.run(arguments, context, options)
+    else
+      case Keyword.fetch!(options, :run) do
+        fun when is_function(fun, 1) ->
+          fun.(arguments)
+
+        fun when is_function(fun, 2) ->
+          fun.(arguments, context)
+
+        {m, f, a} when is_atom(m) and is_atom(f) and is_list(a) ->
+          apply(m, f, [arguments, context] ++ a)
+      end
     end
     |> case do
       {:ok, result, notifications} ->
@@ -66,21 +78,32 @@ defmodule Ash.Reactor.AshStep do
   @spec compensate(any, Reactor.inputs(), Reactor.context(), keyword) ::
           {:continue, any} | :ok | :retry
   def compensate(reason, arguments, context, options) do
-    case Keyword.fetch(options, :compensate) do
-      {:ok, fun} when is_function(fun, 1) ->
-        fun.(reason)
+    {module, step_opts} = Keyword.get(options, :impl) || {nil, []}
 
-      {:ok, fun} when is_function(fun, 2) ->
-        fun.(reason, arguments)
+    if module do
+      options =
+        Enum.reduce(step_opts, options, fn {k, v}, acc ->
+          maybe_set_kw(acc, k, v)
+        end)
 
-      {:ok, fun} when is_function(fun, 3) ->
-        fun.(reason, arguments, context)
+      module.compensate(reason, arguments, context, options)
+    else
+      case Keyword.fetch(options, :compensate) do
+        {:ok, fun} when is_function(fun, 1) ->
+          fun.(reason)
 
-      {:ok, {m, f, a}} when is_atom(m) and is_atom(f) and is_list(a) ->
-        apply(m, f, [reason, arguments, context] ++ a)
+        {:ok, fun} when is_function(fun, 2) ->
+          fun.(reason, arguments)
 
-      _ ->
-        :ok
+        {:ok, fun} when is_function(fun, 3) ->
+          fun.(reason, arguments, context)
+
+        {:ok, {m, f, a}} when is_atom(m) and is_atom(f) and is_list(a) ->
+          apply(m, f, [reason, arguments, context] ++ a)
+
+        _ ->
+          :ok
+      end
     end
     |> case do
       {:ok, result, notifications} ->
@@ -100,21 +123,32 @@ defmodule Ash.Reactor.AshStep do
   @impl true
   @spec undo(any, Reactor.inputs(), Reactor.context(), keyword) :: :ok | :retry | {:error, any}
   def undo(value, arguments, context, options) do
-    case Keyword.fetch(options, :undo) do
-      {:ok, fun} when is_function(fun, 1) ->
-        fun.(value)
+    {module, step_opts} = Keyword.get(options, :impl) || {nil, []}
 
-      {:ok, fun} when is_function(fun, 2) ->
-        fun.(value, arguments)
+    if module do
+      options =
+        Enum.reduce(step_opts, options, fn {k, v}, acc ->
+          maybe_set_kw(acc, k, v)
+        end)
 
-      {:ok, fun} when is_function(fun, 3) ->
-        fun.(value, arguments, context)
+      module.undo(value, arguments, context, options)
+    else
+      case Keyword.fetch(options, :undo) do
+        {:ok, fun} when is_function(fun, 1) ->
+          fun.(value)
 
-      {:ok, {m, f, a}} when is_atom(m) and is_atom(f) and is_list(a) ->
-        apply(m, f, [value, arguments, context] ++ a)
+        {:ok, fun} when is_function(fun, 2) ->
+          fun.(value, arguments)
 
-      _ ->
-        :ok
+        {:ok, fun} when is_function(fun, 3) ->
+          fun.(value, arguments, context)
+
+        {:ok, {m, f, a}} when is_atom(m) and is_atom(f) and is_list(a) ->
+          apply(m, f, [value, arguments, context] ++ a)
+
+        _ ->
+          :ok
+      end
     end
     |> case do
       {:ok, result, notifications} ->

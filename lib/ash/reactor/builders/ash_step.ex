@@ -1,7 +1,6 @@
 defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.AshStep do
   @moduledoc false
 
-  alias Ash.Reactor.AshStep
   alias Reactor.Builder
   alias Spark.Error.DslError
   import Ash.Reactor.BuilderUtils
@@ -9,16 +8,20 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.AshStep do
   @doc false
   @impl true
   def build(ash_step, reactor) do
-    with {:ok, reactor} <- ensure_hooked(reactor) do
+    with {:ok, reactor} <- ensure_hooked(reactor),
+         {:ok, ash_step} <- rewrite_step(ash_step, reactor.id) do
       Builder.add_step(
         reactor,
         ash_step.name,
-        {AshStep, [run: ash_step.run, compensate: ash_step.compensate, undo: ash_step.undo]},
+        ash_step.impl,
         ash_step.arguments,
         async?: ash_step.async?,
         max_retries: ash_step.max_retries,
         transform: ash_step.transform,
-        ref: :step_name
+        ref: :step_name,
+        run: ash_step.run,
+        compensate: ash_step.compensate,
+        undo: ash_step.undo
       )
     end
   end
@@ -68,18 +71,14 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.AshStep do
          message: "Step has both an implementation module and a undo function"
        )}
 
-  defp rewrite_step(step, _dsl_state)
-       when is_nil(step.run) and is_nil(step.compensate) and is_nil(step.undo) and
-              not is_nil(step.impl),
-       do: {:ok, step}
-
   defp rewrite_step(step, _dsl_state),
     do:
       {:ok,
        %{
          step
          | impl:
-             {Ash.Reactor.AshStep, run: step.run, compensate: step.compensate, undo: step.undo},
+             {Ash.Reactor.AshStep,
+              run: step.run, compensate: step.compensate, undo: step.undo, impl: step.impl},
            run: nil,
            compensate: nil,
            undo: nil
