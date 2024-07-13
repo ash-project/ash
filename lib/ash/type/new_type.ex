@@ -342,6 +342,16 @@ defmodule Ash.Type.NewType do
       end
 
       @impl Ash.Type
+      def apply_atomic_constraints(value, constraints) do
+        unquote(subtype_of).apply_atomic_constraints(value, constraints)
+      end
+
+      @impl Ash.Type
+      def apply_atomic_constraints_array(value, constraints) do
+        unquote(subtype_of).apply_atomic_constraints_array(value, constraints)
+      end
+
+      @impl Ash.Type
       def apply_constraints(value, _constraints) do
         {:ok, value}
       end

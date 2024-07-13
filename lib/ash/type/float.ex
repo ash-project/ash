@@ -118,7 +118,11 @@ defmodule Ash.Type.Float do
     Ecto.Type.load(:float, value)
   end
 
-  def cast_atomic(expr, constraints) do
+  def cast_atomic(expr, _constraints) do
+    {:atomic, expr}
+  end
+
+  def apply_atomic_constraints(expr, constraints) do
     expr =
       Enum.reduce(constraints, expr, fn
         {:max, max}, expr ->
@@ -174,7 +178,7 @@ defmodule Ash.Type.Float do
           )
       end)
 
-    {:atomic, expr}
+    {:ok, expr}
   end
 
   @impl true

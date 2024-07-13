@@ -1688,6 +1688,7 @@ defmodule Ash.Actions.Update.Bulk do
       input,
       argument_names
     )
+    |> Ash.Changeset.apply_atomic_constraints(opts[:actor])
   end
 
   defp handle_params(changeset, false, action, opts, input, _argument_names) do
@@ -2020,7 +2021,10 @@ defmodule Ash.Actions.Update.Bulk do
 
     batch =
       Enum.map(batch, fn changeset ->
-        changeset = Ash.Changeset.hydrate_atomic_refs(changeset, opts[:actor], opts)
+        changeset =
+          changeset
+          |> Ash.Changeset.hydrate_atomic_refs(opts[:actor])
+          |> Ash.Changeset.apply_atomic_constraints(opts[:actor])
 
         if changeset.valid? do
           {changeset, %{notifications: new_notifications}} =

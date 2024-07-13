@@ -377,6 +377,11 @@ defmodule Ash.Type do
               {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
   @callback cast_atomic_array(new_value :: Ash.Expr.t(), constraints) ::
               {:atomic, Ash.Expr.t()} | {:error, Ash.Error.t()} | {:not_atomic, String.t()}
+  @callback apply_atomic_constraints(new_value :: Ash.Expr.t(), constraints) ::
+              :ok | {:ok, Ash.Expr.t()} | {:error, Ash.Error.t()}
+  @callback apply_atomic_constraints_array(new_value :: Ash.Expr.t(), constraints) ::
+              :ok | {:ok, Ash.Expr.t()} | {:error, Ash.Error.t()}
+
   @callback custom_apply_constraints_array?() :: boolean
   @callback load(
               values :: list(term),
@@ -1029,6 +1034,31 @@ defmodule Ash.Type do
     end
   end
 
+  @spec apply_atomic_constraints(t(), term, constraints()) ::
+          {:ok, Ash.Expr.t()} | {:error, Ash.Error.t()}
+  def apply_atomic_constraints({:array, {:array, _}}, _term, _constraints),
+    do: {:not_atomic, "cannot currently atomically update doubly nested arrays"}
+
+  def apply_atomic_constraints({:array, type}, term, constraints) do
+    type = get_type(type)
+
+    case type.apply_atomic_constraints_array(term, item_constraints(constraints)) do
+      :ok -> {:ok, term}
+      {:ok, term} -> {:ok, term}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  def apply_atomic_constraints(type, term, constraints) do
+    type = get_type(type)
+
+    case type.apply_atomic_constraints(term, constraints) do
+      :ok -> {:ok, term}
+      {:ok, term} -> {:ok, term}
+      {:error, error} -> {:error, error}
+    end
+  end
+
   @doc """
   Casts a value from the Elixir type to a value that can be embedded in another data structure.
 
@@ -1551,7 +1581,30 @@ defmodule Ash.Type do
       end
 
       @impl true
-      def cast_atomic_array(new_value, constraints) do
+      def apply_atomic_constraints(new_value, _constraints) do
+        {:ok, new_value}
+      end
+
+      @impl true
+      def apply_atomic_constraints_array(new_value, constraints) when is_list(new_value) do
+        new_value
+        |> Enum.reduce_while({:ok, []}, fn val, {:ok, vals} ->
+          case apply_atomic_constraints(val, constraints[:items] || []) do
+            {:ok, atomic} ->
+              {:cont, {:ok, [atomic | vals]}}
+
+            {:error, error} ->
+              {:halt, {:error, error}}
+          end
+        end)
+        |> case do
+          {:ok, vals} -> {:ok, Enum.reverse(vals)}
+          {:error, error} -> {:error, error}
+        end
+      end
+
+      @impl true
+      def cast_atomic_array(new_value, constraints) when is_list(new_value) do
         new_value
         |> Enum.reduce_while({:atomic, []}, fn val, {:atomic, vals} ->
           case cast_atomic(val, constraints) do
@@ -1568,6 +1621,10 @@ defmodule Ash.Type do
         end
       end
 
+      def cast_atomic_array(new_value, _constraints) do
+        {:not_atomic, "Cannot cast a non-literal list atomically"}
+      end
+
       @impl true
       def generator(constraints) do
         raise "generator/1 unimplemented for #{inspect(__MODULE__)}"
@@ -1580,6 +1637,8 @@ defmodule Ash.Type do
                      generator: 1,
                      cast_atomic: 2,
                      cast_atomic_array: 2,
+                     apply_atomic_constraints: 2,
+                     apply_atomic_constraints_array: 2,
                      cast_input_array: 2,
                      dump_to_native_array: 2,
                      dump_to_embedded: 2,

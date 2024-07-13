@@ -28,7 +28,12 @@ defmodule Ash.Type.Integer do
   end
 
   @impl true
-  def cast_atomic(expr, constraints) do
+  def cast_atomic(expr, _) do
+    {:atomic, expr}
+  end
+
+  @impl true
+  def apply_atomic_constraints(expr, constraints) do
     expr =
       case {constraints[:max], constraints[:min]} do
         {nil, nil} ->
@@ -83,7 +88,7 @@ defmodule Ash.Type.Integer do
           )
       end
 
-    {:atomic, expr}
+    {:ok, expr}
   end
 
   @impl true

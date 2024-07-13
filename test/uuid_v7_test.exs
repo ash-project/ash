@@ -14,7 +14,7 @@ defmodule Ash.Test.UUIDv7Test do
         uuid = Ash.UUIDv7.generate()
         # only guaranteed sorted if >= 1 nanosecond apart
         # can't sleep for one nanoseond AFAIK, so sleep for 1 ms
-        :timer.sleep(1)
+        :timer.sleep(2)
         uuid
       end
 

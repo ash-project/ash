@@ -50,12 +50,12 @@ defmodule Ash.Type.String do
 
   @impl true
   def cast_atomic(expr, constraints) when is_binary(expr) do
-    with {:ok, value} <- cast_input(expr, constraints),
-         {:ok, value} <- apply_constraints(value, constraints) do
+    with {:ok, value} <- cast_input(expr, constraints) do
       {:atomic, value}
     end
   end
 
+  @impl true
   def cast_atomic(expr, constraints) do
     # We can't support `match` currently, as we don't have a multi-target regex
     if constraints[:match] do
@@ -81,6 +81,13 @@ defmodule Ash.Type.String do
           )
         end
 
+      {:atomic, expr}
+    end
+  end
+
+  @impl true
+  def apply_atomic_constraints(expr, constraints) do
+    if Ash.Expr.expr?(expr) do
       validated =
         case {constraints[:max_length], constraints[:min_length]} do
           {nil, nil} ->
@@ -135,7 +142,9 @@ defmodule Ash.Type.String do
             )
         end
 
-      {:atomic, validated}
+      {:ok, validated}
+    else
+      apply_constraints(expr, constraints)
     end
   end
 

@@ -596,7 +596,8 @@ defmodule Ash.Changeset do
            %Ash.Changeset{} = changeset <- atomic_defaults(changeset),
            %Ash.Changeset{} = changeset <- atomic_update(changeset, opts[:atomic_update] || []),
            %Ash.Changeset{} = changeset <-
-             hydrate_atomic_refs(changeset, opts[:actor], Keyword.take(opts, [:eager?])) do
+             hydrate_atomic_refs(changeset, opts[:actor], Keyword.take(opts, [:eager?])),
+           %Ash.Changeset{} = changeset <- apply_atomic_constraints(changeset, opts[:actor]) do
         changeset
       else
         {:not_atomic, reason} ->
@@ -2220,7 +2221,29 @@ defmodule Ash.Changeset do
 
   @doc false
   def hydrate_atomic_refs(changeset, actor, opts \\ []) do
-    Enum.reduce_while(changeset.atomics, {:ok, changeset}, fn {key, expr}, {:ok, changeset} ->
+    changeset
+    |> add_atomic_validations(actor, opts)
+    |> do_hydrate_atomic_refs(actor)
+    |> case do
+      {:ok, hydrated_changeset} ->
+        hydrated_changeset
+        |> extract_atomic_eager_errors(actor, opts)
+        |> case do
+          %Ash.Changeset{} = changeset ->
+            %{changeset | atomic_validations: []}
+
+          other ->
+            other
+        end
+
+      other ->
+        other
+    end
+  end
+
+  defp do_hydrate_atomic_refs(changeset, actor) do
+    Enum.reduce_while(changeset.atomics, {:ok, %{changeset | atomics: []}}, fn {key, expr},
+                                                                               {:ok, changeset} ->
       expr =
         Ash.Expr.fill_template(
           expr,
@@ -2239,23 +2262,45 @@ defmodule Ash.Changeset do
            {:not_atomic, "Failed to validate expression #{inspect(expr)}: #{inspect(error)}"}}
       end
     end)
-    |> case do
-      {:ok, hydrated_changeset} ->
-        hydrated_changeset
-        |> add_atomic_validations(actor, opts)
-        |> extract_atomic_eager_errors(actor, opts)
-        |> case do
-          %Ash.Changeset{} = changeset ->
-            %{changeset | atomic_validations: []}
-
-          other ->
-            other
-        end
-
-      other ->
-        other
-    end
   end
+
+  @doc false
+  def apply_atomic_constraints(changeset, actor, opts \\ []) do
+    changeset
+    |> do_apply_atomic_constraints()
+    |> do_hydrate_atomic_refs(actor)
+    |> case do
+      {:ok, changeset} ->
+        changeset
+
+      {:not_atomic, error} ->
+        add_error(changeset, error)
+    end
+    |> extract_atomic_eager_errors(actor, opts)
+  end
+
+  defp do_apply_atomic_constraints(%Ash.Changeset{} = changeset) do
+    Enum.reduce(changeset.atomics, %{changeset | atomics: []}, fn {key, value}, changeset ->
+      attribute = Ash.Resource.Info.attribute(changeset.resource, key)
+
+      case Ash.Type.apply_atomic_constraints(attribute.type, value, attribute.constraints) do
+        {:ok, value} ->
+          value =
+            if attribute.primary_key? do
+              value
+            else
+              set_error_field(value, attribute.name)
+            end
+
+          %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+
+        {:error, error} ->
+          add_error(changeset, error)
+      end
+    end)
+  end
+
+  defp do_apply_atomic_constraints(value), do: value
 
   defp extract_atomic_eager_errors(changeset, _actor, opts) do
     if Keyword.get(opts, :eager?, true) do

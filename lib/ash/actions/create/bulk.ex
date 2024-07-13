@@ -944,6 +944,11 @@ defmodule Ash.Actions.Create.Bulk do
         {changeset, %{notifications: new_notifications}} =
           Ash.Changeset.run_before_actions(changeset)
 
+        changeset =
+          changeset
+          |> Ash.Changeset.hydrate_atomic_refs(opts[:actor])
+          |> Ash.Changeset.apply_atomic_constraints(opts[:actor])
+
         new_notifications = store_notification(ref, new_notifications, opts)
 
         {changeset, manage_notifications} =

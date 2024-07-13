@@ -154,42 +154,62 @@ defmodule Ash.Type.Enum do
       end
 
       @impl true
-      def cast_atomic(new_value, _constraints) do
-        if @any_not_downcase? do
-          {:atomic,
-           Ash.Expr.expr(
-             if ^new_value in ^@values do
-               string_downcase(^new_value)
-             else
-               error(
-                 Ash.Error.Changes.InvalidChanges,
-                 message: "must be one of %{values}",
-                 vars: %{values: ^Enum.join(@values, ", ")}
-               )
-             end
-           )}
+      def cast_atomic(new_value, constraints) do
+        if Ash.Expr.expr?(new_value) do
+          if @any_not_downcase? do
+            {:atomic, new_value}
+          else
+            {:atomic, Ash.Expr.expr(string_downcase(^new_value))}
+          end
         else
-          error_expr =
-            Ash.Expr.expr(
-              error(
-                Ash.Error.Changes.InvalidChanges,
-                message: "must be one of %{values}",
-                vars: %{values: ^Enum.join(@values, ", ")}
-              )
-            )
+          case cast_input(new_value, constraints) do
+            {:ok, value} -> {:atomic, value}
+            {:error, error} -> {:error, error}
+          end
+        end
+      end
 
-          Enum.reduce(@values, {:atomic, error_expr}, fn valid_value, {:atomic, expr} ->
-            expr =
+      @impl true
+      def apply_atomic_constraints(new_value, constraints) do
+        if Ash.Expr.expr?(new_value) do
+          if @any_not_downcase? do
+            error_expr =
               Ash.Expr.expr(
-                if string_downcase(^new_value) == string_downcase(^valid_value) do
-                  ^valid_value
-                else
-                  ^expr
-                end
+                error(
+                  Ash.Error.Changes.InvalidChanges,
+                  message: "must be one of %{values}",
+                  vars: %{values: ^Enum.join(@values, ", ")}
+                )
               )
 
-            {:atomic, expr}
-          end)
+            Enum.reduce(@values, {:atomic, error_expr}, fn valid_value, {:atomic, expr} ->
+              expr =
+                Ash.Expr.expr(
+                  if string_downcase(^new_value) == string_downcase(^valid_value) do
+                    ^valid_value
+                  else
+                    ^expr
+                  end
+                )
+
+              {:atomic, expr}
+            end)
+          else
+            {:ok,
+             Ash.Expr.expr(
+               if ^new_value in ^@values do
+                 ^new_value
+               else
+                 error(
+                   Ash.Error.Changes.InvalidChanges,
+                   message: "must be one of %{values}",
+                   vars: %{values: ^Enum.join(@values, ", ")}
+                 )
+               end
+             )}
+          end
+        else
+          apply_constraints(new_value, constraints)
         end
       end
 

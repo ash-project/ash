@@ -78,7 +78,9 @@ defmodule Ash.Type.Decimal do
     end
   end
 
-  def cast_atomic(expr, constraints) do
+  def cast_atomic(expr, _constraints), do: {:atomic, expr}
+
+  def apply_atomic_constraints(expr, constraints) do
     expr =
       Enum.reduce(constraints, expr, fn
         {:max, max}, expr ->
@@ -134,7 +136,7 @@ defmodule Ash.Type.Decimal do
           )
       end)
 
-    {:atomic, expr}
+    {:ok, expr}
   end
 
   @impl true

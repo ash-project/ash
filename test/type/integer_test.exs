@@ -13,12 +13,12 @@ defmodule Ash.Test.Type.IntegerTest do
 
     test "invalid values" do
       assert_raise Ash.Error.Changes.InvalidChanges, ~r/must be greater than or equal to 2/, fn ->
-        {:atomic, expr} = Ash.Type.Integer.cast_atomic(1, min: 2, max: 4)
+        {:ok, expr} = Ash.Type.Integer.apply_atomic_constraints(1, min: 2, max: 4)
         Ash.Expr.eval!(expr)
       end
 
       assert_raise Ash.Error.Changes.InvalidChanges, ~r/must be less than or equal to 4/, fn ->
-        {:atomic, expr} = Ash.Type.Integer.cast_atomic(5, min: 2, max: 4)
+        {:ok, expr} = Ash.Type.Integer.apply_atomic_constraints(5, min: 2, max: 4)
         Ash.Expr.eval!(expr)
       end
     end
