@@ -2,6 +2,21 @@
 
 <!-- changelog -->
 
+## [v3.1.5](https://github.com/ash-project/ash/compare/v3.1.4...v3.1.5) (2024-07-14)
+
+
+
+
+### Bug Fixes:
+
+* don't specify that `get_path` is a predicate function
+
+### Improvements:
+
+* add `Ash.Expr.determine_type(mod, children)`
+
+* add return typing to functions
+
 ## [v3.1.4](https://github.com/ash-project/ash/compare/v3.1.3...v3.1.4) (2024-07-13)
 
 
