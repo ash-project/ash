@@ -835,13 +835,8 @@ defmodule Ash.Expr do
     {type, constraints}
   end
 
-  def determine_types(mod, values, returns) do
+  def determine_types(mod, values, known_result) do
     Code.ensure_compiled(mod)
-
-    basis =
-      if returns && returns != [:any, :same, {:array, :any}, {:array, :same}] do
-        returns
-      end
 
     name =
       cond do
@@ -893,6 +888,27 @@ defmodule Ash.Expr do
         length(typeset) == length(values)
     end)
     |> Enum.find_value({Enum.map(values, fn _ -> nil end), nil}, fn {typeset, returns} ->
+      basis =
+        cond do
+          !returns ->
+            nil
+
+          returns == :same ->
+            known_result
+
+          returns == {:array, :same} ->
+            case known_result do
+              {:array, type} ->
+                type
+
+              _ ->
+                nil
+            end
+
+          true ->
+            nil
+        end
+
       types_and_values =
         if typeset == :same do
           Enum.map(values, &{:same, &1})

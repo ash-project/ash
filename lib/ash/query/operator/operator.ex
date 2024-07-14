@@ -399,7 +399,15 @@ defmodule Ash.Query.Operator do
       def predicate?, do: unquote(opts[:predicate?] || false)
 
       @impl Ash.Query.Operator
-      def returns, do: unquote(opts[:returns] || [:same])
+      if unquote(opts[:predicate?]) do
+        def returns do
+          Enum.map(List.wrap(unquote(opts[:types])), fn _ -> :boolean end)
+        end
+      else
+        def returns do
+          unquote(opts[:returns] || :unknown)
+        end
+      end
 
       @impl Ash.Query.Operator
       def types do

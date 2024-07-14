@@ -20,7 +20,8 @@ defmodule Ash.Query.Operator.Basic do
     div: [
       symbol: :/,
       no_nils: true,
-      evaluate_types: :numbers
+      evaluate_types: :numbers,
+      returns: [:float]
     ],
     concat: [
       symbol: :<>,
