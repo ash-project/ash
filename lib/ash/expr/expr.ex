@@ -825,7 +825,7 @@ defmodule Ash.Expr do
 
   def do_expr(other, _), do: other
 
-  def determine_types(mod, args, returns \\ :any)
+  def determine_types(mod, args, returns \\ nil)
 
   def determine_types(Ash.Query.Function.Type, [_, type], _returns) do
     {type, []}
@@ -899,7 +899,13 @@ defmodule Ash.Expr do
           returns == {:array, :same} ->
             case known_result do
               {:array, type} ->
-                type
+                case type do
+                  {type, constraints} ->
+                    {type, constraints}
+
+                  type ->
+                    {type, []}
+                end
 
               _ ->
                 nil
