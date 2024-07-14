@@ -120,7 +120,7 @@ defmodule Ash.Actions.Update.Bulk do
             if query.limit && query.limit < (opts[:batch_size] || 100) do
               read_opts = Keyword.take(read_opts, Keyword.keys(Ash.read_opts()))
 
-              case Ash.read(query, read_opts) do
+              case Ash.Actions.Read.unpaginated_read(query, read_opts) do
                 {:ok, results} ->
                   run(
                     domain,
