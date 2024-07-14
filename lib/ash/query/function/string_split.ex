@@ -39,7 +39,18 @@ defmodule Ash.Query.Function.StringSplit do
       [:string, :ci_string, {:keyword, fields: @options}]
     ]
 
-  def returns, do: [:string, :string, :string, :ci_string, :ci_string, :ci_string, :ci_string, :ci_string, :ci_string]
+  def returns,
+    do: [
+      :string,
+      :string,
+      :string,
+      :ci_string,
+      :ci_string,
+      :ci_string,
+      :ci_string,
+      :ci_string,
+      :ci_string
+    ]
 
   def new([string]) do
     {:ok, %__MODULE__{arguments: [string, " ", []]}}

@@ -11,6 +11,8 @@ defmodule Ash.Query.Function.StringLength do
       [:ci_string]
     ]
 
+  def returns, do: [:integer, :integer]
+
   def evaluate(%{arguments: [%Ash.CiString{string: value}]}) do
     {:known, String.length(value)}
   end

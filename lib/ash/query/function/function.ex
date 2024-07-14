@@ -21,6 +21,7 @@ defmodule Ash.Query.Function do
               [Ash.Type.t() | {Ash.Type.t(), constraints :: Keyword.t()}]
               | Ash.Type.t()
               | {Ash.Type.t(), constraints :: Keyword.t()}
+              | :unknown
 
   @doc "The name of the function"
   @callback name() :: atom
@@ -250,13 +251,7 @@ defmodule Ash.Query.Function do
 
       @impl Ash.Query.Function
       def returns do
-        case args() do
-          :var_args ->
-            :any
-
-          _types ->
-            :unknown
-        end
+        :unknown
       end
 
       defoverridable new: 1,
