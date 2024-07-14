@@ -825,16 +825,22 @@ defmodule Ash.Expr do
 
   def do_expr(other, _), do: other
 
-  def determine_types(Ash.Query.Function.Type, [_, type]) do
+  def determine_types(mod, args, returns \\ :any)
+
+  def determine_types(Ash.Query.Function.Type, [_, type], _returns) do
     {type, []}
   end
 
-  def determine_types(Ash.Query.Function.Type, [_, type, constraints]) do
+  def determine_types(Ash.Query.Function.Type, [_, type, constraints], _returns) do
     {type, constraints}
   end
 
-  def determine_types(mod, values) do
+  def determine_types(mod, values, returns) do
     Code.ensure_compiled(mod)
+
+    basis = if returns && returns != [:any, :same, {:array, :any}, {:array, :same}] do
+      returns
+    end
 
     name =
       cond do
@@ -895,7 +901,7 @@ defmodule Ash.Expr do
 
       types_and_values
       |> Enum.with_index()
-      |> Enum.reduce_while(%{must_adopt_basis: [], basis: nil, types: [], fallback_basis: nil}, fn
+      |> Enum.reduce_while(%{must_adopt_basis: [], basis: basis, types: [], fallback_basis: nil}, fn
         {{vague_type, value}, index}, acc when vague_type in [:any, :same] ->
           case determine_type(value) do
             {:ok, {type, constraints}} ->
@@ -1052,7 +1058,7 @@ defmodule Ash.Expr do
     end)
   end
 
-  defp determine_type(value) do
+  def determine_type(value) do
     case value do
       %{__struct__: Ash.Query.Function.Type, arguments: [_, type, constraints]} ->
         if Ash.Type.ash_type?(type) do

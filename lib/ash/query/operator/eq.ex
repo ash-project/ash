@@ -11,7 +11,8 @@ defmodule Ash.Query.Operator.Eq do
     operator: :==,
     name: :eq,
     predicate?: true,
-    types: [:same, :any]
+    types: [:any, :same],
+    returns: [:boolean]
 
   def new(left, right) do
     {:ok, struct(__MODULE__, left: left, right: right)}
