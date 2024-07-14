@@ -15,6 +15,8 @@ defmodule Ash.Query.Function.Round do
       [:integer]
     ]
 
+  def returns, do: [:float, :decimal, :integer, :float, :decimal, :integer]
+
   def evaluate(%{arguments: [num]} = round), do: evaluate(%{round | arguments: [num, 0]})
   def evaluate(%{arguments: [num, _]}) when is_integer(num), do: {:known, num}
 

@@ -13,6 +13,15 @@ defmodule Ash.Query.Function do
   The number and types of arguments supported.
   """
   @callback args() :: [arg] | :var_args
+
+  @doc """
+  The return type for each corresponding set of args.
+  """
+  @callback returns() ::
+              [Ash.Type.t() | {Ash.Type.t(), constraints :: Keyword.t()}]
+              | Ash.Type.t()
+              | {Ash.Type.t(), constraints :: Keyword.t()}
+
   @doc "The name of the function"
   @callback name() :: atom
   @doc "Instantiate a new function with the provided arguments"
@@ -239,7 +248,23 @@ defmodule Ash.Query.Function do
       @impl Ash.Query.Function
       def can_return_nil?(_), do: true
 
-      defoverridable new: 1, evaluate: 1, private?: 0, evaluate_nil_inputs?: 0, can_return_nil?: 1
+      @impl Ash.Query.Function
+      def returns do
+        case args() do
+          :var_args ->
+            :any
+
+          _types ->
+            :unknown
+        end
+      end
+
+      defoverridable new: 1,
+                     evaluate: 1,
+                     private?: 0,
+                     evaluate_nil_inputs?: 0,
+                     can_return_nil?: 1,
+                     returns: 0
 
       unless unquote(opts[:no_inspect?]) do
         defimpl Inspect do

@@ -7,6 +7,8 @@ defmodule Ash.Query.Function.At do
 
   def args, do: [[{:array, :any}, :integer]]
 
+  def returns, do: [:same]
+
   def evaluate(%{arguments: [list, at]}) do
     {:known, Enum.at(list, at)}
   end

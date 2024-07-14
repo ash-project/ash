@@ -11,6 +11,8 @@ defmodule Ash.Query.Function.StringTrim do
       [:ci_string]
     ]
 
+  def returns, do: [:string, :ci_string]
+
   def evaluate(%{arguments: [nil]}), do: {:known, nil}
 
   def evaluate(%{arguments: [%Ash.CiString{string: value}]}) do

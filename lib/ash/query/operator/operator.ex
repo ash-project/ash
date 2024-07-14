@@ -45,6 +45,13 @@ defmodule Ash.Query.Operator do
               :any | :same | [Ash.Type.t() | {Ash.Type.t(), constraints :: Keyword.t()}]
             ]
 
+  @doc """
+  The types that the expression can return. Should be one entry in the list for each entry in `types`.
+  """
+  @callback returns() :: [
+              :any | :same | Ash.Type.t() | {Ash.Type.t(), constraints :: Keyword.t()}
+            ]
+
   @callback predicate?() :: boolean()
 
   @doc """
@@ -390,6 +397,9 @@ defmodule Ash.Query.Operator do
 
       @impl Ash.Query.Operator
       def predicate?, do: unquote(opts[:predicate?] || false)
+
+      @impl Ash.Query.Operator
+      def returns, do: unquote(opts[:returns] || [:same])
 
       @impl Ash.Query.Operator
       def types do

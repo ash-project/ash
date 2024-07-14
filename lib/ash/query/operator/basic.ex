@@ -25,7 +25,13 @@ defmodule Ash.Query.Operator.Basic do
     concat: [
       symbol: :<>,
       no_nils: true,
-      types: [[:string, :string]]
+      types: [
+        [:string, :string],
+        [:ci_string, :ci_string],
+        [:string, :ci_string],
+        [:ci_string, :string]
+      ],
+      returns: [:string, :ci_string, :ci_string, :ci_string]
     ],
     or: [
       symbol: :||
@@ -52,7 +58,8 @@ defmodule Ash.Query.Operator.Basic do
           operator: unquote(opts[:symbol]),
           name: unquote(name),
           predicate?: false,
-          types: unquote(opts[:types] || [:same, :any])
+          returns: unquote(opts[:returns] || [:same]),
+          types: unquote(opts[:types] || [[:same, :any]])
 
         if unquote(opts[:no_nils]) do
           @impl Ash.Query.Operator

@@ -12,6 +12,8 @@ defmodule Ash.Query.Function.Ago do
 
   def args, do: [[:integer, :duration_name]]
 
+  def returns, do: [:utc_datetime_usec]
+
   def evaluate(%{arguments: [factor, interval]}) do
     now = DateTime.utc_now()
     shifted = datetime_add(now, -factor, interval)

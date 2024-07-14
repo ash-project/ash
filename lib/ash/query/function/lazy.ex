@@ -7,6 +7,7 @@ defmodule Ash.Query.Function.Lazy do
   use Ash.Query.Function, name: :lazy, eager_evaluate?: false
 
   def args, do: [[:any]]
+  def returns, do: [:any]
 
   def evaluate(%{arguments: [{m, f, a}]}), do: {:known, apply(m, f, a)}
 end

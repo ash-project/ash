@@ -6,6 +6,8 @@ defmodule Ash.Query.Function.IsNil do
 
   def args, do: [[:any]]
 
+  def returns, do: [:boolean]
+
   def evaluate_nil_inputs?, do: true
 
   def new([arg]) do

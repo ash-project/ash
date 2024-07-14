@@ -14,6 +14,8 @@ defmodule Ash.Query.Function.Fragment do
   # no type casting or help can be provided for these functions.
   def args, do: :var_args
 
+  def returns, do: [:any]
+
   def private?, do: true
 
   def new([fragment | rest] = args) when is_binary(fragment) do

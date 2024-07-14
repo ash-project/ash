@@ -9,6 +9,8 @@ defmodule Ash.Query.Function.Error do
 
   def args, do: [[:atom, :any]]
 
+  def returns, do: :no_return
+
   def evaluate(%{arguments: [exception, input]}) do
     {:error, Ash.Error.from_json(exception, Jason.decode!(Jason.encode!(Map.new(input))))}
   end

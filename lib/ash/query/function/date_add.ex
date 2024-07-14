@@ -14,6 +14,8 @@ defmodule Ash.Query.Function.DateAdd do
 
   def args, do: [[:date, :integer, :duration_name]]
 
+  def returns, do: [:date]
+
   def evaluate(%{arguments: [date, factor, interval]}) do
     with {:ok, datetime} <- DateTime.new(date, @beginning_of_day),
          shifted <- Ash.Query.Function.Ago.datetime_add(datetime, factor, interval),

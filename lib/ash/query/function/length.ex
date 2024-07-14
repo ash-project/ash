@@ -13,6 +13,8 @@ defmodule Ash.Query.Function.Length do
 
   def args, do: [[{:array, :any}]]
 
+  def returns, do: [:integer]
+
   def evaluate(%{arguments: [val]}) when is_list(val) do
     {:known, Enum.count(val)}
   end

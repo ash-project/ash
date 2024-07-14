@@ -10,6 +10,8 @@ defmodule Ash.Query.Function.CompositeType do
 
   def args, do: [[:any, :any], [:any, :any, :any]]
 
+  def returns, do: [:any]
+
   def new([val, type]) do
     new([val, type, []])
   end

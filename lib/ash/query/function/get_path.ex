@@ -23,6 +23,8 @@ defmodule Ash.Query.Function.GetPath do
       [:map, :any]
     ]
 
+  def returns, do: [:any, :any]
+
   def new([%__MODULE__{arguments: [inner_left, inner_right]} = get_path, right])
       when is_list(inner_right) and is_list(right) do
     {:ok, %{get_path | arguments: [inner_left, inner_right ++ right]}}

@@ -8,6 +8,8 @@ defmodule Ash.Query.Function.CountNils do
 
   def args, do: [[{:array, :any}]]
 
+  def returns, do: [:integer]
+
   def evaluate(%{arguments: [val]}) when is_list(val) do
     {:known, Enum.count(val, &is_nil/1)}
   end

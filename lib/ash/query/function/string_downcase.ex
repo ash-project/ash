@@ -11,6 +11,8 @@ defmodule Ash.Query.Function.StringDowncase do
       [:ci_string]
     ]
 
+  def returns, do: [:string, :ci_string]
+
   def new(args) do
     {:ok, %__MODULE__{arguments: args}}
   end

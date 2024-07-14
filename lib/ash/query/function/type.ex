@@ -6,6 +6,8 @@ defmodule Ash.Query.Function.Type do
 
   def args, do: [[:any, :any], [:any, :any, :any]]
 
+  def returns, do: :unknown
+
   def new([val, type]) do
     new([val, type, []])
   end

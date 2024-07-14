@@ -7,6 +7,8 @@ defmodule Ash.Query.Function.If do
 
   def args, do: [[:boolean, :any], [:boolean, :any, :same]]
 
+  def returns, do: [:same, :same]
+
   def evaluate_nil_inputs?, do: true
 
   def new([condition, block]) do
@@ -113,7 +115,7 @@ defmodule Ash.Query.Function.If do
               end
 
             conds ->
-              conds = [{condition, when_true} | conds ++ [{true, when_true}]]
+              conds = [{condition, when_true} | conds ++ [{true, final}]]
 
               concat(
                 [
