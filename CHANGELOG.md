@@ -2,6 +2,17 @@
 
 <!-- changelog -->
 
+## [v3.1.7](https://github.com/ash-project/ash/compare/v3.1.6...v3.1.7) (2024-07-14)
+
+
+
+
+### Bug Fixes:
+
+* don't use `:same` return type for most operators
+
+* don't use returns as basis type unless explicitly allowed
+
 ## [v3.1.6](https://github.com/ash-project/ash/compare/v3.1.5...v3.1.6) (2024-07-14)
 
 
