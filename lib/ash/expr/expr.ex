@@ -1085,13 +1085,13 @@ defmodule Ash.Expr do
       %{__predicate__?: true} ->
         {:ok, {:boolean, []}}
 
-      %Ash.Query.BooleanExpression{} ->
+      %{__struct__: Ash.Query.BooleanExpression} ->
         {:ok, {:boolean, []}}
 
-      %Ash.Query.Exists{} ->
+      %{__struct__: Ash.Query.Exists} ->
         {:ok, {:boolean, []}}
 
-      %Ash.Query.Parent{expr: expr} ->
+      %{__struct__: Ash.Query.Parent, expr: expr} ->
         determine_type(expr)
 
       %mod{__predicate__?: _, arguments: arguments} ->
