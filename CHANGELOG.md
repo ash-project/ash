@@ -4,72 +4,57 @@
 
 ## [v3.1.8](https://github.com/ash-project/ash/compare/v3.1.7...v3.1.8) (2024-07-14)
 
-
-
-
 ### Bug Fixes:
 
-* use `unpaginated_read` when simulating streaming for low limit queries
+- [bulk actions] use `unpaginated_read` when simulating streaming for low limit queries
 
 ## [v3.1.7](https://github.com/ash-project/ash/compare/v3.1.6...v3.1.7) (2024-07-14)
 
-
-
-
 ### Bug Fixes:
 
-* don't use `:same` return type for most operators
+- [Ash.Query] don't use `:same` return type for most operators
 
-* don't use returns as basis type unless explicitly allowed
+- [Ash.Query] don't use returns as basis type unless explicitly allowed
 
 ## [v3.1.6](https://github.com/ash-project/ash/compare/v3.1.5...v3.1.6) (2024-07-14)
 
-
-
-
 ### Bug Fixes:
 
-* ensure `today` has properly configured returns type
+- [Ash.Query] ensure `today` has properly configured returns type
 
-* module type apply_constraints for nil fix (#1313)
+- [Ash.Type] module type apply_constraints for nil fix (#1313)
 
 ## [v3.1.5](https://github.com/ash-project/ash/compare/v3.1.4...v3.1.5) (2024-07-14)
 
-
-
-
 ### Bug Fixes:
 
-* don't specify that `get_path` is a predicate function
+- [Ash.Type] don't specify that `get_path` is a predicate function
 
 ### Improvements:
 
-* add `Ash.Expr.determine_type(mod, children)`
+- [Ash.Expr] add `Ash.Expr.determine_type(mod, children)`
 
-* add return typing to functions
+- [Ash.Query] add return typing to functions
 
 ## [v3.1.4](https://github.com/ash-project/ash/compare/v3.1.3...v3.1.4) (2024-07-13)
 
-
-
-
 ### Bug Fixes:
 
-* [code interface] properly omit destroyed result in code interfaces
+- [code interface] properly omit destroyed result in code interfaces
 
-* [Ash.Type.Integer] properly compare `expr` to `min` with `min` integer constraint
+- [Ash.Type.Integer] properly compare `expr` to `min` with `min` integer constraint
 
-* [Ash.Reactor] Make action ctx-values from reactor-ctx take precedence if set. (#1308)
+- [Ash.Reactor] Make action ctx-values from reactor-ctx take precedence if set. (#1308)
 
 ### Improvements:
 
-* [Ash.Resource.Change] support returning a list of atomics from atomic change callbacks
+- [Ash.Resource.Change] support returning a list of atomics from atomic change callbacks
 
-* [Ash.Type] add `cast_atomic_constraints` callback and use it in core types
+- [Ash.Type] add `cast_atomic_constraints` callback and use it in core types
 
-* [Ash.Expr] improve type signature for `if/3`
+- [Ash.Expr] improve type signature for `if/3`
 
-* [Ash.Expr] simpler and/or short circuiting
+- [Ash.Expr] simpler and/or short circuiting
 
 ## [v3.1.3](https://github.com/ash-project/ash/compare/v3.1.2...v3.1.3) (2024-07-11)
 
