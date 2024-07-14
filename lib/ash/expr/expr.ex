@@ -838,9 +838,10 @@ defmodule Ash.Expr do
   def determine_types(mod, values, returns) do
     Code.ensure_compiled(mod)
 
-    basis = if returns && returns != [:any, :same, {:array, :any}, {:array, :same}] do
-      returns
-    end
+    basis =
+      if returns && returns != [:any, :same, {:array, :any}, {:array, :same}] do
+        returns
+      end
 
     name =
       cond do
@@ -901,119 +902,123 @@ defmodule Ash.Expr do
 
       types_and_values
       |> Enum.with_index()
-      |> Enum.reduce_while(%{must_adopt_basis: [], basis: basis, types: [], fallback_basis: nil}, fn
-        {{vague_type, value}, index}, acc when vague_type in [:any, :same] ->
-          case determine_type(value) do
-            {:ok, {type, constraints}} ->
-              case acc[:basis] do
-                nil ->
-                  if vague_type == :any do
-                    acc = Map.update!(acc, :types, &[{type, constraints} | &1])
-                    {:cont, Map.put(acc, :basis, {type, constraints})}
-                  else
-                    acc =
-                      acc
-                      |> Map.update!(:types, &[nil | &1])
-                      |> Map.put(:fallback_basis, {type, constraints})
+      |> Enum.reduce_while(
+        %{must_adopt_basis: [], basis: basis, types: [], fallback_basis: nil},
+        fn
+          {{vague_type, value}, index}, acc when vague_type in [:any, :same] ->
+            case determine_type(value) do
+              {:ok, {type, constraints}} ->
+                case acc[:basis] do
+                  nil ->
+                    if vague_type == :any do
+                      acc = Map.update!(acc, :types, &[{type, constraints} | &1])
+                      {:cont, Map.put(acc, :basis, {type, constraints})}
+                    else
+                      acc =
+                        acc
+                        |> Map.update!(:types, &[nil | &1])
+                        |> Map.put(:fallback_basis, {type, constraints})
 
-                    {:cont, Map.update!(acc, :must_adopt_basis, &[{index, fn x -> x end} | &1])}
-                  end
+                      {:cont, Map.update!(acc, :must_adopt_basis, &[{index, fn x -> x end} | &1])}
+                    end
 
-                {^type, matched_constraints} ->
-                  {:cont, Map.update!(acc, :types, &[{type, matched_constraints} | &1])}
+                  {^type, matched_constraints} ->
+                    {:cont, Map.update!(acc, :types, &[{type, matched_constraints} | &1])}
 
-                _ ->
-                  {:halt, :error}
-              end
+                  _ ->
+                    {:halt, :error}
+                end
 
-            :error ->
-              acc = Map.update!(acc, :types, &[nil | &1])
-              {:cont, Map.update!(acc, :must_adopt_basis, &[{index, fn x -> x end} | &1])}
-          end
+              :error ->
+                acc = Map.update!(acc, :types, &[nil | &1])
+                {:cont, Map.update!(acc, :must_adopt_basis, &[{index, fn x -> x end} | &1])}
+            end
 
-        {{{:array, vague_type}, value}, index}, acc when vague_type in [:any, :same] ->
-          case determine_type(value) do
-            {:ok, {{:array, type}, constraints}} ->
-              case acc[:basis] do
-                nil ->
-                  if vague_type == :any do
-                    acc = Map.update!(acc, :types, &[{:array, {type, constraints}} | &1])
-                    {:cont, Map.put(acc, :basis, {type, constraints})}
-                  else
-                    acc =
-                      acc
-                      |> Map.update!(:types, &[nil | &1])
-                      |> Map.put(:fallback_basis, {type, constraints})
+          {{{:array, vague_type}, value}, index}, acc when vague_type in [:any, :same] ->
+            case determine_type(value) do
+              {:ok, {{:array, type}, constraints}} ->
+                case acc[:basis] do
+                  nil ->
+                    if vague_type == :any do
+                      acc = Map.update!(acc, :types, &[{:array, {type, constraints}} | &1])
+                      {:cont, Map.put(acc, :basis, {type, constraints})}
+                    else
+                      acc =
+                        acc
+                        |> Map.update!(:types, &[nil | &1])
+                        |> Map.put(:fallback_basis, {type, constraints})
 
+                      {:cont,
+                       Map.update!(
+                         acc,
+                         :must_adopt_basis,
+                         &[
+                           {index,
+                            fn {type, constraints} -> {{:array, type}, items: constraints} end}
+                           | &1
+                         ]
+                       )}
+                    end
+
+                  {^type, matched_constraints} ->
                     {:cont,
-                     Map.update!(
-                       acc,
-                       :must_adopt_basis,
-                       &[
-                         {index,
-                          fn {type, constraints} -> {{:array, type}, items: constraints} end}
-                         | &1
-                       ]
-                     )}
-                  end
+                     Map.update!(acc, :types, &[{:array, {type, matched_constraints}} | &1])}
 
-                {^type, matched_constraints} ->
-                  {:cont, Map.update!(acc, :types, &[{:array, {type, matched_constraints}} | &1])}
+                  _ ->
+                    {:halt, :error}
+                end
 
-                _ ->
-                  {:halt, :error}
-              end
+              _ ->
+                acc = Map.update!(acc, :types, &[nil | &1])
 
-            _ ->
-              acc = Map.update!(acc, :types, &[nil | &1])
+                {:cont,
+                 Map.update!(
+                   acc,
+                   :must_adopt_basis,
+                   &[
+                     {index, fn {type, constraints} -> {{:array, type}, items: constraints} end}
+                     | &1
+                   ]
+                 )}
+            end
 
-              {:cont,
-               Map.update!(
-                 acc,
-                 :must_adopt_basis,
-                 &[
-                   {index, fn {type, constraints} -> {{:array, type}, items: constraints} end}
-                   | &1
-                 ]
-               )}
-          end
+          {{{type, constraints}, value}, _index}, acc ->
+            cond do
+              !Ash.Expr.expr?(value) && !matches_type?(type, value, constraints) ->
+                {:halt, :error}
 
-        {{{type, constraints}, value}, _index}, acc ->
-          cond do
-            !Ash.Expr.expr?(value) && !matches_type?(type, value, constraints) ->
-              {:halt, :error}
+              Ash.Expr.expr?(value) ->
+                case determine_type(value) do
+                  {:ok, {^type, matched_constraints}} ->
+                    {:cont, Map.update!(acc, :types, &[{type, matched_constraints} | &1])}
 
-            Ash.Expr.expr?(value) ->
-              case determine_type(value) do
-                {:ok, {^type, matched_constraints}} ->
-                  {:cont, Map.update!(acc, :types, &[{type, matched_constraints} | &1])}
+                  _ ->
+                    {:halt, :error}
+                end
 
-                _ ->
-                  {:halt, :error}
-              end
+              true ->
+                {:cont, Map.update!(acc, :types, &[{type, constraints} | &1])}
+            end
 
-            true ->
-              {:cont, Map.update!(acc, :types, &[{type, constraints} | &1])}
-          end
+          {{type, value}, _index}, acc ->
+            cond do
+              !Ash.Expr.expr?(value) && !matches_type?(type, value, []) ->
+                {:halt, :error}
 
-        {{type, value}, _index}, acc ->
-          cond do
-            !Ash.Expr.expr?(value) && !matches_type?(type, value, []) ->
-              {:halt, :error}
+              Ash.Expr.expr?(value) ->
+                case determine_type(value) do
+                  {:ok, {^type, matched_constraints}} ->
+                    {:cont, Map.update!(acc, :types, &[{type, matched_constraints} | &1])}
 
-            Ash.Expr.expr?(value) ->
-              case determine_type(value) do
-                {:ok, {^type, matched_constraints}} ->
-                  {:cont, Map.update!(acc, :types, &[{type, matched_constraints} | &1])}
+                  _ ->
+                    {:halt, :error}
+                end
 
-                _ ->
-                  {:halt, :error}
-              end
-
-            true ->
-              {:cont, Map.update!(acc, :types, &[{type, []} | &1])}
-          end
-      end)
+              true ->
+                {:cont, Map.update!(acc, :types, &[{type, []} | &1])}
+            end
+        end
+      )
       |> then(fn
         %{basis: nil, fallback_basis: fallback_basis} = data when not is_nil(fallback_basis) ->
           %{data | basis: fallback_basis}
