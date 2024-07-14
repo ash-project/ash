@@ -2,6 +2,17 @@
 
 <!-- changelog -->
 
+## [v3.1.6](https://github.com/ash-project/ash/compare/v3.1.5...v3.1.6) (2024-07-14)
+
+
+
+
+### Bug Fixes:
+
+* ensure `today` has properly configured returns type
+
+* module type apply_constraints for nil fix (#1313)
+
 ## [v3.1.5](https://github.com/ash-project/ash/compare/v3.1.4...v3.1.5) (2024-07-14)
 
 
