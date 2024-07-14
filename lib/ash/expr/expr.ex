@@ -825,6 +825,300 @@ defmodule Ash.Expr do
 
   def do_expr(other, _), do: other
 
+  def determine_types(Ash.Query.Function.Type, [_, type]) do
+    {type, []}
+  end
+
+  def determine_types(Ash.Query.Function.Type, [_, type, constraints]) do
+    {type, constraints}
+  end
+
+  def determine_types(mod, values) do
+    Code.ensure_compiled(mod)
+
+    name =
+      cond do
+        function_exported?(mod, :operator, 0) ->
+          mod.operator()
+
+        function_exported?(mod, :name, 0) ->
+          mod.name()
+
+        true ->
+          nil
+      end
+
+    cond do
+      :erlang.function_exported(mod, :types, 0) ->
+        {mod.types(), mod.returns()}
+
+      :erlang.function_exported(mod, :args, 0) ->
+        {mod.args(), mod.returns()}
+
+      true ->
+        {[:any], [:any]}
+    end
+    |> then(fn {types, returns} ->
+      if types == :var_args || returns == :no_return || returns == :unknown do
+        []
+      else
+        overloads = Ash.Query.Operator.operator_overloads(name) || %{}
+
+        more_types = Map.keys(overloads)
+        more_returns = Map.values(overloads)
+        types = Enum.concat(types, List.wrap(more_types))
+        returns = Enum.concat(returns, List.wrap(more_returns))
+
+        returns =
+          Enum.map(returns, fn
+            {:array, any} when any in [:same, :any] -> {:array, any}
+            any when any in [:same, :any] -> any
+            {type, constraints} -> {type, constraints}
+            type -> {type, []}
+          end)
+
+        Enum.zip(types, returns)
+      end
+    end)
+    |> Enum.reject(fn {typeset, _} -> typeset == :any end)
+    |> Enum.filter(fn {typeset, _} ->
+      typeset == :same ||
+        length(typeset) == length(values)
+    end)
+    |> Enum.find_value({Enum.map(values, fn _ -> nil end), nil}, fn {typeset, returns} ->
+      types_and_values =
+        if typeset == :same do
+          Enum.map(values, &{:same, &1})
+        else
+          Enum.zip(typeset, values)
+        end
+
+      types_and_values
+      |> Enum.with_index()
+      |> Enum.reduce_while(%{must_adopt_basis: [], basis: nil, types: [], fallback_basis: nil}, fn
+        {{vague_type, value}, index}, acc when vague_type in [:any, :same] ->
+          case determine_type(value) do
+            {:ok, {type, constraints}} ->
+              case acc[:basis] do
+                nil ->
+                  if vague_type == :any do
+                    acc = Map.update!(acc, :types, &[{type, constraints} | &1])
+                    {:cont, Map.put(acc, :basis, {type, constraints})}
+                  else
+                    acc =
+                      acc
+                      |> Map.update!(:types, &[nil | &1])
+                      |> Map.put(:fallback_basis, {type, constraints})
+
+                    {:cont, Map.update!(acc, :must_adopt_basis, &[{index, fn x -> x end} | &1])}
+                  end
+
+                {^type, matched_constraints} ->
+                  {:cont, Map.update!(acc, :types, &[{type, matched_constraints} | &1])}
+
+                _ ->
+                  {:halt, :error}
+              end
+
+            :error ->
+              acc = Map.update!(acc, :types, &[nil | &1])
+              {:cont, Map.update!(acc, :must_adopt_basis, &[{index, fn x -> x end} | &1])}
+          end
+
+        {{{:array, vague_type}, value}, index}, acc when vague_type in [:any, :same] ->
+          case determine_type(value) do
+            {:ok, {{:array, type}, constraints}} ->
+              case acc[:basis] do
+                nil ->
+                  if vague_type == :any do
+                    acc = Map.update!(acc, :types, &[{:array, {type, constraints}} | &1])
+                    {:cont, Map.put(acc, :basis, {type, constraints})}
+                  else
+                    acc =
+                      acc
+                      |> Map.update!(:types, &[nil | &1])
+                      |> Map.put(:fallback_basis, {type, constraints})
+
+                    {:cont,
+                     Map.update!(
+                       acc,
+                       :must_adopt_basis,
+                       &[
+                         {index,
+                          fn {type, constraints} -> {{:array, type}, items: constraints} end}
+                         | &1
+                       ]
+                     )}
+                  end
+
+                {^type, matched_constraints} ->
+                  {:cont, Map.update!(acc, :types, &[{:array, {type, matched_constraints}} | &1])}
+
+                _ ->
+                  {:halt, :error}
+              end
+
+            _ ->
+              acc = Map.update!(acc, :types, &[nil | &1])
+
+              {:cont,
+               Map.update!(
+                 acc,
+                 :must_adopt_basis,
+                 &[
+                   {index, fn {type, constraints} -> {{:array, type}, items: constraints} end}
+                   | &1
+                 ]
+               )}
+          end
+
+        {{{type, constraints}, value}, _index}, acc ->
+          cond do
+            !Ash.Expr.expr?(value) && !matches_type?(type, value, constraints) ->
+              {:halt, :error}
+
+            Ash.Expr.expr?(value) ->
+              case determine_type(value) do
+                {:ok, {^type, matched_constraints}} ->
+                  {:cont, Map.update!(acc, :types, &[{type, matched_constraints} | &1])}
+
+                _ ->
+                  {:halt, :error}
+              end
+
+            true ->
+              {:cont, Map.update!(acc, :types, &[{type, constraints} | &1])}
+          end
+
+        {{type, value}, _index}, acc ->
+          cond do
+            !Ash.Expr.expr?(value) && !matches_type?(type, value, []) ->
+              {:halt, :error}
+
+            Ash.Expr.expr?(value) ->
+              case determine_type(value) do
+                {:ok, {^type, matched_constraints}} ->
+                  {:cont, Map.update!(acc, :types, &[{type, matched_constraints} | &1])}
+
+                _ ->
+                  {:halt, :error}
+              end
+
+            true ->
+              {:cont, Map.update!(acc, :types, &[{type, []} | &1])}
+          end
+      end)
+      |> then(fn
+        %{basis: nil, fallback_basis: fallback_basis} = data when not is_nil(fallback_basis) ->
+          %{data | basis: fallback_basis}
+
+        data ->
+          data
+      end)
+      |> case do
+        :error ->
+          nil
+
+        %{basis: nil, must_adopt_basis: [], types: types} ->
+          if returns not in [:same, :any, {:array, :same}, {:array, :any}] do
+            {Enum.reverse(types), returns}
+          end
+
+        %{basis: nil, must_adopt_basis: _} ->
+          nil
+
+        %{basis: basis, must_adopt_basis: basis_adopters, types: types} ->
+          returns =
+            case returns do
+              same when same in [:same, :any] ->
+                basis
+
+              same when same in [{:array, :same}, {:array, :any}] ->
+                {type, constraints} = basis
+                {{:array, type}, items: constraints}
+
+              other ->
+                other
+            end
+
+          {basis_adopters
+           |> Enum.reduce(
+             Enum.reverse(types),
+             fn {index, function_of_basis}, types ->
+               List.replace_at(types, index, function_of_basis.(basis))
+             end
+           ), returns}
+      end
+    end)
+  end
+
+  defp determine_type(value) do
+    case value do
+      %Ash.Query.Function.Type{arguments: [_, type, constraints]} ->
+        if Ash.Type.ash_type?(type) do
+          {:ok, {type, constraints}}
+        else
+          :error
+        end
+
+      %Ash.Query.Function.Type{arguments: [_, type]} ->
+        if Ash.Type.ash_type?(type) do
+          {:ok, {type, []}}
+        else
+          :error
+        end
+
+      %Ash.Query.Ref{attribute: %{type: type, constraints: constraints}} ->
+        if Ash.Type.ash_type?(type) do
+          {:ok, {type, constraints}}
+        else
+          :error
+        end
+
+      %Ash.Query.Ref{attribute: %{type: type}} ->
+        if Ash.Type.ash_type?(type) do
+          {:ok, {type, []}}
+        else
+          :error
+        end
+
+      %{__predicate__?: true} ->
+        {:ok, {:boolean, []}}
+
+      %Ash.Query.BooleanExpression{} ->
+        {:ok, {:boolean, []}}
+
+      %Ash.Query.Exists{} ->
+        {:ok, {:boolean, []}}
+
+      %Ash.Query.Parent{expr: expr} ->
+        determine_type(expr)
+
+      %mod{__predicate__?: _, arguments: arguments} ->
+        case determine_types(mod, arguments) do
+          {_, nil} -> :error
+          {_, type} -> {:ok, type}
+        end
+
+      %mod{__predicate__?: _, left: left, right: right} ->
+        case determine_types(mod, [left, right]) do
+          {_, nil} -> :error
+          {_, type} -> {:ok, type}
+        end
+
+      _ ->
+        :error
+    end
+  end
+
+  defp matches_type?({:array, type}, %MapSet{} = value, constraints) do
+    Enum.all?(value, &matches_type?(&1, type, constraints[:items]))
+  end
+
+  defp matches_type?(type, value, constraints) do
+    Ash.Type.matches_type?(type, value, constraints)
+  end
+
   defp expr_with_at_path(path, at_path, expr, struct, escape?) do
     expr = do_expr(expr, escape?)
 
