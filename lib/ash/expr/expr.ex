@@ -1054,28 +1054,28 @@ defmodule Ash.Expr do
 
   defp determine_type(value) do
     case value do
-      %Ash.Query.Function.Type{arguments: [_, type, constraints]} ->
+      %{__struct__: Ash.Query.Function.Type, arguments: [_, type, constraints]} ->
         if Ash.Type.ash_type?(type) do
           {:ok, {type, constraints}}
         else
           :error
         end
 
-      %Ash.Query.Function.Type{arguments: [_, type]} ->
+      %{__struct__: Ash.Query.Function.Type, arguments: [_, type]} ->
         if Ash.Type.ash_type?(type) do
           {:ok, {type, []}}
         else
           :error
         end
 
-      %Ash.Query.Ref{attribute: %{type: type, constraints: constraints}} ->
+      %{__struct__: Ash.Query.Ref, attribute: %{type: type, constraints: constraints}} ->
         if Ash.Type.ash_type?(type) do
           {:ok, {type, constraints}}
         else
           :error
         end
 
-      %Ash.Query.Ref{attribute: %{type: type}} ->
+      %{__struct__: Ash.Query.Ref, attribute: %{type: type}} ->
         if Ash.Type.ash_type?(type) do
           {:ok, {type, []}}
         else
