@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.1.8](https://github.com/ash-project/ash/compare/v3.1.7...v3.1.8) (2024-07-14)
+
+
+
+
+### Bug Fixes:
+
+* use `unpaginated_read` when simulating streaming for low limit queries
+
 ## [v3.1.7](https://github.com/ash-project/ash/compare/v3.1.6...v3.1.7) (2024-07-14)
 
 
