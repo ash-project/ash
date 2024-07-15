@@ -1,6 +1,22 @@
 defmodule Ash.Domain.Igniter do
   @moduledoc "Codemods for working with Ash.Domain modules"
 
+  def list_domains(igniter) do
+    app_name = Igniter.Project.Application.app_name()
+
+    Igniter.Code.Module.find_all_matching_modules(igniter, fn _mod, zipper ->
+      zipper
+      |> Igniter.Code.Module.move_to_using(Ash.Domain)
+      |> case do
+        {:ok, _} ->
+          true
+
+        _ ->
+          false
+      end
+    end)
+  end
+
   def add_resource_reference(igniter, domain, resource) do
     Igniter.Code.Module.find_and_update_module!(igniter, domain, fn zipper ->
       case Igniter.Code.Function.move_to_function_call_in_current_scope(
