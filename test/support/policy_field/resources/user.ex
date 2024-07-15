@@ -26,6 +26,10 @@ defmodule Ash.Test.Support.PolicyField.User do
       public?(true)
       # only you can see your own points
     end
+
+    attribute :top_secret, :string do
+      public?(false)
+    end
   end
 
   relationships do
@@ -49,6 +53,8 @@ defmodule Ash.Test.Support.PolicyField.User do
   end
 
   field_policies do
+    private_fields :show
+
     field_policy_bypass :* do
       authorize_if actor_attribute_equals(:role, :admin)
     end

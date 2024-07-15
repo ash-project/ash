@@ -359,6 +359,30 @@ In results, forbidden fields will be replaced with a special value: `%Ash.Forbid
 
 When these fields are referred to in filters, they will be replaced with an expression that evaluates to `nil`. To support this behavior, only simple and filter checks are allowed in field policies.
 
+### Handeling private fields in internal functions
+
+When calling internal functions like `Ash.read!/1`, private fields will by default always be shown.
+Even if field policies applies to the resource. You can change the default behaviour by setting the
+`private_fields` option on field policies.
+
+```elixir
+field_policies do
+  private_fields :include
+end
+```
+
+The different options are:
+- `:show` will always show private fields
+- `:hide` will always hide private fields
+- `:include` will let you to write field policies for private fields and private fields
+  will be shown or hidden depending on the outcome of the policy
+
+If you want to overwrite the default option that is `:show`, you can do that by setting a global flag:
+
+```elixir
+config :ash, :policies, private_fields: :include
+```
+
 ## Debugging and Logging
 
 ### Policy Breakdowns

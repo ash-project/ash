@@ -1,4 +1,4 @@
-defmodule Ash.Test.Support.PolicyField.Ticket do
+defmodule Ash.Test.Support.PolicyField.Post do
   @moduledoc false
   use Ash.Resource,
     domain: Ash.Test.Support.PolicyField.Domain,
@@ -17,19 +17,15 @@ defmodule Ash.Test.Support.PolicyField.Ticket do
   attributes do
     uuid_primary_key :id
 
-    attribute :top_secret, :string do
+    attribute :internal_status, :string do
       public?(false)
     end
 
-    attribute :internal_status, :string do
+    attribute :title, :string do
       public?(true)
     end
 
-    attribute :status, :string do
-      public?(true)
-    end
-
-    attribute :name, :string do
+    attribute :description, :string do
       public?(true)
     end
   end
@@ -53,25 +49,14 @@ defmodule Ash.Test.Support.PolicyField.Ticket do
   end
 
   field_policies do
-    private_fields :hide
+    private_fields :include
 
-    field_policy :status do
+    field_policy :internal_status do
       authorize_if relates_to_actor_via(:representative)
       authorize_if relates_to_actor_via(:reporter)
     end
 
-    field_policy :internal_status, actor_attribute_equals(:role, :representative) do
-      authorize_if always()
-    end
-
-    field_policy :internal_status, [
-      accessing_from(Ash.Test.Support.PolicyField.User, :tickets),
-      actor_attribute_equals(:role, :user)
-    ] do
-      authorize_if always()
-    end
-
-    field_policy [:name, :reporter_id, :representative_id] do
+    field_policy :* do
       authorize_if always()
     end
   end

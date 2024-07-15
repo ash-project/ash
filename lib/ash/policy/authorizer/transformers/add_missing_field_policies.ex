@@ -9,24 +9,31 @@ defmodule Ash.Policy.Authorizer.Transformers.AddMissingFieldPolicies do
   def after?(_), do: true
 
   def transform(dsl) do
-    non_pkey_fields =
-      dsl
-      |> Ash.Resource.Info.fields([:aggregates, :calculations, :attributes])
-      |> Enum.reject(fn
-        %{public?: false} ->
-          true
-
-        %{primary_key?: true} ->
-          true
-
-        _ ->
-          false
-      end)
-      |> Enum.map(& &1.name)
-
     if Enum.empty?(Ash.Policy.Info.field_policies(dsl)) do
       {:ok, dsl}
     else
+      exclude_private_fields? =
+        case Ash.Policy.Info.private_fields_policy(dsl) do
+          :include -> false
+          :show -> true
+          :hide -> true
+        end
+
+      non_pkey_fields =
+        dsl
+        |> Ash.Resource.Info.fields([:aggregates, :calculations, :attributes])
+        |> Enum.reject(fn
+          %{public?: false} when exclude_private_fields? ->
+            true
+
+          %{primary_key?: true} ->
+            true
+
+          _ ->
+            false
+        end)
+        |> Enum.map(& &1.name)
+
       dsl
       |> replace_asterisk(non_pkey_fields)
       |> ensure_field_coverage(non_pkey_fields)

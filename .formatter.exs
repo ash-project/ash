@@ -163,6 +163,7 @@ spark_locals_without_parens = [
   primary?: 1,
   primary_key?: 1,
   private?: 1,
+  private_fields: 1,
   public?: 1,
   publish: 2,
   publish: 3,

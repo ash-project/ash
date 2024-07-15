@@ -356,6 +356,15 @@ defmodule Ash.Policy.Authorizer do
     entities: [
       @field_policy_bypass,
       @field_policy
+    ],
+    schema: [
+      private_fields: [
+        type: {:one_of, [:show, :hide, :include]},
+        default: Application.compile_env(:ash, :policies)[:private_fields] || :show,
+        doc: """
+        How private fields should be handeled by field policies in internal functions. See the [Policies guide](documentation/topics/security/policies.md#field-policies) for more.
+        """
+      ]
     ]
   }
 
@@ -895,13 +904,24 @@ defmodule Ash.Policy.Authorizer do
       # and we don't need to add any calculations
       {:ok, query_or_changeset, authorizer}
     else
+      only_public? =
+        case Ash.Policy.Info.private_fields_policy(query_or_changeset.resource) do
+          :include -> false
+          :show -> true
+          :hide -> false
+        end
+
       accessing_fields =
         case query_or_changeset do
           %Ash.Query{} = query ->
-            Ash.Query.accessing(query, [:attributes, :calculations, :aggregates])
+            Ash.Query.accessing(query, [:attributes, :calculations, :aggregates], only_public?)
 
           %Ash.Changeset{} = changeset ->
-            Ash.Changeset.accessing(changeset, [:attributes, :calculations, :aggregates])
+            Ash.Changeset.accessing(
+              changeset,
+              [:attributes, :calculations, :aggregates],
+              only_public?
+            )
         end
 
       pkey = Ash.Resource.Info.primary_key(query_or_changeset.resource)
