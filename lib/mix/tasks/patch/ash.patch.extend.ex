@@ -204,7 +204,7 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
 
   defp remove_domain_option(igniter, module) do
     Igniter.Code.Module.find_and_update_module!(igniter, module, fn zipper ->
-      with {:ok, zipper} <- Igniter.Code.Module.move_to_use(zipper, Ash.Resource),
+      with {:ok, zipper} <- Igniter.Code.Module.move_to_using(zipper, Ash.Resource),
            {:ok, zipper} <-
              Igniter.Code.Function.update_nth_argument(zipper, 1, fn values_zipper ->
                Igniter.Code.Keyword.remove_keyword_key(values_zipper, :domain)
