@@ -584,6 +584,14 @@ end
 
 
 
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`private_fields`](#field_policies-private_fields){: #field_policies-private_fields } | `:show \| :hide \| :include` | `:show` | How private fields should be handeled by field policies in internal functions. See the [Policies guide](documentation/topics/security/policies.md#field-policies) for more. |
+
+
+
 ## field_policies.field_policy_bypass
 ```elixir
 field_policy_bypass fields, condition \\ {Ash.Policy.Check.Static, [result: true]}

@@ -2,8 +2,6 @@ defmodule Ash.Domain.Igniter do
   @moduledoc "Codemods for working with Ash.Domain modules"
 
   def list_domains(igniter) do
-    app_name = Igniter.Project.Application.app_name()
-
     Igniter.Code.Module.find_all_matching_modules(igniter, fn _mod, zipper ->
       zipper
       |> Igniter.Code.Module.move_to_using(Ash.Domain)
