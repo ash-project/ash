@@ -5,7 +5,7 @@ defmodule Ash.Domain.Igniter do
   def list_domains(igniter) do
     Igniter.Code.Module.find_all_matching_modules(igniter, fn _mod, zipper ->
       zipper
-      |> Igniter.Code.Module.move_to_using(Ash.Domain)
+      |> Igniter.Code.Module.move_to_use(Ash.Domain)
       |> case do
         {:ok, _} ->
           true

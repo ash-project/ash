@@ -11,7 +11,7 @@ defmodule Ash.Resource.Igniter do
     Igniter.Code.Module.find_all_matching_modules(igniter, fn _mod, zipper ->
       Enum.any?(resources, fn resource ->
         zipper
-        |> Igniter.Code.Module.move_to_using(resource)
+        |> Igniter.Code.Module.move_to_use(resource)
         |> case do
           {:ok, _} ->
             true
