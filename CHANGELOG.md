@@ -2,6 +2,33 @@
 
 <!-- changelog -->
 
+## [v3.2.0](https://github.com/ash-project/ash/compare/v3.1.8...v3.2.0) (2024-07-15)
+
+### Features:
+
+- [field policies] Allow field policies to hide private fields (#1289)
+
+Use the `private_fields :include | :show | :hide` option in the `field_policies` section of your resource to control how private fields are handled by field policies.
+
+For example:
+
+```elixir
+# hide all private fields when authorizing
+field_policies :hide
+
+# the current behavior. Private fields are ignored by field policies
+field_policies :show
+
+# private fields can have field policies like any other field
+field_policies :include
+```
+
+### Improvements:
+
+- [`Ash.Domain.Igniter`] add `Ash.Domain.Igniter.list_domains/1`
+
+- [`Ash.Resource.Igniter`] add `Ash.Resource.Igniter.list_resources/1`
+
 ## [v3.1.8](https://github.com/ash-project/ash/compare/v3.1.7...v3.1.8) (2024-07-14)
 
 ### Bug Fixes:
