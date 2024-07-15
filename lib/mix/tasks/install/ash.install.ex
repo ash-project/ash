@@ -46,16 +46,12 @@ defmodule Mix.Tasks.Ash.Install do
     igniter
     |> Igniter.compose_task("spark.install")
     |> Igniter.Project.Formatter.import_dep(:ash)
-    |> Igniter.Project.Config.configure(
-      "config.exs",
-      :spark,
-      [:formatter, :"Ash.Resource", :section_order],
+    |> Spark.Igniter.prepend_to_section_order(
+      :"Ash.Resource",
       @resource_default_section_order
     )
-    |> Igniter.Project.Config.configure(
-      "config.exs",
-      :spark,
-      [:formatter, :"Ash.Domain", :section_order],
+    |> Spark.Igniter.prepend_to_section_order(
+      :"Ash.Domain",
       @domain_default_section_order
     )
     |> then(fn igniter ->

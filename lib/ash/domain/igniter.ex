@@ -1,6 +1,7 @@
 defmodule Ash.Domain.Igniter do
   @moduledoc "Codemods for working with Ash.Domain modules"
 
+  @doc "List all domain modules found in the project"
   def list_domains(igniter) do
     Igniter.Code.Module.find_all_matching_modules(igniter, fn _mod, zipper ->
       zipper
@@ -15,6 +16,7 @@ defmodule Ash.Domain.Igniter do
     end)
   end
 
+  @doc "Adds a resource reference to a domain's `resources` block"
   def add_resource_reference(igniter, domain, resource) do
     Igniter.Code.Module.find_and_update_module!(igniter, domain, fn zipper ->
       case Igniter.Code.Function.move_to_function_call_in_current_scope(
@@ -56,6 +58,7 @@ defmodule Ash.Domain.Igniter do
     end)
   end
 
+  @doc "Removes a resource reference from a domain's `resources` block"
   def remove_resource_reference(igniter, domain, resource) do
     Igniter.Code.Module.find_and_update_module!(igniter, domain, fn zipper ->
       case Igniter.Code.Function.move_to_function_call_in_current_scope(

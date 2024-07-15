@@ -1,6 +1,7 @@
 defmodule Ash.Resource.Igniter do
   @moduledoc "Codemods for working with Ash.Resource modules"
 
+  @doc "List all resource modules found in the project"
   def list_resources(igniter) do
     app_name = Igniter.Project.Application.app_name()
 
@@ -22,6 +23,7 @@ defmodule Ash.Resource.Igniter do
     end)
   end
 
+  @doc "Adds the given code block to the resource's `attributes` block"
   def add_attribute(igniter, resource, attribute) do
     Igniter.Code.Module.find_and_update_module!(igniter, resource, fn zipper ->
       with {:ok, zipper} <-
@@ -45,6 +47,7 @@ defmodule Ash.Resource.Igniter do
     end)
   end
 
+  @doc "Adds the given code block to the resource's `actions` block"
   def add_action(igniter, resource, action) do
     Igniter.Code.Module.find_and_update_module!(igniter, resource, fn zipper ->
       with {:ok, zipper} <-
