@@ -1610,6 +1610,7 @@ defmodule Ash.Query do
                  type: aggregate.type,
                  constraints: aggregate.constraints,
                  implementation: aggregate.implementation,
+                 include_nil?: aggregate.include_nil?,
                  uniq?: aggregate.uniq?,
                  read_action: aggregate.read_action,
                  authorize?: aggregate.authorize?,
@@ -2297,6 +2298,7 @@ defmodule Ash.Query do
     type = opts[:type]
     constraints = opts[:constraints] || []
     implementation = opts[:implementation]
+    include_nil? = Keyword.get(opts, :include_nil?, true)
     uniq? = opts[:uniq?]
     read_action = opts[:read_action]
     authorize? = Keyword.get(opts, :authorize?, true)
@@ -2348,6 +2350,7 @@ defmodule Ash.Query do
              filterable?: filterable?,
              sortable?: sortable?,
              sensitive?: sensitive?,
+             include_nil?: include_nil?,
              type: type,
              constraints: constraints,
              implementation: implementation,
