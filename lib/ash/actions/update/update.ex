@@ -102,6 +102,15 @@ defmodule Ash.Actions.Update do
                   tenant: changeset.tenant
                 )
               )
+              |> then(fn atomic_changeset ->
+                Enum.reduce(
+                  changeset.atomic_after_action,
+                  atomic_changeset,
+                  fn after_action, atomic_changeset ->
+                    Ash.Changeset.after_action(atomic_changeset, after_action)
+                  end
+                )
+              end)
 
             {res, params}
         end

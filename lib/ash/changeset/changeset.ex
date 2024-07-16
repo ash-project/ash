@@ -30,7 +30,7 @@ defmodule Ash.Changeset do
       # execute code in the transaction, before the data layer is called
       |> Ash.Changeset.before_action(fn changeset -> changeset end)
       # execute code in the transaction, after the data layer is called, only if the action is successful
-      |> Ash.Changeset.after_action(fn changeset, result -> {:ok, result} end)
+     after_action(fn changeset, result -> {:ok, result} end)
       # execute code after the transaction, both in success and error cases
       |> Ash.Changeset.after_transaction(fn changeset, success_or_error_result -> success_or_error_result end
     end
@@ -69,6 +69,7 @@ defmodule Ash.Changeset do
     defaults: [],
     errors: [],
     params: %{},
+    atomic_after_action: [],
     attribute_changes: %{},
     atomic_changes: [],
     casted_attributes: %{},
@@ -4997,9 +4998,25 @@ defmodule Ash.Changeset do
     changeset = maybe_dirty_hook(changeset, :after_action)
 
     if opts[:prepend?] do
-      %{changeset | after_action: [func | changeset.after_action]}
+      if changeset.phase == :pending do
+        %{
+          changeset
+          | after_action: [func | changeset.after_action],
+            atomic_after_action: [func | changeset.atomic_after_action]
+        }
+      else
+        %{changeset | after_action: [func | changeset.after_action]}
+      end
     else
-      %{changeset | after_action: changeset.after_action ++ [func]}
+      if changeset.phase == :pending do
+        %{
+          changeset
+          | after_action: changeset.after_action ++ [func],
+            atomic_after_action: changeset.atomic_after_action ++ [func]
+        }
+      else
+        %{changeset | after_action: changeset.after_action ++ [func]}
+      end
     end
   end
 
