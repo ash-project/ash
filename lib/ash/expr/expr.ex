@@ -575,14 +575,14 @@ defmodule Ash.Expr do
   end
 
   def do_expr(
-        {:<<>>, meta,
+        {:<<>>, _meta,
          [
            {:"::", _meta1,
             [{{:., _meta2, [Kernel, :to_string]}, _meta3, [left]}, {:binary, _, _}]}
          ]},
         escape?
       ) do
-    do_expr({:type, meta, [left, :string]}, escape?)
+    do_expr(left, escape?)
   end
 
   def do_expr(
@@ -604,10 +604,10 @@ defmodule Ash.Expr do
   end
 
   def do_expr(
-        {:"::", meta, [{{:., _meta1, [Kernel, :to_string]}, _meta2, [left]}, {:binary, _, _}]},
+        {:"::", _meta, [{{:., _meta1, [Kernel, :to_string]}, _meta2, [left]}, {:binary, _, _}]},
         escape?
       ) do
-    do_expr({:type, meta, [left, :string]}, escape?)
+    do_expr(left, escape?)
   end
 
   def do_expr({:., _, [left, right]} = ref, escape?) when is_atom(right) do
