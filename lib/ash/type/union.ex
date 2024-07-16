@@ -69,12 +69,16 @@ defmodule Ash.Type.Union do
       type = config[:type]
       constraints = config[:constraints] || []
 
-      case Ash.Type.init(type, constraints) do
-        {:ok, constraints} ->
-          {:cont, {:ok, [{name, Keyword.put(config, :constraints, constraints)} | types]}}
+      if Keyword.get(config, :init?, true) do
+        case Ash.Type.init(type, constraints) do
+          {:ok, constraints} ->
+            {:cont, {:ok, [{name, Keyword.put(config, :constraints, constraints)} | types]}}
 
-        {:error, error} ->
-          {:halt, {:error, error}}
+          {:error, error} ->
+            {:halt, {:error, error}}
+        end
+      else
+        {:cont, {:ok, [{name, config} | types]}}
       end
     end)
     |> case do
