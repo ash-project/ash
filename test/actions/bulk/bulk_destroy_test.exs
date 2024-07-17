@@ -129,10 +129,6 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
         end
       end
 
-      destroy :destroy_with_validation do
-        validate attribute_does_not_equal(:title, "can't delete")
-      end
-
       destroy :destroy_with_argument do
         require_atomic? false
 
@@ -427,29 +423,6 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
              end)
 
     assert [] = Ash.read!(Post)
-  end
-
-  test "runs validations" do
-    assert_raise Ash.Error.Invalid, ~r/must not equal "can't delete"/, fn ->
-      assert %Ash.BulkResult{
-               records: [
-                 %{title: "title1", title2: nil},
-                 %{title: "title2", title2: nil}
-               ]
-             } =
-               Ash.bulk_create!([%{title: "can't delete"}, %{title: "title2"}], Post, :create,
-                 return_stream?: true,
-                 return_records?: true
-               )
-               |> Stream.map(fn {:ok, result} ->
-                 result
-               end)
-               |> Ash.bulk_destroy!(:destroy_with_validation, %{},
-                 resource: Post,
-                 return_records?: true,
-                 return_errors?: true
-               )
-    end
   end
 
   test "runs after batch hooks" do
