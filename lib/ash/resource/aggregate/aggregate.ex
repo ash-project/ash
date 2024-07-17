@@ -53,7 +53,7 @@ defmodule Ash.Resource.Aggregate do
            {:tuple, [{:in, [:custom]}, Ash.OptionsHelpers.ash_type()]}
          ]},
       doc: "The kind of the aggregate. Pre-set when using the `Ash.Resource` DSL.",
-      required: true
+      hide: true
     ],
     field: [
       type: :atom,

@@ -226,6 +226,179 @@ Target: `Ash.Reactor.Dsl.Action`
 
 
 
+## reactor.ash_step
+```elixir
+ash_step name, impl \\ nil
+```
+
+
+Specifies a Ash.Reactor step.
+
+This is basically a wrapper around `Reactor.step`, in order to handle
+any returned notifications from the run step/function.
+
+See the `Reactor.Step` behaviour for more information.
+
+
+### Nested DSLs
+ * [argument](#reactor-ash_step-argument)
+ * [wait_for](#reactor-ash_step-wait_for)
+
+
+### Examples
+```
+ash_step :create_post, MyApp.CreatePostStep do
+  argument :title, input(:title)
+end
+
+```
+
+```
+ash_step :create_post do
+  argument :title, input(:title)
+
+  run fn %{title: title}, _ ->
+    MyApp.Post.create(title, return_notifications?: true)
+  end
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#reactor-ash_step-name){: #reactor-ash_step-name .spark-required} | `atom` |  | A unique name for the step. Used when choosing the return value of the Reactor and for arguments into other steps. |
+| [`impl`](#reactor-ash_step-impl){: #reactor-ash_step-impl } | `module \| nil` |  | A module that implements the `Reactor.Step` behaviour that provides the implementation. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`run`](#reactor-ash_step-run){: #reactor-ash_step-run } | `(any -> any) \| mfa \| (any, any -> any) \| mfa` |  | Provide an anonymous function which implements the `run/3` callback. Cannot be provided at the same time as the `impl` argument. |
+| [`undo`](#reactor-ash_step-undo){: #reactor-ash_step-undo } | `(any -> any) \| mfa \| (any, any -> any) \| mfa \| (any, any, any -> any) \| mfa` |  | Provide an anonymous function which implements the `undo/4` callback. Cannot be provided at the same time as the `impl` argument. |
+| [`compensate`](#reactor-ash_step-compensate){: #reactor-ash_step-compensate } | `(any -> any) \| mfa \| (any, any -> any) \| mfa \| (any, any, any -> any) \| mfa` |  | Provide an anonymous function which implements the `undo/4` callback. Cannot be provided at the same time as the `impl` argument. |
+| [`max_retries`](#reactor-ash_step-max_retries){: #reactor-ash_step-max_retries } | `:infinity \| non_neg_integer` | `:infinity` | The maximum number of times that the step can be retried before failing. Only used when the result of the `compensate/4` callback is `:retry`. |
+| [`async?`](#reactor-ash_step-async?){: #reactor-ash_step-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
+| [`transform`](#reactor-ash_step-transform){: #reactor-ash_step-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the entire argument map before it is passed to the step. |
+
+
+## reactor.ash_step.argument
+```elixir
+argument name, source \\ nil
+```
+
+
+Specifies an argument to a Reactor step.
+
+Each argument is a value which is either the result of another step, or an input value.
+
+Individual arguments can be transformed with an arbitrary function before
+being passed to any steps.
+
+
+
+
+### Examples
+```
+argument :name, input(:name)
+
+```
+
+```
+argument :year, input(:date, [:year])
+
+```
+
+```
+argument :user, result(:create_user)
+
+```
+
+```
+argument :user_id, result(:create_user) do
+  transform & &1.id
+end
+
+```
+
+```
+argument :user_id, result(:create_user, [:id])
+
+```
+
+```
+argument :three, value(3)
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#reactor-ash_step-argument-name){: #reactor-ash_step-argument-name .spark-required} | `atom` |  | The name of the argument which will be used as the key in the `arguments` map passed to the implementation. |
+| [`source`](#reactor-ash_step-argument-source){: #reactor-ash_step-argument-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the argument. See `Reactor.Dsl.Argument` for more information. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-ash_step-argument-transform){: #reactor-ash_step-argument-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the argument before it is passed to the step. |
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.Argument`
+
+## reactor.ash_step.wait_for
+```elixir
+wait_for names
+```
+
+
+Wait for the named step to complete before allowing this one to start.
+
+Desugars to `argument :_, result(step_to_wait_for)`
+
+
+
+
+### Examples
+```
+wait_for :create_user
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#reactor-ash_step-wait_for-names){: #reactor-ash_step-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.WaitFor`
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.AshStep`
+
+
+
 ## reactor.bulk_create
 ```elixir
 bulk_create name, resource, action \\ nil
