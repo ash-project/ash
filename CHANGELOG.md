@@ -2,24 +2,35 @@
 
 <!-- changelog -->
 
-## [v3.2.1](https://github.com/ash-project/ash/compare/v3.2.0...v3.2.1) (2024-07-17)
+## [v3.2.2](https://github.com/ash-project/ash/compare/v3.2.1...v3.2.2) (2024-07-17)
 
+### Features:
 
-
+- [`Ash.Reactor`] Add ash_step wrapper (#1311)
 
 ### Bug Fixes:
 
-* properly honor the `include_nil?` option
+- [bulk destroys] honor atomic validations in destroy actions using `filter`
 
-* store after_action hooks added outside of changes for atomic upgrade
+- [Ash.Type.Vector] handle casting nil vectors (#1316)
 
-* don't use `type/3` in string interpolation
+- [Ash.Type] don't override `nil` handling in `Ash.Type.cast_input/3`
 
-* properly pass `include_nil?` from when building query aggregates
+## [v3.2.1](https://github.com/ash-project/ash/compare/v3.2.0...v3.2.1) (2024-07-17)
+
+### Bug Fixes:
+
+- properly honor the `include_nil?` option
+
+- store after_action hooks added outside of changes for atomic upgrade
+
+- don't use `type/3` in string interpolation
+
+- properly pass `include_nil?` from when building query aggregates
 
 ### Improvements:
 
-* allow skipping initialization of types in unions
+- allow skipping initialization of types in unions
 
 ## [v3.2.0](https://github.com/ash-project/ash/compare/v3.1.8...v3.2.0) (2024-07-15)
 
