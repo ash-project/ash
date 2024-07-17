@@ -1068,6 +1068,7 @@ defmodule Ash.Resource.Dsl do
     schema:
       Keyword.put(Ash.Resource.Aggregate.schema(), :include_nil?,
         type: :boolean,
+        default: false,
         doc:
           "Whether or not to include `nil` values in the aggregate. Only relevant for `list` and `first` aggregates."
       ),
@@ -1266,6 +1267,7 @@ defmodule Ash.Resource.Dsl do
       )
       |> Keyword.put(:include_nil?,
         type: :boolean,
+        default: false,
         doc:
           "Whether or not to include `nil` values in the aggregate. Only relevant for `list` and `first` aggregates."
       ),
