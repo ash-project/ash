@@ -52,7 +52,7 @@ defmodule Ash.Resource.Aggregate do
            {:in, [:count, :first, :sum, :list, :avg, :max, :min, :exists, :custom]},
            {:tuple, [{:in, [:custom]}, Ash.OptionsHelpers.ash_type()]}
          ]},
-      doc: "The kind of the aggregate",
+      doc: "The kind of the aggregate. Pre-set when using the `Ash.Resource` DSL.",
       required: true
     ],
     field: [

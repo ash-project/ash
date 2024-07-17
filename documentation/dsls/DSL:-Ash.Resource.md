@@ -2547,7 +2547,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`kind`](#aggregates-count-kind){: #aggregates-count-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate |
+| [`kind`](#aggregates-count-kind){: #aggregates-count-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate. Pre-set when using the `Ash.Resource` DSL. |
 | [`uniq?`](#aggregates-count-uniq?){: #aggregates-count-uniq? } | `boolean` | `false` | Whether or not to count unique values only |
 | [`read_action`](#aggregates-count-read_action){: #aggregates-count-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`field`](#aggregates-count-field){: #aggregates-count-field } | `atom` |  | The field to aggregate. Defaults to the first field in the primary key of the resource |
@@ -2638,7 +2638,7 @@ exists :has_ticket, :assigned_tickets
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`kind`](#aggregates-exists-kind){: #aggregates-exists-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate |
+| [`kind`](#aggregates-exists-kind){: #aggregates-exists-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate. Pre-set when using the `Ash.Resource` DSL. |
 | [`read_action`](#aggregates-exists-read_action){: #aggregates-exists-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`filter`](#aggregates-exists-filter){: #aggregates-exists-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`description`](#aggregates-exists-description){: #aggregates-exists-description } | `String.t` |  | An optional description for the aggregate |
@@ -2732,8 +2732,8 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`kind`](#aggregates-first-kind){: #aggregates-first-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate |
-| [`include_nil?`](#aggregates-first-include_nil?){: #aggregates-first-include_nil? } | `boolean` |  | Whether or not to include `nil` values in the aggregate. Only relevant for `list` and `first` aggregates. |
+| [`kind`](#aggregates-first-kind){: #aggregates-first-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate. Pre-set when using the `Ash.Resource` DSL. |
+| [`include_nil?`](#aggregates-first-include_nil?){: #aggregates-first-include_nil? } | `boolean` | `false` | Whether or not to include `nil` values in the aggregate. Only relevant for `list` and `first` aggregates. |
 | [`read_action`](#aggregates-first-read_action){: #aggregates-first-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`filter`](#aggregates-first-filter){: #aggregates-first-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`sort`](#aggregates-first-sort){: #aggregates-first-sort } | `any` |  | A sort to be applied to the aggregate |
@@ -2826,7 +2826,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`kind`](#aggregates-sum-kind){: #aggregates-sum-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate |
+| [`kind`](#aggregates-sum-kind){: #aggregates-sum-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate. Pre-set when using the `Ash.Resource` DSL. |
 | [`read_action`](#aggregates-sum-read_action){: #aggregates-sum-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`filter`](#aggregates-sum-filter){: #aggregates-sum-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`description`](#aggregates-sum-description){: #aggregates-sum-description } | `String.t` |  | An optional description for the aggregate |
@@ -2919,7 +2919,8 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`kind`](#aggregates-list-kind){: #aggregates-list-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate |
+| [`kind`](#aggregates-list-kind){: #aggregates-list-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate. Pre-set when using the `Ash.Resource` DSL. |
+| [`include_nil?`](#aggregates-list-include_nil?){: #aggregates-list-include_nil? } | `boolean` | `false` | Whether or not to include `nil` values in the aggregate. Only relevant for `list` and `first` aggregates. |
 | [`uniq?`](#aggregates-list-uniq?){: #aggregates-list-uniq? } | `boolean` | `false` | Whether or not to count unique values only |
 | [`read_action`](#aggregates-list-read_action){: #aggregates-list-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`filter`](#aggregates-list-filter){: #aggregates-list-filter } | `any` | `[]` | A filter to apply to the aggregate |
@@ -3013,7 +3014,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`kind`](#aggregates-max-kind){: #aggregates-max-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate |
+| [`kind`](#aggregates-max-kind){: #aggregates-max-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate. Pre-set when using the `Ash.Resource` DSL. |
 | [`read_action`](#aggregates-max-read_action){: #aggregates-max-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`filter`](#aggregates-max-filter){: #aggregates-max-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`description`](#aggregates-max-description){: #aggregates-max-description } | `String.t` |  | An optional description for the aggregate |
@@ -3105,7 +3106,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`kind`](#aggregates-min-kind){: #aggregates-min-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate |
+| [`kind`](#aggregates-min-kind){: #aggregates-min-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate. Pre-set when using the `Ash.Resource` DSL. |
 | [`read_action`](#aggregates-min-read_action){: #aggregates-min-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`filter`](#aggregates-min-filter){: #aggregates-min-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`description`](#aggregates-min-description){: #aggregates-min-description } | `String.t` |  | An optional description for the aggregate |
@@ -3197,7 +3198,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`kind`](#aggregates-avg-kind){: #aggregates-avg-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate |
+| [`kind`](#aggregates-avg-kind){: #aggregates-avg-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate. Pre-set when using the `Ash.Resource` DSL. |
 | [`read_action`](#aggregates-avg-read_action){: #aggregates-avg-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`filter`](#aggregates-avg-filter){: #aggregates-avg-filter } | `any` | `[]` | A filter to apply to the aggregate |
 | [`description`](#aggregates-avg-description){: #aggregates-avg-description } | `String.t` |  | An optional description for the aggregate |
@@ -3292,7 +3293,7 @@ end
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`implementation`](#aggregates-custom-implementation){: #aggregates-custom-implementation .spark-required} | `module` |  | The module that implements the relevant data layer callbacks |
-| [`kind`](#aggregates-custom-kind){: #aggregates-custom-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate |
+| [`kind`](#aggregates-custom-kind){: #aggregates-custom-kind .spark-required} | `:count \| :first \| :sum \| :list \| :avg \| :max \| :min \| :exists \| :custom \| {:custom, module}` |  | The kind of the aggregate. Pre-set when using the `Ash.Resource` DSL. |
 | [`read_action`](#aggregates-custom-read_action){: #aggregates-custom-read_action } | `atom` |  | The read action to use when building the aggregate. Defaults to the primary read action. Keep in mind this action must not have any required arguments. |
 | [`field`](#aggregates-custom-field){: #aggregates-custom-field } | `atom` |  | The field to aggregate. Defaults to the first field in the primary key of the resource |
 | [`filter`](#aggregates-custom-filter){: #aggregates-custom-filter } | `any` | `[]` | A filter to apply to the aggregate |
