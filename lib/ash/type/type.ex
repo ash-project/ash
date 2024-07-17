@@ -739,8 +739,6 @@ defmodule Ash.Type do
     end
   end
 
-  def cast_input(_, nil, _), do: {:ok, nil}
-
   def cast_input(type, %type{__metadata__: _} = value, _), do: {:ok, value}
 
   def cast_input(type, term, constraints) do
