@@ -33,7 +33,7 @@ defmodule Ash.Resource.Igniter do
                1
              ),
            {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper) do
-        Igniter.Code.Common.add_code(zipper, attribute)
+        {:ok, Igniter.Code.Common.add_code(zipper, attribute)}
       else
         _ ->
           attributes_with_attribute = """
@@ -42,7 +42,7 @@ defmodule Ash.Resource.Igniter do
           end
           """
 
-          Igniter.Code.Common.add_code(zipper, attributes_with_attribute)
+          {:ok, Igniter.Code.Common.add_code(zipper, attributes_with_attribute)}
       end
     end)
   end
@@ -53,7 +53,7 @@ defmodule Ash.Resource.Igniter do
       with {:ok, zipper} <-
              Igniter.Code.Function.move_to_function_call_in_current_scope(zipper, :actions, 1),
            {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper) do
-        Igniter.Code.Common.add_code(zipper, action)
+        {:ok, Igniter.Code.Common.add_code(zipper, action)}
       else
         _ ->
           actions_with_action = """
@@ -62,7 +62,7 @@ defmodule Ash.Resource.Igniter do
           end
           """
 
-          Igniter.Code.Common.add_code(zipper, actions_with_action)
+          {:ok, Igniter.Code.Common.add_code(zipper, actions_with_action)}
       end
     end)
   end
