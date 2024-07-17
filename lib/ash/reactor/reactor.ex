@@ -20,6 +20,7 @@ defmodule Ash.Reactor do
   }
   @type action ::
           Ash.Reactor.Dsl.Action.t()
+          | Ash.Reactor.Dsl.AshStep.t()
           | Ash.Reactor.Dsl.BulkCreate.t()
           | Ash.Reactor.Dsl.BulkUpdate.t()
           | Ash.Reactor.Dsl.Create.t()
@@ -34,6 +35,7 @@ defmodule Ash.Reactor do
     dsl_patches:
       [
         Ash.Reactor.Dsl.Action,
+        Ash.Reactor.Dsl.AshStep,
         Ash.Reactor.Dsl.BulkCreate,
         Ash.Reactor.Dsl.BulkUpdate,
         Ash.Reactor.Dsl.Change,
