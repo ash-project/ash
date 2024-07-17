@@ -2429,33 +2429,47 @@ defmodule Ash.Changeset do
              )}
 
           :error ->
-            [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
+            if changeset.action.type == :update || Map.get(changeset.action, :soft?) do
+              [first_pkey_field | _] = Ash.Resource.Info.primary_key(changeset.resource)
 
-            full_atomic_update =
-              expr(
-                if ^condition_expr do
-                  ^error_expr
-                else
-                  ^atomic_ref(changeset, first_pkey_field)
-                end
-              )
+              full_atomic_update =
+                expr(
+                  if ^condition_expr do
+                    ^error_expr
+                  else
+                    ^atomic_ref(changeset, first_pkey_field)
+                  end
+                )
 
-            case Ash.Filter.hydrate_refs(full_atomic_update, %{
-                   resource: changeset.resource,
-                   public: false
-                 }) do
-              {:ok, full_atomic_update} ->
-                {:cont,
-                 atomic_update(
-                   changeset,
-                   first_pkey_field,
-                   full_atomic_update
-                 )}
+              case Ash.Filter.hydrate_refs(full_atomic_update, %{
+                     resource: changeset.resource,
+                     public: false
+                   }) do
+                {:ok, full_atomic_update} ->
+                  {:cont,
+                   atomic_update(
+                     changeset,
+                     first_pkey_field,
+                     full_atomic_update
+                   )}
 
-              {:error, error} ->
-                {:halt,
-                 {:not_atomic,
-                  "Failed to validate expression #{inspect(full_atomic_update)}: #{inspect(error)}"}}
+                {:error, error} ->
+                  {:halt,
+                   {:not_atomic,
+                    "Failed to validate expression #{inspect(full_atomic_update)}: #{inspect(error)}"}}
+              end
+            else
+              {:cont,
+               filter(
+                 changeset,
+                 expr(
+                   if ^condition_expr do
+                     ^error_expr
+                   else
+                     true
+                   end
+                 )
+               )}
             end
         end
       else
