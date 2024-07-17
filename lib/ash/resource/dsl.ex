@@ -1258,10 +1258,16 @@ defmodule Ash.Resource.Dsl do
     target: Ash.Resource.Aggregate,
     args: [:name, :relationship_path, :field],
     schema:
-      Keyword.put(Ash.Resource.Aggregate.schema(), :uniq?,
+      Ash.Resource.Aggregate.schema()
+      |> Keyword.put(:uniq?,
         type: :boolean,
         doc: "Whether or not to count unique values only",
         default: false
+      )
+      |> Keyword.put(:include_nil?,
+        type: :boolean,
+        doc:
+          "Whether or not to include `nil` values in the aggregate. Only relevant for `list` and `first` aggregates."
       ),
     auto_set_fields: [kind: :list]
   }

@@ -190,6 +190,7 @@ defmodule Ash.Query.Aggregate do
           uniq? = opts[:uniq?]
           read_action = opts[:read_action]
           authorize? = opts[:authorize?]
+          include_nil? = opts[:include_nil?]
 
           if kind == :custom && !type do
             raise ArgumentError, "Must supply type when building a `custom` aggregate"
@@ -236,6 +237,7 @@ defmodule Ash.Query.Aggregate do
                default_value: default || default_value(kind),
                relationship_path: List.wrap(relationship),
                implementation: implementation,
+               include_nil?: include_nil?,
                field: field,
                kind: kind,
                type: type,
