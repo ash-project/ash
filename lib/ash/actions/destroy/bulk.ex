@@ -539,6 +539,7 @@ defmodule Ash.Actions.Destroy.Bulk do
            authorize_bulk_query(query, atomic_changeset, opts),
          {:ok, atomic_changeset, query} <-
            authorize_atomic_changeset(query, atomic_changeset, opts),
+         {query, atomic_changeset} <- add_changeset_filters(query, atomic_changeset),
          {:ok, data_layer_query} <- Ash.Query.data_layer_query(query) do
       case Ash.DataLayer.destroy_query(
              data_layer_query,
@@ -750,6 +751,10 @@ defmodule Ash.Actions.Destroy.Bulk do
           errors: [Ash.Error.to_error_class(error)]
         }
     end
+  end
+
+  defp add_changeset_filters(query, changeset) do
+    {Ash.Query.do_filter(query, changeset.filter), %{changeset | filter: nil}}
   end
 
   defp set_strategy(opts, resource, inputs_is_enumerable? \\ false) do
@@ -1094,6 +1099,7 @@ defmodule Ash.Actions.Destroy.Bulk do
     resource
     |> Ash.Changeset.new()
     |> Map.put(:domain, domain)
+    |> Ash.Changeset.filter(opts[:filter])
     |> Ash.Actions.Helpers.add_context(opts)
     |> Ash.Changeset.set_context(opts[:context] || %{})
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)

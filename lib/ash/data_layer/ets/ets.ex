@@ -1235,14 +1235,6 @@ defmodule Ash.DataLayer.Ets do
     log_destroy_query(resource, query)
 
     query
-    |> Map.update!(:filter, fn filter ->
-      if is_nil(changeset.filter) do
-        filter
-      else
-        filter = filter || %Ash.Filter{resource: changeset.resource}
-        Ash.Filter.add_to_filter!(filter, changeset.filter)
-      end
-    end)
     |> run_query(resource)
     |> case do
       {:ok, results} ->
