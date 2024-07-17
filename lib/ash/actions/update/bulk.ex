@@ -495,8 +495,6 @@ defmodule Ash.Actions.Update.Bulk do
            authorize_bulk_query(query, atomic_changeset, opts),
          {:ok, atomic_changeset, query} <-
            authorize_atomic_changeset(query, atomic_changeset, opts),
-         {query, atomic_changeset} <-
-           add_changeset_filters(query, atomic_changeset),
          %Ash.Changeset{valid?: true} = atomic_changeset <-
            Ash.Changeset.handle_allow_nil_atomics(atomic_changeset, opts[:actor]),
          atomic_changeset <- sort_atomic_changes(atomic_changeset),
@@ -1058,7 +1056,6 @@ defmodule Ash.Actions.Update.Bulk do
         )
         |> Ash.Query.set_context(%{private: %{internal?: true}})
         |> Ash.Query.filter(^pkeys)
-        |> Ash.Query.filter(^atomic_changeset.filter)
         |> Ash.Query.select([])
         |> then(fn query ->
           run(domain, query, action.name, input,
@@ -1374,10 +1371,6 @@ defmodule Ash.Actions.Update.Bulk do
         other
     end)
     |> Enum.with_index()
-  end
-
-  defp add_changeset_filters(query, changeset) do
-    {Ash.Query.do_filter(query, changeset.filter), %{changeset | filter: nil}}
   end
 
   defp pre_template(opts, changeset, actor) do
