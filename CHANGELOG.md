@@ -2,6 +2,25 @@
 
 <!-- changelog -->
 
+## [v3.2.1](https://github.com/ash-project/ash/compare/v3.2.0...v3.2.1) (2024-07-17)
+
+
+
+
+### Bug Fixes:
+
+* properly honor the `include_nil?` option
+
+* store after_action hooks added outside of changes for atomic upgrade
+
+* don't use `type/3` in string interpolation
+
+* properly pass `include_nil?` from when building query aggregates
+
+### Improvements:
+
+* allow skipping initialization of types in unions
+
 ## [v3.2.0](https://github.com/ash-project/ash/compare/v3.1.8...v3.2.0) (2024-07-15)
 
 ### Features:
