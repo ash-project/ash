@@ -12,7 +12,7 @@ defmodule Ash.Test.Type.VectorTest do
 
   test "it casts nil to nil" do
     assert {:ok, nil} = Ash.Type.cast_input(Ash.Type.Vector, nil)
-    assert {:ok, nil} = Ash.Type.dump_to_native(Ash.Type.Vector, nil)
+    assert {:ok, nil} = Ash.Type.cast_stored(Ash.Type.Vector, nil)
     assert {:ok, nil} = Ash.Type.dump_to_native(Ash.Type.Vector, nil)
   end
 end
