@@ -11,8 +11,8 @@ defmodule Ash.Test.Type.VectorTest do
   end
 
   test "it casts nil to nil" do
-    assert {:ok, nil} = Ash.Type.Vector.cast_input(nil, nil)
-    assert {:ok, nil} = Ash.Type.Vector.cast_stored(nil, nil)
-    assert {:ok, nil} = Ash.Type.Vector.dump_to_native(nil, nil)
+    assert {:ok, nil} = Ash.Type.cast_input(Ash.Type.Vector, nil)
+    assert {:ok, nil} = Ash.Type.dump_to_native(Ash.Type.Vector, nil)
+    assert {:ok, nil} = Ash.Type.dump_to_native(Ash.Type.Vector, nil)
   end
 end
