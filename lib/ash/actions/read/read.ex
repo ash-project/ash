@@ -1503,12 +1503,16 @@ defmodule Ash.Actions.Read do
   end
 
   defp handle_attribute_multitenancy(query) do
-    multitenancy_attribute = Ash.Resource.Info.multitenancy_attribute(query.resource)
+    if query.tenant && Ash.Resource.Info.multitenancy_strategy(query.resource) == :attribute do
+      multitenancy_attribute = Ash.Resource.Info.multitenancy_attribute(query.resource)
 
-    if multitenancy_attribute && query.tenant do
-      {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(query.resource)
-      attribute_value = apply(m, f, [query.to_tenant | a])
-      Ash.Query.filter(query, ^ref(multitenancy_attribute) == ^attribute_value)
+      if multitenancy_attribute do
+        {m, f, a} = Ash.Resource.Info.multitenancy_parse_attribute(query.resource)
+        attribute_value = apply(m, f, [query.to_tenant | a])
+        Ash.Query.filter(query, ^ref(multitenancy_attribute) == ^attribute_value)
+      else
+        query
+      end
     else
       query
     end
