@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.2.4](https://github.com/ash-project/ash/compare/v3.2.3...v3.2.4) (2024-07-18)
+
+
+
+
+### Bug Fixes:
+
+* fix warning on transaction hooks violating their semantics
+
 ## [v3.2.3](https://github.com/ash-project/ash/compare/v3.2.2...v3.2.3) (2024-07-18)
 
 
