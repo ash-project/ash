@@ -3285,8 +3285,6 @@ defmodule Ash.Changeset do
   end
 
   def run_before_transaction_hooks(changeset) do
-    warn_on_transaction_hooks(changeset, changeset.before_transaction, "before_transaction")
-
     Enum.reduce_while(
       changeset.before_transaction,
       set_phase(changeset, :before_transaction),
@@ -3422,7 +3420,7 @@ defmodule Ash.Changeset do
 
   @doc false
   def run_after_transactions(result, changeset) do
-    warn_on_transaction_hooks(changeset, changeset.before_transaction, "after_transaction")
+    warn_on_transaction_hooks(changeset, changeset.after_transaction, "after_transaction")
 
     changeset = set_phase(changeset, :after_transaction)
 
