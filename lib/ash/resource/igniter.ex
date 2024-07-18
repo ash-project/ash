@@ -20,20 +20,24 @@ defmodule Ash.Resource.Igniter do
   @spec domain(Igniter.t(), Ash.Resource.t()) ::
           {:ok, Igniter.t(), Ash.Domain.t()} | {:error, Igniter.t()}
   def domain(igniter, resource) do
-    with {:ok, {igniter, _source, zipper}} <-
-           Igniter.Code.Module.find_module(igniter, resource),
-         {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper),
-         {:ok, zipper} <-
-           Igniter.Code.Module.move_to_use(zipper, resource_mods()),
-         {:ok, zipper} <-
-           Igniter.Code.Function.move_to_nth_argument(zipper, 1),
-         {:ok, zipper} <- Igniter.Code.Keyword.get_key(zipper, :domain),
-         module when not is_nil(module) <-
-           Igniter.Code.Module.to_module_name(zipper.node) do
-      {:ok, igniter, module}
-    else
-      _ ->
-        :error
+    case Igniter.Code.Module.find_module(igniter, resource) do
+      {:ok, {igniter, _source, zipper}} ->
+        with {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper),
+             {:ok, zipper} <-
+               Igniter.Code.Module.move_to_use(zipper, resource_mods()),
+             {:ok, zipper} <-
+               Igniter.Code.Function.move_to_nth_argument(zipper, 1),
+             {:ok, zipper} <- Igniter.Code.Keyword.get_key(zipper, :domain),
+             module when not is_nil(module) <-
+               Igniter.Code.Module.to_module_name(zipper.node) do
+          {:ok, igniter, module}
+        else
+          _ ->
+            {:error, igniter}
+        end
+
+      {:erorr, igniter} ->
+        {:error, igniter}
     end
   end
 
