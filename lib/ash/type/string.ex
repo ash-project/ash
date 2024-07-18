@@ -168,7 +168,7 @@ defmodule Ash.Type.String do
     end
   end
 
-  def apply_constraints(nil, _), do: :ok
+  def apply_constraints(nil, _), do: {:ok, nil}
 
   def apply_constraints(value, constraints) do
     {value, errors} =

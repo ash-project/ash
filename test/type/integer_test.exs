@@ -24,9 +24,23 @@ defmodule Ash.Test.Type.IntegerTest do
     end
   end
 
-  describe "validation" do
+  describe "cast_input" do
     test "valid value" do
       assert {:ok, 1} = Ash.Type.Integer.cast_input(1, min: 0, max: 2)
+
+      assert {:ok, nil} = Ash.Type.Integer.cast_input(nil, min: 0, max: 2)
+    end
+
+    test "invalid value" do
+      assert :error = Ash.Type.Integer.cast_input("str", min: 0, max: 2)
+    end
+  end
+
+  describe "apply_constraints" do
+    test "valid values" do
+      assert {:ok, 3} = Ash.Type.Integer.apply_constraints(3, min: 2, max: 4)
+
+      assert {:ok, nil} = Ash.Type.Integer.apply_constraints(nil, min: 2, max: 4)
     end
 
     test "invalid values" do
