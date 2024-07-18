@@ -137,7 +137,7 @@ See the docs for more: `d:Ash.Resource.Dsl.relationships.has_one`
 has_many :tweets, MyApp.Tweet
 ```
 
-A `has_many` relationship means that there is a non-unique attribute (`destination_attribute`) on the destination resource that identifies a record with a matching unique attribute (`source_resource`) in the source. In the example above, the source attribute on `MyApp.User` is `:id` and the destination attribute on `MyApp.Tweet` is `:user_id`.
+A `has_many` relationship means that there is a non-unique attribute (`destination_attribute`) on the destination resource that identifies a record with a matching attribute (`source_attribute`) in the source. In the example above, the source attribute on `MyApp.User` is `:id` and the destination attribute on `MyApp.Tweet` is `:user_id`.
 
 A `has_many` relationship is similar to a `has_one` because the reference attribute exists on the destination resource. The only difference between this and `has_one` is that the destination attribute is not unique, and therefore will produce a list of related items. In the example above, `:tweets` corresponds to a list of `MyApp.Tweet` records.
 
