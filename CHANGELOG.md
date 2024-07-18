@@ -2,6 +2,25 @@
 
 <!-- changelog -->
 
+## [v3.2.3](https://github.com/ash-project/ash/compare/v3.2.2...v3.2.3) (2024-07-18)
+
+
+
+
+### Bug Fixes:
+
+* properly convert extension string into a module
+
+* only display available to extend
+
+* mix igniter.install ash --example case clause error (#1317)
+
+* only use attribute for filtering when multitenancy strategy == :attribute
+
+### Improvements:
+
+* Add `Ash.Resource.Igniter.domain` to get the domain of a resource
+
 ## [v3.2.2](https://github.com/ash-project/ash/compare/v3.2.1...v3.2.2) (2024-07-17)
 
 ### Features:
