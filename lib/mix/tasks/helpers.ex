@@ -50,9 +50,15 @@ defmodule Ash.Mix.Tasks.Helpers do
         fn app ->
           app
           |> :application.get_key(:modules)
-          |> elem(1)
-          |> List.wrap()
-          |> Enum.filter(&Spark.implements_behaviour?(&1, Spark.Dsl.Extension))
+          |> case do
+            :undefined ->
+              []
+
+            {_, mods} ->
+              mods
+              |> List.wrap()
+              |> Enum.filter(&Spark.implements_behaviour?(&1, Spark.Dsl.Extension))
+          end
         end,
         timeout: :infinity
       )

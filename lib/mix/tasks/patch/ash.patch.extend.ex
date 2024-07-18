@@ -138,7 +138,7 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
     if is_function(extension) do
       {extension, install}
     else
-      Module.concat([extension])
+      extension = Module.concat([extension])
 
       if Code.ensure_loaded?(extension) do
         fun =
@@ -156,11 +156,11 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
         extensions = Enum.map(Ash.Mix.Tasks.Helpers.extensions!([]), &inspect/1)
 
         short_codes = [
-          "json_api",
-          "postgres",
-          "graphql",
-          "mysql",
-          "sqlite",
+          {AshJsonApi.Resource, "json_api"},
+          {AshPostgres.DataLayer, "postgres"},
+          {AshGraphql.Resource, "graphql"},
+          {AshMySql.DataLayer, "mysql"},
+          {AshSqlite.DataLayer, "sqlite"},
           "ets",
           "mnesia",
           "embedded"
@@ -169,7 +169,18 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
         installable =
           short_codes
           |> Enum.concat(extensions)
-          |> Enum.map_join("\n", &" * #{&1}")
+          |> Enum.flat_map(fn
+            {dependency, name} ->
+              if Code.ensure_loaded?(dependency) do
+                [" * #{name}"]
+              else
+                []
+              end
+
+            dependency ->
+              [" * #{dependency}"]
+          end)
+          |> Enum.join("\n")
 
         {:error,
          """
