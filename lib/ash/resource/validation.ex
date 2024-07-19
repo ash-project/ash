@@ -126,7 +126,7 @@ defmodule Ash.Resource.Validation do
       type: :boolean,
       default: false,
       doc:
-        "By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/2` callback defined. Set this to `true` to run it atomically always."
+        "By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/3` callback defined. Set this to `true` to run it atomically always."
     ]
   ]
 
