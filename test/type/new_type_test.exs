@@ -10,6 +10,8 @@ defmodule Ash.Test.Type.NewTypeTest do
 
   test "it handles simple types" do
     assert {:ok, "123-45-6789"} = Ash.Type.cast_input(SSN, "123-45-6789")
+
+    assert {:ok, nil} = Ash.Type.cast_input(SSN, nil)
   end
 
   test "it applies the provided constraints" do
