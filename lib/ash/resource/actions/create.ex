@@ -27,7 +27,7 @@ defmodule Ash.Resource.Actions.Create do
   @type t :: %__MODULE__{
           type: :create,
           name: atom,
-          accept: list(atom),
+          accept: nil | list(atom),
           require_attributes: list(atom),
           allow_nil_input: list(atom),
           manual: module | nil,

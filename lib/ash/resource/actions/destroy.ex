@@ -37,7 +37,7 @@ defmodule Ash.Resource.Actions.Destroy do
           atomic_upgrade?: boolean(),
           atomic_upgrade_with: nil | atom(),
           require_atomic?: boolean,
-          accept: list(atom),
+          accept: nil | list(atom),
           require_attributes: list(atom),
           allow_nil_input: list(atom),
           delay_global_validations?: boolean,

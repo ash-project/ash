@@ -36,7 +36,7 @@ defmodule Ash.Resource.Actions.Update do
           atomic_upgrade?: boolean(),
           atomic_upgrade_with: nil | atom(),
           notifiers: list(module),
-          accept: list(atom),
+          accept: nil | list(atom),
           require_attributes: list(atom),
           allow_nil_input: list(atom),
           require_atomic?: boolean,
