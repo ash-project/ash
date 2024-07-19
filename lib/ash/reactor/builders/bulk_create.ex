@@ -83,10 +83,6 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.BulkCreate do
 
   @doc false
   @impl true
-  def transform(_bulk_create, dsl_state), do: {:ok, dsl_state}
-
-  @doc false
-  @impl true
   def verify(bulk_create, dsl_state) do
     action_error_path = [:bulk_create, bulk_create.name, :action]
 

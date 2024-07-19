@@ -64,10 +64,6 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Create do
 
   @doc false
   @impl true
-  def transform(_create, dsl_state), do: {:ok, dsl_state}
-
-  @doc false
-  @impl true
   def verify(create, _dsl_state) when create.undo == :never, do: :ok
 
   def verify(create, dsl_state) do
