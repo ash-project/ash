@@ -51,9 +51,5 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Change do
 
   @doc false
   @impl true
-  def transform(_change, dsl_state), do: {:ok, dsl_state}
-
-  @doc false
-  @impl true
   def verify(_change, _dsl_state), do: :ok
 end

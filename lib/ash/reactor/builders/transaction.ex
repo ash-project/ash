@@ -42,10 +42,6 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Transaction do
 
   @doc false
   @impl true
-  def transform(_transaction, dsl_state), do: {:ok, dsl_state}
-
-  @doc false
-  @impl true
   def verify(transaction, _dsl_state) do
     transaction.resources
     |> Enum.reject(&Ash.DataLayer.data_layer_can?(&1, :transact))

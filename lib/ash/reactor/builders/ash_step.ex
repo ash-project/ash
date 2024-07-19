@@ -28,10 +28,6 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.AshStep do
 
   @doc false
   @impl true
-  def transform(_update, dsl_state), do: {:ok, dsl_state}
-
-  @doc false
-  @impl true
   def verify(_ash_step, _dsl_state), do: :ok
 
   defp rewrite_step(step, module) when is_nil(step.impl) and is_nil(step.run),

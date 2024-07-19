@@ -50,10 +50,6 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Destroy do
 
   @doc false
   @impl true
-  def transform(_destroy, dsl_state), do: {:ok, dsl_state}
-
-  @doc false
-  @impl true
   def verify(destroy, _dsl_state) when destroy.undo == :never, do: :ok
 
   def verify(destroy, dsl_state) do

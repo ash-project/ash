@@ -42,10 +42,6 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Update do
 
   @doc false
   @impl true
-  def transform(_update, dsl_state), do: {:ok, dsl_state}
-
-  @doc false
-  @impl true
   def verify(update, _dsl_state) when update.undo == :never, do: :ok
 
   def verify(update, dsl_state) do

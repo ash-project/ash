@@ -36,9 +36,5 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.ReadOne do
 
   @doc false
   @impl true
-  def transform(_create, dsl_state), do: {:ok, dsl_state}
-
-  @doc false
-  @impl true
   def verify(_create, _dsl_state), do: :ok
 end
