@@ -36,7 +36,7 @@ defmodule Ash.Resource.Igniter do
             {:error, igniter}
         end
 
-      {:erorr, igniter} ->
+      {:error, igniter} ->
         {:error, igniter}
     end
   end

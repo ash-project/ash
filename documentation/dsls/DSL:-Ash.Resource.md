@@ -1111,7 +1111,7 @@ validate changing(:email)
 | [`message`](#actions-create-validate-message){: #actions-create-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#actions-create-validate-description){: #actions-create-validate-description } | `String.t` |  | An optional description for the validation |
 | [`before_action?`](#actions-create-validate-before_action?){: #actions-create-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
-| [`always_atomic?`](#actions-create-validate-always_atomic?){: #actions-create-validate-always_atomic? } | `boolean` | `false` | By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/2` callback defined. Set this to `true` to run it atomically always. |
+| [`always_atomic?`](#actions-create-validate-always_atomic?){: #actions-create-validate-always_atomic? } | `boolean` | `false` | By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/3` callback defined. Set this to `true` to run it atomically always. |
 
 
 
@@ -1593,7 +1593,7 @@ validate changing(:email)
 | [`message`](#actions-update-validate-message){: #actions-update-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#actions-update-validate-description){: #actions-update-validate-description } | `String.t` |  | An optional description for the validation |
 | [`before_action?`](#actions-update-validate-before_action?){: #actions-update-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
-| [`always_atomic?`](#actions-update-validate-always_atomic?){: #actions-update-validate-always_atomic? } | `boolean` | `false` | By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/2` callback defined. Set this to `true` to run it atomically always. |
+| [`always_atomic?`](#actions-update-validate-always_atomic?){: #actions-update-validate-always_atomic? } | `boolean` | `false` | By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/3` callback defined. Set this to `true` to run it atomically always. |
 
 
 
@@ -1835,7 +1835,7 @@ validate changing(:email)
 | [`message`](#actions-destroy-validate-message){: #actions-destroy-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#actions-destroy-validate-description){: #actions-destroy-validate-description } | `String.t` |  | An optional description for the validation |
 | [`before_action?`](#actions-destroy-validate-before_action?){: #actions-destroy-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
-| [`always_atomic?`](#actions-destroy-validate-always_atomic?){: #actions-destroy-validate-always_atomic? } | `boolean` | `false` | By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/2` callback defined. Set this to `true` to run it atomically always. |
+| [`always_atomic?`](#actions-destroy-validate-always_atomic?){: #actions-destroy-validate-always_atomic? } | `boolean` | `false` | By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/3` callback defined. Set this to `true` to run it atomically always. |
 
 
 
@@ -2362,7 +2362,7 @@ validate at_least_one_of_present([:first_name, :last_name])
 | [`message`](#validations-validate-message){: #validations-validate-message } | `String.t` |  | If provided, overrides any message set by the validation error |
 | [`description`](#validations-validate-description){: #validations-validate-description } | `String.t` |  | An optional description for the validation |
 | [`before_action?`](#validations-validate-before_action?){: #validations-validate-before_action? } | `boolean` | `false` | If set to `true`, the validation will be run in a before_action hook |
-| [`always_atomic?`](#validations-validate-always_atomic?){: #validations-validate-always_atomic? } | `boolean` | `false` | By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/2` callback defined. Set this to `true` to run it atomically always. |
+| [`always_atomic?`](#validations-validate-always_atomic?){: #validations-validate-always_atomic? } | `boolean` | `false` | By default, validations are only run atomically if all changes will be run atomically or if there is no `validate/3` callback defined. Set this to `true` to run it atomically always. |
 
 
 

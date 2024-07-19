@@ -90,7 +90,7 @@ Specifies the action actor
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-action-actor-source){: #reactor-action-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
+| [`source`](#reactor-action-actor-source){: #reactor-action-actor-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -136,7 +136,7 @@ inputs(author: result(:get_user))
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`template`](#reactor-action-inputs-template){: #reactor-action-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+| [`template`](#reactor-action-inputs-template){: #reactor-action-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -167,7 +167,7 @@ Specifies the action tenant
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-action-tenant-source){: #reactor-action-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
+| [`source`](#reactor-action-tenant-source){: #reactor-action-tenant-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -340,7 +340,7 @@ argument :three, value(3)
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`name`](#reactor-ash_step-argument-name){: #reactor-ash_step-argument-name .spark-required} | `atom` |  | The name of the argument which will be used as the key in the `arguments` map passed to the implementation. |
-| [`source`](#reactor-ash_step-argument-source){: #reactor-ash_step-argument-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the argument. See `Reactor.Dsl.Argument` for more information. |
+| [`source`](#reactor-ash_step-argument-source){: #reactor-ash_step-argument-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the argument. See `Reactor.Dsl.Argument` for more information. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -456,14 +456,14 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`initial`](#reactor-bulk_create-initial){: #reactor-bulk_create-initial .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | A collection of inputs to pass to the create action. Must implement the `Enumerable` protocol. |
+| [`initial`](#reactor-bulk_create-initial){: #reactor-bulk_create-initial .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | A collection of inputs to pass to the create action. Must implement the `Enumerable` protocol. |
 | [`assume_casted?`](#reactor-bulk_create-assume_casted?){: #reactor-bulk_create-assume_casted? } | `boolean` | `false` | Whether or not to cast attributes and arguments as input. This is an optimization for cases where the input is already casted and/or not in need of casting |
 | [`authorize_changeset_with`](#reactor-bulk_create-authorize_changeset_with){: #reactor-bulk_create-authorize_changeset_with } | `:filter \| :error` | `:filter` | If set to `:error`, instead of filtering unauthorized changes, unauthorized changes will raise an appropriate forbidden error |
 | [`authorize_query_with`](#reactor-bulk_create-authorize_query_with){: #reactor-bulk_create-authorize_query_with } | `:filter \| :error` | `:filter` | If set to `:error`, instead of filtering unauthorized query results, unauthorized query results will raise an appropriate forbidden error |
 | [`batch_size`](#reactor-bulk_create-batch_size){: #reactor-bulk_create-batch_size } | `nil \| pos_integer` |  | The number of records to include in each batch. Defaults to the `default_limit` or `max_page_size` of the action, or 100. |
 | [`load`](#reactor-bulk_create-load){: #reactor-bulk_create-load } | `atom \| list(atom)` | `[]` | A load statement to apply to records. Ignored if `return_records?` is not true. |
 | [`max_concurrency`](#reactor-bulk_create-max_concurrency){: #reactor-bulk_create-max_concurrency } | `non_neg_integer` | `0` | If set to a value greater than 0, up to that many tasks will be started to run batches asynchronously. |
-| [`notification_metadata`](#reactor-bulk_create-notification_metadata){: #reactor-bulk_create-notification_metadata } | `map \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` | `%{}` | Metadata to be merged into the metadata field for all notifications sent from this operation. |
+| [`notification_metadata`](#reactor-bulk_create-notification_metadata){: #reactor-bulk_create-notification_metadata } | `map \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` | `%{}` | Metadata to be merged into the metadata field for all notifications sent from this operation. |
 | [`notify?`](#reactor-bulk_create-notify?){: #reactor-bulk_create-notify? } | `boolean` | `false` | Whether or not to generate any notifications. This may be intensive for large bulk actions. |
 | [`read_action`](#reactor-bulk_create-read_action){: #reactor-bulk_create-read_action } | `atom` |  | The action to use when building the read query. |
 | [`return_errors?`](#reactor-bulk_create-return_errors?){: #reactor-bulk_create-return_errors? } | `boolean` | `false` | Whether or not to return all of the errors that occur. Defaults to false to account for large inserts. |
@@ -504,7 +504,7 @@ Specifies the action actor
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-bulk_create-actor-source){: #reactor-bulk_create-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
+| [`source`](#reactor-bulk_create-actor-source){: #reactor-bulk_create-actor-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -535,7 +535,7 @@ Specifies the action tenant
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-bulk_create-tenant-source){: #reactor-bulk_create-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
+| [`source`](#reactor-bulk_create-tenant-source){: #reactor-bulk_create-tenant-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -651,7 +651,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`initial`](#reactor-bulk_update-initial){: #reactor-bulk_update-initial .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | A collection of inputs to pass to the create action. Must implement the `Enumerable` protocol. |
+| [`initial`](#reactor-bulk_update-initial){: #reactor-bulk_update-initial .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | A collection of inputs to pass to the create action. Must implement the `Enumerable` protocol. |
 | [`allow_stream_with`](#reactor-bulk_update-allow_stream_with){: #reactor-bulk_update-allow_stream_with } | `:keyset \| :offset \| :full_read` | `:keyset` | The 'worst' strategy allowed to be used to fetch records if the :stream strategy is chosen. See the `Ash.stream!/2` docs for more. |
 | [`assume_casted?`](#reactor-bulk_update-assume_casted?){: #reactor-bulk_update-assume_casted? } | `boolean` | `false` | Whether or not to cast attributes and arguments as input. This is an optimization for cases where the input is already casted and/or not in need of casting |
 | [`atomic_update`](#reactor-bulk_update-atomic_update){: #reactor-bulk_update-atomic_update } | `map` |  | A map of atomic updates to apply. See `Ash.Changeset.atomic_update/3` for more. |
@@ -663,7 +663,7 @@ end
 | [`load`](#reactor-bulk_update-load){: #reactor-bulk_update-load } | `atom \| list(atom)` | `[]` | A load statement to apply to records. Ignored if `return_records?` is not true. |
 | [`lock`](#reactor-bulk_update-lock){: #reactor-bulk_update-lock } | `any` |  | A lock statement to add onto the query. |
 | [`max_concurrency`](#reactor-bulk_update-max_concurrency){: #reactor-bulk_update-max_concurrency } | `non_neg_integer` | `0` | If set to a value greater than 0, up to that many tasks will be started to run batches asynchronously. |
-| [`notification_metadata`](#reactor-bulk_update-notification_metadata){: #reactor-bulk_update-notification_metadata } | `map \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` | `%{}` | Metadata to be merged into the metadata field for all notifications sent from this operation. |
+| [`notification_metadata`](#reactor-bulk_update-notification_metadata){: #reactor-bulk_update-notification_metadata } | `map \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` | `%{}` | Metadata to be merged into the metadata field for all notifications sent from this operation. |
 | [`notify?`](#reactor-bulk_update-notify?){: #reactor-bulk_update-notify? } | `boolean` | `false` | Whether or not to generate any notifications. This may be intensive for large bulk actions. |
 | [`page`](#reactor-bulk_update-page){: #reactor-bulk_update-page } | `keyword` | `[]` | Pagination options, see [the pagination docs for more](read-actions.md#pagination). |
 | [`read_action`](#reactor-bulk_update-read_action){: #reactor-bulk_update-read_action } | `atom` |  | The action to use when building the read query. |
@@ -706,7 +706,7 @@ Specifies the action actor
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-bulk_update-actor-source){: #reactor-bulk_update-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
+| [`source`](#reactor-bulk_update-actor-source){: #reactor-bulk_update-actor-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -752,7 +752,7 @@ inputs(author: result(:get_user))
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`template`](#reactor-bulk_update-inputs-template){: #reactor-bulk_update-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+| [`template`](#reactor-bulk_update-inputs-template){: #reactor-bulk_update-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -783,7 +783,7 @@ Specifies the action tenant
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-bulk_update-tenant-source){: #reactor-bulk_update-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
+| [`source`](#reactor-bulk_update-tenant-source){: #reactor-bulk_update-tenant-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -867,7 +867,7 @@ Declares a step that will modify a changeset.
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`initial`](#reactor-change-initial){: #reactor-change-initial .spark-required} | `module \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The initial value to work from, either a resource or a changeset |
+| [`initial`](#reactor-change-initial){: #reactor-change-initial .spark-required} | `module \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The initial value to work from, either a resource or a changeset |
 | [`description`](#reactor-change-description){: #reactor-change-description } | `String.t \| nil` |  | An optional description for the change |
 | [`only_when_valid?`](#reactor-change-only_when_valid?){: #reactor-change-only_when_valid? } | `boolean` | `false` | If the change should only be run on valid changes. By default, all changes are run unless stated otherwise here. |
 | [`where`](#reactor-change-where){: #reactor-change-where } | `(any, any -> any) \| module \| list((any, any -> any) \| module)` | `[]` | Validations that should pass in order for this change to apply. These validations failing will result in this change being ignored. |
@@ -930,7 +930,7 @@ argument :three, value(3)
 | Name | Type | Default | Docs |
 |------|------|---------|------|
 | [`name`](#reactor-change-argument-name){: #reactor-change-argument-name .spark-required} | `atom` |  | The name of the argument which will be used as the key in the `arguments` map passed to the implementation. |
-| [`source`](#reactor-change-argument-source){: #reactor-change-argument-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the argument. See `Reactor.Dsl.Argument` for more information. |
+| [`source`](#reactor-change-argument-source){: #reactor-change-argument-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the argument. See `Reactor.Dsl.Argument` for more information. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1040,7 +1040,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`initial`](#reactor-create-initial){: #reactor-create-initial } | `nil \| module \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The initial value passed into the action. |
+| [`initial`](#reactor-create-initial){: #reactor-create-initial } | `nil \| module \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The initial value passed into the action. |
 | [`upsert_identity`](#reactor-create-upsert_identity){: #reactor-create-upsert_identity } | `atom` |  | The identity to use for the upsert |
 | [`upsert?`](#reactor-create-upsert?){: #reactor-create-upsert? } | `boolean` | `false` | Whether or not this action should be executed as an upsert. |
 | [`domain`](#reactor-create-domain){: #reactor-create-domain } | `module` |  | The Domain to use when calling the action.  Defaults to the Domain set on the resource or in the `ash` section. |
@@ -1067,7 +1067,7 @@ Specifies the action actor
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-create-actor-source){: #reactor-create-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
+| [`source`](#reactor-create-actor-source){: #reactor-create-actor-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1113,7 +1113,7 @@ inputs(author: result(:get_user))
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`template`](#reactor-create-inputs-template){: #reactor-create-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+| [`template`](#reactor-create-inputs-template){: #reactor-create-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1144,7 +1144,7 @@ Specifies the action tenant
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-create-tenant-source){: #reactor-create-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
+| [`source`](#reactor-create-tenant-source){: #reactor-create-tenant-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1251,7 +1251,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`initial`](#reactor-destroy-initial){: #reactor-destroy-initial .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The record to update. |
+| [`initial`](#reactor-destroy-initial){: #reactor-destroy-initial .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The record to update. |
 | [`return_destroyed?`](#reactor-destroy-return_destroyed?){: #reactor-destroy-return_destroyed? } | `boolean` | `false` | Whether or not the step should return the destroyed record upon completion. |
 | [`domain`](#reactor-destroy-domain){: #reactor-destroy-domain } | `module` |  | The Domain to use when calling the action.  Defaults to the Domain set on the resource or in the `ash` section. |
 | [`async?`](#reactor-destroy-async?){: #reactor-destroy-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
@@ -1277,7 +1277,7 @@ Specifies the action actor
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-destroy-actor-source){: #reactor-destroy-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
+| [`source`](#reactor-destroy-actor-source){: #reactor-destroy-actor-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1323,7 +1323,7 @@ inputs(author: result(:get_user))
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`template`](#reactor-destroy-inputs-template){: #reactor-destroy-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+| [`template`](#reactor-destroy-inputs-template){: #reactor-destroy-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1354,7 +1354,7 @@ Specifies the action tenant
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-destroy-tenant-source){: #reactor-destroy-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
+| [`source`](#reactor-destroy-tenant-source){: #reactor-destroy-tenant-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1472,7 +1472,7 @@ Specifies the action actor
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-read_one-actor-source){: #reactor-read_one-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
+| [`source`](#reactor-read_one-actor-source){: #reactor-read_one-actor-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1518,7 +1518,7 @@ inputs(author: result(:get_user))
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`template`](#reactor-read_one-inputs-template){: #reactor-read_one-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+| [`template`](#reactor-read_one-inputs-template){: #reactor-read_one-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1549,7 +1549,7 @@ Specifies the action tenant
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-read_one-tenant-source){: #reactor-read_one-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
+| [`source`](#reactor-read_one-tenant-source){: #reactor-read_one-tenant-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1671,7 +1671,7 @@ Specifies the action actor
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-read-actor-source){: #reactor-read-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
+| [`source`](#reactor-read-actor-source){: #reactor-read-actor-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1717,7 +1717,7 @@ inputs(author: result(:get_user))
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`template`](#reactor-read-inputs-template){: #reactor-read-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+| [`template`](#reactor-read-inputs-template){: #reactor-read-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1748,7 +1748,7 @@ Specifies the action tenant
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-read-tenant-source){: #reactor-read-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
+| [`source`](#reactor-read-tenant-source){: #reactor-read-tenant-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -1930,7 +1930,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`initial`](#reactor-update-initial){: #reactor-update-initial .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The record to update. |
+| [`initial`](#reactor-update-initial){: #reactor-update-initial .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The record to update. |
 | [`domain`](#reactor-update-domain){: #reactor-update-domain } | `module` |  | The Domain to use when calling the action.  Defaults to the Domain set on the resource or in the `ash` section. |
 | [`async?`](#reactor-update-async?){: #reactor-update-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
 | [`authorize?`](#reactor-update-authorize?){: #reactor-update-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
@@ -1955,7 +1955,7 @@ Specifies the action actor
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-update-actor-source){: #reactor-update-actor-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
+| [`source`](#reactor-update-actor-source){: #reactor-update-actor-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -2001,7 +2001,7 @@ inputs(author: result(:get_user))
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`template`](#reactor-update-inputs-template){: #reactor-update-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
+| [`template`](#reactor-update-inputs-template){: #reactor-update-inputs-template .spark-required} | `%{optional(atom) => Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value} \| keyword(Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value)` |  |  |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -2032,7 +2032,7 @@ Specifies the action tenant
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`source`](#reactor-update-tenant-source){: #reactor-update-tenant-source .spark-required} | `Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
+| [`source`](#reactor-update-tenant-source){: #reactor-update-tenant-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
 ### Options
 
 | Name | Type | Default | Docs |
