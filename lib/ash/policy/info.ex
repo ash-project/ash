@@ -143,10 +143,16 @@ defmodule Ash.Policy.Info do
     |> set_access_type(default_access_type(resource))
   end
 
-  @private_fields_policy_default Application.compile_env(:ash, :policies)[:private_fields] || :show
+  @private_fields_policy_default Application.compile_env(:ash, :policies)[:private_fields] ||
+                                   :show
 
   def private_fields_policy(resource) do
-    Extension.get_opt(resource, [:field_policies], :private_fields, @private_fields_policy_default)
+    Extension.get_opt(
+      resource,
+      [:field_policies],
+      :private_fields,
+      @private_fields_policy_default
+    )
   end
 
   def policies(domain, resource) do
