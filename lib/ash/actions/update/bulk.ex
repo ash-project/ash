@@ -497,7 +497,6 @@ defmodule Ash.Actions.Update.Bulk do
            authorize_atomic_changeset(query, atomic_changeset, opts),
          {query, atomic_changeset} <-
            add_changeset_filters(query, atomic_changeset),
-          atomic_changeset <- Ash.Changeset.move_attributes_to_atomics(atomic_changeset),
          %Ash.Changeset{valid?: true} = atomic_changeset <-
            Ash.Changeset.handle_allow_nil_atomics(atomic_changeset, opts[:actor]),
          atomic_changeset <- sort_atomic_changes(atomic_changeset),
