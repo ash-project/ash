@@ -13,6 +13,11 @@ defmodule Ash.Test.Support.PolicySimple.Tweet do
     default_accept :*
     defaults [:read, :destroy, create: :*, update: :*]
 
+    update :set_user do
+      argument :user_id, :uuid, allow_nil?: false
+      change atomic_update(:user_id, arg(:user_id))
+    end
+
     create :create_foo do
       argument :foo, :string
     end
@@ -36,6 +41,10 @@ defmodule Ash.Test.Support.PolicySimple.Tweet do
     end
 
     policy action(:create) do
+      authorize_if relating_to_actor(:user)
+    end
+
+    policy action(:set_user) do
       authorize_if relating_to_actor(:user)
     end
 
