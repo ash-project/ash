@@ -1651,17 +1651,35 @@ defmodule Ash.Actions.Create.Bulk do
         end
 
       change_opts ->
-        Enum.map(batch, fn changeset ->
-          change_opts = templated_opts(change_opts, actor, changeset.arguments, changeset.context)
+        if module.has_batch_change?() do
+          batch
+          |> Enum.map(fn changeset ->
+            change_opts =
+              templated_opts(change_opts, actor, changeset.arguments, changeset.context)
 
-          {:ok, change_opts} = module.init(change_opts)
+            {:ok, change_opts} = module.init(change_opts)
 
-          module.change(
-            changeset,
-            change_opts,
-            struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
-          )
-        end)
+            module.batch_change(
+              [changeset],
+              change_opts,
+              struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
+            )
+          end)
+          |> Enum.concat()
+        else
+          Enum.map(batch, fn changeset ->
+            change_opts =
+              templated_opts(change_opts, actor, changeset.arguments, changeset.context)
+
+            {:ok, change_opts} = module.init(change_opts)
+
+            module.change(
+              changeset,
+              change_opts,
+              struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
+            )
+          end)
+        end
     end
   end
 end

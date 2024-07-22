@@ -15,8 +15,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   defmodule AddAfterToTitle do
     use Ash.Resource.Change
 
-    def change(changeset, _, %{bulk?: true}) do
-      changeset
+    def change(_, _, _) do
+      raise "can't get here"
     end
 
     def batch_change(changesets, _, _) do
@@ -209,7 +209,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       end
 
       create :create_with_after_batch do
-        change AddAfterToTitle
+        change {AddAfterToTitle, thing: context(:thing)}
         change AddBeforeToTitle
       end
 
