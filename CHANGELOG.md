@@ -2,33 +2,49 @@
 
 <!-- changelog -->
 
-## [v3.2.4](https://github.com/ash-project/ash/compare/v3.2.3...v3.2.4) (2024-07-18)
-
-
-
+## [v3.2.5](https://github.com/ash-project/ash/compare/v3.2.4...v3.2.5) (2024-07-22)
 
 ### Bug Fixes:
 
-* fix warning on transaction hooks violating their semantics
+- [destroy actions] apply atomic validations on non-bulk destroy actions
 
-## [v3.2.3](https://github.com/ash-project/ash/compare/v3.2.2...v3.2.3) (2024-07-18)
+- [`Ash.Policy.Info`] add default to private_fields_policy in Ash.Policy.Info (#1329)
 
+- [relating_to_actor] make `relating_to_actor` built-in-check aware of atomics
 
+- [`Ash.Expr`] remove redundant overload of `Ash.Expr.get_path` (#1328)
 
+- [`Ash.Type.NewType`] cast_input/2 of Ash.Type.NewType returning :ok (#1324)
 
-### Bug Fixes:
-
-* properly convert extension string into a module
-
-* only display available to extend
-
-* mix igniter.install ash --example case clause error (#1317)
-
-* only use attribute for filtering when multitenancy strategy == :attribute
+- [`Ash.Reactor`] warnings emitted by removed reactor behaviour function. (#1325)
 
 ### Improvements:
 
-* Add `Ash.Resource.Igniter.domain` to get the domain of a resource
+- [bulk actions] add `authorize_with` fallback option to bulk actions
+
+- [`Ash.Policy.Authorizer`] allow policy conditions to be applied inside their block
+
+## [v3.2.4](https://github.com/ash-project/ash/compare/v3.2.3...v3.2.4) (2024-07-18)
+
+### Bug Fixes:
+
+- [transaction hooks] fix warning on transaction hooks violating their semantics
+
+## [v3.2.3](https://github.com/ash-project/ash/compare/v3.2.2...v3.2.3) (2024-07-18)
+
+### Bug Fixes:
+
+- [`mix ash.patch.extend`] properly convert extension string into a module
+
+- [`mix ash.patch.extend`] only display available to extend
+
+- [`mix ash.install`] mix igniter.install ash --example case clause error (#1317)
+
+- [multitenancy] only use attribute for filtering when multitenancy strategy == :attribute
+
+### Improvements:
+
+- [`Ash.Resource.Igniter`] Add `Ash.Resource.Igniter.domain` to get the domain of a resource
 
 ## [v3.2.2](https://github.com/ash-project/ash/compare/v3.2.1...v3.2.2) (2024-07-17)
 

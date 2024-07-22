@@ -1457,7 +1457,7 @@ defmodule Ash.Changeset do
             set_error_field(value, attribute.name)
           end
 
-        %{changeset | atomics: Keyword.put(changeset.atomics, key, value)}
+        %{changeset | atomics: Keyword.put(changeset.atomics, attribute.name, value)}
         |> record_atomic_update_for_atomic_upgrade(attribute.name, value)
 
       {:not_atomic, message} ->
@@ -2256,26 +2256,29 @@ defmodule Ash.Changeset do
   end
 
   defp do_hydrate_atomic_refs(changeset, actor) do
-    Enum.reduce_while(changeset.atomics, {:ok, %{changeset | atomics: []}}, fn {key, expr},
-                                                                               {:ok, changeset} ->
-      expr =
-        Ash.Expr.fill_template(
-          expr,
-          actor,
-          changeset.arguments,
-          changeset.context,
-          changeset
-        )
+    Enum.reduce_while(
+      changeset.atomics,
+      {:ok, %{changeset | atomics: []}},
+      fn {key, expr}, {:ok, changeset} ->
+        expr =
+          Ash.Expr.fill_template(
+            expr,
+            actor,
+            changeset.arguments,
+            changeset.context,
+            changeset
+          )
 
-      case Ash.Filter.hydrate_refs(expr, %{resource: changeset.resource, public?: false}) do
-        {:ok, expr} ->
-          {:cont, {:ok, %{changeset | atomics: Keyword.put(changeset.atomics, key, expr)}}}
+        case Ash.Filter.hydrate_refs(expr, %{resource: changeset.resource, public?: false}) do
+          {:ok, expr} ->
+            {:cont, {:ok, %{changeset | atomics: Keyword.put(changeset.atomics, key, expr)}}}
 
-        {:error, error} ->
-          {:halt,
-           {:not_atomic, "Failed to validate expression #{inspect(expr)}: #{inspect(error)}"}}
+          {:error, error} ->
+            {:halt,
+             {:not_atomic, "Failed to validate expression #{inspect(expr)}: #{inspect(error)}"}}
+        end
       end
-    end)
+    )
   end
 
   @doc false
@@ -2367,7 +2370,8 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp add_atomic_validations(changeset, actor, opts) do
+  @doc false
+  def add_atomic_validations(changeset, actor, opts) do
     eager? = Keyword.get(opts, :eager?, true)
 
     changeset.atomic_validations
@@ -4582,9 +4586,9 @@ defmodule Ash.Changeset do
   """
   @spec update_change(t(), atom, (any -> any)) :: t()
   def update_change(changeset, attribute, fun) do
-    case Ash.Changeset.fetch_change(changeset, attribute) do
+    case fetch_change(changeset, attribute) do
       {:ok, change} ->
-        Ash.Changeset.force_change_attribute(changeset, attribute, fun.(change))
+        force_change_attribute(changeset, attribute, fun.(change))
 
       :error ->
         changeset
@@ -4773,7 +4777,15 @@ defmodule Ash.Changeset do
                 ), casted},
              {{:ok, casted}, _} <-
                {Ash.Type.apply_constraints(attribute.type, casted, constraints), casted} do
-          data_value = Map.get(changeset.data, attribute.name)
+          data_value =
+            case changeset.data do
+              %Ash.Changeset.OriginalDataNotAvailable{} ->
+                nil
+
+              data ->
+                Map.get(data, attribute.name)
+            end
+
           changeset = remove_default(changeset, attribute.name)
 
           cond do
@@ -4895,7 +4907,14 @@ defmodule Ash.Changeset do
              {:ok, casted} <- handle_change(changeset, attribute, casted, constraints),
              {:ok, casted} <-
                Ash.Type.apply_constraints(attribute.type, casted, constraints) do
-          data_value = Map.get(changeset.data, attribute.name)
+          data_value =
+            case changeset.data do
+              %Ash.Changeset.OriginalDataNotAvailable{} ->
+                nil
+
+              data ->
+                Map.get(data, attribute.name)
+            end
 
           changeset = remove_default(changeset, attribute.name)
 

@@ -91,7 +91,7 @@ end
 
 ## policies.policy
 ```elixir
-policy condition
+policy condition \\ nil
 ```
 
 
@@ -314,7 +314,7 @@ Target: `Ash.Policy.Policy`
 
 ## policies.bypass
 ```elixir
-bypass condition
+bypass condition \\ nil
 ```
 
 
@@ -594,7 +594,7 @@ end
 
 ## field_policies.field_policy_bypass
 ```elixir
-field_policy_bypass fields, condition \\ {Ash.Policy.Check.Static, [result: true]}
+field_policy_bypass fields, condition \\ nil
 ```
 
 
@@ -791,7 +791,7 @@ Target: `Ash.Policy.FieldPolicy`
 
 ## field_policies.field_policy
 ```elixir
-field_policy fields, condition \\ {Ash.Policy.Check.Static, [result: true]}
+field_policy fields, condition \\ nil
 ```
 
 

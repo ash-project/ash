@@ -1240,7 +1240,7 @@ defmodule Ash.Actions.Update.Bulk do
              maybe_is: false,
              pre_flight?: false,
              atomic_changeset: atomic_changeset,
-             filter_with: opts[:authorize_query_with] || :filter,
+             filter_with: opts[:authorize_query_with] || opts[:authorize_with] || :filter,
              run_queries?: false,
              alter_source?: true,
              no_check?: true
@@ -1275,7 +1275,7 @@ defmodule Ash.Actions.Update.Bulk do
              on_must_pass_strict_check:
                {:error,
                 %Ash.Error.Forbidden.InitialDataRequired{source: "must pass strict check"}},
-             filter_with: opts[:authorize_changeset_with] || :filter,
+             filter_with: opts[:authorize_changeset_with] || opts[:authorize_with] || :filter,
              alter_source?: true,
              run_queries?: false,
              base_query: query

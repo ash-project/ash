@@ -309,15 +309,19 @@ defmodule Ash do
     ],
     authorize_query_with: [
       type: {:one_of, [:filter, :error]},
-      default: :filter,
       doc:
-        "If set to `:error`, instead of filtering unauthorized query results, unauthorized query results will raise an appropriate forbidden error"
+        "If set to `:error`, instead of filtering unauthorized query results, unauthorized query results will raise an appropriate forbidden error. Uses `authorize_with` if not set."
     ],
     authorize_changeset_with: [
       type: {:one_of, [:filter, :error]},
+      doc:
+        "If set to `:error`, instead of filtering unauthorized changes, unauthorized changes will raise an appropriate forbidden error. Uses `authorize_with` if not set."
+    ],
+    authorize_with: [
+      type: {:one_of, [:filter, :error]},
       default: :filter,
       doc:
-        "If set to `:error`, instead of filtering unauthorized changes, unauthorized changes will raise an appropriate forbidden error"
+        "If set to `:error`, instead of filtering unauthorized query results, unauthorized query results will raise an appropriate forbidden error."
     ],
     context: [
       type: :map,

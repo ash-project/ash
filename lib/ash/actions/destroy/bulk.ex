@@ -1112,7 +1112,7 @@ defmodule Ash.Actions.Destroy.Bulk do
              return_forbidden_error?: true,
              pre_flight?: false,
              atomic_changeset: atomic_changeset,
-             filter_with: opts[:authorize_query_with] || :filter,
+             filter_with: opts[:authorize_query_with] || opts[:authorize_with] || :filter,
              run_queries?: false,
              maybe_is: false,
              alter_source?: true

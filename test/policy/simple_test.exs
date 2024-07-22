@@ -66,6 +66,58 @@ defmodule Ash.Test.Policy.SimpleTest do
     end
   end
 
+  test "relating_to_actor/1 works when creating", %{user: user} do
+    Tweet
+    |> Ash.Changeset.for_create(:create, %{user_id: user.id})
+    |> Ash.create!(authorize?: true, actor: user)
+
+    assert_raise Ash.Error.Forbidden, fn ->
+      Tweet
+      |> Ash.Changeset.for_create(:create, %{user_id: Ash.UUID.generate()})
+      |> Ash.create!(authorize?: true, actor: user)
+    end
+  end
+
+  test "relating_to_actor/1 works when updating", %{user: user} do
+    Tweet
+    |> Ash.Changeset.for_create(:create, %{user_id: user.id})
+    |> Ash.create!(authorize?: false, actor: user)
+
+    Ash.bulk_update!(Tweet, :set_user, %{user_id: user.id},
+      actor: user,
+      authorize?: true,
+      authorize_with: :error
+    )
+
+    assert_raise Ash.Error.Forbidden, fn ->
+      Ash.bulk_update!(Tweet, :set_user, %{user_id: Ash.UUID.generate()},
+        actor: user,
+        authorize?: true,
+        authorize_with: :error
+      )
+    end
+  end
+
+  test "relating_to_actor/1 works when updating non-atomically", %{user: user} do
+    tweet =
+      Tweet
+      |> Ash.Changeset.for_create(:create, %{user_id: user.id})
+      |> Ash.create!(authorize?: false, actor: user)
+
+    tweet
+    |> Ash.Changeset.for_update(:set_user, %{user_id: user.id}, actor: user, authorize?: true)
+    |> Ash.update!()
+
+    assert_raise Ash.Error.Forbidden, fn ->
+      tweet
+      |> Ash.Changeset.for_update(:set_user, %{user_id: Ash.UUID.generate()},
+        actor: user,
+        authorize?: true
+      )
+      |> Ash.update!()
+    end
+  end
+
   test "filter checks work on update/destroy actions", %{user: user} do
     tweet =
       Tweet
