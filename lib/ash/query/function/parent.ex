@@ -1,6 +1,5 @@
 defmodule Ash.Query.Parent do
   @moduledoc """
-  true if the provided field is nil
   Used to access values from the "source" of a given expression.
 
   This is used in cases where expressions are given for some relationship path, for example:any()
