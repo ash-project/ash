@@ -169,6 +169,10 @@ defmodule Ash.Resource.Change do
 
   @callback has_change?() :: boolean
 
+  @callback has_batch_change?() :: boolean
+  @callback has_after_batch?() :: boolean
+  @callback has_before_batch?() :: boolean
+
   @optional_callbacks before_batch: 3,
                       after_batch: 3,
                       batch_change: 3,
@@ -201,6 +205,30 @@ defmodule Ash.Resource.Change do
       else
         @impl true
         def has_change?, do: false
+      end
+
+      if Module.defines?(__MODULE__, {:batch_change, 3}, :def) do
+        @impl true
+        def has_batch_change?, do: true
+      else
+        @impl true
+        def has_batch_change?, do: false
+      end
+
+      if Module.defines?(__MODULE__, {:before_batch, 3}, :def) do
+        @impl true
+        def has_before_batch?, do: true
+      else
+        @impl true
+        def has_before_batch?, do: false
+      end
+
+      if Module.defines?(__MODULE__, {:after_batch, 3}, :def) do
+        @impl true
+        def has_after_batch?, do: true
+      else
+        @impl true
+        def has_after_batch?, do: false
       end
 
       if Module.defines?(__MODULE__, {:atomic, 3}, :def) do

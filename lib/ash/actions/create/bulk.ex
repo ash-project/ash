@@ -761,8 +761,8 @@ defmodule Ash.Actions.Create.Bulk do
     all_changes
     |> Enum.filter(fn
       {%{change: {module, _opts}}, _} ->
-        function_exported?(module, :batch_change, 3) &&
-          function_exported?(module, :before_batch, 3)
+        module.has_batch_change?() &&
+          module.has_before_batch?()
 
       _ ->
         false
@@ -1366,8 +1366,8 @@ defmodule Ash.Actions.Create.Bulk do
     all_changes
     |> Enum.filter(fn
       {%{change: {module, change_opts}}, _} ->
-        function_exported?(module, :batch_change, 3) &&
-          function_exported?(module, :after_batch, 3) &&
+        module.has_batch_change?() &&
+          module.has_after_batch?() &&
           module.batch_callbacks?(changesets, change_opts, context)
 
       _ ->
@@ -1556,8 +1556,8 @@ defmodule Ash.Actions.Create.Bulk do
                 Enum.any?(batch, fn item ->
                   item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action)
                 end) ||
-                (function_exported?(module, :batch_change, 3) &&
-                   function_exported?(module, :after_batch, 3) &&
+                (module.has_batch_change?() &&
+                   module.has_after_batch?() &&
                    module.batch_callbacks?(batch, change_opts, context))
 
             %{
@@ -1608,8 +1608,8 @@ defmodule Ash.Actions.Create.Bulk do
                   Enum.any?(batch, fn item ->
                     item.relationships not in [nil, %{}] || !Enum.empty?(item.after_action)
                   end) ||
-                  (function_exported?(module, :batch_change, 3) &&
-                     function_exported?(module, :after_batch, 3) &&
+                  (module.has_batch_change?() &&
+                     module.has_after_batch?() &&
                      module.batch_callbacks?(batch, change_opts, context))
 
               %{
@@ -1632,12 +1632,11 @@ defmodule Ash.Actions.Create.Bulk do
   defp batch_change(module, batch, change_opts, context, actor) do
     case change_opts do
       {:templated, change_opts} ->
-        if function_exported?(module, :batch_change, 4) do
+        if module.has_batch_change?() do
           module.batch_change(
             batch,
             change_opts,
-            struct(struct(Ash.Resource.Change.Context, context), bulk?: true),
-            actor
+            struct(struct(Ash.Resource.Change.Context, context), bulk?: true)
           )
         else
           Enum.map(batch, fn changeset ->
