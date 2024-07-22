@@ -205,10 +205,6 @@ defmodule Ash.Expr do
   end
 
   @doc false
-  def get_path(map, [key]) when is_struct(map) do
-    Map.get(map, key)
-  end
-
   def get_path(map, [key]) when is_map(map) do
     Map.get(map, key)
   end
