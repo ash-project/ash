@@ -2,6 +2,21 @@
 
 <!-- changelog -->
 
+## [v3.2.6](https://github.com/ash-project/ash/compare/v3.2.5...v3.2.6) (2024-07-22)
+
+
+
+
+### Bug Fixes:
+
+* fallback to `authorize_with` when authorizing bulk destroy actions
+
+* don't refer to non-existent `batch_change/4`
+
+### Improvements:
+
+* Replace incorrect function_exported?-checks in bulk-actions, add has-defs for change modules (#1330)
+
 ## [v3.2.5](https://github.com/ash-project/ash/compare/v3.2.4...v3.2.5) (2024-07-22)
 
 ### Bug Fixes:
