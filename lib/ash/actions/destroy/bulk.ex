@@ -1145,7 +1145,7 @@ defmodule Ash.Actions.Destroy.Bulk do
              on_must_pass_strict_check:
                {:error, %Ash.Error.Forbidden.InitialDataRequired{source: changeset}},
              run_queries?: false,
-             filter_with: opts[:authorize_changeset_with] || :filter,
+             filter_with: opts[:authorize_changeset_with] || opts[:authorize_with] || :filter,
              alter_source?: true,
              base_query: query
            ) do
