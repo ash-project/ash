@@ -55,7 +55,11 @@ defmodule Ash.Policy.Policy do
     if Enum.empty?(policy.policies) do
       {:error, "Policies must have at least one check."}
     else
-      {:ok, policy}
+      if policy.condition in [nil, []] do
+        {:ok, %{policy | condition: [{Ash.Policy.Check.Static, result: true}]}}
+      else
+        {:ok, policy}
+      end
     end
   end
 

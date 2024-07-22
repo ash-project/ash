@@ -45,7 +45,8 @@ defmodule Ash.Test.Actions.AggregateTest do
     end
 
     policies do
-      policy always() do
+      policy do
+        condition(always())
         authorize_if expr(public == true)
       end
     end

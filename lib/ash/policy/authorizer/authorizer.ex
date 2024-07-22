@@ -178,7 +178,7 @@ defmodule Ash.Policy.Authorizer do
         """
       ]
     ],
-    args: [:condition],
+    args: [{:optional, :condition}],
     target: Ash.Policy.Policy,
     no_depend_modules: [:condition],
     transform: {Ash.Policy.Policy, :transform, []},
@@ -274,7 +274,7 @@ defmodule Ash.Policy.Authorizer do
           "A check or list of checks that must be true in order for this field policy to apply. If not specified, it always applies."
       ]
     ],
-    args: [:fields, {:optional, :condition, {Ash.Policy.Check.Static, result: true}}],
+    args: [:fields, {:optional, :condition}],
     target: Ash.Policy.FieldPolicy,
     transform: {Ash.Policy.FieldPolicy, :transform, []},
     entities: [

@@ -16,11 +16,18 @@ defmodule Ash.Policy.FieldPolicy do
     if Enum.empty?(field_policy.policies) do
       {:error, "Field policies must have at least one check."}
     else
+      field_policy =
+        if field_policy.condition in [nil, []] do
+          %{field_policy | condition: [{Ash.Policy.Check.Static, result: true}]}
+        else
+          field_policy
+        end
+
       {:ok,
        %{
          field_policy
          | policies: Enum.map(field_policy.policies, &set_field_policy_opt/1),
-           condition: Enum.map(List.wrap(field_policy.condition || []), &set_field_policy_opt/1)
+           condition: Enum.map(List.wrap(field_policy.condition), &set_field_policy_opt/1)
        }}
     end
   end
