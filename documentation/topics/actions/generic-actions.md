@@ -78,3 +78,34 @@ end
 >   run # ...
 > end
 > ```
+
+## Calling Generic Actions
+
+To execute a generic action in Ash, follow these steps:
+
+1. **Prepare the action input:** Use `Ash.ActionInput.for_action/4` to specify the resource, the action and its arguments.
+2. **Run the action:** Use `Ash.run_action/2` to execute the action with the prepared input.
+
+### Example Usage
+
+Consider an `Ash.Resource` with the action `:say_hello`:
+
+```elixir
+action :say_hello, :string do
+  argument :name, :string, allow_nil?: false
+
+  run fn input, _ ->
+    {:ok, "Hello: #{input.arguments.name}"}
+  end
+end
+```
+
+Call this action:
+
+```elixir
+{:ok, greeting} = Resource
+|> Ash.ActionInput.for_action(:say_hello, %{name: "Alice"})
+|> Ash.run_action()
+
+IO.puts(greeting)  # Output: Hello: Alice
+```
