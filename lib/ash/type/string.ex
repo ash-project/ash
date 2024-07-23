@@ -159,12 +159,19 @@ defmodule Ash.Type.String do
         Keyword.take(constraints, [:max_length, :min_length])
       )
 
-    if constraints[:trim?] && constraints[:min_length] do
-      StreamData.filter(base_generator, fn value ->
-        value |> String.trim() |> String.length() |> Kernel.>=(constraints[:min_length])
-      end)
-    else
-      base_generator
+    cond do
+      constraints[:trim?] && constraints[:min_length] ->
+        StreamData.filter(base_generator, fn value ->
+          value |> String.trim() |> String.length() |> Kernel.>=(constraints[:min_length])
+        end)
+
+      constraints[:min_length] ->
+        StreamData.filter(base_generator, fn value ->
+          value |> String.length() |> Kernel.>=(constraints[:min_length])
+        end)
+
+      true ->
+        base_generator
     end
   end
 
