@@ -95,6 +95,15 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
     end
   end
 
+  defmodule AtomicOnlyValidation do
+    use Ash.Resource.Validation
+
+    @impl true
+    def atomic(_, _, _) do
+      :ok
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -109,6 +118,11 @@ defmodule Ash.Test.Actions.BulkDestroyTest do
 
     code_interface do
       define :destroy_with_policy
+    end
+
+    validations do
+      validate AtomicOnlyValidation,
+        on: [:destroy]
     end
 
     actions do

@@ -238,12 +238,25 @@ defmodule Ash.Test.Actions.CreateTest do
     end
   end
 
+  defmodule AtomicOnlyValidation do
+    use Ash.Resource.Validation
+
+    @impl true
+    def atomic(_, _, _) do
+      :ok
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Ash.Test.Domain
 
     ets do
       private?(true)
+    end
+
+    validations do
+      validate AtomicOnlyValidation
     end
 
     actions do

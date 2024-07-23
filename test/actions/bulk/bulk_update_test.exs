@@ -171,6 +171,15 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
     end
   end
 
+  defmodule AtomicOnlyValidation do
+    use Ash.Resource.Validation
+
+    @impl true
+    def atomic(_, _, _) do
+      :ok
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -181,6 +190,11 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
 
     ets do
       private? true
+    end
+
+    validations do
+      validate AtomicOnlyValidation,
+        on: [:update]
     end
 
     actions do

@@ -135,6 +135,15 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
+  defmodule AtomicOnlyValidation do
+    use Ash.Resource.Validation
+
+    @impl true
+    def atomic(_, _, _) do
+      :ok
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -153,6 +162,11 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       strategy :attribute
       attribute :org_id
       global? true
+    end
+
+    validations do
+      validate AtomicOnlyValidation,
+        on: [:create]
     end
 
     calculations do
