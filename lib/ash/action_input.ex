@@ -58,6 +58,7 @@ defmodule Ash.ActionInput do
 
     domain =
       input.domain || opts[:domain] || Ash.Resource.Info.domain(input.resource) ||
+        Ash.Actions.Helpers.maybe_embedded_domain(input.resource) ||
         raise ArgumentError,
           message:
             "Could not determine domain for action. Provide the `domain` option or configure a domain in the resource directly."

@@ -501,7 +501,8 @@ defmodule Ash.Helpers do
 
   defp domain_from_resource(resource) do
     if Ash.Resource.Info.resource?(resource) || (is_map(resource) and not is_struct(resource)) do
-      Ash.Resource.Info.domain(resource)
+      Ash.Resource.Info.domain(resource) ||
+        Ash.Actions.Helpers.maybe_embedded_domain(resource)
     end
   end
 

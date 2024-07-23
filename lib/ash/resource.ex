@@ -118,29 +118,18 @@ defmodule Ash.Resource do
           ] do
       @persist {:simple_notifiers, List.wrap(opts[:simple_notifiers])}
 
-      cond do
-        embedded? && has_domain? ->
-          raise """
-          Configuration Error in #{inspect(__MODULE__)}:
+      unless embedded? || has_domain? do
+        IO.warn("""
+        Configuration Error:
 
-          `domain` option must not be specified for embedded resource.
-          """
+        `domain` option missing for #{inspect(__MODULE__)}
 
-        embedded? || has_domain? ->
-          :ok
+        If you wish to make a resource compatible with multiple domains, set the domain to `nil` explicitly.
 
-        true ->
-          IO.warn("""
-          Configuration Error:
+        Example configuration:
 
-          `domain` option missing for #{inspect(__MODULE__)}
-
-          If you wish to make a resource compatible with multiple domains, set the domain to `nil` explicitly.
-
-          Example configuration:
-
-          use Ash.Resource, #{String.trim_trailing(String.trim_leading(inspect([{:domain, YourDomain} | opts], pretty: true), "["), "]")}
-          """)
+        use Ash.Resource, #{String.trim_trailing(String.trim_leading(inspect([{:domain, YourDomain} | opts], pretty: true), "["), "]")}
+        """)
       end
 
       if domain do

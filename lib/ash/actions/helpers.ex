@@ -74,6 +74,12 @@ defmodule Ash.Actions.Helpers do
     opts
   end
 
+  def maybe_embedded_domain(resource) do
+    if Ash.Resource.Info.embedded?(resource) do
+      Ash.EmbeddableType.ShadowDomain
+    end
+  end
+
   def set_context_and_get_opts(domain, query_or_changeset, opts) do
     opts = transform_tenant(opts)
     opts = set_skip_unknown_opts(opts, query_or_changeset)
@@ -81,7 +87,7 @@ defmodule Ash.Actions.Helpers do
 
     domain =
       Ash.Resource.Info.domain(query_or_changeset.resource) || opts[:domain] || domain ||
-        query_or_changeset.domain
+        query_or_changeset.domain || maybe_embedded_domain(query_or_changeset.resource)
 
     opts =
       case query_or_changeset.context do

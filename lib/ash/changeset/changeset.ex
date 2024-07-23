@@ -1318,6 +1318,7 @@ defmodule Ash.Changeset do
 
     domain =
       changeset.domain || opts[:domain] || Ash.Resource.Info.domain(changeset.resource) ||
+        Ash.Actions.Helpers.maybe_embedded_domain(changeset.resource) ||
         raise ArgumentError,
           message:
             "Could not determine domain for changeset. Provide the `domain` option or configure a domain in the resource directly."
@@ -1606,6 +1607,7 @@ defmodule Ash.Changeset do
   defp do_for_action(changeset, action_or_name, params, opts) do
     domain =
       changeset.domain || opts[:domain] || Ash.Resource.Info.domain(changeset.resource) ||
+        Ash.Actions.Helpers.maybe_embedded_domain(changeset.resource) ||
         raise ArgumentError,
           message:
             "Could not determine domain for changeset. Provide the `domain` option or configure a domain in the resource directly."

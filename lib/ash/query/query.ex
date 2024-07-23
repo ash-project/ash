@@ -500,6 +500,7 @@ defmodule Ash.Query do
 
     domain =
       query.domain || opts[:domain] || Ash.Resource.Info.domain(query.resource) ||
+        Ash.Actions.Helpers.maybe_embedded_domain(query.resource) ||
         raise ArgumentError,
               "Could not determine domain for query. Provide the `domain` option or configure a domain in the resource directly."
 
@@ -2879,6 +2880,7 @@ defmodule Ash.Query do
   def apply_to(query, records, opts \\ []) do
     domain =
       query.domain || Ash.Resource.Info.domain(query.resource) || opts[:domain] ||
+        Ash.Actions.Helpers.maybe_embedded_domain(query.resource) ||
         raise ArgumentError,
               "Could not determine domain for #{inspect(query)}, please provide the `:domain` option."
 
