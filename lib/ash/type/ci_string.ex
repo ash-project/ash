@@ -59,9 +59,25 @@ defmodule Ash.Type.CiString do
   @impl true
   def generator(constraints) do
     StreamData.string(
-      :alphanumeric,
+      :printable,
       Keyword.take(constraints, [:max_length, :min_length])
     )
+    |> then(fn generator ->
+      cond do
+        constraints[:trim?] && constraints[:min_length] ->
+          StreamData.filter(generator, fn value ->
+            value |> String.trim() |> String.length() |> Kernel.>=(constraints[:min_length])
+          end)
+
+        constraints[:min_length] ->
+          StreamData.filter(generator, fn value ->
+            value |> String.length() |> Kernel.>=(constraints[:min_length])
+          end)
+
+        true ->
+          generator
+      end
+    end)
     |> StreamData.map(fn value ->
       value =
         case constraints[:casing] do
