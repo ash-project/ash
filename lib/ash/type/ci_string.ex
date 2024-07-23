@@ -59,7 +59,7 @@ defmodule Ash.Type.CiString do
   @impl true
   def generator(constraints) do
     StreamData.string(
-      :printable,
+      :alphanumeric,
       Keyword.take(constraints, [:max_length, :min_length])
     )
     |> StreamData.map(fn value ->

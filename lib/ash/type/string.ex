@@ -155,7 +155,7 @@ defmodule Ash.Type.String do
   def generator(constraints) do
     base_generator =
       StreamData.string(
-        :printable,
+        :alphanumeric,
         Keyword.take(constraints, [:max_length, :min_length])
       )
 
