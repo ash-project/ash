@@ -962,6 +962,9 @@ defmodule Ash.Changeset do
           match?("_" <> _, key) ->
             {:cont, changeset}
 
+          :* in List.wrap(opts[:skip_unknown_inputs]) ->
+            {:cont, changeset}
+
           key in List.wrap(opts[:skip_unknown_inputs]) ->
             {:cont, changeset}
 
@@ -998,6 +1001,9 @@ defmodule Ash.Changeset do
                     {:halt, {:not_atomic, reason}}
                 end
 
+              :* in List.wrap(opts[:skip_unknown_inputs]) ->
+                {:cont, changeset}
+
               key in List.wrap(opts[:skip_unknown_inputs]) ->
                 {:cont, changeset}
 
@@ -1018,6 +1024,9 @@ defmodule Ash.Changeset do
             end
 
           match?("_" <> _, key) ->
+            {:cont, changeset}
+
+          :* in List.wrap(opts[:skip_unknown_inputs]) ->
             {:cont, changeset}
 
           key in List.wrap(opts[:skip_unknown_inputs]) ->
@@ -1112,9 +1121,9 @@ defmodule Ash.Changeset do
       doc: "set the tenant on the changeset"
     ],
     skip_unknown_inputs: [
-      type: {:list, {:or, [:atom, :string]}},
+      type: {:wrap_list, {:or, [:atom, :string]}},
       doc:
-        "A list of inputs that, if provided, will be ignored if they are not recognized by the action."
+        "A list of inputs that, if provided, will be ignored if they are not recognized by the action. Use `:*` to indicate all unknown keys."
     ],
     context: [
       type: :map,
@@ -2037,6 +2046,9 @@ defmodule Ash.Changeset do
       cond do
         !Ash.Resource.Info.action_input?(changeset.resource, action.name, name) ->
           cond do
+            :* in List.wrap(opts[:skip_unknown_inputs]) ->
+              changeset
+
             name in skip_unknown_inputs ->
               changeset
 

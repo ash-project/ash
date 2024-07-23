@@ -61,8 +61,22 @@ defmodule Ash.Actions.Helpers do
   defp set_context(%Ash.ActionInput{} = action_input, context),
     do: Ash.ActionInput.set_context(action_input, context)
 
+  defp set_skip_unknown_opts(opts, %{action: %{skip_unknown_inputs: skip_unknown_inputs}}) do
+    Keyword.update(
+      opts,
+      :skip_unknown_inputs,
+      skip_unknown_inputs,
+      &Enum.concat(List.wrap(&1), skip_unknown_inputs)
+    )
+  end
+
+  defp set_skip_unknown_opts(opts, _query_or_changeset) do
+    opts
+  end
+
   def set_context_and_get_opts(domain, query_or_changeset, opts) do
     opts = transform_tenant(opts)
+    opts = set_skip_unknown_opts(opts, query_or_changeset)
     query_or_changeset = set_context(query_or_changeset, opts[:context] || %{})
 
     domain =

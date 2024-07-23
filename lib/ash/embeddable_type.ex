@@ -364,6 +364,7 @@ defmodule Ash.EmbeddableType do
           :destroy_action,
           :update_action,
           :domain,
+          :skip_unknown_inputs,
           :__source__
         ])
         |> Keyword.put(:on_update,
@@ -448,6 +449,8 @@ defmodule Ash.EmbeddableType do
         |> Enum.concat(
           Enum.flat_map(Ash.Resource.Info.primary_key(__MODULE__), &[&1, to_string(&1)])
         )
+        |> Enum.concat(List.wrap(constraints[:skip_unknown_inputs]))
+        |> Enum.concat(List.wrap(constraints[:items][:skip_unknown_inputs]))
       end
 
       def prepare_change(old_value, "", constraints) do

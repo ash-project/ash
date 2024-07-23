@@ -474,10 +474,6 @@ defmodule Ash.Helpers do
     get_domain(resource, opts)
   end
 
-  def get_domain(%resource{}, opts)  do
-    get_domain(resource, opts)
-  end
-
   def get_domain(nil, opts) do
     cond do
       domain = opts[:domain] ->

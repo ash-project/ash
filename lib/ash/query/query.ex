@@ -472,9 +472,9 @@ defmodule Ash.Query do
       doc: "set the tenant on the query"
     ],
     skip_unknown_inputs: [
-      type: {:list, {:or, [:atom, :string]}},
+      type: {:wrap_list, {:or, [:atom, :string]}},
       doc:
-        "A list of inputs that, if provided, will be ignored if they are not recognized by the action."
+        "A list of inputs that, if provided, will be ignored if they are not recognized by the action. Use `:*` to indicate all unknown keys."
     ]
   ]
 
@@ -647,6 +647,9 @@ defmodule Ash.Query do
       cond do
         has_argument?(action, name) ->
           set_argument(query, name, value)
+
+        :* in List.wrap(opts[:skip_unknown_inputs]) ->
+          query
 
         name in skip_unknown_inputs ->
           query

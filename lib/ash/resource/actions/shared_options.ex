@@ -69,6 +69,11 @@ defmodule Ash.Resource.Actions.SharedOptions do
       type: {:list, {:behaviour, Ash.Notifier}},
       doc: "Notifiers that will be called specifically for this action."
     ],
+    skip_unknown_inputs: [
+      type: {:wrap_list, {:or, [:atom, :string]}},
+      default: [],
+      doc: "A list of unknown fields to skip, or `:*` to skip all unknown fields."
+    ],
     manual?: [
       type: :boolean,
       doc: """

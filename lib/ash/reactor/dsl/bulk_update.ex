@@ -88,7 +88,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
           reuse_values?: boolean,
           rollback_on_error?: boolean,
           select: [atom],
-          skip_unknown_inputs: [atom],
+          skip_unknown_inputs: list(atom | String.t()),
           sorted?: boolean,
           stop_on_error?: boolean,
           strategy: :atomic | :atomic_batches | :stream,
@@ -290,9 +290,9 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
             required: false
           ],
           skip_unknown_inputs: [
-            type: {:wrap_list, :atom},
+            type: {:wrap_list, {:or, [:atom, :string]}},
             doc:
-              "A list of inputs that, if provided, will be ignored if they are not recognized by the action.",
+              "A list of inputs that, if provided, will be ignored if they are not recognized by the action. Use `:*` to indicate all unknown keys.",
             required: false
           ],
           sorted?: [

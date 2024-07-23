@@ -98,6 +98,11 @@ defmodule Ash do
                           """,
                           default: false
                         ],
+                        skip_unknown_inputs: [
+                          type: {:wrap_list, {:or, [:atom, :string]}},
+                          doc:
+                            "A list of inputs that, if provided, will be ignored if they are not recognized by the action. Use `:*` to indicate all unknown keys."
+                        ],
                         reuse_values?: [
                           type: :boolean,
                           default: false,
@@ -247,6 +252,11 @@ defmodule Ash do
       doc: """
       Metadata to be merged into the metadata field for all notifications sent from this operation.
       """
+    ],
+    skip_unknown_inputs: [
+      type: {:wrap_list, {:or, [:atom, :string]}},
+      doc:
+        "A list of inputs that, if provided, will be ignored if they are not recognized by the action. Use `:*` to indicate all unknown keys."
     ],
     load: [
       type: :any,
@@ -402,9 +412,9 @@ defmodule Ash do
         "If set to a value greater than 0, up to that many tasks will be started to run batches asynchronously"
     ],
     skip_unknown_inputs: [
-      type: {:list, {:or, [:atom, :string]}},
+      type: {:wrap_list, {:or, [:atom, :string]}},
       doc:
-        "A list of inputs that, if provided, will be ignored if they are not recognized by the action."
+        "A list of inputs that, if provided, will be ignored if they are not recognized by the action. Use `:*` to indicate all unknown keys."
     ]
   ]
 
@@ -451,11 +461,6 @@ defmodule Ash do
                                default: [:atomic],
                                doc:
                                  "The strategy or strategies to enable. :stream is used in all cases if the data layer does not support atomics."
-                             ],
-                             skip_unknown_inputs: [
-                               type: {:list, {:or, [:atom, :string]}},
-                               doc:
-                                 "A list of inputs that, if provided, will be ignored if they are not recognized by the action."
                              ],
                              load: [
                                type: :any,
@@ -516,11 +521,6 @@ defmodule Ash do
                                 type: :any,
                                 doc:
                                   "A filter to apply to records. This is also applied to a stream of inputs."
-                              ],
-                              skip_unknown_inputs: [
-                                type: {:list, {:or, [:atom, :string]}},
-                                doc:
-                                  "A list of inputs that, if provided, will be ignored if they are not recognized by the action."
                               ]
                             ]
                             |> Spark.Options.merge(
@@ -572,11 +572,6 @@ defmodule Ash do
                                   ]},
                                doc:
                                  "The fields to upsert. If not set, the action's `upsert_fields` is used. Unlike singular `create`, `bulk_create` with `upsert?` requires that `upsert_fields` be specified explicitly in one of these two locations."
-                             ],
-                             skip_unknown_inputs: [
-                               type: {:list, {:or, [:atom, :string]}},
-                               doc:
-                                 "A list of inputs that, if provided, will be ignored if they are not recognized by the action."
                              ]
                            ]
                            |> Spark.Options.merge(
