@@ -271,6 +271,8 @@ defmodule Ash.Actions.Update do
     with %{valid?: true} = changeset <- Ash.Changeset.validate_multitenancy(changeset),
          %{valid?: true} = changeset <- changeset(changeset, domain, action, opts),
          %{valid?: true} = changeset <- authorize(changeset, opts),
+         %{valid?: true} = changeset <-
+           Ash.Changeset.add_atomic_validations(changeset, opts[:actor], []),
          {:ok, result, instructions} <- commit(changeset, domain, opts) do
       add_notifications(
         changeset.resource,
