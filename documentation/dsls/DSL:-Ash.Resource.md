@@ -926,6 +926,7 @@ end
 | [`description`](#actions-action-description){: #actions-action-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-action-transaction?){: #actions-action-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-action-touches_resources){: #actions-action-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
+| [`skip_unknown_inputs`](#actions-action-skip_unknown_inputs){: #actions-action-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
 
 
 ## actions.action.argument
@@ -1021,6 +1022,7 @@ end
 | [`description`](#actions-create-description){: #actions-create-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-create-transaction?){: #actions-create-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-create-touches_resources){: #actions-create-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
+| [`skip_unknown_inputs`](#actions-create-skip_unknown_inputs){: #actions-create-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
 | [`accept`](#actions-create-accept){: #actions-create-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`require_attributes`](#actions-create-require_attributes){: #actions-create-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
 | [`allow_nil_input`](#actions-create-allow_nil_input){: #actions-create-allow_nil_input } | `list(atom)` |  | A list of attributes that would normally be required, but should not be for this action. They will still be validated just before the data layer step. |
@@ -1028,7 +1030,6 @@ end
 | [`skip_global_validations?`](#actions-create-skip_global_validations?){: #actions-create-skip_global_validations? } | `boolean` | `false` | If true, global validations will be skipped. Useful for manual actions. |
 | [`error_handler`](#actions-create-error_handler){: #actions-create-error_handler } | `mfa` |  | Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more |
 | [`notifiers`](#actions-create-notifiers){: #actions-create-notifiers } | `list(module)` |  | Notifiers that will be called specifically for this action. |
-| [`skip_unknown_inputs`](#actions-create-skip_unknown_inputs){: #actions-create-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
 | [`manual?`](#actions-create-manual?){: #actions-create-manual? } | `boolean` |  | Instructs Ash to *skip* the actual update/create/destroy step at the data layer. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
 
 
@@ -1266,6 +1267,7 @@ end
 | [`description`](#actions-read-description){: #actions-read-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-read-transaction?){: #actions-read-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-read-touches_resources){: #actions-read-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
+| [`skip_unknown_inputs`](#actions-read-skip_unknown_inputs){: #actions-read-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
 
 
 ## actions.read.argument
@@ -1504,6 +1506,7 @@ update :flag_for_review, primary?: true
 | [`description`](#actions-update-description){: #actions-update-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-update-transaction?){: #actions-update-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-update-touches_resources){: #actions-update-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
+| [`skip_unknown_inputs`](#actions-update-skip_unknown_inputs){: #actions-update-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
 | [`accept`](#actions-update-accept){: #actions-update-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`require_attributes`](#actions-update-require_attributes){: #actions-update-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
 | [`allow_nil_input`](#actions-update-allow_nil_input){: #actions-update-allow_nil_input } | `list(atom)` |  | A list of attributes that would normally be required, but should not be for this action. They will still be validated just before the data layer step. |
@@ -1511,7 +1514,6 @@ update :flag_for_review, primary?: true
 | [`skip_global_validations?`](#actions-update-skip_global_validations?){: #actions-update-skip_global_validations? } | `boolean` | `false` | If true, global validations will be skipped. Useful for manual actions. |
 | [`error_handler`](#actions-update-error_handler){: #actions-update-error_handler } | `mfa` |  | Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more |
 | [`notifiers`](#actions-update-notifiers){: #actions-update-notifiers } | `list(module)` |  | Notifiers that will be called specifically for this action. |
-| [`skip_unknown_inputs`](#actions-update-skip_unknown_inputs){: #actions-update-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
 | [`manual?`](#actions-update-manual?){: #actions-update-manual? } | `boolean` |  | Instructs Ash to *skip* the actual update/create/destroy step at the data layer. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
 
 
@@ -1747,6 +1749,7 @@ end
 | [`description`](#actions-destroy-description){: #actions-destroy-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-destroy-transaction?){: #actions-destroy-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-destroy-touches_resources){: #actions-destroy-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
+| [`skip_unknown_inputs`](#actions-destroy-skip_unknown_inputs){: #actions-destroy-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
 | [`accept`](#actions-destroy-accept){: #actions-destroy-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`require_attributes`](#actions-destroy-require_attributes){: #actions-destroy-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
 | [`allow_nil_input`](#actions-destroy-allow_nil_input){: #actions-destroy-allow_nil_input } | `list(atom)` |  | A list of attributes that would normally be required, but should not be for this action. They will still be validated just before the data layer step. |
@@ -1754,7 +1757,6 @@ end
 | [`skip_global_validations?`](#actions-destroy-skip_global_validations?){: #actions-destroy-skip_global_validations? } | `boolean` | `false` | If true, global validations will be skipped. Useful for manual actions. |
 | [`error_handler`](#actions-destroy-error_handler){: #actions-destroy-error_handler } | `mfa` |  | Sets the error handler on the changeset. See `Ash.Changeset.handle_errors/2` for more |
 | [`notifiers`](#actions-destroy-notifiers){: #actions-destroy-notifiers } | `list(module)` |  | Notifiers that will be called specifically for this action. |
-| [`skip_unknown_inputs`](#actions-destroy-skip_unknown_inputs){: #actions-destroy-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
 | [`manual?`](#actions-destroy-manual?){: #actions-destroy-manual? } | `boolean` |  | Instructs Ash to *skip* the actual update/create/destroy step at the data layer. See the [manual actions guide](/documentation/topics/manual-actions.md) for more. |
 
 

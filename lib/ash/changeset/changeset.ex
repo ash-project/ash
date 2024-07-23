@@ -1610,17 +1610,17 @@ defmodule Ash.Changeset do
           message:
             "Could not determine domain for changeset. Provide the `domain` option or configure a domain in the resource directly."
 
-    {changeset, opts} =
-      Ash.Actions.Helpers.set_context_and_get_opts(
-        domain,
-        changeset,
-        opts
-      )
-
     changeset = %{changeset | domain: domain}
 
     if changeset.valid? do
       action = get_action_entity(changeset.resource, action_or_name)
+
+      {changeset, opts} =
+        Ash.Actions.Helpers.set_context_and_get_opts(
+          domain,
+          %{changeset | action: action},
+          opts
+        )
 
       if action do
         name =
@@ -1670,6 +1670,13 @@ defmodule Ash.Changeset do
         raise_no_action(changeset.resource, action_or_name, changeset.action_type)
       end
     else
+      {changeset, _opts} =
+        Ash.Actions.Helpers.set_context_and_get_opts(
+          domain,
+          changeset,
+          opts
+        )
+
       changeset
     end
   end
@@ -2046,7 +2053,7 @@ defmodule Ash.Changeset do
       cond do
         !Ash.Resource.Info.action_input?(changeset.resource, action.name, name) ->
           cond do
-            :* in List.wrap(opts[:skip_unknown_inputs]) ->
+            :* in skip_unknown_inputs ->
               changeset
 
             name in skip_unknown_inputs ->
@@ -2079,6 +2086,9 @@ defmodule Ash.Changeset do
                 changeset
 
               match?("_" <> _, name) ->
+                changeset
+
+              :* in skip_unknown_inputs ->
                 changeset
 
               true ->
