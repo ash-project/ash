@@ -255,10 +255,6 @@ defmodule Ash.Test.Actions.CreateTest do
       private?(true)
     end
 
-    validations do
-      validate AtomicOnlyValidation
-    end
-
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
@@ -269,6 +265,10 @@ defmodule Ash.Test.Actions.CreateTest do
 
       create :create_with_nested_array_argument do
         argument :array_of_names, {:array, {:array, :string}}
+      end
+
+      create :with_atomic_only_validations do
+        validate AtomicOnlyValidation
       end
     end
 
@@ -1424,5 +1424,15 @@ defmodule Ash.Test.Actions.CreateTest do
              |> Ash.create()
 
     assert_receive {:error, _error}
+  end
+
+  test "shows an error if an atomic only validation is used in a create" do
+    assert_raise Ash.Error.Framework.CanNotBeAtomic,
+                 ~r/Post AtomicOnlyValidation only has an atomic\/3 callback, but cannot be performed atomically/,
+                 fn ->
+                   Post
+                   |> Ash.Changeset.for_create(:with_atomic_only_validations, %{title: "foo"})
+                   |> Ash.create!()
+                 end
   end
 end
