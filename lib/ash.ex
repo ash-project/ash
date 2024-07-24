@@ -713,6 +713,11 @@ defmodule Ash do
     domain: [
       type: {:spark, Ash.Domain},
       doc: "The domain to use for the action"
+    ],
+    skip_unknown_inputs: [
+      type: {:wrap_list, {:or, [:atom, :string]}},
+      doc:
+        "A list of inputs that, if provided, will be ignored if they are not recognized by the action. Use `:*` to indicate all unknown keys."
     ]
   ]
 
