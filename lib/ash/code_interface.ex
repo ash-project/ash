@@ -660,7 +660,14 @@ defmodule Ash.CodeInterface do
                   {changeset, opts} = Keyword.pop(opts, :changeset)
 
                   {changeset_opts, opts} =
-                    Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
+                    Keyword.split(opts, [
+                      :actor,
+                      :tenant,
+                      :authorize?,
+                      :tracer,
+                      :context,
+                      :skip_unknown_inputs
+                    ])
 
                   changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
@@ -750,7 +757,14 @@ defmodule Ash.CodeInterface do
                 if Enum.empty?(filter_keys) and interface.require_reference? do
                   quote do
                     {changeset_opts, opts} =
-                      Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
+                      Keyword.split(opts, [
+                        :actor,
+                        :tenant,
+                        :authorize?,
+                        :tracer,
+                        :context,
+                        :skip_unknown_inputs
+                      ])
 
                     changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
@@ -806,7 +820,14 @@ defmodule Ash.CodeInterface do
                     filters = Map.take(params, unquote(filter_keys))
 
                     {changeset_opts, opts} =
-                      Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
+                      Keyword.split(opts, [
+                        :actor,
+                        :tenant,
+                        :authorize?,
+                        :tracer,
+                        :context,
+                        :skip_unknown_inputs
+                      ])
 
                     changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
@@ -967,7 +988,14 @@ defmodule Ash.CodeInterface do
                 if interface.require_reference? do
                   quote do
                     {changeset_opts, opts} =
-                      Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
+                      Keyword.split(opts, [
+                        :actor,
+                        :tenant,
+                        :authorize?,
+                        :tracer,
+                        :context,
+                        :skip_unknown_inputs
+                      ])
 
                     changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
@@ -1023,7 +1051,14 @@ defmodule Ash.CodeInterface do
                     filters = Map.take(params, unquote(filter_keys))
 
                     {changeset_opts, opts} =
-                      Keyword.split(opts, [:actor, :tenant, :authorize?, :tracer, :context])
+                      Keyword.split(opts, [
+                        :actor,
+                        :tenant,
+                        :authorize?,
+                        :tracer,
+                        :context,
+                        :skip_unknown_inputs
+                      ])
 
                     changeset_opts = Keyword.put(changeset_opts, :domain, unquote(domain))
 
