@@ -3084,7 +3084,7 @@ defmodule Ash.Changeset do
           )
           |> case do
             {:ok, {:ok, value, changeset, instructions}} ->
-              {:ok, value, changeset, instructions}
+              {:ok, value, changeset, Map.put(instructions, :gather_notifications?, notify?)}
 
             {:ok, {:error, error}} ->
               {:error, error}
@@ -3133,17 +3133,17 @@ defmodule Ash.Changeset do
             {:ok, value, changeset, Map.put(instructions, :notifications, [])}
           else
             notifications =
-              List.wrap(Process.delete(:ash_notifications)) ++
-                (instructions[:notifications] || [])
+              instructions[:notifications] || []
 
             notifications =
-              if opts[:return_notifications?] do
-                notifications
+              if instructions[:gather_notifications?] do
+                Enum.concat(List.wrap(Process.get(:ash_notifications, [])), notifications)
               else
-                Ash.Notifier.notify(notifications)
+                notifications
               end
 
-            {:ok, value, changeset, Map.put(instructions, :notifications, notifications)}
+            {:ok, value, changeset,
+             Map.put(instructions, :notifications, Ash.Notifier.notify(notifications))}
           end
         end
 
