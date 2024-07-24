@@ -17,7 +17,7 @@ defmodule Ash.Resource.Actions.Implementation do
   end
 
   @callback run(Ash.ActionInput.t(), opts :: Keyword.t(), Context.t()) ::
-              {:ok, term()} | {:ok, [Ash.Notifier.Notification.t()]} | {:error, term()}
+              :ok | {:ok, term()} | {:ok, [Ash.Notifier.Notification.t()]} | {:error, term()}
 
   defmacro __using__(_) do
     quote do
