@@ -55,11 +55,13 @@ defmodule Ash.Resource.Dsl do
     Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except it sets
     the following different defaults:
 
-        writable? false
-        default &DateTime.utc_now/0
-        match_other_defaults? true
-        type Ash.Type.UTCDatetimeUsec
-        allow_nil? false
+    ```elixir
+    writable? false
+    default &DateTime.utc_now/0
+    match_other_defaults? true
+    type Ash.Type.UTCDatetimeUsec
+    allow_nil? false
+    ```
     """,
     examples: [
       "create_timestamp :inserted_at"
@@ -78,12 +80,14 @@ defmodule Ash.Resource.Dsl do
     Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except it sets
     the following different defaults:
 
-        writable? false
-        default &DateTime.utc_now/0
-        match_other_defaults? true
-        update_default &DateTime.utc_now/0
-        type Ash.Type.UTCDatetimeUsec
-        allow_nil? false
+    ```elixir
+    writable? false
+    default &DateTime.utc_now/0
+    match_other_defaults? true
+    update_default &DateTime.utc_now/0
+    type Ash.Type.UTCDatetimeUsec
+    allow_nil? false
+    ```
     """,
     examples: [
       "update_timestamp :updated_at"
@@ -104,11 +108,13 @@ defmodule Ash.Resource.Dsl do
     Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except for `allow_nil?`, but it sets
     the following different defaults:
 
-        public? true
-        writable? false
-        primary_key? true
-        generated? true
-        type :integer
+    ```elixir
+    public? true
+    writable? false
+    primary_key? true
+    generated? true
+    type :integer
+    ```
     """,
     examples: [
       "integer_primary_key :id"
@@ -128,11 +134,13 @@ defmodule Ash.Resource.Dsl do
     Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except for `allow_nil?`, but it sets
     the following different defaults:
 
-        writable? false
-        public? true
-        default &Ash.UUID.generate/0
-        primary_key? true
-        type :uuid
+    ```elixir
+    writable? false
+    public? true
+    default &Ash.UUID.generate/0
+    primary_key? true
+    type :uuid
+    ```
     """,
     examples: [
       "uuid_primary_key :id"
@@ -152,11 +160,13 @@ defmodule Ash.Resource.Dsl do
     Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except for `allow_nil?`, but it sets
     the following different defaults:
 
-        writable? false
-        public? true
-        default &Ash.UUIDv7.generate/0
-        primary_key? true
-        type :uuid_v7
+    ```elixir
+    writable? false
+    public? true
+    default &Ash.UUIDv7.generate/0
+    primary_key? true
+    type :uuid_v7
+    ```
     """,
     examples: [
       "uuid_v7_primary_key :id"

@@ -120,11 +120,13 @@ Declares a non-writable attribute with a create default of `&DateTime.utc_now/0`
 Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except it sets
 the following different defaults:
 
+```elixir
 writable? false
 default &DateTime.utc_now/0
 match_other_defaults? true
 type Ash.Type.UTCDatetimeUsec
 allow_nil? false
+```
 
 
 
@@ -162,12 +164,14 @@ Declares a non-writable attribute with a create and update default of `&DateTime
 Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except it sets
 the following different defaults:
 
+```elixir
 writable? false
 default &DateTime.utc_now/0
 match_other_defaults? true
 update_default &DateTime.utc_now/0
 type Ash.Type.UTCDatetimeUsec
 allow_nil? false
+```
 
 
 
@@ -207,11 +211,13 @@ Generated integer primary keys must be supported by the data layer.
 Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except for `allow_nil?`, but it sets
 the following different defaults:
 
+```elixir
 public? true
 writable? false
 primary_key? true
 generated? true
 type :integer
+```
 
 
 
@@ -249,11 +255,13 @@ Declares a non writable, non-nil, primary key column of type `uuid`, which defau
 Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except for `allow_nil?`, but it sets
 the following different defaults:
 
+```elixir
 writable? false
 public? true
 default &Ash.UUID.generate/0
 primary_key? true
 type :uuid
+```
 
 
 
@@ -291,11 +299,13 @@ Declares a non writable, non-nil, primary key column of type `uuid_v7`, which de
 Accepts all the same options as `d:Ash.Resource.Dsl.attributes.attribute`, except for `allow_nil?`, but it sets
 the following different defaults:
 
+```elixir
 writable? false
 public? true
 default &Ash.UUIDv7.generate/0
 primary_key? true
 type :uuid_v7
+```
 
 
 
