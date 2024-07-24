@@ -36,6 +36,7 @@ defmodule Ash.Type do
     atom: Ash.Type.Atom,
     string: Ash.Type.String,
     integer: Ash.Type.Integer,
+    file: Ash.Type.File,
     float: Ash.Type.Float,
     duration_name: Ash.Type.DurationName,
     function: Ash.Type.Function,
