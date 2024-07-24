@@ -410,7 +410,8 @@ defmodule Ash.Policy.Authorizer do
   ]
 
   @verifiers [
-    Ash.Policy.Authorizer.Verifiers.VerifyInAuthorizers
+    Ash.Policy.Authorizer.Verifiers.VerifyInAuthorizers,
+    Ash.Policy.Authorizer.Verifiers.VerifySatSolverImplementation
   ]
 
   use Spark.Dsl.Extension,
@@ -450,6 +451,38 @@ defmodule Ash.Policy.Authorizer do
       resource: Map.get(state, :resource),
       action: Map.get(state, :action),
       must_pass_strict_check?: true
+    )
+  end
+
+  def install(igniter, module, type, _path, _argv) do
+    igniter =
+      with nil <- Igniter.Project.Deps.get_dependency_declaration(igniter, :picosat_elixir),
+           nil <- Igniter.Project.Deps.get_dependency_declaration(igniter, :simple_sat) do
+        solver =
+          Owl.IO.select(
+            [
+              {:picosat_elixir, "~> 0.2"},
+              {:simple_sat, "~> 0.1"}
+            ],
+            label:
+              "Which sat solver would you like to use? If on windows, use `simple_sat`, otherwise, use `picosat_elixir`.",
+            render_as: &to_string(elem(&1, 0))
+          )
+
+        igniter
+        |> Igniter.Project.Deps.add_dep(solver)
+        |> Igniter.apply_and_fetch_dependencies()
+      else
+        _ ->
+          igniter
+      end
+
+    igniter
+    |> Spark.Igniter.add_extension(
+      module,
+      type,
+      :authorizers,
+      Ash.Policy.Authorizer
     )
   end
 

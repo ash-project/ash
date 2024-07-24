@@ -36,8 +36,7 @@ defmodule Mix.Tasks.Ash.Install do
   @impl Igniter.Mix.Task
   def info(_argv, _source) do
     %Igniter.Mix.Task.Info{
-      composes: ["spark.install"],
-      adds_deps: [picosat_elixir: "~> 0.2"]
+      composes: ["spark.install"]
     }
   end
 
