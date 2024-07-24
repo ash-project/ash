@@ -545,28 +545,33 @@ defmodule Ash.Actions.Update.Bulk do
             if Enum.empty?(atomic_changeset.after_action) do
               {results, [], 0, notifications}
             else
-              Enum.reduce(results, {[], [], 0, notifications}, fn result,
-                                                                  {results, errors, error_count,
-                                                                   notifications} ->
-                case Ash.Changeset.run_after_actions(result, atomic_changeset, []) do
-                  {:error, error} ->
-                    if opts[:transaction] && opts[:rollback_on_error?] do
-                      if Ash.DataLayer.in_transaction?(atomic_changeset.resource) do
-                        Ash.DataLayer.rollback(
-                          atomic_changeset.resource,
-                          error
-                        )
+              Enum.reduce(
+                results,
+                {[], [], 0, notifications},
+                fn result, {results, errors, error_count, notifications} ->
+                  # we can't actually know if the changeset changed or not when doing atomics
+                  # so we just have to set it to statically true here.
+                  atomic_changeset = Ash.Changeset.set_context(atomic_changeset, %{changed?: true})
+                  case Ash.Changeset.run_after_actions(result, atomic_changeset, []) do
+                    {:error, error} ->
+                      if opts[:transaction] && opts[:rollback_on_error?] do
+                        if Ash.DataLayer.in_transaction?(atomic_changeset.resource) do
+                          Ash.DataLayer.rollback(
+                            atomic_changeset.resource,
+                            error
+                          )
+                        end
                       end
-                    end
 
-                    {results, errors ++ List.wrap(error),
-                     error_count + Enum.count(List.wrap(error)), notifications}
+                      {results, errors ++ List.wrap(error),
+                       error_count + Enum.count(List.wrap(error)), notifications}
 
-                  {:ok, result, _changeset, %{notifications: more_new_notifications}} ->
-                    {[result | results], errors, error_count,
-                     notifications ++ more_new_notifications}
+                    {:ok, result, _changeset, %{notifications: more_new_notifications}} ->
+                      {[result | results], errors, error_count,
+                       notifications ++ more_new_notifications}
+                  end
                 end
-              end)
+              )
               |> then(fn {results, errors, error_count, notifications} ->
                 {Enum.reverse(results), errors, error_count, notifications}
               end)
