@@ -19,3 +19,7 @@ end
 defmodule StringEnum do
   use Ash.Type.Enum, values: ["foo", "bar", "baz"]
 end
+
+defmodule MixedEnum do
+  use Ash.Type.Enum, values: [:foo, "bar", "baz"]
+end

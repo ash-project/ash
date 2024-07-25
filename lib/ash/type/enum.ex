@@ -104,7 +104,29 @@ defmodule Ash.Type.Enum do
 
       @values behaviour.build_values(opts[:values])
 
-      @type t() :: unquote(Enum.reduce(@values, &{:|, [], [&1, &2]}))
+      atom_typespec =
+        if Enum.any?(@values, &is_atom/1) do
+          @values
+          |> Enum.filter(&is_atom/1)
+          |> Enum.reduce(&{:|, [], [&1, &2]})
+        end
+
+      typespec =
+        if Enum.any?(@values, &(not is_atom(&1))) do
+          if atom_typespec do
+            {:|, [], [atom_typespec, {{:., [], [{:__aliases__, [alias: false], [:String]}, :t]}, [], []}]}
+          else
+            {{:., [], [{:__aliases__, [alias: false], [:String]}, :t]}, [], []}
+          end
+        else
+          if atom_typespec do
+            atom_typespec
+          else
+            {:term, [], Elixir}
+          end
+        end
+
+      @type t() :: unquote(typespec)
 
       @description_map behaviour.build_description_map(opts[:values])
 

@@ -112,10 +112,11 @@ defmodule Ash.Test.Type.EnumTest do
     end
 
     test "strings" do
-      assert {:ok,
-              [
-                type: {:t, {:type, 0, :union, [{:string, 0, "foo"}, _, {:string, 0, "baz"}]}, []}
-              ]} = Code.Typespec.fetch_types(StringEnum)
+      assert {:ok, [type: {:t, {:remote_type, 0, [{:atom, 0, String}, {:atom, 0, :t}, []]}, []}]} = Code.Typespec.fetch_types(StringEnum)
+    end
+
+    test "mixed values" do
+      assert {:ok, [type: {:t, {:type, 0, :union, [{:atom, 0, :foo}, {:remote_type, 0, [{:atom, 0, String}, {:atom, 0, :t}, []]}]}, []}]} = Code.Typespec.fetch_types(MixedEnum)
     end
   end
 end
