@@ -2891,7 +2891,7 @@ defmodule Ash.Query do
          records <- Sort.runtime_sort(records, query.sort, domain: domain),
          records <- Enum.drop(records, query.offset),
          records <- do_limit(records, query.limit),
-         {:ok, records} <- Ash.load(records, query, domain: domain) do
+         {:ok, records} <- Ash.load(records, query, domain: domain, reuse_values?: true) do
       {:ok, records}
     else
       {:error, error} ->
