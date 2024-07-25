@@ -6,7 +6,7 @@ defmodule Ash.Query.Function.Now do
 
   def args, do: [[]]
 
-  def returns, do: [:utc_datetime]
+  def returns, do: [:utc_datetime_usec]
 
   def evaluate(_), do: {:known, DateTime.utc_now()}
 
