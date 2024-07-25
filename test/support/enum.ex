@@ -1,4 +1,6 @@
 defmodule Status do
+  @moduledoc false
+
   use Ash.Type.Enum, values: [:open, :Closed, :NeverHappened, :Always_Was]
 
   def match("never_happened"), do: {:ok, :NeverHappened}
@@ -6,6 +8,8 @@ defmodule Status do
 end
 
 defmodule DescriptiveEnum do
+  @moduledoc false
+
   use Ash.Type.Enum,
     values: [
       {:foo, "Clearly a foo"},
@@ -17,9 +21,13 @@ defmodule DescriptiveEnum do
 end
 
 defmodule StringEnum do
+  @moduledoc false
+
   use Ash.Type.Enum, values: ["foo", "bar", "baz"]
 end
 
 defmodule MixedEnum do
+  @moduledoc false
+
   use Ash.Type.Enum, values: [:foo, "bar", "baz"]
 end
