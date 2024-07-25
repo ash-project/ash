@@ -654,8 +654,20 @@ defmodule Ash.EmbeddableType do
               end
             end
 
-          keys ->
-            {:error, message: "items must be unique on keys %{keys}", keys: Enum.join(keys, ",")}
+          %{type: type, keys: keys, nils_distinct?: nils_distinct?} ->
+            type =
+              case type do
+                :primary_key -> "primary key"
+                other -> to_string(other)
+              end
+
+            if nils_distinct? do
+              " with `nil` values considered distinct"
+            end
+
+            {:error,
+             message: "items must be unique on #{type} with keys %{keys}#{nils_distinct?}",
+             keys: Enum.join(keys, ",")}
         end
       end
 
