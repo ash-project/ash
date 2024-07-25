@@ -114,7 +114,8 @@ defmodule Ash.Type.Enum do
       typespec =
         if Enum.any?(@values, &(not is_atom(&1))) do
           if atom_typespec do
-            {:|, [], [atom_typespec, {{:., [], [{:__aliases__, [alias: false], [:String]}, :t]}, [], []}]}
+            {:|, [],
+             [atom_typespec, {{:., [], [{:__aliases__, [alias: false], [:String]}, :t]}, [], []}]}
           else
             {{:., [], [{:__aliases__, [alias: false], [:String]}, :t]}, [], []}
           end
