@@ -189,7 +189,7 @@ defmodule Ash.Actions.Create.Bulk do
             Enum.to_list(Stream.concat(changeset_stream))
           else
             Stream.run(changeset_stream)
-            []
+            nil
           end
 
         notifications =
@@ -213,9 +213,18 @@ defmodule Ash.Actions.Create.Bulk do
         }
 
         case bulk_result do
-          %{records: _, error_count: 0} -> %{bulk_result | status: :success}
-          %{records: [], error_count: _} -> %{bulk_result | status: :error}
-          _ -> %{bulk_result | status: :partial_success}
+          %{records: _, error_count: 0} ->
+            %{bulk_result | status: :success}
+
+          %{records: [], error_count: _} ->
+            %{bulk_result | status: :error}
+
+          _ ->
+            if Process.get({:any_success?, ref}) do
+              %{bulk_result | status: :partial_success}
+            else
+              %{bulk_result | status: :error}
+            end
         end
       catch
         {:error, error, batch_number} ->
@@ -399,6 +408,8 @@ defmodule Ash.Actions.Create.Bulk do
       Enum.flat_map(must_be_simple, fn changeset ->
         case Ash.Actions.Create.run(domain, changeset, action, opts) do
           {:ok, result} ->
+            Process.put({:any_success?, ref}, true)
+
             [
               Ash.Resource.set_metadata(result, %{
                 bulk_create_index: changeset.context.bulk_create.index
@@ -627,9 +638,13 @@ defmodule Ash.Actions.Create.Bulk do
       end
 
     if max_concurrency && max_concurrency > 1 do
+      ash_context = Ash.ProcessHelpers.get_context_for_transfer(opts)
+
       Task.async_stream(
         stream,
         fn batch ->
+          Ash.ProcessHelpers.transfer_context(ash_context, opts)
+
           try do
             Process.put(:ash_started_transaction?, true)
             batch_result = callback.(batch)
@@ -652,7 +667,7 @@ defmodule Ash.Actions.Create.Bulk do
                 end
               end
 
-            {batch_result, notifications, errors}
+            {batch_result, notifications, errors, Process.get({:any_success?, ref})}
           catch
             value ->
               {:throw, value}
@@ -665,7 +680,9 @@ defmodule Ash.Actions.Create.Bulk do
         {:ok, {:throw, value}} ->
           throw(value)
 
-        {:ok, {result, notifications, errors}} ->
+        {:ok, {result, notifications, errors, any_success?}} ->
+          Process.put({:any_success?, ref}, any_success?)
+
           store_notification(ref, notifications, opts)
           store_error(ref, errors, opts)
 
@@ -1165,9 +1182,11 @@ defmodule Ash.Actions.Create.Bulk do
 
           case result do
             {:ok, result} ->
+              Process.put({:any_success?, ref}, true)
               result
 
             :ok ->
+              Process.put({:any_success?, ref}, true)
               []
 
             {:error, :no_rollback, error} ->

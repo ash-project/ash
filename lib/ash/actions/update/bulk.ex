@@ -1089,15 +1089,24 @@ defmodule Ash.Actions.Update.Bulk do
             strategy: [:atomic]
           )
           |> case do
-            %Ash.BulkResult{error_count: 0, records: records, notifications: notifications} ->
+            %Ash.BulkResult{
+              error_count: 0,
+              records: records,
+              notifications: notifications,
+              status: status
+            } ->
+              Process.put({:any_success?, ref}, status != :error)
+
               store_notification(ref, notifications, opts)
               List.wrap(records)
 
             %Ash.BulkResult{
               errors: errors,
               notifications: notifications,
-              error_count: error_count
+              error_count: error_count,
+              status: status
             } ->
+              Process.put({:any_success?, ref}, status != :error)
               store_notification(ref, notifications, opts)
               store_error(ref, errors, opts, error_count)
               []
@@ -1188,7 +1197,7 @@ defmodule Ash.Actions.Update.Bulk do
             Enum.to_list(Stream.concat(changeset_stream))
           else
             Stream.run(changeset_stream)
-            []
+            nil
           end
 
         notifications =
@@ -1490,6 +1499,8 @@ defmodule Ash.Actions.Update.Bulk do
                Keyword.put(opts, :atomic_upgrade?, false)
              ) do
           {:ok, result} ->
+            Process.put({:any_success?, ref}, true)
+
             [
               Ash.Resource.set_metadata(result, %{
                 metadata_key => changeset.context |> Map.get(context_key) |> Map.get(:index)
@@ -1721,9 +1732,12 @@ defmodule Ash.Actions.Update.Bulk do
       end
 
     if max_concurrency && max_concurrency > 1 do
+      ash_context = Ash.ProcessHelpers.get_context_for_transfer(opts)
+
       Task.async_stream(
         stream,
         fn batch ->
+          Ash.ProcessHelpers.transfer_context(ash_context, opts)
           Process.put(:ash_started_transaction?, true)
           batch_result = callback.(batch)
           {errors, _} = Process.get({:bulk_update_errors, ref}) || {[], 0}
@@ -1745,7 +1759,7 @@ defmodule Ash.Actions.Update.Bulk do
               end
             end
 
-          {batch_result, notifications, errors}
+          {batch_result, notifications, errors, Process.get({:any_success?, ref})}
         end,
         timeout: :infinity,
         max_concurrency: max_concurrency
@@ -1760,12 +1774,15 @@ defmodule Ash.Actions.Update.Bulk do
             notifications: notifications,
             errors: errors,
             error_count: error_count
-          }, _, _}} ->
+          }, _, _, any_success?}} ->
+          Process.put({:any_success?, ref}, any_success?)
+
           store_notification(ref, notifications, opts)
           store_error(ref, errors, opts, error_count)
           records
 
-        {:ok, {result, notifications, errors}} ->
+        {:ok, {result, notifications, errors, any_success?}} ->
+          Process.put({:any_success?, ref}, any_success?)
           store_notification(ref, notifications, opts)
           store_error(ref, errors, opts)
 
@@ -2212,6 +2229,8 @@ defmodule Ash.Actions.Update.Bulk do
 
             case result do
               {:ok, result} ->
+                Process.put({:any_success?, ref}, true)
+
                 result
 
               {:error, error} ->

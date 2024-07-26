@@ -510,6 +510,28 @@ defmodule Ash.Test.Actions.BulkCreateTest do
              )
   end
 
+  test "properly sets the status to `:partial_success` without `return_records?`" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
+    assert %Ash.BulkResult{
+             error_count: 1,
+             status: :partial_success,
+             errors: [%Ash.Error.Invalid{}]
+           } =
+             Ash.bulk_create(
+               [%{title: "title1"}, %{title: %{foo: :bar}}],
+               Post,
+               :create_with_change,
+               tenant: org.id,
+               return_errors?: true,
+               sorted?: true,
+               authorize?: false
+             )
+  end
+
   test "can upsert with list" do
     org =
       Org
