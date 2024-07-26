@@ -1,11 +1,12 @@
 defmodule Mix.Tasks.Ash.Gen.Enum do
+  @example "mix ash.gen.enum MyApp.Support.Ticket.Types.Status open,closed --short-name ticket_status"
   @moduledoc """
   Generates an Ash.Type.Enum
 
   ## Example
 
   ```bash
-  mix ash.gen.enum MyApp.Support.Ticket.Types.Status open,closed --short-name ticket_status
+  #{@example}
   ```
 
   ## Options
@@ -22,6 +23,8 @@ defmodule Mix.Tasks.Ash.Gen.Enum do
       schema: [
         short_name: :string
       ],
+      example: @example,
+      positional: [:module_name, :types],
       aliases: [
         s: :short_name
       ]
@@ -29,7 +32,9 @@ defmodule Mix.Tasks.Ash.Gen.Enum do
   end
 
   @impl Igniter.Mix.Task
-  def igniter(igniter, [module_name, types | argv]) do
+  def igniter(igniter, argv) do
+    {%{module_name: module_name, types: types}, argv} = positional_args!(argv)
+
     enum = Igniter.Code.Module.parse(module_name)
     file_name = Igniter.Code.Module.proper_location(enum)
 

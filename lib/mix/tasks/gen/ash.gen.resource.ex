@@ -1,4 +1,12 @@
 defmodule Mix.Tasks.Ash.Gen.Resource do
+  @example """
+  mix ash.gen.resource Helpdesk.Support.Ticket \\
+    --default-actions read \\
+    --uuid-primary-key id \\
+    --attribute subject:string:required:public \\
+    --relationship belongs_to:representative:Helpdesk.Support.Representative \\
+    --extend postgres,graphql
+  """
   @moduledoc """
   Generate and configure an Ash.Resource.
 
@@ -7,12 +15,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   ## Example
 
   ```bash
-  mix ash.gen.resource Helpdesk.Support.Ticket \
-    --default-actions read \
-    --uuid-primary-key id \
-    --attribute subject:string:required:public \
-    --relationship belongs_to:representative:Helpdesk.Support.Representative \
-    --extend postgres,graphql
+  #{@example}
   ```
 
   ## Options
@@ -33,6 +36,8 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   @impl Igniter.Mix.Task
   def info(_argv, _parent) do
     %Igniter.Mix.Task.Info{
+      positional: [:resource],
+      example: @example,
       schema: [
         attribute: :keep,
         relationship: :keep,
@@ -57,7 +62,8 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   end
 
   @impl Igniter.Mix.Task
-  def igniter(igniter, [resource | argv]) do
+  def igniter(igniter, argv) do
+    {%{resource: resource}, argv} = positional_args!(argv)
     resource = Igniter.Code.Module.parse(resource)
     app_name = Igniter.Project.Application.app_name()
 

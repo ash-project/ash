@@ -1,11 +1,12 @@
 defmodule Mix.Tasks.Ash.Gen.Domain do
+  @example "mix ash.gen.domain MyApp.Accounts"
   @moduledoc """
   Generates an Ash.Domain
 
   ## Example
 
   ```bash
-  mix ash.gen.domain MyApp.Accounts
+  #{@example}
   ```
   """
 
@@ -13,8 +14,16 @@ defmodule Mix.Tasks.Ash.Gen.Domain do
   use Igniter.Mix.Task
 
   @impl Igniter.Mix.Task
-  def igniter(igniter, [domain | argv]) do
-    domain = Igniter.Code.Module.parse(domain)
+  def info(_argv, _parent) do
+    %Igniter.Mix.Task.Info{
+      positional: [:domain],
+      example: @example
+    }
+  end
+
+  @impl Igniter.Mix.Task
+  def igniter(igniter, argv) do
+    {%{domain: domain}, argv} = positional_args!(argv)
     domain_file = Igniter.Code.Module.proper_location(domain)
 
     app_name = Igniter.Project.Application.app_name()
