@@ -2,20 +2,73 @@
 
 <!-- changelog -->
 
-## [v3.2.6](https://github.com/ash-project/ash/compare/v3.2.5...v3.2.6) (2024-07-22)
+## [v3.3.0](https://github.com/ash-project/ash/compare/v3.2.6...v3.3.0) (2024-07-27)
 
+### Features:
 
-
+- [`Ash.Type.File`] Add Ash.Type.File (#1337)
 
 ### Bug Fixes:
 
-* fallback to `authorize_with` when authorizing bulk destroy actions
+- [bulk actions] ensure that statuses are set correctly on bulk actions
 
-* don't refer to non-existent `batch_change/4`
+- [bulk actions] properly transfer process context(tracers) for bulk actions
+
+- [embedded resources] properly display identity/primary key mismatch error on lists of embeds
+
+- [`Ash.Type.NewType`] apply constraints to NewType even when casting an array (#1341)
+
+- [`Ash.Query`] pass reuse_values? true when loading in Ash.Query.apply_to/2 (#1346)
+
+- [code interfaces] honor `skip_unknown_inputs` in code interfaces
+
+- [notifications] don't gather notifications except for in the top level transaction starter
+
+- [generic actions] support `skip_unknown_inputs` on generic actions
+
+- [atomic updates] ensure `changed?` context is set on atomic changesets (we assume it is `true`, its up to extensions to handle)
+
+- [`Ash.Type.CiString`, `Ash.Type.String`] Update string/ci_string generators to ensure min_length (#1335)
+
+- [`Ash`] handle `{record, action, input}` types in `Ash.can?`
+
+- [bulk actions] only call `batch_change` if it is defined, never `change` in bulk create
 
 ### Improvements:
 
-* Replace incorrect function_exported?-checks in bulk-actions, add has-defs for change modules (#1330)
+- [`mix ash.gen.resource`] better positional argument handling with igniter
+
+- [`Ash.Expr`] use `:utc_datetime_usec` for `now()` return type
+
+- [`mix ash.install`] don't install sat solver in initial installation
+
+- [`Ash.Policy.Authorizer`] validate that a solver exists at compile time when using policies
+
+- [`Ash.Type.Enum`] Expose type t() on Ash.Type.Enum implementations (#1338)
+
+- [`Ash.Resource`] add :\* as a valid value in `skip_unknown_inputs`
+
+- [`Ash.Resource`] add `skip_unknown_inputs` to individual actions
+
+- [embedded resources] add `skip_unknown_inputs` constraint to embedded resources
+
+- [embedded resources] automatically fall back to a default domain when working with embeds
+
+- [`Ash`] handle 3 tuple in `Ash.can?`
+
+- [`Ash.Error`] add `Ash.Error.error_descriptions`
+
+## [v3.2.6](https://github.com/ash-project/ash/compare/v3.2.5...v3.2.6) (2024-07-22)
+
+### Bug Fixes:
+
+- [bulk actions] fallback to `authorize_with` when authorizing bulk destroy actions
+
+- [bulk actions] don't refer to non-existent `batch_change/4`
+
+### Improvements:
+
+- [bulk actions] Replace incorrect function_exported?-checks in bulk-actions, add has-defs for change modules (#1330)
 
 ## [v3.2.5](https://github.com/ash-project/ash/compare/v3.2.4...v3.2.5) (2024-07-22)
 

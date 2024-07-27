@@ -1,4 +1,5 @@
 defmodule Mix.Tasks.Ash.Patch.Extend do
+  @example "mix ash.patch.extend My.Domain.Resource postgres,Ash.Policy.Authorizer"
   @moduledoc """
   Adds an extension or extensions to the domain/resource
 
@@ -23,7 +24,7 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
   ## Example
 
   ```bash
-  mix ash.patch.extend My.Domain.Resource postgres,Ash.Policy.Authorizer
+  #{@example}
   ```
   """
   @shortdoc "Adds an extension or extensions to the given domain/resource"
@@ -31,7 +32,22 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
   use Igniter.Mix.Task
 
   @impl Igniter.Mix.Task
-  def igniter(igniter, [subject, extensions | argv]) do
+  def info(_argv, _parent) do
+    %Igniter.Mix.Task.Info{
+      positional: [
+        :subject,
+        extensions: [
+          rest: true
+        ]
+      ],
+      example: @example
+    }
+  end
+
+  @impl Igniter.Mix.Task
+  def igniter(igniter, argv) do
+    {%{subject: subject, extensions: extensions}, argv} = positional_args!(argv)
+
     opts =
       [
         subjects: subject,

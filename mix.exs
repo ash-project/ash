@@ -6,7 +6,7 @@ defmodule Ash.MixProject do
   A declarative, extensible framework for building Elixir applications.
   """
 
-  @version "3.2.6"
+  @version "3.3.0"
 
   def project do
     [
@@ -361,7 +361,7 @@ defmodule Ash.MixProject do
       {:simple_sat, "~> 0.1 and >= 0.1.1", optional: true},
 
       # Code Generators
-      {:igniter, "~> 0.3 and >= 0.3.10"},
+      {:igniter, "~> 0.3 and >= 0.3.11"},
 
       # Dev/Test dependencies
       {:eflame, "~> 1.0", only: [:dev, :test]},

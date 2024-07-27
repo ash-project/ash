@@ -7,6 +7,7 @@ if Code.ensure_loaded?(Plug.Upload) do
     @impl Ash.Type.File.Implementation
     def path(%Plug.Upload{path: path}), do: {:ok, path}
 
+    # sobelow_skip ["Traversal.FileModule"]
     @impl Ash.Type.File.Implementation
     def open(%Plug.Upload{path: path}, options), do: File.open(path, options)
   end

@@ -1006,13 +1006,7 @@ defmodule Ash.Expr do
                 {:halt, :error}
 
               Ash.Expr.expr?(value) ->
-                case determine_type(value) do
-                  {:ok, {^type, matched_constraints}} ->
-                    {:cont, Map.update!(acc, :types, &[{type, matched_constraints} | &1])}
-
-                  _ ->
-                    {:halt, :error}
-                end
+                {:cont, Map.update!(acc, :types, &[{type, constraints} | &1])}
 
               true ->
                 {:cont, Map.update!(acc, :types, &[{type, constraints} | &1])}
@@ -1024,13 +1018,7 @@ defmodule Ash.Expr do
                 {:halt, :error}
 
               Ash.Expr.expr?(value) ->
-                case determine_type(value) do
-                  {:ok, {^type, matched_constraints}} ->
-                    {:cont, Map.update!(acc, :types, &[{type, matched_constraints} | &1])}
-
-                  _ ->
-                    {:halt, :error}
-                end
+                {:cont, Map.update!(acc, :types, &[{type, []} | &1])}
 
               true ->
                 {:cont, Map.update!(acc, :types, &[{type, []} | &1])}
