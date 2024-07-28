@@ -2,7 +2,7 @@
 
 [![OpenSSF Vulnerability Disclosure](https://img.shields.io/badge/OpenSSF-Vulnerability_Disclosure-green)](https://github.com/ossf/oss-vulnerability-guide/blob/main/finder-guide.md)
 [![GitHub Report](https://img.shields.io/badge/GitHub-Security_Advisories-blue)](https://github.com/ash-project/ash/security/advisories/new)
-[![Email Report](https://img.shields.io/badge/Email-security%40ash-hq.org-blue)](mailto:security@ash-hq.org)
+[![Email Report](https://img.shields.io/badge/Email-security%40ash--hq.org-blue)](mailto:security@ash-hq.org)
 
 This repository follows the [OpenSSF Vulnerability Disclosure guide](https://github.com/ossf/oss-vulnerability-guide/tree/main). You can learn more about it in the [Finders Guide](https://github.com/ossf/oss-vulnerability-guide/blob/main/finder-guide.md).
 
