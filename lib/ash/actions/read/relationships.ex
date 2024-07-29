@@ -466,6 +466,9 @@ defmodule Ash.Actions.Read.Relationships do
             |> Ash.Query.sort(relationship.sort)
             |> Ash.Query.do_filter(relationship.filter)
             |> Ash.Query.filter(^ref(relationship.destination_attribute) in ^destination_ids)
+            |> Ash.Query.set_context(%{
+              accessing_from: %{source: relationship.source, name: relationship.name}
+            })
             |> Map.put(:page, nil)
             |> Ash.Actions.Read.unpaginated_read()
             |> case do
