@@ -8,12 +8,25 @@ defmodule Ash.Test.Actions.UpdateTest do
   require Ash.Expr
   alias Ash.Test.Domain, as: Domain
 
+  defmodule AtomicOnlyValidation do
+    use Ash.Resource.Validation
+
+    @impl true
+    def atomic(_, _, _) do
+      :ok
+    end
+  end
+
   defmodule Authorized do
     @moduledoc false
     use Ash.Resource,
       domain: Domain,
       data_layer: Ash.DataLayer.Ets,
       authorizers: [Ash.Test.Authorizer]
+
+    validations do
+      validate AtomicOnlyValidation
+    end
 
     ets do
       private?(true)

@@ -135,6 +135,15 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
+  defmodule AtomicOnlyValidation do
+    use Ash.Resource.Validation
+
+    @impl true
+    def atomic(_, _, _) do
+      :ok
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource,
@@ -228,6 +237,10 @@ defmodule Ash.Test.Actions.BulkCreateTest do
         argument :authorize?, :boolean, allow_nil?: false
 
         change set_context(%{authorize?: arg(:authorize?)})
+      end
+
+      create :create_with_atomic_only_validation do
+        validate AtomicOnlyValidation
       end
     end
 
@@ -1296,5 +1309,20 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                after: ^keyset
              } = tag.related_tags
     end
+  end
+
+  test "shows an error if an atomic only validation is used in a create" do
+    assert_raise Ash.Error.Framework.CanNotBeAtomic,
+                 ~r/Post AtomicOnlyValidation only has an atomic\/3 callback, but cannot be performed atomically/,
+                 fn ->
+                   [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
+                   |> Ash.bulk_create!(
+                     Post,
+                     :create_with_atomic_only_validation,
+                     authorize?: true,
+                     return_stream?: true,
+                     return_records?: true
+                   )
+                 end
   end
 end
