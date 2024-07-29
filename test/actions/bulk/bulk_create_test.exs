@@ -1312,16 +1312,15 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   end
 
   test "shows an error if an atomic only validation is used in a create" do
-    assert_raise Ash.Error.Framework.CanNotBeAtomic,
-                 ~r/Post AtomicOnlyValidation only has an atomic\/3 callback, but cannot be performed atomically/,
+    assert_raise Ash.Error.Framework,
+                 ~r/Create actions cannot be made atomic/,
                  fn ->
-                   [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
+                   [%{title: "title1"}, %{title: "title2"}]
                    |> Ash.bulk_create!(
                      Post,
                      :create_with_atomic_only_validation,
                      authorize?: true,
-                     return_stream?: true,
-                     return_records?: true
+                     return_errors?: true
                    )
                  end
   end

@@ -6,7 +6,7 @@ defmodule Ash.Error.Framework.CanNotBeAtomic do
 
   def message(error) do
     """
-    #{inspect(error.resource)} #{error.change} only has an atomic/3 callback, but cannot be performed atomically
+    #{inspect(error.resource)} #{inspect(error.change)} only has an atomic/3 callback, but cannot be performed atomically
 
     Reason: #{error.reason}
     """

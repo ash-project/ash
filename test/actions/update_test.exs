@@ -25,7 +25,7 @@ defmodule Ash.Test.Actions.UpdateTest do
       authorizers: [Ash.Test.Authorizer]
 
     validations do
-      validate AtomicOnlyValidation
+      validate AtomicOnlyValidation, on: [:update]
     end
 
     ets do

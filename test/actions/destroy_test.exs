@@ -162,7 +162,7 @@ defmodule Ash.Test.Actions.DestroyTest do
 
     validations do
       validate AtomicOnlyValidation,
-        on: [:create, :update, :destroy]
+        on: [:destroy]
     end
 
     actions do

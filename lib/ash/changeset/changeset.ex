@@ -730,7 +730,48 @@ defmodule Ash.Changeset do
     end
   end
 
-  defp run_atomic_validation(changeset, %{where: where} = validation, context) do
+  @doc false
+  def split_atomic_conditions(%{where: []} = validation, _changeset, _actor, _context) do
+    {:ok, validation}
+  end
+
+  def split_atomic_conditions(
+        %{where: [{module, opts} | rest]} = validation,
+        changeset,
+        actor,
+        context
+      ) do
+    if module.has_validate?() do
+      opts =
+        Ash.Actions.Helpers.templated_opts(opts, actor, changeset.arguments, changeset.context)
+
+      {:ok, opts} = module.init(opts)
+
+      case module.validate(
+             changeset,
+             opts,
+             context
+           ) do
+        :ok -> split_atomic_conditions(%{validation | where: rest}, changeset, actor, context)
+        _ -> :skip
+      end
+    else
+      if module.atomic?() do
+        case split_atomic_conditions(%{validation | where: rest}, changeset, actor, context) do
+          {:ok, %{where: remaining} = validation} ->
+            {:ok, %{validation | where: [{module, opts} | remaining]}}
+
+          other ->
+            other
+        end
+      else
+        raise "Module #{module} must define one of `atomic/3` or `validate/3`"
+      end
+    end
+  end
+
+  @doc false
+  def run_atomic_validation(changeset, %{where: where} = validation, context) do
     with {:atomic, condition} <- atomic_condition(where, changeset, context) do
       case condition do
         false ->
@@ -799,11 +840,11 @@ defmodule Ash.Changeset do
     end)
   end
 
-  defp run_atomic_change(
-         changeset,
-         %{change: {module, change_opts}, where: where},
-         context
-       ) do
+  def run_atomic_change(
+        changeset,
+        %{change: {module, change_opts}, where: where},
+        context
+      ) do
     change_opts =
       Ash.Expr.fill_template(
         change_opts,
@@ -2162,27 +2203,49 @@ defmodule Ash.Changeset do
         changeset
 
       %{always_atomic?: true, change: {module, _}} = change, changeset ->
-        case run_atomic_change(changeset, change, context) do
-          {:not_atomic, reason} ->
-            Ash.Changeset.add_error(
-              changeset,
-              "Change #{inspect(module)} was configured with `always_atomic?` to `true`, but could not be done atomically: #{reason}"
+        if changeset.action.type == :create do
+          Ash.Changeset.add_error(
+            changeset,
+            Ash.Error.Framework.CanNotBeAtomic.exception(
+              resource: changeset.resource,
+              change: module,
+              reason: "Create actions cannot be made atomic"
             )
+          )
+        else
+          case run_atomic_change(changeset, change, context) do
+            {:not_atomic, reason} ->
+              Ash.Changeset.add_error(
+                changeset,
+                "Change #{inspect(module)} was configured with `always_atomic?` to `true`, but could not be done atomically: #{reason}"
+              )
 
-          changeset ->
-            changeset
+            changeset ->
+              changeset
+          end
         end
 
-      %{always_atomic?: true, validation: _} = change, changeset ->
-        case run_atomic_validation(changeset, change, context) do
-          {:not_atomic, reason} ->
-            Ash.Changeset.add_error(
-              changeset,
-              "Validation #{change.module} must be run atomically, but it could not be: #{reason}"
+      %{always_atomic?: true, validation: {module, _}} = change, changeset ->
+        if changeset.action.type == :create do
+          Ash.Changeset.add_error(
+            changeset,
+            Ash.Error.Framework.CanNotBeAtomic.exception(
+              resource: changeset.resource,
+              change: module,
+              reason: "Create actions cannot be made atomic"
             )
+          )
+        else
+          case run_atomic_validation(changeset, change, context) do
+            {:not_atomic, reason} ->
+              Ash.Changeset.add_error(
+                changeset,
+                "Validation #{change.module} must be run atomically, but it could not be: #{reason}"
+              )
 
-          changeset ->
-            changeset
+            changeset ->
+              changeset
+          end
         end
 
       %{change: {module, opts}, where: where} = change, changeset ->
@@ -2239,15 +2302,26 @@ defmodule Ash.Changeset do
             changeset
           end
         else
-          case run_atomic_change(changeset, change, context) do
-            {:not_atomic, reason} ->
-              Ash.Changeset.add_error(
-                changeset,
-                "Change #{inspect(module)} must be atomic, but could not be done atomically: #{reason}"
+          if changeset.action.type == :create do
+            Ash.Changeset.add_error(
+              changeset,
+              Ash.Error.Framework.CanNotBeAtomic.exception(
+                resource: changeset.resource,
+                change: module,
+                reason: "Create actions cannot be made atomic"
               )
+            )
+          else
+            case run_atomic_change(changeset, change, context) do
+              {:not_atomic, reason} ->
+                Ash.Changeset.add_error(
+                  changeset,
+                  "Change #{inspect(module)} must be atomic, but could not be done atomically: #{reason}"
+                )
 
-            changeset ->
-              changeset
+              changeset ->
+                changeset
+            end
           end
         end
 
@@ -2659,7 +2733,10 @@ defmodule Ash.Changeset do
   end
 
   defp validate(changeset, validation, tracer, metadata, actor) do
-    if validation.module.has_validate?() do
+    if validation.module.has_validate?() &&
+         Enum.all?(validation.where, fn {module, _} ->
+           module.has_validate?()
+         end) do
       if validation.before_action? do
         before_action(
           changeset,
@@ -2680,22 +2757,33 @@ defmodule Ash.Changeset do
         end
       end
     else
-      context = %{
-        actor: changeset.context[:private][:actor],
-        tenant: changeset.tenant,
-        authorize?: changeset.context[:private][:authorize?] || false,
-        tracer: changeset.context[:private][:tracer]
-      }
-
-      case run_atomic_validation(changeset, validation, context) do
-        {:not_atomic, reason} ->
-          Ash.Changeset.add_error(
-            changeset,
-            "Validation #{validation.module} must be run atomically, but it could not be: #{reason}"
+      if changeset.action.type == :create do
+        Ash.Changeset.add_error(
+          changeset,
+          Ash.Error.Framework.CanNotBeAtomic.exception(
+            resource: changeset.resource,
+            change: validation.module,
+            reason: "Create actions cannot be made atomic"
           )
+        )
+      else
+        context = %{
+          actor: changeset.context[:private][:actor],
+          tenant: changeset.tenant,
+          authorize?: changeset.context[:private][:authorize?] || false,
+          tracer: changeset.context[:private][:tracer]
+        }
 
-        changeset ->
-          changeset
+        case run_atomic_validation(changeset, validation, context) do
+          {:not_atomic, reason} ->
+            Ash.Changeset.add_error(
+              changeset,
+              "Validation #{validation.module} must be run atomically, but it could not be: #{reason}"
+            )
+
+          changeset ->
+            changeset
+        end
       end
     end
   end

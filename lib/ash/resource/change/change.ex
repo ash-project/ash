@@ -109,13 +109,16 @@ defmodule Ash.Resource.Change do
 
   @doc """
   Replaces `change/3` for batch actions, allowing to optimize changes for bulk actions.
+
+  You can define only `batch_change/3`, and it will be used for both single and batch actions.
+  It cannot, however, be used in place of the `atomic/3` callback.
   """
   @callback batch_change(
               changesets :: [Ash.Changeset.t()],
               opts :: Keyword.t(),
               context :: Context.t()
             ) ::
-              Enumerable.t(Ash.Changeset.t() | Ash.Notifier.Notification.t())
+              Enumerable.t(Ash.Changeset.t())
 
   @doc """
   Runs on each batch before it is dispatched to the data layer.
@@ -203,8 +206,62 @@ defmodule Ash.Resource.Change do
         @impl true
         def has_change?, do: true
       else
-        @impl true
-        def has_change?, do: false
+        if Module.defines?(__MODULE__, {:batch_change, 3}, :def) do
+          @impl true
+          def change(changeset, opts, context) do
+            if has_before_batch?() do
+              Ash.Changeset.before_action(changeset, fn changeset ->
+                {[changeset], notifications} =
+                  Enum.split_with(
+                    before_batch([changeset], opts, context),
+                    fn %Ash.Notifier.Notification{} ->
+                      false
+                    end
+                  )
+
+                {changeset, %{notifications: notifications}}
+              end)
+            else
+              changeset
+            end
+            |> Ash.Changeset.before_action(changeset, fn change ->
+              Enum.at(batch_change([changeset], opts, context), 0)
+            end)
+            |> then(fn changeset ->
+              if has_after_batch?() do
+                Ash.Changeset.after_action(changeset, fn changeset, result ->
+                  [{changeset, result}]
+                  |> after_batch(opts, context)
+                  |> Enum.reduce({[], [], []}, fn item, {records, errors, notifications} ->
+                    case item do
+                      {:ok, record} -> {[record | records], errors, notifications}
+                      {:error, error} -> {records, [error | errors], notifications}
+                      %Ash.Notifier.Notification{} -> {records, errors, [item | notifications]}
+                    end
+                  end)
+                  |> case do
+                    {[record], [], notifications} ->
+                      {:ok, record, notifications}
+
+                    {other, [], _notifications} ->
+                      raise "Invalid return value from `after_batch/3`. Expected exactly one record: #{inspect(other)}"
+
+                    {_, errors, _notifications} ->
+                      {:error, errors}
+                  end
+                end)
+              else
+                changeset
+              end
+            end)
+          end
+
+          @impl true
+          def has_change?, do: true
+        else
+          @impl true
+          def has_change?, do: false
+        end
       end
 
       if Module.defines?(__MODULE__, {:batch_change, 3}, :def) do

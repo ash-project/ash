@@ -394,6 +394,17 @@ defmodule Ash.Actions.Helpers do
 
   def process_errors(changeset, error), do: process_errors(changeset, [error])
 
+  def templated_opts({:templated, opts}, _actor, _arguments, _context), do: opts
+
+  def templated_opts(opts, actor, arguments, context) do
+    Ash.Expr.fill_template(
+      opts,
+      actor,
+      arguments,
+      context
+    )
+  end
+
   def load_runtime_types({:ok, results}, query, attributes?) do
     load_runtime_types(results, query, attributes?)
   end

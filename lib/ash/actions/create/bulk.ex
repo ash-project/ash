@@ -1512,6 +1512,29 @@ defmodule Ash.Actions.Create.Bulk do
           batch =
             Enum.map(batch, fn changeset ->
               cond do
+                !module.has_validate?() ->
+                  Ash.Changeset.add_error(
+                    changeset,
+                    Ash.Error.Framework.CanNotBeAtomic.exception(
+                      resource: changeset.resource,
+                      change: module,
+                      reason: "Create actions cannot be made atomic"
+                    )
+                  )
+
+                invalid =
+                    Enum.find(validation.where, fn {module, _} -> !module.has_validate?() end) ->
+                  {module, _} = invalid
+
+                  Ash.Changeset.add_error(
+                    changeset,
+                    Ash.Error.Framework.CanNotBeAtomic.exception(
+                      resource: changeset.resource,
+                      change: module,
+                      reason: "Create actions cannot be made atomic"
+                    )
+                  )
+
                 validation.only_when_valid? && !changeset.valid? ->
                   changeset
 

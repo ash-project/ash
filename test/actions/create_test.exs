@@ -1427,8 +1427,8 @@ defmodule Ash.Test.Actions.CreateTest do
   end
 
   test "shows an error if an atomic only validation is used in a create" do
-    assert_raise Ash.Error.Framework.CanNotBeAtomic,
-                 ~r/Post AtomicOnlyValidation only has an atomic\/3 callback, but cannot be performed atomically/,
+    assert_raise Ash.Error.Framework,
+                 ~r/Create actions cannot be made atomic/,
                  fn ->
                    Post
                    |> Ash.Changeset.for_create(:with_atomic_only_validations, %{title: "foo"})
