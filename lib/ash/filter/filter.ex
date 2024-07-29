@@ -4045,7 +4045,7 @@ defmodule Ash.Filter do
   def get_function(key, resource, public?) when is_binary(key) do
     function =
       Map.get(@string_builtin_functions, key) ||
-        Enum.find(Ash.DataLayer.data_layer_functions(resource), &(&1.name() == key))
+        Enum.find(Ash.DataLayer.data_layer_functions(resource), &(to_string(&1.name()) == key))
 
     if public? && function && function.private?() do
       nil
