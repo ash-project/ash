@@ -405,23 +405,27 @@ defmodule Ash.Actions.Read.Relationships do
           relationship.destination_attribute_on_join_resource
         ] ++ Ash.Resource.Info.primary_key(join_relationship.destination)
       )
+      |> Ash.Query.for_read(
+        join_relationship.read_action ||
+          Ash.Resource.Info.primary_action!(relationship.through, :read).name,
+        %{},
+        authorize?: related_query.context[:private][:authorize?],
+        actor: related_query.context[:private][:actor],
+        tracer: related_query.context[:private][:tracer],
+        tenant: related_query.tenant,
+        domain:
+          Ash.Domain.Info.related_domain(
+            related_query,
+            join_relationship,
+            related_query.domain
+          )
+      )
 
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
       Ash.Context.to_opts(related_query.context),
       fn ->
-        case Ash.Actions.Read.unpaginated_read(join_query, nil,
-               authorize?: related_query.context[:private][:authorize?],
-               actor: related_query.context[:private][:actor],
-               tracer: related_query.context[:private][:tracer],
-               tenant: related_query.tenant,
-               domain:
-                 Ash.Domain.Info.related_domain(
-                   related_query,
-                   join_relationship,
-                   related_query.domain
-                 )
-             ) do
+        case Ash.Actions.Read.unpaginated_read(join_query, nil) do
           {:ok, join_records} ->
             {join_id_mapping, destination_ids} =
               Enum.reduce(join_records, {%{}, MapSet.new()}, fn join_record,
@@ -466,6 +470,9 @@ defmodule Ash.Actions.Read.Relationships do
             |> Ash.Query.sort(relationship.sort)
             |> Ash.Query.do_filter(relationship.filter)
             |> Ash.Query.filter(^ref(relationship.destination_attribute) in ^destination_ids)
+            |> Ash.Query.set_context(%{
+              accessing_from: %{source: relationship.source, name: relationship.name}
+            })
             |> Map.put(:page, nil)
             |> Ash.Actions.Read.unpaginated_read()
             |> case do
