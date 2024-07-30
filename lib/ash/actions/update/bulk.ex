@@ -2739,7 +2739,7 @@ defmodule Ash.Actions.Update.Bulk do
   def batch_change(%{change: {module, change_opts}, where: where} = change, batch, context, actor) do
     must_be_atomic? =
       Enum.any?(change.where, fn {mod, _} ->
-        !mod.has_batch_change?() && !mod.has_change?()
+        !mod.has_validate?()
       end)
 
     case change_opts do
