@@ -2,6 +2,25 @@
 
 <!-- changelog -->
 
+## [v3.3.1](https://github.com/ash-project/ash/compare/v3.3.0...v3.3.1) (2024-07-30)
+
+
+
+
+### Bug Fixes:
+
+* properly parse domain module in `mix ash.gen.domain`
+
+* properly handle mixed atomic & non-atomic validations/changes
+
+* properly find data layer predicates when name is provided as a string
+
+* set accessing from and join read action for many_to_many relationships correctly (#1355)
+
+### Improvements:
+
+* implement `change/3` automatically if batch callbacks are defined
+
 ## [v3.3.0](https://github.com/ash-project/ash/compare/v3.2.6...v3.3.0) (2024-07-27)
 
 ### Features:
