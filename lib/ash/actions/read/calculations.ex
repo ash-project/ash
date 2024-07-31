@@ -442,6 +442,11 @@ defmodule Ash.Actions.Read.Calculations do
   def rewrite(_rewrites, nil), do: nil
   def rewrite(_rewrites, []), do: []
 
+  def rewrite(rewrites, %struct{results: results} = page)
+      when struct in [Ash.Page.Keyset, Ash.Page.Offset] do
+    %{page | results: rewrite(results, rewrites)}
+  end
+
   def rewrite(rewrites, record) when not is_list(record) do
     rewrites
     |> rewrite([record])
@@ -554,6 +559,19 @@ defmodule Ash.Actions.Read.Calculations do
 
   defp rewrite_at_path(
          records,
+         {{[{:rel, name} | rest], data, calc_name, calc_load}, source}
+       ) do
+    new_rewrites = [
+      {{rest, data, calc_name, calc_load}, source}
+    ]
+
+    Enum.map(records, fn record ->
+      Map.update!(record, name, &rewrite(new_rewrites, &1))
+    end)
+  end
+
+  defp rewrite_at_path(
+         records,
          {{[{:calc, type, constraints, name, load} | rest], data, calc_name, calc_load}, source}
        ) do
     new_rewrites = [
@@ -643,13 +661,21 @@ defmodule Ash.Actions.Read.Calculations do
         if calculation.module.strict_loads? do
           []
         else
-          relationship.destination
-          |> Ash.Query.new()
-          |> get_all_rewrites(calculation, path ++ [name])
+          query = Ash.Query.new(relationship.destination)
+
+          query
+          |> get_all_rewrites(calculation, path)
+          |> Enum.map(fn {{path, data, calc_name, calc_load}, source} ->
+            {{path ++ [{:rel, name}], data, calc_name, calc_load}, source}
+          end)
         end
 
       {name, query} ->
-        get_all_rewrites(query, calculation, path ++ [name])
+        query
+        |> get_all_rewrites(calculation, path)
+        |> Enum.map(fn {{path, data, calc_name, calc_load}, source} ->
+          {{path ++ [{:rel, name}], data, calc_name, calc_load}, source}
+        end)
     end)
   end
 
@@ -686,6 +712,10 @@ defmodule Ash.Actions.Read.Calculations do
       end
     end)
   end
+
+  # TODO: This currently must assume that all relationship loads are different if
+  # authorize?: true, because the policies have not yet been applied.
+  #
 
   def split_and_load_calculations(
         domain,
@@ -1785,7 +1815,7 @@ defmodule Ash.Actions.Read.Calculations do
       strict_loads?,
       relationship_path,
       can_expression_calculation?,
-      relationship_path,
+      [],
       initial_data,
       reuse_values?,
       authorize?

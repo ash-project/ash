@@ -135,6 +135,34 @@ defmodule Ash.Test.CalculationTest do
     end
   end
 
+  defmodule BestFriendsNameDifferent do
+    use Ash.Resource.Calculation
+
+    def load(_query, _opts, _) do
+      [best_friend: [full_name: %{separator: ":"}]]
+    end
+
+    def calculate(records, _opts, _) do
+      Enum.map(records, fn record ->
+        record.best_friend && record.best_friend.full_name
+      end)
+    end
+  end
+
+  defmodule BestFriendsActive do
+    use Ash.Resource.Calculation
+
+    def load(_query, _opts, _) do
+      [best_friend: :active]
+    end
+
+    def calculate(records, _opts, _) do
+      Enum.map(records, fn record ->
+        record.best_friend && record.best_friend.active
+      end)
+    end
+  end
+
   defmodule BestFriendsFirstNameThatFails do
     use Ash.Resource.Calculation
 
@@ -561,6 +589,14 @@ defmodule Ash.Test.CalculationTest do
       end
 
       calculate :best_friends_name, :string, BestFriendsName do
+        public?(true)
+      end
+
+      calculate :best_friends_name_different, :string, BestFriendsNameDifferent do
+        public?(true)
+      end
+
+      calculate :best_friends_active, :boolean, BestFriendsActive do
         public?(true)
       end
 
@@ -1030,11 +1066,59 @@ defmodule Ash.Test.CalculationTest do
     best_friends_names =
       User
       |> Ash.Query.load([:best_friends_name])
-      |> Ash.read!()
+      |> Ash.read!(authorize?: false)
       |> Enum.map(& &1.best_friends_name)
       |> Enum.sort()
 
     assert best_friends_names == [nil, "zach daniel"]
+  end
+
+  test "nested calculations are loaded differently if necessary" do
+    res =
+      User
+      |> Ash.Query.load([:best_friends_name, :best_friends_name_different])
+      |> Ash.read!(authorize?: false)
+
+    best_friends_names =
+      res
+      |> Enum.map(& &1.best_friends_name)
+      |> Enum.sort()
+
+    best_friends_names_different =
+      res
+      |> Enum.map(& &1.best_friends_name_different)
+      |> Enum.sort()
+
+    assert best_friends_names == [nil, "zach daniel"]
+    assert best_friends_names_different == [nil, "zach:daniel"]
+  end
+
+  test "nested calculations inside nested relationships are loaded differently if necessary" do
+    res =
+      User
+      |> Ash.Query.load(
+        best_friends_of_me: [
+          :id,
+          :best_friends_name,
+          :best_friends_name_different,
+          best_friend: [:id]
+        ]
+      )
+      |> Ash.read!(authorize?: false)
+      |> Enum.flat_map(& &1.best_friends_of_me)
+
+    best_friends_names =
+      res
+      |> Enum.map(& &1.best_friends_name)
+      |> Enum.sort()
+
+    best_friends_names_different =
+      res
+      |> Enum.map(& &1.best_friends_name_different)
+      |> Enum.sort()
+
+    assert best_friends_names == ["zach daniel"]
+    assert best_friends_names_different == ["zach:daniel"]
   end
 
   test "calculations must specify required fields by default" do
