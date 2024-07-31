@@ -218,10 +218,24 @@ defmodule Ash.DataLayer.Ets do
   def can?(_, :transact), do: false
   def can?(_, {:filter_expr, _}), do: true
 
-  def can?(resource, {:join, other_resource}) do
-    # See the comment in can?/2 in mnesia data layer to explain this
-    not (Ash.DataLayer.Ets.Info.private?(resource) and
-           Ash.DataLayer.data_layer(other_resource) == Ash.DataLayer.Mnesia)
+  case Application.compile_env(:ash, :no_join_mnesia_ets) || false do
+    false ->
+      def can?(_, {:join, _resource}) do
+        # we synthesize all filters under the hood using `Ash.Filter.Runtime`
+        true
+      end
+
+    true ->
+      def can?(_, {:join, _resource}) do
+        # we synthesize all filters under the hood using `Ash.Filter.Runtime`
+        false
+      end
+
+    :dynamic ->
+      def can?(_, {:join, resource}) do
+        Ash.Resource.Info.data_layer(resource) == __MODULE__ ||
+          Application.get_env(:ash, :mnesia_ets_join?, true)
+      end
   end
 
   def can?(_, :nested_expressions), do: true

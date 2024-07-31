@@ -30,6 +30,7 @@ if Mix.env() == :test do
   config :ash, :custom_expressions, [Ash.Test.Expressions.JaroDistance]
 
   config :ash, :sat_testing, true
+  config :ash, :no_join_mnesia_ets, :dynamic
 
   config :ash, :validate_domain_resource_inclusion?, false
   config :ash, :validate_domain_config_inclusion?, false

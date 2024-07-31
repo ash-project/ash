@@ -1383,37 +1383,7 @@ defmodule Ash.Filter do
 
         case Ash.Actions.Read.unpaginated_read(query, relationship.read_action) do
           {:ok, data} ->
-            pkey = Ash.Resource.Info.primary_key(related)
-
-            expr =
-              Enum.reduce(data, nil, fn item, expr ->
-                new_expr =
-                  Enum.reduce(pkey, nil, fn key, expr ->
-                    {:ok, new_expr} =
-                      Ash.Query.Operator.new(
-                        Ash.Query.Operator.Eq,
-                        %Ash.Query.Ref{
-                          attribute: key,
-                          relationship_path: at_path
-                        },
-                        Map.get(item, key)
-                      )
-
-                    if expr do
-                      Ash.Query.BooleanExpression.new(:and, expr, new_expr)
-                    else
-                      new_expr
-                    end
-                  end)
-
-                if expr do
-                  Ash.Query.BooleanExpression.new(:or, expr, new_expr)
-                else
-                  new_expr
-                end
-              end)
-
-            {:ok, expr}
+            records_to_expression(data, relationship, at_path)
 
           {:error, error} ->
             {:error, error}
@@ -1688,6 +1658,24 @@ defmodule Ash.Filter do
 
   defp records_to_expression([], _, _), do: {:ok, false}
 
+  defp records_to_expression(_, %{no_attributes?: true}, _), do: {:ok, true}
+
+  defp records_to_expression([single_record], %{type: :many_to_many} = relationship, path) do
+    Ash.Query.Operator.new(
+      Eq,
+      %Ref{
+        relationship_path: path ++ [relationship.join_relationship],
+        resource: relationship.through,
+        attribute:
+          Ash.Resource.Info.attribute(
+            relationship.through,
+            relationship.destination_attribute_on_join_resource
+          )
+      },
+      Map.get(single_record, relationship.destination_attribute)
+    )
+  end
+
   defp records_to_expression([single_record], relationship, path) do
     Ash.Query.Operator.new(
       Eq,
@@ -1701,10 +1689,14 @@ defmodule Ash.Filter do
   end
 
   defp records_to_expression(records, relationship, path) do
-    Enum.reduce_while(records, {:ok, true}, fn record, {:ok, expression} ->
+    Enum.reduce_while(records, {:ok, nil}, fn record, {:ok, expression} ->
       case records_to_expression([record], relationship, path) do
         {:ok, operator} ->
-          {:cont, {:ok, BooleanExpression.optimized_new(:and, expression, operator)}}
+          if is_nil(expression) do
+            {:cont, {:ok, operator}}
+          else
+            {:cont, {:ok, BooleanExpression.optimized_new(:or, expression, operator)}}
+          end
 
         {:error, error} ->
           {:halt, {:error, error}}
@@ -3019,6 +3011,9 @@ defmodule Ash.Filter do
     |> Map.to_list()
     |> case do
       [] ->
+        :ok
+
+      [{_data_layer, [_]}] ->
         :ok
 
       [{_data_layer, resources}] ->

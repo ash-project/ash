@@ -117,11 +117,15 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
   end
 
   setup do
+    Application.put_env(:ash, :mnesia_ets_join?, false)
+
     capture_log(fn ->
       Mnesia.start(Domain, [Post, PostLink])
     end)
 
     on_exit(fn ->
+      Application.put_env(:ash, :mnesia_ets_join?, true)
+
       capture_log(fn ->
         :mnesia.stop()
         :mnesia.delete_schema([node()])
@@ -173,6 +177,47 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
         |> Ash.Query.filter(author.name == "best author")
 
       assert [%{id: ^post1_id}] = Ash.read!(query)
+    end
+
+    test "it properly filters with a simple filter and multiple matches" do
+      author =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "best author"})
+        |> Ash.create!()
+
+      author2 =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "best author"})
+        |> Ash.create!()
+
+      author3 =
+        User
+        |> Ash.Changeset.for_create(:create, %{name: "worst author"})
+        |> Ash.create!()
+
+      post1 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "best"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.create!()
+
+      post2 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "best"})
+        |> Ash.Changeset.manage_relationship(:author, author2, type: :append_and_remove)
+        |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "best"})
+      |> Ash.Changeset.manage_relationship(:author, author3, type: :append_and_remove)
+      |> Ash.create!()
+
+      query =
+        Post
+        |> Ash.Query.filter(author.name == "best author")
+
+      assert query |> Ash.read!() |> Enum.map(& &1.id) |> Enum.sort() ==
+               Enum.sort([post1.id, post2.id])
     end
 
     test "parallelizable filtering of related resources with a data layer that cannot join" do
@@ -261,9 +306,6 @@ defmodule Ash.Test.Filter.FilterInteractionTest do
       |> Ash.Changeset.for_create(:create, %{title: "four"})
       |> Ash.Changeset.manage_relationship(:related_posts, [post3], type: :append_and_remove)
       |> Ash.create!()
-
-      post2
-      |> Ash.load!(:related_posts)
 
       query =
         Post

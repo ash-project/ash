@@ -112,12 +112,24 @@ defmodule Ash.DataLayer.Mnesia do
   def can?(_, {:aggregate, :exists}), do: true
   def can?(resource, {:query_aggregate, kind}), do: can?(resource, {:aggregate, kind})
 
-  def can?(_, {:join, resource}) do
-    # This is to ensure that these can't join, which is necessary for testing
-    # if someone needs to use these both and *actually* needs real joins for private
-    # ets resources then we can talk about making this only happen in ash tests
-    not (Ash.DataLayer.data_layer(resource) == Ash.DataLayer.Ets &&
-           Ash.DataLayer.Ets.Info.private?(resource))
+  case Application.compile_env(:ash, :no_join_mnesia_ets) || false do
+    false ->
+      def can?(_, {:join, _resource}) do
+        # we synthesize all filters under the hood using `Ash.Filter.Runtime`
+        true
+      end
+
+    true ->
+      def can?(_, {:join, _resource}) do
+        # we synthesize all filters under the hood using `Ash.Filter.Runtime`
+        false
+      end
+
+    :dynamic ->
+      def can?(_, {:join, resource}) do
+        Ash.Resource.Info.data_layer(resource) == __MODULE__ ||
+          Application.get_env(:ash, :mnesia_ets_join?, true)
+      end
   end
 
   def can?(_, {:filter_expr, _}), do: true
