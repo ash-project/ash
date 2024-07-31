@@ -1783,7 +1783,7 @@ defmodule Ash.Actions.Read.Calculations do
       calc_load,
       calc_path,
       strict_loads?,
-      calc_path,
+      relationship_path,
       can_expression_calculation?,
       relationship_path,
       initial_data,
