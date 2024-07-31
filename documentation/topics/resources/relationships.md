@@ -388,7 +388,6 @@ defmodule Helpdesk.Support.Ticket.Relationships.TicketsAboveThreshold do
      |> Ash.Query.filter(representative_id in ^rep_ids)
      |> Ash.Query.filter(priority > representative.priority_threshold)
      |> Helpdesk.Support.read!(actor: actor, authorize?: authorize?)
-     # &1.representative_id could potentially be set to %Ash.NotLoaded
      |> Enum.group_by(& &1.representative_id)}
   end
 end
