@@ -87,7 +87,6 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
     options =
       options
-      |> IO.inspect(label: "before")
       |> Ash.Igniter.csv_option(:default_actions, fn values ->
         Enum.sort_by(values, &(&1 in ["create", "update"]))
       end)
@@ -95,7 +94,6 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
       |> Ash.Igniter.csv_option(:relationship)
       |> Ash.Igniter.csv_option(:extend)
       |> Keyword.put_new(:base, "Ash.Resource")
-      |> IO.inspect()
 
     base =
       if options[:base] == "Ash.Resource" do
