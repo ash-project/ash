@@ -57,7 +57,14 @@ defmodule Mix.Tasks.Ash.Codegen do
 
         Mix.shell().info("Running codegen for #{extension_name}...")
 
-        extension.codegen(argv ++ ["--name", name])
+        argv =
+          if "--name" in argv do
+            argv
+          else
+            argv ++ ["--name", name]
+          end
+
+        extension.codegen(argv)
       end
     end)
   end
