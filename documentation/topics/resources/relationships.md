@@ -359,6 +359,41 @@ def load(records, _opts, %{query: query, ..}) do
 end
 ```
 
+### Query when loading with strict?: true
+
+When using `Ash.Query.load` or `Ash.load` with the `strict?: true` option, the query
+that is provided to the load callback might be configured with a select-statement that doesn't 
+load the attributes you want to group matching results by. If your codebase utilizes the strict
+loading functionality, it is therefore recommended to use `Ash.Query.ensure_selected` on the
+query to ensure the required attributes are indeed fetched.
+
+```elixir
+
+# Here only :id & :priority is set, which will then configure the relationship query to only
+# select those attributes
+{:ok, rep} = Ash.load(representative, [tickets_above_threshold: [:id, :priority]], strict?: true)
+
+defmodule Helpdesk.Support.Ticket.Relationships.TicketsAboveThreshold do
+  use Ash.Resource.ManualRelationship
+  require Ash.Query
+
+  def load(records, _opts, %{query: query, actor: actor, authorize?: authorize?}) do
+    rep_ids = Enum.map(records, & &1.id)
+
+    {:ok,
+     query
+     # If this isn't added, representative_id would be set to %Ash.NotLoaded, causing the
+     # Enum.group_by call below to fail mapping results to the correct records.
+     |> Ash.Query.ensure_selected([:representative_id])
+     |> Ash.Query.filter(representative_id in ^rep_ids)
+     |> Ash.Query.filter(priority > representative.priority_threshold)
+     |> Helpdesk.Support.read!(actor: actor, authorize?: authorize?)
+     # &1.representative_id could potentially be set to %Ash.NotLoaded
+     |> Enum.group_by(& &1.representative_id)}
+  end
+end
+```
+
 ### Fetching the records and then applying a query
 
 Lets say the records come from some totally unrelated source, or you can't just modify the query to fetch the records you need. You can fetch the records you need and then apply the query to them in memory.
