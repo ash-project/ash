@@ -5,6 +5,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
     --uuid-primary-key id \\
     --attribute subject:string:required:public \\
     --relationship belongs_to:representative:Helpdesk.Support.Representative \\
+    --timestamps \\
     --extend postgres,graphql
   """
   @moduledoc """
@@ -20,14 +21,15 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
   ## Options
 
-  * `--attribute` or `-a` - An attribute or comma separated list of attributes to add, as `name:type`. Modifiers: `primary_key`, `public`, and `required`. i.e `-a name:string:required`
-  * `--relationship` or `-r` - A relationship or comma separated list of relationships to add, as `type:name:dest`. Modifiers: `public`. `belongs_to` only modifiers: `primary_key`, and `required`. i.e `-r belongs_to:author:MyApp.Accounts.Author:required`
+  * `--attribute` or `-a` - An attribute or comma separated list of attributes to add, as `name:type`. Modifiers: `primary_key`, `public`, `sensitive`, and `required`. i.e `-a name:string:required`
+  * `--relationship` or `-r` - A relationship or comma separated list of relationships to add, as `type:name:dest`. Modifiers: `public`. `belongs_to` only modifiers: `primary_key`, `sensitive`, and `required`. i.e `-r belongs_to:author:MyApp.Accounts.Author:required`
   * `--default-actions` or `-da` - A csv list of default action types to add, i.e `-da read,create`. The `create` and `update` actions accept the public attributes being added.
   * `--uuid-primary-key` or `-u` - Adds a UUID primary key with that name. i.e `-u id`
   * `--integer-primary-key` or `-i` - Adds an integer primary key with that name. i.e `-i id`
   * `--domain` or `-d` - The domain module to add the resource to. i.e `-d MyApp.MyDomain`. This defaults to the resource's module name, minus the last segment.
   * `--extend` or `-e` - A comma separated list of modules or builtins to extend the resource with. i.e `-e postgres,Some.Extension`
   * `--base` or `-b` - The base module to use for the resource. i.e `-b Ash.Resource`. Requires that the module is in `config :your_app, :base_resources`
+  * `--timestamps` or `-t` - If set adds `inserted_at` and `updated_at` timestamps to the resource.
   """
 
   @shortdoc "Generate and configure an Ash.Resource."
@@ -46,7 +48,8 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
         integer_primary_key: :string,
         domain: :string,
         extend: :keep,
-        base: :string
+        base: :string,
+        timestamps: :boolean
       ],
       aliases: [
         a: :attribute,
@@ -56,7 +59,8 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
         u: :uuid_primary_key,
         i: :integer_primary_key,
         e: :extend,
-        b: :base
+        b: :base,
+        t: :timestamps
       ]
     }
   end
@@ -83,6 +87,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
     options =
       options
+      |> IO.inspect(label: "before")
       |> Ash.Igniter.csv_option(:default_actions, fn values ->
         Enum.sort_by(values, &(&1 in ["create", "update"]))
       end)
@@ -90,6 +95,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
       |> Ash.Igniter.csv_option(:relationship)
       |> Ash.Igniter.csv_option(:extend)
       |> Keyword.put_new(:base, "Ash.Resource")
+      |> IO.inspect()
 
     base =
       if options[:base] == "Ash.Resource" do
@@ -164,7 +170,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
     attributes =
       if options[:uuid_primary_key] || options[:integer_primary_key] ||
-           !Enum.empty?(options[:attribute]) do
+           !Enum.empty?(options[:attribute]) || options[:timestamps] do
         uuid_primary_key =
           if options[:uuid_primary_key] do
             pkey_builder("uuid_primary_key", options[:uuid_primary_key])
@@ -175,11 +181,17 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
             pkey_builder("integer_primary_key", options[:integer_primary_key])
           end
 
+        timestamps =
+          if options[:timestamps] do
+            "timestamps"
+          end
+
         """
         attributes do
           #{uuid_primary_key}
           #{integer_primary_key}
           #{attributes}
+          #{timestamps}
         end
         """
       end
@@ -281,6 +293,9 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
       "required" ->
         "allow_nil? false"
+
+      "sensitive" ->
+        "sensitive? true"
     end)
   end
 
@@ -296,7 +311,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
         _name ->
           raise """
-          Invalid attribute format. Please use the format `type:name:destination` for each attribute.
+          Invalid relationship format: #{relationship}. Please use the format `type:name:destination` for each attribute.
           """
       end
     end)
@@ -317,6 +332,9 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
             "public" ->
               "public? true"
+
+            "sensitive?" ->
+              "sensitive? true"
 
             "required" ->
               if type == "belongs_to" do

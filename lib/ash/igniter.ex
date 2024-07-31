@@ -28,17 +28,17 @@ defmodule Ash.Igniter do
   end
 
   def csv_option(options, key, modifier \\ & &1) do
-    Keyword.update(
-      options,
-      key,
-      [],
-      fn defaults ->
-        defaults
-        |> List.wrap()
-        |> Enum.join(",")
-        |> String.split(",")
-        |> then(modifier)
-      end
-    )
+    values = Keyword.get_values(options, key)
+
+    values =
+      values
+      |> List.wrap()
+      |> Enum.join(",")
+      |> String.split(",", trim: true)
+      |> then(modifier)
+
+    options
+    |> Keyword.delete(key)
+    |> Keyword.put(key, values)
   end
 end

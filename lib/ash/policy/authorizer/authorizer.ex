@@ -465,7 +465,7 @@ defmodule Ash.Policy.Authorizer do
               {:simple_sat, "~> 0.1"}
             ],
             label:
-              "Which sat solver would you like to use? If on windows, use `simple_sat`, otherwise, use `picosat_elixir`.",
+              "Ash.Policy.Authorizer requires a sat solver. Which would you like to use? If on windows, use `simple_sat`, otherwise, use `picosat_elixir`.",
             render_as: &to_string(elem(&1, 0))
           )
 
