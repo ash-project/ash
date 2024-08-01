@@ -2,6 +2,17 @@
 
 <!-- changelog -->
 
+## [v3.3.3](https://github.com/ash-project/ash/compare/v3.3.2...v3.3.3) (2024-08-01)
+
+
+
+
+### Bug Fixes:
+
+* roll back bulk update/destroy on before action error
+
+* delete ash_notifications from pdict after reading
+
 ## [v3.3.2](https://github.com/ash-project/ash/compare/v3.3.1...v3.3.2) (2024-08-01)
 
 ### Bug Fixes:
