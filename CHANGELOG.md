@@ -4,24 +4,21 @@
 
 ## [v3.3.2](https://github.com/ash-project/ash/compare/v3.3.1...v3.3.2) (2024-08-01)
 
-
-
-
 ### Bug Fixes:
 
-* properly parse multiple occurrences of :keep arguments
+- [`Ash.Igniter`] properly parse multiple occurrences of :keep arguments
 
-* properly key nested calculations and add additional tests
+- [calculations] properly key nested calculations and add additional tests
 
-* pass relationship path down when merging query loads
+- [calculations] pass relationship path down when merging query loads
 
-* don't set `--name nil` when calling codegen tasks
+- [`mix ash.codegen`] don't set `--name nil` when calling codegen tasks
 
-* fix behavior of synthesized joins across data layers
+- [`Ash.Filter`] fix behavior of synthesized joins across data layers
 
 ### Improvements:
 
-* add `--timestamps` argument to `ash.gen.resource`
+- [`mix ash.gen.resource`] add `--timestamps` argument to add timestamps to the resource
 
 ## [v3.3.1](https://github.com/ash-project/ash/compare/v3.3.0...v3.3.1) (2024-07-30)
 
