@@ -652,8 +652,8 @@ defmodule Ash.Actions.Create.Bulk do
 
             notifications =
               if opts[:notify?] do
-                process_notifications = Process.get(:ash_notifications, [])
-                bulk_notifications = Process.get({:bulk_create_notifications, ref}) || []
+                process_notifications = Process.delete(:ash_notifications) || []
+                bulk_notifications = Process.delete({:bulk_create_notifications, ref}) || []
 
                 if opts[:return_notifications?] do
                   process_notifications ++ bulk_notifications

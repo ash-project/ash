@@ -3225,7 +3225,7 @@ defmodule Ash.Changeset do
 
             notifications =
               if instructions[:gather_notifications?] do
-                Enum.concat(List.wrap(Process.get(:ash_notifications, [])), notifications)
+                Enum.concat(List.wrap(Process.delete(:ash_notifications) || []), notifications)
               else
                 notifications
               end
