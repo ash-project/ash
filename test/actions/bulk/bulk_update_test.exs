@@ -382,6 +382,18 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
       default_accept :*
       defaults [:read, :destroy, :create, :update]
 
+      update :error_in_before_action_on_title2 do
+        atomic_upgrade? false
+
+        change before_action(fn changeset, context ->
+                 if changeset.data.title == "title2" do
+                   Ash.Changeset.add_error(changeset, "not good")
+                 else
+                   changeset
+                 end
+               end)
+      end
+
       update :update_with_after_action do
         atomic_upgrade? false
 
@@ -603,6 +615,75 @@ defmodule Ash.Test.Actions.BulkUpdateTest do
                        data: %{title: "title2"},
                        changeset: %{attributes: %{title2: "updated value"}}
                      }}
+  end
+
+  test "sends only the correct amount notifications with stream strategy in transactions, when run in a before action hook" do
+    MnesiaPost
+    |> Ash.Changeset.for_create(:create, %{title: "title_pre"})
+    |> Ash.Changeset.before_action(fn changeset ->
+      Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], MnesiaPost, :create,
+        return_stream?: true,
+        return_records?: true,
+        authorize?: false
+      )
+      |> Stream.map(fn {:ok, result} ->
+        result
+      end)
+      |> Ash.bulk_update!(:update, %{title2: "updated value"},
+        resource: MnesiaPost,
+        strategy: :stream,
+        allow_stream_with: :full_read,
+        return_records?: true,
+        notify?: true,
+        return_errors?: true,
+        authorize?: false
+      )
+
+      changeset
+    end)
+    |> Ash.create!()
+
+    assert_received {:notification, %{changeset: %{action: %{type: :create}}}}
+
+    assert_received {:notification,
+                     %{
+                       data: %{title: "title1"},
+                       changeset: %{attributes: %{title2: "updated value"}}
+                     }}
+
+    assert_received {:notification,
+                     %{
+                       data: %{title: "title2"},
+                       changeset: %{attributes: %{title2: "updated value"}}
+                     }}
+
+    refute_received {:notification, _}
+  end
+
+  test "rolls back on errors in a `before_action` hook" do
+    Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], MnesiaPost, :create,
+      return_stream?: true,
+      return_records?: true,
+      authorize?: false
+    )
+    |> Stream.map(fn {:ok, result} ->
+      result
+    end)
+    |> Ash.bulk_update(:error_in_before_action_on_title2, %{title2: "updated value"},
+      resource: MnesiaPost,
+      strategy: :stream,
+      allow_stream_with: :full_read,
+      return_records?: true,
+      notify?: true,
+      return_errors?: true,
+      authorize?: false
+    )
+
+    # the first mutation didn't happen
+    assert MnesiaPost |> Ash.read!() |> Enum.map(& &1.title) |> Enum.sort() == [
+             "title1",
+             "title2"
+           ]
   end
 
   test "sends notifications with after action hooks in stream strategy in transactions" do

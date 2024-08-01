@@ -2194,8 +2194,8 @@ defmodule Ash.Query do
 
   #{Spark.Options.docs(@build_opts)}
   """
-  @spec build(Ash.Resource.t(), Ash.Domain.t() | nil, Keyword.t()) :: t()
-  @spec build(Ash.Resource.t(), Keyword.t()) :: t()
+  @spec build(Ash.Resource.t() | t(), Ash.Domain.t() | nil, Keyword.t()) :: t()
+  @spec build(Ash.Resource.t() | t(), Keyword.t()) :: t()
   def build(resource, domain \\ nil, keyword) do
     query =
       resource

@@ -1179,7 +1179,10 @@ defmodule Ash.Actions.Update.Bulk do
           )
         after
           if opts[:notify?] && !opts[:return_notifications?] do
-            Ash.Notifier.notify(Process.delete({:bulk_update_notifications, ref}))
+            Process.put(
+              {:bulk_update_notifications, ref},
+              Ash.Notifier.notify(Process.delete({:bulk_update_notifications, ref}) || [])
+            )
           end
         end
       end
@@ -1206,9 +1209,17 @@ defmodule Ash.Actions.Update.Bulk do
           else
             if opts[:notify?] do
               Ash.Notifier.notify(Process.delete({:bulk_update_notifications, ref}))
+            else
+              []
             end
+          end
 
+        notifications =
+          if Process.get(:ash_started_transaction?) && !opts[:return_notifications?] do
+            Process.put(:ash_notifications, Process.get(:ash_notifications, []) ++ notifications)
             []
+          else
+            notifications
           end
 
         {errors, error_count} = Process.get({:bulk_update_errors, ref}) || {[], 0}
@@ -2054,6 +2065,14 @@ defmodule Ash.Actions.Update.Bulk do
         if changeset.valid? do
           {changeset, %{notifications: new_notifications}} =
             Ash.Changeset.run_before_actions(changeset)
+
+          if !changeset.valid? && opts[:rollback_on_error?] do
+            Ash.Actions.Helpers.rollback_if_in_transaction(
+              {:error, changeset.errors},
+              resource,
+              nil
+            )
+          end
 
           changeset =
             changeset
