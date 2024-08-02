@@ -181,7 +181,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
         timestamps =
           if options[:timestamps] do
-            "timestamps"
+            "timestamps()"
           end
 
         """
