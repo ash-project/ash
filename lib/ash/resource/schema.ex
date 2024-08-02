@@ -35,7 +35,8 @@ defmodule Ash.Schema do
                   primary_key: attribute.primary_key?,
                   read_after_writes: read_after_writes?,
                   redact: attribute.sensitive?,
-                  source: attribute.source
+                  source: attribute.source,
+                  default: Ash.Schema.attribute_default(attribute.default)
                 )
               )
             end
@@ -154,7 +155,8 @@ defmodule Ash.Schema do
                   primary_key: attribute.primary_key?,
                   read_after_writes: read_after_writes?,
                   redact: attribute.sensitive?,
-                  source: attribute.source
+                  source: attribute.source,
+                  default: Ash.Schema.attribute_default(attribute.default)
                 )
               )
             end
@@ -335,4 +337,8 @@ defmodule Ash.Schema do
   end
 
   def not_a_resource!(type), do: type
+
+  def attribute_default(fun) when is_function(fun), do: nil
+  def attribute_default({_mod, _func, _args}), do: nil
+  def attribute_default(value), do: value
 end
