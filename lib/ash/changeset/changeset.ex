@@ -3012,14 +3012,25 @@ defmodule Ash.Changeset do
         )
 
       %{name: name} ->
-        add_error(
-          changeset,
-          Required.exception(
-            resource: changeset.resource,
-            field: name,
-            type: :relationship
+        if required_attribute.name in changeset.action.accept do
+          add_error(
+            changeset,
+            Required.exception(
+              resource: changeset.resource,
+              field: required_attribute.name,
+              type: :attribute
+            )
           )
-        )
+        else
+          add_error(
+            changeset,
+            Required.exception(
+              resource: changeset.resource,
+              field: name,
+              type: :relationship
+            )
+          )
+        end
     end
   end
 
