@@ -1482,4 +1482,36 @@ defmodule Ash.Test.Actions.CreateTest do
                    |> Ash.create!()
                  end
   end
+
+  defmodule Dummy do
+    @moduledoc false
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :title, :string, public?: true, writable?: false, allow_nil?: false
+      timestamps()
+    end
+
+    actions do
+      create :create do
+        primary? true
+        accept []
+        change set_attribute(:title, "foo")
+      end
+    end
+  end
+
+  test "fail set_attribute writable?: false attribute" do
+    assert {:error, _reason} =
+             Dummy
+             |> Ash.Changeset.for_create(:create)
+             |> Ash.create()
+  end
 end
