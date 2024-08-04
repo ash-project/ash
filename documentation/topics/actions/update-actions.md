@@ -41,11 +41,58 @@ Changing attributes in this way makes them safer to use in concurrent environmen
 
 > ### Atomics are not stored with other changes {: .warning}
 >
-> While we recommend using atomics wherever possible, it is important to note that they are stored in their own map in the changeset, i.e `changeset.atomics`, meaning if you need to do something later in the action with the new value for an attribute, you won't be able to access the new value. This is because atomics are evaluated in the data layer.
+> While we recommend using atomics wherever possible, it is important to note that they are stored in their own map in the changeset,
+> i.e `changeset.atomics`, meaning if you need to do something later in the action with the new value for an attribute, you won't be
+> able to access the new value. This is because atomics are evaluated in the data layer. You can, however, access "the old or new value"
+> in a similar way to `Ash.Changeset.get_attribute`, using the template expression, `atomic_ref(:name)`. See the section below for more.
+
+### `atomic_ref/1`
+
+Lets say that you have an action that may perform multiple atomic update on a single column, or for some other reason needs to refer to the new value.
+The only way to access that new value is _also_ in an atomic update, change, or validation, using `atomic_ref/1`. There is no way to access the new value
+prior to the action being run with something like `Ash.Changeset.get_attribute/2`.
+
+For example, lets say you have a postgres function that will slugify a string, and you want to make sure to always set it to the slugified version of `name`,
+whenever `name` is changing.
+
+```elixir
+changes do
+  change atomic_update(:slug, expr(fragment("slugify(?)", atomic_ref(:name)))), where: changing(:name), on: [:update]
+end
+```
+
+By using `atomic_ref/1` here, you are always referring to the new value of `name`, even if another atomic update has been made that modifies `name`.
+
+Because the validation `changing/1` can be done atomically, and the change `atomic_update/2` (naturally) can be done atomically, this is a fully atomic update.
+Lets say that you paired this with an action like this:
+
+```elixir
+update :add_to_name do
+  argument :to_add, :string, allow_nil? false
+  change atomic_update(:name, expr("#{name}_#{to_add}"))
+end
+```
+
+and would produce a SQL update along the lines of:
+
+```sql
+UPDATE table
+  SET name = name || $1,
+  slug = CASE
+    WHEN name = name || $1 THEN
+      slug
+    ELSE
+      slugify(name || $1)
+  END
+WHERE id = $2
+```
+
+This is a _fully atomic update_, because all changes are done atomically in the data layer. We now have the benefits of composable building blocks _and_
+atomic updates.
 
 ## Fully Atomic updates
 
-Atomic updates are a special case of update actions that can be done atomically. If your update action can't be done atomically, you will get an error unless you have set `require_atomic? false`. This is to encourage you to opt for atomic updates whereever reasonable. Not all actions can reasonably be made atomic, and not all non-atomic actions are problematic for concurrency. The goal is only to make sure that you are aware and have considered the implications.
+Atomic updates are a special case of update actions that can be done completely atomically. If your update action can't be done atomically, you will get an error unless you have set `require_atomic? false`. This is to encourage you to opt for atomic updates whereever reasonable. Not all actions can reasonably be made atomic, and not all non-atomic actions are problematic for concurrency. The goal is only to make sure that you are aware and have considered the implications.
 
 > ### What does atomic mean? {: .info}
 >
@@ -181,6 +228,6 @@ All actions are run in a transaction if the data layer supports it. You can opt 
 
 ## Atomic Upgrade
 
-Update actions that are run as "normal" update actions will, at the time of execution, be "upgraded" to an atomic action if possible. This  means taking the original inputs and building a corresponding atomic action. This behavior is primarily useful for using things like `AshPhoenix.Form`, where you want to validate and see the effects of an action before running it, but want the ultimate invocation to be atomic (i.e concurrency safe).
+Update actions that are run as "normal" update actions will, at the time of execution, be "upgraded" to an atomic action if possible. This means taking the original inputs and building a corresponding atomic action. This behavior is primarily useful for using things like `AshPhoenix.Form`, where you want to validate and see the effects of an action before running it, but want the ultimate invocation to be atomic (i.e concurrency safe).
 
 You can disable this by adding `atomic_upgrade? false` to the action configuration. Additionally, you may want to configure the read action used for atomic upgrades (defaults to the primary read), with `atomic_upgrade_with` option, i.e `atomic_upgrade_with :list_all`
