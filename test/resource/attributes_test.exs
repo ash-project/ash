@@ -30,6 +30,7 @@ defmodule Ash.Test.Resource.AttributesTest do
         attributes do
           attribute :foo, :string, public?: true
           attribute :bar, :boolean
+          attribute :def, :integer, default: 69
         end
       end
 
@@ -40,6 +41,11 @@ defmodule Ash.Test.Resource.AttributesTest do
                  name: :bar,
                  type: Ash.Type.Boolean,
                  primary_key?: false
+               },
+               %Attribute{
+                 name: :def,
+                 type: Ash.Type.Integer,
+                 default: 69
                }
              ] = Ash.Resource.Info.attributes(Post)
 
@@ -50,6 +56,8 @@ defmodule Ash.Test.Resource.AttributesTest do
       assert nil == Ash.Resource.Info.attribute(Post, :totally_valid_attributes)
 
       assert nil == Ash.Resource.Info.public_attribute(Post, :bar)
+
+      assert %{def: 69} = struct(Post, %{})
     end
 
     test "uuid_v7 attributes are persisted on the resource properly" do
