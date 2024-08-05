@@ -255,7 +255,7 @@ defmodule Ash.Actions.Read do
           {:ok, result, count, query} -> {{:ok, result, count}, query}
           {{:error, _, _} = error, query} -> {error, query}
           {{:error, _} = error, query} -> {error, query}
-          other -> {IO.inspect(other), query}
+          other -> {other, query}
         end
 
       with {:ok, data, count} <- data_result,
