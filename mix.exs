@@ -343,7 +343,6 @@ defmodule Ash.MixProject do
       {:ets, "~> 0.8"},
       # Data & types
       {:decimal, "~> 2.0"},
-      {:comparable, "~> 1.0"},
       {:jason, ">= 1.0.0"},
       # Observability
       {:telemetry, "~> 1.1"},

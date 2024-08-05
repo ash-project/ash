@@ -47,3 +47,9 @@ defmodule Ash.Type.Time do
     Ecto.Type.dump(:time, value)
   end
 end
+
+import Ash.Type.Comparable
+
+defcomparable left :: Time, right :: Time do
+  Time.compare(left, right)
+end

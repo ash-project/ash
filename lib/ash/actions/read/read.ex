@@ -499,9 +499,6 @@ defmodule Ash.Actions.Read do
         end
       end)
     else
-      %Ash.Query{} = query ->
-        {{:error, query}, query}
-
       {:ok, query} ->
         {{:error, query}, query}
 

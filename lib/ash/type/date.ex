@@ -51,3 +51,9 @@ defmodule Ash.Type.Date do
     Ecto.Type.dump(:date, value)
   end
 end
+
+import Ash.Type.Comparable
+
+defcomparable left :: Date, right :: Date do
+  Date.compare(left, right)
+end
