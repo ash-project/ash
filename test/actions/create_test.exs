@@ -66,8 +66,8 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      default_accept :*
-      defaults [:read, :destroy, create: :*, update: :*]
+      default_accept [:bio, :date]
+      defaults [:read, :destroy, :create, :update]
     end
 
     attributes do
@@ -134,8 +134,8 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      default_accept :*
-      defaults [:read, :destroy, create: :*, update: :*]
+      default_accept [:bio, :name]
+      defaults [:read, :destroy, :create, :update]
 
       create :only_allow_name do
         accept([:name])
@@ -256,8 +256,21 @@ defmodule Ash.Test.Actions.CreateTest do
     end
 
     actions do
-      default_accept :*
-      defaults [:read, :destroy, create: :*, update: :*]
+      default_accept [
+        :list_attribute_with_constraints,
+        :required_boolean_with_default,
+        :required_with_default,
+        :binary,
+        :date,
+        :list_attribute,
+        :tag3,
+        :tag2,
+        :tag,
+        :contents,
+        :title
+      ]
+
+      defaults [:read, :destroy, :create, :update]
 
       create :create_with_required do
         require_attributes [:tag]
@@ -328,6 +341,31 @@ defmodule Ash.Test.Actions.CreateTest do
         destination_attribute_on_join_resource: :destination_post_id,
         public?: true
       )
+    end
+  end
+
+  defmodule PostRequiringAuthorId do
+    @moduledoc false
+    use Ash.Resource, data_layer: Ash.DataLayer.Ets, domain: Ash.Test.Domain
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept [:author_id, :title]
+      defaults [:read, :destroy, create: :*, update: :*]
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute(:title, :string, allow_nil?: false, public?: true)
+
+      timestamps()
+    end
+
+    relationships do
+      belongs_to(:author, Author, public?: true, allow_nil?: false)
     end
   end
 
@@ -1228,6 +1266,15 @@ defmodule Ash.Test.Actions.CreateTest do
       |> Ash.Changeset.change_attribute(:title, "foobar")
       |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
       |> Ash.create!()
+    end
+
+    test "when creating with belongs_to relationship specified as an attribute, the attribute is in the error" do
+      assert {:error,
+              %Ash.Error.Invalid{errors: [%Ash.Error.Changes.Required{field: :author_id}]}} =
+               PostRequiringAuthorId
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.for_create(:create, %{title: "foobar"})
+               |> Ash.create()
     end
 
     test "it sets the relationship on the destination record accordingly" do
