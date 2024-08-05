@@ -1836,11 +1836,11 @@ defmodule Ash.Actions.Read do
 
   @doc false
   def add_calc_context(%Ash.Query.Aggregate{} = agg, actor, authorize?, tenant, tracer, domain) do
-    read_action =
-      agg.read_action || Ash.Resource.Info.primary_action!(agg.query.resource, :read).name
-
     query =
-      if agg.query.__validated_for_action__ != read_action do
+      if is_nil(agg.query.__validated_for_action__) do
+        read_action =
+          agg.read_action || Ash.Resource.Info.primary_action!(agg.query.resource, :read).name
+
         domain =
           if agg.query.domain do
             agg.query.domain
