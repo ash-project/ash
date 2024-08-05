@@ -661,9 +661,10 @@ defmodule Ash.EmbeddableType do
                 other -> to_string(other)
               end
 
-            if nils_distinct? do
-              " with `nil` values considered distinct"
-            end
+            nils_distinct? =
+              if nils_distinct? do
+                " with `nil` values considered distinct"
+              end
 
             {:error,
              message: "items must be unique on #{type} with keys %{keys}#{nils_distinct?}",
