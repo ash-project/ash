@@ -108,6 +108,12 @@ defmodule Ash do
                           default: false,
                           doc:
                             "Whether calculations are allowed to reuse values that have already been loaded, or must refetch them from the data layer."
+                        ],
+                        authorize_with: [
+                          type: {:one_of, [:filter, :error]},
+                          default: :filter,
+                          doc:
+                            "If set to `:error`, instead of applying authorization filters as a filter, any records not matching the authroization filter will cause an error to be returned."
                         ]
                       ],
                       @global_opts,

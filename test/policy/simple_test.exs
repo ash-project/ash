@@ -176,6 +176,30 @@ defmodule Ash.Test.Policy.SimpleTest do
     assert ids == Enum.sort([post1.id, post2.id])
   end
 
+  test "authorize_with `:error` is an error if any records don't match", %{user: user} do
+    post1 =
+      Post
+      |> Ash.Changeset.for_create(:create, %{author: user.id, text: "aaa"})
+      |> Ash.create!(authorize?: false)
+
+    Post
+    |> Ash.Changeset.for_create(:create, %{text: "invalid"})
+    |> Ash.create!(authorize?: false)
+
+    ids =
+      Post
+      |> Ash.read!(actor: user)
+      |> Enum.map(& &1.id)
+      |> Enum.sort()
+
+    assert ids == Enum.sort([post1.id])
+
+    assert_raise Ash.Error.Forbidden, fn ->
+      Post
+      |> Ash.read!(actor: user, authorize_with: :error)
+    end
+  end
+
   test "filter policies bypassed for calculations", %{user: user} do
     other_user = Ash.create!(Ash.Changeset.for_create(User, :create), authorize?: false)
 

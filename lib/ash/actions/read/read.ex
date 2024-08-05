@@ -253,7 +253,9 @@ defmodule Ash.Actions.Read do
         case data_result do
           {:ok, result, query} -> {{:ok, result, nil}, query}
           {:ok, result, count, query} -> {{:ok, result, count}, query}
-          other -> {other, query}
+          {{:error, _, _} = error, query} -> {error, query}
+          {{:error, _} = error, query} -> {error, query}
+          other -> {IO.inspect(other), query}
         end
 
       with {:ok, data, count} <- data_result,
@@ -316,6 +318,19 @@ defmodule Ash.Actions.Read do
         {:error, %Ash.Query{errors: errors} = query} ->
           {:error, Ash.Error.to_error_class(errors, query: query)}
 
+        {:error,
+         %Ash.Error.Forbidden.Placeholder{
+           authorizer: authorizer
+         }} ->
+          error =
+            Ash.Authorizer.exception(
+              authorizer,
+              :forbidden,
+              query_ran.context[:private][:authorizer_state][authorizer]
+            )
+
+          {:error, Ash.Error.to_error_class(error)}
+
         {:error, error} ->
           {:error, Ash.Error.to_error_class(error, query: query)}
       end
@@ -327,162 +342,172 @@ defmodule Ash.Actions.Read do
   end
 
   defp do_read(%{action: action} = query, calculations_at_runtime, calculations_in_query, opts) do
-    maybe_in_transaction(query, opts, fn ->
-      with {:ok, %{valid?: true} = query} <- handle_multitenancy(query),
-           query <- add_select_if_none_exists(query),
-           query <- %{
-             query
-             | filter:
-                 add_calc_context_to_filter(
-                   query.filter,
-                   opts[:actor],
-                   opts[:authorize?],
-                   query.tenant,
-                   opts[:tracer],
-                   query.domain
-                 )
-           },
-           pre_authorization_query <- query,
-           {:ok, query} <- authorize_query(query, opts),
-           query_before_pagination <- query,
-           query <-
-             Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
-               query,
-               calculations_at_runtime ++ calculations_in_query
-             ),
-           {:ok, data_layer_calculations} <- hydrate_calculations(query, calculations_in_query),
-           {:ok, query} <-
-             hydrate_sort(
-               query,
-               opts[:actor],
-               opts[:authorize?],
-               query.tenant,
-               opts[:tracer],
-               query.domain
-             ),
-           {:ok, relationship_path_filters} <-
-             Ash.Filter.relationship_filters(
-               query.domain,
-               pre_authorization_query,
-               opts[:actor],
-               query.tenant,
-               agg_refs(query, data_layer_calculations ++ [{nil, query.filter}]),
-               opts[:authorize?]
-             ),
-           data_layer_calculations <-
-             authorize_calculation_expressions(
-               data_layer_calculations,
-               query.resource,
-               opts[:authorize?],
-               relationship_path_filters,
-               opts[:actor],
-               query.tenant,
-               opts[:tracer],
-               query.domain
-             ),
-           query <-
-             authorize_loaded_aggregates(
-               query,
-               relationship_path_filters,
-               opts[:actor],
-               opts[:authorize?],
-               query.tenant,
-               opts[:tracer]
-             ),
-           query <-
-             authorize_sorts(
-               query,
-               relationship_path_filters,
-               opts[:actor],
-               opts[:authorize?],
-               query.tenant,
-               opts[:tracer]
-             ),
-           {:ok, filter} <-
-             filter_with_related(
-               query,
-               opts[:authorize?],
-               relationship_path_filters
-             ),
-           {:ok, filter} <-
-             Filter.run_other_data_layer_filters(
-               query.domain,
-               query.resource,
-               filter,
-               query.tenant
-             ),
-           filter <-
-             add_calc_context_to_filter(
-               filter,
-               opts[:actor],
-               opts[:authorize?],
-               query.tenant,
-               opts[:tracer],
-               query.domain
-             ),
-           filter <-
-             update_aggregate_filters(
-               filter,
-               query.resource,
-               opts[:authorize?],
-               relationship_path_filters,
-               opts[:actor],
-               query.tenant,
-               opts[:tracer],
-               query.domain
-             ),
-           query <- Map.put(query, :filter, filter),
-           query <- Ash.Query.unset(query, :calculations),
-           {%{valid?: true} = query, before_notifications} <- run_before_action(query),
-           {:ok, count} <-
-             fetch_count(
-               query,
-               query_before_pagination,
-               relationship_path_filters,
-               opts
-             ),
-           {:ok, query} <- paginate(query, action, opts[:skip_pagination?]),
-           {:ok, data_layer_query} <-
-             Ash.Query.data_layer_query(query, data_layer_calculations: data_layer_calculations),
-           {:ok, results} <-
-             run_query(
-               set_phase(query, :executing),
-               data_layer_query,
-               %{
-                 actor: opts[:actor],
-                 tenant: query.tenant,
-                 authorize?: opts[:authorize?],
-                 domain: query.domain
-               },
-               !Keyword.has_key?(opts, :initial_data)
-             )
-             |> Helpers.rollback_if_in_transaction(
-               query.resource,
-               query
-             ),
-           :ok <- validate_get(results, query.action, query),
-           results <- add_keysets(query, results, query.sort),
-           {:ok, results} <- run_authorize_results(query, results),
-           {:ok, results, after_notifications} <- run_after_action(query, results),
-           {:ok, count} <- maybe_await(count) do
-        {:ok, results, count, query, before_notifications ++ after_notifications}
-      else
-        {%{valid?: false} = query, before_notifications} ->
-          {:error, query, before_notifications}
+    with {:ok, %{valid?: true} = query} <- handle_multitenancy(query),
+         query <- add_select_if_none_exists(query),
+         query <- %{
+           query
+           | filter:
+               add_calc_context_to_filter(
+                 query.filter,
+                 opts[:actor],
+                 opts[:authorize?],
+                 query.tenant,
+                 opts[:tracer],
+                 query.domain
+               )
+         },
+         pre_authorization_query <- query,
+         {:ok, query} <- authorize_query(query, opts) do
+      maybe_in_transaction(query, opts, fn ->
+        with query_before_pagination <- query,
+             query <-
+               Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
+                 query,
+                 calculations_at_runtime ++ calculations_in_query
+               ),
+             {:ok, data_layer_calculations} <- hydrate_calculations(query, calculations_in_query),
+             {:ok, query} <-
+               hydrate_sort(
+                 query,
+                 opts[:actor],
+                 opts[:authorize?],
+                 query.tenant,
+                 opts[:tracer],
+                 query.domain
+               ),
+             {:ok, relationship_path_filters} <-
+               Ash.Filter.relationship_filters(
+                 query.domain,
+                 pre_authorization_query,
+                 opts[:actor],
+                 query.tenant,
+                 agg_refs(query, data_layer_calculations ++ [{nil, query.filter}]),
+                 opts[:authorize?]
+               ),
+             data_layer_calculations <-
+               authorize_calculation_expressions(
+                 data_layer_calculations,
+                 query.resource,
+                 opts[:authorize?],
+                 relationship_path_filters,
+                 opts[:actor],
+                 query.tenant,
+                 opts[:tracer],
+                 query.domain
+               ),
+             query <-
+               authorize_loaded_aggregates(
+                 query,
+                 relationship_path_filters,
+                 opts[:actor],
+                 opts[:authorize?],
+                 query.tenant,
+                 opts[:tracer]
+               ),
+             query <-
+               authorize_sorts(
+                 query,
+                 relationship_path_filters,
+                 opts[:actor],
+                 opts[:authorize?],
+                 query.tenant,
+                 opts[:tracer]
+               ),
+             {:ok, filter} <-
+               filter_with_related(
+                 query,
+                 opts[:authorize?],
+                 relationship_path_filters
+               ),
+             {:ok, filter} <-
+               Filter.run_other_data_layer_filters(
+                 query.domain,
+                 query.resource,
+                 filter,
+                 query.tenant
+               ),
+             filter <-
+               add_calc_context_to_filter(
+                 filter,
+                 opts[:actor],
+                 opts[:authorize?],
+                 query.tenant,
+                 opts[:tracer],
+                 query.domain
+               ),
+             filter <-
+               update_aggregate_filters(
+                 filter,
+                 query.resource,
+                 opts[:authorize?],
+                 relationship_path_filters,
+                 opts[:actor],
+                 query.tenant,
+                 opts[:tracer],
+                 query.domain
+               ),
+             query <- Map.put(query, :filter, filter),
+             query <- Ash.Query.unset(query, :calculations),
+             {%{valid?: true} = query, before_notifications} <- run_before_action(query),
+             {:ok, count} <-
+               fetch_count(
+                 query,
+                 query_before_pagination,
+                 relationship_path_filters,
+                 opts
+               ),
+             {:ok, query} <- paginate(query, action, opts[:skip_pagination?]),
+             {:ok, data_layer_query} <-
+               Ash.Query.data_layer_query(query, data_layer_calculations: data_layer_calculations),
+             {:ok, results} <-
+               run_query(
+                 set_phase(query, :executing),
+                 data_layer_query,
+                 %{
+                   actor: opts[:actor],
+                   tenant: query.tenant,
+                   authorize?: opts[:authorize?],
+                   domain: query.domain
+                 },
+                 !Keyword.has_key?(opts, :initial_data)
+               )
+               |> Helpers.rollback_if_in_transaction(
+                 query.resource,
+                 query
+               ),
+             :ok <- validate_get(results, query.action, query),
+             results <- add_keysets(query, results, query.sort),
+             {:ok, results} <- run_authorize_results(query, results),
+             {:ok, results, after_notifications} <- run_after_action(query, results),
+             {:ok, count} <- maybe_await(count) do
+          {:ok, results, count, query, before_notifications ++ after_notifications}
+        else
+          {%{valid?: false} = query, before_notifications} ->
+            {{:error, query, before_notifications}, query}
 
-        {:error, %Ash.Query{} = query} ->
-          {:error, query}
+          {{:error, %Ash.Query{} = query}, query} ->
+            {:error, query}
 
-        {:ok, %Ash.Query{valid?: false} = query} ->
-          {:error, query}
+          {:ok, %Ash.Query{valid?: false} = query} ->
+            {{:error, query}, query}
 
-        %Ash.Query{} = query ->
-          {:error, query}
+          %Ash.Query{} = query ->
+            {{:error, query}, query}
 
-        {:error, error} ->
-          {:error, error}
-      end
-    end)
+          {:error, error} ->
+            {{:error, error}, query}
+        end
+      end)
+    else
+      %Ash.Query{} = query ->
+        {{:error, query}, query}
+
+      {:ok, query} ->
+        {{:error, query}, query}
+
+      {:error, error} ->
+        {{:error, error}, query}
+    end
   end
 
   defp add_relationship_count_aggregates(query) do
@@ -1136,6 +1161,7 @@ defmodule Ash.Actions.Read do
              return_forbidden_error?: true,
              maybe_is: false,
              pre_flight?: false,
+             filter_with: opts[:authorize_with] || :filter,
              run_queries?: false,
              alter_source?: true
            ) do
