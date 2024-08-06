@@ -202,7 +202,8 @@ defmodule Ash.Policy.FilterCheck do
                 opts
               end
 
-            Ash.Expr.eval_hydrated(hydrated, opts)
+            hydrated
+            |> Ash.Expr.eval_hydrated(opts)
 
           {:error, error} ->
             {:error, error}

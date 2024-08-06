@@ -743,25 +743,43 @@ defmodule Ash.Filter.Runtime do
          unknown_on_unknown_refs?
        ) do
     result =
-      if load do
-        case Map.get(record || %{}, load) do
-          %Ash.NotLoaded{} ->
+      record
+      |> get_related(relationship_path, unknown_on_unknown_refs?)
+      |> case do
+        :unknown ->
+          if unknown_on_unknown_refs? do
             :unknown
+          else
+            {:ok, nil}
+          end
 
-          %Ash.ForbiddenField{} ->
-            :unknown
+        [] ->
+          {:ok, nil}
 
-          other ->
-            {:ok, other}
-        end
-      else
-        case Map.fetch(Map.get(record || %{}, :calculations, %{}), name) do
-          {:ok, value} ->
-            {:ok, value}
+        [record | _] ->
+          if load do
+            case Map.fetch(record || %{}, load) do
+              :error ->
+                :unknown
 
-          :error ->
-            :unknown
-        end
+              {:ok, %Ash.NotLoaded{}} ->
+                :unknown
+
+              {:ok, %Ash.ForbiddenField{}} ->
+                :unknown
+
+              {:ok, other} ->
+                {:ok, other}
+            end
+          else
+            case Map.fetch(Map.get(record || %{}, :calculations, %{}), name) do
+              {:ok, value} ->
+                {:ok, value}
+
+              :error ->
+                :unknown
+            end
+          end
       end
 
     case result do

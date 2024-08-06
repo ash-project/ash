@@ -2114,6 +2114,7 @@ defmodule Ash.Filter do
            sensitive?: calc.sensitive?
          ) do
       {:ok, calc} ->
+        calc = %{calc | load: calc.name}
         field_to_ref(resource, calc)
 
       {:error, error} ->
@@ -2667,6 +2668,8 @@ defmodule Ash.Filter do
                      sensitive?: resource_calculation.sensitive?,
                      load: resource_calculation.load
                    ) do
+              calculation = %{calculation | load: calculation.name}
+
               case parse_predicates(nested_statement, calculation, context) do
                 {:ok, nested_statement} ->
                   {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
@@ -2834,6 +2837,8 @@ defmodule Ash.Filter do
                  sensitive?: resource_calculation.sensitive?,
                  load: resource_calculation.load
                ) do
+          calculation = %{calculation | load: calculation.name}
+
           case parse_predicates(nested_statement, calculation, context) do
             {:ok, nested_statement} ->
               {:ok, BooleanExpression.optimized_new(:and, expression, nested_statement)}
@@ -3198,7 +3203,7 @@ defmodule Ash.Filter do
                ) do
           {:ok,
            %Ref{
-             attribute: calculation,
+             attribute: %{calculation | load: resource_calculation.name},
              relationship_path:
                Map.get(context, :relationship_path, []) ++ call.relationship_path,
              resource: resource
@@ -3480,6 +3485,8 @@ defmodule Ash.Filter do
                      sensitive?: resource_calculation.sensitive?,
                      load: resource_calculation.load
                    ) do
+              calculation = %{calculation | load: calculation.name}
+
               {:ok, %{ref | attribute: calculation, resource: related}}
             else
               {:error, error} ->
