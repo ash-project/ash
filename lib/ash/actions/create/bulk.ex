@@ -1225,6 +1225,7 @@ defmodule Ash.Actions.Create.Bulk do
       changeset = changesets_by_index[result.__metadata__.bulk_create_index]
 
       case manage_relationships(result, domain, changeset,
+             upsert?: opts[:upsert?],
              actor: opts[:actor],
              authorize?: opts[:authorize?]
            ) do
