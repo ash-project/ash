@@ -1585,6 +1585,8 @@ defmodule Ash.Type do
       end
 
       @impl true
+      def apply_atomic_constraints_array(nil, _), do: {:ok, nil}
+
       def apply_atomic_constraints_array(new_value, constraints) when is_list(new_value) do
         new_value
         |> Enum.reduce_while({:ok, []}, fn val, {:ok, vals} ->
@@ -1618,6 +1620,10 @@ defmodule Ash.Type do
           {:atomic, vals} -> {:atomic, Enum.reverse(vals)}
           {:not_atomic, reason} -> {:not_atomic, reason}
         end
+      end
+
+      def cast_atomic_array(nil, _) do
+        {:atomic, nil}
       end
 
       def cast_atomic_array(new_value, _constraints) do
