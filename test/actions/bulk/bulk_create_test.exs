@@ -52,6 +52,28 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
+  defmodule ChangeMessage do
+    use Ash.Resource.Change
+
+    @impl Ash.Resource.Change
+    def change(changeset, opts, context) do
+      send(self(), {:change, changeset, opts, context})
+      changeset
+    end
+
+    @impl Ash.Resource.Change
+    def batch_change(changesets, opts, context) do
+      send(self(), {:batch_change, changesets, opts, context})
+      changesets
+    end
+
+    @impl Ash.Resource.Change
+    def after_batch(changesets_and_results, opts, context) do
+      send(self(), {:after_batch, changesets_and_results, opts, context})
+      :ok
+    end
+  end
+
   defmodule Org do
     @moduledoc false
     use Ash.Resource,
@@ -243,6 +265,10 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
       create :create_with_atomic_only_validation do
         validate AtomicOnlyValidation
+      end
+
+      create :create_message do
+        change ChangeMessage
       end
     end
 
@@ -523,6 +549,26 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                sorted?: true,
                authorize?: false
              )
+  end
+
+  test "supplies arguments to after_batch" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
+    assert %Ash.BulkResult{status: :success} =
+             Ash.bulk_create!(
+               [%{title: "title1"}],
+               Post,
+               :create_message,
+               tenant: org.id,
+               return_records?: false,
+               return_errors?: true,
+               authorize?: false
+             )
+
+    assert_received {:after_batch, [{%Ash.Changeset{}, %Post{}}], _opts, _context}
   end
 
   test "properly sets the status to `:partial_success` without `return_records?`" do

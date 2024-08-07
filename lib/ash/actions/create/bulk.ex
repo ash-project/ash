@@ -565,7 +565,8 @@ defmodule Ash.Actions.Create.Bulk do
       changesets_by_index,
       batch,
       domain,
-      resource
+      resource,
+      must_return_records_for_changes?
     )
     |> Stream.concat(must_be_simple_results)
     |> then(fn stream ->
@@ -1267,7 +1268,8 @@ defmodule Ash.Actions.Create.Bulk do
          changesets_by_index,
          changesets,
          domain,
-         resource
+         resource,
+         must_return_records_for_changes?
        ) do
     results =
       Enum.flat_map(batch, fn result ->
@@ -1283,7 +1285,7 @@ defmodule Ash.Actions.Create.Bulk do
                  changeset
                ) do
             {:ok, result} ->
-              if opts[:return_records?] do
+              if opts[:return_records?] || must_return_records_for_changes? do
                 [result]
               else
                 []
@@ -1310,6 +1312,9 @@ defmodule Ash.Actions.Create.Bulk do
       opts,
       ref
     )
+    |> then(fn records ->
+      if opts[:return_records?], do: records, else: []
+    end)
     |> then(fn records ->
       select =
         if opts[:select] do
