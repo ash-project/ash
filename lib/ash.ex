@@ -381,6 +381,16 @@ defmodule Ash do
       `{:error, error}` - an error that occurred. May be changeset or an invidual error.
       """
     ],
+    return_nothing?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      Mutes warnings about returning nothing.
+
+      Only relevant if `return_stream?` is set to `true` and all other
+      `return_*?` options are set to `false`.
+      """
+    ],
     stop_on_error?: [
       type: :boolean,
       default: false,
@@ -2185,6 +2195,7 @@ defmodule Ash do
   @doc spark_opts: [{3, @bulk_create_opts_schema}]
   def bulk_create(inputs, resource, action, opts \\ []) do
     Ash.Helpers.expect_options!(opts)
+    Ash.Helpers.verify_stream_options(opts)
     domain = Ash.Helpers.domain!(resource, opts)
 
     case inputs do
@@ -2229,6 +2240,8 @@ defmodule Ash do
           Ash.BulkResult.t() | no_return
   @doc spark_opts: [{3, @bulk_update_opts_schema}]
   def bulk_update!(stream_or_query, action, input, opts \\ []) do
+    Ash.Helpers.verify_stream_options(opts)
+
     stream_or_query
     |> bulk_update(action, input, opts)
     |> case do
@@ -2328,6 +2341,8 @@ defmodule Ash do
           Ash.BulkResult.t() | no_return
   @doc spark_opts: [{3, @bulk_destroy_opts_schema}]
   def bulk_destroy!(stream_or_query, action, input, opts \\ []) do
+    Ash.Helpers.verify_stream_options(opts)
+
     stream_or_query
     |> bulk_destroy(action, input, opts)
     |> case do
