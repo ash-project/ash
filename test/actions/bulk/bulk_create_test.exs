@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  import ExUnit.CaptureLog
+
   alias Ash.Test.Domain, as: Domain
 
   defmodule Notifier do
@@ -895,18 +897,43 @@ defmodule Ash.Test.Actions.BulkCreateTest do
         |> Ash.Changeset.for_create(:create, %{})
         |> Ash.create!()
 
-      assert [] =
-               [
-                 %{title: "title1", authorize?: true, org_id: org.id},
-                 %{title: "title2", authorize?: true, org_id: org.id}
-               ]
-               |> Ash.bulk_create!(
-                 Post,
-                 :create_with_policy,
-                 authorize?: true,
-                 return_stream?: true
-               )
-               |> Enum.to_list()
+      message =
+        capture_log(fn ->
+          assert [] =
+                   [
+                     %{title: "title1", authorize?: true, org_id: org.id},
+                     %{title: "title2", authorize?: true, org_id: org.id}
+                   ]
+                   |> Ash.bulk_create!(
+                     Post,
+                     :create_with_policy,
+                     authorize?: true,
+                     return_stream?: true
+                   )
+                   |> Enum.to_list()
+        end)
+
+      assert message =~
+               "Bulk action was called with :return_stream? set to true, but no other :return_*? options were set."
+
+      message =
+        capture_log(fn ->
+          assert [] =
+                   [
+                     %{title: "title1", authorize?: true, org_id: org.id},
+                     %{title: "title2", authorize?: true, org_id: org.id}
+                   ]
+                   |> Ash.bulk_create!(
+                     Post,
+                     :create_with_policy,
+                     authorize?: true,
+                     return_stream?: true,
+                     return_nothing?: true
+                   )
+                   |> Enum.to_list()
+        end)
+
+      assert message == ""
     end
 
     test "batch size is honored while streaming" do
