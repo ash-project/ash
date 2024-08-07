@@ -241,7 +241,9 @@ defmodule Ash.EmbeddableType do
                Enum.empty?(Ash.Resource.Info.validations(__MODULE__, action.type)) &&
                Enum.empty?(Ash.Resource.Info.notifiers(__MODULE__)) &&
                Enum.empty?(Ash.Resource.Info.relationships(__MODULE__)) do
-            Enum.reduce_while(values, {:ok, []}, fn {value, index}, {:ok, results} ->
+            has_structs? = Enum.empty?(structs)
+
+            Enum.reduce_while(values, {:ok, structs}, fn {value, index}, {:ok, results} ->
               Enum.reduce_while(value, {:ok, index, %{__struct__: __MODULE__}}, fn {key, value},
                                                                                    {:ok, index,
                                                                                     acc} ->
@@ -304,7 +306,11 @@ defmodule Ash.EmbeddableType do
                   end)
                   |> case do
                     {:ok, result} ->
-                      {:cont, {:ok, [result | results]}}
+                      if has_structs? do
+                        {:cont, {:ok, [{result, index} | results]}}
+                      else
+                        {:cont, {:ok, [result | results]}}
+                      end
 
                     {:error, error} ->
                       {:halt, {:error, index, error}}
@@ -316,7 +322,11 @@ defmodule Ash.EmbeddableType do
             end)
             |> case do
               {:ok, values} ->
-                {:ok, Enum.reverse(values)}
+                if has_structs? do
+                  {:ok, values |> Enum.sort_by(&elem(&1, 1)) |> Enum.map(&elem(&1, 0))}
+                else
+                  {:ok, Enum.reverse(values)}
+                end
 
               {:error, index, error} ->
                 {:error, Ash.Error.set_path(Ash.Error.to_ash_error(error), index)}
@@ -348,6 +358,9 @@ defmodule Ash.EmbeddableType do
               )
             )
             |> case do
+              %{status: :success, records: records} when structs == [] ->
+                {:ok, records}
+
               %{status: :success, records: records} ->
                 Enum.reduce(structs, {:ok, records}, fn {struct, index}, {:ok, records} ->
                   {:ok, List.insert_at(records, index, struct)}

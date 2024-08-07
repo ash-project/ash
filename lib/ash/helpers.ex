@@ -409,12 +409,12 @@ defmodule Ash.Helpers do
           ] do
       domain = Ash.Helpers.get_domain(subject, opts)
 
-      expanded =
-        if not is_nil(subject) do
-          "\n\n#{inspect(subject)}"
-        end
-
       if !domain do
+        expanded =
+          if not is_nil(subject) do
+            "\n\n#{inspect(subject)}"
+          end
+
         raise(
           ArgumentError,
           """
