@@ -435,7 +435,7 @@ defmodule Ash.Actions.Read.Calculations do
         reraise e, __STACKTRACE__
       else
         {stacktrace_before, stacktrace_after} =
-          Enum.split_while(__STACKTRACE__, fn {module, _fun, _arity, _meta} ->
+          Enum.split_while(__STACKTRACE__, fn {module, :run_calculate, 4, _meta} ->
             module != __MODULE__
           end)
 
