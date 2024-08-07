@@ -107,8 +107,8 @@ defmodule Ash.Type.Map do
 
   @impl true
   def cast_atomic(new_value, constraints) do
-    if constraints[:keys] do
-      {:not_atomic, "Keywords do not support atomic updates when using the `keys` constraint"}
+    if constraints[:fields] do
+      {:not_atomic, "Maps do not support atomic updates when using the `fields` constraint"}
     else
       {:atomic, new_value}
     end

@@ -989,19 +989,23 @@ defmodule Ash.Test.Actions.BulkCreateTest do
         |> Ash.create!()
 
       assert [_] =
-               [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
+               [
+                 %{title: "title1", authorize?: true},
+                 %{title: "title2", authorize?: true},
+                 %{title: "title3", authorize?: true}
+               ]
                |> Ash.bulk_create!(
                  Post,
                  :create_with_policy,
                  tenant: org.id,
                  authorize?: true,
-                 batch_size: 1,
+                 batch_size: 2,
                  return_records?: true,
                  return_stream?: true
                )
                |> Enum.take(1)
 
-      assert Ash.count!(Post, authorize?: false) == 1
+      assert Ash.count!(Post, authorize?: false) == 2
     end
 
     test "by returning notifications, you get the notifications in the stream" do

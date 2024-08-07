@@ -53,6 +53,12 @@ defmodule Mix.Tasks.Ash.Install do
       :"Ash.Domain",
       @domain_default_section_order
     )
+    |> Igniter.Project.Config.configure(
+      "config.exs",
+      :ash,
+      [:include_embedded_source_by_default?],
+      true
+    )
     |> then(fn igniter ->
       if "--example" in argv do
         generate_example(igniter, argv)

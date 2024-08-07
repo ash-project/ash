@@ -1,9 +1,17 @@
+defmodule Domain do
+  use Ash.Domain, validate_config_inclusion?: false
+
+  resources do
+    allow_unregistered? true
+  end
+end
+
 defmodule Embed do
   use Ash.Resource, data_layer: :embedded
 
   attributes do
     # uuid_primary_key :id
-    attribute :name, :string
+    attribute :name, :string, public?: true
   end
 
   actions do
@@ -17,8 +25,21 @@ defmodule Resource do
 
   attributes do
     uuid_primary_key :id
-    attribute :embeds, {:array, Embed}
-    attribute :maps, {:array, :map}
+    attribute :embeds, {:array, Embed}, public?: true
+    attribute :structs, {:array, :struct} do
+      public? true
+      constraints [
+        items: [
+          instance_of: Embed,
+          fields: [
+            name: [
+              type: :string
+            ]
+          ]
+        ]
+      ]
+    end
+    attribute :maps, {:array, :map}, public?: true
   end
 
   actions do
@@ -27,15 +48,19 @@ defmodule Resource do
   end
 end
 
-defmodule Domain do
-  use Ash.Domain
-
-  resources do
-    resource Resource
-  end
-end
-
 embeds_input = 1..100 |> Enum.map(&%{name: "Embed #{&1}"})
+
+resource_embeds_input =
+  1..100
+  |> Enum.map(fn _ -> %{embeds: embeds_input} end)
+
+resource_maps_input =
+  1..100
+  |> Enum.map(fn _ -> %{maps: embeds_input} end)
+
+resource_structs_input =
+  1..100
+  |> Enum.map(fn _ -> %{structs: embeds_input} end)
 
 Resource
 |> Ash.Changeset.for_create(:create, %{embeds: embeds_input, maps: embeds_input})
@@ -44,14 +69,14 @@ Resource
 Benchee.run(
   %{
     embeds: fn ->
-      Resource
-      |> Ash.Changeset.for_create(:create, %{embeds: embeds_input})
-      |> Ash.create!()
+      Ash.bulk_create!(resource_embeds_input, Resource, :create)
     end,
     maps: fn ->
-      Resource
-      |> Ash.Changeset.for_create(:create, %{maps: embeds_input})
-      |> Ash.create!()
+      Ash.bulk_create!(resource_maps_input, Resource, :create)
+    end,
+    structs: fn ->
+      Ash.bulk_create!(resource_structs_input, Resource, :create)
     end
-  }
+  },
+    memory_time: 2
 )

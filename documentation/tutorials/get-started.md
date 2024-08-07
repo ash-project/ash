@@ -236,7 +236,7 @@ defmodule Helpdesk.Support.Ticket do
 end
 ```
 
-Next, add your domain to your `config.exs`
+Next, add your domain to your `config.exs`, and configure some backwards compatibility configuration.
 
 Run the following to create your `config.exs` if it doesn't already exist
 
@@ -252,6 +252,8 @@ and add the following contents to it.
 import Config
 
 config :helpdesk, :ash_domains, [Helpdesk.Support]
+
+config :include_embedded_source_by_default?, true
 ```
 
 ### Try our first resource out
