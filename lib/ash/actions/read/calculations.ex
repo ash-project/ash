@@ -413,7 +413,7 @@ defmodule Ash.Actions.Read.Calculations do
 
     records
     |> apply_transient_calculation_values(calculation, ash_query, [])
-    |> calculation.module.calculate(opts, context)
+    |> run_calculate(calculation.module, opts, context)
     |> case do
       :unknown ->
         Enum.map(records, fn _ ->
@@ -423,6 +423,13 @@ defmodule Ash.Actions.Read.Calculations do
       result ->
         result
     end
+  end
+
+  defp run_calculate(records, module, opts, context) do
+    module.calculate(records, opts, context)
+  rescue
+    e ->
+      reraise e, [{module, :calculate, 3, []} | __STACKTRACE__]
   end
 
   defp apply_transient_calculation_values(records, calculation, ash_query, path) do
