@@ -429,7 +429,19 @@ defmodule Ash.Actions.Read.Calculations do
     module.calculate(records, opts, context)
   rescue
     e ->
-      reraise e, [{module, :calculate, 3, []} | __STACKTRACE__]
+      if Enum.any?(__STACKTRACE__, fn {m, f, a, meta} ->
+           (m == module && f == :calculate && a == 3) || meta[:fake?]
+         end) do
+        reraise e, __STACKTRACE__
+      else
+        {stacktrace_before, stacktrace_after} =
+          Enum.split_while(__STACKTRACE__, fn {module, _fun, _arity, _meta} ->
+            module != __MODULE__
+          end)
+
+        reraise e,
+                stacktrace_before ++ [{module, :calculate, 3, [fake?: true]} | stacktrace_after]
+      end
   end
 
   defp apply_transient_calculation_values(records, calculation, ash_query, path) do
