@@ -51,7 +51,7 @@ defmodule Mix.Tasks.Ash.Gen.Enum do
       |> Enum.map(&String.to_atom/1)
 
     igniter
-    |> Igniter.create_new_elixir_file(file_name, """
+    |> Igniter.create_new_file(file_name, """
     defmodule #{inspect(enum)} do
       use Ash.Type.Enum, values: #{inspect(types)}
     end

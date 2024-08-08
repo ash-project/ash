@@ -34,7 +34,7 @@ defmodule Mix.Tasks.Ash.Gen.Domain do
       igniter
     else
       igniter
-      |> Igniter.create_new_elixir_file(domain_file, """
+      |> Igniter.create_new_file(domain_file, """
       defmodule #{inspect(domain)} do
         use Ash.Domain
 

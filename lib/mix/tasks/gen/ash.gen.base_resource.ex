@@ -25,7 +25,7 @@ defmodule Mix.Tasks.Ash.Gen.BaseResource do
     # replace what it uses with the new base resource
 
     igniter
-    |> Igniter.create_new_elixir_file(base_resource_file, """
+    |> Igniter.create_new_file(base_resource_file, """
     defmodule #{inspect(base_resource)} do
       defmacro __using__(opts) do
         quote do

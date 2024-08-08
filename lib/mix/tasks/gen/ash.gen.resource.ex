@@ -200,7 +200,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
       domain,
       resource
     )
-    |> Igniter.create_new_elixir_file(
+    |> Igniter.create_new_file(
       Igniter.Code.Module.proper_location(resource),
       """
       defmodule #{inspect(resource)} do
