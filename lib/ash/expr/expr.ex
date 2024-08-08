@@ -626,7 +626,26 @@ defmodule Ash.Expr do
       when is_atom(op) and op in @operator_symbols do
     args = Enum.map(args, &do_expr(&1, false))
 
-    soft_escape(%Ash.Query.Call{name: op, args: args, operator?: true}, escape?)
+    if op == :== do
+      soft_escape(
+        quote do
+          args = unquote(args)
+
+          call = %Ash.Query.Call{name: unquote(op), args: args, operator?: true}
+
+          if Enum.any?(args, &is_nil(&1)) do
+            IO.warn(
+              "Comparing values with `nil` will always return `false`. Use `is_nil/1` instead. In: `#{inspect(call)}`"
+            )
+          end
+
+          call
+        end,
+        escape?
+      )
+    else
+      soft_escape(%Ash.Query.Call{name: op, args: args, operator?: true}, escape?)
+    end
   end
 
   def do_expr({parent, _, [expr]}, escape?) when parent in [:parent, :source, :parent_expr] do
@@ -646,9 +665,7 @@ defmodule Ash.Expr do
 
   def do_expr({left, _, [{op, _, [right]}]}, escape?)
       when is_atom(op) and op in @operator_symbols and is_atom(left) and left != :not do
-    args = Enum.map([{left, [], nil}, right], &do_expr(&1, false))
-
-    soft_escape(%Ash.Query.Call{name: op, args: args, operator?: true}, escape?)
+    do_expr({op, [], [left, right]}, escape?)
   end
 
   def do_expr({:not, _, [expression]}, escape?) do
