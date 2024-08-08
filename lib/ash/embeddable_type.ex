@@ -166,23 +166,14 @@ defmodule Ash.EmbeddableType do
       def storage_type(_), do: :map
 
       def cast_atomic(value, constraints) do
-        if Ash.Expr.expr?(value) do
-          if Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__)) ||
-               constraints[:on_update] == :replace do
-            case cast_input(value, constraints) do
-              {:ok, value} ->
-                {:atomic, value}
+        with :ok <- check_atomic(value, constraints) do
+          case cast_input(value, constraints) do
+            {:ok, value} ->
+              {:atomic, value}
 
-              {:error, error} ->
-                {:error, error}
-            end
-          else
-            {:not_atomic,
-             "Embedded attributes do not support atomic updates unless they have no primary key, or `constraints[:on_update]` is set to `:replace`."}
+            {:error, error} ->
+              {:error, error}
           end
-        else
-          {:not_atomic,
-           "Embedded attributes do not support atomic updates with expressions, only literal values."}
         end
       end
 
@@ -235,8 +226,7 @@ defmodule Ash.EmbeddableType do
           skip_unknown_inputs = List.wrap(constraints[:skip_unknown_inputs])
 
           # This is a simplified, tight-loop version of resource creation
-          if !constraints[:include_source?] &&
-               Enum.empty?(action.changes) &&
+          if Enum.empty?(action.changes) &&
                Enum.empty?(Ash.Resource.Info.changes(__MODULE__, action.type)) &&
                Enum.empty?(Ash.Resource.Info.validations(__MODULE__, action.type)) &&
                Enum.empty?(Ash.Resource.Info.notifiers(__MODULE__)) &&
@@ -706,23 +696,68 @@ defmodule Ash.EmbeddableType do
       alias Ash.EmbeddableType.ShadowDomain
 
       def cast_atomic_array(value, constraints) do
-        if Ash.Expr.expr?(value) do
-          if Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__)) ||
-               constraints[:on_update] == :replace do
-            case cast_input_array(value, constraints) do
-              {:ok, value} ->
-                {:atomic, value}
+        with :ok <- check_atomic(value, constraints) do
+          case cast_input_array(value, constraints) do
+            {:ok, value} ->
+              {:atomic, value}
 
-              {:error, error} ->
-                {:error, error}
-            end
-          else
-            {:not_atomic,
-             "Embedded attributes do not support atomic updates unless they have no primary key, or `constraints[:on_update]` is set to `:replace`."}
+            {:error, error} ->
+              {:error, error}
           end
-        else
+        end
+      end
+
+      def check_atomic(value, constraints) do
+        if Ash.Expr.expr?(value) do
           {:not_atomic,
            "Embedded attributes do not support atomic updates with expressions, only literal values."}
+        else
+          if Enum.empty?(Ash.Resource.Info.primary_key(__MODULE__)) ||
+               constraints[:on_update] == :replace ||
+               update_action_allows_atomics?(constraints) do
+            :ok
+          else
+            {:not_atomic,
+             """
+             Embedded attributes do not support atomic updates unless they have no primary key, or `constraints[:on_update]` is set to `:replace`, or the update action accepts all public attributes and has no changes.
+             """}
+          end
+        end
+      end
+
+      defp update_action_allows_atomics?(constraints) do
+        action =
+          case constraints[:update_action] do
+            nil -> Ash.Resource.Info.primary_action!(__MODULE__, :update)
+            action -> Ash.Resource.Info.action(__MODULE__, action)
+          end
+
+        if Enum.empty?(action.changes) &&
+             Enum.empty?(Ash.Resource.Info.changes(__MODULE__, action.type)) &&
+             Enum.empty?(Ash.Resource.Info.validations(__MODULE__, action.type)) &&
+             Enum.empty?(Ash.Resource.Info.notifiers(__MODULE__)) &&
+             Enum.empty?(Ash.Resource.Info.relationships(__MODULE__)) do
+
+          __MODULE__
+          |> Ash.Resource.Info.public_attributes()
+          |> Enum.all?(&(&1.name in action.accept))
+          |> if do
+            :ok
+          else
+            {:not_atomic,
+             """
+             Embedded attributes do not support atomic updates unless:
+
+             - it has no primary key
+             - `constraints[:on_update]` is set to `:replace`
+
+             Or both of the following are true
+
+             - the update action accepts all public attributes and has no changes
+             - there are no changes, validations, notifiers, or relationships defined on the action
+             """}
+          end
+        else
         end
       end
 
