@@ -89,7 +89,7 @@ defmodule Ash.Type.File do
       ...> # => {:ok, #PID<0.109.0>}
 
   """
-  @spec open(file :: t(), modes: [File.mode()]) ::
+  @spec open(file :: t(), modes :: [File.mode()]) ::
           {:ok, IO.device()} | {:error, Implementation.error()}
   def open(%__MODULE__{implementation: implementation, source: source}, modes \\ []),
     do: implementation.open(source, modes)

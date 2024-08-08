@@ -1345,7 +1345,11 @@ defmodule Ash do
   @doc """
   Evaluates the calculation on the resource or raises an error. See `calculate/3` for more.
   """
-  @spec calculate!(resource :: Ash.Resource.t(), calculation :: atom, opts :: Keyword.t()) ::
+  @spec calculate!(
+          resource_or_record :: Ash.Resource.t() | Ash.Resource.record(),
+          calculation :: atom,
+          opts :: Keyword.t()
+        ) ::
           term | no_return
   @doc spark_opts: [{2, @calculate_opts}]
   def calculate!(resource_or_record, calculation, opts \\ []) do
@@ -1365,7 +1369,11 @@ defmodule Ash do
   #{Spark.Options.docs(@calculate_opts)}
   """
   @doc spark_opts: [{2, @calculate_opts}]
-  @spec calculate(resource :: Ash.Resource.t(), calculation :: atom, opts :: Keyword.t()) ::
+  @spec calculate(
+          resource_or_record :: Ash.Resource.t() | Ash.Resource.record(),
+          calculation :: atom,
+          opts :: Keyword.t()
+        ) ::
           {:ok, term} | {:error, term}
   def calculate(resource_or_record, calculation, opts \\ []) do
     Ash.Helpers.expect_resource_or_record!(resource_or_record)
