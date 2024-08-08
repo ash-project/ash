@@ -280,9 +280,10 @@ defmodule Ash.EmbeddableType do
                                casted,
                                attribute.constraints
                              ) do
-                        {:cont, {:ok, index, Map.put(acc, key, casted)}}
+                        {:cont, {:ok, index, Map.put(acc, attribute.name, casted)}}
                       else
                         {:error, error} ->
+                          error = Ash.Error.set_path(Ash.Error.to_ash_error(error), attribute.name)
                           {:halt, {:error, index, error}}
                       end
                     else
@@ -305,7 +306,7 @@ defmodule Ash.EmbeddableType do
                 {:ok, index, result} ->
                   attributes
                   |> Stream.filter(
-                    &(&1.name not in action.allow_nil_input &&
+                    &(&1.name in action.accept && &1.name not in action.allow_nil_input &&
                         (&1.allow_nil? == false || &1.name in action.require_attributes))
                   )
                   |> Enum.reduce_while({:ok, result}, fn attr, {:ok, result} ->
