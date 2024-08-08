@@ -42,10 +42,10 @@ defmodule Ash.Resource.Verifiers.ValidateAccept do
                     acc
 
                   :not_writable ->
-                    %{not_writable: [attribute | not_writable]}
+                    %{not_writable: [attribute | not_writable], not_attribute: not_attribute}
 
                   :not_attribute ->
-                    %{not_attribute: [attribute | not_attribute]}
+                    %{not_attribute: [attribute | not_attribute], not_writable: not_writable}
                 end
               end
             )
@@ -91,6 +91,6 @@ defmodule Ash.Resource.Verifiers.ValidateAccept do
   end
 
   defp get_message(keys, message) do
-    "#{inspect(keys)} #{message}"
+    "Cannot accept `#{inspect(keys)}` because they #{message}"
   end
 end

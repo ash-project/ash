@@ -43,8 +43,43 @@ defmodule Ash.Error.Invalid.NoSuchInput do
     """
     No such input `#{error.input}` for action #{inspect(error.resource)}.#{error.action}
 
+    #{hint(error)}
     #{valid_inputs(error)}
     """
+  end
+
+  defp hint(error) do
+    action = Ash.Resource.Info.action(error.resource, error.action)
+
+    if action do
+      case Ash.Resource.Info.attribute(error.resource, error.input) do
+        nil ->
+          "No such attribute on #{inspect(error.resource)}, or argument on #{inspect(error.resource)}.#{error.action}"
+
+        %{writable?: false} ->
+          """
+          The attribute exists on #{inspect(error.resource)}, but is not accepted by #{inspect(error.resource)}.#{error.action}
+
+          The attribute is currently `writable?: false`, which means that it can never be accepted by an action.
+          """
+
+        %{public?: false} ->
+          """
+          The attribute exists on #{inspect(error.resource)}, but is not accepted by #{inspect(error.resource)}.#{error.action}
+
+          The attribute is currently `public?: false`, which means that it is not accepted when using `:*`, i.e in `accept :*`.
+
+          Perhaps you meant to make the attribute public, or add it to the accept list for #{inspect(error.resource)}.#{error.action}?
+          """
+
+        _attribute ->
+          """
+          The attribute exists on #{inspect(error.resource)}, but is not accepted by #{inspect(error.resource)}.#{error.action}
+
+          Perhaps you meant to add it to the accept list for #{inspect(error.resource)}.#{error.action}?
+          """
+      end
+    end
   end
 
   defp valid_inputs(error) do
