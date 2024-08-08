@@ -243,10 +243,11 @@ defmodule Ash.EmbeddableType do
                Enum.empty?(Ash.Resource.Info.relationships(__MODULE__)) do
             has_structs? = Enum.empty?(structs)
 
+            attributes =  Ash.Resource.Info.attributes(__MODULE__)
+
             base =
-              __MODULE__
-              |> Ash.Resource.Info.attributes()
-              |> Enum.filter(&(not is_nil(&1.default)))
+              attributes
+              |> Enum.filter(&(not is_nil(&1.default) && &1.match_other_defaults?))
               |> Enum.reduce(struct(__MODULE__), fn attribute, acc ->
                 value =
                   case attribute.default do
@@ -259,6 +260,20 @@ defmodule Ash.EmbeddableType do
               end)
 
             Enum.reduce_while(values, {:ok, structs}, fn {value, index}, {:ok, results} ->
+              base =
+                attributes
+                |> Enum.filter(&(not is_nil(&1.default) && !&1.match_other_defaults?))
+                |> Enum.reduce(struct(__MODULE__), fn attribute, acc ->
+                  value =
+                    case attribute.default do
+                      {mod, func, args} -> apply(mod, func, args)
+                      function when is_function(function, 0) -> function.()
+                      value -> value
+                    end
+
+                  Map.put(acc, attribute.name, value)
+                end)
+
               Enum.reduce_while(value, {:ok, index, base}, fn {key, value}, {:ok, index, acc} ->
                 case Ash.Resource.Info.attribute(__MODULE__, key) do
                   nil ->
@@ -298,8 +313,7 @@ defmodule Ash.EmbeddableType do
               end)
               |> case do
                 {:ok, index, result} ->
-                  __MODULE__
-                  |> Ash.Resource.Info.attributes()
+                  attributes
                   |> Stream.filter(
                     &(&1.name not in action.allow_nil_input &&
                         (&1.allow_nil? == false || &1.name in action.require_attributes))
