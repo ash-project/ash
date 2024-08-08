@@ -751,7 +751,7 @@ defmodule Ash.EmbeddableType do
              - it has no primary key
              - `constraints[:on_update]` is set to `:replace`
 
-             Or both of the following are true
+             Or all of the following are true:
 
              - the update action accepts all public attributes and has no changes
              - there are no changes or validations on the action
