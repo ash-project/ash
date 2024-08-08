@@ -1407,9 +1407,15 @@ defmodule Ash.Actions.Create.Bulk do
             {changesets_by_index[result.__metadata__.bulk_create_index], result}
           end)
 
+        after_batch_change_opts =
+          case change_opts do
+            {:templated, change_opts} -> change_opts
+            change_opts -> change_opts
+          end
+
         module.after_batch(
           results,
-          change_opts,
+          after_batch_change_opts,
           context
         )
         |> handle_after_batch_results(records, ref, resource, opts)
