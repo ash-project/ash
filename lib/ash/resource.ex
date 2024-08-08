@@ -402,7 +402,7 @@ defmodule Ash.Resource do
 
       # we can't say for sure if the original arguments provided
       # were the same as these, so this is always false
-      if opts[:strict?] && Enum.any?(resource_calculation.arguments) do
+      if opts[:strict?] && (!resource_calculation || Enum.any?(resource_calculation.arguments)) do
         false
       else
         if calculation.load do
