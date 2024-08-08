@@ -192,6 +192,50 @@ defmodule Ash.Type.Struct do
     end
   end
 
+  @impl Ash.Type
+  def load(record, load, _constraints, %{domain: domain} = context) do
+    opts = Ash.Context.to_opts(context, domain: domain)
+
+    Ash.load(record, load, opts)
+  end
+
+  @impl Ash.Type
+  def merge_load(left, right, constraints, context) do
+    instance_of = constraints[:instance_of]
+    left = Ash.Query.load(instance_of, left)
+    right = Ash.Query.load(instance_of, right)
+
+    if left.valid? do
+      {:ok, Ash.Query.merge_query_load(left, right, context)}
+    else
+      {:error, Ash.Error.to_ash_error(left.errors)}
+    end
+  end
+
+  @impl Ash.Type
+  def get_rewrites(merged_load, calculation, path, constraints) do
+    instance_of = constraints[:instance_of]
+
+    if instance_of && Ash.Resource.Info.resource?(instance_of) do
+      merged_load = Ash.Query.load(instance_of, merged_load)
+      Ash.Actions.Read.Calculations.get_all_rewrites(merged_load, calculation, path)
+    else
+      []
+    end
+  end
+
+  @impl Ash.Type
+  def rewrite(value, rewrites, _constraints) do
+    Ash.Actions.Read.Calculations.rewrite(rewrites, value)
+  end
+
+  @impl Ash.Type
+  def can_load?(constraints) do
+    instance_of = constraints[:instance_of]
+
+    instance_of && Ash.Resource.Info.resource?(instance_of)
+  end
+
   defp handle_fields(value, constraints) do
     case Keyword.fetch(constraints, :fields) do
       {:ok, fields} when is_list(fields) ->
