@@ -283,7 +283,9 @@ defmodule Ash.EmbeddableType do
                         {:cont, {:ok, index, Map.put(acc, attribute.name, casted)}}
                       else
                         {:error, error} ->
-                          error = Ash.Error.set_path(Ash.Error.to_ash_error(error), attribute.name)
+                          error =
+                            Ash.Error.set_path(Ash.Error.to_ash_error(error), attribute.name)
+
                           {:halt, {:error, index, error}}
                       end
                     else

@@ -1,6 +1,7 @@
 defmodule Ash.Actions.Create.Bulk do
   @moduledoc false
-  @spec run(Ash.Domain.t(), Ash.Resource.t(), atom(), Enumerable.t(map), Keyword.t()) :: Ash.BulkResult.t()
+  @spec run(Ash.Domain.t(), Ash.Resource.t(), atom(), Enumerable.t(map), Keyword.t()) ::
+          Ash.BulkResult.t()
   def run(domain, resource, action_name, inputs, opts) do
     action = Ash.Resource.Info.action(resource, action_name)
 
