@@ -241,9 +241,9 @@ defmodule Ash.EmbeddableType do
                Enum.empty?(Ash.Resource.Info.validations(__MODULE__, action.type)) &&
                Enum.empty?(Ash.Resource.Info.notifiers(__MODULE__)) &&
                Enum.empty?(Ash.Resource.Info.relationships(__MODULE__)) do
-            has_structs? = Enum.empty?(structs)
+            has_structs? = not Enum.empty?(structs)
 
-            attributes =  Ash.Resource.Info.attributes(__MODULE__)
+            attributes = Ash.Resource.Info.attributes(__MODULE__)
 
             base =
               attributes
@@ -259,7 +259,7 @@ defmodule Ash.EmbeddableType do
                 Map.put(acc, attribute.name, value)
               end)
 
-            Enum.reduce_while(values, {:ok, structs}, fn {value, index}, {:ok, results} ->
+            Enum.reduce_while(values, {:ok, []}, fn {value, index}, {:ok, results} ->
               base =
                 attributes
                 |> Enum.filter(&(not is_nil(&1.default) && !&1.match_other_defaults?))
@@ -277,7 +277,7 @@ defmodule Ash.EmbeddableType do
               Enum.reduce_while(value, {:ok, index, base}, fn {key, value}, {:ok, index, acc} ->
                 case Ash.Resource.Info.attribute(__MODULE__, key) do
                   nil ->
-                    {:cont, {:ok, acc}}
+                    {:cont, {:ok, index, acc}}
 
                   attribute ->
                     if attribute.name in action.accept do
@@ -350,7 +350,14 @@ defmodule Ash.EmbeddableType do
             |> case do
               {:ok, values} ->
                 if has_structs? do
-                  {:ok, values |> Enum.sort_by(&elem(&1, 1)) |> Enum.map(&elem(&1, 0))}
+                  values =
+                    values
+                    |> Enum.sort_by(&elem(&1, 1))
+                    |> Enum.map(&elem(&1, 0))
+
+                  Enum.reduce(structs, {:ok, values}, fn {struct, index}, {:ok, values} ->
+                    {:ok, List.insert_at(values, index, struct)}
+                  end)
                 else
                   {:ok, Enum.reverse(values)}
                 end
