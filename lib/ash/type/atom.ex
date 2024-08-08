@@ -106,3 +106,9 @@ defmodule Ash.Type.Atom do
 
   def dump_to_native(_, _), do: :error
 end
+
+import Ash.Type.Comparable
+
+defcomparable left :: BitString, right :: Atom do
+  Comp.compare(left, to_string(right))
+end

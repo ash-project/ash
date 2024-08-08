@@ -171,6 +171,10 @@ defmodule Ash.Query.Operator.Basic do
           {:known, Comp.greater_or_equal?(left, right)}
         end
 
+        defp do_evaluate(:==, left, right) do
+          {:known, Comp.equal?(left, right)}
+        end
+
         defp do_evaluate(op, left, right)
              when Decimal.is_decimal(left) or Decimal.is_decimal(right) do
           case op do
