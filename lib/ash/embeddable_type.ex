@@ -243,10 +243,23 @@ defmodule Ash.EmbeddableType do
                Enum.empty?(Ash.Resource.Info.relationships(__MODULE__)) do
             has_structs? = Enum.empty?(structs)
 
+            base =
+              __MODULE__
+              |> Ash.Resource.Info.attributes()
+              |> Enum.filter(&(not is_nil(&1.default)))
+              |> Enum.reduce(struct(__MODULE__), fn attribute, acc ->
+                value =
+                  case attribute.default do
+                    {mod, func, args} -> apply(mod, func, args)
+                    function when is_function(function, 0) -> function.()
+                    value -> value
+                  end
+
+                Map.put(acc, attribute.name, value)
+              end)
+
             Enum.reduce_while(values, {:ok, structs}, fn {value, index}, {:ok, results} ->
-              Enum.reduce_while(value, {:ok, index, %{__struct__: __MODULE__}}, fn {key, value},
-                                                                                   {:ok, index,
-                                                                                    acc} ->
+              Enum.reduce_while(value, {:ok, index, base}, fn {key, value}, {:ok, index, acc} ->
                 case Ash.Resource.Info.attribute(__MODULE__, key) do
                   nil ->
                     {:cont, {:ok, acc}}
