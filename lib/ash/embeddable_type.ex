@@ -737,7 +737,6 @@ defmodule Ash.EmbeddableType do
              Enum.empty?(Ash.Resource.Info.validations(__MODULE__, action.type)) &&
              Enum.empty?(Ash.Resource.Info.notifiers(__MODULE__)) &&
              Enum.empty?(Ash.Resource.Info.relationships(__MODULE__)) do
-
           __MODULE__
           |> Ash.Resource.Info.public_attributes()
           |> Enum.all?(&(&1.name in action.accept))
@@ -752,20 +751,21 @@ defmodule Ash.EmbeddableType do
         |> case do
           :ok ->
             :ok
+
           :error ->
             {:not_atomic,
-            """
-            Embedded attributes do not support atomic updates unless one of the following is true:
+             """
+             Embedded attributes do not support atomic updates unless one of the following is true:
 
-            - it has no primary key
-            - `constraints[:on_update]` is set to `:replace`
+             - it has no primary key
+             - `constraints[:on_update]` is set to `:replace`
 
-            Or all of the following are true:
+             Or all of the following are true:
 
-            - the update action accepts all public attributes and has no changes
-            - there are no changes or validations on the action
-            - there are no notifiers, or relationships defined on the resource             """}
-            """}
+             - the update action accepts all public attributes and has no changes
+             - there are no changes or validations on the action
+             - there are no notifiers, or relationships defined on the resource             \"""}
+             """}
         end
       end
 
