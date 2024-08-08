@@ -746,7 +746,7 @@ defmodule Ash.EmbeddableType do
           else
             {:not_atomic,
              """
-             Embedded attributes do not support atomic updates unless:
+             Embedded attributes do not support atomic updates unless one of the following is true:
 
              - it has no primary key
              - `constraints[:on_update]` is set to `:replace`
@@ -754,8 +754,9 @@ defmodule Ash.EmbeddableType do
              Or both of the following are true
 
              - the update action accepts all public attributes and has no changes
-             - there are no changes, validations, notifiers, or relationships defined on the action
-             """}
+             - there are no changes or validations on the action
+             - there are no notifiers, or relationships defined on the resource             """}
+             """
           end
         else
         end
