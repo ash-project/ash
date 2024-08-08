@@ -18,51 +18,49 @@ unless Code.ensure_loaded?(Comp) do
 
     ## Examples
 
-    ```
-    iex> quote do
-    ...>   use Comp
-    ...>   defmodule Foo do
-    ...>     defstruct [:value, :meta]
-    ...>   end
-    ...>   defmodule Bar do
-    ...>     defstruct [:value, :meta]
-    ...>   end
-    ...>   defcomparable %Foo{value: left} :: Foo, %Foo{value: right} :: Foo do
-    ...>     Comp.compare(left, right)
-    ...>   end
-    ...>   defcomparable %Foo{value: left} :: Foo, %Bar{value: right} :: Bar do
-    ...>     Comp.compare(left, right)
-    ...>   end
-    ...>   defcomparable %Foo{value: left} :: Foo, right :: Integer do
-    ...>     Comp.compare(left, right)
-    ...>   end
-    ...> end
-    ...> |> Code.compile_quoted
-    iex> quote do
-    ...>   x = %Foo{value: 1, meta: 1}
-    ...>   y = %Foo{value: 1, meta: 2}
-    ...>   Comp.equal?(x, y) && Comp.equal?(y, x)
-    ...> end
-    ...> |> Code.eval_quoted
-    ...> |> elem(0)
-    true
-    iex> quote do
-    ...>   x = %Foo{value: 1, meta: 1}
-    ...>   y = %Bar{value: 1, meta: 2}
-    ...>   Comp.equal?(x, y) && Comp.equal?(y, x)
-    ...> end
-    ...> |> Code.eval_quoted
-    ...> |> elem(0)
-    true
-    iex> quote do
-    ...>   x = %Foo{value: 1, meta: 1}
-    ...>   y = 1
-    ...>   Comp.equal?(x, y) && Comp.equal?(y, x)
-    ...> end
-    ...> |> Code.eval_quoted
-    ...> |> elem(0)
-    true
-    ```
+        iex> quote do
+        ...>   use Comp
+        ...>   defmodule Foo do
+        ...>     defstruct [:value, :meta]
+        ...>   end
+        ...>   defmodule Bar do
+        ...>     defstruct [:value, :meta]
+        ...>   end
+        ...>   defcomparable %Foo{value: left} :: Foo, %Foo{value: right} :: Foo do
+        ...>     Comp.compare(left, right)
+        ...>   end
+        ...>   defcomparable %Foo{value: left} :: Foo, %Bar{value: right} :: Bar do
+        ...>     Comp.compare(left, right)
+        ...>   end
+        ...>   defcomparable %Foo{value: left} :: Foo, right :: Integer do
+        ...>     Comp.compare(left, right)
+        ...>   end
+        ...> end
+        ...> |> Code.compile_quoted
+        iex> quote do
+        ...>   x = %Foo{value: 1, meta: 1}
+        ...>   y = %Foo{value: 1, meta: 2}
+        ...>   Comp.equal?(x, y) && Comp.equal?(y, x)
+        ...> end
+        ...> |> Code.eval_quoted
+        ...> |> elem(0)
+        true
+        iex> quote do
+        ...>   x = %Foo{value: 1, meta: 1}
+        ...>   y = %Bar{value: 1, meta: 2}
+        ...>   Comp.equal?(x, y) && Comp.equal?(y, x)
+        ...> end
+        ...> |> Code.eval_quoted
+        ...> |> elem(0)
+        true
+        iex> quote do
+        ...>   x = %Foo{value: 1, meta: 1}
+        ...>   y = 1
+        ...>   Comp.equal?(x, y) && Comp.equal?(y, x)
+        ...> end
+        ...> |> Code.eval_quoted
+        ...> |> elem(0)
+        true
     """
     defmacro defcomparable(
                {:"::", _, [left_expression, quoted_left_type]},
@@ -128,12 +126,10 @@ unless Code.ensure_loaded?(Comp) do
 
     ## Examples
 
-    ```
-    iex> Comp.equal?(1, 1)
-    true
-    iex> Comp.equal?(1, :hello)
-    false
-    ```
+        iex> Comp.equal?(1, 1)
+        true
+        iex> Comp.equal?(1, :hello)
+        false
     """
     @spec equal?(left, right) :: boolean
     def equal?(left, right) do
@@ -147,12 +143,10 @@ unless Code.ensure_loaded?(Comp) do
 
     ## Examples
 
-    ```
-    iex> Comp.not_equal?(1, 1)
-    false
-    iex> Comp.not_equal?(1, :hello)
-    true
-    ```
+        iex> Comp.not_equal?(1, 1)
+        false
+        iex> Comp.not_equal?(1, :hello)
+        true
     """
     @spec not_equal?(left, right) :: boolean
     def not_equal?(left, right) do
@@ -166,13 +160,12 @@ unless Code.ensure_loaded?(Comp) do
 
     ## Examples
 
-    ```
-    iex> Comp.greater_than?(1, 1)
-    false
-    iex> Comp.greater_than?(1, 2)
-    false
-    iex> Comp.greater_than?(2, 1)
-    true
+        iex> Comp.greater_than?(1, 1)
+        false
+        iex> Comp.greater_than?(1, 2)
+        false
+        iex> Comp.greater_than?(2, 1)
+        true
     """
     @spec greater_than?(left, right) :: boolean
     def greater_than?(left, right) do
@@ -186,13 +179,12 @@ unless Code.ensure_loaded?(Comp) do
 
     ## Examples
 
-    ```
-    iex> Comp.less_than?(1, 1)
-    false
-    iex> Comp.less_than?(1, 2)
-    true
-    iex> Comp.less_than?(2, 1)
-    false
+        iex> Comp.less_than?(1, 1)
+        false
+        iex> Comp.less_than?(1, 2)
+        true
+        iex> Comp.less_than?(2, 1)
+        false
     """
     @spec less_than?(left, right) :: boolean
     def less_than?(left, right) do
@@ -206,13 +198,12 @@ unless Code.ensure_loaded?(Comp) do
 
     ## Examples
 
-    ```
-    iex> Comp.greater_or_equal?(1, 1)
-    true
-    iex> Comp.greater_or_equal?(1, 2)
-    false
-    iex> Comp.greater_or_equal?(2, 1)
-    true
+        iex> Comp.greater_or_equal?(1, 1)
+        true
+        iex> Comp.greater_or_equal?(1, 2)
+        false
+        iex> Comp.greater_or_equal?(2, 1)
+        true
     """
     @spec greater_or_equal?(left, right) :: boolean
     def greater_or_equal?(left, right) do
@@ -226,13 +217,12 @@ unless Code.ensure_loaded?(Comp) do
 
     ## Examples
 
-    ```
-    iex> Comp.less_or_equal?(1, 1)
-    true
-    iex> Comp.less_or_equal?(1, 2)
-    true
-    iex> Comp.less_or_equal?(2, 1)
-    false
+        iex> Comp.less_or_equal?(1, 1)
+        true
+        iex> Comp.less_or_equal?(1, 2)
+        true
+        iex> Comp.less_or_equal?(2, 1)
+        false
     """
     @spec less_or_equal?(left, right) :: boolean
     def less_or_equal?(left, right) do
@@ -246,14 +236,12 @@ unless Code.ensure_loaded?(Comp) do
 
     ## Examples
 
-    ```
-    iex> Comp.max(1, 1)
-    1
-    iex> Comp.max(1, 2)
-    2
-    iex> Comp.max(2, 1)
-    2
-    ```
+        iex> Comp.max(1, 1)
+        1
+        iex> Comp.max(1, 2)
+        2
+        iex> Comp.max(2, 1)
+        2
     """
     @spec max(left, right) :: left | right
     def max(left, right) do
@@ -272,14 +260,12 @@ unless Code.ensure_loaded?(Comp) do
 
     ## Examples
 
-    ```
-    iex> Comp.min(1, 1)
-    1
-    iex> Comp.min(1, 2)
-    1
-    iex> Comp.min(2, 1)
-    1
-    ```
+        iex> Comp.min(1, 1)
+        1
+        iex> Comp.min(1, 2)
+        1
+        iex> Comp.min(2, 1)
+        1
     """
     @spec min(left, right) :: left | right
     def min(left, right) do
@@ -311,14 +297,12 @@ unless Code.ensure_loaded?(Comp) do
 
     ## Examples
 
-    ```
-    iex> Comp.compare(1, 2)
-    :lt
-    iex> Comp.compare(2, 1)
-    :gt
-    iex> Comp.compare(1, 1)
-    :eq
-    ```
+        iex> Comp.compare(1, 2)
+        :lt
+        iex> Comp.compare(2, 1)
+        :gt
+        iex> Comp.compare(1, 1)
+        :eq
     """
     @spec compare(left, right) :: Comparable.ord()
     def compare(left, right) do

@@ -787,17 +787,35 @@ defmodule Ash.Actions.Create.Bulk do
     end)
     |> Enum.reduce(batch, fn {%{change: {module, change_opts}}, index}, batch ->
       if changes[index] == :all do
-        module.before_batch(
-          batch,
-          change_opts,
-          struct(Ash.Resource.Change.Context, %{
-            bulk?: true,
-            actor: opts[:actor],
-            tenant: opts[:tenant],
-            tracer: opts[:tracer],
-            authorize?: opts[:authorize?]
-          })
-        )
+        case change_opts do
+          {:templated, change_opts} ->
+            module.before_batch(
+              batch,
+              change_opts,
+              struct(Ash.Resource.Change.Context, %{
+                bulk?: true,
+                actor: opts[:actor],
+                tenant: opts[:tenant],
+                tracer: opts[:tracer],
+                authorize?: opts[:authorize?]
+              })
+            )
+
+          change_opts ->
+            Enum.flat_map(batch, fn record ->
+              module.before_batch(
+                [record],
+                change_opts,
+                struct(Ash.Resource.Change.Context, %{
+                  bulk?: true,
+                  actor: opts[:actor],
+                  tenant: opts[:tenant],
+                  tracer: opts[:tracer],
+                  authorize?: opts[:authorize?]
+                })
+              )
+            end)
+        end
       else
         {matches, non_matches} =
           batch
@@ -810,17 +828,35 @@ defmodule Ash.Actions.Create.Bulk do
           end)
 
         before_batch_results =
-          module.before_batch(
-            matches,
-            change_opts,
-            struct(Ash.Resource.Change.Context, %{
-              bulk?: true,
-              actor: opts[:actor],
-              tenant: opts[:tenant],
-              tracer: opts[:tracer],
-              authorize?: opts[:authorize?]
-            })
-          )
+          case change_opts do
+            {:templated, change_opts} ->
+              module.before_batch(
+                matches,
+                change_opts,
+                struct(Ash.Resource.Change.Context, %{
+                  bulk?: true,
+                  actor: opts[:actor],
+                  tenant: opts[:tenant],
+                  tracer: opts[:tracer],
+                  authorize?: opts[:authorize?]
+                })
+              )
+
+            change_opts ->
+              Enum.flat_map(matches, fn match ->
+                module.before_batch(
+                  [match],
+                  change_opts,
+                  struct(Ash.Resource.Change.Context, %{
+                    bulk?: true,
+                    actor: opts[:actor],
+                    tenant: opts[:tenant],
+                    tracer: opts[:tracer],
+                    authorize?: opts[:authorize?]
+                  })
+                )
+              end)
+          end
 
         Enum.concat([before_batch_results, non_matches])
       end
@@ -1407,17 +1443,23 @@ defmodule Ash.Actions.Create.Bulk do
             {changesets_by_index[result.__metadata__.bulk_create_index], result}
           end)
 
-        after_batch_change_opts =
-          case change_opts do
-            {:templated, change_opts} -> change_opts
-            change_opts -> change_opts
-          end
+        case change_opts do
+          {:templated, change_opts} ->
+            module.after_batch(
+              results,
+              change_opts,
+              context
+            )
 
-        module.after_batch(
-          results,
-          after_batch_change_opts,
-          context
-        )
+          change_opts ->
+            Enum.flat_map(results, fn result ->
+              module.after_batch(
+                [result],
+                change_opts,
+                context
+              )
+            end)
+        end
         |> handle_after_batch_results(records, ref, resource, opts)
       else
         {matches, non_matches} =
@@ -1436,20 +1478,42 @@ defmodule Ash.Actions.Create.Bulk do
           end)
 
         after_batch_results =
-          module.after_batch(
-            matches,
-            change_opts,
-            struct(
-              Ash.Resource.Change.Context,
-              %{
-                bulk?: true,
-                actor: opts[:actor],
-                tenant: opts[:tenant],
-                tracer: opts[:tracer],
-                authorize?: opts[:authorize?]
-              }
-            )
-          )
+          case change_opts do
+            {:templated, change_opts} ->
+              module.after_batch(
+                matches,
+                change_opts,
+                struct(
+                  Ash.Resource.Change.Context,
+                  %{
+                    bulk?: true,
+                    actor: opts[:actor],
+                    tenant: opts[:tenant],
+                    tracer: opts[:tracer],
+                    authorize?: opts[:authorize?]
+                  }
+                )
+              )
+
+            change_opts ->
+              matches
+              |> Enum.flat_map(fn match ->
+                module.after_batch(
+                  [match],
+                  change_opts,
+                  struct(
+                    Ash.Resource.Change.Context,
+                    %{
+                      bulk?: true,
+                      actor: opts[:actor],
+                      tenant: opts[:tenant],
+                      tracer: opts[:tracer],
+                      authorize?: opts[:authorize?]
+                    }
+                  )
+                )
+              end)
+          end
           |> handle_after_batch_results(matches, ref, resource, opts)
 
         Enum.concat([after_batch_results, non_matches])
