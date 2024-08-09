@@ -253,7 +253,7 @@ import Config
 
 config :helpdesk, :ash_domains, [Helpdesk.Support]
 
-config :include_embedded_source_by_default?, true
+config :ash, :include_embedded_source_by_default?, true
 ```
 
 ### Try our first resource out
