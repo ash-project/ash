@@ -1731,7 +1731,17 @@ defmodule Ash.Actions.Read.Calculations do
   end
 
   defp find_equivalent_calculation(query, calculation, authorize?) do
-    if !authorize? || match?({:__calc_dep__, _}, calculation.name) do
+    reusable? =
+      if authorize? && calculation.module.has_expression?() do
+        calculation.module.expression(calculation.opts, calculation.context)
+        |> Ash.Filter.list_refs(false, false, true, true)
+        |> Enum.any?(&(&1.relationship_path != []))
+        |> Kernel.not()
+      else
+        true
+      end
+
+    if reusable? do
       Enum.find_value(query.calculations, :error, fn {_, other_calc} ->
         if other_calc.module == calculation.module and other_calc.opts == calculation.opts and
              other_calc.context.arguments == calculation.context.arguments do
@@ -1891,10 +1901,11 @@ defmodule Ash.Actions.Read.Calculations do
   # Deselect fields that we know statically cannot be seen
   # The field may be reselected later as a calculation dependency
   # this is an optimization not a guarantee
-  def deselect_known_forbidden_fields(ash_query, calculations_at_runtime) do
+  def deselect_known_forbidden_fields(ash_query, calculations_at_runtime, calculations_in_query) do
     depended_on_fields = ash_query.context[:private][:depended_on_fields] || []
 
     calculations_at_runtime
+    |> Enum.concat(calculations_in_query)
     |> Enum.reduce([], fn
       %{
         name: {:__ash_fields_are_visible__, fields},
@@ -1927,10 +1938,12 @@ defmodule Ash.Actions.Read.Calculations do
     end)
     |> Enum.uniq()
     |> Kernel.--(depended_on_fields)
-    |> then(&unload_forbidden_fields(ash_query, &1))
+    |> then(
+      &unload_forbidden_fields(ash_query, &1, calculations_at_runtime, calculations_in_query)
+    )
   end
 
-  defp unload_forbidden_fields(ash_query, fields) do
+  defp unload_forbidden_fields(ash_query, fields, calculations_at_runtime, calculations_in_query) do
     fields
     |> Enum.group_by(fn field ->
       cond do
@@ -1944,17 +1957,17 @@ defmodule Ash.Actions.Read.Calculations do
           :calculation
       end
     end)
-    |> Enum.reduce(ash_query, fn
-      {:attribute, fields}, ash_query ->
-        ash_query
-        |> Ash.Query.deselect(fields)
-        |> unload_attribute_calculations(fields)
+    |> Enum.reduce({ash_query, calculations_at_runtime, calculations_in_query}, fn
+      {:attribute, fields}, {ash_query, calculations_at_runtime, calculations_in_query} ->
+        {ash_query
+         |> Ash.Query.deselect(fields)
+         |> unload_attribute_calculations(fields), calculations_at_runtime, calculations_in_query}
 
-      {:aggregate, fields}, ash_query ->
-        unload_aggregates(ash_query, fields)
+      {:aggregate, fields}, {ash_query, calculations_at_runtime, calculations_in_query} ->
+        {unload_aggregates(ash_query, fields), calculations_at_runtime, calculations_in_query}
 
-      {:calculation, fields}, ash_query ->
-        unload_calculations(ash_query, fields)
+      {:calculation, fields}, {ash_query, calculations_at_runtime, calculations_in_query} ->
+        unload_calculations(ash_query, fields, calculations_at_runtime, calculations_in_query)
     end)
   end
 
@@ -1990,7 +2003,7 @@ defmodule Ash.Actions.Read.Calculations do
     %{ash_query | calculations: Map.drop(ash_query.calculations, drop)}
   end
 
-  defp unload_calculations(ash_query, fields) do
+  defp unload_calculations(ash_query, fields, calculations_at_runtime, calculations_in_query) do
     drop =
       ash_query.calculations
       |> Enum.flat_map(fn
@@ -2002,6 +2015,36 @@ defmodule Ash.Actions.Read.Calculations do
           end
       end)
 
-    %{ash_query | calculations: Map.drop(ash_query.calculations, drop)}
+    Enum.reduce(
+      drop,
+      {ash_query, calculations_at_runtime, calculations_in_query},
+      fn drop, {ash_query, calculations_at_runtime, calculations_in_query} ->
+        if Enum.any?(ash_query.context[:calculation_dependencies], fn {_source, dest} ->
+             drop in dest
+           end) do
+          {%{ash_query | calculations: Map.delete(ash_query.calculations, drop)},
+           calculations_at_runtime, calculations_in_query}
+        else
+          {%{ash_query | calculations: Map.delete(ash_query.calculations, drop)},
+           Enum.reject(calculations_at_runtime, &(&1.name == drop)),
+           Enum.reject(calculations_in_query, &(&1 == drop))}
+        end
+      end
+    )
+    |> remove_unreferenced_calculations()
+  end
+
+  defp remove_unreferenced_calculations(
+         {ash_query, calculations_at_runtime, calculations_in_query}
+       ) do
+    {ash_query, Enum.filter(calculations_at_runtime, &used?(ash_query, &1.name)),
+     Enum.filter(calculations_in_query, &used?(ash_query, &1.name))}
+  end
+
+  defp used?(ash_query, name) do
+    Map.has_key?(ash_query, name) ||
+      Enum.any?(ash_query.context[:calculation_dependencies], fn {_source, dest} ->
+        name in dest
+      end)
   end
 end

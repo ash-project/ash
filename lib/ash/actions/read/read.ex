@@ -251,14 +251,19 @@ defmodule Ash.Actions.Read do
 
       {data_result, query_ran} =
         case data_result do
-          {:ok, result, query} -> {{:ok, result, nil}, query}
-          {:ok, result, count, query} -> {{:ok, result, count}, query}
-          {{:error, _, _} = error, query} -> {error, query}
-          {{:error, _} = error, query} -> {error, query}
-          other -> {other, query}
+          {:ok, _result, _count, _calculations_at_runtime, _calculations_in_query, query} =
+              data_result ->
+            {data_result, query}
+
+          {{:error, _} = data_result, query} ->
+            {data_result, query}
+
+          data_result ->
+            {data_result, query}
         end
 
-      with {:ok, data, count} <- data_result,
+      with {:ok, data, count, calculations_at_runtime, calculations_in_query, _query} <-
+             data_result,
            data = add_tenant(data, query),
            {:ok, data} <-
              load_through_attributes(
@@ -358,12 +363,13 @@ defmodule Ash.Actions.Read do
          },
          pre_authorization_query <- query,
          {:ok, query} <- authorize_query(query, opts) do
-      maybe_in_transaction(query, opts, fn ->
+      maybe_in_transaction(query, opts, fn notify_callback ->
         with query_before_pagination <- query,
-             query <-
+             {query, calculations_at_runtime, calculations_in_query} <-
                Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
                  query,
-                 calculations_at_runtime ++ calculations_in_query
+                 calculations_at_runtime,
+                 calculations_in_query
                ),
              {:ok, data_layer_calculations} <- hydrate_calculations(query, calculations_in_query),
              {:ok, query} <-
@@ -480,10 +486,12 @@ defmodule Ash.Actions.Read do
              {:ok, results} <- run_authorize_results(query, results),
              {:ok, results, after_notifications} <- run_after_action(query, results),
              {:ok, count} <- maybe_await(count) do
-          {:ok, results, count, query, before_notifications ++ after_notifications}
+          notify_callback.(query, before_notifications ++ after_notifications)
+          {:ok, results, count, calculations_at_runtime, calculations_in_query, query}
         else
           {%{valid?: false} = query, before_notifications} ->
-            {{:error, query, before_notifications}, query}
+            notify_callback.(before_notifications)
+            {{:error, query}, query}
 
           {{:error, %Ash.Query{} = query}, query} ->
             {:error, query}
@@ -790,7 +798,9 @@ defmodule Ash.Actions.Read do
         query.action.transaction? ->
           Ash.DataLayer.transaction(
             [query.resource | query.action.touches_resources],
-            func,
+            fn ->
+              func.(&notify_or_store(&1, &2, notify?))
+            end,
             query.timeout,
             %{
               type: :read,
@@ -802,36 +812,25 @@ defmodule Ash.Actions.Read do
               data_layer_context: query.context[:data_layer]
             }
           )
+          |> case do
+            {:error, {:error, error}} -> {:error, error}
+            {:error, error} -> {:error, error}
+            {:ok, result} -> {:ok, result}
+          end
 
         query.timeout ->
-          {:ok,
-           Ash.ProcessHelpers.task_with_timeout(
-             func,
-             query.resource,
-             query.timeout,
-             "#{inspect(query.resource)}.#{query.action.name}",
-             opts[:tracer]
-           )}
+          Ash.ProcessHelpers.task_with_timeout(
+            fn ->
+              func.(&notify_or_store(&1, &2, notify?))
+            end,
+            query.resource,
+            query.timeout,
+            "#{inspect(query.resource)}.#{query.action.name}",
+            opts[:tracer]
+          )
 
         true ->
-          {:ok, func.()}
-      end
-      |> case do
-        {:ok, {:ok, result, count, query_ran, notifications}} ->
-          notify_or_store(query, notifications, notify?)
-
-          {:ok, result, count, query_ran}
-
-        {:ok, {:error, error, notifications}} ->
-          notify_or_store(query, notifications, notify?)
-
-          {:error, error}
-
-        {:ok, value} ->
-          value
-
-        other ->
-          other
+          func.(&notify_or_store(&1, &2, notify?))
       end
     after
       if notify? do
@@ -879,22 +878,24 @@ defmodule Ash.Actions.Read do
        ) do
     must_be_reselected = List.wrap(query.select) -- Ash.Resource.Info.primary_key(query.resource)
 
-    query =
+    {query, calculations_at_runtime, calculations_in_query} =
       Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
         query,
-        calculations_at_runtime ++ calculations_in_query
+        calculations_at_runtime,
+        calculations_in_query
       )
 
     if missing_pkeys? ||
          (Enum.empty?(must_be_reselected) && Enum.empty?(query.aggregates) &&
             Enum.empty?(calculations_in_query)) do
-      {:ok, initial_data, query}
+      {:ok, initial_data, 0, calculations_at_runtime, calculations_in_query, query}
     else
       reselect_and_load(
         initial_data,
         query,
         must_be_reselected,
         calculations_in_query,
+        calculations_at_runtime,
         opts
       )
     end
@@ -905,6 +906,7 @@ defmodule Ash.Actions.Read do
          query,
          must_be_reselected,
          calculations_in_query,
+         calculations_at_runtime,
          opts
        ) do
     primary_key = Ash.Resource.Info.primary_key(query.resource)
@@ -1004,7 +1006,7 @@ defmodule Ash.Actions.Read do
       |> compute_expression_at_runtime_for_missing_records(query, data_layer_calculations)
       |> case do
         {:ok, result} ->
-          {:ok, result, 0, query}
+          {:ok, result, 0, calculations_at_runtime, calculations_in_query, query}
 
         {:error, error} ->
           {:error, error}
