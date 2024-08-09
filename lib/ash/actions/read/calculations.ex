@@ -2041,8 +2041,10 @@ defmodule Ash.Actions.Read.Calculations do
      Enum.filter(calculations_in_query, &used?(ash_query, &1.name))}
   end
 
+  defp used?(_ash_query, {:__ash_fields_are_visible__, _}), do: true
+
   defp used?(ash_query, name) do
-    Map.has_key?(ash_query, name) ||
+    Map.has_key?(ash_query.calculations, name) ||
       Enum.any?(ash_query.context[:calculation_dependencies] || [], fn {_source, dest} ->
         name in dest
       end)

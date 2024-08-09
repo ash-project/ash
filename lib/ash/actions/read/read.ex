@@ -676,16 +676,20 @@ defmodule Ash.Actions.Read do
                   record
 
                 record ->
-                  Map.update!(record, :calculations, fn calculations ->
-                    Map.update!(calculations, name, fn value ->
-                      Ash.Type.rewrite(
-                        type,
-                        value,
-                        [{:cleanup_field_auth, further_load}],
-                        constraints
-                      )
+                  if Map.has_key?(record.calculations, name) do
+                    Map.update!(record, :calculations, fn calculations ->
+                      Map.update!(calculations, name, fn value ->
+                        Ash.Type.rewrite(
+                          type,
+                          value,
+                          [{:cleanup_field_auth, further_load}],
+                          constraints
+                        )
+                      end)
                     end)
-                  end)
+                  else
+                    record
+                  end
               end
 
             nil ->
