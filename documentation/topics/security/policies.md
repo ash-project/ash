@@ -130,6 +130,49 @@ policies do
 end
 ```
 
+## Policy Groups
+
+Policy groups are a small abstraction over policies, that allow you to group policies together
+that have shared conditions. Each policy inside of a policy group have the same conditions as
+their group.
+
+```elixir
+policies do
+  policy_group actor_attribute_eqquals(:role, :owner) do
+    policy action_type(:read) do
+      authorize_if expr(owner_id == ^actor(:id))
+    end
+
+    policy action_type([:create, :update, :destroy]) do
+      forbid_if
+      authorize_if expr(owner_id == ^actor(:id))
+    end
+  end
+end
+```
+
+### Nesting Policy groups
+
+Policy groups can be nested. This can help when you have lots of policies and conditions.
+
+```elixir
+policies do
+  policy_group condition do
+    policy_group condition2 do
+       policy condition3 do
+         # This policy applies if condition, condition2, and condition3 are all true
+       end
+    end
+  end
+end
+```
+
+### Bypasses
+
+Policy groups can _not_ contain bypass policies. The purpose of policy groups is to make it easier to reason
+about the behavior of policies. When you see a policy group, you know that no policies inside that group will
+interact with policies in other policy groups, unless they also apply.
+
 ## Checks
 
 Checks evaluate from top to bottom within a policy. A check can produce one of three results, the same that a policy can produce. While checks are not necessarily evaluated in order, they _logically apply_ in that order, so you may as well think of it in that way. It can be thought of as a step-through algorithm.
@@ -372,6 +415,7 @@ end
 ```
 
 The different options are:
+
 - `:show` will always show private fields
 - `:hide` will always hide private fields
 - `:include` will let you to write field policies for private fields and private fields

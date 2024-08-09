@@ -166,7 +166,22 @@ defmodule Ash.Policy.Info do
   defp do_policies(resource) do
     resource
     |> Extension.get_entities([:policies])
+    |> flatten_groups()
     |> set_access_type(default_access_type(resource))
+  end
+
+  defp flatten_groups(policies) do
+    Enum.flat_map(policies, fn
+      %Ash.Policy.Policy{} = policy ->
+        [policy]
+
+      %Ash.Policy.PolicyGroup{condition: condition, policies: policies} ->
+        policies
+        |> flatten_groups()
+        |> Enum.map(fn policy ->
+          %{policy | condition: List.wrap(condition) ++ List.wrap(policy.condition)}
+        end)
+    end)
   end
 
   def default_access_type(resource) do

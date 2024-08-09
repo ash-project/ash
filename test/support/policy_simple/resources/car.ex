@@ -35,12 +35,18 @@ defmodule Ash.Test.Support.PolicySimple.Car do
       authorize_if never()
     end
 
-    policy action_type([:read, :update, :destroy]) do
+    policy action_type([:update, :destroy]) do
       authorize_if expr(exists(users, id == ^actor(:id)))
     end
 
-    policy [action_type(:read), expr(active != true)] do
-      forbid_if always()
+    policy_group action_type(:read) do
+      policy do
+        authorize_if expr(exists(users, id == ^actor(:id)))
+      end
+
+      policy [expr(active != true)] do
+        forbid_if always()
+      end
     end
   end
 

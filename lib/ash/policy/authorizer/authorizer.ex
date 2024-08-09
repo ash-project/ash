@@ -192,6 +192,62 @@ defmodule Ash.Policy.Authorizer do
     ]
   }
 
+  @policy_group %Spark.Dsl.Entity{
+    name: :policy_group,
+    target: Ash.Policy.PolicyGroup,
+    describe: """
+    Groups a set of policies together by some condition.
+
+    If the condition on the policy group does not apply, then none of the policies within it apply.
+
+    This is primarily syntactic sugar. At compile time, the conditions from the policy group are
+    added to each policy it contains, and the list is flattened out. This exists primarily to make it
+    easier to reason about and write policies.
+
+    The following are equivalent:
+
+    ```elixir
+    policy_group condition1 do
+      policy condition2 do
+        ...
+      end
+
+      policy condition3 do
+        ...
+      end
+    end
+    ```
+
+    and
+
+    ```elixir
+    policy [condition1, condition2] do
+      ...
+    end
+
+    policy [condition1, condition3] do
+      ...
+    end
+    ```
+    """,
+    schema: [
+      condition: [
+        type: {:custom, __MODULE__, :validate_condition, []},
+        doc: """
+        A check or list of checks that must be true in order for this policy to apply.
+        """
+      ]
+    ],
+    args: [:condition],
+    no_depend_modules: [:condition],
+    recursive_as: :policies,
+    entities: [
+      policies: [
+        @policy
+      ]
+    ]
+  }
+
   @bypass %{
     @policy
     | name: :bypass,
@@ -235,6 +291,7 @@ defmodule Ash.Policy.Authorizer do
     ],
     entities: [
       @policy,
+      @policy_group,
       @bypass
     ],
     imports: [

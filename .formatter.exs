@@ -156,6 +156,8 @@ spark_locals_without_parens = [
   policy: 0,
   policy: 1,
   policy: 2,
+  policy_group: 1,
+  policy_group: 2,
   pre_check?: 1,
   pre_check_with: 1,
   prefix: 1,

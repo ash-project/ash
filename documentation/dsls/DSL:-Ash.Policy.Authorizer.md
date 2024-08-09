@@ -47,6 +47,12 @@ See the [policies guide](/documentation/topics/security/policies.md) for more.
    * forbid_if
    * authorize_unless
    * forbid_unless
+ * [policy_group](#policies-policy_group)
+   * policy
+     * authorize_if
+     * forbid_if
+     * authorize_unless
+     * forbid_unless
  * [bypass](#policies-bypass)
    * authorize_if
    * forbid_if
@@ -311,6 +317,295 @@ Target: `Ash.Policy.Check`
 ### Introspection
 
 Target: `Ash.Policy.Policy`
+
+## policies.policy_group
+```elixir
+policy_group condition
+```
+
+
+Groups a set of policies together by some condition.
+
+If the condition on the policy group does not apply, then none of the policies within it apply.
+
+This is primarily syntactic sugar. At compile time, the conditions from the policy group are
+added to each policy it contains, and the list is flattened out. This exists primarily to make it
+easier to reason about and write policies.
+
+The following are equivalent:
+
+```elixir
+policy_group condition1 do
+policy condition2 do
+...
+end
+
+policy condition3 do
+...
+end
+end
+```
+
+and
+
+```elixir
+policy [condition1, condition2] do
+...
+end
+
+policy [condition1, condition3] do
+...
+end
+```
+
+
+### Nested DSLs
+ * [policy](#policies-policy_group-policy)
+   * authorize_if
+   * forbid_if
+   * authorize_unless
+   * forbid_unless
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`condition`](#policies-policy_group-condition){: #policies-policy_group-condition } | `any` |  | A check or list of checks that must be true in order for this policy to apply. |
+
+
+
+## policies.policy_group.policy
+```elixir
+policy condition \\ nil
+```
+
+
+A policy has a name, a condition, and a list of checks.
+
+Checks apply logically in the order they are specified, from top to bottom.
+If no check explicitly authorizes the request, then the request is forbidden.
+This means that, if you want to "blacklist" instead of "whitelist", you likely
+want to add an `authorize_if always()` at the bottom of your policy, like so:
+
+```elixir
+policy action_type(:read) do
+forbid_if not_logged_in()
+forbid_if user_is_denylisted()
+forbid_if user_is_in_denylisted_group()
+
+authorize_if always()
+end
+```
+
+If the policy should always run, use the `always()` check, like so:
+
+```elixir
+policy always() do
+...
+end
+```
+
+See the [policies guide](/documentation/topics/security/policies.md) for more.
+
+
+### Nested DSLs
+ * [authorize_if](#policies-policy_group-policy-authorize_if)
+ * [forbid_if](#policies-policy_group-policy-forbid_if)
+ * [authorize_unless](#policies-policy_group-policy-authorize_unless)
+ * [forbid_unless](#policies-policy_group-policy-forbid_unless)
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`condition`](#policies-policy_group-policy-condition){: #policies-policy_group-policy-condition } | `any` |  | A check or list of checks that must be true in order for this policy to apply. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`description`](#policies-policy_group-policy-description){: #policies-policy_group-policy-description } | `String.t` |  | A description for the policy, used when explaining authorization results |
+| [`access_type`](#policies-policy_group-policy-access_type){: #policies-policy_group-policy-access_type } | `:strict \| :filter \| :runtime` |  | Determines how the policy is applied. See the guide for more. |
+
+
+## policies.policy_group.policy.authorize_if
+```elixir
+authorize_if check
+```
+
+
+If the check is true, the request is authorized, otherwise run remaining checks.
+
+
+
+### Examples
+```
+authorize_if logged_in()
+```
+
+```
+authorize_if actor_attribute_matches_record(:group, :group)
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`check`](#policies-policy_group-policy-authorize_if-check){: #policies-policy_group-policy-authorize_if-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#policies-policy_group-policy-authorize_if-name){: #policies-policy_group-policy-authorize_if-name } | `String.t` |  | A short name or description for the check, used when explaining authorization results |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Policy.Check`
+
+## policies.policy_group.policy.forbid_if
+```elixir
+forbid_if check
+```
+
+
+If the check is true, the request is forbidden, otherwise run remaining checks.
+
+
+
+### Examples
+```
+forbid_if not_logged_in()
+```
+
+```
+forbid_if actor_attribute_matches_record(:group, :blacklisted_groups)
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`check`](#policies-policy_group-policy-forbid_if-check){: #policies-policy_group-policy-forbid_if-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#policies-policy_group-policy-forbid_if-name){: #policies-policy_group-policy-forbid_if-name } | `String.t` |  | A short name or description for the check, used when explaining authorization results |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Policy.Check`
+
+## policies.policy_group.policy.authorize_unless
+```elixir
+authorize_unless check
+```
+
+
+If the check is false, the request is authorized, otherwise run remaining checks.
+
+
+
+### Examples
+```
+authorize_unless not_logged_in()
+```
+
+```
+authorize_unless actor_attribute_matches_record(:group, :blacklisted_groups)
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`check`](#policies-policy_group-policy-authorize_unless-check){: #policies-policy_group-policy-authorize_unless-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#policies-policy_group-policy-authorize_unless-name){: #policies-policy_group-policy-authorize_unless-name } | `String.t` |  | A short name or description for the check, used when explaining authorization results |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Policy.Check`
+
+## policies.policy_group.policy.forbid_unless
+```elixir
+forbid_unless check
+```
+
+
+If the check is true, the request is forbidden, otherwise run remaining checks.
+
+
+
+### Examples
+```
+forbid_unless logged_in()
+```
+
+```
+forbid_unless actor_attribute_matches_record(:group, :group)
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`check`](#policies-policy_group-policy-forbid_unless-check){: #policies-policy_group-policy-forbid_unless-check .spark-required} | `module \| any` |  | The check to run. See `Ash.Policy.Check` for more. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#policies-policy_group-policy-forbid_unless-name){: #policies-policy_group-policy-forbid_unless-name } | `String.t` |  | A short name or description for the check, used when explaining authorization results |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Policy.Check`
+
+
+
+
+### Introspection
+
+Target: `Ash.Policy.Policy`
+
+
+
+
+### Introspection
+
+Target: `Ash.Policy.PolicyGroup`
 
 ## policies.bypass
 ```elixir
