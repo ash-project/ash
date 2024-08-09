@@ -246,6 +246,8 @@ defmodule Ash.Type.Struct do
     end
   end
 
+  defp handle_instance_of(nil, _), do: {:ok, nil}
+
   defp handle_instance_of(value, constraints) do
     case Keyword.fetch(constraints, :instance_of) do
       {:ok, struct} ->
