@@ -256,7 +256,7 @@ defmodule Ash.Type.Struct do
           is_struct(value) ->
             :error
 
-          value ->
+          true ->
             if constraints[:fields] do
               {:ok, struct(struct, value)}
             else
