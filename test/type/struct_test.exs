@@ -17,7 +17,14 @@ defmodule Type.StructTest do
 
     actions do
       default_accept :*
-      defaults [:read, :destroy, create: :*, update: :*]
+      defaults [:read, :destroy, update: :*]
+
+      create :create do
+        primary? true
+        accept [:*]
+
+        argument :dummy_metadata, :struct, constraints: [instance_of: Metadata], allow_nil?: true
+      end
     end
 
     attributes do
@@ -184,5 +191,13 @@ defmodule Type.StructTest do
                path: [:metadata]
              }
            ] = changeset.errors
+  end
+
+  test "it handles nil argument" do
+    changeset =
+      Post
+      |> Ash.Changeset.for_create(:create, %{dummy_metadata: nil})
+
+    assert changeset.valid?
   end
 end
