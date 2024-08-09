@@ -83,8 +83,34 @@ defmodule Ash.Actions.Sort do
             {ref_attribute, field_name} =
               case attribute do
                 atom when is_atom(attribute) ->
-                  {Ash.Resource.Info.field(Ash.Resource.Info.related(resource, path), attribute),
-                   atom}
+                  case Ash.Resource.Info.related(resource, path) do
+                    nil ->
+                      raise Ash.Error.Framework.AssumptionFailed,
+                        message: """
+                        Listing refs in #{inspect(expr)}:
+
+                        Found reference #{inspect(attribute)} at path #{inspect(path)}
+
+                        No related resource at path #{inspect(path)} from #{inspect(resource)}
+                        """
+
+                    related ->
+                      case Ash.Resource.Info.field(related, attribute) do
+                        nil ->
+                          raise Ash.Error.Framework.AssumptionFailed,
+                            message: """
+                            Listing refs in #{inspect(expr)}:
+
+                            Found reference #{inspect(attribute)} at path #{inspect(path)}
+
+                            Related resource at path #{inspect(path)} from #{inspect(resource)}
+                            does not have field #{inspect(atom)}
+                            """
+
+                        field ->
+                          {field, atom}
+                      end
+                  end
 
                 %struct{} = attribute
                 when struct in [Ash.Query.Aggregate, Ash.Query.Calculation] ->
