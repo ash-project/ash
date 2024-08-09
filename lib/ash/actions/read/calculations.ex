@@ -2019,7 +2019,7 @@ defmodule Ash.Actions.Read.Calculations do
       drop,
       {ash_query, calculations_at_runtime, calculations_in_query},
       fn drop, {ash_query, calculations_at_runtime, calculations_in_query} ->
-        if Enum.any?(ash_query.context[:calculation_dependencies], fn {_source, dest} ->
+        if Enum.any?(ash_query.context[:calculation_dependencies] || [], fn {_source, dest} ->
              drop in dest
            end) do
           {%{ash_query | calculations: Map.delete(ash_query.calculations, drop)},
@@ -2043,7 +2043,7 @@ defmodule Ash.Actions.Read.Calculations do
 
   defp used?(ash_query, name) do
     Map.has_key?(ash_query, name) ||
-      Enum.any?(ash_query.context[:calculation_dependencies], fn {_source, dest} ->
+      Enum.any?(ash_query.context[:calculation_dependencies] || [], fn {_source, dest} ->
         name in dest
       end)
   end
