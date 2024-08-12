@@ -4,87 +4,77 @@
 
 ## [v3.4.0](https://github.com/ash-project/ash/compare/v3.3.3...v3.4.0) (2024-08-12)
 
-
-
-
 ### Features:
 
-* add policy groups
+- [Ash.Policy.Authorizer] add policy groups
+
+- [authorization] support `authorize_with` option on `Ash.read`, allowing to error if any forbidden matching data exists
+
+- [`Ash.Resource`] Add `@type t` typespec to resource if it doesn't exist
 
 ### Bug Fixes:
 
-* remove pattern match error when exceptions come from calculations
+- [calculations] remove pattern match error when exceptions come from calculations
 
-* Fix error with nil value on structure types (#1380)
+- [calculations] resolve nested expression calculation references in runtime filters
 
-* show proper error message when trying to accept non-writable attributes
+- [arrays] Fix error with nil value on structure types (#1380)
 
-* Pass options without :templated tuple to after_batch  (#1376)
+- [bulk actions] Pass options without :templated tuple to after_batch (#1376)
 
-* properly iterate non templated opts
+- [bulk actions] `after_batch` arguments for `bulk_create` with `return_records?` disabled (#1371)
 
-* check for `nil` resource_calculation in `Ash.Resource.loaded?/2`
+- [bulk actions] set `upsert?` option when managing relationships in bulk creation
 
-* optimizations around allocating strings
+- [`Ash.Resource`] check for `nil` resource_calculation in `Ash.Resource.loaded?/2`
 
-* optimizations around list operations for embedded resources
+- [`Ash.Expr`] properly consider not-loaded record calculations as `:unknown`
 
-* `after_batch` arguments for `bulk_create` with `return_records?` disabled (#1371)
+- [atomic updates] handle `nil` in atomic array casting
 
-* set `upsert?` option when managing relationships in bulk creation
+- [aggregates] respect previously validated-for-action query for aggregates
 
-* resolve nested expression calculation references in runtime filters
+- [`mix ash.gen.resource`] use `timestamps()` instead of `timestamps`
 
-* properly consider not-loaded record calculations as `:unknown`
-
-* handle `nil` in atomic array casting
-
-* respect previously validated-for-action query for aggregates
-
-* use `timestamps()`  instead of `timestamps`
-
-* prefer `source_attribute` is required, instead of relationship name
+- [belongs_to relationships] prefer `source_attribute` is required, instead of relationship name
 
 ### Improvements:
 
-* prune calculations made unnecessary by field policies
+- [performance] optimizations around allocating strings
 
-* add "hints" to `NoSuchInput` errors to make any errors clearer
+- [performance] optimizations around list operations for embedded resources
 
-* warn on usage of `== nil`
+- [performance] prune calculations made unnecessary by field policies
 
-* implement `Comp` for atoms & strings, comparing atoms as strings
+- [performance] add optimized path for casting embeds when they are simple
 
-* increase cases where embedded attribute can be updated atomically
+- [performance] add `include_embedded_source_by_default?` config to optimize embeds
 
-* add optimized path for casting embeds when they are simple
+- [error messages] show proper error message when trying to accept non-writable attributes
 
-* add `include_embedded_source_by_default?` config to optimize embeds
+- [error messages] add "hints" to `NoSuchInput` errors to make any errors clearer
 
-* support `:fields` constraint on `:struct` type, enabling persistence
+- [`Ash.Expr`] warn on usage of `== nil`
 
-* Warn on bulk action `return_stream?` without any other `return_*?` options enabled. (#1370)
+- [`Ash.Expr`] implement `Comp` for atoms & strings, comparing atoms as strings
 
-* add stacktrace information
+- [embedded resources] increase cases where embedded attribute can be updated atomically
 
-* remove `:comparable` as a dependency
+- [`Ash.Type.Struct`] support `:fields` constraint on `:struct` type, enabling persistence
 
-* support `authorize_with` option on `Ash.read`
+- [bulk actions] Warn on bulk action `return_stream?` without any other `return_*?` options enabled. (#1370)
 
-* Add defaults and typespec to resulting Resource struct (#1364)
+- [calculations] ensure the called calculation function is always in the stacktrace
 
-* Add typespec to resource if it doesn't exist
+- [dependencies] remove `:comparable` as a dependency
+
+- [`Ash.Resource`] Add default values to resulting Resource struct (#1364)
 
 ## [v3.3.3](https://github.com/ash-project/ash/compare/v3.3.2...v3.3.3) (2024-08-01)
 
-
-
-
 ### Bug Fixes:
 
-* roll back bulk update/destroy on before action error
-
-* delete ash_notifications from pdict after reading
+- delete ash_notifications from pdict after reading
 
 ## [v3.3.2](https://github.com/ash-project/ash/compare/v3.3.1...v3.3.2) (2024-08-01)
 
