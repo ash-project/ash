@@ -1028,6 +1028,7 @@ end
 | [`upsert?`](#actions-create-upsert?){: #actions-create-upsert? } | `boolean` | `false` | Forces all uses of this action to be treated as an upsert. |
 | [`upsert_identity`](#actions-create-upsert_identity){: #actions-create-upsert_identity } | `atom` |  | The identity to use for the upsert. Cannot be overriden by the caller. Ignored  if `upsert?` is not set to `true`. |
 | [`upsert_fields`](#actions-create-upsert_fields){: #actions-create-upsert_fields } | `:replace_all \| {:replace, atom \| list(atom)} \| {:replace_all_except, atom \| list(atom)} \| atom \| list(atom)` |  | The fields to overwrite in the case of an upsert. If not provided, all fields except for fields set by defaults will be overwritten. |
+| [`upsert_condition`](#actions-create-upsert_condition){: #actions-create-upsert_condition } | `any` |  | An expression to check if the record should be updated when there's a conflict. |
 | [`primary?`](#actions-create-primary?){: #actions-create-primary? } | `boolean` | `false` | Whether or not this action should be used when no action is specified by the caller. |
 | [`description`](#actions-create-description){: #actions-create-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-create-transaction?){: #actions-create-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |

@@ -4,6 +4,7 @@ defmodule Ash.Test.Actions.CreateTest do
   use ExUnit.Case, async: true
 
   import Ash.Test
+  import Ash.Expr, only: [expr: 1]
 
   defmodule Authorized do
     @moduledoc false
@@ -332,6 +333,12 @@ defmodule Ash.Test.Actions.CreateTest do
       timestamps()
     end
 
+    identities do
+      identity :unique_title, :title do
+        pre_check_with Ash.Test.Actions.BulkCreateTest.Domain
+      end
+    end
+
     relationships do
       belongs_to(:author, Author, public?: true)
 
@@ -555,6 +562,61 @@ defmodule Ash.Test.Actions.CreateTest do
                  binary: <<0, 1, 2, 3, 4, 5>>
                })
                |> Ash.create!()
+    end
+
+    test "allows upserting a record" do
+      assert %Post{id: id, title: "foo", updated_at: updated_at} =
+               Post
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.change_attributes(%{
+                 title: "foo"
+               })
+               |> Ash.create!()
+
+      assert %Post{id: ^id, title: "foo", contents: "bar", updated_at: new_updated_at} =
+               Post
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.change_attributes(%{
+                 title: "foo",
+                 contents: "bar"
+               })
+               |> Ash.create!(
+                 upsert?: true,
+                 upsert_identity: :unique_title,
+                 upsert_fields: [:contents, :updated_at]
+               )
+
+      refute updated_at == new_updated_at
+    end
+
+    test "skips upsert when condition doesn't match" do
+      assert %Post{id: id, title: "foo", updated_at: updated_at} =
+               Post
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.change_attributes(%{
+                 title: "foo",
+                 contents: "bar",
+                 tag: "before"
+               })
+               |> Ash.create!()
+
+      assert %Post{id: ^id, title: "foo", contents: "bar", updated_at: ^updated_at} =
+               post =
+               Post
+               |> Ash.Changeset.new()
+               |> Ash.Changeset.change_attributes(%{
+                 title: "foo",
+                 contents: "bar",
+                 tag: "after"
+               })
+               |> Ash.create!(
+                 upsert?: true,
+                 upsert_identity: :unique_title,
+                 upsert_fields: [:contents, :updated_at],
+                 upsert_condition: expr(contents != upsert_conflict(:contents))
+               )
+
+      assert Ash.Resource.get_metadata(post, :upsert_skipped)
     end
 
     test "timestamps will match each other" do
@@ -994,7 +1056,7 @@ defmodule Ash.Test.Actions.CreateTest do
           type: :append_and_remove
         )
         |> Ash.Changeset.load(related_posts: keyset_pagination_query)
-        |> Ash.create!()
+        |> Ash.create!(upsert?: true, upsert_fields: [:title], upsert_identity: :unique_title)
 
       assert %Ash.Page.Keyset{
                results: [%Post{title: "Related 2"}],
@@ -1044,7 +1106,12 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Ash.Changeset.manage_relationship(:related_posts, [related_post2, related_post1],
           type: :append_and_remove
         )
-        |> Ash.create!(load: [related_posts: keyset_pagination_query])
+        |> Ash.create!(
+          load: [related_posts: keyset_pagination_query],
+          upsert?: true,
+          upsert_fields: [:title],
+          upsert_identity: :unique_title
+        )
 
       assert %Ash.Page.Keyset{
                results: [%Post{title: "Related 2"}],

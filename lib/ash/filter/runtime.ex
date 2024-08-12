@@ -88,7 +88,14 @@ defmodule Ash.Filter.Runtime do
     record
     |> flatten_relationships(relationship_paths)
     |> Enum.reduce_while({:ok, false}, fn scenario, {:ok, false} ->
-      case do_match(scenario, expression, opts[:parent], nil, opts[:unknown_on_unknown_refs?]) do
+      case do_match(
+             scenario,
+             expression,
+             opts[:parent],
+             nil,
+             opts[:unknown_on_unknown_refs?],
+             opts[:conflicting_upsert_values]
+           ) do
         {:error, error} ->
           {:halt, {:error, error}}
 
@@ -195,7 +202,8 @@ defmodule Ash.Filter.Runtime do
         expression,
         parent \\ nil,
         resource \\ nil,
-        unknown_on_unknown_refs? \\ false
+        unknown_on_unknown_refs? \\ false,
+        conflicting_upsert_values \\ nil
       )
 
   def do_match(
@@ -203,22 +211,38 @@ defmodule Ash.Filter.Runtime do
         %Ash.Filter.Simple{predicates: predicates},
         parent,
         resource,
-        unknown_on_unknown_refs?
+        unknown_on_unknown_refs?,
+        conflicting_upsert_values
       ) do
     {:ok,
      Enum.all?(predicates, fn predicate ->
-       do_match(record, predicate, parent, resource, unknown_on_unknown_refs?) == {:ok, true}
+       do_match(
+         record,
+         predicate,
+         parent,
+         resource,
+         unknown_on_unknown_refs?,
+         conflicting_upsert_values
+       ) == {:ok, true}
      end)}
   end
 
-  def do_match(record, expression, parent, resource, unknown_on_unknown_refs?) do
+  def do_match(
+        record,
+        expression,
+        parent,
+        resource,
+        unknown_on_unknown_refs?,
+        conflicting_upsert_values
+      ) do
     hydrated =
       case record do
         %resource{} ->
           Ash.Filter.hydrate_refs(expression, %{
             resource: resource,
             public?: false,
-            parent_stack: parent_stack(parent)
+            parent_stack: parent_stack(parent),
+            conflicting_upsert_values: conflicting_upsert_values
           })
 
         _ ->
@@ -226,7 +250,8 @@ defmodule Ash.Filter.Runtime do
             Ash.Filter.hydrate_refs(expression, %{
               resource: resource,
               public?: false,
-              parent_stack: parent_stack(parent)
+              parent_stack: parent_stack(parent),
+              conflicting_upsert_values: conflicting_upsert_values
             })
           else
             {:ok, expression}
@@ -449,6 +474,16 @@ defmodule Ash.Filter.Runtime do
          unknown_on_unknown_refs?
        ) do
     resolve_expr(expr, parent, rest, resource, unknown_on_unknown_refs?)
+  end
+
+  defp resolve_expr(
+         %Ash.Query.UpsertConflict{} = expr,
+         _record,
+         _parent,
+         _resource,
+         _unknown_on_unknown_refs?
+       ) do
+    {:error, "#{inspect(expr)} not implemented for data source"}
   end
 
   defp resolve_expr(%Ash.Query.Exists{}, nil, _parent, _resource, unknown_on_unknown_refs?) do

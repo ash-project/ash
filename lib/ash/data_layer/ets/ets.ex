@@ -973,11 +973,24 @@ defmodule Ash.DataLayer.Ets do
     end
   end
 
-  defp filter_matches(records, filter, domain, _tenant, parent \\ nil)
-  defp filter_matches(records, nil, _domain, _tenant, _parent), do: {:ok, records}
+  defp filter_matches(
+         records,
+         filter,
+         domain,
+         _tenant,
+         parent \\ nil,
+         conflicting_upsert_values \\ nil
+       )
 
-  defp filter_matches(records, filter, domain, tenant, parent) do
-    Ash.Filter.Runtime.filter_matches(domain, records, filter, parent: parent, tenant: tenant)
+  defp filter_matches(records, nil, _domain, _tenant, _parent, _conflicting_upsert_values),
+    do: {:ok, records}
+
+  defp filter_matches(records, filter, domain, tenant, parent, conflicting_upsert_values) do
+    Ash.Filter.Runtime.filter_matches(domain, records, filter,
+      parent: parent,
+      tenant: tenant,
+      conflicting_upsert_values: conflicting_upsert_values
+    )
   end
 
   @doc false
@@ -1008,12 +1021,7 @@ defmodule Ash.DataLayer.Ets do
           end
         end)
 
-      query =
-        if is_nil(changeset.filter) do
-          query
-        else
-          Ash.Query.do_filter(query, changeset.filter)
-        end
+      to_set = Ash.Changeset.set_on_upsert(changeset, keys)
 
       resource
       |> resource_to_query(changeset.domain)
@@ -1025,25 +1033,56 @@ defmodule Ash.DataLayer.Ets do
           create(resource, changeset, from_bulk_create?)
 
         {:ok, [result]} ->
-          to_set = Ash.Changeset.set_on_upsert(changeset, keys)
+          with {:ok, conflicting_upsert_values} <- Ash.Changeset.apply_attributes(changeset),
+               {:ok, [^result]} <-
+                 upsert_conflict_check(changeset, result, conflicting_upsert_values) do
+            changeset =
+              changeset
+              |> Map.put(:attributes, %{})
+              |> Map.put(:data, result)
+              |> Ash.Changeset.force_change_attributes(to_set)
 
-          changeset =
-            changeset
-            |> Map.put(:attributes, %{})
-            |> Map.put(:data, result)
-            |> Ash.Changeset.force_change_attributes(to_set)
-
-          update(
-            resource,
-            %{changeset | action_type: :update},
-            Map.take(result, pkey),
-            from_bulk_create?
-          )
+            update(
+              resource,
+              %{changeset | action_type: :update},
+              Map.take(result, pkey),
+              from_bulk_create?
+            )
+          else
+            {:ok, []} -> {:ok, Ash.Resource.put_metadata(result, :upsert_skipped, true)}
+            {:error, reason} -> {:error, reason}
+          end
 
         {:ok, _} ->
           {:error, "Multiple records matching keys"}
       end
     end
+  end
+
+  @spec upsert_conflict_check(
+          changeset :: Ash.Changeset.t(),
+          subject :: record,
+          conflicting_upsert_values :: record
+        ) :: {:ok, [record]} | {:error, reason}
+        when record: Ash.Resource.record(), reason: term()
+  defp upsert_conflict_check(changeset, subject, conflicting_upsert_values)
+
+  defp upsert_conflict_check(%Ash.Changeset{filter: nil}, result, _conflicting_upsert_values),
+    do: {:ok, [result]}
+
+  defp upsert_conflict_check(
+         %Ash.Changeset{filter: filter, domain: domain, context: context},
+         result,
+         conflicting_upsert_values
+       ) do
+    filter_matches(
+      [result],
+      filter,
+      domain,
+      nil,
+      context[:tenant],
+      conflicting_upsert_values
+    )
   end
 
   @impl true
