@@ -6,7 +6,7 @@
 
 ### Features:
 
-- [Ash.Policy.Authorizer] add policy groups
+- [`Ash.Policy.Authorizer`] add policy groups
 
 - [authorization] support `authorize_with` option on `Ash.read`, allowing to error if any forbidden matching data exists
 
