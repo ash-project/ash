@@ -2,6 +2,79 @@
 
 <!-- changelog -->
 
+## [v3.4.0](https://github.com/ash-project/ash/compare/v3.3.3...v3.4.0) (2024-08-12)
+
+
+
+
+### Features:
+
+* add policy groups
+
+### Bug Fixes:
+
+* remove pattern match error when exceptions come from calculations
+
+* Fix error with nil value on structure types (#1380)
+
+* show proper error message when trying to accept non-writable attributes
+
+* Pass options without :templated tuple to after_batch  (#1376)
+
+* properly iterate non templated opts
+
+* check for `nil` resource_calculation in `Ash.Resource.loaded?/2`
+
+* optimizations around allocating strings
+
+* optimizations around list operations for embedded resources
+
+* `after_batch` arguments for `bulk_create` with `return_records?` disabled (#1371)
+
+* set `upsert?` option when managing relationships in bulk creation
+
+* resolve nested expression calculation references in runtime filters
+
+* properly consider not-loaded record calculations as `:unknown`
+
+* handle `nil` in atomic array casting
+
+* respect previously validated-for-action query for aggregates
+
+* use `timestamps()`  instead of `timestamps`
+
+* prefer `source_attribute` is required, instead of relationship name
+
+### Improvements:
+
+* prune calculations made unnecessary by field policies
+
+* add "hints" to `NoSuchInput` errors to make any errors clearer
+
+* warn on usage of `== nil`
+
+* implement `Comp` for atoms & strings, comparing atoms as strings
+
+* increase cases where embedded attribute can be updated atomically
+
+* add optimized path for casting embeds when they are simple
+
+* add `include_embedded_source_by_default?` config to optimize embeds
+
+* support `:fields` constraint on `:struct` type, enabling persistence
+
+* Warn on bulk action `return_stream?` without any other `return_*?` options enabled. (#1370)
+
+* add stacktrace information
+
+* remove `:comparable` as a dependency
+
+* support `authorize_with` option on `Ash.read`
+
+* Add defaults and typespec to resulting Resource struct (#1364)
+
+* Add typespec to resource if it doesn't exist
+
 ## [v3.3.3](https://github.com/ash-project/ash/compare/v3.3.2...v3.3.3) (2024-08-01)
 
 
