@@ -144,7 +144,6 @@ policies do
     end
 
     policy action_type([:create, :update, :destroy]) do
-      forbid_if
       authorize_if expr(owner_id == ^actor(:id))
     end
   end
