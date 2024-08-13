@@ -4136,6 +4136,14 @@ defmodule Ash.Changeset do
   @doc false
   def manage_relationship_schema, do: @manage_opts
 
+  manage_opts = @manage_opts
+
+  defmodule ManageRelationshipOpts do
+    @moduledoc false
+
+    use Spark.Options.Validator, schema: manage_opts
+  end
+
   @doc """
   Manages the related records by creating, updating, or destroying them as necessary.
 
@@ -4272,18 +4280,18 @@ defmodule Ash.Changeset do
 
     inputs_was_list? = is_list(input)
 
-    manage_opts =
+    opts =
       if opts[:type] do
         defaults = manage_relationship_opts(opts[:type])
-
-        Enum.reduce(defaults, @manage_opts, fn {key, value}, manage_opts ->
-          Spark.Options.Helpers.set_default!(manage_opts, key, value)
-        end)
+        Keyword.merge(defaults, opts)
       else
-        @manage_opts
+        opts
       end
 
-    opts = Spark.Options.validate!(opts, manage_opts)
+    opts =
+      opts
+      |> ManageRelationshipOpts.validate!()
+      |> ManageRelationshipOpts.to_options()
 
     opts =
       if Keyword.has_key?(opts[:meta] || [], :inputs_was_list?) do

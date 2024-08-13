@@ -32,6 +32,14 @@ defmodule Ash.Page.Keyset do
     ]
   ]
 
+  page_opts = @page_opts
+
+  defmodule Opts do
+    @moduledoc false
+
+    use Spark.Options.Validator, schema: page_opts
+  end
+
   @doc false
   def page_opts do
     @page_opts

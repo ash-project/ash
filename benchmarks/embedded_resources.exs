@@ -18,6 +18,10 @@ defmodule Embed do
     default_accept :*
     defaults [:read, :destroy, create: :*, update: :*]
   end
+
+  changes do
+    change fn changeset, _ -> changeset end
+  end
 end
 
 defmodule Resource do
