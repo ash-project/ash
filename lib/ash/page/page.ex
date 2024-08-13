@@ -11,20 +11,20 @@ defmodule Ash.Page do
       {:ok, page_opts}
     else
       if page_opts[:after] || page_opts[:before] do
-        validate_or_error(page_opts, Ash.Page.Keyset.page_opts())
+        validate_or_error(page_opts, Ash.Page.Keyset.Opts)
       else
         if page_opts[:offset] do
-          validate_or_error(page_opts, Ash.Page.Offset.page_opts())
+          validate_or_error(page_opts, Ash.Page.Offset.Opts)
         else
-          validate_or_error(page_opts, Ash.Page.Keyset.page_opts())
+          validate_or_error(page_opts, Ash.Page.Keyset.Opts)
         end
       end
     end
   end
 
-  defp validate_or_error(opts, schema) do
-    case Spark.Options.validate(opts, schema) do
-      {:ok, value} -> {:ok, value}
+  defp validate_or_error(opts, mod) do
+    case mod.validate(opts) do
+      {:ok, value} -> {:ok, mod.to_options(value)}
       {:error, error} -> {:error, Exception.message(error)}
     end
   end

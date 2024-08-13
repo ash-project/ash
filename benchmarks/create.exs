@@ -1,5 +1,13 @@
+defmodule Domain do
+  use Ash.Domain, validate_config_inclusion?: false
+
+  resources do
+    allow_unregistered? true
+  end
+end
+
 defmodule Resource do
-  use Ash.Resource, domain: Ash.Test.Domain
+  use Ash.Resource, domain: Domain
 
   attributes do
     uuid_primary_key :id

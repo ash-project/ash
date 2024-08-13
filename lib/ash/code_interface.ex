@@ -313,7 +313,7 @@ defmodule Ash.CodeInterface do
         {safe_name, bang_name} = Ash.CodeInterface.resolve_calc_method_names(interface.name)
 
         opts_location = Enum.count(arg_bindings)
-        opt_schema = Ash.Resource.Interface.interface_options(:calculate)
+        interface_options = Ash.Resource.Interface.interface_options(:calculate, nil)
 
         @doc """
              #{calculation.description || "Calculates #{calculation.name} action on #{inspect(resource)}."}
@@ -322,11 +322,11 @@ defmodule Ash.CodeInterface do
 
              ### Options
 
-             #{Spark.Options.docs(opt_schema)}
+             #{interface_options.docs()}
              """
              |> Ash.CodeInterface.trim_double_newlines()
         @doc spark_opts: [
-               {opts_location, opt_schema}
+               {opts_location, interface_options.schema()}
              ]
         def unquote(bang_name)(unquote_splicing(arg_bindings), opts) do
           {refs, arguments, record} =
@@ -362,11 +362,11 @@ defmodule Ash.CodeInterface do
 
              ### Options
 
-             #{Spark.Options.docs(opt_schema)}
+             #{interface_options.docs()}
              """
              |> Ash.CodeInterface.trim_double_newlines()
         @doc spark_opts: [
-               {opts_location, opt_schema}
+               {opts_location, interface_options.schema()}
              ]
         def unquote(safe_name)(unquote_splicing(arg_bindings), opts) do
           {refs, arguments, record} =
@@ -437,14 +437,14 @@ defmodule Ash.CodeInterface do
           """
         end
 
-        interface_options = Ash.Resource.Interface.interface_options(action.type)
-
-        interface_options =
-          if action.type == :read && (interface.get? || action.get?) do
-            Keyword.delete(interface_options, :stream?)
+        interface =
+          if Map.get(action, :get?) do
+            %{interface | get?: true}
           else
-            interface_options
+            interface
           end
+
+        interface_options = Ash.Resource.Interface.interface_options(action.type, interface)
 
         resolve_opts_params =
           quote do
@@ -452,20 +452,12 @@ defmodule Ash.CodeInterface do
               if opts == [] && Keyword.keyword?(params_or_opts),
                 do:
                   {%{},
-                   Spark.Options.validate!(
-                     params_or_opts,
-                     unquote(
-                       Macro.escape(Keyword.drop(interface_options, [:stream?, :stream_options]))
-                     )
-                   )},
+                   unquote(interface_options).validate!(params_or_opts)
+                   |> unquote(interface_options).to_options()},
                 else:
                   {params_or_opts,
-                   Spark.Options.validate!(
-                     opts,
-                     unquote(
-                       Macro.escape(Keyword.drop(interface_options, [:stream?, :stream_options]))
-                     )
-                   )}
+                   unquote(interface_options).validate!(opts)
+                   |> unquote(interface_options).to_options()}
 
             params =
               unquote(args)
@@ -481,19 +473,15 @@ defmodule Ash.CodeInterface do
               if opts == [] && Keyword.keyword?(params_or_opts),
                 do:
                   {if(params_or_opts != [], do: %{}, else: []),
-                   Spark.Options.validate!(
-                     params_or_opts,
-                     unquote(Macro.escape(interface_options))
-                   )},
+                   unquote(interface_options).validate!(params_or_opts)
+                   |> unquote(interface_options).to_options()},
                 else:
                   {if(Keyword.keyword?(params_or_opts),
                      do: Map.new(params_or_opts),
                      else: params_or_opts
                    ),
-                   Spark.Options.validate!(
-                     opts,
-                     unquote(Macro.escape(interface_options))
-                   )}
+                   unquote(interface_options).validate!(opts)
+                   |> unquote(interface_options).to_options()}
 
             params =
               if is_list(params) do
@@ -609,7 +597,7 @@ defmodule Ash.CodeInterface do
                 end
 
               act =
-                if interface.get? || action.get? do
+                if interface.get? do
                   quote do
                     unquote(resolve_not_found_error?)
 
@@ -627,7 +615,7 @@ defmodule Ash.CodeInterface do
                 end
 
               act! =
-                if interface.get? || action.get? do
+                if interface.get? do
                   quote do
                     unquote(resolve_not_found_error?)
 
@@ -1256,7 +1244,6 @@ defmodule Ash.CodeInterface do
                 ]
 
         first_opts_location = Enum.count(subject_args) + Enum.count(arg_vars_function)
-        opt_schema = Ash.Resource.Interface.interface_options(action.type)
 
         @doc """
              #{action.description || "Calls the #{action.name} action on #{inspect(resource)}."}
@@ -1265,14 +1252,14 @@ defmodule Ash.CodeInterface do
 
              ## Options
 
-             #{Spark.Options.docs(interface_options)}
+             #{interface_options.docs()}
              """
              |> Ash.CodeInterface.trim_double_newlines()
 
         @dialyzer {:nowarn_function, {interface.name, length(common_args)}}
         @doc spark_opts: [
-               {first_opts_location, opt_schema},
-               {first_opts_location + 1, opt_schema}
+               {first_opts_location, interface_options.schema()},
+               {first_opts_location + 1, interface_options.schema()}
              ]
         def unquote(interface.name)(unquote_splicing(common_args)) do
           unquote(resolve_opts_params)
@@ -1289,14 +1276,14 @@ defmodule Ash.CodeInterface do
 
              ## Options
 
-             #{Spark.Options.docs(interface_options)}
+             #{interface_options.docs()}
              """
              |> Ash.CodeInterface.trim_double_newlines()
         # sobelow_skip ["DOS.BinToAtom"]
         @dialyzer {:nowarn_function, {:"#{interface.name}!", length(common_args)}}
         @doc spark_opts: [
-               {first_opts_location, opt_schema},
-               {first_opts_location + 1, opt_schema}
+               {first_opts_location, interface_options.schema()},
+               {first_opts_location + 1, interface_options.schema()}
              ]
         def unquote(:"#{interface.name}!")(unquote_splicing(common_args)) do
           unquote(resolve_bang_opts_params)
@@ -1306,21 +1293,36 @@ defmodule Ash.CodeInterface do
 
         # sobelow_skip ["DOS.BinToAtom"]
         if subject_name in [:changeset, :query, :input] do
+          subject_opts =
+            Keyword.take(interface_options.schema(), [
+              :actor,
+              :tenant,
+              :authorize?,
+              :tracer,
+              :changeset,
+              :query,
+              :input
+            ])
+
           @dialyzer {:nowarn_function,
                      {:"#{subject_name}_to_#{interface.name}", length(common_args)}}
 
           @doc spark_opts: [
-                 {first_opts_location, opt_schema},
-                 {first_opts_location + 1, opt_schema}
+                 {first_opts_location, interface_options.schema()},
+                 {first_opts_location + 1, interface_options.schema()}
                ]
           @doc """
                Returns the #{subject_name} corresponding to the action.
 
                ## Options
 
-               #{Spark.Options.docs(Keyword.take(interface_options, [:actor, :tenant, :authorize?, :tracer, :changeset, :query, :input]))}
+               #{Spark.Options.docs(subject_opts)}
                """
                |> Ash.CodeInterface.trim_double_newlines()
+          @doc spark_opts: [
+                 {first_opts_location, subject_opts},
+                 {first_opts_location + 1, subject_opts}
+               ]
           def unquote(:"#{subject_name}_to_#{interface.name}")(unquote_splicing(common_args)) do
             unquote(resolve_opts_params)
             unquote(resolve_subject)
@@ -1328,9 +1330,6 @@ defmodule Ash.CodeInterface do
           end
         end
 
-        # doing `can` and `can?` for bulk creates is complex
-        can_opts = Keyword.delete(Ash.can_opts(), :actor)
-        can_question_mark_opts = Keyword.delete(Ash.can_question_mark_opts(), :actor)
         # sobelow_skip ["DOS.BinToAtom"]
         @doc """
              Runs authorization checks for `#{inspect(resource)}.#{action.name}`
@@ -1339,29 +1338,25 @@ defmodule Ash.CodeInterface do
 
              ## Options
 
-             #{Spark.Options.docs(can_opts)}
+             #{Ash.Resource.Interface.CanOpts.docs()}
              """
              |> Ash.CodeInterface.trim_double_newlines()
         @dialyzer {:nowarn_function, {:"can_#{interface.name}", length(common_args) + 1}}
         @doc spark_opts: [
-               {first_opts_location + 1, opt_schema},
-               {first_opts_location + 2, opt_schema}
+               {first_opts_location + 1, Ash.Resource.Interface.CanOpts.schema()},
+               {first_opts_location + 2, Ash.Resource.Interface.CanOpts.schema()}
              ]
         def unquote(:"can_#{interface.name}")(actor, unquote_splicing(common_args)) do
           {params, opts} =
             if opts == [] && Keyword.keyword?(params_or_opts),
               do:
                 {%{},
-                 Spark.Options.validate!(
-                   params_or_opts,
-                   unquote(Macro.escape(can_opts))
-                 )},
+                 Ash.Resource.Interface.CanOpts.validate!(params_or_opts)
+                 |> unquote(interface_options).to_options()},
               else:
                 {params_or_opts,
-                 Spark.Options.validate!(
-                   opts,
-                   unquote(Macro.escape(can_opts))
-                 )}
+                 Ash.Resource.Interface.CanOpts.validate!(opts)
+                 |> unquote(interface_options).to_options()}
 
           opts = Keyword.put(opts, :actor, actor)
           unquote(resolve_subject)
@@ -1384,8 +1379,8 @@ defmodule Ash.CodeInterface do
         # sobelow_skip ["DOS.BinToAtom"]
         @dialyzer {:nowarn_function, {:"can_#{interface.name}?", length(common_args) + 1}}
         @doc spark_opts: [
-               {first_opts_location + 1, opt_schema},
-               {first_opts_location + 2, opt_schema}
+               {first_opts_location + 1, Ash.Resource.Interface.CanQuestionMarkOpts.schema()},
+               {first_opts_location + 2, Ash.Resource.Interface.CanQuestionMarkOpts.schema()}
              ]
         @doc """
              Runs authorization checks for `#{inspect(resource)}.#{action.name}`, returning a boolean.
@@ -1394,7 +1389,7 @@ defmodule Ash.CodeInterface do
 
              ## Options
 
-             #{Spark.Options.docs(can_question_mark_opts)}
+             #{Ash.Resource.Interface.CanQuestionMarkOpts.docs()}
              """
              |> Ash.CodeInterface.trim_double_newlines()
         def unquote(:"can_#{interface.name}?")(actor, unquote_splicing(common_args)) do
@@ -1402,16 +1397,12 @@ defmodule Ash.CodeInterface do
             if opts == [] && Keyword.keyword?(params_or_opts),
               do:
                 {%{},
-                 Spark.Options.validate!(
-                   params_or_opts,
-                   unquote(Macro.escape(can_question_mark_opts))
-                 )},
+                 Ash.Resource.Interface.CanQuestionMarkOpts.validate!(params_or_opts)
+                 |> unquote(interface_options).to_options()},
               else:
                 {params_or_opts,
-                 Spark.Options.validate!(
-                   opts,
-                   unquote(Macro.escape(can_question_mark_opts))
-                 )}
+                 Ash.Resource.Interface.CanQuestionMarkOpts.validate!(opts)
+                 |> unquote(interface_options).to_options()}
 
           opts = Keyword.put(opts, :actor, actor)
           unquote(resolve_subject)
