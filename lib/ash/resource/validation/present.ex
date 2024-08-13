@@ -17,19 +17,27 @@ defmodule Ash.Resource.Validation.Present do
     exactly: [
       type: :non_neg_integer,
       doc: "Exactly this many must be present"
+    ],
+    attributes: [
+      type: {:wrap_list, :atom},
+      required: true,
+      hide: true
     ]
   ]
 
   def opt_schema, do: @opt_schema
 
+  opt_schema = @opt_schema
+
+  defmodule Opts do
+    use Spark.Options.Validator, schema: opt_schema
+  end
+
   @impl true
   def init(opts) do
-    case Spark.Options.validate(
-           opts,
-           Keyword.put(opt_schema(), :attributes, type: {:wrap_list, :atom}, required: true)
-         ) do
+    case Opts.validate(opts) do
       {:ok, opts} ->
-        {:ok, opts}
+        {:ok, Opts.to_options(opts)}
 
       {:error, error} ->
         {:error, Exception.message(error)}

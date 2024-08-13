@@ -576,25 +576,30 @@ defmodule Ash.Filter do
     )
   end
 
-  @to_simple_filter_options [
-    skip_invalid?: [
-      type: :boolean,
-      default: false,
-      doc:
-        "If an invalid filter expression is reached that can't be used with a simple filter (like an `or` statement, or a non-predicate expression), it will be ignored instead of raising an error."
-    ]
-  ]
+  defmodule SimpleFilterOptions do
+    @moduledoc false
+
+    use Spark.Options.Validator,
+      schema: [
+        skip_invalid?: [
+          type: :boolean,
+          default: false,
+          doc:
+            "If an invalid filter expression is reached that can't be used with a simple filter (like an `or` statement, or a non-predicate expression), it will be ignored instead of raising an error."
+        ]
+      ]
+  end
 
   @doc """
   Transform an expression based filter to a simple filter, which is just a list of predicates
 
   Options:
 
-    - skip_invalid?:
+  #{SimpleFilterOptions.docs()}
   """
   def to_simple_filter(%{resource: resource, expression: expression}, opts \\ []) do
-    opts = Spark.Options.validate!(opts, @to_simple_filter_options)
-    predicates = get_predicates(expression, opts[:skip_invalid?])
+    %SimpleFilterOptions{} = opts = SimpleFilterOptions.validate!(opts)
+    predicates = get_predicates(expression, opts.skip_invalid?)
 
     %Simple{resource: resource, predicates: predicates}
   end

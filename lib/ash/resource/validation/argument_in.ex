@@ -17,11 +17,18 @@ defmodule Ash.Resource.Validation.ArgumentIn do
   use Ash.Resource.Validation
   alias Ash.Error.Changes.InvalidArgument
 
+  opt_schema = @opt_schema
+
+  defmodule Opts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: opt_schema
+  end
+
   @impl true
   def init(opts) do
-    case Spark.Options.validate(opts, @opt_schema) do
+    case Opts.validate(opts) do
       {:ok, opts} ->
-        {:ok, opts}
+        {:ok, Opts.to_options(opts)}
 
       {:error, error} ->
         {:error, Exception.message(error)}

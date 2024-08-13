@@ -123,6 +123,13 @@ defmodule Ash do
   @doc false
   def read_opts, do: @read_opts_schema
 
+  read_opts_schema = @read_opts_schema
+
+  defmodule ReadOpts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: read_opts_schema
+  end
+
   @read_one_opts_schema Spark.Options.merge(
                           [
                             not_found_error?: [
@@ -828,6 +835,13 @@ defmodule Ash do
     |> Ash.Helpers.unwrap_or_raise!()
   end
 
+  aggregate_opts = @aggregate_opts
+
+  defmodule AggregateOpts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: aggregate_opts
+  end
+
   @doc """
   Runs an aggregate or aggregates over a resource query
 
@@ -854,11 +868,12 @@ defmodule Ash do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
     domain = Ash.Helpers.domain!(query, opts)
-    opts = Spark.Options.validate!(opts, @aggregate_opts)
 
     query = Ash.Query.new(query)
 
-    with {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
+    with {:ok, opts} <- AggregateOpts.validate(opts),
+         opts <- AggregateOpts.to_options(opts),
+         {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
          {:ok, result} <-
            Ash.Actions.Aggregate.run(domain, query, List.wrap(aggregate_or_aggregates), opts) do
       {:ok, result}
@@ -1212,7 +1227,6 @@ defmodule Ash do
 
   @doc spark_opts: [{2, @can_question_mark_opts}]
   def can?(action_or_query_or_changeset, actor, opts \\ []) do
-    opts = Spark.Options.validate!(opts, @can_opts)
     domain = Ash.Helpers.domain!(action_or_query_or_changeset, opts)
     Ash.Can.can?(action_or_query_or_changeset, domain, actor, opts)
   end
@@ -1324,6 +1338,13 @@ defmodule Ash do
     |> Ash.Helpers.unwrap_or_raise!()
   end
 
+  run_action_opts = @run_action_opts
+
+  defmodule RunActionOpts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: run_action_opts
+  end
+
   @doc """
   Runs a generic action.
 
@@ -1338,7 +1359,8 @@ defmodule Ash do
     Ash.Helpers.expect_options!(opts)
     domain = Ash.Helpers.domain!(input, opts)
 
-    with {:ok, opts} <- Spark.Options.validate(opts, @run_action_opts),
+    with {:ok, opts} <- RunActionOpts.validate(opts),
+         opts <- RunActionOpts.to_options(opts),
          input = %{input | domain: domain},
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, input.resource),
          {:ok, result} <- Ash.Actions.Action.run(domain, input, opts) do
@@ -1371,6 +1393,13 @@ defmodule Ash do
     |> Ash.Helpers.unwrap_or_raise!()
   end
 
+  calculate_opts = @calculate_opts
+
+  defmodule CalculateOpts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: calculate_opts
+  end
+
   @doc """
   Evaluates the calculation on the resource.
 
@@ -1389,7 +1418,8 @@ defmodule Ash do
     Ash.Helpers.expect_resource_or_record!(resource_or_record)
     Ash.Helpers.expect_options!(opts)
 
-    with {:ok, opts} <- Spark.Options.validate(opts, @calculate_opts) do
+    with {:ok, opts} <- CalculateOpts.validate(opts) do
+      opts = CalculateOpts.to_options(opts)
       Ash.Actions.Read.Calculations.calculate(resource_or_record, calculation, opts)
     end
   end
@@ -1409,6 +1439,13 @@ defmodule Ash do
     |> Ash.Helpers.unwrap_or_raise!()
   end
 
+  get_opts_schema = @get_opts_schema
+
+  defmodule GetOpts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: get_opts_schema
+  end
+
   @doc """
   Get a record by an identifier.
 
@@ -1426,15 +1463,14 @@ defmodule Ash do
     Ash.Helpers.expect_resource!(resource)
     Ash.Helpers.expect_options!(opts)
 
-    with {:ok, opts} <- Spark.Options.validate(opts, @get_opts_schema),
+    with {:ok, opts} <- GetOpts.validate(opts),
+         opts <- GetOpts.to_options(opts),
          domain = Ash.Helpers.domain!(resource, opts),
          {:ok, resource} <- Ash.Domain.Info.resource(domain, resource),
          {:ok, filter} <- Ash.Filter.get_filter(resource, id),
          {:ok, read_opts} <-
-           Spark.Options.validate(
-             Keyword.take(opts, Keyword.keys(@read_opts_schema)),
-             @read_opts_schema
-           ),
+           ReadOpts.validate(Keyword.take(opts, Keyword.keys(@read_opts_schema))),
+         read_opts <- ReadOpts.to_options(read_opts),
          {:ok, result} <- do_get(resource, filter, domain, opts, read_opts) do
       {:ok, result}
     else
@@ -1679,11 +1715,16 @@ defmodule Ash do
           Ash.Resource.record() | [Ash.Resource.record()] | no_return
   @doc spark_opts: [{2, @load_opts_schema}]
   def load!(data, query, opts \\ []) do
-    opts = Spark.Options.validate!(opts, @load_opts_schema)
-
     data
     |> load(query, opts)
     |> Ash.Helpers.unwrap_or_raise!()
+  end
+
+  load_opts_schema = @load_opts_schema
+
+  defmodule LoadOpts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: load_opts_schema
   end
 
   @doc """
@@ -1763,14 +1804,15 @@ defmodule Ash do
 
     with %{valid?: true} <- query,
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
-         {:ok, opts} <- Spark.Options.validate(opts, @load_opts_schema),
+         {:ok, opts} <- LoadOpts.validate(opts),
+         opts <- LoadOpts.to_options(opts),
          domain = Ash.Helpers.domain!(query, opts),
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, resource),
          {:ok, results} <-
            Ash.Actions.Read.unpaginated_read(
              query,
              action,
-             Keyword.merge(opts, initial_data: data)
+             Keyword.put(opts, :initial_data, data)
            ) do
       {:ok, results}
     else
@@ -1780,6 +1822,12 @@ defmodule Ash do
       %{errors: errors} ->
         {:error, Ash.Error.to_error_class(errors)}
     end
+  end
+
+  stream_opts = @stream_opts
+
+  defmodule StreamOpts do
+    use Spark.Options.Validator, schema: stream_opts
   end
 
   @doc """
@@ -1826,7 +1874,7 @@ defmodule Ash do
   def stream!(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
-    opts = Spark.Options.validate!(opts, @stream_opts)
+    opts = opts |> StreamOpts.validate!() |> StreamOpts.to_options()
 
     domain = Ash.Helpers.domain!(query, opts)
 
@@ -1850,7 +1898,6 @@ defmodule Ash do
   def read!(query, opts \\ []) do
     Ash.Helpers.expect_resource_or_query!(query)
     Ash.Helpers.expect_options!(opts)
-    opts = Spark.Options.validate!(opts, @read_opts_schema)
 
     query
     |> read(opts)
@@ -1890,7 +1937,8 @@ defmodule Ash do
         query
       end
 
-    with {:ok, opts} <- Spark.Options.validate(opts, @read_opts_schema),
+    with {:ok, opts} <- ReadOpts.validate(opts),
+         opts <- ReadOpts.to_options(opts),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
@@ -1945,6 +1993,14 @@ defmodule Ash do
     |> Ash.Helpers.unwrap_or_raise!()
   end
 
+  read_one_opts_schema = @read_one_opts_schema
+
+  defmodule ReadOneOpts do
+    @moduledoc false
+
+    use Spark.Options.Validator, schema: read_one_opts_schema
+  end
+
   @doc """
   Runs a query on a resource, returning a single result, nil, or an error.
 
@@ -1961,7 +2017,8 @@ defmodule Ash do
     domain = Ash.Helpers.domain!(query, opts)
     query = Ash.Query.new(query)
 
-    with {:ok, opts} <- Spark.Options.validate(opts, @read_one_opts_schema),
+    with {:ok, opts} <- ReadOneOpts.validate(opts),
+         opts <- ReadOneOpts.to_options(opts),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
@@ -2002,7 +2059,7 @@ defmodule Ash do
     domain = Ash.Helpers.domain!(query, opts)
     query = query |> Ash.Query.new() |> Ash.Query.limit(1)
 
-    with {:ok, opts} <- Spark.Options.validate(opts, @read_one_opts_schema),
+    with {:ok, opts} <- ReadOneOpts.validate(opts),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
@@ -2159,6 +2216,14 @@ defmodule Ash do
     end
   end
 
+  bulk_create_opts_schema = @bulk_create_opts_schema
+
+  defmodule BulkCreateOpts do
+    @moduledoc false
+
+    use Spark.Options.Validator, schema: bulk_create_opts_schema
+  end
+
   @doc """
   Creates many records.
 
@@ -2243,7 +2308,8 @@ defmodule Ash do
         end
 
       inputs ->
-        with {:ok, opts} <- Spark.Options.validate(opts, @bulk_create_opts_schema),
+        with {:ok, opts} <- BulkCreateOpts.validate(opts),
+             opts <- BulkCreateOpts.to_options(opts),
              {:ok, resource} <- Ash.Domain.Info.resource(domain, resource) do
           Ash.Actions.Create.Bulk.run(domain, resource, action, inputs, opts)
         else

@@ -51,6 +51,13 @@ defmodule Ash.Query.Calculation do
     ]
   ]
 
+  opt_schema = @opt_schema
+
+  defmodule Opts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: opt_schema
+  end
+
   @doc """
   Creates a new query calculation.
 
@@ -66,13 +73,13 @@ defmodule Ash.Query.Calculation do
         constraints,
         opts \\ []
       ) do
-    with {:ok, opts} <- Spark.Options.validate(opts, @opt_schema),
+    with {:ok, opts} <- Opts.validate(opts),
          {:ok, calc_opts} <- module.init(calc_opts) do
       context = %Ash.Resource.Calculation.Context{
-        arguments: opts[:arguments],
+        arguments: opts.arguments,
         type: type,
         constraints: constraints,
-        source_context: opts[:source_context] || %{}
+        source_context: opts.source_context
       }
 
       {:ok,
@@ -84,10 +91,10 @@ defmodule Ash.Query.Calculation do
          calc_name: name,
          constraints: constraints,
          context: context,
-         required_loads: opts[:load],
-         filterable?: opts[:filterable?],
-         sortable?: opts[:sortable?],
-         sensitive?: opts[:sensitive?]
+         required_loads: opts.load,
+         filterable?: opts.filterable?,
+         sortable?: opts.sortable?,
+         sensitive?: opts.sensitive?
        }}
     end
   end

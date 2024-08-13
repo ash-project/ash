@@ -38,88 +38,164 @@ defmodule Ash.Resource.Interface do
     definition
   end
 
-  def interface_options(:calculate) do
-    Ash.calculate_opts()
-    |> Keyword.drop([:domain, :refs, :args, :record])
+  defmodule CanOpts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: Keyword.delete(Ash.can_opts(), :actor)
   end
 
-  def interface_options(:create) do
-    opts = Ash.create_opts()
-
-    Keyword.merge(opts,
-      changeset: [
-        type: :any,
-        doc: "A changeset to seed the action with."
-      ],
-      bulk_options: [
-        type: :keyword_list,
-        doc: "Options passed to `Ash.bulk_create`, if a list or stream of inputs is provided.",
-        keys: Keyword.drop(Ash.bulk_create_opts(), Keyword.keys(opts))
-      ]
-    )
-    |> Keyword.drop([:domain])
+  defmodule CanQuestionMarkOpts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: Keyword.delete(Ash.can_question_mark_opts(), :actor)
   end
 
-  def interface_options(:update) do
-    opts = Ash.update_opts()
+  defmodule CalculateOpts do
+    @moduledoc false
 
-    opts
-    |> Keyword.merge(
-      bulk_options: [
-        type: :keyword_list,
-        doc:
-          "Options passed to `Ash.bulk_create`, if a query, list, or stream of inputs is provided.",
-        keys: Keyword.drop(Ash.bulk_update_opts(), Keyword.keys(opts) ++ [:resource])
-      ]
-    )
-    |> Keyword.drop([:domain])
+    use Spark.Options.Validator,
+      schema: Keyword.drop(Ash.calculate_opts(), [:domain, :refs, :args, :record])
   end
 
-  def interface_options(:destroy) do
-    opts = Ash.destroy_opts()
+  defmodule CreateOpts do
+    @moduledoc false
 
-    Keyword.merge(opts,
-      bulk_options: [
-        type: :keyword_list,
-        doc:
-          "Options passed to `Ash.bulk_create`, if a query, list, or stream of inputs is provided.",
-        keys: Keyword.drop(Ash.bulk_destroy_opts(), Keyword.keys(opts) ++ [:resource])
-      ]
-    )
-    |> Keyword.drop([:domain])
+    use Spark.Options.Validator,
+      schema:
+        Keyword.merge(Ash.create_opts(),
+          changeset: [
+            type: :any,
+            doc: "A changeset to seed the action with."
+          ],
+          bulk_options: [
+            type: :keyword_list,
+            doc:
+              "Options passed to `Ash.bulk_create`, if a list or stream of inputs is provided.",
+            keys: Keyword.drop(Ash.bulk_create_opts(), Keyword.keys(Ash.create_opts()))
+          ]
+        )
+        |> Keyword.drop([:domain])
   end
 
-  def interface_options(:read) do
-    opts = Ash.read_opts()
-
-    opts
-    |> Keyword.merge(
-      query: [
-        type: {:or, [{:behaviour, Ash.Resource}, {:struct, Ash.Query}, :keyword_list]},
-        doc: "A query to seed the action with."
-      ],
-      stream?: [
-        type: :boolean,
-        default: false,
-        doc: "If true, a stream of the results will be returned"
-      ],
-      not_found_error?: [
-        type: :boolean,
-        doc:
-          "Whether or not to return or raise a `NotFound` error or to return `nil` when a get? action/interface is called."
-      ],
-      stream_options: [
-        type: :keyword_list,
-        doc: "Options passed to `Ash.stream!`, if `stream?: true` is given",
-        keys: Keyword.drop(Ash.stream_opts(), Keyword.keys(opts))
-      ]
-    )
-    |> Keyword.drop([:domain])
+  defmodule UpdateOpts do
+    @moduledoc false
+    use Spark.Options.Validator,
+      schema:
+        Ash.update_opts()
+        |> Keyword.merge(
+          bulk_options: [
+            type: :keyword_list,
+            doc:
+              "Options passed to `Ash.bulk_create`, if a query, list, or stream of inputs is provided.",
+            keys:
+              Keyword.drop(Ash.bulk_update_opts(), Keyword.keys(Ash.update_opts()) ++ [:resource])
+          ]
+        )
+        |> Keyword.drop([:domain])
   end
 
-  def interface_options(:action) do
-    Ash.run_action_opts()
-    |> Keyword.drop([:domain])
+  defmodule DestroyOpts do
+    @moduledoc false
+    use Spark.Options.Validator,
+      schema:
+        Ash.destroy_opts()
+        |> Keyword.merge(
+          bulk_options: [
+            type: :keyword_list,
+            doc:
+              "Options passed to `Ash.bulk_create`, if a query, list, or stream of inputs is provided.",
+            keys:
+              Keyword.drop(
+                Ash.bulk_destroy_opts(),
+                Keyword.keys(Ash.destroy_opts()) ++ [:resource]
+              )
+          ]
+        )
+        |> Keyword.drop([:domain])
+  end
+
+  defmodule GetOpts do
+    @moduledoc false
+    use Spark.Options.Validator,
+      schema:
+        Ash.read_opts()
+        |> Keyword.merge(
+          query: [
+            type: {:or, [{:behaviour, Ash.Resource}, {:struct, Ash.Query}, :keyword_list]},
+            doc: "A query to seed the action with."
+          ],
+          not_found_error?: [
+            type: :boolean,
+            doc:
+              "Whether or not to return or raise a `NotFound` error or to return `nil` when a get? action/interface is called."
+          ]
+        )
+        |> Keyword.drop([:domain])
+  end
+
+  defmodule ReadOpts do
+    @moduledoc false
+    use Spark.Options.Validator,
+      schema:
+        Ash.read_opts()
+        |> Keyword.merge(
+          query: [
+            type: {:or, [{:behaviour, Ash.Resource}, {:struct, Ash.Query}, :keyword_list]},
+            doc: "A query to seed the action with."
+          ],
+          not_found_error?: [
+            type: :boolean,
+            doc:
+              "Whether or not to return or raise a `NotFound` error or to return `nil` when a get? action/interface is called."
+          ]
+        )
+        |> Keyword.merge(
+          stream?: [
+            type: :boolean,
+            default: false,
+            doc: "If true, a stream of the results will be returned"
+          ],
+          stream_options: [
+            type: :keyword_list,
+            doc: "Options passed to `Ash.stream!`, if `stream?: true` is given",
+            keys: Keyword.drop(Ash.stream_opts(), Keyword.keys(Ash.read_opts()))
+          ]
+        )
+        |> Keyword.drop([:domain])
+  end
+
+  defmodule ActionOpts do
+    @moduledoc false
+    use Spark.Options.Validator,
+      schema:
+        Ash.run_action_opts()
+        |> Keyword.drop([:domain])
+  end
+
+  def interface_options(:calculate, _) do
+    CalculateOpts
+  end
+
+  def interface_options(:create, _) do
+    CreateOpts
+  end
+
+  def interface_options(:update, _) do
+    UpdateOpts
+  end
+
+  def interface_options(:destroy, _) do
+    DestroyOpts
+  end
+
+  def interface_options(:read, interface) do
+    if interface.get? do
+      GetOpts
+    else
+      ReadOpts
+    end
+  end
+
+  def interface_options(:action, _) do
+    ActionOpts
   end
 
   @schema [

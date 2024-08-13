@@ -7,7 +7,8 @@ defmodule Ash.Resource.Change.SetAttribute do
     attribute: [
       doc: "The attribute to change.",
       required: true,
-      type: :atom
+      type: :atom,
+      hide: true
     ],
     value: [
       doc:
@@ -30,11 +31,18 @@ defmodule Ash.Resource.Change.SetAttribute do
 
   def opt_schema, do: @opt_schema
 
+  opt_schema = @opt_schema
+
+  defmodule Opts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: opt_schema
+  end
+
   @impl true
   def init(opts) do
-    case Spark.Options.validate(opts, opt_schema()) do
+    case Opts.validate(opts) do
       {:ok, opts} ->
-        {:ok, opts}
+        {:ok, Opts.to_options(opts)}
 
       {:error, error} ->
         {:error, Exception.message(error)}

@@ -56,7 +56,9 @@ defmodule Ash.Query.Aggregate do
   @schema [
     path: [
       type: {:list, :atom},
-      doc: "The relationship path to aggregate over. Only used when adding aggregates to a query."
+      doc:
+        "The relationship path to aggregate over. Only used when adding aggregates to a query.",
+      default: []
     ],
     query: [
       type: :any,
@@ -87,7 +89,8 @@ defmodule Ash.Query.Aggregate do
     ],
     constraints: [
       type: :any,
-      doc: "Type constraints to use for the aggregate."
+      doc: "Type constraints to use for the aggregate.",
+      default: []
     ],
     implementation: [
       type: :any,
@@ -139,6 +142,13 @@ defmodule Ash.Query.Aggregate do
     @keys
   end
 
+  schema = @schema
+
+  defmodule Opts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: schema
+  end
+
   @doc """
   Create a new aggregate, used with `Query.aggregate` or `Ash.aggregate`
 
@@ -156,16 +166,16 @@ defmodule Ash.Query.Aggregate do
           false
       end)
 
-    with {:ok, opts} <- Spark.Options.validate(opts, @schema) do
-      related = Ash.Resource.Info.related(resource, opts[:path] || [])
+    with {:ok, %Opts{} = opts} <- Opts.validate(opts) do
+      related = Ash.Resource.Info.related(resource, opts.path)
 
       query =
-        case opts[:query] || Ash.Query.new(related) do
+        case opts.query || Ash.Query.new(related) do
           %Ash.Query{} = query -> query
           build_opts -> build_query(related, build_opts)
         end
 
-      opts[:join_filters]
+      opts.join_filters
       |> Kernel.||(%{})
       |> Enum.reduce_while({:ok, %{}}, fn {path, filter}, {:ok, acc} ->
         case parse_join_filter(resource, path, filter) do
@@ -178,19 +188,19 @@ defmodule Ash.Query.Aggregate do
       end)
       |> case do
         {:ok, join_filters} ->
-          relationship = opts[:path] || []
-          field = opts[:field]
-          default = opts[:default]
-          filterable? = opts[:filterable?]
-          sortable? = opts[:sortable?]
-          sensitive? = opts[:sensitive?]
-          type = opts[:type]
-          constraints = Keyword.get(opts, :constraints, [])
-          implementation = opts[:implementation]
-          uniq? = opts[:uniq?]
-          read_action = opts[:read_action]
-          authorize? = opts[:authorize?]
-          include_nil? = opts[:include_nil?]
+          relationship = opts.path
+          field = opts.field
+          default = opts.default
+          filterable? = opts.filterable?
+          sortable? = opts.sortable?
+          sensitive? = opts.sensitive?
+          type = opts.type
+          constraints = opts.constraints
+          implementation = opts.implementation
+          uniq? = opts.uniq?
+          read_action = opts.read_action
+          authorize? = opts.authorize?
+          include_nil? = opts.include_nil?
 
           if kind == :custom && !type do
             raise ArgumentError, "Must supply type when building a `custom` aggregate"

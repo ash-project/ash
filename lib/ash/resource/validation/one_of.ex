@@ -8,24 +8,28 @@ defmodule Ash.Resource.Validation.OneOf do
 
   @opt_schema [
     values: [
-      type: {:list, :any},
+      type: {:wrap_list, :any},
       required: true
     ],
     attribute: [
       type: :atom,
-      required: true
+      required: true,
+      hide: true
     ]
   ]
 
-  @doc false
-  def values(value) when is_list(value), do: {:ok, value}
-  def values(_), do: {:error, "Expected a list of values"}
+  opt_schema = @opt_schema
+
+  defmodule Opts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: opt_schema
+  end
 
   @impl true
   def init(opts) do
-    case Spark.Options.validate(opts, @opt_schema) do
+    case Opts.validate(opts) do
       {:ok, opts} ->
-        {:ok, opts}
+        {:ok, Opts.to_options(opts)}
 
       {:error, error} ->
         {:error, Exception.message(error)}

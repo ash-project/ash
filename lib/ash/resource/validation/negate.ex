@@ -14,9 +14,17 @@ defmodule Ash.Resource.Validation.Negate do
   alias Ash.Error.Changes.InvalidChanges
   require Ash.Expr
 
+  opt_schema = @opt_schema
+
+  defmodule Opts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: opt_schema
+  end
+
   @impl true
   def init(opts) do
-    with {:ok, opts} <- Spark.Options.validate(opts, @opt_schema),
+    with {:ok, opts} <- Opts.validate(opts),
+         opts <- Opts.to_options(opts),
          {validation, validation_opts} = opts[:validation],
          {:module, validation} <- Code.ensure_compiled(validation),
          true <- function_exported?(validation, :describe, 1),

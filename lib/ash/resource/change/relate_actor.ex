@@ -8,7 +8,8 @@ defmodule Ash.Resource.Change.RelateActor do
     relationship: [
       doc: "The relationship to set the actor to.",
       required: true,
-      type: :atom
+      type: :atom,
+      hide: true
     ],
     allow_nil?: [
       doc: "Whether or not to allow the actor to be nil, in which case nothing will happen.",
@@ -23,11 +24,18 @@ defmodule Ash.Resource.Change.RelateActor do
 
   def opt_schema, do: @opt_schema
 
+  opt_schema = @opt_schema
+
+  defmodule Opts do
+    @moduledoc false
+    use Spark.Options.Validator, schema: opt_schema
+  end
+
   @impl true
   def init(opts) do
-    case Spark.Options.validate(opts, opt_schema()) do
+    case Opts.validate(opts) do
       {:ok, opts} ->
-        {:ok, opts}
+        {:ok, Opts.to_options(opts)}
 
       {:error, error} ->
         {:error, Exception.message(error)}
