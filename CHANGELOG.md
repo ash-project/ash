@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.4.1](https://github.com/ash-project/ash/compare/v3.4.0...v3.4.1) (2024-08-13)
+
+
+
+
+### Bug Fixes:
+
+* properly pass actor, action, tenant etc. to lazy loaded relationships
+
 ## [v3.4.0](https://github.com/ash-project/ash/compare/v3.3.3...v3.4.0) (2024-08-12)
 
 ### Features:
