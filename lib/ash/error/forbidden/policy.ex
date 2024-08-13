@@ -11,6 +11,7 @@ defmodule Ash.Error.Forbidden.Policy do
       scenarios: [],
       facts: %{},
       filter: nil,
+      actor: nil,
       policy_breakdown?: false,
       must_pass_strict_check?: false,
       for_fields: nil,

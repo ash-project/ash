@@ -484,6 +484,7 @@ defmodule Ash.Policy.Authorizer do
       policies: Map.get(state, :policies),
       resource: Map.get(state, :resource),
       action: Map.get(state, :action),
+      actor: Map.get(state, :actor),
       changeset_doesnt_match_filter: true,
       filter: filter
     )
@@ -496,6 +497,7 @@ defmodule Ash.Policy.Authorizer do
       policies: Map.get(state, :policies),
       resource: Map.get(state, :resource),
       action: Map.get(state, :action),
+      actor: Map.get(state, :actor),
       must_pass_strict_check?: true
     )
   end
@@ -507,6 +509,7 @@ defmodule Ash.Policy.Authorizer do
       policies: Map.get(state, :policies),
       resource: Map.get(state, :resource),
       action: Map.get(state, :action),
+      actor: Map.get(state, :actor),
       must_pass_strict_check?: true
     )
   end
@@ -1507,6 +1510,7 @@ defmodule Ash.Policy.Authorizer do
            context_description: opts[:context_description],
            for_fields: opts[:for_fields],
            resource: Map.get(authorizer, :resource),
+           actor: Map.get(authorizer, :action),
            action: Map.get(authorizer, :action),
            scenarios: []
          )}
@@ -1529,6 +1533,7 @@ defmodule Ash.Policy.Authorizer do
            for_fields: opts[:for_fields],
            resource: Map.get(authorizer, :resource),
            action: Map.get(authorizer, :action),
+           actor: Map.get(authorizer, :action),
            scenarios: []
          )}
 
