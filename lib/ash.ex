@@ -300,6 +300,11 @@ defmodule Ash do
                              ]},
                           doc:
                             "The fields to upsert. If not set, the action's upsert_fields is used, and if that is not set, then any fields not being set to defaults are written."
+                        ],
+                        upsert_condition: [
+                          type: :any,
+                          doc:
+                            "An expression to check if the record should be updated when there's a conflict."
                         ]
                       ]
                       |> Spark.Options.merge(@global_opts, "Global Options")

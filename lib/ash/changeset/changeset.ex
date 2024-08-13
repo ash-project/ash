@@ -1245,6 +1245,8 @@ defmodule Ash.Changeset do
       get_action_entity(changeset.resource, action) ||
         raise_no_action(changeset.resource, action, :create)
 
+    upsert_condition = opts[:upsert_condition] || (action && action.upsert_condition)
+
     changeset
     |> set_context(%{
       private: %{
@@ -1254,9 +1256,14 @@ defmodule Ash.Changeset do
           expand_upsert_fields(
             opts[:upsert_fields] || (action && action.upsert_fields),
             changeset.resource
-          )
+          ),
+        upsert_condition: upsert_condition
       }
     })
+    |> then(fn
+      changeset when upsert_condition != nil -> filter(changeset, upsert_condition)
+      changeset -> changeset
+    end)
     |> do_for_action(action, params, opts)
   end
 

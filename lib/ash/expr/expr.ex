@@ -53,6 +53,7 @@ defmodule Ash.Expr do
              is_struct(value, Ash.Query.Call) or is_struct(value, Ash.Query.Ref) or
              is_struct(value, Ash.Query.Exists) or
              is_struct(value, Ash.Query.Parent) or
+             is_struct(value, Ash.Query.UpsertConflict) or
              (is_struct(value) and is_map_key(value, :__predicate__?)) do
     true
   end
@@ -250,6 +251,8 @@ defmodule Ash.Expr do
   def can_return_nil?(%Ash.Query.Parent{expr: expr}) do
     can_return_nil?(expr)
   end
+
+  def can_return_nil?(%Ash.Query.UpsertConflict{}), do: true
 
   def can_return_nil?(%Ash.Query.Exists{}), do: false
 
@@ -654,6 +657,17 @@ defmodule Ash.Expr do
     soft_escape(
       quote do
         Ash.Query.Parent.new(unquote(expr))
+      end,
+      escape?
+    )
+  end
+
+  def do_expr({:upsert_conflict, _, [expr]}, escape?) do
+    expr = do_expr(expr, escape?)
+
+    soft_escape(
+      quote do
+        Ash.Query.UpsertConflict.new(unquote(expr))
       end,
       escape?
     )
@@ -1126,6 +1140,9 @@ defmodule Ash.Expr do
         {:ok, {:boolean, []}}
 
       %{__struct__: Ash.Query.Parent, expr: expr} ->
+        determine_type(expr)
+
+      %{__struct__: Ash.Query.UpsertConflict, expr: expr} ->
         determine_type(expr)
 
       %mod{__predicate__?: _, arguments: arguments} ->

@@ -17,6 +17,7 @@ defmodule Ash.Resource.Actions.Create do
     upsert?: false,
     upsert_identity: nil,
     upsert_fields: nil,
+    upsert_condition: nil,
     arguments: [],
     changes: [],
     reject: [],
@@ -44,6 +45,7 @@ defmodule Ash.Resource.Actions.Create do
             | :replace_all
             | {:replace, list(atom)}
             | {:replace_all_except, list(atom)},
+          upsert_condition: Ash.Expr.t() | nil,
           touches_resources: list(atom),
           arguments: list(Ash.Resource.Actions.Argument.t()),
           primary?: boolean,
@@ -89,6 +91,11 @@ defmodule Ash.Resource.Actions.Create do
                   doc: """
                   The fields to overwrite in the case of an upsert. If not provided, all fields except for fields set by defaults will be overwritten.
                   """
+                ],
+                upsert_condition: [
+                  type: :any,
+                  doc:
+                    "An expression to check if the record should be updated when there's a conflict."
                 ]
               ]
               |> Spark.Options.merge(

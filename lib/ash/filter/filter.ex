@@ -3098,6 +3098,13 @@ defmodule Ash.Filter do
     do_hydrate_refs(%Ash.Query.Parent{expr: arg}, context)
   end
 
+  defp resolve_call(
+         %Call{name: :upsert_conflict, args: [arg], relationship_path: []},
+         context
+       ) do
+    do_hydrate_refs(Ash.Query.UpsertConflict.new(arg), context)
+  end
+
   defp resolve_call(%Call{name: name, args: args} = call, context)
        when name in @inline_aggregates do
     resource = Ash.Resource.Info.related(context.resource, call.relationship_path)
@@ -3668,6 +3675,25 @@ defmodule Ash.Filter do
       end
     end
   end
+
+  def do_hydrate_refs(
+        %Ash.Query.UpsertConflict{attribute: attribute} = this,
+        %{conflicting_upsert_values: %{} = resource} = context
+      ) do
+    context
+    |> Map.merge(%{resource: resource, relationship_path: []})
+    |> attribute(attribute)
+    |> case do
+      %Ash.Resource.Attribute{name: ^attribute} ->
+        {:ok, Map.fetch!(resource, attribute)}
+
+      nil ->
+        {:error, "Invalid reference #{inspect(this)}"}
+    end
+  end
+
+  def do_hydrate_refs(%Ash.Query.UpsertConflict{} = this, _context),
+    do: {:ok, this}
 
   def do_hydrate_refs(
         %Ash.Query.Exists{expr: expr, at_path: at_path, path: path} = exists,

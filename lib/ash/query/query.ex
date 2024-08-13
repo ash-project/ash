@@ -2611,13 +2611,15 @@ defmodule Ash.Query do
     query = new(query)
 
     if Ash.DataLayer.data_layer_can?(query.resource, :filter) do
+      context = %{} |> with_parent_stack(opts) |> with_conflicting_upsert_values(opts)
+
       new_filter =
         case query.filter do
           nil ->
             Ash.Filter.parse(
               query.resource,
               filter,
-              with_parent_stack(%{}, opts)
+              context
             )
 
           existing_filter ->
@@ -2627,7 +2629,7 @@ defmodule Ash.Query do
               :and,
               query.aggregates,
               query.calculations,
-              with_parent_stack(%{}, opts)
+              context
             )
         end
 
@@ -2640,6 +2642,7 @@ defmodule Ash.Query do
                    public?: false
                  }
                  |> with_parent_stack(opts)
+                 |> with_conflicting_upsert_values(opts)
                ) do
             {:ok, result} ->
               %{query | filter: result}
@@ -2663,6 +2666,11 @@ defmodule Ash.Query do
     query = new(query)
 
     if Ash.DataLayer.data_layer_can?(query.resource, :filter) do
+      context =
+        %{}
+        |> with_parent_stack(opts)
+        |> with_conflicting_upsert_values(opts)
+
       filter =
         if query.filter do
           Ash.Filter.add_to_filter(
@@ -2671,13 +2679,13 @@ defmodule Ash.Query do
             :and,
             query.aggregates,
             query.calculations,
-            with_parent_stack(%{}, opts)
+            context
           )
         else
           Ash.Filter.parse(
             query.resource,
             statement,
-            with_parent_stack(%{}, opts)
+            context
           )
         end
 
@@ -2690,6 +2698,7 @@ defmodule Ash.Query do
                    public?: false
                  }
                  |> with_parent_stack(opts)
+                 |> with_conflicting_upsert_values(opts)
                ) do
             {:ok, result} ->
               %{query | filter: result}
@@ -2713,6 +2722,16 @@ defmodule Ash.Query do
       Map.update(context, :parent_stack, parent_stack, &(parent_stack ++ &1))
     else
       context
+    end
+  end
+
+  defp with_conflicting_upsert_values(context, opts) do
+    case Keyword.fetch(opts, :conflicting_upsert_values) do
+      {:ok, values} ->
+        Map.put(context, :conflicting_upsert_values, values)
+
+      :error ->
+        context
     end
   end
 
