@@ -2061,7 +2061,7 @@ defmodule Ash do
     query = query |> Ash.Query.new() |> Ash.Query.limit(1)
 
     with {:ok, opts} <- ReadOneOpts.validate(opts),
-         opts <- ReadOpts.to_options(opts),
+         opts <- ReadOneOpts.to_options(opts),
          {:ok, action} <- Ash.Helpers.get_action(query.resource, opts, :read, query.action),
          {:ok, action} <- Ash.Helpers.pagination_check(action, query, opts),
          {:ok, _resource} <- Ash.Domain.Info.resource(domain, query.resource),
