@@ -98,6 +98,21 @@ defmodule Ash.Actions.Read.Relationships do
             query -> query
           end
 
+        domain = Ash.Domain.Info.related_domain(related_query, relationship, query.domain)
+
+        {read_action_name, arguments} =
+          case related_query do
+            %Ash.Query{action: %{name: name}, arguments: arguments} ->
+              {name, arguments}
+
+            _ ->
+              read_action_name =
+                relationship.read_action ||
+                  Ash.Resource.Info.primary_action!(relationship.destination, :read).name
+
+              {read_action_name, %{}}
+          end
+
         {relationship,
          {:lazy,
           related_query
@@ -108,7 +123,15 @@ defmodule Ash.Actions.Read.Relationships do
           |> Ash.Query.set_tenant(query.tenant)
           |> Ash.Query.set_context(%{
             private: %{async_limiter: query.context[:private][:async_limiter]}
-          })}}
+          })
+          |> Ash.Query.for_read(
+            read_action_name,
+            arguments,
+            domain: domain,
+            authorize?: query.context[:private][:authorize?],
+            actor: query.context[:private][:actor],
+            tracer: query.context[:private][:tracer]
+          )}}
       else
         related_query(relationship_name, records, related_query, query)
       end

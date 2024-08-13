@@ -20,11 +20,25 @@ defmodule Ash.Test.Authorizer do
   defp maybe_forbidden(:forbidden), do: {:error, Ash.Error.Forbidden.exception([])}
   defp maybe_forbidden(other), do: other
 
-  def initial_state(_, _, _, _), do: %{}
+  def initial_state(actor, _b, _c, _d) do
+    %{actor: actor}
+  end
+
   def strict_check_context(_), do: get(:strict_check_context, [])
 
-  def strict_check(state, _),
-    do: get(:strict_check_result, :authorized) |> continue(state) |> wrap_authorized(state)
+  def strict_check(state, _) do
+    case get(:strict_check_result, :authorized) do
+      :authorized_if_actor ->
+        if state.actor do
+          :authorized |> continue(state) |> wrap_authorized(state)
+        else
+          :forbidden |> continue(state) |> wrap_authorized(state)
+        end
+
+      other ->
+        other |> continue(state) |> wrap_authorized(state)
+    end
+  end
 
   def check_context(_), do: []
 

@@ -417,18 +417,18 @@ defmodule Ash.Test.Actions.LoadTest do
     end
   end
 
-  setup do
-    start_supervised(
-      {Ash.Test.Authorizer,
-       strict_check: :authorized,
-       check: {:error, Ash.Error.Forbidden.exception([])},
-       strict_check_context: [:query]}
-    )
-
-    :ok
-  end
-
   describe "loads" do
+    setup do
+      start_supervised(
+        {Ash.Test.Authorizer,
+         strict_check: :authorized,
+         check: {:error, Ash.Error.Forbidden.exception([])},
+         strict_check_context: [:query]}
+      )
+
+      :ok
+    end
+
     test "it allows loading manual relationships" do
       post1 =
         Post
@@ -993,6 +993,41 @@ defmodule Ash.Test.Actions.LoadTest do
     end
   end
 
+  describe "forbidden lazy loads" do
+    setup do
+      start_supervised(
+        {Ash.Test.Authorizer,
+         strict_check: :authorized_if_actor,
+         check: {:error, Ash.Error.Forbidden.exception([])},
+         strict_check_context: [:query]}
+      )
+
+      :ok
+    end
+
+    test "action context is properly passed to the lazy query" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
+        |> Ash.create!(authorize?: false)
+
+      post1 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post1"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.create!(authorize?: false)
+
+      [author] =
+        Author
+        |> Ash.Query.load(:posts)
+        |> Ash.Query.filter(posts.id == ^post1.id)
+        |> Ash.read!(authorize?: false)
+
+      assert {:ok, _} =
+               Ash.load(author, [posts: [:author]], authorize?: true, lazy?: true, actor: author)
+    end
+  end
+
   test "it returns error with invalid keys" do
     post =
       Post
@@ -1009,6 +1044,17 @@ defmodule Ash.Test.Actions.LoadTest do
   end
 
   describe "loading through attributes" do
+    setup do
+      start_supervised(
+        {Ash.Test.Authorizer,
+         strict_check: :authorized,
+         check: {:error, Ash.Error.Forbidden.exception([])},
+         strict_check_context: [:query]}
+      )
+
+      :ok
+    end
+
     test "can load calculations through attributes" do
       Author
       |> Ash.Changeset.for_create(
@@ -1122,6 +1168,17 @@ defmodule Ash.Test.Actions.LoadTest do
   end
 
   describe "relationship pagination" do
+    setup do
+      start_supervised(
+        {Ash.Test.Authorizer,
+         strict_check: :authorized,
+         check: {:error, Ash.Error.Forbidden.exception([])},
+         strict_check_context: [:query]}
+      )
+
+      :ok
+    end
+
     test "it allows paginating has_many relationships with offset pagination" do
       author1 =
         Author
