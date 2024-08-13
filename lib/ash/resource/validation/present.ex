@@ -30,6 +30,7 @@ defmodule Ash.Resource.Validation.Present do
   opt_schema = @opt_schema
 
   defmodule Opts do
+    @moduledoc false
     use Spark.Options.Validator, schema: opt_schema
   end
 

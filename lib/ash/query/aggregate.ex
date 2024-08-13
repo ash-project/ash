@@ -175,9 +175,7 @@ defmodule Ash.Query.Aggregate do
           build_opts -> build_query(related, build_opts)
         end
 
-      opts.join_filters
-      |> Kernel.||(%{})
-      |> Enum.reduce_while({:ok, %{}}, fn {path, filter}, {:ok, acc} ->
+      Enum.reduce_while(opts.join_filters, {:ok, %{}}, fn {path, filter}, {:ok, acc} ->
         case parse_join_filter(resource, path, filter) do
           {:ok, filter} ->
             {:cont, {:ok, Map.put(acc, path, filter)}}

@@ -26,6 +26,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
   option_schema = @option_schema
 
   defmodule Opts do
+    @moduledoc false
     use Spark.Options.Validator, schema: option_schema
   end
 
