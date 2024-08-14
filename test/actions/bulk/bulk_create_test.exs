@@ -2,6 +2,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  import Ash.Expr, only: [expr: 1]
   import ExUnit.CaptureLog
 
   alias Ash.Test.Domain, as: Domain
@@ -602,13 +603,15 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     assert %Ash.BulkResult{
              records: [
                %{title: "title1", title2: "changes", title3: "wont"},
-               %{title: "title2", title2: "changes", title3: "wont"}
+               %{title: "title2", title2: "changes", title3: "wont"},
+               %{title: "title3", title2: "changes", title3: "wont"}
              ]
            } =
              Ash.bulk_create!(
                [
                  %{title: "title1", title2: "changes", title3: "wont"},
-                 %{title: "title2", title2: "changes", title3: "wont"}
+                 %{title: "title2", title2: "changes", title3: "wont"},
+                 %{title: "title3", title2: "changes", title3: "wont"}
                ],
                Post,
                :create,
@@ -627,7 +630,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
              Ash.bulk_create!(
                [
                  %{title: "title1", title2: "did_change", title3: "oh no"},
-                 %{title: "title2", title2: "did_change", title3: "what happened"}
+                 %{title: "title2", title2: "did_change", title3: "what happened"},
+                 %{title: "title3", title2: "shouldn't even", title3: "be in result"}
                ],
                Post,
                :create,
@@ -636,6 +640,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                upsert?: true,
                upsert_identity: :unique_title,
                upsert_fields: [:title2],
+               upsert_condition: expr(upsert_conflict(:title) != "title3"),
                sorted?: true,
                authorize?: false
              )

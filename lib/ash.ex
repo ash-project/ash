@@ -600,6 +600,11 @@ defmodule Ash do
                                   ]},
                                doc:
                                  "The fields to upsert. If not set, the action's `upsert_fields` is used. Unlike singular `create`, `bulk_create` with `upsert?` requires that `upsert_fields` be specified explicitly in one of these two locations."
+                             ],
+                             upsert_condition: [
+                               type: :any,
+                               doc:
+                                 "An expression to check if the record should be updated when there's a conflict."
                              ]
                            ]
                            |> Spark.Options.merge(

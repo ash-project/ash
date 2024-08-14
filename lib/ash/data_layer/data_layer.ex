@@ -169,6 +169,7 @@ defmodule Ash.DataLayer do
           return_records?: boolean,
           upsert?: boolean,
           upsert_keys: nil | list(atom),
+          upsert_condition: Ash.Expr.t() | nil,
           identity: Ash.Resource.Identity.t() | nil,
           select: list(atom),
           upsert_fields:
@@ -190,7 +191,7 @@ defmodule Ash.DataLayer do
   @callback bulk_create(
               Ash.Resource.t(),
               Enumerable.t(Ash.Changeset.t()),
-              options :: bulk_create_options
+              options :: bulk_create_options()
             ) ::
               :ok
               | {:ok, Enumerable.t(Ash.Resource.record())}

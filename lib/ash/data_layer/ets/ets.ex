@@ -1032,13 +1032,13 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
-  def upsert(resource, changeset, keys, identity, from_bulk_create? \\ false) do
+  def upsert(resource, changeset, keys, identity, opts \\ [from_bulk_create?: false]) do
     pkey = Ash.Resource.Info.primary_key(resource)
     keys = keys || pkey
 
     if (is_nil(identity) || !identity.nils_distinct?) &&
          Enum.any?(keys, &is_nil(Ash.Changeset.get_attribute(changeset, &1))) do
-      create(resource, changeset, from_bulk_create?)
+      create(resource, changeset, opts[:from_bulk_create?])
     else
       key_filters =
         Enum.map(keys, fn key ->
@@ -1067,12 +1067,17 @@ defmodule Ash.DataLayer.Ets do
       |> run_query(resource)
       |> case do
         {:ok, []} ->
-          create(resource, changeset, from_bulk_create?)
+          create(resource, changeset, opts[:from_bulk_create?])
 
         {:ok, [result]} ->
           with {:ok, conflicting_upsert_values} <- Ash.Changeset.apply_attributes(changeset),
                {:ok, [^result]} <-
-                 upsert_conflict_check(changeset, result, conflicting_upsert_values) do
+                 upsert_conflict_check(
+                   changeset,
+                   result,
+                   conflicting_upsert_values,
+                   opts[:upsert_condition]
+                 ) do
             changeset =
               changeset
               |> Map.put(:attributes, %{})
@@ -1083,11 +1088,14 @@ defmodule Ash.DataLayer.Ets do
               resource,
               %{changeset | action_type: :update},
               Map.take(result, pkey),
-              from_bulk_create?
+              opts[:from_bulk_create?]
             )
           else
-            {:ok, []} -> {:ok, Ash.Resource.put_metadata(result, :upsert_skipped, true)}
-            {:error, reason} -> {:error, reason}
+            {:ok, []} ->
+              {:ok, Ash.Resource.put_metadata(result, :upsert_skipped, true)}
+
+            {:error, reason} ->
+              {:error, reason}
           end
 
         {:ok, _} ->
@@ -1099,22 +1107,29 @@ defmodule Ash.DataLayer.Ets do
   @spec upsert_conflict_check(
           changeset :: Ash.Changeset.t(),
           subject :: record,
-          conflicting_upsert_values :: record
+          conflicting_upsert_values :: record,
+          opts_upsert_condition :: Ash.Expr.t()
         ) :: {:ok, [record]} | {:error, reason}
         when record: Ash.Resource.record(), reason: term()
-  defp upsert_conflict_check(changeset, subject, conflicting_upsert_values)
+  defp upsert_conflict_check(changeset, subject, conflicting_upsert_values, opts_upsert_condition)
 
-  defp upsert_conflict_check(%Ash.Changeset{filter: nil}, result, _conflicting_upsert_values),
-    do: {:ok, [result]}
+  defp upsert_conflict_check(
+         %Ash.Changeset{filter: nil},
+         result,
+         _conflicting_upsert_values,
+         nil
+       ),
+       do: {:ok, [result]}
 
   defp upsert_conflict_check(
          %Ash.Changeset{filter: filter, domain: domain, context: context},
          result,
-         conflicting_upsert_values
+         conflicting_upsert_values,
+         opts_upsert_condition
        ) do
     filter_matches(
       [result],
-      filter,
+      opts_upsert_condition || filter,
       domain,
       nil,
       context[:tenant],
@@ -1141,19 +1156,23 @@ defmodule Ash.DataLayer.Ets do
                changeset,
                options.upsert_keys,
                options.identity,
-               true
+               Map.put(options, :from_bulk_create?, true)
              ) do
           {:ok, result} ->
-            {:cont,
-             {:ok,
-              [
-                Ash.Resource.put_metadata(
-                  result,
-                  :bulk_create_index,
-                  changeset.context.bulk_create.index
-                )
-                | results
-              ]}}
+            if Ash.Resource.get_metadata(result, :upsert_skipped) do
+              {:cont, {:ok, results}}
+            else
+              {:cont,
+               {:ok,
+                [
+                  Ash.Resource.put_metadata(
+                    result,
+                    :bulk_create_index,
+                    changeset.context.bulk_create.index
+                  )
+                  | results
+                ]}}
+            end
 
           {:error, error} ->
             {:halt, {:error, error}}
