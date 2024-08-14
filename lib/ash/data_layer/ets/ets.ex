@@ -416,14 +416,38 @@ defmodule Ash.DataLayer.Ets do
           {source_query, source_attribute, destination_attribute, relationship}
         ]
       ) do
-    source_attributes = Enum.map(root_data, &Map.get(&1, source_attribute))
+    source_query =
+      source_query
+      |> Ash.Query.unset(:load)
+      |> Ash.Query.unset(:page)
+      |> Ash.Query.set_context(%{private: %{internal?: true}})
+      |> Ash.Query.set_domain(query.domain)
+
+    primary_key = Ash.Resource.Info.primary_key(source_query.resource)
+
+    source_query =
+      case primary_key do
+        [] ->
+          source_attributes = Enum.map(root_data, &Map.get(&1, source_attribute))
+
+          Ash.Query.filter(source_query, ^ref(source_attribute) in ^source_attributes)
+
+        [field] ->
+          source_attributes = Enum.map(root_data, &Map.get(&1, field))
+          Ash.Query.filter(source_query, ^ref(field) in ^source_attributes)
+
+        fields ->
+          filter = [
+            or:
+              Enum.map(root_data, fn record ->
+                [and: Map.take(record, fields) |> Map.to_list()]
+              end)
+          ]
+
+          Ash.Query.do_filter(source_query, filter)
+      end
 
     source_query
-    |> Ash.Query.filter(^ref(source_attribute) in ^source_attributes)
-    |> Ash.Query.set_context(%{private: %{internal?: true}})
-    |> Ash.Query.unset(:load)
-    |> Ash.Query.unset(:select)
-    |> Ash.Query.unset(:page)
     |> Ash.Actions.Read.unpaginated_read(nil, authorize?: false)
     |> case do
       {:error, error} ->
@@ -482,14 +506,38 @@ defmodule Ash.DataLayer.Ets do
         {through_query, destination_attribute_on_join_resource, destination_attribute,
          _through_relationship}
       ]) do
-    source_attributes = Enum.map(root_data, &Map.get(&1, source_attribute))
+    source_query =
+      source_query
+      |> Ash.Query.unset(:load)
+      |> Ash.Query.unset(:page)
+      |> Ash.Query.set_context(%{private: %{internal?: true}})
+      |> Ash.Query.set_domain(query.domain)
+
+    primary_key = Ash.Resource.Info.primary_key(source_query.resource)
+
+    source_query =
+      case primary_key do
+        [] ->
+          source_attributes = Enum.map(root_data, &Map.get(&1, source_attribute))
+
+          Ash.Query.filter(source_query, ^ref(source_attribute) in ^source_attributes)
+
+        [field] ->
+          source_attributes = Enum.map(root_data, &Map.get(&1, field))
+          Ash.Query.filter(source_query, ^ref(field) in ^source_attributes)
+
+        fields ->
+          filter = [
+            or:
+              Enum.map(root_data, fn record ->
+                [and: Map.take(record, fields) |> Map.to_list()]
+              end)
+          ]
+
+          Ash.Query.do_filter(source_query, filter)
+      end
 
     source_query
-    |> Ash.Query.unset(:load)
-    |> Ash.Query.unset(:page)
-    |> Ash.Query.filter(^ref(source_attribute) in ^source_attributes)
-    |> Ash.Query.set_context(%{private: %{internal?: true}})
-    |> Ash.Query.set_domain(query.domain)
     |> Ash.read(authorize?: false)
     |> case do
       {:error, error} ->
@@ -511,6 +559,10 @@ defmodule Ash.DataLayer.Ets do
           )
           |> Ash.Query.set_context(%{private: %{internal?: true}})
           |> Ash.Query.set_domain(query.domain)
+          |> Ash.Query.distinct([
+            source_attribute_on_join_resource,
+            destination_attribute_on_join_resource
+          ])
           |> Ash.read(authorize?: false)
           |> case do
             {:ok, join_data} ->
@@ -536,6 +588,7 @@ defmodule Ash.DataLayer.Ets do
                     Enum.flat_map(new_results, fn result ->
                       join_data
                       |> Enum.flat_map(fn join_row ->
+                        # TODO: use `Ash.Type.equal?`
                         if Map.get(join_row, destination_attribute_on_join_resource) ==
                              Map.get(result, destination_attribute) do
                           [
