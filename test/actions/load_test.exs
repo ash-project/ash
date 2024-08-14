@@ -855,10 +855,9 @@ defmodule Ash.Test.Actions.LoadTest do
         |> Ash.Changeset.for_create(:create, %{name: "lame"})
         |> Ash.create!()
 
-      category2 =
-        Category
-        |> Ash.Changeset.for_create(:create, %{name: "lame"})
-        |> Ash.create!()
+      Category
+      |> Ash.Changeset.for_create(:create, %{name: "lame"})
+      |> Ash.create!()
 
       category3 =
         Category
@@ -869,10 +868,13 @@ defmodule Ash.Test.Actions.LoadTest do
       |> Ash.Changeset.for_create(:create, %{source_name: "lame", dest_name: "cool"})
       |> Ash.create!()
 
-      category1
-      |> Ash.load!(linked_categories: Ash.Query.limit(Category, 2))
-      |> Map.get(:linked_categories)
-      |> IO.inspect()
+      linked_category_ids =
+        category1
+        |> Ash.load!(linked_categories: Ash.Query.limit(Category, 2))
+        |> Map.get(:linked_categories)
+        |> Enum.map(& &1.id)
+
+      assert linked_category_ids == [category3.id]
     end
 
     test "it allows loading filtered many to many relationships with lateral joins" do
