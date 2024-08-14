@@ -622,6 +622,7 @@ defmodule Ash.Helpers do
          false <- Keyword.get(options, :return_notifications?, false),
          false <- Keyword.get(options, :return_records?, false),
          false <- Keyword.get(options, :return_errors?, false),
+         false <- Keyword.get(options, :return_batch_status?, false),
          false <- Keyword.get(options, :return_nothing?, false) do
       Logger.warning("""
       Bulk action was called with :return_stream? set to true, but no other :return_*? options were set.

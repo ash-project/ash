@@ -461,7 +461,10 @@ defmodule Ash.Test.Actions.BulkCreateTest do
       |> Ash.Changeset.for_create(:create, %{})
       |> Ash.create!()
 
-    assert %Ash.BulkResult{records: [%{title: "title1_stuff"}, %{title: "title2_stuff"}]} =
+    assert %Ash.BulkResult{
+             records: [%{title: "title1_stuff"}, %{title: "title2_stuff"}],
+             record_count: 2
+           } =
              Ash.bulk_create!(
                [%{title: "title1"}, %{title: "title2"}],
                Post,
@@ -1028,6 +1031,100 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  authorize?: true,
                  return_stream?: true,
                  return_notifications?: true
+               )
+               |> Enum.to_list()
+    end
+
+    test "by emitting batch status, you get the batch status in the stream" do
+      org =
+        Org
+        |> Ash.Changeset.for_create(:create, %{})
+        |> Ash.create!()
+
+      assert [
+               %Ash.BulkResult.BatchStatus{
+                 inputs: 1,
+                 affected: 1,
+                 total_inputs: 1,
+                 total_affected: 1
+               },
+               %Ash.BulkResult.BatchStatus{
+                 inputs: 1,
+                 affected: 1,
+                 total_inputs: 2,
+                 total_affected: 2
+               }
+             ] =
+               [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
+               |> Ash.bulk_create!(
+                 Post,
+                 :create_with_policy,
+                 tenant: org.id,
+                 authorize?: true,
+                 return_stream?: true,
+                 return_batch_status?: true,
+                 batch_size: 1
+               )
+               |> Enum.to_list()
+
+      assert [
+               {:ok, %{title: "title3"}},
+               %Ash.BulkResult.BatchStatus{
+                 inputs: 1,
+                 affected: 1,
+                 total_inputs: 1,
+                 total_affected: 1
+               },
+               {:ok, %{title: "title4"}},
+               %Ash.BulkResult.BatchStatus{
+                 inputs: 1,
+                 affected: 1,
+                 total_inputs: 2,
+                 total_affected: 2
+               }
+             ] =
+               [%{title: "title3", authorize?: true}, %{title: "title4", authorize?: true}]
+               |> Ash.bulk_create!(
+                 Post,
+                 :create_with_policy,
+                 tenant: org.id,
+                 authorize?: true,
+                 return_stream?: true,
+                 return_records?: true,
+                 return_batch_status?: true,
+                 batch_size: 1
+               )
+               |> Enum.to_list()
+
+      assert [
+               {:ok, %{title: "title1"}},
+               %Ash.BulkResult.BatchStatus{
+                 inputs: 1,
+                 affected: 1,
+                 total_inputs: 1,
+                 total_affected: 1
+               },
+               %Ash.BulkResult.BatchStatus{
+                 inputs: 1,
+                 affected: 0,
+                 total_inputs: 2,
+                 total_affected: 1
+               }
+             ] =
+               [%{title: "title1", authorize?: true}, %{title: "title2", authorize?: true}]
+               |> Ash.bulk_create!(
+                 Post,
+                 :create_with_policy,
+                 tenant: org.id,
+                 authorize?: true,
+                 return_stream?: true,
+                 return_records?: true,
+                 return_batch_status?: true,
+                 upsert?: true,
+                 upsert_identity: :unique_title,
+                 upsert_fields: [:authorize?],
+                 upsert_condition: expr(title == "title1"),
+                 batch_size: 1
                )
                |> Enum.to_list()
     end

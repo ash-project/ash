@@ -178,15 +178,18 @@ defmodule Ash.Actions.Create.Bulk do
       )
 
     if opts[:return_stream?] do
-      Stream.concat(changeset_stream)
+      changeset_stream
+      |> Stream.concat()
+      |> Ash.BulkResult.BatchStatus.accumulate()
     else
       try do
-        records =
+        {records, record_count} =
           if opts[:return_records?] do
-            Enum.to_list(Stream.concat(changeset_stream))
+            changeset_stream
+            |> Stream.concat()
+            |> Enum.map_reduce(0, fn element, count -> {element, count + 1} end)
           else
-            Stream.run(changeset_stream)
-            nil
+            {nil, changeset_stream |> Stream.concat() |> Enum.count()}
           end
 
         notifications =
@@ -204,6 +207,7 @@ defmodule Ash.Actions.Create.Bulk do
 
         bulk_result = %Ash.BulkResult{
           records: records,
+          record_count: record_count,
           errors: errors,
           notifications: notifications,
           error_count: error_count
@@ -351,6 +355,22 @@ defmodule Ash.Actions.Create.Bulk do
 
         notifications ->
           {Stream.map(notifications || [], &{:notification, &1}), []}
+      end,
+      fn _ -> :ok end
+    )
+  end
+
+  @spec batch_status_stream(ref :: reference()) ::
+          Enumerable.t(Ash.BulkResult.BatchStatus.unaccumulated())
+  defp batch_status_stream(ref) do
+    Stream.resource(
+      fn -> Process.delete({:bulk_create_batch_states, ref}) end,
+      fn
+        [] ->
+          {:halt, []}
+
+        batch_states ->
+          {batch_states || [], []}
       end,
       fn _ -> :ok end
     )
@@ -572,6 +592,14 @@ defmodule Ash.Actions.Create.Bulk do
         |> Stream.map(&{:ok, &1})
         |> Stream.concat(error_stream(ref))
         |> Stream.concat(notification_stream(ref))
+        |> Stream.concat(batch_status_stream(ref))
+      else
+        stream
+      end
+    end)
+    |> then(fn stream ->
+      if opts[:return_stream?] && opts[:return_batch_status?] do
+        Ash.BulkResult.BatchStatus.tally_records(stream, length(batch))
       else
         stream
       end
@@ -910,6 +938,21 @@ defmodule Ash.Actions.Create.Bulk do
     end
   end
 
+  @spec store_batch_status(
+          ref :: reference(),
+          batch_status :: Ash.BulkResult.BatchStatus.unaccumulated(),
+          opts :: Keyword.t()
+        ) :: :ok
+  defp store_batch_status(ref, batch_status, opts) do
+    if opts[:return_stream?] && opts[:return_batch_status?] do
+      batch_states = Process.get({:bulk_create_batch_states, ref}) || []
+
+      Process.put({:bulk_create_batch_states, ref}, [batch_status | batch_states])
+    end
+
+    :ok
+  end
+
   defp authorize(batch, opts) do
     if opts[:authorize?] do
       Enum.map(batch, fn changeset ->
@@ -1105,14 +1148,31 @@ defmodule Ash.Actions.Create.Bulk do
                   })
                   |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
                   |> case do
+                    {:ok, {:affected, affected}} ->
+                      store_batch_status(
+                        ref,
+                        %Ash.BulkResult.BatchStatus{
+                          inputs: length(batch),
+                          affected: affected
+                        },
+                        opts
+                      )
+
+                      []
+
                     {:ok, results} ->
                       results
 
                     :ok ->
-                      if opts[:return_records?] do
-                        raise "`#{inspect(mod)}.bulk_create/3` returned :ok without a result when `return_records?` is true"
-                      else
-                        []
+                      cond do
+                        opts[:return_records?] ->
+                          raise "`#{inspect(mod)}.bulk_create/3` returned :ok without a result when `return_records?` is true"
+
+                        opts[:return_batch_status?] ->
+                          raise "`#{inspect(mod)}.bulk_create/3` returned :ok without affected row count when `return_batch_status?` is true"
+
+                        true ->
+                          []
                       end
 
                     {:error, error} ->
@@ -1216,12 +1276,38 @@ defmodule Ash.Actions.Create.Bulk do
             end
 
           case result do
+            {:ok, {:affected, affected}} ->
+              Process.put({:any_success?, ref}, true)
+
+              store_batch_status(
+                ref,
+                %Ash.BulkResult.BatchStatus{
+                  inputs: length(batch),
+                  affected: affected
+                },
+                opts
+              )
+
+              []
+
             {:ok, result} ->
               Process.put({:any_success?, ref}, true)
               result
 
             :ok ->
               Process.put({:any_success?, ref}, true)
+
+              cond do
+                opts[:return_records?] ->
+                  raise "`#{inspect(Ash.Resource.Info.data_layer(resource))}.bulk_create/3` returned :ok without a result when `return_records?` is true"
+
+                opts[:return_batch_status?] ->
+                  raise "`#{inspect(Ash.Resource.Info.data_layer(resource))}.bulk_create/3` returned :ok without affected row count when `return_batch_status?` is true"
+
+                true ->
+                  []
+              end
+
               []
 
             {:error, :no_rollback, error} ->

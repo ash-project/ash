@@ -388,9 +388,19 @@ defmodule Ash do
 
       Potential elements:
 
-      `{:notification, notification}` - if `return_notifications?` is set to `true`
       `{:ok, record}` - if `return_records?` is set to `true`
+      `{:notification, notification}` - if `return_notifications?` is set to `true`
+      `%Ash.BulkResult.BatchStatus{}` - if `return_batch_status?` is set to `true`.
       `{:error, error}` - an error that occurred. May be changeset or an invidual error.
+      """
+    ],
+    return_batch_status?: [
+      type: :boolean,
+      default: false,
+      doc: """
+      The returned stream will emit `Ash.BulkResult.BatchStatus.t()` elements when set to `true`.
+
+      Only applies if `return_stream?` is set to `true`.
       """
     ],
     return_nothing?: [

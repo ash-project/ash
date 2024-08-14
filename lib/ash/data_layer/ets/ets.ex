@@ -1032,7 +1032,7 @@ defmodule Ash.DataLayer.Ets do
 
   @doc false
   @impl true
-  def upsert(resource, changeset, keys, identity, opts \\ [from_bulk_create?: false]) do
+  def upsert(resource, changeset, keys, identity, opts \\ %{from_bulk_create?: false}) do
     pkey = Ash.Resource.Info.primary_key(resource)
     keys = keys || pkey
 
@@ -1198,15 +1198,9 @@ defmodule Ash.DataLayer.Ets do
         end)
         |> case do
           {:ok, records} ->
-            case put_or_insert_new_batch(table, records, resource, options.return_records?) do
-              :ok ->
-                :ok
-
-              {:ok, records} ->
-                {:ok, Stream.map(records, &set_loaded/1)}
-
-              {:error, error} ->
-                {:error, error}
+            with {:ok, records} when is_list(records) <-
+                   put_or_insert_new_batch(table, records, resource, options.return_records?) do
+              {:ok, Stream.map(records, &set_loaded/1)}
             end
 
           {:error, error} ->
@@ -1290,7 +1284,7 @@ defmodule Ash.DataLayer.Ets do
                 end
               end)
             else
-              :ok
+              {:ok, {:affected, length(batch)}}
             end
 
           other ->

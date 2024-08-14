@@ -194,6 +194,7 @@ defmodule Ash.DataLayer do
               options :: bulk_create_options()
             ) ::
               :ok
+              | {:ok, {:affected, non_neg_integer()}}
               | {:ok, Enumerable.t(Ash.Resource.record())}
               | {:error, Ash.Error.t()}
               | {:error, :no_rollback, Ash.Error.t()}
@@ -218,6 +219,7 @@ defmodule Ash.DataLayer do
               opts :: bulk_update_options()
             ) ::
               :ok
+              | {:ok, {:affected, non_neg_integer()}}
               | {:ok, Enumerable.t(Ash.Resource.record())}
               | {:error, Ash.Error.t()}
               | {:error, :no_rollback, Ash.Error.t()}
@@ -229,6 +231,7 @@ defmodule Ash.DataLayer do
               opts :: bulk_update_options()
             ) ::
               :ok
+              | {:ok, {:affected, non_neg_integer()}}
               | {:ok, Enumerable.t(Ash.Resource.record())}
               | {:error, Ash.Error.t()}
               | {:error, :no_rollback, Ash.Error.t()}
