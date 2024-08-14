@@ -1236,11 +1236,15 @@ defmodule Ash.Actions.Read.Relationships do
       end
 
     primary_key_is_join_keys? =
-      Enum.all?(Ash.Resource.Info.primary_key(relationship.through), &(&1 in join_keys))
+      Enum.all?(
+        Ash.Resource.Info.primary_key(relationship.through),
+        &(&1 in join_keys)
+      )
 
     is_unique_on_join_keys? =
       Enum.any?(Ash.Resource.Info.identities(relationship.through), fn identity ->
-        Enum.all?(identity.keys, &(&1 in join_keys))
+        is_nil(identity.where) && identity.nils_distinct? &&
+          Enum.all?(identity.keys, &(&1 in join_keys))
       end)
 
     not (primary_key_is_join_keys? || is_unique_on_join_keys?)

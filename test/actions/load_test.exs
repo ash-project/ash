@@ -346,6 +346,25 @@ defmodule Ash.Test.Actions.LoadTest do
     end
   end
 
+  defmodule LinkedCategory do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept :*
+      defaults([:read, :destroy, create: :*, update: :*])
+    end
+
+    attributes do
+      attribute(:source_name, :string, public?: true, primary_key?: true, allow_nil?: false)
+      attribute(:dest_name, :string, public?: true, primary_key?: true, allow_nil?: false)
+    end
+  end
+
   defmodule Category do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -378,6 +397,14 @@ defmodule Ash.Test.Actions.LoadTest do
         destination_attribute_on_join_resource: :post_id,
         source_attribute_on_join_resource: :category_id
       )
+
+      many_to_many :linked_categories, __MODULE__,
+        public?: true,
+        through: LinkedCategory,
+        source_attribute: :name,
+        destination_attribute: :name,
+        destination_attribute_on_join_resource: :dest_name,
+        source_attribute_on_join_resource: :source_name
     end
   end
 
@@ -820,6 +847,32 @@ defmodule Ash.Test.Actions.LoadTest do
       assert [%{id: id1}, %{id: id2}] = post.categories
 
       assert Enum.sort([category1.id, category2.id]) == Enum.sort([id1, id2])
+    end
+
+    test "ETS lateral join handles more records with matching source attribute" do
+      category1 =
+        Category
+        |> Ash.Changeset.for_create(:create, %{name: "lame"})
+        |> Ash.create!()
+
+      category2 =
+        Category
+        |> Ash.Changeset.for_create(:create, %{name: "lame"})
+        |> Ash.create!()
+
+      category3 =
+        Category
+        |> Ash.Changeset.for_create(:create, %{name: "cool"})
+        |> Ash.create!()
+
+      LinkedCategory
+      |> Ash.Changeset.for_create(:create, %{source_name: "lame", dest_name: "cool"})
+      |> Ash.create!()
+
+      category1
+      |> Ash.load!(linked_categories: Ash.Query.limit(Category, 2))
+      |> Map.get(:linked_categories)
+      |> IO.inspect()
     end
 
     test "it allows loading filtered many to many relationships with lateral joins" do

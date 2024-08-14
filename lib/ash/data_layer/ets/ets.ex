@@ -416,26 +416,44 @@ defmodule Ash.DataLayer.Ets do
           {source_query, source_attribute, destination_attribute, relationship}
         ]
       ) do
-    source_attributes = Enum.map(root_data, &Map.get(&1, source_attribute))
+    source_query =
+      source_query
+      |> Ash.Query.unset(:load)
+      |> Ash.Query.unset(:page)
+      |> Ash.Query.set_context(%{private: %{internal?: true}})
+      |> Ash.Query.set_domain(query.domain)
+
+    primary_key = Ash.Resource.Info.primary_key(source_query.resource)
+
+    source_query =
+      case primary_key do
+        [] ->
+          source_attributes = Enum.map(root_data, &Map.get(&1, source_attribute))
+
+          Ash.Query.filter(source_query, ^ref(source_attribute) in ^source_attributes)
+
+        [field] ->
+          source_attributes = Enum.map(root_data, &Map.get(&1, field))
+          Ash.Query.filter(source_query, ^ref(field) in ^source_attributes)
+
+        fields ->
+          filter = [
+            or:
+              Enum.map(root_data, fn record ->
+                [and: Map.take(record, fields) |> Map.to_list()]
+              end)
+          ]
+
+          Ash.Query.do_filter(source_query, filter)
+      end
 
     source_query
-    |> Ash.Query.filter(^ref(source_attribute) in ^source_attributes)
-    |> Ash.Query.set_context(%{private: %{internal?: true}})
-    |> Ash.Query.unset(:load)
-    |> Ash.Query.unset(:select)
-    |> Ash.Query.unset(:page)
     |> Ash.Actions.Read.unpaginated_read(nil, authorize?: false)
     |> case do
       {:error, error} ->
         {:error, error}
 
       {:ok, root_data} ->
-        parent_pkey =
-          case root_data do
-            [%resource{} | _] -> Ash.Resource.Info.primary_key(resource)
-            [] -> []
-          end
-
         root_data
         |> Enum.reduce_while({:ok, []}, fn parent, {:ok, results} ->
           new_filter =
@@ -465,7 +483,7 @@ defmodule Ash.DataLayer.Ets do
               new_results =
                 Enum.map(
                   new_results,
-                  &Map.put(&1, :__lateral_join_source__, Map.take(parent, parent_pkey))
+                  &Map.put(&1, :__lateral_join_source__, Map.take(parent, primary_key))
                 )
 
               {:cont, {:ok, new_results ++ results}}
@@ -482,26 +500,44 @@ defmodule Ash.DataLayer.Ets do
         {through_query, destination_attribute_on_join_resource, destination_attribute,
          _through_relationship}
       ]) do
-    source_attributes = Enum.map(root_data, &Map.get(&1, source_attribute))
+    source_query =
+      source_query
+      |> Ash.Query.unset(:load)
+      |> Ash.Query.unset(:page)
+      |> Ash.Query.set_context(%{private: %{internal?: true}})
+      |> Ash.Query.set_domain(query.domain)
+
+    primary_key = Ash.Resource.Info.primary_key(source_query.resource)
+
+    source_query =
+      case primary_key do
+        [] ->
+          source_attributes = Enum.map(root_data, &Map.get(&1, source_attribute))
+
+          Ash.Query.filter(source_query, ^ref(source_attribute) in ^source_attributes)
+
+        [field] ->
+          source_attributes = Enum.map(root_data, &Map.get(&1, field))
+          Ash.Query.filter(source_query, ^ref(field) in ^source_attributes)
+
+        fields ->
+          filter = [
+            or:
+              Enum.map(root_data, fn record ->
+                [and: Map.take(record, fields) |> Map.to_list()]
+              end)
+          ]
+
+          Ash.Query.do_filter(source_query, filter)
+      end
 
     source_query
-    |> Ash.Query.unset(:load)
-    |> Ash.Query.unset(:page)
-    |> Ash.Query.filter(^ref(source_attribute) in ^source_attributes)
-    |> Ash.Query.set_context(%{private: %{internal?: true}})
-    |> Ash.Query.set_domain(query.domain)
     |> Ash.read(authorize?: false)
     |> case do
       {:error, error} ->
         {:error, error}
 
       {:ok, root_data} ->
-        parent_pkey =
-          case root_data do
-            [%resource{} | _] -> Ash.Resource.Info.primary_key(resource)
-            [] -> []
-          end
-
         root_data
         |> Enum.reduce_while({:ok, []}, fn parent, {:ok, results} ->
           through_query
@@ -536,13 +572,14 @@ defmodule Ash.DataLayer.Ets do
                     Enum.flat_map(new_results, fn result ->
                       join_data
                       |> Enum.flat_map(fn join_row ->
+                        # TODO: use `Ash.Type.equal?`
                         if Map.get(join_row, destination_attribute_on_join_resource) ==
                              Map.get(result, destination_attribute) do
                           [
                             Map.put(
                               result,
                               :__lateral_join_source__,
-                              Map.take(parent, parent_pkey)
+                              Map.take(parent, primary_key)
                             )
                           ]
                         else
