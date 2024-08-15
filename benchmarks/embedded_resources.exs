@@ -30,19 +30,20 @@ defmodule Resource do
   attributes do
     uuid_primary_key :id
     attribute :embeds, {:array, Embed}, public?: true
+
     attribute :structs, {:array, :struct} do
       public? true
-      constraints [
-        items: [
-          instance_of: Embed,
-          fields: [
-            name: [
-              type: :string
-            ]
-          ]
-        ]
-      ]
+
+      constraints items: [
+                    instance_of: Embed,
+                    fields: [
+                      name: [
+                        type: :string
+                      ]
+                    ]
+                  ]
     end
+
     attribute :maps, {:array, :map}, public?: true
   end
 
@@ -82,5 +83,5 @@ Benchee.run(
       Ash.bulk_create!(resource_structs_input, Resource, :create)
     end
   },
-    memory_time: 2
+  memory_time: 2
 )

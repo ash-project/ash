@@ -39,21 +39,30 @@ defmodule Ash.Actions.Read.Relationships do
     end)
   end
 
-  defp fetch_related_records(relationships_and_queries, records) do
-    Enum.map(relationships_and_queries, fn
-      {relationship, {:lazy, query}} ->
-        {relationship, {:lazy, query}, lazy_related_records(records, relationship, query)}
+  defp fetch_related_records(batch, records, acc \\ [])
 
-      {relationship, %{valid?: true} = related_query} ->
-        do_fetch_related_records(records, relationship, related_query)
-
-      {relationship, %{errors: errors} = related_query} ->
-        {relationship, related_query, {:error, errors}}
-    end)
-    |> Ash.Actions.Read.AsyncLimiter.await_all()
+  defp fetch_related_records([], _records, acc) do
+    Ash.Actions.Read.AsyncLimiter.await_all(acc)
   end
 
-  defp lazy_related_records(records, relationship, related_query) do
+  defp fetch_related_records([first | rest], records, acc) do
+    result =
+      case first do
+        {relationship, {:lazy, query}} ->
+          {relationship, {:lazy, query},
+           lazy_related_records(records, relationship, query, Enum.empty?(rest))}
+
+        {relationship, %{valid?: true} = related_query} ->
+          do_fetch_related_records(records, relationship, related_query, Enum.empty?(rest))
+
+        {relationship, %{errors: errors} = related_query} ->
+          {relationship, related_query, {:error, errors}}
+      end
+
+    fetch_related_records(rest, records, [result | acc])
+  end
+
+  defp lazy_related_records(records, relationship, related_query, last?) do
     primary_key = Ash.Resource.Info.primary_key(relationship.source)
 
     related_records_with_lazy_join_source =
@@ -76,17 +85,24 @@ defmodule Ash.Actions.Read.Relationships do
         |> Enum.map(&Ash.Resource.set_metadata(&1, %{lazy_join_source: record_pkey}))
       end)
 
-    Ash.load(related_records_with_lazy_join_source, related_query,
-      lazy?: true,
-      domain: related_query.domain,
-      actor: related_query.context.private[:actor],
-      tenant: related_query.tenant,
-      authorize?: related_query.context.private[:authorize?]
+    Ash.Actions.Read.AsyncLimiter.async_or_inline(
+      related_query,
+      Ash.Context.to_opts(related_query.context),
+      last?,
+      fn ->
+        Ash.load(related_records_with_lazy_join_source, related_query,
+          lazy?: true,
+          domain: related_query.domain,
+          actor: related_query.context.private[:actor],
+          tenant: related_query.tenant,
+          authorize?: related_query.context.private[:authorize?]
+        )
+      end
     )
   end
 
   defp with_related_queries(load, query, records, lazy?) do
-    Stream.map(load, fn {relationship_name, related_query} ->
+    Enum.map(load, fn {relationship_name, related_query} ->
       lazy? = lazy? || related_query.context[:private][:lazy?]
 
       if lazy? && Ash.Resource.loaded?(records, relationship_name, lists: :any) do
@@ -309,11 +325,13 @@ defmodule Ash.Actions.Read.Relationships do
   defp do_fetch_related_records(
          records,
          %{manual: {module, opts}} = relationship,
-         related_query
+         related_query,
+         last?
        ) do
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
       Ash.Context.to_opts(related_query.context),
+      last?,
       fn ->
         result =
           module.load(records, opts, %Ash.Resource.ManualRelationship.Context{
@@ -365,11 +383,13 @@ defmodule Ash.Actions.Read.Relationships do
   defp do_fetch_related_records(
          _records,
          %{no_attributes?: true} = relationship,
-         related_query
+         related_query,
+         last?
        ) do
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
       Ash.Context.to_opts(related_query.context),
+      last?,
       fn ->
         result =
           related_query
@@ -387,11 +407,13 @@ defmodule Ash.Actions.Read.Relationships do
   defp do_fetch_related_records(
          _records,
          relationship,
-         %{context: %{data_layer: %{lateral_join_source: {_, _}}}} = related_query
+         %{context: %{data_layer: %{lateral_join_source: {_, _}}}} = related_query,
+         last?
        ) do
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
       Ash.Context.to_opts(related_query.context),
+      last?,
       fn ->
         result =
           related_query
@@ -406,7 +428,12 @@ defmodule Ash.Actions.Read.Relationships do
     )
   end
 
-  defp do_fetch_related_records(records, %{type: :many_to_many} = relationship, related_query) do
+  defp do_fetch_related_records(
+         records,
+         %{type: :many_to_many} = relationship,
+         related_query,
+         last?
+       ) do
     record_ids =
       Enum.map(records, fn record ->
         Map.get(record, relationship.source_attribute)
@@ -447,6 +474,7 @@ defmodule Ash.Actions.Read.Relationships do
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
       Ash.Context.to_opts(related_query.context),
+      last?,
       fn ->
         case Ash.Actions.Read.unpaginated_read(join_query, nil) do
           {:ok, join_records} ->
@@ -526,12 +554,13 @@ defmodule Ash.Actions.Read.Relationships do
     )
   end
 
-  defp do_fetch_related_records(records, relationship, related_query) do
+  defp do_fetch_related_records(records, relationship, related_query, last?) do
     destination_attributes = Enum.map(records, &Map.get(&1, relationship.source_attribute))
 
     Ash.Actions.Read.AsyncLimiter.async_or_inline(
       related_query,
       Ash.Context.to_opts(related_query.context),
+      last?,
       fn ->
         result =
           related_query

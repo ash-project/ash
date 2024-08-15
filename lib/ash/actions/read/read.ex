@@ -1212,7 +1212,7 @@ defmodule Ash.Actions.Read do
   end
 
   defp authorize_query(query, opts) do
-    if opts[:authorize?] do
+    if opts[:authorize?] && !Enum.empty?(Ash.Resource.Info.authorizers(query.resource)) do
       case Ash.can(query, opts[:actor],
              return_forbidden_error?: true,
              maybe_is: false,

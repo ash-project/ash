@@ -264,16 +264,8 @@ defmodule Ash.Actions.Read.Calculations do
 
     {newly_done, remaining} =
       do_now
-      |> Enum.map(fn calculation ->
-        Ash.Actions.Read.AsyncLimiter.async_or_inline(
-          ash_query,
-          Ash.Context.to_opts(calculation.context),
-          fn ->
-            {calculation.name, calculation, run_calculation(calculation, ash_query, records)}
-          end
-        )
-      end)
-      |> Enum.concat(tasks)
+      |> do_run_calcs(ash_query, records)
+      |> Stream.concat(tasks)
       |> Ash.Actions.Read.AsyncLimiter.await_at_least_one()
 
     records =
@@ -307,6 +299,26 @@ defmodule Ash.Actions.Read.Calculations do
       {:error, error} ->
         {:error, error}
     end
+  end
+
+  defp do_run_calcs(calcs, ash_query, records, acc \\ [])
+
+  defp do_run_calcs([], _ash_query, _records, acc) do
+    acc
+  end
+
+  defp do_run_calcs([calculation | rest], ash_query, records, acc) do
+    result =
+      Ash.Actions.Read.AsyncLimiter.async_or_inline(
+        ash_query,
+        Ash.Context.to_opts(calculation.context),
+        Enum.empty?(rest),
+        fn ->
+          {calculation.name, calculation, run_calculation(calculation, ash_query, records)}
+        end
+      )
+
+    do_run_calcs(rest, ash_query, records, [result | acc])
   end
 
   defp attach_calculation_results(calculation, records, nil) do

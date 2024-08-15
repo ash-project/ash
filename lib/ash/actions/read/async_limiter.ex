@@ -18,9 +18,10 @@ defmodule Ash.Actions.Read.AsyncLimiter do
   def async_or_inline(
         %{resource: resource, context: %{private: %{async_limiter: async_limiter}}} = query,
         opts,
+        last?,
         func
       )
-      when not is_nil(async_limiter) do
+      when not is_nil(async_limiter) and last? != true do
     if Application.get_env(:ash, :disable_async?) do
       func.()
     else
@@ -54,7 +55,7 @@ defmodule Ash.Actions.Read.AsyncLimiter do
     end
   end
 
-  def async_or_inline(_, _opts, func) do
+  def async_or_inline(_, _opts, _, func) do
     func.()
   end
 

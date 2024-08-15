@@ -20,11 +20,8 @@ end
 
 changeset = Ash.Changeset.for_create(Resource, :create, %{})
 
-Benchee.run(
-  %{
-    create: fn ->
-      Ash.create!(changeset)
-    end
-
-  }
-)
+Benchee.run(%{
+  create: fn ->
+    Ash.create!(changeset)
+  end
+})
