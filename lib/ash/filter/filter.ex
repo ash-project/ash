@@ -1166,12 +1166,6 @@ defmodule Ash.Filter do
       value when is_list(value) ->
         Enum.map(value, &map(&1, func))
 
-      value when is_map(value) ->
-        value
-        |> Map.to_list()
-        |> map(func)
-        |> Map.new()
-
       %BooleanExpression{left: left, right: right} = expr ->
         %{expr | left: map(left, func), right: map(right, func)}
 
@@ -1209,6 +1203,16 @@ defmodule Ash.Filter do
                   map(arg, func)
               end)
         }
+
+      %Ash.Query.Ref{} = expr ->
+        # you have to map over the internals of exists yourself
+        func.(expr)
+
+      value when is_map(value) ->
+        value
+        |> Map.to_list()
+        |> map(func)
+        |> Map.new()
 
       other ->
         func.(other)
