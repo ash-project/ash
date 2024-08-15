@@ -3125,33 +3125,6 @@ defmodule Ash.Filter do
           name
         end
 
-      field =
-        if opts[:field] do
-          opts[:field]
-        else
-          unless kind == :custom do
-            List.first(Ash.Resource.Info.primary_key(related))
-          end
-        end
-
-      opts =
-        if field && kind != :custom do
-          attribute = Ash.Resource.Info.attribute(related, field)
-
-          if attribute do
-            {:ok, type, constraints} =
-              Ash.Query.Aggregate.kind_to_type(kind, attribute.type, attribute.constraints)
-
-            opts
-            |> Keyword.put(:type, type)
-            |> Keyword.put(:constraints, constraints)
-          else
-            opts
-          end
-        else
-          opts
-        end
-
       opts = Keyword.put(opts, :path, path)
 
       with {:ok, agg} <-

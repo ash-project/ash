@@ -30,7 +30,7 @@ These will then be called on the resource itself, i.e `Helpdesk.Support.Ticket.o
 If the action is an update or destroy, it will take a record or a changeset as its _first_ argument.
 If the action is a read action, it will take a starting query as an _opt in the last_ argument.
 
-All functions will have an optional last argument that accepts options. See `Ash.Resource.Interface.interface_options/1` for valid options.
+All functions will have an optional last argument that accepts options. See `Ash.Resource.Interface.interface_options/2` for valid options.
 
 For reads:
 

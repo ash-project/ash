@@ -44,6 +44,11 @@ defmodule Ash.Query.Calculation do
       type: :any,
       doc: "Loads that are required for the calculation."
     ],
+    calc_name: [
+      type: :any,
+      hide: true,
+      doc: "A resource calculation this calculation maps to. Defaults to `name`"
+    ],
     source_context: [
       type: :map,
       doc: "Context from the source query or changeset.",
@@ -82,13 +87,20 @@ defmodule Ash.Query.Calculation do
         source_context: opts.source_context
       }
 
+      calc_name =
+        if :calc_name in opts.__set__ do
+          opts.calc_name
+        else
+          name
+        end
+
       {:ok,
        %__MODULE__{
          name: name,
          module: module,
          type: type,
          opts: calc_opts,
-         calc_name: name,
+         calc_name: calc_name,
          constraints: constraints,
          context: context,
          required_loads: opts.load,

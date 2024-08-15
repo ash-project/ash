@@ -372,6 +372,7 @@ defmodule Ash.Actions.Read do
                  calculations_in_query
                ),
              {:ok, data_layer_calculations} <- hydrate_calculations(query, calculations_in_query),
+             {:ok, query} <- hydrate_aggregates(query),
              {:ok, query} <-
                hydrate_sort(
                  query,
@@ -950,6 +951,7 @@ defmodule Ash.Actions.Read do
              query,
              calculations_in_query
            ),
+         {:ok, query} <- hydrate_aggregates(query),
          {:ok, relationship_path_filters} <-
            Ash.Filter.relationship_filters(
              query.domain,
@@ -1121,6 +1123,57 @@ defmodule Ash.Actions.Read do
           end)
 
         {:ok, %{query | sort: Enum.reverse(sort)}}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp hydrate_aggregates(query) do
+    Enum.reduce_while(query.aggregates, {:ok, %{}}, fn {key, aggregate}, {:ok, aggregates} ->
+      case aggregate.field do
+        %Ash.Query.Calculation{} = calculation ->
+          if calculation.module.has_expression?() and
+               Ash.DataLayer.data_layer_can?(query.resource, :expression_calculation) do
+            expression = calculation.module.expression(calculation.opts, calculation.context)
+
+            expression =
+              Ash.Expr.fill_template(
+                expression,
+                query.context[:private][:actor],
+                calculation.context.arguments,
+                query.context
+              )
+
+            case Ash.Filter.hydrate_refs(expression, %{
+                   resource:
+                     Ash.Resource.Info.related(query.resource, aggregate.relationship_path),
+                   public?: false,
+                   parent_stack: parent_stack_from_context(query)
+                 }) do
+              {:ok, expression} ->
+                new_field = %{
+                  calculation
+                  | module: Ash.Resource.Calculation.Expression,
+                    opts: [expr: expression]
+                }
+
+                {:cont, {:ok, Map.put(aggregates, key, %{aggregate | field: new_field})}}
+
+              {:error, error} ->
+                {:halt, {:error, error}}
+            end
+          else
+            {:cont, {:ok, Map.put(aggregates, key, aggregate)}}
+          end
+
+        _other ->
+          {:cont, {:ok, Map.put(aggregates, key, aggregate)}}
+      end
+    end)
+    |> case do
+      {:ok, aggregates} ->
+        {:ok, %{query | aggregates: aggregates}}
 
       {:error, error} ->
         {:error, error}
@@ -1893,6 +1946,18 @@ defmodule Ash.Actions.Read do
           authorize?
       end
 
+    field =
+      case agg.field do
+        %Ash.Query.Aggregate{} = nested_aggregate ->
+          add_calc_context(nested_aggregate, actor, authorize?, tenant, tracer, domain)
+
+        %Ash.Query.Calculation{} = nested_calculation ->
+          add_calc_context(nested_calculation, actor, authorize?, tenant, tracer, domain)
+
+        _ ->
+          agg.field
+      end
+
     %{
       agg
       | context:
@@ -1906,6 +1971,7 @@ defmodule Ash.Actions.Read do
             agg.context
           ),
         query: add_calc_context_to_query(query, actor, authorize?, tenant, tracer, domain),
+        field: field,
         join_filters:
           Map.new(agg.join_filters, fn {key, filter} ->
             {key, add_calc_context_to_filter(filter, actor, authorize?, tenant, tracer, domain)}
