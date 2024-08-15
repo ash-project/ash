@@ -1179,6 +1179,7 @@ defmodule Ash.Actions.Create.Bulk do
                           opts[:upsert_fields] || action.upsert_fields,
                           resource
                         ),
+                      upsert_condition: opts[:upsert_condition] || action.upsert_condition,
                       tenant: Ash.ToTenant.to_tenant(opts[:tenant], resource)
                     }
                   )
