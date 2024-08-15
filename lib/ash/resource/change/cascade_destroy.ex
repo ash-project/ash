@@ -7,9 +7,15 @@ defmodule Ash.Resource.Change.CascadeDestroy do
     ],
     action: [
       type: :atom,
-      doc: "The name of the destroy action to call on the related resource",
-      required: false,
-      default: :destroy
+      doc:
+        "The name of the destroy action to call on the related resource. Uses the primary destroy by default.",
+      required: false
+    ],
+    read_action: [
+      type: :atom,
+      doc:
+        "The name of the read action to call on the related resource to find results to be destroyed",
+      required: false
     ],
     return_notifications?: [
       type: :boolean,
@@ -127,24 +133,35 @@ defmodule Ash.Resource.Change.CascadeDestroy do
          )}
 
       relationship ->
-        case Ash.Resource.Info.action(relationship.destination, opts.action) do
-          action when action.type == :destroy ->
+          if opts.action do
+            case Ash.Resource.Info.action(relationship.destination, opts.action) do
+              action when action.type == :destroy ->
+                {:ok,
+                 %{
+                   opts
+                   | action: action,
+                     relationship: relationship,
+                     domain:
+                       relationship.domain || Ash.Resource.Info.domain(relationship.destination)
+                 }}
+
+              _ ->
+                {:error,
+                 Ash.Error.Invalid.NoSuchAction.exception(
+                   resource: relationship.destination,
+                   action: opts.action,
+                   destroy: :destroy
+                 )}
+            end
+          else
             {:ok,
              %{
                opts
-               | action: action,
+               | action: Ash.Resource.Info.primary_action!(relationship.destination, :destroy),
                  relationship: relationship,
                  domain: relationship.domain || Ash.Resource.Info.domain(relationship.destination)
              }}
-
-          _ ->
-            {:error,
-             Ash.Error.Invalid.NoSuchAction.exception(
-               resource: relationship.destination,
-               action: opts.action,
-               destroy: :destroy
-             )}
-        end
+          end
     end
   end
 
@@ -163,7 +180,7 @@ defmodule Ash.Resource.Change.CascadeDestroy do
         return_notifications?: opts.return_notifications?
       )
 
-    case related_query(data, opts.relationship) do
+    case related_query(data, opts) do
       {:ok, query} ->
         Ash.bulk_destroy!(query, action.name, %{}, context_opts)
 
@@ -195,21 +212,28 @@ defmodule Ash.Resource.Change.CascadeDestroy do
     end
   end
 
-  defp related_query(_records, relationship) when relationship.type == :many_to_many, do: :error
+  defp related_query(_records, opts) when opts.relationship.type == :many_to_many, do: :error
 
-  defp related_query(records, relationship) do
-    if Ash.Actions.Read.Relationships.has_parent_expr?(relationship) do
+  defp related_query(records, opts) do
+    if Ash.Actions.Read.Relationships.has_parent_expr?(opts.relationship) do
       :error
     else
+      related_query =
+        if opts.read_action do
+          Ash.Query.for_read(opts.relationship.destination, opts.read_action, %{})
+        else
+          Ash.Query.new(opts.relationship.destination)
+        end
+
       {:ok,
        Ash.Actions.Read.Relationships.related_query(
-         relationship.name,
+         opts.relationship.name,
          records,
-         Ash.Query.new(relationship.destination),
-         Ash.Query.new(relationship.source)
+         related_query,
+         Ash.Query.new(opts.relationship.source)
        )
        |> elem(1)
-       |> filter_by_keys(relationship, records)}
+       |> filter_by_keys(opts.relationship, records)}
     end
   end
 
