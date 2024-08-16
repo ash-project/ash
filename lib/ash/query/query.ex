@@ -519,22 +519,28 @@ defmodule Ash.Query do
     action = Ash.Resource.Info.action(query.resource, action_name, :read)
 
     if action do
-      name = "query:" <> Ash.Resource.Info.trace_name(query.resource) <> ":#{action_name}"
+      name = fn ->
+        "query:" <> Ash.Resource.Info.trace_name(query.resource) <> ":#{action_name}"
+      end
 
       Ash.Tracer.span :query,
                       name,
                       opts[:tracer] do
-        Ash.Tracer.telemetry_span [:ash, :query], %{
-          resource_short_name: Ash.Resource.Info.short_name(query.resource)
-        } do
-          metadata = %{
-            resource_short_name: Ash.Resource.Info.short_name(query.resource),
-            resource: query.resource,
-            actor: opts[:actor],
-            tenant: opts[:tenant],
-            action: action.name,
-            authorize?: opts[:authorize?]
+        Ash.Tracer.telemetry_span [:ash, :query], fn ->
+          %{
+            resource_short_name: Ash.Resource.Info.short_name(query.resource)
           }
+        end do
+          metadata = fn ->
+            %{
+              resource_short_name: Ash.Resource.Info.short_name(query.resource),
+              resource: query.resource,
+              actor: opts[:actor],
+              tenant: opts[:tenant],
+              action: action.name,
+              authorize?: opts[:authorize?]
+            }
+          end
 
           Ash.Tracer.set_metadata(opts[:tracer], :query, metadata)
 
@@ -688,11 +694,13 @@ defmodule Ash.Query do
     |> Ash.Resource.Info.preparations()
     |> Enum.concat(action.preparations || [])
     |> Enum.reduce_while(query, fn %{preparation: {module, opts}}, query ->
-      Ash.Tracer.span :preparation, "prepare: #{inspect(module)}", tracer do
-        Ash.Tracer.telemetry_span [:ash, :preparation], %{
-          resource_short_name: Ash.Resource.Info.short_name(query.resource),
-          preparation: inspect(module)
-        } do
+      Ash.Tracer.span :preparation, fn -> "prepare: #{inspect(module)}" end, tracer do
+        Ash.Tracer.telemetry_span [:ash, :preparation], fn ->
+          %{
+            resource_short_name: Ash.Resource.Info.short_name(query.resource),
+            preparation: inspect(module)
+          }
+        end do
           Ash.Tracer.set_metadata(opts[:tracer], :preparation, metadata)
 
           case module.init(opts) do

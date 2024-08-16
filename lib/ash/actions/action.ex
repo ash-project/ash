@@ -21,25 +21,29 @@ defmodule Ash.Actions.Action do
     {module, run_opts} = input.action.run
 
     Ash.Tracer.span :action,
-                    Ash.Domain.Info.span_name(
-                      domain,
-                      input.resource,
-                      input.action.name
-                    ),
+                    fn ->
+                      Ash.Domain.Info.span_name(
+                        domain,
+                        input.resource,
+                        input.action.name
+                      )
+                    end,
                     opts[:tracer] do
-      metadata = %{
-        domain: domain,
-        resource: input.resource,
-        resource_short_name: Ash.Resource.Info.short_name(input.resource),
-        actor: opts[:actor],
-        tenant: opts[:tenant],
-        action: input.action.name,
-        authorize?: opts[:authorize?]
-      }
+      metadata = fn ->
+        %{
+          domain: domain,
+          resource: input.resource,
+          resource_short_name: Ash.Resource.Info.short_name(input.resource),
+          actor: opts[:actor],
+          tenant: opts[:tenant],
+          action: input.action.name,
+          authorize?: opts[:authorize?]
+        }
+      end
 
       Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
-      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :create],
+      Ash.Tracer.telemetry_span fn -> [:ash, Ash.Domain.Info.short_name(domain), :create] end,
                                 metadata do
         if input.action.transaction? do
           resources =

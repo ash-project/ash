@@ -46,19 +46,23 @@ defmodule Ash.Actions.Read do
     action = get_action(query.resource, action || query.action)
 
     Ash.Tracer.span :action,
-                    Ash.Domain.Info.span_name(query.domain, query.resource, action.name),
+                    fn ->
+                      Ash.Domain.Info.span_name(query.domain, query.resource, action.name)
+                    end,
                     opts[:tracer] do
-      metadata = %{
-        domain: query.domain,
-        resource: query.resource,
-        resource_short_name: Ash.Resource.Info.short_name(query.resource),
-        actor: opts[:actor],
-        tenant: opts[:tenant],
-        action: action.name,
-        authorize?: opts[:authorize?]
-      }
+      metadata = fn ->
+        %{
+          domain: query.domain,
+          resource: query.resource,
+          resource_short_name: Ash.Resource.Info.short_name(query.resource),
+          actor: opts[:actor],
+          tenant: opts[:tenant],
+          action: action.name,
+          authorize?: opts[:authorize?]
+        }
+      end
 
-      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(query.domain), :read],
+      Ash.Tracer.telemetry_span fn -> [:ash, Ash.Domain.Info.short_name(query.domain), :read] end,
                                 metadata do
         Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
@@ -725,34 +729,23 @@ defmodule Ash.Actions.Read do
   end
 
   defp source_fields(query, lazy_for_initial_data \\ nil) do
-    query
-    |> Ash.Query.accessing([:relationships], false)
-    |> then(fn relationships ->
-      if lazy_for_initial_data do
-        Enum.reject(relationships, fn relationship ->
-          Ash.Resource.loaded?(lazy_for_initial_data, relationship, lists: :any)
-        end)
+    Enum.flat_map(query.load, fn {name, _} ->
+      if lazy_for_initial_data && Ash.Resource.loaded?(lazy_for_initial_data, name, lists: :any) do
+        []
       else
-        relationships
-      end
-    end)
-    |> Enum.flat_map(fn name ->
-      case Ash.Resource.Info.relationship(query.resource, name) do
-        %{no_attributes?: true} ->
-          []
+        case Ash.Resource.Info.relationship(query.resource, name) do
+          %{no_attributes?: true} ->
+            []
 
-        %{manual: {module, opts}, source_attribute: source_attribute} ->
-          fields =
-            module.select(opts)
+          %{manual: {module, opts}, source_attribute: source_attribute} ->
+            fields =
+              module.select(opts)
 
-          if Ash.Resource.Info.attribute(query.resource, source_attribute) do
             [source_attribute | fields]
-          else
-            fields
-          end
 
-        %{source_attribute: source_attribute} ->
-          [source_attribute]
+          %{source_attribute: source_attribute} ->
+            [source_attribute]
+        end
       end
     end)
   end

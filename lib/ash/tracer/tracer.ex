@@ -50,9 +50,17 @@ defmodule Ash.Tracer do
   @optional_callbacks set_error: 2, set_error: 1, trace_type?: 1, set_handled_error: 2
 
   defmacro span(type, name, tracer, block_opts \\ []) do
-    quote do
+    quote generated: true do
       type = unquote(type)
       name = unquote(name)
+
+      name =
+        if is_function(name) do
+          apply(name, [])
+        else
+          name
+        end
+
       tracer = List.wrap(unquote(tracer))
       tracer = Enum.filter(tracer, &Ash.Tracer.trace_type?(&1, type))
 
@@ -76,9 +84,24 @@ defmodule Ash.Tracer do
   end
 
   defmacro telemetry_span(name, metadata, opts) do
-    quote do
+    quote generated: true do
       telemetry_name = unquote(name)
+
+      telemetry_name =
+        if is_function(telemetry_name) do
+          apply(telemetry_name, [])
+        else
+          telemetry_name
+        end
+
       metadata = unquote(metadata)
+
+      metadata =
+        if is_function(metadata) do
+          apply(metadata, [])
+        else
+          metadata
+        end
 
       start = System.monotonic_time()
 
@@ -201,10 +224,24 @@ defmodule Ash.Tracer do
   def set_metadata(nil, _type, _metadata), do: :ok
 
   def set_metadata(tracers, type, metadata) when is_list(tracers) do
-    Enum.each(tracers, &set_metadata(&1, type, metadata))
+    metadata =
+      if is_function(metadata) do
+        apply(metadata, [])
+      else
+        metadata
+      end
+
+    Enum.each(tracers, & &1.set_metadata(type, metadata))
   end
 
   def set_metadata(tracer, type, metadata) do
+    metadata =
+      if is_function(metadata) do
+        apply(metadata, [])
+      else
+        metadata
+      end
+
     tracer.set_metadata(type, metadata)
   end
 

@@ -48,24 +48,30 @@ defmodule Ash.Actions.Aggregate do
         query = %{query | domain: domain}
 
         Ash.Tracer.span :action,
-                        Ash.Domain.Info.span_name(query.domain, query.resource, :aggregate),
+                        fn ->
+                          Ash.Domain.Info.span_name(query.domain, query.resource, :aggregate)
+                        end,
                         opts[:tracer] do
-          metadata = %{
-            domain: query.domain,
-            resource: query.resource,
-            resource_short_name: Ash.Resource.Info.short_name(query.resource),
-            aggregates: List.wrap(aggregates),
-            actor: opts[:actor],
-            tenant: opts[:tenant],
-            action: read_action,
-            authorize?: opts[:authorize?]
-          }
+          metadata = fn ->
+            %{
+              domain: query.domain,
+              resource: query.resource,
+              resource_short_name: Ash.Resource.Info.short_name(query.resource),
+              aggregates: List.wrap(aggregates),
+              actor: opts[:actor],
+              tenant: opts[:tenant],
+              action: read_action,
+              authorize?: opts[:authorize?]
+            }
+          end
 
-          Ash.Tracer.telemetry_span [
-                                      :ash,
-                                      Ash.Domain.Info.short_name(query.domain),
-                                      :aggregate
-                                    ],
+          Ash.Tracer.telemetry_span fn ->
+                                      [
+                                        :ash,
+                                        Ash.Domain.Info.short_name(query.domain),
+                                        :aggregate
+                                      ]
+                                    end,
                                     metadata do
             Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 

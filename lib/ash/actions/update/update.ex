@@ -210,25 +210,31 @@ defmodule Ash.Actions.Update do
             changeset = Helpers.apply_opts_load(changeset, opts)
 
             Ash.Tracer.span :action,
-                            Ash.Domain.Info.span_name(
-                              domain,
-                              changeset.resource,
-                              action.name
-                            ),
+                            fn ->
+                              Ash.Domain.Info.span_name(
+                                domain,
+                                changeset.resource,
+                                action.name
+                              )
+                            end,
                             opts[:tracer] do
-              metadata = %{
-                domain: domain,
-                resource: changeset.resource,
-                resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-                actor: opts[:actor],
-                tenant: opts[:tenant],
-                action: action.name,
-                authorize?: opts[:authorize?]
-              }
+              metadata = fn ->
+                %{
+                  domain: domain,
+                  resource: changeset.resource,
+                  resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+                  actor: opts[:actor],
+                  tenant: opts[:tenant],
+                  action: action.name,
+                  authorize?: opts[:authorize?]
+                }
+              end
 
               Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
-              Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :update],
+              Ash.Tracer.telemetry_span fn ->
+                                          [:ash, Ash.Domain.Info.short_name(domain), :update]
+                                        end,
                                         metadata do
                 case do_run(domain, changeset, action, opts) do
                   {:error, error} ->

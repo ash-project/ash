@@ -1386,22 +1386,29 @@ defmodule Ash.Changeset do
             )
 
           name =
-            "changeset:" <> Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
+            fn ->
+              "changeset:" <>
+                Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
+            end
 
           Ash.Tracer.span :changeset,
                           name,
                           opts[:tracer] do
-            Ash.Tracer.telemetry_span [:ash, :changeset], %{
-              resource_short_name: Ash.Resource.Info.short_name(changeset.resource)
-            } do
-              metadata = %{
-                resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-                resource: changeset.resource,
-                actor: opts[:actor],
-                tenant: opts[:tenant],
-                action: action.name,
-                authorize?: opts[:authorize?]
+            Ash.Tracer.telemetry_span [:ash, :changeset], fn ->
+              %{
+                resource_short_name: Ash.Resource.Info.short_name(changeset.resource)
               }
+            end do
+              metadata = fn ->
+                %{
+                  resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+                  resource: changeset.resource,
+                  actor: opts[:actor],
+                  tenant: opts[:tenant],
+                  action: action.name,
+                  authorize?: opts[:authorize?]
+                }
+              end
 
               Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
 
@@ -1674,22 +1681,28 @@ defmodule Ash.Changeset do
 
       if action do
         name =
-          "changeset:" <> Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
+          fn ->
+            "changeset:" <> Ash.Resource.Info.trace_name(changeset.resource) <> ":#{action.name}"
+          end
 
         Ash.Tracer.span :changeset,
                         name,
                         opts[:tracer] do
-          Ash.Tracer.telemetry_span [:ash, :changeset], %{
-            resource_short_name: Ash.Resource.Info.short_name(changeset.resource)
-          } do
-            metadata = %{
-              resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-              resource: changeset.resource,
-              actor: opts[:actor],
-              tenant: opts[:tenant],
-              action: action.name,
-              authorize?: opts[:authorize?]
+          Ash.Tracer.telemetry_span [:ash, :changeset], fn ->
+            %{
+              resource_short_name: Ash.Resource.Info.short_name(changeset.resource)
             }
+          end do
+            metadata = fn ->
+              %{
+                resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+                resource: changeset.resource,
+                actor: opts[:actor],
+                tenant: opts[:tenant],
+                action: action.name,
+                authorize?: opts[:authorize?]
+              }
+            end
 
             Ash.Tracer.set_metadata(opts[:tracer], :changeset, metadata)
 
@@ -2258,11 +2271,15 @@ defmodule Ash.Changeset do
       %{change: {module, opts}, where: where} = change, changeset ->
         if module.has_change?() do
           if Enum.all?(where || [], fn {module, opts} ->
-               Ash.Tracer.span :validation, "change condition: #{inspect(module)}", tracer do
-                 Ash.Tracer.telemetry_span [:ash, :validation], %{
-                   resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-                   validation: inspect(module)
-                 } do
+               Ash.Tracer.span :validation,
+                               fn -> "change condition: #{inspect(module)}" end,
+                               tracer do
+                 Ash.Tracer.telemetry_span [:ash, :validation], fn ->
+                   %{
+                     resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+                     validation: inspect(module)
+                   }
+                 end do
                    Ash.Tracer.set_metadata(tracer, :validation, metadata)
 
                    opts =
@@ -2281,11 +2298,13 @@ defmodule Ash.Changeset do
                  end
                end
              end) do
-            Ash.Tracer.span :change, "change: #{inspect(module)}", tracer do
-              Ash.Tracer.telemetry_span [:ash, :change], %{
-                resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-                change: inspect(module)
-              } do
+            Ash.Tracer.span :change, fn -> "change: #{inspect(module)}" end, tracer do
+              Ash.Tracer.telemetry_span [:ash, :change], fn ->
+                %{
+                  resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+                  change: inspect(module)
+                }
+              end do
                 {:ok, opts} = module.init(opts)
 
                 Ash.Tracer.set_metadata(tracer, :change, metadata)
@@ -2821,11 +2840,13 @@ defmodule Ash.Changeset do
              false
          end
        end) do
-      Ash.Tracer.span :validation, "validate: #{inspect(validation.module)}", tracer do
-        Ash.Tracer.telemetry_span [:ash, :validation], %{
-          resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-          validation: inspect(validation.module)
-        } do
+      Ash.Tracer.span :validation, fn -> "validate: #{inspect(validation.module)}" end, tracer do
+        Ash.Tracer.telemetry_span [:ash, :validation], fn ->
+          %{
+            resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+            validation: inspect(validation.module)
+          }
+        end do
           Ash.Tracer.set_metadata(tracer, :validation, metadata)
 
           opts =
@@ -3423,15 +3444,17 @@ defmodule Ash.Changeset do
       changeset.before_transaction,
       set_phase(changeset, :before_transaction),
       fn before_transaction, changeset ->
-        metadata = %{
-          domain: changeset.domain,
-          resource: changeset.resource,
-          resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-          actor: changeset.context[:private][:actor],
-          tenant: changeset.context[:private][:tenant],
-          action: changeset.action && changeset.action.name,
-          authorize?: changeset.context[:private][:authorize?]
-        }
+        metadata = fn ->
+          %{
+            domain: changeset.domain,
+            resource: changeset.resource,
+            resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+            actor: changeset.context[:private][:actor],
+            tenant: changeset.context[:private][:tenant],
+            action: changeset.action && changeset.action.name,
+            authorize?: changeset.context[:private][:authorize?]
+          }
+        end
 
         tracer = changeset.context[:private][:tracer]
 
@@ -3476,15 +3499,17 @@ defmodule Ash.Changeset do
       changeset.before_action,
       {changeset, %{notifications: []}},
       fn before_action, {changeset, instructions} ->
-        metadata = %{
-          domain: changeset.domain,
-          resource: changeset.resource,
-          resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-          actor: changeset.context[:private][:actor],
-          tenant: changeset.context[:private][:actor],
-          action: changeset.action && changeset.action.name,
-          authorize?: changeset.context[:private][:authorize?]
-        }
+        metadata = fn ->
+          %{
+            domain: changeset.domain,
+            resource: changeset.resource,
+            resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+            actor: changeset.context[:private][:actor],
+            tenant: changeset.context[:private][:actor],
+            action: changeset.action && changeset.action.name,
+            authorize?: changeset.context[:private][:authorize?]
+          }
+        end
 
         tracer = changeset.context[:private][:tracer]
 
@@ -3564,15 +3589,17 @@ defmodule Ash.Changeset do
       fn after_transaction, result ->
         tracer = changeset.context[:private][:tracer]
 
-        metadata = %{
-          domain: changeset.domain,
-          resource: changeset.resource,
-          resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-          actor: changeset.context[:private][:actor],
-          tenant: changeset.context[:private][:actor],
-          action: changeset.action && changeset.action.name,
-          authorize?: changeset.context[:private][:authorize?]
-        }
+        metadata = fn ->
+          %{
+            domain: changeset.domain,
+            resource: changeset.resource,
+            resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+            actor: changeset.context[:private][:actor],
+            tenant: changeset.context[:private][:actor],
+            action: changeset.action && changeset.action.name,
+            authorize?: changeset.context[:private][:authorize?]
+          }
+        end
 
         Ash.Tracer.span :after_transaction,
                         "after_transaction",
@@ -3664,15 +3691,17 @@ defmodule Ash.Changeset do
       fn after_action, {:ok, result, changeset, %{notifications: notifications} = acc} ->
         tracer = changeset.context[:private][:tracer]
 
-        metadata = %{
-          domain: changeset.domain,
-          resource: changeset.resource,
-          resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
-          actor: changeset.context[:private][:actor],
-          tenant: changeset.context[:private][:actor],
-          action: changeset.action && changeset.action.name,
-          authorize?: changeset.context[:private][:authorize?]
-        }
+        metadata = fn ->
+          %{
+            domain: changeset.domain,
+            resource: changeset.resource,
+            resource_short_name: Ash.Resource.Info.short_name(changeset.resource),
+            actor: changeset.context[:private][:actor],
+            tenant: changeset.context[:private][:actor],
+            action: changeset.action && changeset.action.name,
+            authorize?: changeset.context[:private][:authorize?]
+          }
+        end
 
         result =
           Ash.Tracer.span :after_action,

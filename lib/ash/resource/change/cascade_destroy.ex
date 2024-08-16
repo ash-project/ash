@@ -133,35 +133,35 @@ defmodule Ash.Resource.Change.CascadeDestroy do
          )}
 
       relationship ->
-          if opts.action do
-            case Ash.Resource.Info.action(relationship.destination, opts.action) do
-              action when action.type == :destroy ->
-                {:ok,
-                 %{
-                   opts
-                   | action: action,
-                     relationship: relationship,
-                     domain:
-                       relationship.domain || Ash.Resource.Info.domain(relationship.destination)
-                 }}
+        if opts.action do
+          case Ash.Resource.Info.action(relationship.destination, opts.action) do
+            action when action.type == :destroy ->
+              {:ok,
+               %{
+                 opts
+                 | action: action,
+                   relationship: relationship,
+                   domain:
+                     relationship.domain || Ash.Resource.Info.domain(relationship.destination)
+               }}
 
-              _ ->
-                {:error,
-                 Ash.Error.Invalid.NoSuchAction.exception(
-                   resource: relationship.destination,
-                   action: opts.action,
-                   destroy: :destroy
-                 )}
-            end
-          else
-            {:ok,
-             %{
-               opts
-               | action: Ash.Resource.Info.primary_action!(relationship.destination, :destroy),
-                 relationship: relationship,
-                 domain: relationship.domain || Ash.Resource.Info.domain(relationship.destination)
-             }}
+            _ ->
+              {:error,
+               Ash.Error.Invalid.NoSuchAction.exception(
+                 resource: relationship.destination,
+                 action: opts.action,
+                 destroy: :destroy
+               )}
           end
+        else
+          {:ok,
+           %{
+             opts
+             | action: Ash.Resource.Info.primary_action!(relationship.destination, :destroy),
+               relationship: relationship,
+               domain: relationship.domain || Ash.Resource.Info.domain(relationship.destination)
+           }}
+        end
     end
   end
 
