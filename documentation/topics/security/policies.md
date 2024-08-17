@@ -123,7 +123,7 @@ policies do
     # unless the actor is an active user, forbid
     forbid_unless actor_attribute_equals(:active, true)
     # if the record is marked as public, authorize
-    authorize_if attribute(:public, true)
+    authorize_if expr(public == true)
     # if the actor is related to the data via that data's `owner` relationship, authorize
     authorize_if relates_to_actor_via(:owner)
   end
@@ -301,7 +301,7 @@ Inline checks are filter checks, but are different enough to warrant their own d
 ```elixir
 policy action_type(:read) do
   # Allow records with the attribute `public` set to true to be read
-  authorize_if attribute(:public, true)
+  authorize_if expr(public == true)
 
   # Allow records with the attribute `level` less than the value of the `level`
   # argument to the action to be read
