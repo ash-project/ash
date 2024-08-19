@@ -185,29 +185,14 @@ defmodule Ash.Resource.Change.CascadeUpdate do
 
     inputs =
       Enum.reduce(copies, %{}, fn key, downstream_input ->
-        case Ash.Changeset.fetch_argument_or_change(changeset, key) do
-          {:ok, value} -> Map.put(downstream_input, key, value)
-          :error -> downstream_input
+        with :error <- Map.fetch(changeset.params, key),
+             :error <- Map.fetch(changeset.params, to_string(key)) do
+          downstream_input
+        else
+          {:ok, value} ->
+            Map.put(downstream_input, key, value)
         end
       end)
-
-    # In order to support both atomics and passing down arguments, we need to get
-    # the arguments from the params, but for some reason, we only get one pass
-    # with this.
-    #
-    # fetch_argument_or_change isn't enough.'
-
-    # inputs =
-    #   Enum.reduce(copies, %{}, fn key, downstream_input ->
-    #     with :error <- Map.fetch(changeset.params, key),
-    #          :error <- Map.fetch(changeset.params, to_string(key)),
-    #          :error <- Ash.Changeset.fetch_argument_or_change(changeset, key) do
-    #       downstream_input
-    #     else
-    #       {:ok, value} ->
-    #         Map.put(downstream_input, key, value)
-    #     end
-    #   end)
 
     context_opts =
       context
@@ -215,6 +200,7 @@ defmodule Ash.Resource.Change.CascadeUpdate do
         domain: opts.domain,
         return_errors?: true,
         strategy: [:stream, :atomic, :atomic_batches],
+        skip_unknown_inputs: :*,
         return_notifications?: opts.return_notifications?
       )
 
