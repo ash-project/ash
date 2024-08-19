@@ -1405,6 +1405,7 @@ defmodule Ash.Query do
                resource_calculation.type,
                resource_calculation.constraints,
                arguments: args,
+               async?: resource_calculation.async?,
                filterable?: resource_calculation.filterable?,
                sortable?: resource_calculation.sortable?,
                sensitive?: resource_calculation.sensitive?,
@@ -1556,6 +1557,7 @@ defmodule Ash.Query do
              resource_calculation.type,
              resource_calculation.constraints,
              arguments: args,
+             async?: resource_calculation.async?,
              filterable?: resource_calculation.filterable?,
              sortable?: resource_calculation.sortable?,
              sensitive?: resource_calculation.sensitive?,
@@ -2404,7 +2406,8 @@ defmodule Ash.Query do
         module_and_opts,
         arguments \\ %{},
         constraints \\ [],
-        extra_context \\ %{}
+        extra_context \\ %{},
+        new_calculation_opts \\ []
       ) do
     query = new(query)
 
@@ -2426,8 +2429,10 @@ defmodule Ash.Query do
            opts,
            type,
            constraints,
-           arguments: arguments,
-           source_context: query.context
+           Keyword.merge(
+             [arguments: arguments, source_context: query.context],
+             new_calculation_opts
+           )
          ) do
       {:ok, calculation} ->
         context = %{

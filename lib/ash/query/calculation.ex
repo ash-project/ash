@@ -13,6 +13,7 @@ defmodule Ash.Query.Calculation do
     required_loads: [],
     select: [],
     filterable?: true,
+    async?: false,
     sortable?: true,
     sensitive?: false
   ]
@@ -24,6 +25,11 @@ defmodule Ash.Query.Calculation do
       type: :map,
       doc: "Arguments to pass to the calculation",
       default: %{}
+    ],
+    async?: [
+      type: :boolean,
+      default: false,
+      doc: "Whether or not this calculation should be run asynchronously"
     ],
     filterable?: [
       type: :boolean,
@@ -103,6 +109,7 @@ defmodule Ash.Query.Calculation do
          calc_name: calc_name,
          constraints: constraints,
          context: context,
+         async?: opts.async?,
          required_loads: opts.load,
          filterable?: opts.filterable?,
          sortable?: opts.sortable?,

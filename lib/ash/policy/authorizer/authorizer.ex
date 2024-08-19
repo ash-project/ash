@@ -1076,7 +1076,7 @@ defmodule Ash.Policy.Authorizer do
               Ash.Resource.Calculation.Expression,
               [expr: expr],
               :boolean,
-              []
+              async?: false
             )
 
           case query_or_changeset do

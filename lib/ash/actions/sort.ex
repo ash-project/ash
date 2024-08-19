@@ -370,6 +370,7 @@ defmodule Ash.Actions.Sort do
              type,
              constraints,
              arguments: input,
+             async?: calc.async?,
              filterable?: calc.filterable?,
              sortable?: calc.sortable?,
              sensitive?: calc.sensitive?,

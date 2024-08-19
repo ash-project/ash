@@ -312,7 +312,7 @@ defmodule Ash.Actions.Read.Calculations do
       Ash.Actions.Read.AsyncLimiter.async_or_inline(
         ash_query,
         Ash.Context.to_opts(calculation.context),
-        Enum.empty?(rest),
+        Enum.empty?(rest) && calculation.async?,
         fn ->
           {calculation.name, calculation, run_calculation(calculation, ash_query, records)}
         end
@@ -1254,6 +1254,7 @@ defmodule Ash.Actions.Read.Calculations do
                  resource_calculation.type,
                  resource_calculation.constraints,
                  arguments: args,
+                 async?: resource_calculation.async?,
                  filterable?: resource_calculation.filterable?,
                  sortable?: resource_calculation.sortable?,
                  sensitive?: resource_calculation.sensitive?,
