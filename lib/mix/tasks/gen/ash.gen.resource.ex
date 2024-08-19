@@ -25,6 +25,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   * `--relationship` or `-r` - A relationship or comma separated list of relationships to add, as `type:name:dest`. Modifiers: `public`. `belongs_to` only modifiers: `primary_key`, `sensitive`, and `required`. i.e `-r belongs_to:author:MyApp.Accounts.Author:required`
   * `--default-actions` or `-da` - A csv list of default action types to add, i.e `-da read,create`. The `create` and `update` actions accept the public attributes being added.
   * `--uuid-primary-key` or `-u` - Adds a UUID primary key with that name. i.e `-u id`
+  * `--uuid-v7-primary-key` or `-u` - Adds a UUID primary key with that name. i.e `-u7 id`
   * `--integer-primary-key` or `-i` - Adds an integer primary key with that name. i.e `-i id`
   * `--domain` or `-d` - The domain module to add the resource to. i.e `-d MyApp.MyDomain`. This defaults to the resource's module name, minus the last segment.
   * `--extend` or `-e` - A comma separated list of modules or builtins to extend the resource with. i.e `-e postgres,Some.Extension`
@@ -45,6 +46,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
         relationship: :keep,
         default_actions: :keep,
         uuid_primary_key: :string,
+        uuid_v7_primary_key: :string,
         integer_primary_key: :string,
         domain: :string,
         extend: :keep,
@@ -56,6 +58,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
         r: :relationship,
         da: :default_actions,
         d: :domain,
+        u7: :uuid_v7_primary_key,
         u: :uuid_primary_key,
         i: :integer_primary_key,
         e: :extend,
@@ -168,10 +171,16 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
 
     attributes =
       if options[:uuid_primary_key] || options[:integer_primary_key] ||
+           options[:uuid_v7_primary_key] ||
            !Enum.empty?(options[:attribute]) || options[:timestamps] do
         uuid_primary_key =
           if options[:uuid_primary_key] do
             pkey_builder("uuid_primary_key", options[:uuid_primary_key])
+          end
+
+        uuid_v7_primary_key =
+          if options[:uuid_v7_primary_key] do
+            pkey_builder("uuid_v7_primary_key", options[:uuid_v7_primary_key])
           end
 
         integer_primary_key =
@@ -187,6 +196,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
         """
         attributes do
           #{uuid_primary_key}
+          #{uuid_v7_primary_key}
           #{integer_primary_key}
           #{attributes}
           #{timestamps}
