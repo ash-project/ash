@@ -279,7 +279,7 @@ defmodule Ash.Actions.Read do
                opts[:authorize?]
              ),
            {:ok, data} <-
-             load_relationships(data, query, opts[:lazy?]),
+             load_relationships(data, query, opts),
            {:ok, data} <-
              Ash.Actions.Read.Calculations.run(
                data,
@@ -346,8 +346,16 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp load_relationships(data, query, lazy?) do
-    lazy? = !!lazy?
+  defp load_relationships(data, query, opts) do
+    lazy? = !!opts[:lazy?]
+
+    context =
+      %{
+        actor: opts[:actor],
+        tenant: query.tenant,
+        authorize?: opts[:authorize?],
+        domain: query.domain
+      }
 
     case query.action.manual do
       {module, opts} ->
@@ -1014,7 +1022,7 @@ defmodule Ash.Actions.Read do
              %{
                actor: opts[:actor],
                tenant: query.tenant,
-               authorize?: false,
+               authorize?: opts[:authorize?],
                domain: query.domain
              },
              true

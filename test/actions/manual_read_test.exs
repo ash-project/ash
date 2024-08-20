@@ -7,6 +7,10 @@ defmodule Ash.Test.Actions.ManualReadTest do
   defmodule ManualRead do
     use Ash.Resource.ManualRead
 
+    def load_relationships(_, data, _, _, _) do
+      {:ok, data}
+    end
+
     def read(_query, _data_layer_query, _opts, _context) do
       {:ok, []}
     end
