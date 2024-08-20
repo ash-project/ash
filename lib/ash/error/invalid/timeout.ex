@@ -5,6 +5,13 @@ defmodule Ash.Error.Invalid.Timeout do
   use Splode.Error, fields: [:name, :timeout], class: :invalid
 
   def message(%{name: name, timeout: timeout}) do
+    name =
+      if is_function(name) do
+        name.()
+      else
+        name
+      end
+
     """
     #{name} timed out after #{timeout}ms.
 

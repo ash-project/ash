@@ -3235,7 +3235,7 @@ defmodule Ash.Changeset do
           end,
           changeset.resource,
           changeset.timeout,
-          "#{inspect(changeset.resource)}.#{changeset.action.name}",
+          fn -> "#{inspect(changeset.resource)}.#{changeset.action.name}" end,
           opts[:tracer]
         )
       else

@@ -65,13 +65,11 @@ defmodule Ash.Actions.Aggregate do
             }
           end
 
-          Ash.Tracer.telemetry_span fn ->
-                                      [
-                                        :ash,
-                                        Ash.Domain.Info.short_name(query.domain),
-                                        :aggregate
-                                      ]
-                                    end,
+          Ash.Tracer.telemetry_span [
+                                      :ash,
+                                      Ash.Domain.Info.short_name(query.domain),
+                                      :aggregate
+                                    ],
                                     metadata do
             Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 

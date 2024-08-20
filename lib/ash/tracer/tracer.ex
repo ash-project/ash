@@ -54,22 +54,22 @@ defmodule Ash.Tracer do
       type = unquote(type)
       name = unquote(name)
 
-      name =
-        if is_function(name) do
-          apply(name, [])
-        else
-          name
-        end
-
       tracer = List.wrap(unquote(tracer))
       tracer = Enum.filter(tracer, &Ash.Tracer.trace_type?(&1, type))
-
-      Ash.Tracer.start_span(tracer, type, name)
 
       # no need to use try/rescue/after if no tracers
       if Enum.empty?(tracer) do
         unquote(block_opts[:do])
       else
+        name =
+          if is_function(name) do
+            apply(name, [])
+          else
+            name
+          end
+
+        Ash.Tracer.start_span(tracer, type, name)
+
         try do
           unquote(block_opts[:do])
         rescue
@@ -87,20 +87,19 @@ defmodule Ash.Tracer do
     quote generated: true do
       telemetry_name = unquote(name)
 
-      telemetry_name =
-        if is_function(telemetry_name) do
-          apply(telemetry_name, [])
-        else
-          telemetry_name
-        end
-
       metadata = unquote(metadata)
 
       metadata =
-        if is_function(metadata) do
-          apply(metadata, [])
-        else
-          metadata
+        case :telemetry.list_handlers(telemetry_name) do
+          [] ->
+            %{}
+
+          _ ->
+            if is_function(metadata) do
+              apply(metadata, [])
+            else
+              metadata
+            end
         end
 
       start = System.monotonic_time()

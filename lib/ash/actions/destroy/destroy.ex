@@ -52,7 +52,7 @@ defmodule Ash.Actions.Destroy do
 
       Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
 
-      Ash.Tracer.telemetry_span fn -> [:ash, Ash.Domain.Info.short_name(domain), :destroy] end,
+      Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(domain), :destroy],
                                 metadata do
         case do_run(domain, changeset, action, opts) do
           {:error, error} ->
