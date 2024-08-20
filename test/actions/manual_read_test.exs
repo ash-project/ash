@@ -8,6 +8,7 @@ defmodule Ash.Test.Actions.ManualReadTest do
     use Ash.Resource.ManualRead
 
     def load_relationships(_, data, _, _, _) do
+      send(self(), :loading_relationships)
       {:ok, data}
     end
 
@@ -109,6 +110,8 @@ defmodule Ash.Test.Actions.ManualReadTest do
              Author
              |> Ash.Query.for_read(:all)
              |> Ash.read!()
+
+    assert_received :loading_relationships
   end
 
   test "Ash.Query.apply_to/2 can be used" do

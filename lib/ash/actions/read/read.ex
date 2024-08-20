@@ -360,7 +360,7 @@ defmodule Ash.Actions.Read do
     case query.action.manual do
       {module, opts} ->
         if module.has_load_relationships?() do
-          module.load_relationships(query, data, opts, lazy?)
+          module.load_relationships(query, data, opts, context, lazy?)
         else
           Ash.Actions.Read.Relationships.load(
             data,

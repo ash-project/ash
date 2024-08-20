@@ -35,7 +35,12 @@ defmodule Ash.Resource.ManualRead do
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.ManualRead
+      @before_compile Ash.Resource.ManualRead
+    end
+  end
 
+  defmacro __before_compile__(_) do
+    quote do
       if Module.defines?(__MODULE__, {:load_relationships, 5}, :def) do
         def has_load_relationships?, do: true
       else
