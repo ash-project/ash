@@ -279,11 +279,7 @@ defmodule Ash.Actions.Read do
                opts[:authorize?]
              ),
            {:ok, data} <-
-             Ash.Actions.Read.Relationships.load(
-               data,
-               query,
-               opts[:lazy?]
-             ),
+             load_relationships(data, query, opts[:lazy?]),
            {:ok, data} <-
              Ash.Actions.Read.Calculations.run(
                data,
@@ -347,6 +343,30 @@ defmodule Ash.Actions.Read do
       if stop? do
         Agent.stop(query.context[:private][:async_limiter])
       end
+    end
+  end
+
+  defp load_relationships(data, query, lazy?) do
+    lazy? = !!lazy?
+
+    case query.action.manual do
+      {module, opts} ->
+        if module.has_load_relationships?() do
+          module.load_relationships(query, data, opts, lazy?)
+        else
+          Ash.Actions.Read.Relationships.load(
+            data,
+            query,
+            lazy?
+          )
+        end
+
+      _ ->
+        Ash.Actions.Read.Relationships.load(
+          data,
+          query,
+          lazy?
+        )
     end
   end
 

@@ -11,6 +11,15 @@ defmodule Ash.Resource.ManualRead do
           optional(any) => any
         }
 
+  @callback load_relationships(
+              query :: Ash.Query.t(),
+              results :: list(Ash.Resource.record()),
+              opts :: Keyword.t(),
+              context :: context(),
+              lazy? :: boolean()
+            ) ::
+              {:ok, list(Ash.Resource.record())} | {:error, term}
+
   @callback read(
               query :: Ash.Query.t(),
               data_layer_query :: term,
@@ -19,9 +28,19 @@ defmodule Ash.Resource.ManualRead do
             ) ::
               {:ok, list(Ash.Resource.record())} | {:error, term}
 
+  @optional_callbacks [
+    load_relationships: 5
+  ]
+
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Resource.ManualRead
+
+      if Module.defines?(__MODULE__, {:load, 5}, :def) do
+        def has_load_relationships?, do: true
+      else
+        def has_load_relationships?, do: false
+      end
     end
   end
 end
