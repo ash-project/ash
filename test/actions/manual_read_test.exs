@@ -46,6 +46,10 @@ defmodule Ash.Test.Actions.ManualReadTest do
         public?(true)
       end
     end
+
+    relationships do
+      has_one :self, __MODULE__, source_attribute: :id, destination_attribute: :id
+    end
   end
 
   defmodule QueryableManualRead do
@@ -104,14 +108,15 @@ defmodule Ash.Test.Actions.ManualReadTest do
     assert [] =
              Author
              |> Ash.Query.for_read(:read)
+             |> Ash.Query.load(:self)
              |> Ash.read!()
+
+    assert_received :loading_relationships
 
     assert [_] =
              Author
              |> Ash.Query.for_read(:all)
              |> Ash.read!()
-
-    assert_received :loading_relationships
   end
 
   test "Ash.Query.apply_to/2 can be used" do

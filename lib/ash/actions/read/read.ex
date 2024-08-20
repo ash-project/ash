@@ -357,24 +357,28 @@ defmodule Ash.Actions.Read do
         domain: query.domain
       }
 
-    case query.action.manual do
-      {module, opts} ->
-        if module.has_load_relationships?() do
-          module.load_relationships(query, data, opts, context, lazy?)
-        else
+    if query.load in [[], nil] do
+      {:ok, data}
+    else
+      case query.action.manual do
+        {module, opts} ->
+          if module.has_load_relationships?() do
+            module.load_relationships(query, data, opts, context, lazy?)
+          else
+            Ash.Actions.Read.Relationships.load(
+              data,
+              query,
+              lazy?
+            )
+          end
+
+        _ ->
           Ash.Actions.Read.Relationships.load(
             data,
             query,
             lazy?
           )
-        end
-
-      _ ->
-        Ash.Actions.Read.Relationships.load(
-          data,
-          query,
-          lazy?
-        )
+      end
     end
   end
 

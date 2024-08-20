@@ -1792,6 +1792,18 @@ defmodule Ash do
     end
   end
 
+  def load(data, load, _) when load in [[], %{}, nil], do: {:ok, data}
+
+  def load(
+        data,
+        %Ash.Query{select: select, load: rel_load, calculations: calcs, aggregates: aggregates},
+        _
+      )
+      when rel_load in [[], %{}, nil] and calcs in [[], %{}, nil] and aggregates in [[], %{}, nil] and
+             select in [[], nil] do
+    {:ok, data}
+  end
+
   def load([record | _] = data, query, opts) do
     Ash.Helpers.expect_options!(opts)
     resource = Ash.Helpers.resource_from_data!(data, query, opts)
