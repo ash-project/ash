@@ -3117,30 +3117,12 @@ defmodule Ash.Changeset do
   # Attributes that are private and/or are the source field of a belongs_to relationship
   # are typically not set by input, so they aren't required until the actual action
   # is run.
-  defp attributes_to_require(resource, _action, true) do
-    resource
-    |> Ash.Resource.Info.attributes()
-    |> Enum.reject(&(&1.allow_nil? || &1.generated?))
+  defp attributes_to_require(resource, _action, true = _final?) do
+    Ash.Resource.Info.attributes_to_require(resource)
   end
 
-  defp attributes_to_require(resource, action, false) do
-    accept = action.accept
-    require_attributes = action.require_attributes
-    allow_nil_input = action.allow_nil_input
-    argument_names = action.arguments |> Enum.map(& &1.name)
-
-    accepted =
-      accept
-      |> Kernel.++(require_attributes)
-      |> Kernel.--(allow_nil_input)
-      |> Kernel.--(argument_names)
-
-    resource
-    |> Ash.Resource.Info.attributes()
-    |> Enum.reject(
-      &(&1.name not in accepted || !&1.writable? || &1.generated? ||
-          (&1.allow_nil? && &1.name not in require_attributes))
-    )
+  defp attributes_to_require(resource, action, false = _final?) do
+    Ash.Resource.Info.attributes_to_require(resource, action.name)
   end
 
   @doc """

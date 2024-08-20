@@ -351,6 +351,14 @@ defmodule Ash.Resource.Info do
       )
   end
 
+  def attributes_to_require(resource) do
+    Extension.get_persisted(resource, :attributes_to_require)
+  end
+
+  def attributes_to_require(resource, action_name) do
+    Extension.get_persisted(resource, {:attributes_to_require, action_name})
+  end
+
   @doc "Get a public relationship by name or path"
   def public_relationship(resource, [name]) do
     public_relationship(resource, name)
@@ -617,6 +625,8 @@ defmodule Ash.Resource.Info do
   @spec action_input?(Ash.Resource.t(), action :: atom(), input :: atom() | String.t()) ::
           boolean()
   def action_input?(resource, action, input) do
+    # Extension.get_persisted(resource, {:action_inputs, action, input}) || false
+
     case Extension.get_persisted(resource, {:action_inputs, action}) do
       nil -> false
       map_set -> input in map_set
