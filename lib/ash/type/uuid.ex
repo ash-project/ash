@@ -64,6 +64,8 @@ defmodule Ash.Type.UUID do
     end
   end
 
+  def cast_input(_, _), do: :error
+
   @impl true
   def cast_atomic(new_value, _constraints) do
     {:atomic, new_value}
