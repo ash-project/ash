@@ -36,7 +36,7 @@ defmodule Ash.Resource.ManualRead do
     quote do
       @behaviour Ash.Resource.ManualRead
 
-      if Module.defines?(__MODULE__, {:load, 5}, :def) do
+      if Module.defines?(__MODULE__, {:load_relationships, 5}, :def) do
         def has_load_relationships?, do: true
       else
         def has_load_relationships?, do: false
