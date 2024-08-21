@@ -4309,18 +4309,15 @@ defmodule Ash.Changeset do
     opts =
       opts
       |> ManageRelationshipOpts.validate!()
-      |> ManageRelationshipOpts.to_options()
+
+    keyword_opts =
+      ManageRelationshipOpts.to_options(opts)
 
     opts =
-      if Keyword.has_key?(opts[:meta] || [], :inputs_was_list?) do
+      if opts.meta && Keyword.has_key?(opts.meta, :inputs_was_list?) do
         opts
       else
-        Keyword.update(
-          opts,
-          :meta,
-          [inputs_was_list?: inputs_was_list?],
-          &Keyword.put(&1, :inputs_was_list?, inputs_was_list?)
-        )
+        %{opts | meta: Keyword.put(opts.meta || [], :inputs_was_list?, inputs_was_list?)}
       end
 
     case Ash.Resource.Info.relationship(changeset.resource, relationship) do
@@ -4362,7 +4359,7 @@ defmodule Ash.Changeset do
 
       relationship ->
         key =
-          opts[:value_is_key] ||
+          opts.value_is_key ||
             changeset.resource
             |> Ash.Resource.Info.related(relationship.name)
             |> Ash.Resource.Info.primary_key()
@@ -4390,10 +4387,10 @@ defmodule Ash.Changeset do
                   input
                 end
 
-              manage_relationship(changeset, relationship.name, input, opts)
+              manage_relationship(changeset, relationship.name, input, keyword_opts)
 
             :error ->
-              manage_relationship(changeset, relationship.name, List.wrap(input), opts)
+              manage_relationship(changeset, relationship.name, List.wrap(input), keyword_opts)
           end
         else
           input =
@@ -4427,18 +4424,18 @@ defmodule Ash.Changeset do
             relationships =
               changeset.relationships
               |> Map.put_new(relationship.name, [])
-              |> Map.update!(relationship.name, &(&1 ++ [{input, opts}]))
+              |> Map.update!(relationship.name, &(&1 ++ [{input, keyword_opts}]))
 
             changeset = %{changeset | relationships: relationships}
 
-            if opts[:eager_validate_with] do
+            if opts.eager_validate_with do
               eager_validate_relationship_input(
                 relationship,
                 input,
                 changeset,
-                opts[:eager_validate_with],
-                opts[:error_path] || opts[:meta][:id] || relationship.name,
-                opts
+                opts.eager_validate_with,
+                opts.error_path || opts.meta[:id] || relationship.name,
+                keyword_opts
               )
             else
               changeset
