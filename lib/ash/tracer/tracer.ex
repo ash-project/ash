@@ -61,13 +61,6 @@ defmodule Ash.Tracer do
       if Enum.empty?(tracer) do
         unquote(block_opts[:do])
       else
-        name =
-          if is_function(name) do
-            apply(name, [])
-          else
-            name
-          end
-
         Ash.Tracer.start_span(tracer, type, name)
 
         try do
@@ -91,15 +84,9 @@ defmodule Ash.Tracer do
 
       metadata =
         case :telemetry.list_handlers(telemetry_name) do
-          [] ->
-            %{}
-
-          _ ->
-            if is_function(metadata) do
-              apply(metadata, [])
-            else
-              metadata
-            end
+          [] -> %{}
+          _ when is_function(metadata) -> apply(metadata, [])
+          _ -> metadata
         end
 
       start = System.monotonic_time()
@@ -151,10 +138,12 @@ defmodule Ash.Tracer do
   def start_span(nil, _type, _name), do: :ok
 
   def start_span(tracers, type, name) when is_list(tracers) do
+    name = resolve_lazy(name)
     Enum.each(tracers, &start_span(&1, type, name))
   end
 
   def start_span(tracer, type, name) do
+    name = resolve_lazy(name)
     tracer.start_span(type, name)
   end
 
@@ -223,30 +212,28 @@ defmodule Ash.Tracer do
   def set_metadata(nil, _type, _metadata), do: :ok
 
   def set_metadata(tracers, type, metadata) when is_list(tracers) do
-    metadata =
-      if is_function(metadata) do
-        apply(metadata, [])
-      else
-        metadata
-      end
+    tracers = Enum.filter(tracers, &Ash.Tracer.trace_type?(&1, type))
 
-    Enum.each(tracers, & &1.set_metadata(type, metadata))
+    unless Enum.empty?(tracers) do
+      metadata = resolve_lazy(metadata)
+      Enum.each(tracers, & &1.set_metadata(type, metadata))
+    end
   end
 
   def set_metadata(tracer, type, metadata) do
-    metadata =
-      if is_function(metadata) do
-        apply(metadata, [])
-      else
-        metadata
-      end
-
-    tracer.set_metadata(type, metadata)
+    if Ash.Tracer.trace_type?(tracer, type) do
+      metadata = resolve_lazy(metadata)
+      tracer.set_metadata(type, metadata)
+    end
   end
 
   defmacro __using__(_) do
     quote do
       @behaviour Ash.Tracer
     end
+  end
+
+  defp resolve_lazy(value) do
+    if is_function(value), do: apply(value, []), else: value
   end
 end
