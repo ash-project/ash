@@ -7,7 +7,6 @@ defmodule Ash.Policy.Policy do
     :condition,
     :policies,
     :bypass?,
-    :checks,
     :description,
     :access_type
   ]
@@ -52,14 +51,28 @@ defmodule Ash.Policy.Policy do
 
   @doc false
   def transform(policy) do
-    if Enum.empty?(policy.policies) do
-      {:error, "Policies must have at least one check."}
-    else
-      if policy.condition in [nil, []] do
+    cond do
+      Enum.empty?(policy.policies) ->
+        {:error, "Policies must have at least one check."}
+
+      policy.bypass? &&
+          Enum.all?(List.wrap(policy.policies), &(&1.type in [:forbid_if, :forbid_unless])) ->
+        {:error,
+         """
+         Bypass policies that can only ever forbid have no effect.
+
+         When a bypass is authorized, it skips all remaining policies (including other bypasses)
+         and authorizes the request. If it fails, it is ignored and the remaining policies are checked.
+
+         This policy only contains `forbid_if` or `forbid_unless` check types therefore, it can
+         never have an effect.
+         """}
+
+      policy.condition in [nil, []] ->
         {:ok, %{policy | condition: [{Ash.Policy.Check.Static, result: true}]}}
-      else
+
+      true ->
         {:ok, policy}
-      end
     end
   end
 

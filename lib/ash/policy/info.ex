@@ -197,7 +197,6 @@ defmodule Ash.Policy.Info do
          %Ash.Policy.Policy{
            policies: policies,
            condition: conditions,
-           checks: checks,
            access_type: access_type
          } = policy,
          default
@@ -206,7 +205,6 @@ defmodule Ash.Policy.Info do
       policy
       | policies: set_access_type(policies, access_type || default),
         condition: set_access_type(conditions, access_type || default),
-        checks: set_access_type(checks, default),
         access_type: access_type || default
     }
   end
