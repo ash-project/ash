@@ -45,11 +45,18 @@ defmodule Ash.Actions.Read do
 
     action = get_action(query.resource, action || query.action)
 
+    tracer =
+      if opts[:initial_data] do
+        nil
+      else
+        opts[:tracer]
+      end
+
     Ash.Tracer.span :action,
                     fn ->
                       Ash.Domain.Info.span_name(query.domain, query.resource, action.name)
                     end,
-                    opts[:tracer] do
+                    tracer do
       metadata = fn ->
         %{
           domain: query.domain,
@@ -63,8 +70,9 @@ defmodule Ash.Actions.Read do
       end
 
       Ash.Tracer.telemetry_span [:ash, Ash.Domain.Info.short_name(query.domain), :read],
-                                metadata do
-        Ash.Tracer.set_metadata(opts[:tracer], :action, metadata)
+                                metadata,
+                                skip?: !!opts[:initial_data] do
+        Ash.Tracer.set_metadata(tracer, :action, metadata)
 
         run_around_transaction_hooks(query, fn query ->
           case do_run(query, action, opts) do

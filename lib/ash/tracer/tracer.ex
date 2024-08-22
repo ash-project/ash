@@ -76,11 +76,14 @@ defmodule Ash.Tracer do
     end
   end
 
-  defmacro telemetry_span(name, metadata, opts) do
+  defmacro telemetry_span(name, metadata, opts \\ [], block_opts) do
     quote generated: true do
-      telemetry_name = unquote(name)
+      if unquote(opts[:skip?]) do
+        unquote(block_opts[:do])
+      else
+        telemetry_name = unquote(name)
 
-      metadata = unquote(metadata)
+        metadata = unquote(metadata)
 
       metadata =
         case :telemetry.list_handlers(telemetry_name) do
@@ -89,29 +92,30 @@ defmodule Ash.Tracer do
           _ -> metadata
         end
 
-      start = System.monotonic_time()
+        start = System.monotonic_time()
 
-      compiling? = Code.can_await_module_compilation?()
-
-      unless compiling? do
-        :telemetry.execute(
-          telemetry_name ++ [:start],
-          %{system_time: System.system_time()},
-          metadata
-        )
-      end
-
-      try do
-        unquote(opts[:do])
-      after
-        duration = System.monotonic_time() - start
+        compiling? = Code.can_await_module_compilation?()
 
         unless compiling? do
           :telemetry.execute(
-            telemetry_name ++ [:stop],
-            %{system_time: System.system_time(), duration: duration},
+            telemetry_name ++ [:start],
+            %{system_time: System.system_time()},
             metadata
           )
+        end
+
+        try do
+          unquote(block_opts[:do])
+        after
+          duration = System.monotonic_time() - start
+
+          unless compiling? do
+            :telemetry.execute(
+              telemetry_name ++ [:stop],
+              %{system_time: System.system_time(), duration: duration},
+              metadata
+            )
+          end
         end
       end
     end
