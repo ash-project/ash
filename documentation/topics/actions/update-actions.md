@@ -57,7 +57,7 @@ whenever `name` is changing.
 
 ```elixir
 changes do
-  change atomic_update(:slug, expr(fragment("slugify(?)", atomic_ref(:name)))), where: changing(:name), on: [:update]
+  change atomic_update(:slug, expr(fragment("slugify(?)", ^atomic_ref(:name)))), where: changing(:name), on: [:update]
 end
 ```
 
