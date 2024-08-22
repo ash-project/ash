@@ -30,7 +30,7 @@ defmodule Ash.Changeset do
       # execute code in the transaction, before the data layer is called
       |> Ash.Changeset.before_action(fn changeset -> changeset end)
       # execute code in the transaction, after the data layer is called, only if the action is successful
-     after_action(fn changeset, result -> {:ok, result} end)
+      |> Ash.Changeset.after_action(fn changeset, result -> {:ok, result} end)
       # execute code after the transaction, both in success and error cases
       |> Ash.Changeset.after_transaction(fn changeset, success_or_error_result -> success_or_error_result end
     end
