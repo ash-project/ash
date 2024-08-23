@@ -85,12 +85,12 @@ defmodule Ash.Tracer do
 
         metadata = unquote(metadata)
 
-      metadata =
-        case :telemetry.list_handlers(telemetry_name) do
-          [] -> %{}
-          _ when is_function(metadata) -> apply(metadata, [])
-          _ -> metadata
-        end
+        metadata =
+          case :telemetry.list_handlers(telemetry_name) do
+            [] -> %{}
+            _ when is_function(metadata) -> apply(metadata, [])
+            _ -> metadata
+          end
 
         start = System.monotonic_time()
 

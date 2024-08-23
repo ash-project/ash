@@ -1059,10 +1059,17 @@ defmodule Ash.Actions.Read.Relationships do
          attach_fun \\ &attach_related/3
        ) do
     source_attribute =
-      Ash.Resource.Info.attribute(relationship.source, relationship.source_attribute)
+      if Map.get(relationship, :no_attributes?) do
+        nil
+      else
+        Ash.Resource.Info.attribute(relationship.source, relationship.source_attribute)
+      end
 
     pkey_simple_equality? = Ash.Resource.Info.primary_key_simple_equality?(relationship.source)
-    source_attribute_simple_equality? = Ash.Type.simple_equality?(source_attribute.type)
+
+    source_attribute_simple_equality? =
+      is_nil(source_attribute) || Ash.Type.simple_equality?(source_attribute.type)
+
     primary_key = Ash.Resource.Info.primary_key(resource)
 
     if pkey_simple_equality? && source_attribute_simple_equality? do
@@ -1080,15 +1087,27 @@ defmodule Ash.Actions.Read.Relationships do
           nil
         end
 
-      Enum.map(records, fn record ->
-        with :error <- Map.fetch(values, Map.take(record, primary_key)),
-             :error <- Map.fetch(values, Map.get(record, relationship.source_attribute)) do
-          attach_fun.(record, relationship.name, default)
-        else
-          {:ok, value} ->
-            attach_fun.(record, relationship.name, value)
-        end
-      end)
+      if source_attribute do
+        Enum.map(records, fn record ->
+          with :error <- Map.fetch(values, Map.take(record, primary_key)),
+               :error <- Map.fetch(values, Map.get(record, relationship.source_attribute)) do
+            attach_fun.(record, relationship.name, default)
+          else
+            {:ok, value} ->
+              attach_fun.(record, relationship.name, value)
+          end
+        end)
+      else
+        Enum.map(records, fn record ->
+          case Map.fetch(values, Map.take(record, primary_key)) do
+            {:ok, value} ->
+              attach_fun.(record, relationship.name, value)
+
+            :error ->
+              attach_fun.(record, relationship.name, default)
+          end
+        end)
+      end
     else
       Enum.map(records, fn record ->
         func =
