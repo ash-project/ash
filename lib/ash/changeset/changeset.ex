@@ -4285,6 +4285,10 @@ defmodule Ash.Changeset do
   end
 
   def manage_relationship(changeset, relationship, input, opts) do
+    if opts == [] do
+      IO.warn("Calling `manage_relationship` without any options will not do anything")
+    end
+
     opts =
       if opts[:type] == :replace do
         Logger.warning(
