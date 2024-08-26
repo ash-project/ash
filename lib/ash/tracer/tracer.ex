@@ -85,16 +85,18 @@ defmodule Ash.Tracer do
 
         metadata = unquote(metadata)
 
+        compiling? = Code.can_await_module_compilation?()
+
         metadata =
-          case :telemetry.list_handlers(telemetry_name) do
-            [] -> %{}
-            _ when is_function(metadata) -> apply(metadata, [])
-            _ -> metadata
+          unless compiling? do
+            case :telemetry.list_handlers(telemetry_name) do
+              [] -> %{}
+              _ when is_function(metadata) -> apply(metadata, [])
+              _ -> metadata
+            end
           end
 
         start = System.monotonic_time()
-
-        compiling? = Code.can_await_module_compilation?()
 
         unless compiling? do
           :telemetry.execute(
