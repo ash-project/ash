@@ -1098,7 +1098,6 @@ defmodule Ash.Filter do
       relationship.destination
       |> Ash.Query.set_context(relationship.context)
       |> Ash.Query.sort(relationship.sort, prepend?: true)
-      |> Ash.Query.do_filter(relationship.filter, parent_stack: [relationship.source])
 
     if query.__validated_for_action__ == action do
       query
