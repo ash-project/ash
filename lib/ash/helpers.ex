@@ -288,7 +288,7 @@ defmodule Ash.Helpers do
     if page && page != [] && !Map.get(action, :pagination) do
       {:error,
        Ash.Error.to_error_class(
-         Ash.Error.Invalid.PaginationNotSupported.exception(
+         Ash.Error.Invalid.ActionRequiresPagination.exception(
            resource: query.resource,
            action: action
          )

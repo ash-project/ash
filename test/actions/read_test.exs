@@ -325,7 +325,7 @@ defmodule Ash.Test.Actions.ReadTest do
           Ash.read!(Post, action: :not_paginatable, page: [limit: 10])
         end
 
-      assert %Ash.Error.Invalid.PaginationNotSupported{resource: Post, action: _} =
+      assert %Ash.Error.Invalid.ActionRequiresPagination{resource: Post, action: _} =
                hd(res.errors)
     end
   end
