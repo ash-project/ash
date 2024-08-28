@@ -1187,6 +1187,9 @@ defmodule Ash.Filter do
         # you have to map over the internals of exists yourself
         func.(expr)
 
+      %Ash.Query.Call{args: args} = op ->
+        %{op | args: map(args, func)}
+
       %{__operator__?: true, left: left, right: right} = op ->
         %{op | left: map(left, func), right: map(right, func)}
 
