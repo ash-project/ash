@@ -224,7 +224,7 @@ defmodule Ash.Resource.Change do
             else
               changeset
             end
-            |> Ash.Changeset.before_action(changeset, fn change ->
+            |> Ash.Changeset.before_action(fn changeset ->
               Enum.at(batch_change([changeset], opts, context), 0)
             end)
             |> then(fn changeset ->
