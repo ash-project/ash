@@ -18,10 +18,6 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   defmodule AddAfterToTitle do
     use Ash.Resource.Change
 
-    def change(_, _, _) do
-      raise "can't get here"
-    end
-
     def batch_change(changesets, _, _) do
       changesets
     end
