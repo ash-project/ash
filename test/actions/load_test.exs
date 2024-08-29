@@ -175,6 +175,8 @@ defmodule Ash.Test.Actions.LoadTest do
       calculate :bio_union_calc, BioUnion, expr(bio_union) do
         public?(true)
       end
+
+      calculate :campaign_upcase, :string, Ash.Test.Actions.LoadTest.UpcaseName
     end
 
     aggregates do
@@ -199,6 +201,22 @@ defmodule Ash.Test.Actions.LoadTest do
         destination_attribute(:name)
         public?(true)
       end
+    end
+  end
+
+  defmodule UpcaseName do
+    use Ash.Resource.Calculation
+
+    @impl true
+    def load(_, _, _), do: [campaign: :name]
+
+    @impl true
+    def calculate(authors, _, _) do
+      Enum.map(authors, fn author ->
+        author.campaign.name
+        |> to_string()
+        |> String.upcase()
+      end)
     end
   end
 
@@ -751,6 +769,31 @@ defmodule Ash.Test.Actions.LoadTest do
         post |> Ash.load!(:author, authorize?: false, lazy?: true) |> Map.get(:author)
 
       assert author_after_load.name == "shouldn't change"
+    end
+
+    test "it allows lazy-reloading calculations that have dependencies" do
+      Campaign
+      |> Ash.Changeset.for_create(:create, %{name: "hello World"})
+      |> Ash.create!()
+
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "zerg", campaign_name: "hello World"})
+        |> Ash.create!()
+
+      post =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post1"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.create!()
+
+      post = Ash.load!(post, author: :campaign_upcase)
+      author = post.author
+
+      assert %{campaign_upcase: "HELLO WORLD"} = author
+
+      assert %{campaign_upcase: "HELLO WORLD"} =
+               Ash.load!(author, [:campaign_upcase], lazy?: true)
     end
 
     test "nested lazy loads work" do
