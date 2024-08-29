@@ -138,7 +138,7 @@ their group.
 
 ```elixir
 policies do
-  policy_group actor_attribute_eqquals(:role, :owner) do
+  policy_group actor_attribute_equals(:role, :owner) do
     policy action_type(:read) do
       authorize_if expr(owner_id == ^actor(:id))
     end
