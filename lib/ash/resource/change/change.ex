@@ -214,8 +214,15 @@ defmodule Ash.Resource.Change do
                 {[changeset], notifications} =
                   Enum.split_with(
                     apply(__MODULE__, :before_batch, [[changeset], opts, context]),
-                    fn %Ash.Notifier.Notification{} ->
-                      false
+                    fn
+                      %Ash.Notifier.Notification{} ->
+                        false
+
+                      %Ash.Changeset{} ->
+                        true
+
+                      other ->
+                        raise "Expected before_batch/3 to return a list of changesets and notifications, got: #{inspect(other)}"
                     end
                   )
 
@@ -231,6 +238,10 @@ defmodule Ash.Resource.Change do
               if has_after_batch?() do
                 Ash.Changeset.after_action(changeset, fn changeset, result ->
                   apply(__MODULE__, :after_batch, [[{changeset, result}], opts, context])
+                  |> then(fn
+                    :ok -> [{:ok, result}]
+                    other -> other
+                  end)
                   |> Enum.reduce({[], [], []}, fn item, {records, errors, notifications} ->
                     case item do
                       {:ok, record} -> {[record | records], errors, notifications}
