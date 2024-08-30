@@ -313,7 +313,6 @@ defmodule Ash.Actions.Helpers do
       for: Ash.Resource.Info.notifiers(changeset.resource) ++ changeset.action.notifiers,
       data: result,
       changeset: changeset,
-      from: self(),
       metadata: opts[:notification_metadata] || %{}
     }
   end

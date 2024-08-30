@@ -344,7 +344,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           end
         after
           if notify? do
-            Process.delete(:ash_started_transaction)
+            Process.delete(:ash_started_transaction?)
           end
         end
     end

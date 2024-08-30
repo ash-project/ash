@@ -39,12 +39,12 @@ defmodule Ash.Notifier do
         case notification.for do
           nil ->
             for notifier <- Ash.Resource.Info.notifiers(resource) do
-              notifier.notify(notification)
+              notifier.notify(%{notification | from: self()})
             end
 
           allowed_notifiers ->
             for notifier <- Enum.uniq(List.wrap(allowed_notifiers)) do
-              notifier.notify(notification)
+              notifier.notify(%{notification | from: self()})
             end
         end
       end
