@@ -2222,25 +2222,43 @@ defmodule Ash.Actions.Update.Bulk do
                     batch,
                     {:ok, []},
                     fn changeset, {:ok, results} ->
-                      resource
-                      |> Ash.DataLayer.update(changeset)
-                      |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
-                      |> case do
-                        {:ok, result} ->
-                          result =
-                            Ash.Resource.put_metadata(
-                              result,
-                              metadata_key,
-                              changeset.context[context_key].index
-                            )
+                      changed? =
+                        Ash.Changeset.changing_attributes?(changeset) or
+                          not Enum.empty?(changeset.atomics)
 
-                          {:cont, {:ok, [result | results]}}
+                      if changed? do
+                        changeset =
+                          Ash.Changeset.set_defaults(changeset, :update, true)
 
-                        {:error, %Ash.Error.Changes.StaleRecord{}} ->
-                          {:cont, {:ok, results}}
+                        resource
+                        |> Ash.DataLayer.update(changeset)
+                        |> Ash.Actions.Helpers.rollback_if_in_transaction(resource, nil)
+                        |> case do
+                          {:ok, result} ->
+                            result =
+                              Ash.Resource.put_metadata(
+                                result,
+                                metadata_key,
+                                changeset.context[context_key].index
+                              )
 
-                        {:error, error} ->
-                          {:halt, {:error, error}}
+                            {:cont, {:ok, [result | results]}}
+
+                          {:error, %Ash.Error.Changes.StaleRecord{}} ->
+                            {:cont, {:ok, results}}
+
+                          {:error, error} ->
+                            {:halt, {:error, error}}
+                        end
+                      else
+                        result =
+                          Ash.Resource.put_metadata(
+                            changeset.data,
+                            metadata_key,
+                            changeset.context[context_key].index
+                          )
+
+                        {:cont, {:ok, [result | results]}}
                       end
                     end
                   )
