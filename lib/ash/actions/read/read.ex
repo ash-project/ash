@@ -30,7 +30,10 @@ defmodule Ash.Actions.Read do
   end
 
   def run(query, action, opts) do
-    query = Ash.Query.new(query)
+    query =
+      query
+      |> Ash.Query.new()
+      |> clear_async_limiter()
 
     domain = query.domain || opts[:domain] || Ash.Resource.Info.domain(query.resource)
 
@@ -312,7 +315,7 @@ defmodule Ash.Actions.Read do
         query =
           query
           # prevent leakage of stale pid as we stop it at the end of reading
-          |> clearup_async_limiter()
+          |> clear_async_limiter()
 
         data
         |> Helpers.restrict_field_access(query)
@@ -790,14 +793,12 @@ defmodule Ash.Actions.Read do
     end)
   end
 
-  defp clearup_async_limiter(
-         %{context: %{private: %{async_limiter: async_limiter}} = ctx} = query
-       )
+  defp clear_async_limiter(%{context: %{private: %{async_limiter: async_limiter}} = ctx} = query)
        when is_pid(async_limiter) do
     Ash.Query.set_context(query, put_in(ctx[:private][:async_limiter], nil))
   end
 
-  defp clearup_async_limiter(query), do: query
+  defp clear_async_limiter(query), do: query
 
   def add_async_limiter(
         %{context: %{private: %{async_limiter: async_limiter}}} = query,
