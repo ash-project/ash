@@ -568,7 +568,7 @@ defmodule Ash.Query do
   def timeout(query, timeout) do
     query = new(query)
 
-    if Ash.DataLayer.data_layer_can?(query.resource, :timeout) || is_nil(timeout) do
+    if is_nil(timeout) || Ash.DataLayer.data_layer_can?(query.resource, :timeout) do
       %{query | timeout: timeout}
     else
       add_error(query, TimeoutNotSupported.exception(resource: query.resource))

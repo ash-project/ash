@@ -792,6 +792,8 @@ defmodule Ash.Test.Actions.LoadTest do
 
       assert %{campaign_upcase: "HELLO WORLD"} = author
 
+      Application.put_env(:foo, :bar, true)
+
       assert %{campaign_upcase: "HELLO WORLD"} =
                Ash.load!(author, [:campaign_upcase], lazy?: true)
     end

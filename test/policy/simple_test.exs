@@ -23,6 +23,18 @@ defmodule Ash.Test.Policy.SimpleTest do
     ]
   end
 
+  test "statically known policies will filter all results", %{user: user} do
+    Post
+    |> Ash.Changeset.for_create(:create, %{author: user.id, text: "aaa"})
+    |> Ash.create!(authorize?: false)
+
+    Post
+    |> Ash.Changeset.for_create(:create, %{author: user.id, text: "aaa"})
+    |> Ash.create!(authorize?: false)
+
+    Ash.read!(Post, action: :never_allowed, actor: user)
+  end
+
   test "bypass with condition does not apply subsequent filters", %{admin: admin, user: user} do
     Ash.create!(Ash.Changeset.for_create(Tweet, :create), authorize?: false)
 
@@ -320,10 +332,9 @@ defmodule Ash.Test.Policy.SimpleTest do
     |> Ash.Changeset.for_create(:create, %{user_id: user.id})
     |> Ash.create!(authorize?: false)
 
-    assert_raise Ash.Error.Forbidden, fn ->
-      Ash.Test.Support.PolicySimple.Always
-      |> Ash.read!(authorize?: true, actor: user)
-    end
+    assert [] =
+             Ash.Test.Support.PolicySimple.Always
+             |> Ash.read!(authorize?: true, actor: user)
   end
 
   test "two filter condition checks combine properly" do

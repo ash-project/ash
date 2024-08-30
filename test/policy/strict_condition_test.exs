@@ -42,10 +42,9 @@ defmodule Ash.Test.Policy.StrictConditionTest do
     |> Ash.Changeset.for_create(:create, %{visible: false}, authorize?: false)
     |> Ash.create!()
 
-    assert_raise Ash.Error.Forbidden, fn ->
-      Resource
-      |> Ash.Query.for_read(:read, %{}, actor: %{id: "foo"})
-      |> Ash.read!()
-    end
+    assert [] ==
+             Resource
+             |> Ash.Query.for_read(:read, %{}, actor: %{id: "foo"})
+             |> Ash.read!()
   end
 end

@@ -188,6 +188,10 @@ defmodule Ash.Policy.Info do
     Extension.get_opt(resource, [:policies], :default_access_type, :filter, false)
   end
 
+  def statically_deniable_reads(resource) do
+    Extension.get_opt(resource, [:policies], :statically_deniable_reads, :filter, false)
+  end
+
   # This should be done at compile time
   defp set_access_type(policies, default) when is_list(policies) do
     Enum.map(policies, &set_access_type(&1, default))

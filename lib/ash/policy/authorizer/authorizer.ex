@@ -299,6 +299,12 @@ defmodule Ash.Policy.Authorizer do
       Ash.Expr
     ],
     schema: [
+      statically_deniable_reads: [
+        type: {:one_of, [:error, :filter]},
+        default: :filter,
+        doc:
+          "When a read request is denied immediately, i.e we know its forbidden without ever running a query. `:filter` will filter all records out, and `:error` will result in a forbidden error."
+      ],
       default_access_type: [
         type: {:one_of, [:strict, :filter, :runtime]},
         default: :filter,
@@ -1169,7 +1175,7 @@ defmodule Ash.Policy.Authorizer do
       {_filters, _require_check} ->
         case global_filters(authorizer) do
           nil ->
-            maybe_forbid_strict(authorizer)
+            maybe_forbid_strict(authorizer) |> IO.inspect()
 
           {filters, scenarios_without_global} ->
             with {:ok, %Ash.Filter{expression: filter}} <-
@@ -1498,47 +1504,83 @@ defmodule Ash.Policy.Authorizer do
   end
 
   defp strict_check_result(authorizer, opts \\ []) do
-    case Checker.strict_check_scenarios(authorizer) do
-      {:ok, true, authorizer} ->
-        {:authorized, authorizer}
+    case authorizer.policies do
+      [] ->
+        error =
+          Ash.Error.Forbidden.Policy.exception(
+            facts: authorizer.facts,
+            policies: authorizer.policies,
+            context_description: opts[:context_description],
+            for_fields: opts[:for_fields],
+            resource: Map.get(authorizer, :resource),
+            actor: Map.get(authorizer, :action),
+            action: Map.get(authorizer, :action),
+            scenarios: []
+          )
 
-      {:ok, none, authorizer} when none in [false, []] ->
-        {:error,
-         Ash.Error.Forbidden.Policy.exception(
-           facts: authorizer.facts,
-           policies: authorizer.policies,
-           context_description: opts[:context_description],
-           for_fields: opts[:for_fields],
-           resource: Map.get(authorizer, :resource),
-           actor: Map.get(authorizer, :action),
-           action: Map.get(authorizer, :action),
-           scenarios: []
-         )}
+        {:error, error}
 
-      {:ok, scenarios, authorizer} ->
-        case Checker.find_real_scenarios(scenarios, authorizer.facts) do
-          [] ->
-            maybe_strict_filter(authorizer, scenarios)
-
-          _real_scenarios ->
+      _ ->
+        case Checker.strict_check_scenarios(authorizer) do
+          {:ok, true, authorizer} ->
             {:authorized, authorizer}
+
+          {:ok, none, authorizer} when none in [false, []] ->
+            # we construct the error to log policy breakdown
+            error =
+              Ash.Error.Forbidden.Policy.exception(
+                facts: authorizer.facts,
+                policies: authorizer.policies,
+                context_description: opts[:context_description],
+                for_fields: opts[:for_fields],
+                resource: Map.get(authorizer, :resource),
+                actor: Map.get(authorizer, :action),
+                action: Map.get(authorizer, :action),
+                scenarios: []
+              )
+
+            if authorizer.action.type == :read and
+                 Ash.Policy.Info.statically_deniable_reads(authorizer.resource) ==
+                   :filter do
+              {:filter, authorizer, false}
+            else
+              {:error, error}
+            end
+
+          {:ok, scenarios, authorizer} ->
+            case Checker.find_real_scenarios(scenarios, authorizer.facts) do
+              [] ->
+                maybe_strict_filter(authorizer, scenarios)
+
+              _real_scenarios ->
+                {:authorized, authorizer}
+            end
+
+          {:error, authorizer, :unsatisfiable} ->
+            # we construct the error to log policy breakdown
+            error =
+              Ash.Error.Forbidden.Policy.exception(
+                facts: authorizer.facts,
+                policies: authorizer.policies,
+                context_description: opts[:context_description],
+                for_fields: opts[:for_fields],
+                resource: Map.get(authorizer, :resource),
+                actor: Map.get(authorizer, :action),
+                action: Map.get(authorizer, :action),
+                scenarios: []
+              )
+
+            if authorizer.action.type == :read and
+                 Ash.Policy.Info.statically_deniable_reads(authorizer.resource) ==
+                   :filter do
+              {:filter, authorizer, false}
+            else
+              {:error, error}
+            end
+
+          {:error, _authorizer, exception} ->
+            {:error, Ash.Error.to_ash_error(exception)}
         end
-
-      {:error, authorizer, :unsatisfiable} ->
-        {:error,
-         Ash.Error.Forbidden.Policy.exception(
-           facts: authorizer.facts,
-           policies: authorizer.policies,
-           context_description: opts[:context_description],
-           for_fields: opts[:for_fields],
-           resource: Map.get(authorizer, :resource),
-           action: Map.get(authorizer, :action),
-           actor: Map.get(authorizer, :action),
-           scenarios: []
-         )}
-
-      {:error, _authorizer, exception} ->
-        {:error, Ash.Error.to_ash_error(exception)}
     end
   end
 
