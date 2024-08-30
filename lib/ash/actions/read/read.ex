@@ -853,7 +853,7 @@ defmodule Ash.Actions.Read do
           |> case do
             {:error, {:error, error}} -> {:error, error}
             {:error, error} -> {:error, error}
-            {:ok, result} -> {:ok, result}
+            {:ok, result} -> result
           end
 
         query.timeout ->

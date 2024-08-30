@@ -31,6 +31,10 @@ defmodule Ash.Test.Actions.ReadTest do
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
+
+      read :in_transaction do
+        transaction? true
+      end
     end
 
     attributes do
@@ -287,6 +291,12 @@ defmodule Ash.Test.Actions.ReadTest do
       assert_raise ArgumentError, "Expected a keyword list in `Ash.read\/2`, got: \[1\]", fn ->
         Ash.read(Post, [1])
       end
+    end
+  end
+
+  describe "transaction true" do
+    test "with no records, returns an empty set" do
+      assert [] = Ash.read!(Author, action: :in_transaction)
     end
   end
 
