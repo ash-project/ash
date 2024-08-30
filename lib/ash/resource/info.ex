@@ -319,19 +319,12 @@ defmodule Ash.Resource.Info do
     end
   end
 
-  def relationship(resource, relationship_name) when is_binary(relationship_name) do
-    Extension.get_persisted(resource, :relationships_by_name)[relationship_name] ||
-      resource
-      |> relationships()
-      |> Enum.find(&(to_string(&1.name) == relationship_name))
+  def relationship(resource, relationship_name)
+      when is_binary(relationship_name) or is_atom(relationship_name) do
+    Extension.get_persisted(resource, :relationships_by_name)[relationship_name]
   end
 
-  def relationship(resource, relationship_name) do
-    Extension.get_persisted(resource, :relationships_by_name)[relationship_name] ||
-      resource
-      |> relationships()
-      |> Enum.find(&(&1.name == relationship_name))
-  end
+  def relationship(_, _), do: nil
 
   @doc "Returns all public relationships of a resource"
   @spec public_relationships(Spark.Dsl.t() | Ash.Resource.t()) ::
@@ -428,17 +421,11 @@ defmodule Ash.Resource.Info do
   @doc "Get a calculation by name"
   @spec calculation(Spark.Dsl.t() | Ash.Resource.t(), atom | String.t()) ::
           Ash.Resource.Calculation.t() | nil
-  def calculation(resource, name) when is_binary(name) do
-    resource
-    |> calculations()
-    |> Enum.find(&(to_string(&1.name) == name))
+  def calculation(resource, name) when is_binary(name) or is_atom(name) do
+    Extension.get_persisted(resource, :calculations_by_name)[name]
   end
 
-  def calculation(resource, name) do
-    resource
-    |> calculations()
-    |> Enum.find(&(&1.name == name))
-  end
+  def calculation(_, _), do: nil
 
   @doc "Returns all public calculations of a resource"
   @spec public_calculations(Spark.Dsl.t() | Ash.Resource.t()) ::
