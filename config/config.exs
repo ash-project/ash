@@ -20,6 +20,8 @@ end
 if Mix.env() == :test do
   config :logger, level: :warning
 
+  config :ash, :default_page_type, :keyset
+
   config :ash, :ash_domains, [
     Ash.Test.Flow.Domain,
     Ash.Test.Support.PolicyRbac.Domain,

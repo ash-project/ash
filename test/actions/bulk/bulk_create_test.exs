@@ -1210,10 +1210,9 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  load: [posts: offset_pagination_query]
                )
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%Post{title: "Post 1", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 2,
                more?: true
              } = author.posts
@@ -1294,10 +1293,9 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  load: [related_posts: offset_pagination_query]
                )
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%Post{title: "Related 1", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 2,
                more?: true
              } = post.related_posts
@@ -1352,10 +1350,9 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                  load: [related_tags: offset_pagination_query]
                )
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%MultitenantTag{name: "bar", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 2,
                more?: true
              } = tag.related_tags

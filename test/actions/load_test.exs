@@ -1648,8 +1648,8 @@ defmodule Ash.Test.Actions.LoadTest do
                |> Ash.Query.load(categories: paginated_categories)
                |> Ash.read!()
 
-      assert %Ash.Page.Offset{count: 3} = post1.categories
-      assert %Ash.Page.Offset{count: 6} = post2.categories
+      assert %Ash.Page.Keyset{count: 3} = post1.categories
+      assert %Ash.Page.Keyset{count: 6} = post2.categories
     end
 
     test "allows counting nested relationships" do
@@ -1686,13 +1686,13 @@ defmodule Ash.Test.Actions.LoadTest do
         |> Ash.Query.load(categories: paginated_categories)
         |> Ash.Query.page(limit: 1, count: true)
 
-      assert %Ash.Page.Offset{results: [author1], count: 2} =
+      assert %Ash.Page.Keyset{results: [author1], count: 2} =
                Author
                |> Ash.Query.sort(:name)
                |> Ash.Query.load(posts: paginated_posts)
                |> Ash.read!(page: [limit: 1, count: true])
 
-      assert %Ash.Page.Offset{count: 5, results: [%{categories: %Ash.Page.Offset{count: 3}}]} =
+      assert %Ash.Page.Keyset{count: 5, results: [%{categories: %Ash.Page.Keyset{count: 3}}]} =
                author1.posts
     end
 

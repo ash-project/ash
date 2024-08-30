@@ -1652,6 +1652,13 @@ defmodule Ash do
         []
       end
 
+    page_opts =
+      if query.page[:limit] do
+        Keyword.put(page_opts, :limit, query.page[:limit])
+      else
+        page_opts
+      end
+
     query
     |> Ash.Query.page(page_opts)
     |> read(opts)

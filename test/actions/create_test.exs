@@ -895,10 +895,9 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Ash.Changeset.load(posts: offset_pagination_query)
         |> Ash.create!()
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%Post{title: "Post 1", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 2,
                more?: true
              } = author.posts
@@ -944,10 +943,9 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Ash.Changeset.manage_relationship(:posts, [post2, post1], type: :append_and_remove)
         |> Ash.create!(load: [posts: offset_pagination_query])
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%Post{title: "Post 1", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 2,
                more?: true
              } = author.posts
@@ -1035,10 +1033,9 @@ defmodule Ash.Test.Actions.CreateTest do
         |> Ash.Changeset.load(related_posts: offset_pagination_query)
         |> Ash.create!()
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%Post{title: "Related 1", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 2,
                more?: true
              } = post.related_posts
@@ -1086,10 +1083,9 @@ defmodule Ash.Test.Actions.CreateTest do
         )
         |> Ash.create!(load: [related_posts: offset_pagination_query])
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%Post{title: "Related 1", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 2,
                more?: true
              } = post.related_posts
@@ -1140,10 +1136,9 @@ defmodule Ash.Test.Actions.CreateTest do
           load: [related_tags: offset_pagination_query, related_tags_join_assoc: []]
         )
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%MultitenantTag{name: "bar", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 2,
                more?: true
              } = tag.related_tags

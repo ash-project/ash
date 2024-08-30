@@ -899,8 +899,8 @@ defmodule Ash.Actions.PaginationTest do
       :ok
     end
 
-    test "it defaults to offset pagination" do
-      assert %Ash.Page.Offset{} = Ash.read!(User, action: :both_optional, page: [limit: 10])
+    test "it defaults to keyset pagination" do
+      assert %Ash.Page.Keyset{} = Ash.read!(User, action: :both_optional, page: [limit: 10])
     end
 
     test "it adds a keyset to the records, even though it returns an offset page" do

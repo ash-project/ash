@@ -555,10 +555,9 @@ defmodule Ash.Test.Actions.UpdateTest do
         |> Ash.Changeset.load(posts: offset_pagination_query)
         |> Ash.update!()
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%Post{title: "Post 1", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 2,
                more?: true
              } = author.posts
@@ -607,10 +606,9 @@ defmodule Ash.Test.Actions.UpdateTest do
       author =
         Ash.update!(author, %{name: "Updated Name 1"}, load: [posts: offset_pagination_query])
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%Post{title: "Post 1", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 2,
                more?: true
              } = author.posts
@@ -706,10 +704,9 @@ defmodule Ash.Test.Actions.UpdateTest do
         |> Ash.Changeset.load(related_posts: offset_pagination_query)
         |> Ash.update!()
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%Post{title: "Related 1", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 2,
                more?: true
              } = post.related_posts
@@ -759,10 +756,9 @@ defmodule Ash.Test.Actions.UpdateTest do
           load: [related_posts: offset_pagination_query]
         )
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%Post{title: "Related 1", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 2,
                more?: true
              } = post.related_posts
@@ -805,10 +801,9 @@ defmodule Ash.Test.Actions.UpdateTest do
           load: [related_tags: offset_pagination_query]
         )
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%MultitenantTag{name: "existing", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 1,
                more?: false
              } = tag.related_tags

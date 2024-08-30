@@ -320,10 +320,9 @@ defmodule Ash.Test.Actions.DestroyTest do
         |> Ash.Changeset.load(posts: offset_pagination_query)
         |> Ash.destroy!(return_destroyed?: true)
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%Post{title: "Post 1", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 2,
                more?: true
              } = author.posts
@@ -370,10 +369,9 @@ defmodule Ash.Test.Actions.DestroyTest do
         |> Ash.create!()
         |> Ash.destroy!(return_destroyed?: true, load: [posts: offset_pagination_query])
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%Post{title: "Post 1", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 2,
                more?: true
              } = author.posts
@@ -466,10 +464,9 @@ defmodule Ash.Test.Actions.DestroyTest do
         |> Ash.Changeset.load(related_posts: offset_pagination_query)
         |> Ash.destroy!(return_destroyed?: true)
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%Post{title: "Related 1", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 2,
                more?: true
              } = post.related_posts
@@ -520,10 +517,9 @@ defmodule Ash.Test.Actions.DestroyTest do
         |> Ash.create!()
         |> Ash.destroy!(return_destroyed?: true, load: [related_posts: offset_pagination_query])
 
-      assert %Ash.Page.Offset{
+      assert %Ash.Page.Keyset{
                results: [%Post{title: "Related 1", __metadata__: %{keyset: keyset}}],
                limit: 1,
-               offset: 0,
                count: 2,
                more?: true
              } = post.related_posts
