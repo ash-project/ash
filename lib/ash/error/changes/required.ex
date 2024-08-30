@@ -1,6 +1,5 @@
 defmodule Ash.Error.Changes.Required do
   @moduledoc "Used when an attribute or relationship is required"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:field, :type, :resource], class: :invalid
 

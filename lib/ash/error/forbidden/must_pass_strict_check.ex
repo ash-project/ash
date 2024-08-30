@@ -1,7 +1,5 @@
 defmodule Ash.Error.Forbidden.MustPassStrictCheck do
   @moduledoc "Used when unreachable code/conditions are reached in the framework"
-  use Ash.Error.Exception
-
   use Splode.Error, fields: [], class: :forbidden
 
   def message(_) do

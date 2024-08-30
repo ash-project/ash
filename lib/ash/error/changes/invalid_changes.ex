@@ -1,6 +1,5 @@
 defmodule Ash.Error.Changes.InvalidChanges do
   @moduledoc "Used when a change is provided that covers multiple attributes/relationships"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:fields, :message, :validation, :value], class: :invalid
 

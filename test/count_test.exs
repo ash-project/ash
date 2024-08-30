@@ -21,6 +21,14 @@ defmodule Ash.Test.CountTest do
           default_limit 5
         end
       end
+
+      read :non_countable do
+        pagination do
+          offset? true
+          default_limit 5
+          countable false
+        end
+      end
     end
 
     ets do
@@ -76,5 +84,15 @@ defmodule Ash.Test.CountTest do
              |> Ash.read(actor: %{id: "foo"}, page: [count: true])
 
     assert count == 10
+  end
+
+  test "trying to count a non-countable action is invalid" do
+    assert_raise Ash.Error.Invalid,
+                 ~r/cannot be counted while paginating/,
+                 fn ->
+                   Countable
+                   |> Ash.Query.for_read(:non_countable)
+                   |> Ash.read!(actor: %{id: "foo"}, page: [count: true])
+                 end
   end
 end

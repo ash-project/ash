@@ -1,7 +1,5 @@
 defmodule Ash.Error.Forbidden.Placeholder do
   @moduledoc "A placeholder exception that the user should never see"
-  use Ash.Error.Exception
-
   use Splode.Error, fields: [:authorizer], class: :forbidden
 
   def from_json(%{"authorizer" => authorizer}) do

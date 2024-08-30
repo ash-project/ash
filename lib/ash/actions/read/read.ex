@@ -2,7 +2,7 @@ defmodule Ash.Actions.Read do
   @moduledoc false
 
   alias Ash.Actions.Helpers
-  alias Ash.Error.Invalid.{LimitRequired, PaginationRequired}
+  alias Ash.Error.Invalid.{LimitRequired, NonCountableAction, PaginationRequired}
   alias Ash.Filter
 
   require Logger
@@ -2366,6 +2366,10 @@ defmodule Ash.Actions.Read do
         else
           {:ok, starting_query}
         end
+
+      page_opts[:count] == true && !action.pagination.countable ->
+        {:error,
+         NonCountableAction.exception(resource: starting_query.resource, action: action.name)}
 
       page_opts[:limit] ->
         page_opts =

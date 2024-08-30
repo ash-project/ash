@@ -1,7 +1,5 @@
 defmodule Ash.Error.Forbidden.InitialDataRequired do
-  @moduledoc "Used when "
-  use Ash.Error.Exception
-
+  @moduledoc "Used when initial data was not supplied when it was required"
   use Splode.Error, fields: [:source], class: :forbidden
 
   def message(%{source: source}) do

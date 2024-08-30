@@ -1,6 +1,5 @@
 defmodule Ash.Error.Forbidden.CannotFilterCreates do
   @moduledoc "Used when a create action would be filtered"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [], class: :forbidden
 

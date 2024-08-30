@@ -1,7 +1,5 @@
 defmodule Ash.Error.Framework.AssumptionFailed do
   @moduledoc "Used when unreachable code/conditions are reached in the framework"
-  use Ash.Error.Exception
-
   use Splode.Error, fields: [:message], class: :framework
 
   def message(%{message: message}) do

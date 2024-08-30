@@ -1,6 +1,5 @@
 defmodule Ash.Error.Changes.InvalidRelationship do
   @moduledoc "Used when an invalid value is provided for a relationship change"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:relationship, :message], class: :invalid
 

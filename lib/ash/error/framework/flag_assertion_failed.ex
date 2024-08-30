@@ -1,7 +1,5 @@
 defmodule Ash.Error.Framework.FlagAssertionFailed do
   @moduledoc "Used when unreachable code/conditions are reached in the framework"
-  use Ash.Error.Exception
-
   use Splode.Error, fields: [:flag, :heading], class: :framework
 
   def message(error) do

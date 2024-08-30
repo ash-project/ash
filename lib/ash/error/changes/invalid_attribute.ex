@@ -1,6 +1,5 @@
 defmodule Ash.Error.Changes.InvalidAttribute do
   @moduledoc "Used when an invalid value is provided for an attribute change"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:field, :message, :private_vars, :value], class: :invalid
 

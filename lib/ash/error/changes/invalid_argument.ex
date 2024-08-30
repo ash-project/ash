@@ -1,6 +1,5 @@
 defmodule Ash.Error.Changes.InvalidArgument do
   @moduledoc "Used when an invalid value is provided for an action argument"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:field, :message, :value], class: :invalid
 

@@ -1,6 +1,5 @@
 defmodule Ash.Error.Forbidden.DomainRequiresActor do
   @moduledoc "Used when a domain that has `require_actor? true` is provided no actor"
-  use Ash.Error.Exception
 
   use Splode.Error, fields: [:domain], class: :forbidden
 
