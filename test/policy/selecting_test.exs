@@ -132,7 +132,7 @@ defmodule Ash.Test.Policy.SelectingTest do
     refute is_nil(parent.owner_only_resource)
   end
 
-  test "guest is forbidden from seeing a forbidden field on the rel" do
+  test "guest is forbidden from querying if selecting a forbidden field on the rel" do
     parent =
       Parent
       |> Ash.Changeset.for_create(:create, %{owner_id: "owner", guest_id: "guest"})
@@ -144,13 +144,11 @@ defmodule Ash.Test.Policy.SelectingTest do
     |> Ash.Changeset.for_create(:create)
     |> Ash.create!(authorize?: false)
 
-    assert {:ok, parent} =
+    assert {:error, %Ash.Error.Forbidden{}} =
              Parent
              |> Ash.Query.for_read(:read)
              |> Ash.Query.load(:owner_only_resource)
              |> Ash.Query.limit(1)
              |> Ash.read_one(actor: %{id: "guest"})
-
-    assert %Ash.ForbiddenField{} = parent.owner_only_resource
   end
 end

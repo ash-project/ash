@@ -53,7 +53,9 @@ defmodule Ash.Test.Policy.RbacTest do
       |> Ash.Query.filter(id == ^org.id)
       |> Ash.Query.load(files: File |> Ash.Query.select([:forbidden]))
 
-    assert [%{files: []}] = Ash.read!(query, actor: user)
+    assert_raise Ash.Error.Forbidden, fn ->
+      Ash.read!(query, actor: user) == []
+    end
 
     # specify no select (everything is selected)
     query =
@@ -61,7 +63,9 @@ defmodule Ash.Test.Policy.RbacTest do
       |> Ash.Query.filter(id == ^org.id)
       |> Ash.Query.load([:files])
 
-    assert [%{files: []}] = Ash.read!(query, actor: user)
+    assert_raise Ash.Error.Forbidden, fn ->
+      Ash.read!(query, actor: user) == []
+    end
 
     # select only an allowed field
     query =

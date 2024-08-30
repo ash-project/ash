@@ -76,7 +76,7 @@ defmodule Ash.Test.Policy.Actions.BelongsToTest do
       })
       |> Ash.create!()
 
-    assert_raise Ash.Error.NotFound, fn ->
+    assert_raise Ash.Error.Forbidden, fn ->
       post
       |> Ash.Changeset.for_update(:update_with_reviewer, %{
         reviewer_id: reviewer.id

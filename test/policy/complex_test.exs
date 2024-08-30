@@ -90,8 +90,11 @@ defmodule Ash.Test.Policy.ComplexTest do
   end
 
   test "it applies policies from the domain", %{me: me} do
-    assert [] ==
-             Ash.read!(Post, actor: %{me | forbidden_by_domain: true})
+    assert_raise Ash.Error.Forbidden,
+                 ~r/authorize unless: actor.forbidden_by_domain == true | ✓ |/,
+                 fn ->
+                   Ash.read!(Post, actor: %{me | forbidden_by_domain: true})
+                 end
   end
 
   test "it properly limits on reads of comments", %{
@@ -184,7 +187,8 @@ defmodule Ash.Test.Policy.ComplexTest do
 
     me |> Ash.load!([:bio_text], authorize?: true, actor: me)
 
-    assert [] ==
-             Ash.read!(Bio, actor: me, authorize?: true)
+    assert_raise Ash.Error.Forbidden, fn ->
+      Ash.read!(Bio, actor: me, authorize?: true)
+    end
   end
 end

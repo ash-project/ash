@@ -25,10 +25,6 @@ defmodule Ash.Test.Support.PolicySimple.Post do
       forbid_if expr(^arg(:from_an_admin?))
       authorize_if always()
     end
-
-    policy action(:never_allowed) do
-      authorize_if false
-    end
   end
 
   ets do
@@ -69,8 +65,6 @@ defmodule Ash.Test.Support.PolicySimple.Post do
         end
       end
     end
-
-    read :never_allowed
   end
 
   relationships do
