@@ -1498,7 +1498,6 @@ defmodule Ash.Resource.Dsl do
     Ash.Resource.Verifiers.VerifyIdentityFields,
     Ash.Resource.Verifiers.EnsureAggregateFieldIsAttributeOrCalculation,
     Ash.Resource.Verifiers.ValidateRelationshipAttributes,
-    Ash.Resource.Verifiers.CountableActions,
     Ash.Resource.Verifiers.NoReservedFieldNames,
     Ash.Resource.Verifiers.ValidateAccept,
     Ash.Resource.Verifiers.ValidateActionTypesSupported,

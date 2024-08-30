@@ -1737,7 +1737,13 @@ defmodule Ash.Actions.Read do
           Ash.Page.Keyset.new(data, count, sort, original_query, more?, opts)
 
         action.pagination.offset? && action.pagination.keyset? ->
-          Ash.Page.Offset.new(data, count, original_query, more?, opts)
+          case Application.get_env(:ash, :default_page_type, :offset) do
+            :keyset ->
+              Ash.Page.Keyset.new(data, count, sort, original_query, more?, opts)
+
+            :offset ->
+              Ash.Page.Offset.new(data, count, original_query, more?, opts)
+          end
 
         action.pagination.offset? ->
           Ash.Page.Offset.new(data, count, original_query, more?, opts)

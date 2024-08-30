@@ -57,7 +57,13 @@ defmodule Mix.Tasks.Ash.Install do
       "config.exs",
       :ash,
       [:include_embedded_source_by_default?],
-      true
+      false
+    )
+    |> Igniter.Project.Config.configure(
+      "config.exs",
+      :ash,
+      [:default_page_type],
+      :keyset
     )
     |> then(fn igniter ->
       if "--example" in argv do
