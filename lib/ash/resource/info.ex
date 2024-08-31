@@ -321,7 +321,15 @@ defmodule Ash.Resource.Info do
 
   def relationship(resource, relationship_name)
       when is_binary(relationship_name) or is_atom(relationship_name) do
-    Extension.get_persisted(resource, :relationships_by_name)[relationship_name]
+    case Extension.get_persisted(resource, :relationships_by_name) do
+      value when is_map(value) ->
+        value[relationship_name]
+
+      nil ->
+        resource
+        |> relationships()
+        |> Enum.find(&(to_string(&1.name) == to_string(relationship_name)))
+    end
   end
 
   def relationship(_, _), do: nil
@@ -422,7 +430,15 @@ defmodule Ash.Resource.Info do
   @spec calculation(Spark.Dsl.t() | Ash.Resource.t(), atom | String.t()) ::
           Ash.Resource.Calculation.t() | nil
   def calculation(resource, name) when is_binary(name) or is_atom(name) do
-    Extension.get_persisted(resource, :calculations_by_name)[name]
+    case Extension.get_persisted(resource, :calculations_by_name) do
+      value when is_map(value) ->
+        value[name]
+
+      nil ->
+        resource
+        |> calculations()
+        |> Enum.find(&(to_string(&1.name) == to_string(name)))
+    end
   end
 
   def calculation(_, _), do: nil
@@ -708,18 +724,16 @@ defmodule Ash.Resource.Info do
   @doc "Get an attribute name from the resource"
   @spec attribute(Spark.Dsl.t() | Ash.Resource.t(), String.t() | atom) ::
           Ash.Resource.Attribute.t() | nil
-  def attribute(resource, name) when is_binary(name) do
-    Extension.get_persisted(resource, :attributes_by_name)[name] ||
-      resource
-      |> attributes()
-      |> Enum.find(&(to_string(&1.name) == name))
-  end
+  def attribute(resource, name) when is_binary(name) or is_atom(name) do
+    case Extension.get_persisted(resource, :attributes_by_name) do
+      value when is_map(value) ->
+        value[name]
 
-  def attribute(resource, name) do
-    Extension.get_persisted(resource, :attributes_by_name)[name] ||
-      resource
-      |> attributes()
-      |> Enum.find(&(&1.name == name))
+      nil ->
+        resource
+        |> attributes()
+        |> Enum.find(&(to_string(&1.name) == to_string(name)))
+    end
   end
 
   @doc "Returns all public attributes of a resource"
