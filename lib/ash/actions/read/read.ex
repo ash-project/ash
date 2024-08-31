@@ -1279,8 +1279,12 @@ defmodule Ash.Actions.Read do
       |> Map.update!(:calculations, fn calculations ->
         loaded_keys =
           calculations
-          |> Enum.filter(fn {_key, calc} ->
-            Ash.Resource.loaded?(initial_data, calc)
+          |> Enum.filter(fn
+            {{:__calc_dep__, _}, _} ->
+              false
+
+            {_key, calc} ->
+              Ash.Resource.loaded?(initial_data, calc)
           end)
           |> Enum.map(&elem(&1, 0))
 

@@ -508,10 +508,21 @@ defmodule Ash.Actions.Read.Calculations do
         if to_load do
           Enum.map(records, fn record ->
             case record do
-              %Ash.NotLoaded{} -> record
-              %Ash.ForbiddenField{} -> record
-              nil -> record
-              record -> Map.put(record, to_load, Map.get(record.calculations, source))
+              %Ash.NotLoaded{} ->
+                record
+
+              %Ash.ForbiddenField{} ->
+                record
+
+              nil ->
+                record
+
+              record ->
+                {new_val, calculations} = Map.pop(record.calculations, source)
+
+                record
+                |> Map.put(to_load, new_val)
+                |> Map.put(:calculations, calculations)
             end
           end)
         else
@@ -527,11 +538,11 @@ defmodule Ash.Actions.Read.Calculations do
                 record
 
               record ->
-                Map.update!(
-                  record,
-                  :calculations,
-                  &Map.put(&1, to_name, Map.get(record.calculations, source))
-                )
+                {new_val, calculations} = Map.pop(record.calculations, source)
+
+                record
+                |> Map.update!(:calculations, &Map.put(&1, to_name, new_val))
+                |> Map.put(:calculations, calculations)
             end
           end)
         end
@@ -540,10 +551,21 @@ defmodule Ash.Actions.Read.Calculations do
         if to_load do
           Enum.map(records, fn record ->
             case record do
-              %Ash.NotLoaded{} -> record
-              %Ash.ForbiddenField{} -> record
-              nil -> record
-              record -> Map.put(record, to_load, Map.get(record.aggregates, source))
+              %Ash.NotLoaded{} ->
+                record
+
+              %Ash.ForbiddenField{} ->
+                record
+
+              nil ->
+                record
+
+              record ->
+                {new_val, aggregates} = Map.pop(record.aggregates, source)
+
+                record
+                |> Map.put(to_load, new_val)
+                |> Map.put(:aggregates, aggregates)
             end
           end)
         else
@@ -559,18 +581,23 @@ defmodule Ash.Actions.Read.Calculations do
                 record
 
               record ->
-                Map.update!(
-                  record,
-                  :aggregates,
-                  &Map.put(&1, to_name, Map.get(record.calculations, source))
-                )
+                {new_val, aggregates} = Map.pop(record.aggregates, source)
+
+                record
+                |> Map.update!(:aggregates, &Map.put(&1, to_name, new_val))
+                |> Map.put(:aggregates, aggregates)
             end
           end)
         end
 
       {{path, {:rel, rel_name}, _, _}, source}, records ->
-        update_at_path(records, path, fn record ->
-          Map.put(record, rel_name, Map.get(record.calculations, source))
+        records
+        |> update_at_path(path, fn record ->
+          {new_val, calculations} = Map.pop(record.calculations, source)
+
+          record
+          |> Map.put(rel_name, new_val)
+          |> Map.put(:calculations, calculations)
         end)
     end)
   end
