@@ -86,9 +86,9 @@ defmodule Ash.Type.Enum do
   ```
   """
   @doc "The list of valid values (not all input types that match them)"
-  @callback values() :: [atom]
+  @callback values() :: [atom | String.t()]
   @doc "The description of the value, if existing"
-  @callback description(atom) :: String.t() | nil
+  @callback description(atom | String.t()) :: String.t() | nil
   @doc "true if a given term matches a value"
   @callback match?(term) :: boolean
   @doc "finds the valid value that matches a given input term"

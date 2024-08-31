@@ -18,10 +18,17 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   defmodule AddAfterToTitle do
     use Ash.Resource.Change
 
+    @impl Ash.Resource.Change
     def batch_change(changesets, _, _) do
       changesets
     end
 
+    @impl Ash.Resource.Change
+    def before_batch(changesets, _, _) do
+      changesets
+    end
+
+    @impl Ash.Resource.Change
     def after_batch(results, _, _) do
       Stream.map(results, fn {_changeset, result} ->
         {:ok, %{result | title: result.title <> "_after"}}
@@ -32,20 +39,23 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   defmodule AddBeforeToTitle do
     use Ash.Resource.Change
 
-    def change(changeset, _, %{bulk?: true}) do
-      changeset
-    end
-
+    @impl Ash.Resource.Change
     def batch_change(changesets, _, _) do
       changesets
     end
 
+    @impl Ash.Resource.Change
     def before_batch(changesets, _, _) do
       changesets
       |> Stream.map(fn changeset ->
         title = Ash.Changeset.get_attribute(changeset, :title)
         Ash.Changeset.force_change_attribute(changeset, :title, "before_" <> title)
       end)
+    end
+
+    @impl Ash.Resource.Change
+    def after_batch(_, _, _) do
+      :ok
     end
   end
 
@@ -503,6 +513,15 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                tenant: org.id,
                return_records?: true,
                sorted?: true,
+               authorize?: false
+             )
+
+    assert %{title: "before_title_after"} =
+             Ash.create!(
+               Post,
+               %{title: "title"},
+               action: :create_with_after_batch,
+               tenant: org.id,
                authorize?: false
              )
   end
