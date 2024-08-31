@@ -209,7 +209,16 @@ defmodule Ash.Resource.Change do
         if Module.defines?(__MODULE__, {:batch_change, 3}, :def) do
           @impl true
           def change(changeset, opts, context) do
-            if has_before_batch?() do
+            changeset
+            |> simulate_before_batch(opts, context)
+            |> Ash.Changeset.before_action(fn changeset ->
+              Enum.at(batch_change([changeset], opts, context), 0)
+            end)
+            |> simulate_after_batch(opts, context)
+          end
+
+          if Module.defines?(__MODULE__, {:before_batch, 3}, :def) do
+            defp simulate_before_batch(changeset, opts, context) do
               Ash.Changeset.before_action(changeset, fn changeset ->
                 {[changeset], notifications} =
                   Enum.split_with(
@@ -228,42 +237,42 @@ defmodule Ash.Resource.Change do
 
                 {changeset, %{notifications: notifications}}
               end)
-            else
+            end
+          else
+            defp simulate_before_batch(changeset, _opts, _context) do
               changeset
             end
-            |> Ash.Changeset.before_action(fn changeset ->
-              Enum.at(batch_change([changeset], opts, context), 0)
-            end)
-            |> then(fn changeset ->
-              if has_after_batch?() do
-                Ash.Changeset.after_action(changeset, fn changeset, result ->
-                  apply(__MODULE__, :after_batch, [[{changeset, result}], opts, context])
-                  |> then(fn
-                    :ok -> [{:ok, result}]
-                    other -> other
-                  end)
-                  |> Enum.reduce({[], [], []}, fn item, {records, errors, notifications} ->
-                    case item do
-                      {:ok, record} -> {[record | records], errors, notifications}
-                      {:error, error} -> {records, [error | errors], notifications}
-                      %Ash.Notifier.Notification{} -> {records, errors, [item | notifications]}
-                    end
-                  end)
-                  |> case do
-                    {[record], [], notifications} ->
-                      {:ok, record, notifications}
+          end
 
-                    {other, [], _notifications} ->
-                      raise "Invalid return value from `after_batch/3`. Expected exactly one record: #{inspect(other)}"
-
-                    {_, errors, _notifications} ->
-                      {:error, errors}
+          if Module.defines?(__MODULE__, {:after_batch, 3}, :def) do
+            defp simulate_after_batch(changeset, opts, context) do
+              Ash.Changeset.after_action(changeset, fn changeset, result ->
+                apply(__MODULE__, :after_batch, [[{changeset, result}], opts, context])
+                |> then(fn
+                  :ok -> [{:ok, result}]
+                  other -> other
+                end)
+                |> Enum.reduce({[], [], []}, fn item, {records, errors, notifications} ->
+                  case item do
+                    {:ok, record} -> {[record | records], errors, notifications}
+                    {:error, error} -> {records, [error | errors], notifications}
+                    %Ash.Notifier.Notification{} -> {records, errors, [item | notifications]}
                   end
                 end)
-              else
-                changeset
-              end
-            end)
+                |> case do
+                  {[record], [], notifications} ->
+                    {:ok, record, notifications}
+
+                  {other, [], _notifications} ->
+                    raise "Invalid return value from `after_batch/3`. Expected exactly one record: #{inspect(other)}"
+
+                  {_, errors, _notifications} ->
+                    {:error, errors}
+                end
+              end)
+            end
+          else
+            defp simulate_after_batch(changeset, _opts, _context), do: changeset
           end
 
           @impl true
