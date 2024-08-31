@@ -82,16 +82,29 @@ defmodule Ash.Policy.FilterCheck do
         actor
         |> filter(authorizer, opts)
         |> Ash.Expr.fill_template(actor, Ash.Policy.FilterCheck.args(authorizer), context)
-        |> try_eval(authorizer)
+        |> then(fn expr ->
+          if authorizer.for_fields || authorizer.action.type != :read ||
+               context[:private][:pre_flight_authorization?] do
+            try_eval(expr, authorizer)
+          else
+            case expr do
+              true ->
+                {:ok, true}
+
+              false ->
+                {:ok, false}
+
+              other ->
+                other
+            end
+          end
+        end)
         |> case do
-          {:ok, false} ->
-            {:ok, false}
+          {:ok, v} when v in [true, false] ->
+            {:ok, v}
 
           {:ok, nil} ->
             {:ok, false}
-
-          {:ok, _} ->
-            {:ok, true}
 
           _ ->
             {:ok, :unknown}

@@ -12,6 +12,7 @@ defmodule Ash.Policy.Authorizer do
     :real_scenarios,
     :check_scenarios,
     :subject,
+    :for_fields,
     context: %{},
     policies: [],
     facts: %{true => true, false => false},
@@ -1498,7 +1499,7 @@ defmodule Ash.Policy.Authorizer do
   end
 
   defp strict_check_result(authorizer, opts \\ []) do
-    case Checker.strict_check_scenarios(authorizer) do
+    case Checker.strict_check_scenarios(%{authorizer | for_fields: opts[:for_fields]}) do
       {:ok, true, authorizer} ->
         {:authorized, authorizer}
 
