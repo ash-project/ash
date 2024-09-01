@@ -845,21 +845,26 @@ defmodule Ash.Query do
   """
   def select(query, fields, opts \\ []) do
     query = new(query)
+    existing_fields = Ash.Resource.Info.attribute_names(query.resource)
     fields = MapSet.new(List.wrap(fields))
 
-    {fields, non_existent} =
-      MapSet.split_with(fields, &Ash.Resource.Info.attribute(query.resource, &1))
+    valid_fields = MapSet.intersection(fields, existing_fields)
 
     query =
-      Enum.reduce(non_existent, query, fn field, query ->
-        Ash.Query.add_error(
-          query,
-          Ash.Error.Query.NoSuchAttribute.exception(resource: query.resource, attribute: field)
-        )
-      end)
+      if MapSet.size(valid_fields) != MapSet.size(fields) do
+        MapSet.difference(fields, existing_fields)
+        |> Enum.reduce(query, fn field, query ->
+          Ash.Query.add_error(
+            query,
+            Ash.Error.Query.NoSuchAttribute.exception(resource: query.resource, attribute: field)
+          )
+        end)
+      else
+        query
+      end
 
     always_select =
-      fields
+      valid_fields
       |> MapSet.union(Ash.Resource.Info.always_selected_attribute_names(query.resource))
       |> MapSet.union(MapSet.new(Ash.Resource.Info.primary_key(query.resource)))
 

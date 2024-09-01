@@ -633,6 +633,11 @@ defmodule Ash.Resource.Info do
     Extension.get_entities(resource, [:attributes])
   end
 
+  @spec attribute_names(Spark.Dsl.t() | Ash.Resource.t()) :: MapSet.t()
+  def attribute_names(resource) do
+    Extension.get_persisted(resource, :attribute_names)
+  end
+
   @doc "Returns all attributes of a resource with lazy non-matching-defaults"
   @spec lazy_non_matching_default_attributes(
           Spark.Dsl.t() | Ash.Resource.t(),

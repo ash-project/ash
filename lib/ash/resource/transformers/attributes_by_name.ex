@@ -20,7 +20,7 @@ defmodule Ash.Resource.Transformers.AttributesByName do
         |> Map.put(to_string(name), attr)
       end)
 
-    attribute_names = Enum.map(attributes, & &1.name)
+    attribute_names = Enum.map(attributes, & &1.name) |> MapSet.new()
 
     create_attributes_with_static_defaults =
       attributes
