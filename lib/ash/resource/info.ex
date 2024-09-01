@@ -755,6 +755,11 @@ defmodule Ash.Resource.Info do
     end
   end
 
+  @spec always_selected_attribute_names(Spark.Dsl.t() | Ash.Resource.t()) :: MapSet.t()
+  def always_selected_attribute_names(resource) do
+    Extension.get_persisted(resource, :always_selected_attribute_names)
+  end
+
   @doc "Returns all attributes, aggregates, calculations and relationships of a resource"
   @spec fields(
           Spark.Dsl.t() | Ash.Resource.t(),

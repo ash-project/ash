@@ -845,10 +845,10 @@ defmodule Ash.Query do
   """
   def select(query, fields, opts \\ []) do
     query = new(query)
-    fields = List.wrap(fields)
+    fields = MapSet.new(List.wrap(fields))
 
     {fields, non_existent} =
-      Enum.split_with(fields, &Ash.Resource.Info.attribute(query.resource, &1))
+      MapSet.split_with(fields, &Ash.Resource.Info.attribute(query.resource, &1))
 
     query =
       Enum.reduce(non_existent, query, fn field, query ->
@@ -859,28 +859,18 @@ defmodule Ash.Query do
       end)
 
     always_select =
-      query.resource
-      |> Ash.Resource.Info.attributes()
-      |> Enum.filter(& &1.always_select?)
-      |> Enum.map(& &1.name)
+      fields
+      |> MapSet.union(Ash.Resource.Info.always_selected_attribute_names(query.resource))
+      |> MapSet.union(MapSet.new(Ash.Resource.Info.primary_key(query.resource)))
 
-    if opts[:replace?] do
-      %{
-        query
-        | select:
-            Enum.uniq(fields ++ Ash.Resource.Info.primary_key(query.resource) ++ always_select)
-      }
-    else
-      %{
-        query
-        | select:
-            Enum.uniq(
-              fields ++
-                (query.select || []) ++
-                Ash.Resource.Info.primary_key(query.resource) ++ always_select
-            )
-      }
-    end
+    new_select =
+      if opts[:replace?] do
+        always_select
+      else
+        MapSet.union(MapSet.new(query.select || []), always_select)
+      end
+
+    %{query | select: MapSet.to_list(new_select)}
   end
 
   @doc """
