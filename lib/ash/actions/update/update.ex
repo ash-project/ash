@@ -284,7 +284,8 @@ defmodule Ash.Actions.Update do
         changeset.action,
         changeset,
         instructions,
-        opts[:return_notifications?]
+        opts[:return_notifications?],
+        opts[:return_destroyed?]
       )
     end
     |> case do
@@ -351,10 +352,11 @@ defmodule Ash.Actions.Update do
          action,
          changeset,
          instructions,
-         return_notifications?
+         return_notifications?,
+         return_destroyed?
        ) do
     if return_notifications? do
-      if changeset.action_type == :destroy do
+      if changeset.action_type == :destroy && !return_destroyed? do
         {:ok, Map.get(instructions, :notifications, [])}
       else
         {:ok, result, Map.get(instructions, :notifications, [])}
@@ -362,7 +364,7 @@ defmodule Ash.Actions.Update do
     else
       Helpers.warn_missed!(resource, action, instructions)
 
-      if changeset.action_type == :destroy do
+      if changeset.action_type == :destroy && !return_destroyed? do
         :ok
       else
         {:ok, result}
