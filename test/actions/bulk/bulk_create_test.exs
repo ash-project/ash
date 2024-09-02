@@ -2,6 +2,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
+  require Ash.Expr
+
   import Ash.Expr, only: [expr: 1]
   import ExUnit.CaptureLog
 
@@ -631,6 +633,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                Post,
                :create,
                tenant: org.id,
+               return_errors?: true,
                return_records?: true,
                sorted?: true,
                authorize?: false
@@ -650,6 +653,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                ],
                Post,
                :create,
+               return_errors?: true,
                return_records?: true,
                tenant: org.id,
                upsert?: true,
