@@ -18,6 +18,7 @@ defmodule Ash.Error.Forbidden.Policy do
       context_description: nil,
       policies: [],
       resource: nil,
+      domain: nil,
       action: nil,
       changeset_doesnt_match_filter: false
     ],
@@ -90,6 +91,8 @@ defmodule Ash.Error.Forbidden.Policy do
                 filter,
                 policies,
                 Keyword.merge(opts,
+                  domain: error.domain,
+                  resource: error.resource,
                   must_pass_strict_check?: must_pass_strict_check?,
                   context_description: error.context_description,
                   for_fields: error.for_fields
@@ -156,16 +159,48 @@ defmodule Ash.Error.Forbidden.Policy do
       if Keyword.get(opts, :help_text?, true) do
         ["Policy Breakdown#{policy_context_description}", @help_text]
       else
-        "Policy Breakdown#{policy_context_description}"
+        ["Policy Breakdown#{policy_context_description}"]
       end
 
     policy_explanation =
       policies
       |> Kernel.||([])
       |> Enum.filter(&relevant?(&1, facts))
-      |> Enum.map(&explain_policy(&1, facts, opts[:success?] || false))
-      |> Enum.intersperse("\n")
-      |> title(policy_breakdown_title, false)
+      |> case do
+        [] ->
+          # If no policies are relevant, then we treat them all as relevant
+          title =
+            case policies do
+              [] ->
+                if opts[:domain] && opts[:resource] do
+                  policy_breakdown_title ++
+                    [
+                      "No policies defined on `#{inspect(opts[:domain])}` or `#{inspect(opts[:resource])}`.\nFor safety, at least one policy must apply to all requests.\n"
+                    ]
+                else
+                  policy_breakdown_title ++
+                    [
+                      "No policies defined.\n"
+                    ]
+                end
+
+              _ ->
+                [
+                  "No policy conditions applied to this request.\nFor safety, at least one policy must apply to all requests.\n"
+                ]
+            end
+
+          {policies, title}
+
+        relevant ->
+          {relevant, policy_breakdown_title}
+      end
+      |> then(fn {policies, title} ->
+        policies
+        |> Enum.map(&explain_policy(&1, facts, opts[:success?] || false))
+        |> Enum.intersperse("\n")
+        |> title(title, false)
+      end)
 
     filter =
       if filter do
@@ -217,7 +252,6 @@ defmodule Ash.Error.Forbidden.Policy do
   end
 
   defp title(other, title, semicolon \\ true)
-  defp title([], _, _), do: []
   defp title(other, title, true), do: [title, ":\n", other]
   defp title(other, title, false), do: [title, "\n", other]
 
@@ -275,59 +309,52 @@ defmodule Ash.Error.Forbidden.Policy do
   defp describe_conditions(condition, facts) do
     condition
     |> List.wrap()
-    |> case do
-      [{Ash.Policy.Check.Static, opts}] ->
-        {[], opts[:result]}
+    |> Enum.reduce({[], true}, fn condition, {conditions, status} ->
+      {mod, opts} =
+        case condition do
+          %{module: module, opts: opts} ->
+            {module, opts}
 
-      conditions ->
-        conditions
-        |> Enum.reduce({[], true}, fn condition, {conditions, status} ->
-          {mod, opts} =
-            case condition do
-              %{module: module, opts: opts} ->
-                {module, opts}
+          {module, opts} ->
+            {module, opts}
+        end
 
-              {module, opts} ->
-                {module, opts}
-            end
+      new_status =
+        if status in [false, :unknown] do
+          false
+        else
+          case Policy.fetch_fact(facts, {mod, opts}) do
+            {:ok, true} ->
+              true
 
-          new_status =
-            if status in [false, :unknown] do
+            {:ok, false} ->
               false
-            else
-              case Policy.fetch_fact(facts, {mod, opts}) do
-                {:ok, true} ->
-                  true
 
-                {:ok, false} ->
-                  false
+            _ ->
+              :unknown
+          end
+        end
 
-                _ ->
-                  :unknown
-              end
-            end
+      {[["condition: ", mod.describe(opts)] | conditions], new_status}
+    end)
+    |> then(fn {conditions, status} ->
+      conditions =
+        conditions
+        |> Enum.reverse()
+        |> case do
+          [] ->
+            []
 
-          {[["condition: ", mod.describe(opts)] | conditions], new_status}
-        end)
-        |> then(fn {conditions, status} ->
-          conditions =
-            conditions
-            |> Enum.reverse()
-            |> case do
-              [] ->
-                []
+          conditions ->
+            [
+              conditions
+              |> Enum.intersperse("\n"),
+              "\n"
+            ]
+        end
 
-              conditions ->
-                [
-                  conditions
-                  |> Enum.intersperse("\n"),
-                  "\n"
-                ]
-            end
-
-          {conditions, status}
-        end)
-    end
+      {conditions, status}
+    end)
   end
 
   defp describe_checks(checks, facts, success?) do

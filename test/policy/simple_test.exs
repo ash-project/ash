@@ -15,12 +15,70 @@ defmodule Ash.Test.Policy.SimpleTest do
     User
   }
 
+  defmodule ResourceWithNoPolicies do
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      authorizers: [Ash.Policy.Authorizer]
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    actions do
+      defaults [:create, :read]
+    end
+  end
+
+  defmodule ResourceWithAPolicyThatDoesntApply do
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      authorizers: [Ash.Policy.Authorizer]
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    actions do
+      defaults [:create, :read]
+    end
+
+    policies do
+      policy never() do
+        authorize_if always()
+      end
+    end
+  end
+
   setup do
+    Application.put_env(:ash, :policies, show_policy_breakdowns?: true)
+
+    on_exit(fn ->
+      Application.delete_env(:ash, :policies)
+    end)
+
     [
       user: Ash.create!(Ash.Changeset.for_create(User, :create), authorize?: false),
       admin:
         Ash.create!(Ash.Changeset.for_create(User, :create, %{admin: true}), authorize?: false)
     ]
+  end
+
+  test "breakdowns for resources with no policies explain the error" do
+    assert_raise Ash.Error.Forbidden,
+                 ~r/No policies defined on `Ash.Test.Domain` or `Ash.Test.Policy.SimpleTest.ResourceWithNoPolicies`/,
+                 fn ->
+                   ResourceWithNoPolicies
+                   |> Ash.read!()
+                 end
+  end
+
+  test "breakdowns for action where no policies that apply explain the error" do
+    assert_raise Ash.Error.Forbidden,
+                 ~r/No policy conditions applied to this request/,
+                 fn ->
+                   ResourceWithAPolicyThatDoesntApply
+                   |> Ash.read!()
+                 end
   end
 
   test "bypass with condition does not apply subsequent filters", %{admin: admin, user: user} do

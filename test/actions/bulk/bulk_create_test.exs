@@ -4,6 +4,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
   import Ash.Expr, only: [expr: 1]
   import ExUnit.CaptureLog
+  require Ash.Expr
 
   alias Ash.Test.Domain, as: Domain
 
@@ -633,6 +634,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                tenant: org.id,
                return_records?: true,
                sorted?: true,
+               return_errors?: true,
                authorize?: false
              )
 
@@ -653,6 +655,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                return_records?: true,
                tenant: org.id,
                upsert?: true,
+               return_errors?: true,
                upsert_identity: :unique_title,
                upsert_fields: [:title2],
                upsert_condition: expr(upsert_conflict(:title) != "title3"),

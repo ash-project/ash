@@ -486,6 +486,7 @@ defmodule Ash.Policy.Authorizer do
       resource: Map.get(state, :resource),
       action: Map.get(state, :action),
       actor: Map.get(state, :actor),
+      domain: Map.get(state, :domain),
       changeset_doesnt_match_filter: true,
       filter: filter
     )
@@ -495,6 +496,7 @@ defmodule Ash.Policy.Authorizer do
     Ash.Error.Forbidden.Policy.exception(
       scenarios: Map.get(state, :scenarios),
       facts: Map.get(state, :facts),
+      domain: Map.get(state, :domain),
       policies: Map.get(state, :policies),
       resource: Map.get(state, :resource),
       action: Map.get(state, :action),
@@ -506,6 +508,7 @@ defmodule Ash.Policy.Authorizer do
   def exception(_, state) do
     Ash.Error.Forbidden.Policy.exception(
       scenarios: Map.get(state, :scenarios),
+      domain: Map.get(state, :domain),
       facts: Map.get(state, :facts),
       policies: Map.get(state, :policies),
       resource: Map.get(state, :resource),
@@ -1507,6 +1510,7 @@ defmodule Ash.Policy.Authorizer do
         {:error,
          Ash.Error.Forbidden.Policy.exception(
            facts: authorizer.facts,
+           domain: Map.get(authorizer, :domain),
            policies: authorizer.policies,
            context_description: opts[:context_description],
            for_fields: opts[:for_fields],
@@ -1529,6 +1533,7 @@ defmodule Ash.Policy.Authorizer do
         {:error,
          Ash.Error.Forbidden.Policy.exception(
            facts: authorizer.facts,
+           domain: Map.get(authorizer, :domain),
            policies: authorizer.policies,
            context_description: opts[:context_description],
            for_fields: opts[:for_fields],

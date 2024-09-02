@@ -432,7 +432,13 @@ config :ash, :policies, private_fields: :include
 
 Policy breakdowns can be fetched on demand for a given forbidden error (either an `Ash.Error.Forbidden` that contains one ore more `Ash.Error.Forbidden.Policy` errors, or an `Ash.Error.Forbidden.Policy` error itself), via `Ash.Error.Forbidden.Policy.report/2`.
 
-Here is an example policy breakdown from tests:
+Additionally, you can request that they be provided in the error message for all raised forbidden errors (without the help text), by setting
+
+```elixir
+config :ash, :policies, show_policy_breakdowns?: true
+```
+
+Here is an example policy breakdown from tests.
 
 ```text
 Policy Breakdown
