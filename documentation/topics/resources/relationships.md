@@ -328,7 +328,7 @@ defmodule Helpdesk.Support.Ticket.Relationships.TicketsAboveThreshold do
   use Ash.Resource.ManualRelationship
   require Ash.Query
 
-  def load(records, _opts, %{query: query, actor: actor, authorize?: authorize?}) do
+  def load(records, _opts, %{query: query} = context) do
     # Use existing records to limit results
     rep_ids = Enum.map(records, & &1.id)
 
@@ -336,7 +336,7 @@ defmodule Helpdesk.Support.Ticket.Relationships.TicketsAboveThreshold do
      query
      |> Ash.Query.filter(representative_id in ^rep_ids)
      |> Ash.Query.filter(priority > representative.priority_threshold)
-     |> Helpdesk.Support.read!(actor: actor, authorize?: authorize?)
+     |> Ash.read!(Ash.Context.to_opts(context))
      # Return the items grouped by the primary key of the source, i.e representative.id => [...tickets above threshold]
      |> Enum.group_by(& &1.representative_id)}
   end
