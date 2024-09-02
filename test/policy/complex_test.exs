@@ -187,8 +187,6 @@ defmodule Ash.Test.Policy.ComplexTest do
 
     me |> Ash.load!([:bio_text], authorize?: true, actor: me)
 
-    assert_raise Ash.Error.Forbidden, fn ->
-      Ash.read!(Bio, actor: me, authorize?: true)
-    end
+    assert [] = Ash.read!(Bio, actor: me, authorize?: true)
   end
 end

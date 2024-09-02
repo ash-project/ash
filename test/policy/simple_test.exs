@@ -49,6 +49,31 @@ defmodule Ash.Test.Policy.SimpleTest do
     end
   end
 
+  defmodule ResourceWithAStrictReadPolicy do
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      authorizers: [Ash.Policy.Authorizer]
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    actions do
+      defaults [:create, :read]
+    end
+
+    policies do
+      policy action_type(:read) do
+        access_type :strict
+        authorize_if actor_attribute_equals(:admin, true)
+      end
+
+      policy action_type(:read) do
+        authorize_if expr(id == ^actor(:id))
+      end
+    end
+  end
+
   setup do
     Application.put_env(:ash, :policies, show_policy_breakdowns?: true)
 
@@ -79,6 +104,27 @@ defmodule Ash.Test.Policy.SimpleTest do
                    ResourceWithAPolicyThatDoesntApply
                    |> Ash.read!()
                  end
+  end
+
+  test "strict read policies do not result in a filter" do
+    thing =
+      ResourceWithAStrictReadPolicy
+      |> Ash.create!(authorize?: false)
+
+    actor = %{id: thing, admin: false}
+
+    assert_raise Ash.Error.Forbidden, fn ->
+      ResourceWithAStrictReadPolicy
+      |> Ash.Query.new()
+      |> Ash.DataLayer.Simple.set_data([thing])
+      |> Ash.read!(actor: actor)
+    end
+
+    assert [] =
+             ResourceWithAStrictReadPolicy
+             |> Ash.Query.new()
+             |> Ash.DataLayer.Simple.set_data([%{thing | id: Ash.UUID.generate()}])
+             |> Ash.read!(actor: %{admin: true})
   end
 
   test "bypass with condition does not apply subsequent filters", %{admin: admin, user: user} do

@@ -68,6 +68,8 @@ defmodule Ash.Policy.Check.RelatingToActor do
     end
   end
 
+  def filter(_, _, _), do: false
+
   defp take_keys(input, primary_key) do
     Enum.map(primary_key, fn key ->
       Map.get(input, key) || Map.get(input, to_string(key))

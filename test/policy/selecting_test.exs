@@ -144,7 +144,7 @@ defmodule Ash.Test.Policy.SelectingTest do
     |> Ash.Changeset.for_create(:create)
     |> Ash.create!(authorize?: false)
 
-    assert {:error, %Ash.Error.Forbidden{}} =
+    assert {:ok, %{owner_only_resource: nil}} =
              Parent
              |> Ash.Query.for_read(:read)
              |> Ash.Query.load(:owner_only_resource)

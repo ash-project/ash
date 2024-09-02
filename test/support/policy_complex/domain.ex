@@ -13,6 +13,7 @@ defmodule Ash.Test.Support.PolicyComplex.Domain do
 
   policies do
     policy always() do
+      access_type :strict
       authorize_unless actor_attribute_equals(:forbidden_by_domain, true)
     end
   end

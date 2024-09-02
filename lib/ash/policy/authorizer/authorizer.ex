@@ -1530,18 +1530,22 @@ defmodule Ash.Policy.Authorizer do
         end
 
       {:error, authorizer, :unsatisfiable} ->
-        {:error,
-         Ash.Error.Forbidden.Policy.exception(
-           facts: authorizer.facts,
-           domain: Map.get(authorizer, :domain),
-           policies: authorizer.policies,
-           context_description: opts[:context_description],
-           for_fields: opts[:for_fields],
-           resource: Map.get(authorizer, :resource),
-           action: Map.get(authorizer, :action),
-           actor: Map.get(authorizer, :action),
-           scenarios: []
-         )}
+        if forbidden_due_to_strict_policy?(authorizer) do
+          {:error,
+           Ash.Error.Forbidden.Policy.exception(
+             facts: authorizer.facts,
+             domain: Map.get(authorizer, :domain),
+             policies: authorizer.policies,
+             context_description: opts[:context_description],
+             for_fields: opts[:for_fields],
+             resource: Map.get(authorizer, :resource),
+             action: Map.get(authorizer, :action),
+             actor: Map.get(authorizer, :action),
+             scenarios: []
+           )}
+        else
+          {:filter, authorizer, false}
+        end
 
       {:error, _authorizer, exception} ->
         {:error, Ash.Error.to_ash_error(exception)}
@@ -1550,6 +1554,60 @@ defmodule Ash.Policy.Authorizer do
 
   defp maybe_strict_filter(authorizer, scenarios) do
     strict_filter(%{authorizer | scenarios: scenarios})
+  end
+
+  defp forbidden_due_to_strict_policy?(authorizer) do
+    if authorizer.for_fields || authorizer.action.type != :read do
+      true
+    else
+      authorizer.policies
+      |> Enum.any?(fn policy ->
+        policy.access_type == :strict and
+          Enum.all?(policy.condition || [], fn {check_module, check_opts} ->
+            Policy.fetch_fact(authorizer.facts, {check_module, check_opts}) == {:ok, true}
+          end) and
+          policy_fails_statically?(authorizer, policy)
+      end)
+    end
+  end
+
+  defp policy_fails_statically?(authorizer, policy) do
+    Enum.reduce_while(policy.policies, :forbidden, fn check, status ->
+      case check.type do
+        :authorize_if ->
+          if Policy.fetch_fact(authorizer.facts, {check.check_module, check.check_opts}) ==
+               {:ok, true} do
+            {:halt, :authorized}
+          else
+            {:cont, status}
+          end
+
+        :forbid_if ->
+          if Policy.fetch_fact(authorizer.facts, {check.check_module, check.check_opts}) ==
+               {:ok, true} do
+            {:halt, :forbidden}
+          else
+            {:cont, status}
+          end
+
+        :authorize_unless ->
+          if Policy.fetch_fact(authorizer.facts, {check.check_module, check.check_opts}) ==
+               {:ok, true} do
+            {:cont, status}
+          else
+            {:halt, :authorized}
+          end
+
+        :forbid_unless ->
+          if Policy.fetch_fact(authorizer.facts, {check.check_module, check.check_opts}) ==
+               {:ok, true} do
+            {:cont, status}
+          else
+            {:halt, :forbidden}
+          end
+      end
+    end)
+    |> Kernel.==(:forbidden)
   end
 
   defp get_policies(authorizer) do

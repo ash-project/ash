@@ -172,6 +172,41 @@ Policy groups can _not_ contain bypass policies. The purpose of policy groups is
 about the behavior of policies. When you see a policy group, you know that no policies inside that group will
 interact with policies in other policy groups, unless they also apply.
 
+### Access Type
+
+Policies have an "access type" that determines when they are applied. By default, `access_type` is `:filter`.
+When applied to a read action, `:filter` will result in a filtered read. For other action types, the filter will be evaluated
+to determine if a forbidden error should be raised.
+
+There are three access types, and they determine the _latest point in the process_ that any check contained by a policy can be applied.
+
+- `strict` - All checks must be applied statically. These result in a forbidden error if they are not met.
+- `filter` - All checks must be applied either statically or as a filter. These result in a filtered read if they are not met, and a
+  forbidden error for other action types.
+- `runtime` - This allows checks to be run _after_ the data has been read. It is exceedingly rare that you would need to use this access type.
+
+For example, given this policy:
+
+```elixir
+policy action(:read_hidden) do
+  authorize_if expr(actor.is_admin == true)
+end
+```
+
+A non-admin using the `:read_hidden` action would see an empty list of records, rather than a forbidden error.
+
+However, with this policy
+
+```elixir
+policy action(:read_hidden) do
+  access_type :strict
+
+  authorize_if expr(actor.is_admin == true)
+end
+```
+
+A non-admin using the `:read_hidden` action would see a forbidden error.
+
 ## Checks
 
 Checks evaluate from top to bottom within a policy. A check can produce one of three results, the same that a policy can produce. While checks are not necessarily evaluated in order, they _logically apply_ in that order, so you may as well think of it in that way. It can be thought of as a step-through algorithm.
