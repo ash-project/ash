@@ -110,7 +110,7 @@ defmodule Tweet do
       description "If a tweet is hidden, only the author can read it. Otherwise, anyone can."
       # first check this. If true, then this policy passes
       authorize_if relates_to_actor_via(:user)
-      # the check this. If false, then this policy fails
+      # then check this. If false, then this policy fails
       forbid_if expr(hidden? == true)
       # otherwise, this policy passes
       authorize_if always()
