@@ -1148,6 +1148,11 @@ defmodule Ash.Filter do
   end
 
   def map(expression, func) do
+    if expression != func.(expression) do
+      IO.inspect(expression, label: "expression")
+      IO.inspect(func.(expression), label: "func.(expression)")
+    end
+
     do_map(func.(expression), func)
   end
 
