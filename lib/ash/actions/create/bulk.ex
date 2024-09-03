@@ -297,12 +297,6 @@ defmodule Ash.Actions.Create.Bulk do
   end
 
   defp base_changeset(resource, domain, opts, action) do
-    upsert_condition =
-      case opts[:upsert_condition] do
-        nil -> action && action.upsert_condition
-        other -> other
-      end
-
     resource
     |> Ash.Changeset.new()
     |> Map.put(:domain, domain)
@@ -314,17 +308,12 @@ defmodule Ash.Actions.Create.Bulk do
           Ash.Changeset.expand_upsert_fields(
             opts[:upsert_fields] || action.upsert_fields,
             resource
-          ),
-        upsert_condition: upsert_condition
+          )
       }
     })
     |> Ash.Actions.Helpers.add_context(opts)
     |> Ash.Changeset.set_context(opts[:context] || %{})
     |> Ash.Changeset.prepare_changeset_for_action(action, opts)
-    |> then(fn
-      changeset when upsert_condition != nil -> Ash.Changeset.filter(changeset, upsert_condition)
-      changeset -> changeset
-    end)
   end
 
   defp lazy_matching_default_values(resource) do
