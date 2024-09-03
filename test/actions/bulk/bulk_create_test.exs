@@ -775,7 +775,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     assert product.price.max == 456
     assert product.price.rrp == 789
 
-    still_the_same_product =
+    result =
       Ash.bulk_create(
         [
           %{
@@ -797,13 +797,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
         # But the upsert_condition says "no!".
         upsert_condition: expr(false)
       )
-      |> then(fn result -> List.first(result.records) end)
 
-    assert still_the_same_product.gtin == product.gtin
-    assert still_the_same_product.title == product.title
-    assert still_the_same_product.price.min == product.price.min
-    assert still_the_same_product.price.max == product.price.max
-    assert still_the_same_product.price.rrp == product.price.rrp
+    assert result.records == []
   end
 
   test "can upsert with :replace" do
