@@ -518,11 +518,7 @@ defmodule Ash.Actions.Read.Calculations do
                 record
 
               record ->
-                {new_val, calculations} = Map.pop(record.calculations, source)
-
-                record
-                |> Map.put(to_load, new_val)
-                |> Map.put(:calculations, calculations)
+                Map.put(record, to_load, Map.get(record.calculations, source))
             end
           end)
         else
@@ -538,11 +534,11 @@ defmodule Ash.Actions.Read.Calculations do
                 record
 
               record ->
-                {new_val, calculations} = Map.pop(record.calculations, source)
-
-                record
-                |> Map.update!(:calculations, &Map.put(&1, to_name, new_val))
-                |> Map.put(:calculations, calculations)
+                Map.update!(
+                  record,
+                  :calculations,
+                  &Map.put(&1, to_name, Map.get(record.calculations, source))
+                )
             end
           end)
         end
@@ -561,11 +557,7 @@ defmodule Ash.Actions.Read.Calculations do
                 record
 
               record ->
-                {new_val, aggregates} = Map.pop(record.aggregates, source)
-
-                record
-                |> Map.put(to_load, new_val)
-                |> Map.put(:aggregates, aggregates)
+                Map.put(record, to_load, Map.get(record.aggregates, source))
             end
           end)
         else
@@ -581,11 +573,11 @@ defmodule Ash.Actions.Read.Calculations do
                 record
 
               record ->
-                {new_val, aggregates} = Map.pop(record.aggregates, source)
-
-                record
-                |> Map.update!(:aggregates, &Map.put(&1, to_name, new_val))
-                |> Map.put(:aggregates, aggregates)
+                Map.update!(
+                  record,
+                  :aggregates,
+                  &Map.put(&1, to_name, Map.get(record.aggregates, source))
+                )
             end
           end)
         end
@@ -593,11 +585,7 @@ defmodule Ash.Actions.Read.Calculations do
       {{path, {:rel, rel_name}, _, _}, source}, records ->
         records
         |> update_at_path(path, fn record ->
-          {new_val, calculations} = Map.pop(record.calculations, source)
-
-          record
-          |> Map.put(rel_name, new_val)
-          |> Map.put(:calculations, calculations)
+          Map.put(record, rel_name, Map.get(record.calculations, source))
         end)
     end)
   end
