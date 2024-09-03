@@ -3395,6 +3395,12 @@ defmodule Ash.Filter do
     do_hydrate_refs(value, context)
   end
 
+  def do_hydrate_refs(%__MODULE__{expression: expression} = filter, context) do
+    with {:ok, expr} <- do_hydrate_refs(expression, context) do
+      {:ok, %{filter | expression: expr}}
+    end
+  end
+
   def do_hydrate_refs({:_ref, value}, context) do
     do_hydrate_refs(
       %Ash.Query.Ref{

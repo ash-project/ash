@@ -1019,10 +1019,20 @@ defmodule Ash.DataLayer.Ets do
          conflicting_upsert_values \\ nil
        )
 
+  defp filter_matches([], _, _domain, _tenant, _parent, _conflicting_upsert_values),
+    do: {:ok, []}
+
   defp filter_matches(records, nil, _domain, _tenant, _parent, _conflicting_upsert_values),
     do: {:ok, records}
 
-  defp filter_matches(records, filter, domain, tenant, parent, conflicting_upsert_values) do
+  defp filter_matches(
+         records,
+         filter,
+         domain,
+         tenant,
+         parent,
+         conflicting_upsert_values
+       ) do
     Ash.Filter.Runtime.filter_matches(domain, records, filter,
       parent: parent,
       tenant: tenant,
@@ -1075,8 +1085,7 @@ defmodule Ash.DataLayer.Ets do
                  upsert_conflict_check(
                    changeset,
                    result,
-                   conflicting_upsert_values,
-                   opts[:upsert_condition]
+                   conflicting_upsert_values
                  ) do
             changeset =
               changeset
@@ -1086,7 +1095,7 @@ defmodule Ash.DataLayer.Ets do
 
             update(
               resource,
-              %{changeset | action_type: :update},
+              %{changeset | action_type: :update, filter: nil},
               Map.take(result, pkey),
               opts[:from_bulk_create?]
             )
@@ -1107,29 +1116,26 @@ defmodule Ash.DataLayer.Ets do
   @spec upsert_conflict_check(
           changeset :: Ash.Changeset.t(),
           subject :: record,
-          conflicting_upsert_values :: record,
-          opts_upsert_condition :: Ash.Expr.t()
+          conflicting_upsert_values :: record
         ) :: {:ok, [record]} | {:error, reason}
         when record: Ash.Resource.record(), reason: term()
-  defp upsert_conflict_check(changeset, subject, conflicting_upsert_values, opts_upsert_condition)
+  defp upsert_conflict_check(changeset, subject, conflicting_upsert_values)
 
   defp upsert_conflict_check(
          %Ash.Changeset{filter: nil},
          result,
-         _conflicting_upsert_values,
-         nil
+         _conflicting_upsert_values
        ),
        do: {:ok, [result]}
 
   defp upsert_conflict_check(
          %Ash.Changeset{filter: filter, domain: domain, context: context},
          result,
-         conflicting_upsert_values,
-         opts_upsert_condition
+         conflicting_upsert_values
        ) do
     filter_matches(
       [result],
-      opts_upsert_condition || filter,
+      filter,
       domain,
       nil,
       context[:tenant],
