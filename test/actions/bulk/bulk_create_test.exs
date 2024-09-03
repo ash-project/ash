@@ -446,6 +446,91 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
+  defmodule Product do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept [:gtin, :title]
+      defaults [:read, :update, :destroy]
+
+      create :create do
+        primary? true
+
+        argument :price, :map
+        change manage_relationship(:price, type: :create)
+
+        upsert? true
+        upsert_fields {:replace_all_except, [:gtin, :id, :inserted_at]}
+        upsert_identity :unique_gtin
+        upsert_condition expr(false)
+      end
+    end
+
+    attributes do
+      uuid_v7_primary_key :id
+
+      attribute :gtin, :string do
+        allow_nil? false
+        public? true
+      end
+
+      attribute :title, :string, public?: true
+
+      timestamps()
+    end
+
+    relationships do
+      has_one :price, Ash.Test.Actions.BulkCreateTest.Price, public?: true
+    end
+
+    identities do
+      identity :unique_gtin, :gtin do
+        pre_check_with Ash.Test.Actions.BulkCreateTest.Domain
+      end
+    end
+  end
+
+  defmodule Price do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    actions do
+      default_accept [:max, :min, :rrp]
+
+      defaults [:read, :update, :destroy]
+
+      create :create do
+        primary? true
+        upsert? true
+        upsert_fields {:replace_all_except, [:inserted_at]}
+      end
+    end
+
+    attributes do
+      attribute :max, :integer, public?: true
+      attribute :min, :integer, public?: true
+      attribute :rrp, :integer, public?: true
+      timestamps()
+    end
+
+    relationships do
+      belongs_to :product, Product do
+        allow_nil? false
+        primary_key? true
+        public? false
+      end
+    end
+  end
+
   test "returns created records" do
     org =
       Org
@@ -632,6 +717,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                Post,
                :create,
                tenant: org.id,
+               return_errors?: true,
                return_records?: true,
                sorted?: true,
                return_errors?: true,
@@ -652,6 +738,7 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                ],
                Post,
                :create,
+               return_errors?: true,
                return_records?: true,
                tenant: org.id,
                upsert?: true,
@@ -662,6 +749,59 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                sorted?: true,
                authorize?: false
              )
+  end
+
+  test "respects upsert_condition despite we have a relationship" do
+    product =
+      Ash.bulk_create(
+        [
+          %{
+            gtin: "1234567891011",
+            title: "Nano Bubble Gum",
+            price: %{
+              min: 123,
+              max: 456,
+              rrp: 789
+            }
+          }
+        ],
+        Product,
+        :create,
+        return_errors?: true,
+        return_records?: true
+      )
+      |> then(fn result -> List.first(result.records) end)
+
+    assert product.gtin == "1234567891011"
+    assert product.title == "Nano Bubble Gum"
+    assert product.price.min == 123
+    assert product.price.max == 456
+    assert product.price.rrp == 789
+
+    result =
+      Ash.bulk_create(
+        [
+          %{
+            gtin: "1234567891011",
+            title: "Nano Bubble Gum",
+            price: %{
+              # Note: we try to change the price here.
+              min: 234,
+              max: 567,
+              rrp: 890
+            }
+          }
+        ],
+        Product,
+        :create,
+        return_errors?: true,
+        return_records?: true,
+        upsert?: true,
+        # But the upsert_condition says "no!".
+        upsert_condition: expr(false)
+      )
+
+    assert result.records == []
   end
 
   test "can upsert with :replace" do

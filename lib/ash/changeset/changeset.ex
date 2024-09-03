@@ -1245,7 +1245,11 @@ defmodule Ash.Changeset do
       get_action_entity(changeset.resource, action) ||
         raise_no_action(changeset.resource, action, :create)
 
-    upsert_condition = opts[:upsert_condition] || (action && action.upsert_condition)
+    upsert_condition =
+      case opts[:upsert_condition] do
+        nil -> action && action.upsert_condition
+        other -> other
+      end
 
     changeset
     |> set_context(%{
