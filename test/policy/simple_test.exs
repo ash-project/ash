@@ -134,6 +134,15 @@ defmodule Ash.Test.Policy.SimpleTest do
     assert [] = Ash.read!(Tweet, actor: user)
   end
 
+  test "Ash.can? accepts a record to determine if it can be read", %{admin: admin, user: user} do
+    tweet = Ash.create!(Ash.Changeset.for_create(Tweet, :create), authorize?: false)
+
+    Logger.configure(level: :debug)
+
+    assert Ash.can?({tweet, :read}, admin)
+    refute Ash.can?({tweet, :read}, user)
+  end
+
   test "arguments can be referenced in expression policies", %{admin: admin, user: user} do
     Tweet
     |> Ash.Changeset.for_create(:create_foo, %{foo: "foo", user_id: admin.id}, actor: user)

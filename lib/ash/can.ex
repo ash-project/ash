@@ -36,8 +36,14 @@ defmodule Ash.Can do
     opts = Keyword.put_new(opts, :run_queries?, true)
     opts = Keyword.put_new(opts, :filter_with, :filter)
 
-    {resource, action_or_query_or_changeset, input} =
-      resource_subject_input(action_or_query_or_changeset, domain, actor, opts)
+    {resource, action_or_query_or_changeset, input, opts} =
+      case resource_subject_input(action_or_query_or_changeset, domain, actor, opts) do
+        {resource, action_or_query_or_changeset, input, new_opts} ->
+          {resource, action_or_query_or_changeset, input, Keyword.merge(new_opts, opts)}
+
+        {resource, action_or_query_or_changeset, input} ->
+          {resource, action_or_query_or_changeset, input, opts}
+      end
 
     subject =
       case action_or_query_or_changeset do
@@ -182,8 +188,7 @@ defmodule Ash.Can do
            domain: domain,
            tenant: opts[:tenant],
            actor: actor
-         )
-         |> filter_by_pkey(record), input}
+         ), input, data: [record]}
 
       {%resource{}, %Ash.Resource.Actions.Action{} = action, input} ->
         {resource,
@@ -251,13 +256,6 @@ defmodule Ash.Can do
         Got: #{inspect({resource, action})}
         """
     end
-  end
-
-  defp filter_by_pkey(query, %resource{} = record) do
-    Ash.Query.do_filter(
-      query,
-      record |> Map.take(Ash.Resource.Info.primary_key(resource)) |> Map.to_list()
-    )
   end
 
   defp alter_source({:ok, true, query}, domain, actor, %Ash.Changeset{} = subject, opts) do

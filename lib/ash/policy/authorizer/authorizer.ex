@@ -1557,7 +1557,14 @@ defmodule Ash.Policy.Authorizer do
   end
 
   defp forbidden_due_to_strict_policy?(authorizer) do
-    if authorizer.for_fields || authorizer.action.type != :read do
+    forbid_static_forbidden_reads? =
+      Keyword.get(
+        Application.get_env(:ash, :policy, []),
+        :forbid_static_forbidden_reads?,
+        true
+      )
+
+    if forbid_static_forbidden_reads? || authorizer.for_fields || authorizer.action.type != :read do
       true
     else
       authorizer.policies

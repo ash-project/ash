@@ -65,6 +65,12 @@ defmodule Mix.Tasks.Ash.Install do
       [:default_page_type],
       :keyset
     )
+    |> Igniter.Project.Config.configure(
+      "config.exs",
+      :ash,
+      [:policies, :forbid_static_forbidden_reads?],
+      false
+    )
     |> then(fn igniter ->
       if "--example" in argv do
         generate_example(igniter, argv)
