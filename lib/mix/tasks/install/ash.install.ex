@@ -68,7 +68,7 @@ defmodule Mix.Tasks.Ash.Install do
     |> Igniter.Project.Config.configure(
       "config.exs",
       :ash,
-      [:policies, :forbid_static_forbidden_reads?],
+      [:policies, :no_filter_static_forbidden_reads?],
       false
     )
     |> then(fn igniter ->

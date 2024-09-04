@@ -83,14 +83,14 @@ defmodule Ash.Policy.FilterCheck do
         |> filter(authorizer, opts)
         |> Ash.Expr.fill_template(actor, Ash.Policy.FilterCheck.args(authorizer), context)
         |> then(fn expr ->
-          forbid_static_forbidden_reads? =
+          no_filter_static_forbidden_reads? =
             Keyword.get(
               Application.get_env(:ash, :policy, []),
-              :forbid_static_forbidden_reads?,
+              :no_filter_static_forbidden_reads?,
               true
             )
 
-          if forbid_static_forbidden_reads? || authorizer.for_fields ||
+          if no_filter_static_forbidden_reads? || authorizer.for_fields ||
                authorizer.action.type != :read ||
                context[:private][:pre_flight_authorization?] do
             try_eval(expr, authorizer)

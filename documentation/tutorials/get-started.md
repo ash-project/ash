@@ -258,7 +258,7 @@ config :ash,
   default_page_type: :keyset
 
 config :ash, :policies,
-  forbid_static_forbidden_reads?: false
+  no_filter_static_forbidden_reads?: false
 ```
 
 ### Try our first resource out
