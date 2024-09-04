@@ -2,6 +2,109 @@
 
 <!-- changelog -->
 
+## [v3.4.2](https://github.com/ash-project/ash/compare/v3.4.1...v3.4.2) (2024-09-04)
+
+
+
+
+### Bug Fixes:
+
+* don't clean calc deps that may need to be reused
+
+* fix upsert condition for ets bulk creates
+
+* honor bulk upsert condition (#1432)
+
+* honor `return_destroyed?` in soft destroy actions
+
+* correctly handle return values of batch callbacks (#1424)
+
+* properly clean calculation dependency values, and don't unload them with `lazy?`
+
+* ensure that async limiter is cleared up front
+
+* ensure that update_defaults are set on streaming updates
+
+* honor `skip_global_validations?` in bulk actions
+
+* honor the `countable` option in pagination
+
+* return proper data shape when doing a read in a transaction
+
+* ensure that `from` is properly set on all notifications
+
+* typo in bulk destroy not clearing ash_started_transaction state
+
+* do not add relationship filter when building relationship authorization
+
+* don't list telemetry handlers if app is compiling
+
+* handle no_attributes when joining lateral join relationship data
+
+* do not call tracer `set_metadata` with span type that it ignores (#1400)
+
+* traverse calculated relationships when rewriting transient calculation values
+
+* optimize filter expr traversal
+
+* fix ets lateral join source field usage
+
+* properly apply distinct in ets
+
+### Improvements:
+
+* make read policies more consistent, always preferring to filter over raise
+
+* show an explanation when no policies apply
+
+* Add a case for handling mapsets in Filter.map (#1427)
+
+* Cache always selected fields and use mapsets for building select list (#1428)
+
+* factor out static branches at compile time
+
+* do not eager evaluate filters for read action policies
+
+* make authorization failures behave consistently across reads
+
+* make default page type configurable, defaulting to `:offset`
+
+* add pattern for Ash.Query.Call in Filter.map (#1416)
+
+* error at compile for bypasses that will have no effect
+
+* prevent  unnecessary calls to `Ash.load`
+
+* add `load_relationships/5` callback to manual reads
+
+* cache action known inputs individually
+
+* cache action required inputs all together
+
+* optimize to avoid inspects in changesets
+
+* optimize to avoid expensive `String.valid?` check in uuid type
+
+* add `async?` option to calculations, default to false
+
+* add cascade update built in change (#1398)
+
+* add `uuid-v7-primary-key` option to `mix ash.gen.resource`
+
+* optimize field checking for loading fields in query
+
+* allow functions in tracers for lazy loading metadata
+
+* add `read_action` option to `cascade_destroy`
+
+* don't start processes for single items in list
+
+* support `expr` and `expr_type` options when building aggregates
+
+* Implement condition for upsert (#1386)
+
+* Optimize option validation with compile time validators (#1387)
+
 ## [v3.4.1](https://github.com/ash-project/ash/compare/v3.4.0...v3.4.1) (2024-08-13)
 
 
