@@ -4,12 +4,9 @@
 
 ## [v3.4.3](https://github.com/ash-project/ash/compare/v3.4.2...v3.4.3) (2024-09-04)
 
-
-
-
 ### Bug Fixes:
 
-* properly await tasks from lazy loading multiple relationships
+- [loading relationships] properly await tasks from lazy loading multiple relationships
 
 ## [v3.4.2](https://github.com/ash-project/ash/compare/v3.4.1...v3.4.2) (2024-09-04)
 
