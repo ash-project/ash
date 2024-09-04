@@ -4,115 +4,120 @@
 
 ## [v3.4.2](https://github.com/ash-project/ash/compare/v3.4.1...v3.4.2) (2024-09-04)
 
-
-
-
 ### Bug Fixes:
 
-* don't clean calc deps that may need to be reused
+- [soft destroys] honor `return_destroyed?` in soft destroy actions
 
-* fix upsert condition for ets bulk creates
+- [`Ash.Resource.Change`] correctly handle return values of batch callbacks (#1424)
 
-* honor bulk upsert condition (#1432)
+- [read actions] ensure that async limiter is cleared up front
 
-* honor `return_destroyed?` in soft destroy actions
+- [bulk creates] honor bulk upsert condition (#1432)
 
-* correctly handle return values of batch callbacks (#1424)
+- [bulk updates] ensure that update_defaults are set on streaming updates
 
-* properly clean calculation dependency values, and don't unload them with `lazy?`
+- [bulk actions] honor `skip_global_validations?` in bulk actions
 
-* ensure that async limiter is cleared up front
+- [pagination] honor the `countable` option in pagination
 
-* ensure that update_defaults are set on streaming updates
+- [read actions] return proper data shape when doing a read in a transaction
 
-* honor `skip_global_validations?` in bulk actions
+- [notifications] ensure that `from` is properly set on all notifications
 
-* honor the `countable` option in pagination
+- [notifications] fix typo in bulk destroy not clearing ash_started_transaction state
 
-* return proper data shape when doing a read in a transaction
+- [calculations] traverse calculated relationships when rewriting transient calculation values
 
-* ensure that `from` is properly set on all notifications
+- [calculations] don't unload calculation dependencies when `lazy?` is set
 
-* typo in bulk destroy not clearing ash_started_transaction state
+- [`Ash.DataLayer.Ets`] handle no_attributes when joining lateral join relationship data
 
-* do not add relationship filter when building relationship authorization
+- [`Ash.DataLayer.Ets`] fix ets lateral join source field usage
 
-* don't list telemetry handlers if app is compiling
+- [`Ash.DataLayer.Ets`] properly apply distinct in ets
 
-* handle no_attributes when joining lateral join relationship data
+### Improvements with backwards compatibility configurations
 
-* do not call tracer `set_metadata` with span type that it ignores (#1400)
+These configurations default to the current behavior, but in 4.0 (someday) will
+be removed, and the new option will be the only option.
 
-* traverse calculated relationships when rewriting transient calculation values
+- [pagination] make default page type configurable, defaulting to `:offset`.
 
-* optimize filter expr traversal
+```elixir
+# set this configuration to adopt the new preferred behavior
+config :ash,
+  default_page_type: :keyset
+```
 
-* fix ets lateral join source field usage
+- [`Ash.Policy.Authorizer`] make read policies more consistent, always preferring to filter over raise
 
-* properly apply distinct in ets
+Currently, some read actions can still return a `Forbidden` error, even
+though policies are meant to filter out records by default. Now, it will always
+filter, unless you set `access_type :strict` in the policy.
+
+```elixir
+# set this configuration to adopt the new preferred behavior
+config :ash, :policies,
+  no_filter_static_forbidden_reads?: false
+```
 
 ### Improvements:
 
-* make read policies more consistent, always preferring to filter over raise
+- [`Ash.Policy.Authorizer`] show an explanation when a forbidden is because no policies applied
 
-* show an explanation when no policies apply
+- [`Ash.Policy.Authorizer`] error at compile for bypasses that will have no effect
 
-* Add a case for handling mapsets in Filter.map (#1427)
+- [`Ash.Resource.ManualRead`] add `load_relationships/5` callback to manual reads
 
-* Cache always selected fields and use mapsets for building select list (#1428)
+- [`mix ash.gen.resource`] add `uuid-v7-primary-key` option to `mix ash.gen.resource`
 
-* factor out static branches at compile time
+- [`Ash.Resource.Change.CascadeUpdate`] add cascade update built in change (#1398)
 
-* do not eager evaluate filters for read action policies
+- [`Ash.Resource.Change.CascadeDestroy`] add `read_action` option to `cascade_destroy`
 
-* make authorization failures behave consistently across reads
+- [inline aggregates] support `expr` and `expr_type` options when building aggregates
 
-* make default page type configurable, defaulting to `:offset`
+- [create actions] Implement condition for upsert (#1386)
 
-* add pattern for Ash.Query.Call in Filter.map (#1416)
+- [optimization] do not add relationship filter when building relationship authorization
 
-* error at compile for bypasses that will have no effect
+- [optimization] don't list telemetry handlers if app is compiling
 
-* prevent  unnecessary calls to `Ash.load`
+- [optimization] do not call tracer `set_metadata` with span type that it ignores (#1400)
 
-* add `load_relationships/5` callback to manual reads
+- [optimization] optimize filter expr traversal
 
-* cache action known inputs individually
+- [optimization] Add a case for handling mapsets in Filter.map (#1427)
 
-* cache action required inputs all together
+- [optimization] Cache always selected fields and use mapsets for building select list (#1428)
 
-* optimize to avoid inspects in changesets
+- [optimization] add pattern for Ash.Query.Call in Filter.map (#1416)
 
-* optimize to avoid expensive `String.valid?` check in uuid type
+- [optimization] prevent unnecessary calls to `Ash.load`
 
-* add `async?` option to calculations, default to false
+- [optimization] cache action known inputs individually
 
-* add cascade update built in change (#1398)
+- [optimization] cache action required inputs all together
 
-* add `uuid-v7-primary-key` option to `mix ash.gen.resource`
+- [optimization] optimize to avoid inspects in changesets
 
-* optimize field checking for loading fields in query
+- [optimization] optimize to avoid expensive `String.valid?` check in uuid type
 
-* allow functions in tracers for lazy loading metadata
+- [optimization] add `async?` option to calculations, default to false
 
-* add `read_action` option to `cascade_destroy`
+- [optimization] optimize field checking for loading fields in query
 
-* don't start processes for single items in list
+- [optimization] allow functions in tracers for lazy loading metadata
 
-* support `expr` and `expr_type` options when building aggregates
+- [optimization] don't start processes for single items in list
 
-* Implement condition for upsert (#1386)
-
-* Optimize option validation with compile time validators (#1387)
+- [optimization] Optimize option validation with compile time validators (#1387)
 
 ## [v3.4.1](https://github.com/ash-project/ash/compare/v3.4.0...v3.4.1) (2024-08-13)
 
-
-
-
 ### Bug Fixes:
 
-* properly pass actor, action, tenant etc. to lazy loaded relationships
+- [authorization] properly pass actor, action, tenant etc. to lazy loaded relationships
 
 ## [v3.4.0](https://github.com/ash-project/ash/compare/v3.3.3...v3.4.0) (2024-08-12)
 
