@@ -688,6 +688,31 @@ defmodule Ash.Test.Actions.LoadTest do
       refute match?(%Ash.NotLoaded{}, author.latest_post)
     end
 
+    test "you can load multiple relationships with `lazy?: true`" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
+        |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "post1"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "post2"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.create!()
+
+      [author] =
+        Author
+        |> Ash.Query.load([:posts, :latest_post])
+        |> Ash.read!(authorize?: true)
+
+      author =
+        Ash.load!(author, [:posts, :latest_post], lazy?: true)
+    end
+
     test "loading something already loaded still loads it unless lazy?: true" do
       author =
         Author

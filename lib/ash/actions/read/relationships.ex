@@ -42,7 +42,16 @@ defmodule Ash.Actions.Read.Relationships do
   defp fetch_related_records(batch, records, acc \\ [])
 
   defp fetch_related_records([], _records, acc) do
-    Ash.Actions.Read.AsyncLimiter.await_all(acc)
+    Enum.map(acc, fn
+      {a, b, %Task{} = task} ->
+        {a, b, Task.await(task, :infinity)}
+
+      %Task{} = task ->
+        Task.await(task, :infinity)
+
+      other ->
+        other
+    end)
   end
 
   defp fetch_related_records([first | rest], records, acc) do

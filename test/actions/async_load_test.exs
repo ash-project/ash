@@ -330,6 +330,34 @@ defmodule Ash.Test.Actions.AsyncLoadTest do
       end
     end
 
+    test "it allows loading multiple lazy relationships" do
+      author =
+        Author
+        |> Ash.Changeset.for_create(:create, %{name: "zerg"})
+        |> Ash.create!()
+
+      post1 =
+        Post
+        |> Ash.Changeset.for_create(:create, %{title: "post1"})
+        |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+        |> Ash.create!()
+
+      Post
+      |> Ash.Changeset.for_create(:create, %{title: "post2"})
+      |> Ash.Changeset.manage_relationship(:author, author, type: :append_and_remove)
+      |> Ash.create!()
+
+      [author] =
+        Author
+        |> Ash.Query.load(posts: [:author])
+        |> Ash.Query.filter(posts.id == ^post1.id)
+        |> Ash.read!(authorize?: true)
+
+      author
+      |> Ash.load!([:posts, :latest_post])
+      |> Ash.load!([:posts, :latest_post], lazy?: true)
+    end
+
     test "it allows loading many to many relationships" do
       category1 =
         Category
