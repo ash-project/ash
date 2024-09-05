@@ -132,32 +132,50 @@ defmodule Ash.Can do
   defp resource_subject_input(action_or_query_or_changeset, domain, actor, opts) do
     case action_or_query_or_changeset do
       {resource, name} when is_atom(name) and is_atom(resource) ->
+        action =
+          Ash.Resource.Info.action(resource, name) ||
+            raise ArgumentError, "No such action #{name} on #{inspect(resource)}"
+
         resource_subject_input(
-          {resource, Ash.Resource.Info.action(resource, name), %{}},
+          {resource, action, %{}},
           domain,
           actor,
           opts
         )
 
-      {resource, name, input} when is_atom(name) and is_atom(resource) ->
+      {resource, name, input} when is_atom(name) and is_atom(resource) and not is_nil(name) ->
+        action =
+          Ash.Resource.Info.action(resource, name) ||
+            raise ArgumentError, "No such action #{name} on #{inspect(resource)}"
+
         resource_subject_input(
-          {resource, Ash.Resource.Info.action(resource, name), input},
+          {resource, action, input},
           domain,
           actor,
           opts
         )
 
-      {%resource{} = record, name} when is_atom(name) and is_atom(resource) ->
+      {%resource{} = record, name}
+      when is_atom(name) and is_atom(resource) and not is_nil(name) ->
+        action =
+          Ash.Resource.Info.action(resource, name) ||
+            raise ArgumentError, "No such action #{name} on #{inspect(resource)}"
+
         resource_subject_input(
-          {record, Ash.Resource.Info.action(resource, name), %{}},
+          {record, action, %{}},
           domain,
           actor,
           opts
         )
 
-      {%resource{} = record, name, input} when is_atom(name) and is_atom(resource) ->
+      {%resource{} = record, name, input}
+      when is_atom(name) and is_atom(resource) and not is_nil(name) ->
+        action =
+          Ash.Resource.Info.action(resource, name) ||
+            raise ArgumentError, "No such action #{name} on #{inspect(resource)}"
+
         resource_subject_input(
-          {record, Ash.Resource.Info.action(resource, name), input},
+          {record, action, input},
           domain,
           actor,
           opts
