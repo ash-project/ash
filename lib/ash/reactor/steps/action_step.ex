@@ -21,12 +21,12 @@ defmodule Ash.Reactor.ActionStep do
       |> maybe_set_kw(:tenant, arguments[:tenant])
 
     action_options =
-      []
+      [domain: options[:domain]]
       |> maybe_set_kw(:authorize?, options[:authorize?])
 
     options[:resource]
     |> ActionInput.for_action(options[:action], arguments[:input], action_input_options)
-    |> options[:domain].run_action(action_options)
+    |> Ash.run_action(action_options)
   end
 
   @doc false
@@ -45,6 +45,7 @@ defmodule Ash.Reactor.ActionStep do
     action_options =
       []
       |> maybe_set_kw(:authorize?, options[:authorize?])
+      |> maybe_set_kw(:domain, options[:domain])
 
     inputs =
       arguments[:input]
@@ -52,7 +53,7 @@ defmodule Ash.Reactor.ActionStep do
 
     options[:resource]
     |> ActionInput.for_action(options[:action], inputs, action_input_options)
-    |> options[:domain].run_action(action_options)
+    |> Ash.run_action(action_options)
   end
 
   @doc false

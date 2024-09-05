@@ -55,6 +55,11 @@ defmodule Ash.Reactor.Dsl.ActionTransformer do
     end
   end
 
+  defp transform_step(entity, dsl_state) when entity.type == :load do
+    default_domain = Transformer.get_option(dsl_state, [:ash], :default_domain)
+    {:ok, %{entity | domain: entity.domain || default_domain}, dsl_state}
+  end
+
   defp transform_step(_entity, _dsl_state), do: :ignore
 
   defp transform_nested_steps(entity, dsl_state) when is_list(entity.steps) do

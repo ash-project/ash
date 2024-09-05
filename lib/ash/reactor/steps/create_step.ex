@@ -25,6 +25,7 @@ defmodule Ash.Reactor.CreateStep do
     action_options =
       [return_notifications?: true, domain: options[:domain]]
       |> maybe_set_kw(:authorize?, options[:authorize?])
+      |> maybe_set_kw(:load, arguments[:load])
 
     changeset =
       case arguments.initial do

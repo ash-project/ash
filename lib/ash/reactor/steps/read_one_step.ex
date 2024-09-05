@@ -19,28 +19,13 @@ defmodule Ash.Reactor.ReadOneStep do
       |> maybe_set_kw(:tenant, arguments[:tenant])
 
     action_options =
-      []
+      [domain: options[:domain]]
       |> maybe_set_kw(:authorize?, options[:authorize?])
+      |> maybe_set_kw(:load, arguments[:load])
+      |> maybe_set_kw(:not_found_error?, options[:fail_on_not_found?])
 
     options[:resource]
     |> Query.for_read(options[:action], arguments[:input], query_options)
-    |> options[:domain].read_one(action_options)
-    |> case do
-      {:ok, nil} ->
-        if options[:fail_on_not_found?] do
-          raise Ash.Error.Query.NotFound, resource: options[:resource]
-        else
-          {:ok, nil}
-        end
-
-      {:ok, record} ->
-        {:ok, record}
-
-      {:ok, records, _} ->
-        {:ok, records}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
+    |> Ash.read_one(action_options)
   end
 end

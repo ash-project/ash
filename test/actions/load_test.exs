@@ -709,8 +709,7 @@ defmodule Ash.Test.Actions.LoadTest do
         |> Ash.Query.load([:posts, :latest_post])
         |> Ash.read!(authorize?: true)
 
-      author =
-        Ash.load!(author, [:posts, :latest_post], lazy?: true)
+      Ash.load!(author, [:posts, :latest_post], lazy?: true)
     end
 
     test "loading something already loaded still loads it unless lazy?: true" do

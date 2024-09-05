@@ -1,11 +1,12 @@
-defmodule Ash.Reactor.Dsl.Actor do
+defmodule Ash.Reactor.Dsl.ActionLoad do
   @moduledoc """
-  Specify the actor used to execute an action.
+  Add a load statement to an action.
   """
 
   defstruct __identifier__: nil, source: nil, transform: nil
 
   alias Reactor.Template
+  require Template
 
   @type t :: %__MODULE__{
           __identifier__: any,
@@ -15,20 +16,18 @@ defmodule Ash.Reactor.Dsl.Actor do
 
   @doc false
   def __entity__ do
-    template_type = Template.type()
-
     %Spark.Dsl.Entity{
-      name: :actor,
-      describe: "Specifies the action actor",
+      name: :load,
+      describe: "Allows the addition of an Ash load statement to the action",
       args: [:source],
       imports: [Reactor.Dsl.Argument],
       identifier: {:auto, :unique_integer},
       target: __MODULE__,
       schema: [
         source: [
-          type: template_type,
+          type: Template.type(),
           required: true,
-          doc: "What to use as the source of the actor."
+          doc: "What to use as the source of the load"
         ],
         transform: [
           type:
@@ -36,7 +35,7 @@ defmodule Ash.Reactor.Dsl.Actor do
           required: false,
           default: nil,
           doc:
-            "An optional transformation function which can be used to modify the actor before it is passed to the action."
+            "An optional transformation function which can be used to modify the load before it is passed to the action."
         ]
       ]
     }

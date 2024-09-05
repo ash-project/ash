@@ -19,16 +19,12 @@ defmodule Ash.Reactor.ReadStep do
       |> maybe_set_kw(:tenant, arguments[:tenant])
 
     action_options =
-      []
+      [domain: options[:domain]]
       |> maybe_set_kw(:authorize?, options[:authorize?])
+      |> maybe_set_kw(:load, arguments[:load])
 
     options[:resource]
     |> Query.for_read(options[:action], arguments[:input], query_options)
-    |> options[:domain].read(action_options)
-    |> case do
-      {:ok, records} -> {:ok, records}
-      {:ok, records, _} -> {:ok, records}
-      {:error, reason} -> {:error, reason}
-    end
+    |> Ash.read(action_options)
   end
 end

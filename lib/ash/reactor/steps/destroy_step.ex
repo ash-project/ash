@@ -24,13 +24,14 @@ defmodule Ash.Reactor.DestroyStep do
       |> maybe_set_kw(:return_destroyed?, return_destroyed?)
 
     action_options =
-      [return_notifications?: true]
+      [return_notifications?: true, domain: options[:domain]]
       |> maybe_set_kw(:authorize?, options[:authorize?])
       |> maybe_set_kw(:return_destroyed?, return_destroyed?)
+      |> maybe_set_kw(:load, arguments[:load])
 
     arguments[:initial]
     |> Changeset.for_destroy(options[:action], arguments[:input], changeset_options)
-    |> options[:domain].destroy(action_options)
+    |> Ash.destroy(action_options)
     |> case do
       :ok ->
         {:ok, :ok}
@@ -65,12 +66,12 @@ defmodule Ash.Reactor.DestroyStep do
       |> maybe_set_kw(:tenant, arguments[:tenant])
 
     action_options =
-      [return_notifications?: false]
+      [return_notifications?: false, domain: options[:domain]]
       |> maybe_set_kw(:authorize?, options[:authorize?])
 
     options[:resource]
     |> Changeset.for_create(options[:undo_action], %{record: record}, changeset_options)
-    |> options[:domain].create(action_options)
+    |> Ash.create(action_options)
     |> case do
       {:ok, _record} -> :ok
       {:ok, _record, _notifications} -> :ok

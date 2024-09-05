@@ -21,15 +21,16 @@ defmodule Ash.Reactor.UpdateStep do
       |> maybe_set_kw(:tenant, arguments[:tenant])
 
     action_options =
-      [return_notifications?: true]
+      [return_notifications?: true, domain: options[:domain]]
       |> maybe_set_kw(:authorize?, options[:authorize?])
+      |> maybe_set_kw(:load, arguments[:load])
 
     changeset =
       arguments[:initial]
       |> Changeset.for_update(options[:action], arguments[:input], changeset_options)
 
     changeset
-    |> options[:domain].update(action_options)
+    |> Ash.update(action_options)
     |> case do
       {:ok, record} ->
         {:ok, store_changeset_in_metadata(context.current_step.name, record, changeset)}
@@ -57,7 +58,7 @@ defmodule Ash.Reactor.UpdateStep do
       |> maybe_set_kw(:tenant, arguments[:tenant])
 
     action_options =
-      [return_notifications?: false]
+      [return_notifications?: false, domain: options[:domain]]
       |> maybe_set_kw(:authorize?, options[:authorize?])
 
     attributes =
@@ -65,7 +66,7 @@ defmodule Ash.Reactor.UpdateStep do
 
     record
     |> Changeset.for_update(options[:undo_action], attributes, changeset_options)
-    |> options[:domain].update(action_options)
+    |> Ash.update(action_options)
     |> case do
       {:ok, _record} -> :ok
       {:ok, _record, _notifications} -> :ok

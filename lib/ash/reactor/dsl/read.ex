@@ -6,15 +6,16 @@ defmodule Ash.Reactor.Dsl.Read do
   defstruct __identifier__: nil,
             action_step?: true,
             action: nil,
-            actor: [],
+            actor: nil,
             domain: nil,
             async?: true,
             authorize?: nil,
             description: nil,
             inputs: [],
+            load: nil,
             name: nil,
             resource: nil,
-            tenant: [],
+            tenant: nil,
             transform: nil,
             type: :read,
             wait_for: []
@@ -23,15 +24,16 @@ defmodule Ash.Reactor.Dsl.Read do
           __identifier__: any,
           action_step?: true,
           action: atom,
-          actor: [Ash.Reactor.Dsl.Actor.t()],
+          actor: nil | Ash.Reactor.Dsl.Actor.t(),
           domain: Ash.Domain.t(),
           async?: boolean,
           authorize?: boolean | nil,
           description: String.t() | nil,
           inputs: [Ash.Reactor.Dsl.Inputs.t()],
+          load: nil | Ash.Reactor.Dsl.ActionLoad.t(),
           name: atom,
           resource: module,
-          tenant: [Ash.Reactor.Dsl.Tenant.t()],
+          tenant: nil | Ash.Reactor.Dsl.Tenant.t(),
           type: :create,
           wait_for: [Reactor.Dsl.WaitFor.t()]
         }
@@ -59,10 +61,11 @@ defmodule Ash.Reactor.Dsl.Read do
       entities: [
         actor: [Ash.Reactor.Dsl.Actor.__entity__()],
         inputs: [Ash.Reactor.Dsl.Inputs.__entity__()],
+        load: [Ash.Reactor.Dsl.ActionLoad.__entity__()],
         tenant: [Ash.Reactor.Dsl.Tenant.__entity__()],
         wait_for: [Reactor.Dsl.WaitFor.__entity__()]
       ],
-      singleton_entity_keys: [:actor, :tenant],
+      singleton_entity_keys: [:actor, :tenant, :load],
       recursive_as: :steps,
       schema: Ash.Reactor.Dsl.Action.__shared_action_option_schema__(false)
     }

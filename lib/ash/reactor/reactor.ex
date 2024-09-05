@@ -25,6 +25,7 @@ defmodule Ash.Reactor do
           | Ash.Reactor.Dsl.BulkUpdate.t()
           | Ash.Reactor.Dsl.Create.t()
           | Ash.Reactor.Dsl.Destroy.t()
+          | Ash.Reactor.Dsl.Load.t()
           | Ash.Reactor.Dsl.Read.t()
           | Ash.Reactor.Dsl.ReadOne.t()
           | Ash.Reactor.Dsl.Update.t()
@@ -41,6 +42,7 @@ defmodule Ash.Reactor do
         Ash.Reactor.Dsl.Change,
         Ash.Reactor.Dsl.Create,
         Ash.Reactor.Dsl.Destroy,
+        Ash.Reactor.Dsl.Load,
         Ash.Reactor.Dsl.ReadOne,
         Ash.Reactor.Dsl.Read,
         Ash.Reactor.Dsl.Transaction,

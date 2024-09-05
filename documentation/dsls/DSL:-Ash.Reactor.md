@@ -429,6 +429,7 @@ Caveats/differences from `Ash.bulk_create/4`:
 
 ### Nested DSLs
  * [actor](#reactor-bulk_create-actor)
+ * [load](#reactor-bulk_create-load)
  * [tenant](#reactor-bulk_create-tenant)
  * [wait_for](#reactor-bulk_create-wait_for)
 
@@ -461,7 +462,6 @@ end
 | [`authorize_changeset_with`](#reactor-bulk_create-authorize_changeset_with){: #reactor-bulk_create-authorize_changeset_with } | `:filter \| :error` | `:filter` | If set to `:error`, instead of filtering unauthorized changes, unauthorized changes will raise an appropriate forbidden error |
 | [`authorize_query_with`](#reactor-bulk_create-authorize_query_with){: #reactor-bulk_create-authorize_query_with } | `:filter \| :error` | `:filter` | If set to `:error`, instead of filtering unauthorized query results, unauthorized query results will raise an appropriate forbidden error |
 | [`batch_size`](#reactor-bulk_create-batch_size){: #reactor-bulk_create-batch_size } | `nil \| pos_integer` |  | The number of records to include in each batch. Defaults to the `default_limit` or `max_page_size` of the action, or 100. |
-| [`load`](#reactor-bulk_create-load){: #reactor-bulk_create-load } | `atom \| list(atom)` | `[]` | A load statement to apply to records. Ignored if `return_records?` is not true. |
 | [`max_concurrency`](#reactor-bulk_create-max_concurrency){: #reactor-bulk_create-max_concurrency } | `non_neg_integer` | `0` | If set to a value greater than 0, up to that many tasks will be started to run batches asynchronously. |
 | [`notification_metadata`](#reactor-bulk_create-notification_metadata){: #reactor-bulk_create-notification_metadata } | `map \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` | `%{}` | Metadata to be merged into the metadata field for all notifications sent from this operation. |
 | [`notify?`](#reactor-bulk_create-notify?){: #reactor-bulk_create-notify? } | `boolean` | `false` | Whether or not to generate any notifications. This may be intensive for large bulk actions. |
@@ -518,6 +518,37 @@ Specifies the action actor
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Actor`
+
+## reactor.bulk_create.load
+```elixir
+load source
+```
+
+
+Allows the addition of an Ash load statement to the action
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-bulk_create-load-source){: #reactor-bulk_create-load-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the load |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-bulk_create-load-transform){: #reactor-bulk_create-load-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the load before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.ActionLoad`
 
 ## reactor.bulk_create.tenant
 ```elixir
@@ -660,7 +691,6 @@ end
 | [`authorize_query?`](#reactor-bulk_update-authorize_query?){: #reactor-bulk_update-authorize_query? } | `boolean` | `true` | If a query is given, determines whether or not authorization is run on that query. |
 | [`batch_size`](#reactor-bulk_update-batch_size){: #reactor-bulk_update-batch_size } | `nil \| pos_integer` |  | The number of records to include in each batch. Defaults to the `default_limit` or `max_page_size` of the action, or 100. |
 | [`filter`](#reactor-bulk_update-filter){: #reactor-bulk_update-filter } | `map \| keyword` |  | A filter to apply to records. This is also applied to a stream of inputs. |
-| [`load`](#reactor-bulk_update-load){: #reactor-bulk_update-load } | `atom \| list(atom)` | `[]` | A load statement to apply to records. Ignored if `return_records?` is not true. |
 | [`lock`](#reactor-bulk_update-lock){: #reactor-bulk_update-lock } | `any` |  | A lock statement to add onto the query. |
 | [`max_concurrency`](#reactor-bulk_update-max_concurrency){: #reactor-bulk_update-max_concurrency } | `non_neg_integer` | `0` | If set to a value greater than 0, up to that many tasks will be started to run batches asynchronously. |
 | [`notification_metadata`](#reactor-bulk_update-notification_metadata){: #reactor-bulk_update-notification_metadata } | `map \| Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` | `%{}` | Metadata to be merged into the metadata field for all notifications sent from this operation. |
@@ -1010,6 +1040,7 @@ Declares a step that will call a create action on a resource.
 ### Nested DSLs
  * [actor](#reactor-create-actor)
  * [inputs](#reactor-create-inputs)
+ * [load](#reactor-create-load)
  * [tenant](#reactor-create-tenant)
  * [wait_for](#reactor-create-wait_for)
 
@@ -1128,6 +1159,37 @@ inputs(author: result(:get_user))
 
 Target: `Ash.Reactor.Dsl.Inputs`
 
+## reactor.create.load
+```elixir
+load source
+```
+
+
+Allows the addition of an Ash load statement to the action
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-create-load-source){: #reactor-create-load-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the load |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-create-load-transform){: #reactor-create-load-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the load before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.ActionLoad`
+
 ## reactor.create.tenant
 ```elixir
 tenant source
@@ -1224,6 +1286,7 @@ Declares a step that will call a destroy action on a resource.
 ### Nested DSLs
  * [actor](#reactor-destroy-actor)
  * [inputs](#reactor-destroy-inputs)
+ * [load](#reactor-destroy-load)
  * [tenant](#reactor-destroy-tenant)
  * [wait_for](#reactor-destroy-wait_for)
 
@@ -1338,6 +1401,37 @@ inputs(author: result(:get_user))
 
 Target: `Ash.Reactor.Dsl.Inputs`
 
+## reactor.destroy.load
+```elixir
+load source
+```
+
+
+Allows the addition of an Ash load statement to the action
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-destroy-load-source){: #reactor-destroy-load-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the load |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-destroy-load-transform){: #reactor-destroy-load-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the load before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.ActionLoad`
+
 ## reactor.destroy.tenant
 ```elixir
 tenant source
@@ -1413,6 +1507,149 @@ Target: `Ash.Reactor.Dsl.Destroy`
 
 
 
+## reactor.load
+```elixir
+load name, records, load
+```
+
+
+Declares a step that will load additional data on a resource.
+
+### Nested DSLs
+ * [actor](#reactor-load-actor)
+ * [tenant](#reactor-load-tenant)
+ * [wait_for](#reactor-load-wait_for)
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#reactor-load-name){: #reactor-load-name .spark-required} | `atom` |  | A unique name for the step. |
+| [`records`](#reactor-load-records){: #reactor-load-records .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | The records upon which to add extra loaded data |
+| [`load`](#reactor-load-load){: #reactor-load-load .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | An Ash load statement |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`domain`](#reactor-load-domain){: #reactor-load-domain } | `module` |  | The Domain to use when calling the action.  Defaults to the Domain set on the resource or in the `ash` section. |
+| [`async?`](#reactor-load-async?){: #reactor-load-async? } | `boolean` | `true` | When set to true the step will be executed asynchronously via Reactor's `TaskSupervisor`. |
+| [`authorize?`](#reactor-load-authorize?){: #reactor-load-authorize? } | `boolean \| nil` |  | Explicitly enable or disable authorization for the action. |
+| [`description`](#reactor-load-description){: #reactor-load-description } | `String.t` |  | A description for the step |
+| [`transform`](#reactor-load-transform){: #reactor-load-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the load statement before it is passed to the load. |
+| [`lazy?`](#reactor-load-lazy?){: #reactor-load-lazy? } | `boolean` |  | If set to true, values will only be loaded if the related value isn't currently loaded. |
+| [`reuse_values?`](#reactor-load-reuse_values?){: #reactor-load-reuse_values? } | `boolean` |  | Whether calculations are allowed to reuse values that have already been loaded, or must refetch them from the data layer. |
+| [`strict?`](#reactor-load-strict?){: #reactor-load-strict? } | `boolean` |  | If set to true, only specified attributes will be loaded when passing a list of fields to fetch on a relationship, which allows for more optimized data-fetching. |
+
+
+## reactor.load.actor
+```elixir
+actor source
+```
+
+
+Specifies the action actor
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-load-actor-source){: #reactor-load-actor-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the actor. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-load-actor-transform){: #reactor-load-actor-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the actor before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Actor`
+
+## reactor.load.tenant
+```elixir
+tenant source
+```
+
+
+Specifies the action tenant
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-load-tenant-source){: #reactor-load-tenant-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the tenant. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-load-tenant-transform){: #reactor-load-tenant-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the tenant before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Tenant`
+
+## reactor.load.wait_for
+```elixir
+wait_for names
+```
+
+
+Wait for the named step to complete before allowing this one to start.
+
+Desugars to `argument :_, result(step_to_wait_for)`
+
+
+
+
+### Examples
+```
+wait_for :create_user
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`names`](#reactor-load-wait_for-names){: #reactor-load-wait_for-names .spark-required} | `atom \| list(atom)` |  | The name of the step to wait for. |
+
+
+
+
+
+
+### Introspection
+
+Target: `Reactor.Dsl.WaitFor`
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.Load`
+
+
+
 ## reactor.read_one
 ```elixir
 read_one name, resource, action \\ nil
@@ -1424,6 +1661,7 @@ Declares a step that will call a read action on a resource returning a single re
 ### Nested DSLs
  * [actor](#reactor-read_one-actor)
  * [inputs](#reactor-read_one-inputs)
+ * [load](#reactor-read_one-load)
  * [tenant](#reactor-read_one-tenant)
  * [wait_for](#reactor-read_one-wait_for)
 
@@ -1533,6 +1771,37 @@ inputs(author: result(:get_user))
 
 Target: `Ash.Reactor.Dsl.Inputs`
 
+## reactor.read_one.load
+```elixir
+load source
+```
+
+
+Allows the addition of an Ash load statement to the action
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-read_one-load-source){: #reactor-read_one-load-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the load |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-read_one-load-transform){: #reactor-read_one-load-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the load before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.ActionLoad`
+
 ## reactor.read_one.tenant
 ```elixir
 tenant source
@@ -1619,6 +1888,7 @@ Declares a step that will call a read action on a resource.
 ### Nested DSLs
  * [actor](#reactor-read-actor)
  * [inputs](#reactor-read-inputs)
+ * [load](#reactor-read-load)
  * [tenant](#reactor-read-tenant)
  * [wait_for](#reactor-read-wait_for)
 
@@ -1731,6 +2001,37 @@ inputs(author: result(:get_user))
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Inputs`
+
+## reactor.read.load
+```elixir
+load source
+```
+
+
+Allows the addition of an Ash load statement to the action
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-read-load-source){: #reactor-read-load-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the load |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-read-load-transform){: #reactor-read-load-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the load before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.ActionLoad`
 
 ## reactor.read.tenant
 ```elixir
@@ -1900,6 +2201,7 @@ Declares a step that will call an update action on a resource.
 ### Nested DSLs
  * [actor](#reactor-update-actor)
  * [inputs](#reactor-update-inputs)
+ * [load](#reactor-update-load)
  * [tenant](#reactor-update-tenant)
  * [wait_for](#reactor-update-wait_for)
 
@@ -2015,6 +2317,37 @@ inputs(author: result(:get_user))
 ### Introspection
 
 Target: `Ash.Reactor.Dsl.Inputs`
+
+## reactor.update.load
+```elixir
+load source
+```
+
+
+Allows the addition of an Ash load statement to the action
+
+
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`source`](#reactor-update-load-source){: #reactor-update-load-source .spark-required} | `Reactor.Template.Element \| Reactor.Template.Input \| Reactor.Template.Result \| Reactor.Template.Value` |  | What to use as the source of the load |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`transform`](#reactor-update-load-transform){: #reactor-update-load-transform } | `(any -> any) \| module \| nil` |  | An optional transformation function which can be used to modify the load before it is passed to the action. |
+
+
+
+
+
+### Introspection
+
+Target: `Ash.Reactor.Dsl.ActionLoad`
 
 ## reactor.update.tenant
 ```elixir
