@@ -1251,6 +1251,19 @@ defmodule Ash.Changeset do
         other -> other
       end
 
+    case action do
+      %Ash.Resource.Actions.Update{name: name} ->
+        raise ArgumentError,
+          message: """
+          Action #{inspect(changeset.resource)}.#{name} was passed to `Ash.Changeset.for_create`, but it is an update action.
+
+          Perhaps you meant to call `Ash.Changeset.for_create` instead?
+          """
+
+      _ ->
+        :ok
+    end
+
     changeset
     |> set_context(%{
       private: %{
