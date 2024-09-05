@@ -82,7 +82,7 @@ defmodule Ash.Resource.Actions.Destroy do
                   default: false
                 ],
                 atomic_upgrade_with: [
-                  type: {:one_of, [:atom, nil]},
+                  type: {:or, [:atom, nil]},
                   doc: """
                   Configure the read action used when performing atomic upgrades. Defaults to the primary read action.
                   """
