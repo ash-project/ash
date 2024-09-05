@@ -19,7 +19,6 @@ defmodule Ash.Reactor.BulkCreateStep do
         :authorize?,
         :batch_size,
         :domain,
-        :load,
         :max_concurrency,
         :notify?,
         :read_action,
@@ -45,6 +44,7 @@ defmodule Ash.Reactor.BulkCreateStep do
       |> maybe_set_kw(:actor, arguments[:actor])
       |> maybe_set_kw(:tenant, arguments[:tenant])
       |> maybe_set_kw(:notification_metadata, arguments[:notification_metadata])
+      |> maybe_set_kw(:load, arguments[:load])
 
     success_states =
       options[:success_state]

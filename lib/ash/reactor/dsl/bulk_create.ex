@@ -16,7 +16,7 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
             description: nil,
             domain: nil,
             initial: nil,
-            load: [],
+            load: nil,
             max_concurrency: 0,
             name: nil,
             notification_metadata: %{},
@@ -48,7 +48,7 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
           __identifier__: any,
           action_step?: true,
           action: atom,
-          actor: [Ash.Reactor.Dsl.Actor.t()],
+          actor: nil | Ash.Reactor.Dsl.Actor.t(),
           assume_casted?: boolean,
           async?: boolean,
           authorize_changeset_with: :filter | :error,
@@ -58,7 +58,7 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
           description: String.t() | nil,
           domain: Ash.Domain.t(),
           initial: Reactor.Template.t(),
-          load: [atom],
+          load: nil | Ash.Reactor.Dsl.ActionLoad.t(),
           max_concurrency: non_neg_integer(),
           name: atom,
           notification_metadata: map,
@@ -74,7 +74,7 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
           sorted?: boolean,
           stop_on_error?: boolean,
           success_state: :success | :partial_success,
-          tenant: [Ash.Reactor.Dsl.Tenant.t()],
+          tenant: nil | Ash.Reactor.Dsl.Tenant.t(),
           timeout: nil | timeout,
           transaction: :all | :batch | false,
           type: :bulk_create,
@@ -119,10 +119,11 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
       imports: [Reactor.Dsl.Argument],
       entities: [
         actor: [Ash.Reactor.Dsl.Actor.__entity__()],
+        load: [Ash.Reactor.Dsl.ActionLoad.__entity__()],
         tenant: [Ash.Reactor.Dsl.Tenant.__entity__()],
         wait_for: [Reactor.Dsl.WaitFor.__entity__()]
       ],
-      singleton_entity_keys: [:actor, :tenant],
+      singleton_entity_keys: [:actor, :tenant, :load],
       recursive_as: :steps,
       schema:
         [
@@ -158,13 +159,6 @@ defmodule Ash.Reactor.Dsl.BulkCreate do
             required: true,
             doc:
               "A collection of inputs to pass to the create action. Must implement the `Enumerable` protocol."
-          ],
-          load: [
-            type: {:wrap_list, :atom},
-            doc:
-              "A load statement to apply to records. Ignored if `return_records?` is not true.",
-            required: false,
-            default: []
           ],
           max_concurrency: [
             type: :non_neg_integer,

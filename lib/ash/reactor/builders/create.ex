@@ -29,6 +29,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Create do
         arguments
         |> maybe_append(create.actor)
         |> maybe_append(create.tenant)
+        |> maybe_append(create.load)
         |> Enum.concat(create.wait_for)
         |> Enum.concat([initial])
 

@@ -23,7 +23,6 @@ defmodule Ash.Reactor.BulkUpdateStep do
         :batch_size,
         :domain,
         :filter,
-        :load,
         :lock,
         :max_concurrency,
         :notify?,
@@ -51,6 +50,7 @@ defmodule Ash.Reactor.BulkUpdateStep do
       |> maybe_set_kw(:actor, context[:actor])
       |> maybe_set_kw(:tenant, context[:tenant])
       |> maybe_set_kw(:tracer, context[:tracer])
+      |> maybe_set_kw(:load, arguments[:load])
 
     success_states =
       options[:success_state]

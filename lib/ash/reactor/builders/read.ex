@@ -6,11 +6,13 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.Read do
   @doc false
   @impl true
   def build(read, reactor) do
-    with {:ok, reactor, arguments} <- build_input_arguments(reactor, read) do
+    with {:ok, reactor} <- ensure_hooked(reactor),
+         {:ok, reactor, arguments} <- build_input_arguments(reactor, read) do
       arguments =
         arguments
         |> maybe_append(read.actor)
         |> maybe_append(read.tenant)
+        |> maybe_append(read.load)
         |> Enum.concat(read.wait_for)
 
       action_options =

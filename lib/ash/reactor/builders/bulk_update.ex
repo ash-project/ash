@@ -28,6 +28,7 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.BulkUpdate do
         arguments
         |> maybe_append(bulk_update.actor)
         |> maybe_append(bulk_update.tenant)
+        |> maybe_append(bulk_update.load)
         |> Enum.concat(bulk_update.wait_for)
         |> Enum.concat([initial, notification_metadata])
 
@@ -45,7 +46,6 @@ defimpl Reactor.Dsl.Build, for: Ash.Reactor.Dsl.BulkUpdate do
           :batch_size,
           :domain,
           :filter,
-          :load,
           :lock,
           :max_concurrency,
           :notify?,

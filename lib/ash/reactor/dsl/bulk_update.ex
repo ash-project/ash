@@ -21,7 +21,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
             filter: %{},
             initial: nil,
             inputs: [],
-            load: [],
+            load: nil,
             lock: nil,
             max_concurrency: 0,
             name: nil,
@@ -56,7 +56,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
           __identifier__: any,
           action_step?: true,
           action: atom,
-          actor: [Ash.Reactor.Dsl.Actor.t()],
+          actor: nil | Ash.Reactor.Dsl.Actor.t(),
           allow_stream_with: :keyset | :offset | :full_read,
           assume_casted?: boolean,
           async?: boolean,
@@ -73,7 +73,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
             | Keyword.t(Keyword.t(String.t() | number | boolean)),
           initial: Reactor.Template.t(),
           inputs: [Ash.Reactor.Dsl.Inputs.t()],
-          load: [atom],
+          load: nil | Ash.Reactor.Dsl.ActionLoad.t(),
           lock: nil | Ash.DataLayer.lock_type(),
           max_concurrency: non_neg_integer(),
           name: atom,
@@ -95,7 +95,7 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
           stream_batch_size: nil | pos_integer(),
           stream_with: nil | :keyset | :offset | :full_read,
           success_state: :success | :partial_success,
-          tenant: [Ash.Reactor.Dsl.Tenant.t()],
+          tenant: nil | Ash.Reactor.Dsl.Tenant.t(),
           timeout: nil | timeout,
           transaction: :all | :batch | false,
           type: :bulk_create,
@@ -203,13 +203,6 @@ defmodule Ash.Reactor.Dsl.BulkUpdate do
             required: true,
             doc:
               "A collection of inputs to pass to the create action. Must implement the `Enumerable` protocol."
-          ],
-          load: [
-            type: {:wrap_list, :atom},
-            doc:
-              "A load statement to apply to records. Ignored if `return_records?` is not true.",
-            required: false,
-            default: []
           ],
           lock: [
             type: :any,
