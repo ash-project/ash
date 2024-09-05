@@ -45,6 +45,7 @@ defmodule Ash.Resource.Calculation.Expression do
           case Ash.Expr.eval_hydrated(expression,
                  record: record,
                  resource: resource,
+                 actor: context.actor,
                  unknown_on_unknown_refs?: true
                ) do
             {:ok, value} ->

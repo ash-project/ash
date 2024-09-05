@@ -54,7 +54,12 @@ defmodule Ash.Filter.Runtime do
             |> load_all(refs_to_load)
             |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-          Ash.load!(records, load, authorize?: false, domain: domain, tenant: opts[:tenant])
+          Ash.load!(records, load,
+            authorize?: false,
+            domain: domain,
+            tenant: opts[:tenant],
+            actor: opts[:actor]
+          )
       end
 
     Enum.reduce_while(records, {:ok, []}, fn record, {:ok, records} ->
@@ -166,7 +171,9 @@ defmodule Ash.Filter.Runtime do
         parent \\ nil,
         resource \\ nil,
         domain \\ nil,
-        unknown_on_unknown_refs? \\ false
+        unknown_on_unknown_refs? \\ false,
+        actor \\ nil,
+        tenant \\ nil
       ) do
     if domain && record do
       refs_to_load =
@@ -187,7 +194,12 @@ defmodule Ash.Filter.Runtime do
               |> load_all(refs)
               |> Ash.Query.set_context(%{private: %{internal?: true}})
 
-            Ash.load!(record, load, domain: domain, authorize?: false)
+            Ash.load!(record, load,
+              domain: domain,
+              authorize?: false,
+              tenant: tenant,
+              actor: actor
+            )
         end
 
       do_match(record, expression, parent, resource, unknown_on_unknown_refs?)
@@ -451,7 +463,7 @@ defmodule Ash.Filter.Runtime do
     if unknown_on_unknown_refs? do
       :unknown
     else
-      nil
+      {:ok, nil}
     end
   end
 

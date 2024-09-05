@@ -999,7 +999,9 @@ defmodule Ash.Actions.Read.Relationships do
                 case Ash.Filter.Runtime.filter_matches(
                        related_query.domain,
                        value,
-                       query.filter
+                       query.filter,
+                       tenant: query.tenant,
+                       actor: query.actor
                      ) do
                   {:ok, value} ->
                     value

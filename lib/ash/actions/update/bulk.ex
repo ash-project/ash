@@ -22,10 +22,12 @@ defmodule Ash.Actions.Update.Bulk do
         opts
       end
 
-    query =
+    {query, opts} =
       if query.__validated_for_action__ do
-        query
+        {query, opts}
       else
+        {query, opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, query, opts)
+
         query =
           Ash.Query.for_read(
             query,
@@ -35,9 +37,7 @@ defmodule Ash.Actions.Update.Bulk do
             tenant: opts[:tenant]
           )
 
-        {query, _opts} = Ash.Actions.Helpers.set_context_and_get_opts(domain, query, opts)
-
-        query
+        {query, opts}
       end
 
     query = %{query | domain: domain}

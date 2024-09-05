@@ -2913,7 +2913,11 @@ defmodule Ash.Query do
               "Could not determine domain for #{inspect(query)}, please provide the `:domain` option."
 
     with {:ok, records} <-
-           Ash.Filter.Runtime.filter_matches(domain, records, query.filter, parent: opts[:parent]),
+           Ash.Filter.Runtime.filter_matches(domain, records, query.filter,
+             parent: opts[:parent],
+             actor: opts[:actor] || query.context[:private][:actor],
+             tenant: opts[:tenant] || query.tenant
+           ),
          records <- Sort.runtime_sort(records, query.distinct_sort || query.sort, domain: domain),
          records <- Sort.runtime_distinct(records, query.distinct, domain: domain),
          records <- Sort.runtime_sort(records, query.sort, domain: domain),

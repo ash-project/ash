@@ -70,6 +70,7 @@ defmodule Ash.DataLayer.Mnesia do
       :limit,
       :tenant,
       :sort,
+      context: %{},
       relationships: %{},
       offset: 0,
       aggregates: [],
@@ -203,7 +204,12 @@ defmodule Ash.DataLayer.Mnesia do
           },
           {:ok, acc} ->
             results
-            |> filter_matches(Map.get(query || %{}, :filter), domain, query.tenant)
+            |> filter_matches(
+              Map.get(query || %{}, :filter),
+              domain,
+              query.tenant,
+              query.context[:private][:actor]
+            )
             |> case do
               {:ok, matches} ->
                 field = field || Enum.at(Ash.Resource.Info.primary_key(resource), 0)
@@ -245,6 +251,12 @@ defmodule Ash.DataLayer.Mnesia do
 
   @doc false
   @impl true
+  def set_context(_resource, query, context) do
+    {:ok, %{query | context: context}}
+  end
+
+  @doc false
+  @impl true
   def run_query(
         %Query{
           domain: domain,
@@ -255,7 +267,8 @@ defmodule Ash.DataLayer.Mnesia do
           limit: limit,
           sort: sort,
           aggregates: aggregates,
-          tenant: tenant
+          tenant: tenant,
+          context: context
         },
         _resource
       ) do
@@ -265,7 +278,8 @@ defmodule Ash.DataLayer.Mnesia do
            end),
          {:ok, records} <-
            records |> Enum.map(&elem(&1, 2)) |> Ash.DataLayer.Ets.cast_records(resource),
-         {:ok, filtered} <- filter_matches(records, filter, domain, tenant),
+         {:ok, filtered} <-
+           filter_matches(records, filter, domain, tenant, context[:private][:actor]),
          offset_records <-
            filtered |> Sort.runtime_sort(sort, domain: domain) |> Enum.drop(offset || 0),
          limited_records <- do_limit(offset_records, limit),
@@ -296,10 +310,10 @@ defmodule Ash.DataLayer.Mnesia do
   defp do_limit(records, nil), do: records
   defp do_limit(records, limit), do: Enum.take(records, limit)
 
-  defp filter_matches(records, nil, _domain, _tenant), do: {:ok, records}
+  defp filter_matches(records, nil, _domain, _tenant, _), do: {:ok, records}
 
-  defp filter_matches(records, filter, domain, tenant) do
-    Ash.Filter.Runtime.filter_matches(domain, records, filter, tenant: tenant)
+  defp filter_matches(records, filter, domain, tenant, actor) do
+    Ash.Filter.Runtime.filter_matches(domain, records, filter, tenant: tenant, actor: actor)
   end
 
   @doc false

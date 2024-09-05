@@ -111,7 +111,9 @@ defmodule Ash.Expr do
       opts[:parent],
       opts[:resource],
       opts[:domain],
-      opts[:unknown_on_unknown_refs?]
+      opts[:unknown_on_unknown_refs?],
+      opts[:actor],
+      opts[:tenant]
     )
   end
 

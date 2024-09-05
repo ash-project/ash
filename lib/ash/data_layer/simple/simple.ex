@@ -29,7 +29,18 @@ defmodule Ash.DataLayer.Simple do
 
   defmodule Query do
     @moduledoc false
-    defstruct [:data, :resource, :filter, :domain, :limit, :offset, sort: [], data_set?: false]
+    defstruct [
+      :data,
+      :resource,
+      :filter,
+      :domain,
+      :limit,
+      :offset,
+      :tenant,
+      sort: [],
+      data_set?: false,
+      context: %{}
+    ]
   end
 
   @doc """
@@ -60,11 +71,20 @@ defmodule Ash.DataLayer.Simple do
   end
 
   def run_query(
-        %{data: data, sort: sort, domain: domain, filter: filter, limit: limit, offset: offset},
+        %{
+          data: data,
+          sort: sort,
+          domain: domain,
+          filter: filter,
+          limit: limit,
+          offset: offset,
+          tenant: tenant,
+          context: context
+        },
         _resource
       ) do
     data
-    |> do_filter_matches(filter, domain)
+    |> do_filter_matches(filter, domain, tenant, context)
     |> case do
       {:ok, results} ->
         {:ok,
@@ -90,8 +110,11 @@ defmodule Ash.DataLayer.Simple do
     end
   end
 
-  defp do_filter_matches(data, filter, domain) do
-    Ash.Filter.Runtime.filter_matches(domain, data, filter)
+  defp do_filter_matches(data, filter, domain, tenant, context) do
+    Ash.Filter.Runtime.filter_matches(domain, data, filter,
+      actor: context[:private][:actor],
+      tenant: tenant
+    )
   end
 
   @doc false
@@ -105,7 +128,7 @@ defmodule Ash.DataLayer.Simple do
   end
 
   @doc false
-  def set_tenant(_, query, _), do: {:ok, query}
+  def set_tenant(_, query, tenant), do: {:ok, %{query | tenant: tenant}}
 
   @doc false
   def filter(query, filter, _resource) do
@@ -122,7 +145,7 @@ defmodule Ash.DataLayer.Simple do
     with {:ok, data_layer_context} <- Map.fetch(context, :data_layer),
          {:ok, data} <- Map.fetch(data_layer_context, :data),
          {:ok, resource_data} <- Map.fetch(data, query.resource) do
-      {:ok, %{query | data_set?: true, data: resource_data || []}}
+      {:ok, %{query | data_set?: true, data: resource_data || [], context: context}}
     else
       _ ->
         {:ok, query}

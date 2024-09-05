@@ -121,7 +121,7 @@ defmodule Ash.Policy.FilterCheck do
 
       defp try_eval(expression, %{
              resource: resource,
-             action_input: %Ash.ActionInput{} = action_input,
+             action_input: %Ash.ActionInput{tenant: tenant} = action_input,
              actor: actor
            }) do
         expression =
@@ -140,22 +140,12 @@ defmodule Ash.Policy.FilterCheck do
                public?: false
              }) do
           {:ok, hydrated} ->
-            Ash.Expr.eval_hydrated(hydrated, resource: resource, unknown_on_unknown_refs?: true)
-
-          {:error, error} ->
-            {:error, error}
-        end
-      end
-
-      defp try_eval(expression, %{resource: resource, query: %Ash.Query{} = query}) do
-        case Ash.Filter.hydrate_refs(expression, %{
-               resource: resource,
-               aggregates: query.aggregates,
-               calculations: query.calculations,
-               public?: false
-             }) do
-          {:ok, hydrated} ->
-            Ash.Expr.eval_hydrated(hydrated, resource: resource, unknown_on_unknown_refs?: true)
+            Ash.Expr.eval_hydrated(hydrated,
+              resource: resource,
+              unknown_on_unknown_refs?: true,
+              actor: actor,
+              tenant: tenant
+            )
 
           {:error, error} ->
             {:error, error}
@@ -164,7 +154,31 @@ defmodule Ash.Policy.FilterCheck do
 
       defp try_eval(expression, %{
              resource: resource,
-             changeset: %Ash.Changeset{action_type: :create} = changeset,
+             query: %Ash.Query{tenant: tenant} = query,
+             actor: actor
+           }) do
+        case Ash.Filter.hydrate_refs(expression, %{
+               resource: resource,
+               aggregates: query.aggregates,
+               calculations: query.calculations,
+               public?: false
+             }) do
+          {:ok, hydrated} ->
+            Ash.Expr.eval_hydrated(hydrated,
+              resource: resource,
+              unknown_on_unknown_refs?: true,
+              actor: actor,
+              tenant: tenant
+            )
+
+          {:error, error} ->
+            {:error, error}
+        end
+      end
+
+      defp try_eval(expression, %{
+             resource: resource,
+             changeset: %Ash.Changeset{action_type: :create, tenant: tenant} = changeset,
              actor: actor
            }) do
         expression =
@@ -184,7 +198,12 @@ defmodule Ash.Policy.FilterCheck do
                public?: false
              }) do
           {:ok, hydrated} ->
-            Ash.Expr.eval_hydrated(hydrated, resource: resource, unknown_on_unknown_refs?: true)
+            Ash.Expr.eval_hydrated(hydrated,
+              resource: resource,
+              unknown_on_unknown_refs?: true,
+              actor: actor,
+              tenant: tenant
+            )
 
           {:error, error} ->
             {:error, error}
@@ -193,7 +212,8 @@ defmodule Ash.Policy.FilterCheck do
 
       defp try_eval(expression, %{
              resource: resource,
-             changeset: %Ash.Changeset{data: data} = changeset
+             changeset: %Ash.Changeset{data: data, tenant: tenant} = changeset,
+             actor: actor
            }) do
         case Ash.Filter.hydrate_refs(expression, %{
                resource: resource,
@@ -204,7 +224,9 @@ defmodule Ash.Policy.FilterCheck do
           {:ok, hydrated} ->
             opts = [
               resource: resource,
-              unknown_on_unknown_refs?: true
+              unknown_on_unknown_refs?: true,
+              actor: actor,
+              tenant: tenant
             ]
 
             # We don't want to authorize on stale data in real life
@@ -231,7 +253,7 @@ defmodule Ash.Policy.FilterCheck do
         end
       end
 
-      defp try_eval(expression, %{resource: resource}) do
+      defp try_eval(expression, %{resource: resource, actor: actor}) do
         case Ash.Filter.hydrate_refs(expression, %{
                resource: resource,
                aggregates: %{},
@@ -239,7 +261,11 @@ defmodule Ash.Policy.FilterCheck do
                public?: false
              }) do
           {:ok, hydrated} ->
-            Ash.Expr.eval_hydrated(hydrated, resource: resource, unknown_on_unknown_refs?: true)
+            Ash.Expr.eval_hydrated(hydrated,
+              resource: resource,
+              unknown_on_unknown_refs?: true,
+              actor: actor
+            )
 
           {:error, error} ->
             {:error, error}
