@@ -6,10 +6,16 @@ defmodule Ash.Test.Policy.ComplexTest do
   alias Ash.Test.Support.PolicyComplex.{Bio, Comment, Post, User}
 
   setup do
-    Application.put_env(:ash, :policies, show_policy_breakdowns?: true)
+    old_env = Application.get_env(:ash, :policies, [])
+
+    Application.put_env(
+      :ash,
+      :policies,
+      Keyword.merge(old_env, show_policy_breakdowns?: true)
+    )
 
     on_exit(fn ->
-      Application.delete_env(:ash, :policies)
+      Application.put_env(:ash, :policies, old_env)
     end)
 
     me = User.create!("me", %{email: "me@app.com", bio_text: "this is my bio"}, authorize?: false)

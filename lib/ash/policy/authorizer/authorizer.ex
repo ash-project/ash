@@ -1559,7 +1559,7 @@ defmodule Ash.Policy.Authorizer do
   defp forbidden_due_to_strict_policy?(authorizer) do
     no_filter_static_forbidden_reads? =
       Keyword.get(
-        Application.get_env(:ash, :policy, []),
+        Application.get_env(:ash, :policies, []),
         :no_filter_static_forbidden_reads?,
         true
       )

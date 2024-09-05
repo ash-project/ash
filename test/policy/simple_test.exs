@@ -75,10 +75,16 @@ defmodule Ash.Test.Policy.SimpleTest do
   end
 
   setup do
-    Application.put_env(:ash, :policies, show_policy_breakdowns?: true)
+    old_env = Application.get_env(:ash, :policies, [])
+
+    Application.put_env(
+      :ash,
+      :policies,
+      Keyword.merge(old_env, show_policy_breakdowns?: true)
+    )
 
     on_exit(fn ->
-      Application.delete_env(:ash, :policies)
+      Application.put_env(:ash, :policies, old_env)
     end)
 
     [

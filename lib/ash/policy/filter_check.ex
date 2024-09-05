@@ -85,7 +85,7 @@ defmodule Ash.Policy.FilterCheck do
         |> then(fn expr ->
           no_filter_static_forbidden_reads? =
             Keyword.get(
-              Application.get_env(:ash, :policy, []),
+              Application.get_env(:ash, :policies, []),
               :no_filter_static_forbidden_reads?,
               true
             )
