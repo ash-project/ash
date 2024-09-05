@@ -162,6 +162,7 @@ defmodule Ash.Actions.Update do
                  Keyword.merge(opts,
                    strategy: [:atomic, :stream],
                    resource: atomic_changeset.resource,
+                   read_action: atomic_upgrade_read.name,
                    authorize_query?: false,
                    return_records?: true,
                    atomic_changeset: atomic_changeset,

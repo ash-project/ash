@@ -29,7 +29,7 @@ defmodule Ash.Actions.Update.Bulk do
         query =
           Ash.Query.for_read(
             query,
-            get_read_action(query.resource, opts).name,
+            get_read_action(query.resource, action, opts).name,
             %{},
             actor: opts[:actor],
             tenant: opts[:tenant]
@@ -928,7 +928,7 @@ defmodule Ash.Actions.Update.Bulk do
   defp do_run(domain, stream, action, input, opts, metadata_key, context_key, not_atomic_reason) do
     resource = opts[:resource]
     opts = Ash.Actions.Helpers.set_opts(opts, domain)
-    read_action = get_read_action(resource, opts)
+    read_action = get_read_action(resource, action, opts)
 
     {context_cs, opts} =
       Ash.Actions.Helpers.set_context_and_get_opts(domain, Ash.Changeset.new(resource), opts)
@@ -1053,7 +1053,7 @@ defmodule Ash.Actions.Update.Bulk do
       fn batch ->
         pkeys = [or: Enum.map(batch, &Map.take(&1, pkey))]
 
-        read_action = get_read_action(resource, opts).name
+        read_action = get_read_action(resource, action, opts).name
 
         resource
         |> Ash.Query.for_read(read_action, %{},
@@ -2918,10 +2918,29 @@ defmodule Ash.Actions.Update.Bulk do
     )
   end
 
-  defp get_read_action(resource, opts) do
+  defp get_read_action(resource, action, opts) do
     case opts[:read_action] do
       nil ->
-        Ash.Resource.Info.primary_action!(resource, :read)
+        case action do
+          %{atomic_upgrade_with: read_action} when not is_nil(read_action) ->
+            Ash.Resource.Info.action(resource, read_action) ||
+              raise "No such read action in #{inspect(resource)}.#{action.name}.atomic_upgrade_with: #{read_action}"
+
+          action when is_atom(action) and not is_nil(action) ->
+            action =
+              Ash.Resource.Info.action(resource, action) ||
+                raise "No such destroy action #{inspect(resource)}.#{action}"
+
+            if read_action = action.atomic_upgrade_with do
+              Ash.Resource.Info.action(resource, read_action) ||
+                raise "No such read action in #{inspect(resource)}.#{action.name}.atomic_upgrade_with: #{read_action}"
+            else
+              Ash.Resource.Info.primary_action!(resource, :read)
+            end
+
+          _ ->
+            Ash.Resource.Info.primary_action!(resource, :read)
+        end
 
       action ->
         Ash.Resource.Info.action(resource, action)
