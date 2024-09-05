@@ -2,6 +2,11 @@
 
 <!-- changelog -->
 
+## [v3.4.4](https://github.com/ash-project/ash/compare/v3.4.3...v3.4.4) (2024-09-05)
+
+
+
+
 ## [v3.4.3](https://github.com/ash-project/ash/compare/v3.4.2...v3.4.3) (2024-09-04)
 
 ### Bug Fixes:
