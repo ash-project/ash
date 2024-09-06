@@ -182,4 +182,45 @@ defmodule Ash.Test.Resource.ResourceTest do
 
     Ash.load!(left, [pants: [:legs]], domain: Clothing)
   end
+
+  test "no attributes relationships can be loaded" do
+    defmodule TimeMachine do
+      @moduledoc false
+      use Ash.Resource,
+        domain: Ash.Test.Domain,
+        data_layer: Ash.DataLayer.Ets,
+        validate_domain_inclusion?: false
+
+      attributes do
+        uuid_primary_key :id
+        attribute :name, :string, public?: true
+        attribute :current_year, :integer, public?: :true
+      end
+
+      relationships do
+        has_one :next_machine, __MODULE__ do
+          no_attributes? true
+          filter expr(current_year > parent(current_year) and id != parent(id))
+          sort current_year: :asc
+          public? true
+          writable? false
+          from_many? true
+        end
+      end
+
+      actions do
+        defaults [:create, :read]
+        default_accept :*
+      end
+    end
+
+    delorean = Ash.create!(TimeMachine, %{name: "Delorean DMC-12", current_year: 1985})
+    Ash.create!(TimeMachine, %{name: "San Dimas Phone Booth", current_year: 1988})
+
+    delorean = Ash.load!(delorean, [:next_machine])
+    assert delorean.next_machine.name == "San Dimas Phone Booth"
+
+    delorean = Ash.load!(delorean, [next_machine: [:name]])
+    assert delorean.next_machine.name == "San Dimas Phone Booth"
+  end
 end
