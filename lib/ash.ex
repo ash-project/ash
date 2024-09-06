@@ -2178,7 +2178,7 @@ defmodule Ash do
 
         is_nil(changeset.__validated_for_action__) ->
           action =
-            opts[:action] ||
+            opts[:action] || changeset.action ||
               Ash.Resource.Info.primary_action!(changeset.resource, :create).name
 
           Ash.Changeset.for_create(changeset, action, params, opts)

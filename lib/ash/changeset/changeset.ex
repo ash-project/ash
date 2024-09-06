@@ -1756,6 +1756,8 @@ defmodule Ash.Changeset do
         raise_no_action(changeset.resource, action_or_name, changeset.action_type)
       end
     else
+      action = get_action_entity(changeset.resource, action_or_name)
+
       {changeset, _opts} =
         Ash.Actions.Helpers.set_context_and_get_opts(
           domain,
@@ -1763,7 +1765,7 @@ defmodule Ash.Changeset do
           opts
         )
 
-      changeset
+      %{changeset | action: action}
     end
   end
 
