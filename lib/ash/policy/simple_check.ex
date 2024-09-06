@@ -29,7 +29,9 @@ defmodule Ash.Policy.SimpleCheck do
         end
       end
 
-      defoverridable requires_original_data?: 2
+      def prefer_expanded_description?, do: false
+
+      defoverridable requires_original_data?: 2, prefer_expanded_description?: 0
     end
   end
 end

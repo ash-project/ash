@@ -1977,7 +1977,7 @@ defmodule Ash.Actions.Read do
 
         agg.query
         |> Ash.Query.set_context(%{private: %{require_actor?: false}})
-        |> Ash.Query.for_read(read_action, %{}, domain: domain)
+        |> Ash.Query.for_read(read_action, %{}, domain: domain, actor: actor, tenant: tenant)
       else
         agg.query
       end

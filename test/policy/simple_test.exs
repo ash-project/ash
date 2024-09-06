@@ -74,6 +74,84 @@ defmodule Ash.Test.Policy.SimpleTest do
     end
   end
 
+  defmodule ResourceWithAnImpossibleCreatePolicy do
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+    end
+
+    actions do
+      defaults [:create, :read]
+    end
+
+    policies do
+      policy action(:create) do
+        authorize_if expr(self.id == ^actor(:id))
+      end
+    end
+
+    relationships do
+      belongs_to :self, ResourceWithAnImpossibleCreatePolicy do
+        filterable? true
+        source_attribute :id
+        destination_attribute :id
+      end
+    end
+  end
+
+  defmodule OldEnoughToDrink do
+    use Ash.Policy.FilterCheck
+
+    @impl true
+    def describe(_opts) do
+      "is old enough to drink"
+    end
+
+    @impl true
+    def filter(_, _, _opts) do
+      expr(age > 21)
+    end
+  end
+
+  defmodule ResourceWithFailedFilterTest do
+    use Ash.Resource,
+      domain: Ash.Test.Domain,
+      data_layer: Ash.DataLayer.Ets,
+      authorizers: [Ash.Policy.Authorizer]
+
+    ets do
+      private? true
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :age, :integer
+    end
+
+    actions do
+      defaults [:create, :read, :update]
+    end
+
+    policies do
+      policy action(:create) do
+        authorize_if always()
+      end
+
+      policy action(:update) do
+        authorize_if OldEnoughToDrink
+        authorize_if expr(id == ^actor(:id))
+      end
+    end
+  end
+
   setup do
     old_env = Application.get_env(:ash, :policies, [])
 
@@ -110,6 +188,31 @@ defmodule Ash.Test.Policy.SimpleTest do
                    ResourceWithAPolicyThatDoesntApply
                    |> Ash.read!()
                  end
+  end
+
+  test "an impossible create policy shows the correct error message" do
+    assert_raise Ash.Error.Forbidden, ~r/Cannot use a filter to authorize a create/, fn ->
+      ResourceWithAnImpossibleCreatePolicy
+      |> Ash.create!(%{}, actor: %{id: 10})
+    end
+  end
+
+  test "a filter check shows a more in-depth breakdown of filter checks" do
+    actor_id = Ash.UUID.generate()
+
+    exception =
+      assert_raise Ash.Error.Forbidden, fn ->
+        ResourceWithFailedFilterTest
+        |> Ash.create!(%{}, actor: %{id: actor_id})
+        |> Ash.Changeset.for_update(:update, %{})
+        |> Ash.update!(%{}, actor: %{id: actor_id})
+      end
+
+    message = Exception.message(exception)
+
+    assert message =~ "Actor: %{id: \"#{actor_id}\"}"
+    assert message =~ "authorize if: is old enough to drink | age > 21 | ? | 🔎"
+    assert message =~ "authorize if: id == \"#{actor_id}\" | ? | 🔎"
   end
 
   test "strict read policies do not result in a filter" do

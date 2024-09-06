@@ -423,21 +423,22 @@ defmodule Ash.Can do
       authorizers ->
         authorizers
         |> Enum.reduce_while(
-          {false, base_query},
-          fn {authorizer, authorizer_state, context}, {_authorized?, query} ->
+          {false, base_query, []},
+          fn {authorizer, authorizer_state, context}, {_authorized?, query, authorizers} ->
             case authorizer.strict_check(authorizer_state, context) do
               {:error, %{class: :forbidden} = e} when is_exception(e) ->
-                {:halt, {false, e}}
+                {:halt, {false, e, {authorizer, authorizer_state, context}}}
 
               {:error, error} ->
-                {:halt, {:error, error}}
+                {:halt, {:error, authorizer, error}}
 
-              {:authorized, _} ->
-                {:cont, {true, query}}
+              {:authorized, authorizer_state} ->
+                {:cont, {true, query, [{authorizer, authorizer_state, context} | authorizers]}}
 
               :forbidden ->
                 {:halt,
-                 {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                 {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state),
+                  {authorizer, authorizer_state, context}}}
 
               _ when not is_nil(context.action_input) ->
                 raise """
@@ -470,7 +471,7 @@ defmodule Ash.Can do
                     authorizer,
                     authorizer_state,
                     opts
-                  )}}
+                  ), [{authorizer, authorizer_state, context} | authorizers]}}
 
               {:filter, filter} ->
                 filter =
@@ -496,13 +497,13 @@ defmodule Ash.Can do
                     authorizer,
                     authorizer_state,
                     opts
-                  )}}
+                  ), [{authorizer, authorizer_state, context} | authorizers]}}
 
               {:continue, authorizer_state} ->
                 if opts[:no_check?] do
                   {:halt,
                    opts[:on_must_pass_strict_check] ||
-                     {:error,
+                     {:error, {authorizer, authorizer_state, context},
                       Ash.Authorizer.exception(
                         authorizer,
                         :must_pass_strict_check,
@@ -525,13 +526,17 @@ defmodule Ash.Can do
                         end
                       )
 
-                    {:cont, {true, query_with_hook}}
+                    {:cont,
+                     {true, query_with_hook,
+                      [{authorizer, authorizer_state, context} | authorizers]}}
                   else
                     if opts[:maybe_is] == false do
                       {:halt,
-                       {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                       {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state),
+                        {authorizer, authorizer_state, context}}}
                     else
-                      {:halt, {:maybe, nil}}
+                      {:halt,
+                       {:maybe, nil, [{authorizer, authorizer_state, context} | authorizers]}}
                     end
                   end
                 end
@@ -551,11 +556,12 @@ defmodule Ash.Can do
                   end
 
                 if opts[:no_check?] || !match?(%Ash.Query{}, subject) do
-                  Ash.Authorizer.exception(
-                    authorizer,
-                    :must_pass_strict_check,
-                    authorizer_state
-                  )
+                  {:error, {authorizer, authorizer_state, context},
+                   Ash.Authorizer.exception(
+                     authorizer,
+                     :must_pass_strict_check,
+                     authorizer_state
+                   )}
                 else
                   if opts[:alter_source?] do
                     query_with_hook =
@@ -578,13 +584,17 @@ defmodule Ash.Can do
                         end
                       end)
 
-                    {:cont, {true, query_with_hook}}
+                    {:cont,
+                     {true, query_with_hook,
+                      [{authorizer, authorizer_state, context} | authorizers]}}
                   else
                     if opts[:maybe_is] == false do
                       {:halt,
-                       {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state)}}
+                       {false, Ash.Authorizer.exception(authorizer, :forbidden, authorizer_state),
+                        authorizer}}
                     else
-                      {:halt, {:maybe, nil}}
+                      {:halt,
+                       {:maybe, nil, [{authorizer, authorizer_state, context} | authorizers]}}
                     end
                   end
                 end
@@ -592,10 +602,13 @@ defmodule Ash.Can do
           end
         )
         |> case do
-          {:error, error} ->
+          {:error, _authorizer, error} ->
             {:error, error}
 
-          {true, query} when not is_nil(query) ->
+          {true, nil, _} ->
+            {:ok, true}
+
+          {true, query, authorizers} when not is_nil(query) ->
             if opts[:run_queries?] do
               run_queries(subject, actor, opts, authorizers, query)
             else
@@ -606,26 +619,19 @@ defmodule Ash.Can do
               end
             end
 
-          {false, error} ->
+          {false, error, authorizer} ->
             if opts[:return_forbidden_error?] do
-              {:ok, false, error || authorizer_exception(authorizers)}
+              {:ok, false, error || authorizer_exception([authorizer])}
             else
               {:ok, false}
             end
 
-          {other, _} ->
-            {:ok, other}
-        end
-        |> case do
-          {:ok, :maybe} ->
+          {:maybe, _v, authorizers} ->
             if opts[:maybe_is] == false && opts[:return_forbidden_error?] do
               {:ok, false, authorizer_exception(authorizers)}
             else
               {:ok, opts[:maybe_is]}
             end
-
-          other ->
-            other
         end
     end
   end
@@ -768,11 +774,7 @@ defmodule Ash.Can do
         end
 
       %Ash.Changeset{} ->
-        if opts[:return_forbidden_error?] do
-          {:ok, false, authorizer_exception(authorizers)}
-        else
-          {:ok, false}
-        end
+        raise Ash.Error.Forbidden.CannotFilterCreates, filter: query.filter
     end
   end
 

@@ -11,4 +11,7 @@ defmodule Ash.Policy.Check.Expression do
   def filter(_, _, opts) do
     opts[:expr]
   end
+
+  @impl true
+  def prefer_expanded_description?, do: true
 end

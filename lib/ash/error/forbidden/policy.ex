@@ -15,6 +15,7 @@ defmodule Ash.Error.Forbidden.Policy do
       policy_breakdown?: false,
       must_pass_strict_check?: false,
       for_fields: nil,
+      subject: nil,
       context_description: nil,
       policies: [],
       resource: nil,
@@ -93,7 +94,9 @@ defmodule Ash.Error.Forbidden.Policy do
                 Keyword.merge(opts,
                   domain: error.domain,
                   resource: error.resource,
+                  actor: error.actor,
                   must_pass_strict_check?: must_pass_strict_check?,
+                  subject: error.subject,
                   context_description: error.context_description,
                   for_fields: error.for_fields
                 )
@@ -162,6 +165,28 @@ defmodule Ash.Error.Forbidden.Policy do
         ["Policy Breakdown#{policy_context_description}"]
       end
 
+    actor =
+      case opts[:actor] do
+        nil ->
+          "unknown actor"
+
+        %resource{} = actor ->
+          if Ash.Resource.Info.resource?(resource) do
+            case Ash.Resource.Info.primary_key(actor) do
+              [] ->
+                "  Actor: #{inspect(actor)}"
+
+              fields ->
+                "  #{Ash.Resource.Info.short_name(resource)}: #{inspect(Map.take(actor, fields))}"
+            end
+          else
+            "  Actor: #{inspect(actor)}"
+          end
+
+        actor ->
+          "  Actor: #{inspect(actor)}"
+      end
+
     policy_explanation =
       policies
       |> Kernel.||([])
@@ -197,8 +222,13 @@ defmodule Ash.Error.Forbidden.Policy do
       end
       |> then(fn {policies, title} ->
         policies
-        |> Enum.map(&explain_policy(&1, facts, opts[:success?] || false))
+        |> Enum.map(
+          &explain_policy(&1, facts, opts[:success?] || false, opts[:actor], opts[:subject])
+        )
         |> Enum.intersperse("\n")
+        |> then(fn list ->
+          Enum.concat([actor, "\n\n"], list)
+        end)
         |> title(title, false)
       end)
 
@@ -247,7 +277,7 @@ defmodule Ash.Error.Forbidden.Policy do
 
   defp relevant?(policy, facts) do
     Enum.all?(policy.condition || [], fn condition ->
-      Policy.fetch_fact(facts, condition) == {:ok, true}
+      Policy.fetch_fact(facts, condition) != {:ok, false}
     end)
   end
 
@@ -255,7 +285,7 @@ defmodule Ash.Error.Forbidden.Policy do
   defp title(other, title, true), do: [title, ":\n", other]
   defp title(other, title, false), do: [title, "\n", other]
 
-  defp explain_policy(policy, facts, success?) do
+  defp explain_policy(policy, facts, success?, actor, subject) do
     bypass =
       if policy.bypass? do
         "Bypass: "
@@ -263,10 +293,11 @@ defmodule Ash.Error.Forbidden.Policy do
         ""
       end
 
-    {condition_description, applies} = describe_conditions(policy.condition, facts)
+    {condition_description, applies} =
+      describe_conditions(policy.condition, facts, actor, subject)
 
     if applies == true do
-      {description, state} = describe_checks(policy.policies, facts, success?)
+      {description, state} = describe_checks(policy.policies, facts, success?, actor, subject)
 
       tag =
         case state do
@@ -306,7 +337,7 @@ defmodule Ash.Error.Forbidden.Policy do
     end
   end
 
-  defp describe_conditions(condition, facts) do
+  defp describe_conditions(condition, facts, actor, subject) do
     condition
     |> List.wrap()
     |> Enum.reduce({[], true}, fn condition, {conditions, status} ->
@@ -335,7 +366,7 @@ defmodule Ash.Error.Forbidden.Policy do
           end
         end
 
-      {[["condition: ", mod.describe(opts)] | conditions], new_status}
+      {[["condition: ", describe(mod, opts, actor, subject)] | conditions], new_status}
     end)
     |> then(fn {conditions, status} ->
       conditions =
@@ -357,7 +388,7 @@ defmodule Ash.Error.Forbidden.Policy do
     end)
   end
 
-  defp describe_checks(checks, facts, success?) do
+  defp describe_checks(checks, facts, success?, actor, subject) do
     {description, state} =
       Enum.reduce(checks, {[], :unknown}, fn check, {descriptions, state} ->
         new_state =
@@ -400,7 +431,9 @@ defmodule Ash.Error.Forbidden.Policy do
              Policy.fetch_fact(facts, check.check),
              tag,
              success?,
-             filter_check?
+             filter_check?,
+             actor,
+             subject
            )
            | descriptions
          ], new_state}
@@ -409,7 +442,7 @@ defmodule Ash.Error.Forbidden.Policy do
     {Enum.intersperse(Enum.reverse(description), "\n"), state}
   end
 
-  defp describe_check(check, fact_result, tag, success?, filter_check?) do
+  defp describe_check(check, fact_result, tag, success?, filter_check?, actor, subject) do
     fact_result =
       case fact_result do
         {:ok, true} ->
@@ -428,12 +461,47 @@ defmodule Ash.Error.Forbidden.Policy do
     [
       check_type(check),
       ": ",
-      check.check_module.describe(check.check_opts),
+      describe(check.check_module, check.check_opts, actor, subject),
       " | ",
       fact_result,
       " | ",
       tag
     ]
+  end
+
+  defp describe(mod, opts, actor, subject) do
+    description = mod.describe(opts)
+
+    if subject && function_exported?(mod, :expand_description, 3) do
+      authorizer =
+        %Ash.Policy.Authorizer{
+          subject: subject,
+          actor: actor
+        }
+
+      key =
+        case subject do
+          %Ash.Changeset{} -> :changeset
+          %Ash.Query{} -> :query
+          %Ash.ActionInput{} -> :action_input
+        end
+
+      authorizer = Map.put(authorizer, key, subject)
+
+      case mod.expand_description(actor, authorizer, opts) do
+        {:ok, desc} ->
+          if mod.prefer_expanded_description?() do
+            desc
+          else
+            description <> " | #{desc}"
+          end
+
+        _ ->
+          description
+      end
+    else
+      description
+    end
   end
 
   defp unknown_or_error_glyph(success?, filter_check?) when success? and filter_check?, do: "✓"

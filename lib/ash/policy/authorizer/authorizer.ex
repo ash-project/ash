@@ -483,6 +483,7 @@ defmodule Ash.Policy.Authorizer do
       scenarios: Map.get(state, :scenarios),
       facts: Map.get(state, :facts),
       policies: Map.get(state, :policies),
+      subject: Map.get(state, :subject),
       resource: Map.get(state, :resource),
       action: Map.get(state, :action),
       actor: Map.get(state, :actor),
@@ -497,6 +498,7 @@ defmodule Ash.Policy.Authorizer do
       scenarios: Map.get(state, :scenarios),
       facts: Map.get(state, :facts),
       domain: Map.get(state, :domain),
+      subject: Map.get(state, :subject),
       policies: Map.get(state, :policies),
       resource: Map.get(state, :resource),
       action: Map.get(state, :action),
@@ -510,6 +512,7 @@ defmodule Ash.Policy.Authorizer do
       scenarios: Map.get(state, :scenarios),
       domain: Map.get(state, :domain),
       facts: Map.get(state, :facts),
+      subject: Map.get(state, :subject),
       policies: Map.get(state, :policies),
       resource: Map.get(state, :resource),
       action: Map.get(state, :action),
@@ -621,16 +624,20 @@ defmodule Ash.Policy.Authorizer do
     |> strict_check_result()
     |> case do
       {:authorized, authorizer} ->
+        authorizer = strict_check_all_facts(authorizer)
+
         log_successful_policy_breakdown(authorizer)
-        {:authorized, strict_check_all_facts(authorizer)}
+        {:authorized, authorizer}
 
       {:filter, authorizer, filter} ->
+        authorizer = strict_check_all_facts(authorizer)
         log_successful_policy_breakdown(authorizer, filter)
-        {:filter, strict_check_all_facts(authorizer), filter}
+        {:filter, authorizer, filter}
 
       {:filter_and_continue, filter, authorizer} ->
+        authorizer = strict_check_all_facts(authorizer)
         log_successful_policy_breakdown(authorizer, filter)
-        {:filter, strict_check_all_facts(authorizer), filter}
+        {:filter, authorizer, filter}
 
       {:error, error} ->
         {:error, error}
@@ -1122,7 +1129,8 @@ defmodule Ash.Policy.Authorizer do
        ),
        do: authorizer
 
-  defp strict_check_all_facts(authorizer) do
+  @doc false
+  def strict_check_all_facts(authorizer) do
     case Checker.strict_check_all_facts(authorizer) do
       {:ok, authorizer, new_facts} ->
         %{authorizer | facts: new_facts}
@@ -1512,10 +1520,11 @@ defmodule Ash.Policy.Authorizer do
            facts: authorizer.facts,
            domain: Map.get(authorizer, :domain),
            policies: authorizer.policies,
+           subject: authorizer.subject,
            context_description: opts[:context_description],
            for_fields: opts[:for_fields],
            resource: Map.get(authorizer, :resource),
-           actor: Map.get(authorizer, :action),
+           actor: Map.get(authorizer, :actor),
            action: Map.get(authorizer, :action),
            scenarios: []
          )}
@@ -1536,6 +1545,7 @@ defmodule Ash.Policy.Authorizer do
              facts: authorizer.facts,
              domain: Map.get(authorizer, :domain),
              policies: authorizer.policies,
+             subject: authorizer.subject,
              context_description: opts[:context_description],
              for_fields: opts[:for_fields],
              resource: Map.get(authorizer, :resource),

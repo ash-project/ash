@@ -343,7 +343,31 @@ defmodule Ash.Policy.FilterCheck do
         end
       end
 
-      defoverridable reject: 3, requires_original_data?: 2
+      def expand_description(actor, authorizer, opts) do
+        changeset =
+          case authorizer.subject do
+            %Ash.Changeset{} = changeset -> changeset
+            _ -> nil
+          end
+
+        {:ok,
+         actor
+         |> filter(authorizer, opts)
+         |> Ash.Expr.fill_template(
+           actor,
+           authorizer.subject.arguments,
+           authorizer.subject.context,
+           changeset
+         )
+         |> inspect()}
+      end
+
+      def prefer_expanded_description?, do: false
+
+      defoverridable reject: 3,
+                     requires_original_data?: 2,
+                     expand_description: 3,
+                     prefer_expanded_description?: 0
     end
   end
 

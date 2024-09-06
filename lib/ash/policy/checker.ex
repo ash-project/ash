@@ -27,8 +27,11 @@ defmodule Ash.Policy.Checker do
              authorizer,
              facts
            ) do
-        {:ok, authorizer, facts} -> {:cont, {:ok, authorizer, facts}}
-        {:error, error} -> {:halt, {:error, error}}
+        {:ok, authorizer, facts} ->
+          {:cont, {:ok, authorizer, facts}}
+
+        {:error, error} ->
+          {:halt, {:error, error}}
       end
     end)
     |> case do
