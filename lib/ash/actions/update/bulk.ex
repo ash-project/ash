@@ -436,7 +436,11 @@ defmodule Ash.Actions.Update.Bulk do
             handle_bulk_result(bulk_result, metadata_key, opts)
 
           {:error, error} ->
-            {:error, error}
+            handle_bulk_result(
+              %Ash.BulkResult{errors: [error], status: :error},
+              metadata_key,
+              opts
+            )
         end
       after
         if notify? do

@@ -474,7 +474,12 @@ defmodule Ash.Actions.Destroy.Bulk do
             handle_bulk_result(bulk_result, resource, action, opts)
 
           {:error, error} ->
-            [{:error, error}]
+            handle_bulk_result(
+              %Ash.BulkResult{errors: [error], status: :error},
+              resource,
+              action,
+              opts
+            )
         end
       after
         if notify? do
@@ -1384,7 +1389,9 @@ defmodule Ash.Actions.Destroy.Bulk do
             result
 
           {:error, error} ->
-            [{:error, error}]
+            store_error(ref, error, opts)
+
+            []
         end
       after
         if notify? do
@@ -1968,6 +1975,7 @@ defmodule Ash.Actions.Destroy.Bulk do
 
             {:error, error} ->
               store_error(ref, error, opts)
+
               []
           end
         end)
