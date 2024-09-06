@@ -194,7 +194,7 @@ defmodule Ash.Test.Resource.ResourceTest do
       attributes do
         uuid_primary_key :id
         attribute :name, :string, public?: true
-        attribute :current_year, :integer, public?: :true
+        attribute :current_year, :integer, public?: true
       end
 
       relationships do
@@ -220,7 +220,7 @@ defmodule Ash.Test.Resource.ResourceTest do
     delorean = Ash.load!(delorean, [:next_machine])
     assert delorean.next_machine.name == "San Dimas Phone Booth"
 
-    delorean = Ash.load!(delorean, [next_machine: [:name]])
+    delorean = Ash.load!(delorean, next_machine: [:name])
     assert delorean.next_machine.name == "San Dimas Phone Booth"
   end
 end

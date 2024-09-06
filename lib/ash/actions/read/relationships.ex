@@ -599,11 +599,12 @@ defmodule Ash.Actions.Read.Relationships do
   end
 
   defp select_destination_attribute(related_query, relationship) do
-    if Map.get(relationship, :manual) &&
-         !Ash.Resource.Info.attribute(
-           relationship.destination,
-           relationship.destination_attribute
-         ) do
+    if Map.get(relationship, :no_attributes?) ||
+         (Map.get(relationship, :manual) &&
+            !Ash.Resource.Info.attribute(
+              relationship.destination,
+              relationship.destination_attribute
+            )) do
       related_query
     else
       Ash.Query.ensure_selected(related_query, [relationship.destination_attribute])
