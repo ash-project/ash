@@ -2,6 +2,30 @@
 
 <!-- changelog -->
 
+## [v3.4.6](https://github.com/ash-project/ash/compare/v3.4.5...v3.4.6) (2024-09-06)
+
+### Bug Fixes:
+
+- [loading relationships] don't select destination attributes that don't exist
+
+- [`Ash.Filter.Runtime`] properly pass actor when running filters at runtime
+
+- [`Ash.Type.Struct`] misplaced curly bracket when handling struct type casting
+
+- [bulk/atomic updates] properly leverage atomic upgrade read action for an update action
+
+### Improvements:
+
+- [`Ash.Policy.Authorizer`] show informative error explaining the use of filter checks with create actions
+
+- [`Ash.Policy.Authorizer`] show the actor's primary key in policy breakdowns
+
+- [`Ash.Policy.Authorizer`] add an expanded description option to checks
+
+- [`Ash.Policy.Authorizer`] use expanded description to display filled in filter templates in policy breakdowns
+
+- [`Ash.Changeset` ] Add `Ash.Changeset.is_valid/1` guard. (#1437)
+
 ## [v3.4.5](https://github.com/ash-project/ash/compare/v3.4.4...v3.4.5) (2024-09-05)
 
 ### Bug Fixes:
