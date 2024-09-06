@@ -363,6 +363,12 @@ defmodule Ash.Changeset do
   end
 
   @doc """
+  A guard which checks if the Changeset is valid.
+  """
+  @spec is_valid(t) :: Macro.output()
+  defguard is_valid(changeset) when is_struct(changeset, __MODULE__) and changeset.valid? == true
+
+  @doc """
   Returns a new changeset over a resource.
 
   *Warning*: You almost always want to use `for_action` or `for_create`, etc. over this function if possible.
