@@ -39,11 +39,12 @@ defmodule Ash.Resource.Preparation.Builtins do
   @doc ~S"""
   Directly attach a `before_action` function to the query.
 
-  See `Ash.Query.before_action/2` for more information.
+  This function will be called by `Ash.Query.before_action/2`,
+  with an additional `context` argument.
 
   ## Example
 
-      prepare before_action(fn query ->
+      prepare before_action(fn query, _context ->
         Logger.debug("About to execute query for #{query.action.name} on #{inspect(query.resource)}")
 
         query
@@ -63,11 +64,12 @@ defmodule Ash.Resource.Preparation.Builtins do
   @doc ~S"""
   Directly attach an `after_action` function to the query.
 
-  See `Ash.Query.after_action/2` for more information.
+  This function will be called by `Ash.Query.after_action/2`,
+  with an additional `context` argument.
 
   ## Example
 
-      prepare after_action(fn query, records ->
+      prepare after_action(fn query, records, _context ->
         Logger.debug("Query for #{query.action.name} on resource #{inspect(query.resource)} returned #{length(records)} records")
 
         {:ok, records}
