@@ -1550,7 +1550,7 @@ defmodule Ash.Policy.Authorizer do
              for_fields: opts[:for_fields],
              resource: Map.get(authorizer, :resource),
              action: Map.get(authorizer, :action),
-             actor: Map.get(authorizer, :action),
+             actor: Map.get(authorizer, :actor),
              scenarios: []
            )}
         else
