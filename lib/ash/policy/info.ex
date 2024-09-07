@@ -9,7 +9,7 @@ defmodule Ash.Policy.Info do
 
   @doc "Whether or not Ash policy authorizer is configured to show policy breakdowns in error messages"
   def show_policy_breakdowns? do
-    Keyword.get(Application.get_env(:ash, :policies, []), :show_policy_breakdowns?, true)
+    Keyword.get(Application.get_env(:ash, :policies, []), :show_policy_breakdowns?, false)
   end
 
   @doc "Whether or not Ash policy authorizer is configured to log policy breakdowns"
