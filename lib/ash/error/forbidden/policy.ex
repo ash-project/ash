@@ -70,6 +70,12 @@ defmodule Ash.Error.Forbidden.Policy do
 
   - `:help_text?`: Defaults to true. Displays help text at the top of the policy breakdown.
   """
+  def report(%Ash.Error.Forbidden{errors: errors}) do
+    errors
+    |> Enum.filter(&(&1.__struct__ == __MODULE__))
+    |> Enum.map_join("\n\n", &report/1)
+  end
+
   def report(error, opts \\ []) do
     error
     |> get_errors()

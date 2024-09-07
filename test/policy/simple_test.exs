@@ -190,6 +190,19 @@ defmodule Ash.Test.Policy.SimpleTest do
                  end
   end
 
+  test "breakdowns can be shown for all policy errors in a forbidden error" do
+    res =
+      assert_raise Ash.Error.Forbidden,
+                   ~r/No policy conditions applied to this request/,
+                   fn ->
+                     ResourceWithAPolicyThatDoesntApply
+                     |> Ash.read!()
+                   end
+
+    assert Ash.Error.Forbidden.Policy.report(res) =~
+             ~r/No policy conditions applied to this request/
+  end
+
   test "an impossible create policy shows the correct error message" do
     assert_raise Ash.Error.Forbidden, ~r/Cannot use a filter to authorize a create/, fn ->
       ResourceWithAnImpossibleCreatePolicy
