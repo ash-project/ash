@@ -121,10 +121,10 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
           {[:ash_postgres], AshPostgres.DataLayer}
 
         {Ash.Resource, "sqlite", _} ->
-          {[:ash_sqlite], AshMysql.DataLayer}
+          {[:ash_sqlite], AshSqlite.DataLayer}
 
         {Ash.Resource, "mysql", _} ->
-          {[:mysql], AshPostgres.DataLayer}
+          {[:mysql], AshMysql.DataLayer}
 
         {Ash.Resource, "ets", _} ->
           {[], Ash.DataLayer.Ets}
