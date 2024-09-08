@@ -29,7 +29,7 @@ Ash.get!(Resource, 1)
 # is roughly equivalent to
 
 Resource
-|> Ash.Query.filter(id == 1)
+|> Ash.Query.where(id: 1)
 |> Ash.Query.limit(2)
 |> Ash.read!()
 |> case do

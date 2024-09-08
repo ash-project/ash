@@ -173,7 +173,7 @@ Atomic bulk updates are used when the subject of the bulk update is a query, and
 
 ```elixir
 Ticket
-|> Ash.Query.filter(status == :open)
+|> Ash.Query.where(expr(status == :open))
 |> Ash.bulk_update!(:close, %{reason: "Closing all open tickets."})
 ```
 

@@ -52,7 +52,7 @@ Atomic bulk destroys are used when the subject of the bulk destroy is a query an
 
 ```elixir
 Ticket
-|> Ash.Query.filter(status == :open)
+|> Ash.Query.where(status: :)
 |> Ash.bulk_destroy!(:close)
 ```
 

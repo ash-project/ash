@@ -32,7 +32,7 @@ Example usage of the above:
 ```elixir
 # Error when not setting a tenant
 MyApp.Users
-|> Ash.Query.filter(name == "fred")
+|> Ash.Query.where(expr(name == "fred"))
 |> Ash.read!()
 ** (Ash.Error.Invalid)
 
@@ -41,7 +41,7 @@ MyApp.Users
 
 # Automatically filtering by `organization_id == 1`
 MyApp.Users
-|> Ash.Query.filter(name == "fred")
+|> Ash.Query.where(expr(name == "fred"))
 |> Ash.Query.set_tenant(1)
 |> Ash.read!()
 

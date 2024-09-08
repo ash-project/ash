@@ -114,7 +114,7 @@ For example:
 
 ```elixir
 Post
-|> Ash.Query.filter(author_id == ^author_id)
+|> Ash.Query.where(author_id: ^author_id)
 |> MyApp.Blog.archive_post!()
 # => %Ash.BulkResult{}
 

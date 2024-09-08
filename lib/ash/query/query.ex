@@ -365,10 +365,22 @@ defmodule Ash.Query do
   defp sequence_expr_sorts(query), do: query
 
   @doc """
+  Attach a filter statement to the query. To pass an expression, use `where(query, expr(<expression>))`
+
+  The filter is applied as an "and" to any filters currently on the query.
+  For more information on writing filters, see: `Ash.Filter`.
+  """
+  def where(query, filter) do
+    do_filter(query, filter)
+  end
+
+  @doc """
   Attach a filter statement to the query.
 
   The filter is applied as an "and" to any filters currently on the query.
   For more information on writing filters, see: `Ash.Filter`.
+
+  This will be deprecated for `where/2` in 4.0.
   """
   defmacro filter(query, %Ash.Filter{} = filter) do
     quote location: :keep do

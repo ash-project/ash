@@ -88,9 +88,9 @@ Ash provides utilities to modify queries and changesets _outside_ of the actions
 def top_tickets(user_id) do
   Ticket
   |> Ash.Query.for_read(:read)
-  |> Ash.Query.filter(priority in [:medium, :high])
-  |> Ash.Query.filter(representative_id == ^user_id)
-  |> Ash.Query.filter(status == :open)
+  |> Ash.Query.where(expr(priority in [:medium, :high]))
+  |> Ash.Query.where(expr(representative_id == ^user_id))
+  |> Ash.Query.where(expr(status == :open))
   |> Ash.Query.sort(opened_at: :desc)
   |> Ash.Query.limit(10)
   |> Helpdesk.Support.read!()
@@ -98,7 +98,7 @@ end
 
 # in the resource
 
-actions do 
+actions do
   defaults [:read, ...]
 end
 ```
@@ -112,7 +112,7 @@ code_interface do
   define :top, args: [:user_id]
 end
 
-actions do 
+actions do
   read :top do
     argument :user_id, :uuid do
       allow_nil? false
@@ -130,7 +130,7 @@ Now, whatever code I had that would have called `top_tickets/1` can now call `He
 ```elixir
 Ticket
 |> Ash.Query.for_read(:top, %{user_id: user.id})
-|> Ash.Query.filter(opened_at > ago(10, :minute))
+|> Ash.Query.where(expr(opened_at > ago(10, :minute)))
 |> Helpdesk.Support.read!()
 ```
 

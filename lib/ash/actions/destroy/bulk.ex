@@ -1,6 +1,5 @@
 defmodule Ash.Actions.Destroy.Bulk do
   @moduledoc false
-  require Ash.Query
 
   @spec run(Ash.Domain.t(), Enumerable.t() | Ash.Query.t(), atom(), input :: map, Keyword.t()) ::
           Ash.BulkResult.t()
@@ -911,7 +910,7 @@ defmodule Ash.Actions.Destroy.Bulk do
           tracer: opts[:tracer]
         )
         |> Ash.Query.set_context(%{private: %{internal?: true}})
-        |> Ash.Query.filter(^pkeys)
+        |> Ash.Query.where(^pkeys)
         |> Ash.Query.select([])
         |> then(fn query ->
           run(
