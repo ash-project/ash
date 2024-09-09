@@ -4,7 +4,8 @@ Aggregates in Ash allow for retrieving summary information over groups of relate
 
 ## Declaring aggregates on a resource
 
-Example:
+Aggregates are defined in an `aggregates` section. For all possible types, see below.
+For a full reference, see `d:Ash.Resource.Dsl.aggregates`.
 
 ```elixir
 aggregates do
