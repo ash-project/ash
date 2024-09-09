@@ -14,7 +14,43 @@ aggregates do
 end
 ```
 
-The available aggregate types are:
+## Using an aggregate
+
+Aggregates are loaded and filtered on in the same way that calculations are. Lets look at some examples:
+
+### Loading aggregates in a query or on records
+
+```elixir
+User
+|> Ash.Query.load(:count_of_posts)
+|> Map.get(:count_of_posts)
+# => 10
+
+users
+|> Ash.load!(:count_of_posts)
+|> Enum.map(&(&1.count_of_posts)
+# => [3, 5, 2]
+```
+
+### Filtering on aggregates
+
+```elixir
+require Ash.Query
+
+User
+|> Ash.Query.filter(count_of_posts > 10)
+|> Ash.read!()
+```
+
+### Sorting aggregates
+
+```elixir
+User
+|> Ash.Query.sort(count_of_posts: :asc)
+|> Ash.read!()
+```
+
+## Aggregate types
 
 - `count` - counts related items meeting the criteria.
 - `exists` - checks if any related items meet the criteria.
