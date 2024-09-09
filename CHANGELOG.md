@@ -4,73 +4,21 @@
 
 ## [v3.4.8](https://github.com/ash-project/ash/compare/v3.4.7...v3.4.8) (2024-09-09)
 
-
-
-
 ### Bug Fixes:
 
-* support passing a forbidden error to policies per the docs
+- [`Ash.Policy.Authorizer`] support passing a forbidden error for policy breakdowns per the docs
 
-* don't repor the action as the actor for policy breakdowns
+- [`Ash.Policy.Authorizer`] don't report the action as the actor for policy breakdowns
 
-* check `changeset.action` before raising a required primary action error
+- [`Ash.Changeset`] check `changeset.action` before raising a required primary action error
 
-* ensure proper return types for `:stream` strategy bulk update/destroys
-
-* don't select destination attributes that don't exist
-
-* properly pass actor when running filters at runtime
-
-* misplaced curly bracket when handling struct type casting
-
-* properly leverage atomic upgrade read action for an update action
-
-* fix type definition for `atomic_upgrade_with`
-
-### Improvements:
-
-* add `add_bypass` and `add_policy` igniter utilities
-
-* show informative error explaining the use of filter checks with create actions
-
-* show the actor's primary key in policy breakdowns
-
-* add an expanded description option to checks
-
-* use expanded description to display filled in filter templates in policy breakdowns
-
-* Add `Changeset.is_valid/1` guard. (#1437)
+- [bulk actions] ensure proper return types for `:stream` strategy bulk update/destroys
 
 ## [v3.4.7](https://github.com/ash-project/ash/compare/v3.4.6...v3.4.7) (2024-09-06)
 
-
-
-
-### Bug Fixes:
-
-* don't select destination attributes that don't exist
-
-* properly pass actor when running filters at runtime
-
-* misplaced curly bracket when handling struct type casting
-
-* properly leverage atomic upgrade read action for an update action
-
-* fix type definition for `atomic_upgrade_with`
-
 ### Improvements:
 
-* add `add_bypass` and `add_policy` igniter utilities
-
-* show informative error explaining the use of filter checks with create actions
-
-* show the actor's primary key in policy breakdowns
-
-* add an expanded description option to checks
-
-* use expanded description to display filled in filter templates in policy breakdowns
-
-* Add `Changeset.is_valid/1` guard. (#1437)
+- [`Ash.Resource.Igniter`] add `add_bypass` and `add_policy` igniter utilities
 
 ## [v3.4.6](https://github.com/ash-project/ash/compare/v3.4.5...v3.4.6) (2024-09-06)
 
