@@ -70,7 +70,7 @@ defmodule Ash.Resource.Attribute do
       type: :boolean,
       default: false,
       doc: """
-      Whether or not the attribute value contains sensitive information, like PII. See the [Sensitive Data guide](/documentation/topics/security/sensitive-data.md) for more.
+      Whether or not the attribute value contains sensitive information, like PII(Personally Identifiable Information). See the [Sensitive Data guide](/documentation/topics/security/sensitive-data.md) for more.
       """
     ],
     source: [

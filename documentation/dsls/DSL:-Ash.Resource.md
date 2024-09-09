@@ -87,7 +87,7 @@ end
 |------|------|---------|------|
 | [`constraints`](#attributes-attribute-constraints){: #attributes-attribute-constraints } | `keyword` |  | Constraints to provide to the type when casting the value. For more, see `Ash.Type`. |
 | [`description`](#attributes-attribute-description){: #attributes-attribute-description } | `String.t` |  | An optional description for the attribute. |
-| [`sensitive?`](#attributes-attribute-sensitive?){: #attributes-attribute-sensitive? } | `boolean` | `false` | Whether or not the attribute value contains sensitive information, like PII. See the [Sensitive Data guide](/documentation/topics/security/sensitive-data.md) for more. |
+| [`sensitive?`](#attributes-attribute-sensitive?){: #attributes-attribute-sensitive? } | `boolean` | `false` | Whether or not the attribute value contains sensitive information, like PII(Personally Identifiable Information). See the [Sensitive Data guide](/documentation/topics/security/sensitive-data.md) for more. |
 | [`source`](#attributes-attribute-source){: #attributes-attribute-source } | `atom` |  | If the field should be mapped to a different name in the data layer. Support varies by data layer. |
 | [`always_select?`](#attributes-attribute-always_select?){: #attributes-attribute-always_select? } | `boolean` | `false` | Whether or not to ensure this attribute is always selected when reading from the database, regardless of applied select statements. |
 | [`primary_key?`](#attributes-attribute-primary_key?){: #attributes-attribute-primary_key? } | `boolean` | `false` | Whether the attribute is the primary key. Composite primary key is also possible by using `primary_key? true` in more than one attribute. If primary_key? is true, allow_nil? must be false. |
@@ -971,7 +971,7 @@ argument :password_confirmation, :string
 | [`constraints`](#actions-action-argument-constraints){: #actions-action-argument-constraints } | `keyword` | `[]` | Constraints to provide to the type when casting the value. For more information, see `Ash.Type`. |
 | [`allow_nil?`](#actions-action-argument-allow_nil?){: #actions-action-argument-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
 | [`public?`](#actions-action-argument-public?){: #actions-action-argument-public? } | `boolean` | `true` | Whether or not the argument should appear in public interfaces |
-| [`sensitive?`](#actions-action-argument-sensitive?){: #actions-action-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII. See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
+| [`sensitive?`](#actions-action-argument-sensitive?){: #actions-action-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
 | [`default`](#actions-action-argument-default){: #actions-action-argument-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
 
 
@@ -1166,7 +1166,7 @@ argument :password_confirmation, :string
 | [`constraints`](#actions-create-argument-constraints){: #actions-create-argument-constraints } | `keyword` | `[]` | Constraints to provide to the type when casting the value. For more information, see `Ash.Type`. |
 | [`allow_nil?`](#actions-create-argument-allow_nil?){: #actions-create-argument-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
 | [`public?`](#actions-create-argument-public?){: #actions-create-argument-public? } | `boolean` | `true` | Whether or not the argument should appear in public interfaces |
-| [`sensitive?`](#actions-create-argument-sensitive?){: #actions-create-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII. See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
+| [`sensitive?`](#actions-create-argument-sensitive?){: #actions-create-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
 | [`default`](#actions-create-argument-default){: #actions-create-argument-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
 
 
@@ -1313,7 +1313,7 @@ argument :password_confirmation, :string
 | [`constraints`](#actions-read-argument-constraints){: #actions-read-argument-constraints } | `keyword` | `[]` | Constraints to provide to the type when casting the value. For more information, see `Ash.Type`. |
 | [`allow_nil?`](#actions-read-argument-allow_nil?){: #actions-read-argument-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
 | [`public?`](#actions-read-argument-public?){: #actions-read-argument-public? } | `boolean` | `true` | Whether or not the argument should appear in public interfaces |
-| [`sensitive?`](#actions-read-argument-sensitive?){: #actions-read-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII. See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
+| [`sensitive?`](#actions-read-argument-sensitive?){: #actions-read-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
 | [`default`](#actions-read-argument-default){: #actions-read-argument-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
 
 
@@ -1698,7 +1698,7 @@ argument :password_confirmation, :string
 | [`constraints`](#actions-update-argument-constraints){: #actions-update-argument-constraints } | `keyword` | `[]` | Constraints to provide to the type when casting the value. For more information, see `Ash.Type`. |
 | [`allow_nil?`](#actions-update-argument-allow_nil?){: #actions-update-argument-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
 | [`public?`](#actions-update-argument-public?){: #actions-update-argument-public? } | `boolean` | `true` | Whether or not the argument should appear in public interfaces |
-| [`sensitive?`](#actions-update-argument-sensitive?){: #actions-update-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII. See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
+| [`sensitive?`](#actions-update-argument-sensitive?){: #actions-update-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
 | [`default`](#actions-update-argument-default){: #actions-update-argument-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
 
 
@@ -1941,7 +1941,7 @@ argument :password_confirmation, :string
 | [`constraints`](#actions-destroy-argument-constraints){: #actions-destroy-argument-constraints } | `keyword` | `[]` | Constraints to provide to the type when casting the value. For more information, see `Ash.Type`. |
 | [`allow_nil?`](#actions-destroy-argument-allow_nil?){: #actions-destroy-argument-allow_nil? } | `boolean` | `true` | Whether or not the argument value may be nil (or may be not provided). If nil value is given error is raised. |
 | [`public?`](#actions-destroy-argument-public?){: #actions-destroy-argument-public? } | `boolean` | `true` | Whether or not the argument should appear in public interfaces |
-| [`sensitive?`](#actions-destroy-argument-sensitive?){: #actions-destroy-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII. See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
+| [`sensitive?`](#actions-destroy-argument-sensitive?){: #actions-destroy-argument-sensitive? } | `boolean` | `false` | Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more. |
 | [`default`](#actions-destroy-argument-default){: #actions-destroy-argument-default } | `any` |  | The default value for the argument to take. It can be a zero argument function e.g `&MyMod.my_fun/0` or a value |
 
 

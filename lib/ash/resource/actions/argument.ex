@@ -54,7 +54,7 @@ defmodule Ash.Resource.Actions.Argument do
         type: :boolean,
         default: false,
         doc: """
-        Whether or not the argument value contains sensitive information, like PII. See the [security guide](/documentation/topics/security/sensitive-data.md) for more.
+        Whether or not the argument value contains sensitive information, like PII(Personally Identifiable Information). See the [security guide](/documentation/topics/security/sensitive-data.md) for more.
         """
       ],
       default: [

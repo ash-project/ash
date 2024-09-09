@@ -27,7 +27,7 @@ MyApp.Vault.start_link()
 
 ## Introduction
 
-When dealing with PII or other sensitive data, we often want to encrypt this data, and control access to the decrypted values.
+When dealing with PII(Personally Identifiable Information) or other sensitive data, we often want to encrypt this data, and control access to the decrypted values.
 
 To do this in `Ash`, we do that with `AshCloak`. See the getting started guide in `AshCloak` for installation instructions.
 
