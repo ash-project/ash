@@ -169,6 +169,8 @@ defmodule Ash.Actions.Destroy do
           {:error, changeset}
 
         changeset ->
+          changeset = Ash.Changeset.set_action_select(changeset)
+
           case Helpers.load({:ok, changeset.data, %{}}, changeset, domain,
                  actor: opts[:actor],
                  reuse_values?: true,

@@ -69,6 +69,7 @@ defmodule Ash.Changeset do
     defaults: [],
     errors: [],
     params: %{},
+    action_select: [],
     atomic_after_action: [],
     attribute_changes: %{},
     atomic_changes: [],
@@ -454,6 +455,21 @@ defmodule Ash.Changeset do
           %{changeset | select: Enum.uniq(List.wrap(fields) ++ (changeset.select || []))}
       end
     end
+  end
+
+  @doc false
+  def set_action_select(changeset) do
+    required =
+      Ash.Resource.Info.action_select(changeset.resource, changeset.action.name) || []
+
+    select =
+      changeset.select ||
+        MapSet.to_list(Ash.Resource.Info.selected_by_default_attribute_names(changeset.resource))
+
+    %{
+      changeset
+      | action_select: Enum.uniq(List.wrap(required) |> Enum.concat(select))
+    }
   end
 
   @doc """

@@ -937,6 +937,7 @@ end
 | [`description`](#actions-action-description){: #actions-action-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-action-transaction?){: #actions-action-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-action-touches_resources){: #actions-action-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
+| [`action_select`](#actions-action-action_select){: #actions-action-action_select } | `list(atom)` |  | A list of attributes that the action requires to do its work. Defaults to all attributes except those with `select_by_default? false`. On actions with no changes, it defaults to the externally selected attributes. |
 | [`skip_unknown_inputs`](#actions-action-skip_unknown_inputs){: #actions-action-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
 
 
@@ -1034,6 +1035,7 @@ end
 | [`description`](#actions-create-description){: #actions-create-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-create-transaction?){: #actions-create-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-create-touches_resources){: #actions-create-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
+| [`action_select`](#actions-create-action_select){: #actions-create-action_select } | `list(atom)` |  | A list of attributes that the action requires to do its work. Defaults to all attributes except those with `select_by_default? false`. On actions with no changes, it defaults to the externally selected attributes. |
 | [`skip_unknown_inputs`](#actions-create-skip_unknown_inputs){: #actions-create-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
 | [`accept`](#actions-create-accept){: #actions-create-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`require_attributes`](#actions-create-require_attributes){: #actions-create-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
@@ -1279,6 +1281,7 @@ end
 | [`description`](#actions-read-description){: #actions-read-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-read-transaction?){: #actions-read-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-read-touches_resources){: #actions-read-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
+| [`action_select`](#actions-read-action_select){: #actions-read-action_select } | `list(atom)` |  | A list of attributes that the action requires to do its work. Defaults to all attributes except those with `select_by_default? false`. On actions with no changes, it defaults to the externally selected attributes. |
 | [`skip_unknown_inputs`](#actions-read-skip_unknown_inputs){: #actions-read-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
 
 
@@ -1518,6 +1521,7 @@ update :flag_for_review, primary?: true
 | [`description`](#actions-update-description){: #actions-update-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-update-transaction?){: #actions-update-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-update-touches_resources){: #actions-update-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
+| [`action_select`](#actions-update-action_select){: #actions-update-action_select } | `list(atom)` |  | A list of attributes that the action requires to do its work. Defaults to all attributes except those with `select_by_default? false`. On actions with no changes, it defaults to the externally selected attributes. |
 | [`skip_unknown_inputs`](#actions-update-skip_unknown_inputs){: #actions-update-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
 | [`accept`](#actions-update-accept){: #actions-update-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`require_attributes`](#actions-update-require_attributes){: #actions-update-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |
@@ -1761,6 +1765,7 @@ end
 | [`description`](#actions-destroy-description){: #actions-destroy-description } | `String.t` |  | An optional description for the action |
 | [`transaction?`](#actions-destroy-transaction?){: #actions-destroy-transaction? } | `boolean` |  | Whether or not the action should be run in transactions. Reads default to false, while create/update/destroy actions default to `true`. |
 | [`touches_resources`](#actions-destroy-touches_resources){: #actions-destroy-touches_resources } | `list(atom)` |  | A list of resources that the action may touch, used when building transactions. |
+| [`action_select`](#actions-destroy-action_select){: #actions-destroy-action_select } | `list(atom)` |  | A list of attributes that the action requires to do its work. Defaults to all attributes except those with `select_by_default? false`. On actions with no changes, it defaults to the externally selected attributes. |
 | [`skip_unknown_inputs`](#actions-destroy-skip_unknown_inputs){: #actions-destroy-skip_unknown_inputs } | `atom \| String.t \| list(atom \| String.t)` | `[]` | A list of unknown fields to skip, or `:*` to skip all unknown fields. |
 | [`accept`](#actions-destroy-accept){: #actions-destroy-accept } | `atom \| list(atom) \| :*` |  | The list of attributes to accept. Use `:*` to accept all public attributes. |
 | [`require_attributes`](#actions-destroy-require_attributes){: #actions-destroy-require_attributes } | `list(atom)` |  | A list of attributes that would normally `allow_nil?`, to require for this action. No need to include attributes that already do not allow nil? |

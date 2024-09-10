@@ -1180,6 +1180,21 @@ defmodule Ash.Actions.Create.Bulk do
                     %{
                       select: opts[:select],
                       batch_size: opts[:batch_size],
+                      action_select:
+                        Enum.uniq(
+                          Enum.concat(
+                            Ash.Resource.Info.action_select(
+                              resource,
+                              action
+                            ),
+                            List.wrap(
+                              opts[:select] ||
+                                MapSet.to_list(
+                                  Ash.Resource.Info.selected_by_default_attribute_names(resource)
+                                )
+                            )
+                          )
+                        ),
                       identity:
                         (opts[:upsert_identity] || action.upsert_identity) &&
                           Ash.Resource.Info.identity(

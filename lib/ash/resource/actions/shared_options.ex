@@ -28,6 +28,12 @@ defmodule Ash.Resource.Actions.SharedOptions do
       A list of resources that the action may touch, used when building transactions.
       """
     ],
+    action_select: [
+      type: {:list, :atom},
+      doc: """
+      A list of attributes that the action requires to do its work. Defaults to all attributes except those with `select_by_default? false`. On actions with no changes, it defaults to the externally selected attributes.
+      """
+    ],
     skip_unknown_inputs: [
       type: {:wrap_list, {:or, [:atom, :string]}},
       default: [],

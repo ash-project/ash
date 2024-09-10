@@ -44,6 +44,53 @@ defmodule Ash.Resource.Transformers.CacheActionInputs do
         Transformer.persist(dsl_state, {:action_inputs, action.name, input}, true)
       end)
       |> Transformer.persist({:action_inputs, action.name}, MapSet.new(inputs))
+      |> then(fn dsl_state ->
+        if action.type in [:create, :update, :destroy] do
+          if action.action_select do
+            Transformer.persist(
+              dsl_state,
+              {:action_select, action.name},
+              Enum.uniq(action.action_select ++ Ash.Resource.Info.primary_key(dsl_state))
+            )
+          else
+            changes = Ash.Resource.Info.changes(dsl_state, action.type) ++ action.changes
+
+            case changes do
+              [] ->
+                dsl_state
+                |> Transformer.persist({:action_select, action.name}, nil)
+
+              _ ->
+                attributes =
+                  dsl_state
+                  |> Ash.Resource.Info.attributes()
+
+                select =
+                  attributes
+                  |> Enum.filter(&(&1.select_by_default? || &1.primary_key))
+                  |> Enum.map(& &1.name)
+                  |> case do
+                    [] ->
+                      case attributes do
+                        [%{name: name} | _] ->
+                          [name]
+
+                        _ ->
+                          []
+                      end
+
+                    other ->
+                      other
+                  end
+
+                dsl_state
+                |> Transformer.persist({:action_select, action.name}, select)
+            end
+          end
+        else
+          dsl_state
+        end
+      end)
       |> Transformer.persist(
         {:attributes_to_require, action.name},
         attributes_to_require_for_action

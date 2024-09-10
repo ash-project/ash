@@ -168,6 +168,7 @@ defmodule Ash.DataLayer do
           batch_size: pos_integer,
           return_records?: boolean,
           upsert?: boolean,
+          action_select: list(atom),
           upsert_keys: nil | list(atom),
           upsert_condition: Ash.Expr.t() | nil,
           identity: Ash.Resource.Identity.t() | nil,
@@ -183,6 +184,7 @@ defmodule Ash.DataLayer do
 
   @type bulk_update_options :: %{
           return_records?: boolean,
+          action_select: list(atom),
           calculations: list({Ash.Query.Calculation.t(), Ash.Expr.t()}),
           select: list(atom),
           tenant: term()

@@ -251,6 +251,7 @@ defmodule Ash.Actions.Create do
               changeset
               |> Ash.Changeset.hydrate_atomic_refs(opts[:actor])
               |> Ash.Changeset.apply_atomic_constraints(opts[:actor])
+              |> Ash.Changeset.set_action_select()
 
             case Ash.Actions.ManagedRelationships.setup_managed_belongs_to_relationships(
                    changeset,

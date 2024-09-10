@@ -494,6 +494,20 @@ defmodule Ash.Actions.Update.Bulk do
       |> Keyword.take([:return_records?, :tenant])
       |> Map.new()
       |> Map.put(:calculations, calculations)
+      |> Map.put(
+        :action_select,
+        Enum.uniq(
+          Enum.concat(
+            Ash.Resource.Info.action_select(atomic_changeset.resource, atomic_changeset.action),
+            List.wrap(
+              opts[:select] ||
+                MapSet.to_list(
+                  Ash.Resource.Info.selected_by_default_attribute_names(atomic_changeset.resource)
+                )
+            )
+          )
+        )
+      )
 
     with {:ok, query} <-
            authorize_bulk_query(query, atomic_changeset, opts),
@@ -2091,6 +2105,7 @@ defmodule Ash.Actions.Update.Bulk do
               :update,
               true
             )
+            |> Ash.Changeset.set_action_select()
 
           changed? =
             Ash.Changeset.changing_attributes?(changeset) or
@@ -2233,6 +2248,7 @@ defmodule Ash.Actions.Update.Bulk do
                       if changed? do
                         changeset =
                           Ash.Changeset.set_defaults(changeset, :update, true)
+                          |> Ash.Changeset.set_action_select()
 
                         resource
                         |> Ash.DataLayer.update(changeset)
