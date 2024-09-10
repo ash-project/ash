@@ -148,4 +148,24 @@ defmodule Ash.Resource.Igniter do
       end
     end)
   end
+
+  @doc "Adds the given code block to the resource's `relationships` block"
+  def add_relationship(igniter, resource, relationship) do
+    Igniter.Code.Module.find_and_update_module!(igniter, resource, fn zipper ->
+      with {:ok, zipper} <-
+             Igniter.Code.Function.move_to_function_call_in_current_scope(zipper, :relationships, 1),
+           {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper) do
+        {:ok, Igniter.Code.Common.add_code(zipper, relationship)}
+      else
+        _ ->
+          relationships_with_relationship = """
+          relationships do
+            #{relationship}
+          end
+          """
+
+          {:ok, Igniter.Code.Common.add_code(zipper, relationships_with_relationship)}
+      end
+    end)
+  end
 end
