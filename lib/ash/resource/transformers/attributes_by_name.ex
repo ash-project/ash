@@ -66,12 +66,18 @@ defmodule Ash.Resource.Transformers.AttributesByName do
       |> Enum.map(& &1.name)
       |> MapSet.new()
 
+    selected_by_default_attribute_names =
+      Enum.filter(attributes, & &1.select_by_default?)
+      |> Enum.map(& &1.name)
+      |> MapSet.new()
+
     {:ok,
      persist(
        dsl_state,
        %{
          attributes_by_name: attributes_by_name,
          attribute_names: attribute_names,
+         selected_by_default_attribute_names: selected_by_default_attribute_names,
          create_attributes_with_static_defaults: create_attributes_with_static_defaults,
          create_attributes_with_non_matching_lazy_defaults:
            create_attributes_with_non_matching_lazy_defaults,

@@ -844,9 +844,14 @@ defmodule Ash.Query do
   Use `ensure_selected/2` if you wish to make sure a field has been selected, without deselecting any other fields.
   """
   def select(query, fields, opts \\ []) do
+    fields =
+      case fields do
+        %MapSet{} = fields -> fields
+        fields -> MapSet.new(List.wrap(fields))
+      end
+
     query = new(query)
     existing_fields = Ash.Resource.Info.attribute_names(query.resource)
-    fields = MapSet.new(List.wrap(fields))
 
     valid_fields = MapSet.intersection(fields, existing_fields)
 
@@ -863,16 +868,16 @@ defmodule Ash.Query do
         query
       end
 
-    always_select =
+    select =
       valid_fields
       |> MapSet.union(Ash.Resource.Info.always_selected_attribute_names(query.resource))
       |> MapSet.union(MapSet.new(Ash.Resource.Info.primary_key(query.resource)))
 
     new_select =
       if opts[:replace?] do
-        always_select
+        select
       else
-        MapSet.union(MapSet.new(query.select || []), always_select)
+        MapSet.union(MapSet.new(query.select || []), select)
       end
 
     %{query | select: MapSet.to_list(new_select)}
@@ -1021,10 +1026,7 @@ defmodule Ash.Query do
     if query.select do
       Ash.Query.select(query, List.wrap(fields))
     else
-      to_select =
-        query.resource
-        |> Ash.Resource.Info.attributes()
-        |> Enum.map(& &1.name)
+      to_select = Ash.Resource.Info.selected_by_default_attribute_names(query.resource)
 
       Ash.Query.select(query, to_select)
     end
@@ -1063,14 +1065,13 @@ defmodule Ash.Query do
 
     select =
       if query.select do
-        query.select
+        query.select -- List.wrap(fields)
       else
-        query.resource
-        |> Ash.Resource.Info.attributes()
-        |> Enum.map(& &1.name)
+        MapSet.difference(
+          Ash.Resource.Info.selected_by_default_attribute_names(query.resource),
+          MapSet.new(List.wrap(fields))
+        )
       end
-
-    select = select -- List.wrap(fields)
 
     select(query, select, replace?: true)
   end
@@ -1078,7 +1079,12 @@ defmodule Ash.Query do
   def selecting?(query, field) do
     case query.select do
       nil ->
-        not is_nil(Ash.Resource.Info.attribute(query.resource, field))
+        query.resource
+        |> Ash.Resource.Info.attribute(field)
+        |> case do
+          %{select_by_default?: true} -> true
+          _ -> false
+        end
 
       select ->
         if field in select do

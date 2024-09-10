@@ -72,7 +72,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   def igniter(igniter, argv) do
     {%{resource: resource}, argv} = positional_args!(argv)
     resource = Igniter.Code.Module.parse(resource)
-    app_name = Igniter.Project.Application.app_name()
+    app_name = Igniter.Project.Application.app_name(igniter)
 
     options = options!(argv)
 

@@ -782,10 +782,14 @@ defmodule Ash.Actions.Helpers do
     resource
     |> Ash.Resource.Info.attributes()
     |> Enum.flat_map(fn attribute ->
-      if attribute.always_select? || attribute.primary_key? || attribute.name in select do
-        []
+      if is_nil(select) do
+        attribute.select_by_default?
       else
-        [attribute.name]
+        if attribute.always_select? || attribute.primary_key? || attribute.name in select do
+          []
+        else
+          [attribute.name]
+        end
       end
     end)
     |> Enum.reduce(result, fn key, record ->
@@ -803,23 +807,5 @@ defmodule Ash.Actions.Helpers do
     else
       results
     end
-  end
-
-  def attributes_to_select(%{select: nil, resource: resource}) do
-    resource
-    |> Ash.Resource.Info.attributes()
-    |> Enum.map(& &1.name)
-  end
-
-  def attributes_to_select(%{select: select, resource: resource}) do
-    resource
-    |> Ash.Resource.Info.attributes()
-    |> Enum.flat_map(fn attribute ->
-      if attribute.always_select? || attribute.primary_key? || attribute.name in select do
-        [attribute.name]
-      else
-        []
-      end
-    end)
   end
 end

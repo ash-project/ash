@@ -898,12 +898,10 @@ defmodule Ash.Actions.Read do
     if query.select do
       query
     else
-      to_select =
-        query.resource
-        |> Ash.Resource.Info.attributes()
-        |> Enum.map(& &1.name)
-
-      Ash.Query.select(query, to_select)
+      Ash.Query.select(
+        query,
+        Ash.Resource.Info.selected_by_default_attribute_names(query.resource)
+      )
     end
   end
 

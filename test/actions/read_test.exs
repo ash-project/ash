@@ -613,7 +613,7 @@ defmodule Ash.Test.Actions.ReadTest do
                |> strip_metadata()
     end
 
-    test "a sort will sor rows accordingly when descending", %{
+    test "a sort will sort rows accordingly when descending", %{
       post1: post1,
       post2: post2
     } do

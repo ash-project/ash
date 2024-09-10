@@ -5,7 +5,7 @@ defmodule Ash.Resource.Igniter do
   def list_resources(igniter) do
     Igniter.Code.Module.find_all_matching_modules(igniter, fn _mod, zipper ->
       zipper
-      |> Igniter.Code.Module.move_to_use(resource_mods())
+      |> Igniter.Code.Module.move_to_use(resource_mods(igniter))
       |> case do
         {:ok, _} ->
           true
@@ -24,7 +24,7 @@ defmodule Ash.Resource.Igniter do
       {:ok, {igniter, _source, zipper}} ->
         with {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper),
              {:ok, zipper} <-
-               Igniter.Code.Module.move_to_use(zipper, resource_mods()),
+               Igniter.Code.Module.move_to_use(zipper, resource_mods(igniter)),
              {:ok, zipper} <-
                Igniter.Code.Function.move_to_nth_argument(zipper, 1),
              {:ok, zipper} <- Igniter.Code.Keyword.get_key(zipper, :domain),
@@ -41,8 +41,8 @@ defmodule Ash.Resource.Igniter do
     end
   end
 
-  def resource_mods do
-    app_name = Igniter.Project.Application.app_name()
+  def resource_mods(igniter) do
+    app_name = Igniter.Project.Application.app_name(igniter)
 
     [Ash.Resource | List.wrap(Application.get_env(app_name, :base_resources))]
   end

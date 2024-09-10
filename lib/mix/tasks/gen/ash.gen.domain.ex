@@ -28,7 +28,7 @@ defmodule Mix.Tasks.Ash.Gen.Domain do
 
     domain_file = Igniter.Code.Module.proper_location(domain)
 
-    app_name = Igniter.Project.Application.app_name()
+    app_name = Igniter.Project.Application.app_name(igniter)
 
     if "--ignore-if-exists" in argv && Igniter.exists?(igniter, domain_file) do
       igniter

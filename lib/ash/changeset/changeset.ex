@@ -438,9 +438,21 @@ defmodule Ash.Changeset do
   """
   def select(changeset, fields, opts \\ []) do
     if opts[:replace?] do
-      %{changeset | select: Enum.uniq(List.wrap(fields))}
+      case fields do
+        %MapSet{} = fields -> %{changeset | select: Enum.to_list(fields)}
+        fields -> %{changeset | select: Enum.uniq(List.wrap(fields))}
+      end
     else
-      %{changeset | select: Enum.uniq(List.wrap(fields) ++ (changeset.select || []))}
+      case fields do
+        %MapSet{} ->
+          %{
+            changeset
+            | select: MapSet.union(MapSet.new(changeset.select), fields) |> MapSet.to_list()
+          }
+
+        fields ->
+          %{changeset | select: Enum.uniq(List.wrap(fields) ++ (changeset.select || []))}
+      end
     end
   end
 
@@ -476,10 +488,7 @@ defmodule Ash.Changeset do
     if changeset.select do
       Ash.Changeset.select(changeset, List.wrap(fields))
     else
-      to_select =
-        changeset.resource
-        |> Ash.Resource.Info.attributes()
-        |> Enum.map(& &1.name)
+      to_select = Ash.Resource.Info.selected_by_default_attribute_names(changeset.resource)
 
       Ash.Changeset.select(changeset, to_select)
     end

@@ -10,6 +10,7 @@ defmodule Ash.Resource.Attribute do
     :public?,
     :writable?,
     :always_select?,
+    :select_by_default?,
     :default,
     :update_default,
     :description,
@@ -39,6 +40,7 @@ defmodule Ash.Resource.Attribute do
           primary_key?: boolean(),
           public?: boolean(),
           sortable?: boolean(),
+          select_by_default?: boolean(),
           default: nil | term | (-> term),
           update_default: nil | term | (-> term) | (Ash.Resource.record() -> term),
           sensitive?: boolean(),
@@ -77,6 +79,13 @@ defmodule Ash.Resource.Attribute do
       type: :atom,
       doc: """
       If the field should be mapped to a different name in the data layer. Support varies by data layer.
+      """
+    ],
+    select_by_default?: [
+      type: :boolean,
+      default: true,
+      doc: """
+      Whether or not the attribute is selected by default.
       """
     ],
     always_select?: [

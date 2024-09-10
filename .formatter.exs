@@ -187,6 +187,7 @@ spark_locals_without_parens = [
   resource: 1,
   resource: 2,
   run: 1,
+  select_by_default?: 1,
   sensitive?: 1,
   short_name: 1,
   skip_global_validations?: 1,
