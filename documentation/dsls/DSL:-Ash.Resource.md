@@ -1739,7 +1739,7 @@ Declares a `destroy` action. For calling this action, see the `Ash.Domain` docum
 
 ### Examples
 ```
-destroy :soft_delete do
+destroy :destroy do
   primary? true
 end
 

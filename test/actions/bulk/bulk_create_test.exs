@@ -60,6 +60,21 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     end
   end
 
+  defmodule ChangeTitleBeforeAction do
+    use Ash.Resource.Change
+
+    @impl Ash.Resource.Change
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.before_action(changeset, fn changeset ->
+        Ash.Changeset.force_change_attribute(
+          changeset,
+          :title,
+          "before_" <> Ash.Changeset.get_attribute(changeset, :title)
+        )
+      end)
+    end
+  end
+
   defmodule ChangeMessage do
     use Ash.Resource.Change
 
@@ -205,6 +220,11 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
+
+      create :create_with_before_action do
+        accept [:title]
+        change ChangeTitleBeforeAction
+      end
 
       create :create_with_related_posts do
         argument :related_post_ids, {:array, :uuid} do
@@ -539,6 +559,25 @@ defmodule Ash.Test.Actions.BulkCreateTest do
 
     assert %Ash.BulkResult{records: [%{title: "title1"}, %{title: "title2"}]} =
              Ash.bulk_create!([%{title: "title1"}, %{title: "title2"}], Post, :create,
+               return_records?: true,
+               return_errors?: true,
+               authorize?: false,
+               sorted?: true,
+               tenant: org.id
+             )
+  end
+
+  test "runs before action hooks" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
+    assert %Ash.BulkResult{records: [%{title: "before_title1"}, %{title: "before_title2"}]} =
+             Ash.bulk_create!(
+               [%{title: "title1"}, %{title: "title2"}],
+               Post,
+               :create_with_before_action,
                return_records?: true,
                return_errors?: true,
                authorize?: false,
