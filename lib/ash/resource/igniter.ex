@@ -172,4 +172,24 @@ defmodule Ash.Resource.Igniter do
       end
     end)
   end
+
+  @doc "Adds the given code block to the resource's `resource` block"
+  def add_resource_configuration(igniter, resource, resource_configuration) do
+    Igniter.Code.Module.find_and_update_module!(igniter, resource, fn zipper ->
+      with {:ok, zipper} <-
+             Igniter.Code.Function.move_to_function_call_in_current_scope(zipper, :resource, 1),
+           {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper) do
+        {:ok, Igniter.Code.Common.add_code(zipper, resource_configuration)}
+      else
+        _ ->
+          resource_configurations_with_resource_configuration = """
+          resource do
+            #{resource_configuration}
+          end
+          """
+
+          {:ok, Igniter.Code.Common.add_code(zipper, relationships_with_relationship)}
+      end
+    end)
+  end
 end
