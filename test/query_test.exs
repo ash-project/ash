@@ -16,6 +16,7 @@ defmodule Ash.Test.QueryTest do
 
     actions do
       default_accept :*
+      defaults create: :*, update: :*
 
       read :read do
         primary? true
@@ -26,13 +27,12 @@ defmodule Ash.Test.QueryTest do
 
         filter expr(id == ^arg(:id))
       end
-
-      create :create
-      update :update
     end
 
     attributes do
       uuid_primary_key :id
+
+      attribute :list, {:array, :string}, public?: true
 
       attribute :name, :string do
         public?(true)
@@ -83,6 +83,18 @@ defmodule Ash.Test.QueryTest do
       assert User
              |> Ash.Query.load(:best_friend)
              |> Ash.Query.loading?(:best_friend)
+    end
+  end
+
+  describe "filter" do
+    test "can filter by list" do
+      list = ["a", "b", "c"]
+
+      Ash.create!(User, %{list: list})
+
+      assert User
+             |> Ash.Query.filter(list: list)
+             |> Ash.read_one!()
     end
   end
 end
