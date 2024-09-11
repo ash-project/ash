@@ -34,11 +34,13 @@ defmodule Ash.Test.Resource.BuilderTest do
 
   describe "resource builder" do
     test "build action change" do
-      assert {:ok,%Ash.Resource.Change{}} = Builder.build_action_change({Ash.Test.Resource.BuilderTest.Change, []})
+      assert {:ok, %Ash.Resource.Change{}} =
+               Builder.build_action_change({Ash.Test.Resource.BuilderTest.Change, []})
     end
 
     test "build action validation" do
-      assert {:ok,%Ash.Resource.Validation{}} = Builder.build_action_validation({Ash.Test.Resource.BuilderTest.Change, []})
+      assert {:ok, %Ash.Resource.Validation{}} =
+               Builder.build_action_validation({Ash.Test.Resource.BuilderTest.Change, []})
     end
   end
 end

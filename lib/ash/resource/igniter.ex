@@ -49,17 +49,6 @@ defmodule Ash.Resource.Igniter do
 
   @doc "Adds a bypass to the top of the resource's `policies` block"
   def add_bypass(igniter, resource, condition, body) do
-    bypass =
-      quote do
-        policies do
-          bypass unquote(condition) do
-            unquote(body)
-          end
-        end
-      end
-      |> Sourceror.to_string()
-      |> Sourceror.parse_string!()
-
     Igniter.Code.Module.find_and_update_module!(igniter, resource, fn zipper ->
       with {:ok, zipper} <-
              Igniter.Code.Function.move_to_function_call_in_current_scope(
@@ -68,9 +57,29 @@ defmodule Ash.Resource.Igniter do
                1
              ),
            {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper) do
+        bypass =
+          quote do
+            bypass unquote(condition) do
+              unquote(body)
+            end
+          end
+          |> Sourceror.to_string()
+          |> Sourceror.parse_string!()
+
         {:ok, Igniter.Code.Common.add_code(zipper, bypass, :before)}
       else
         _ ->
+          bypass =
+            quote do
+              policies do
+                policy unquote(condition) do
+                  unquote(body)
+                end
+              end
+            end
+            |> Sourceror.to_string()
+            |> Sourceror.parse_string!()
+
           {:ok, Igniter.Code.Common.add_code(zipper, bypass)}
       end
     end)
@@ -78,17 +87,6 @@ defmodule Ash.Resource.Igniter do
 
   @doc "Adds a policy to the bottom of the resource's `policies` block"
   def add_policy(igniter, resource, condition, body) do
-    policy =
-      quote do
-        policies do
-          policy unquote(condition) do
-            unquote(body)
-          end
-        end
-      end
-      |> Sourceror.to_string()
-      |> Sourceror.parse_string!()
-
     Igniter.Code.Module.find_and_update_module!(igniter, resource, fn zipper ->
       with {:ok, zipper} <-
              Igniter.Code.Function.move_to_function_call_in_current_scope(
@@ -97,9 +95,29 @@ defmodule Ash.Resource.Igniter do
                1
              ),
            {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper) do
+        policy =
+          quote do
+            policy unquote(condition) do
+              unquote(body)
+            end
+          end
+          |> Sourceror.to_string()
+          |> Sourceror.parse_string!()
+
         {:ok, Igniter.Code.Common.add_code(zipper, policy, :after)}
       else
         _ ->
+          policy =
+            quote do
+              policies do
+                policy unquote(condition) do
+                  unquote(body)
+                end
+              end
+            end
+            |> Sourceror.to_string()
+            |> Sourceror.parse_string!()
+
           {:ok, Igniter.Code.Common.add_code(zipper, policy)}
       end
     end)
