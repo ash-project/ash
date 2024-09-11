@@ -4033,8 +4033,7 @@ defmodule Ash.Filter do
           end
       end)
     else
-      error = InvalidFilterValue.exception(value: values)
-      {:error, error}
+      parse_predicates([eq: values], attr, context)
     end
   end
 
