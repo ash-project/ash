@@ -102,15 +102,17 @@ defmodule Ash.Actions.Destroy.Bulk do
           {:not_atomic, "Manual read actions cannot be updated atomically"}
 
         Ash.DataLayer.data_layer_can?(query.resource, :destroy_query) ->
-          private_context = Map.new(Keyword.take(opts, [:actor, :tenant, :authorize]))
+            private_context = Map.new(Keyword.take(opts, [:actor, :tenant, :authorize]))
 
-          opts =
-            Keyword.update(
-              opts,
-              :context,
-              %{private: private_context},
-              &Map.put(&1, :private, private_context)
-            )
+                      opts =
+                        Keyword.update(
+                          opts,
+                          :context,
+                          %{private: private_context},
+                          fn context ->
+                            Map.update(context, :private, private_context, &Map.merge(&1, private_context))
+                          end
+                        )
 
           Ash.Changeset.fully_atomic_changeset(query.resource, action, input, opts)
 

@@ -67,7 +67,9 @@ defmodule Ash.Actions.Update.Bulk do
               opts,
               :context,
               %{private: private_context},
-              &Map.put(&1, :private, private_context)
+              fn context ->
+                Map.update(context, :private, private_context, &Map.merge(&1, private_context))
+              end
             )
 
           Ash.Changeset.fully_atomic_changeset(query.resource, action, input, opts)
