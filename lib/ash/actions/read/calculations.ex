@@ -1948,7 +1948,12 @@ defmodule Ash.Actions.Read.Calculations do
   # Deselect fields that we know statically cannot be seen
   # The field may be reselected later as a calculation dependency
   # this is an optimization not a guarantee
-  def deselect_known_forbidden_fields(ash_query, calculations_at_runtime, calculations_in_query) do
+  def deselect_known_forbidden_fields(
+        ash_query,
+        calculations_at_runtime,
+        calculations_in_query,
+        skip \\ []
+      ) do
     depended_on_fields = ash_query.context[:private][:depended_on_fields] || []
 
     calculations_at_runtime
@@ -1985,6 +1990,7 @@ defmodule Ash.Actions.Read.Calculations do
     end)
     |> Enum.uniq()
     |> Kernel.--(depended_on_fields)
+    |> Kernel.--(skip)
     |> then(
       &unload_forbidden_fields(ash_query, &1, calculations_at_runtime, calculations_in_query)
     )
