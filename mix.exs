@@ -360,7 +360,7 @@ defmodule Ash.MixProject do
       {:simple_sat, "~> 0.1 and >= 0.1.1", optional: true},
 
       # Code Generators
-      {:igniter, "~> 0.3 and >= 0.3.33"},
+      {:igniter, "~> 0.3 and >= 0.3.35"},
 
       # IO Utilities
       {:owl, "~> 0.11"},

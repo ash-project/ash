@@ -367,8 +367,8 @@ defmodule Ash.Resource.Builder do
       Ash.Resource.Dsl,
       # All action types that support validations have the same validation entity, so we just say `create` here
       [:actions, :create],
-      :validation,
-      Keyword.put(opts, :validate, validation)
+      :validate,
+      Keyword.put(opts, :validation, validation)
     )
   end
 
