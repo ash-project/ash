@@ -439,10 +439,9 @@ defmodule Ash.Actions.ManagedRelationships do
           )
       end
     end
-
-    catch
-      {DBConnection, ref, error} ->
-        throw({DBConnection, ref, set_error_path(error, relationship, index, opts)})
+  catch
+    {DBConnection, ref, error} ->
+      throw({DBConnection, ref, set_error_path(error, relationship, index, opts)})
   end
 
   defp do_create_belongs_to_record(
@@ -633,7 +632,6 @@ defmodule Ash.Actions.ManagedRelationships do
         catch
           {DBConnection, ref, error} ->
             throw({DBConnection, ref, set_error_path(error, relationship, input_index, opts)})
-
         end
       end
     )
