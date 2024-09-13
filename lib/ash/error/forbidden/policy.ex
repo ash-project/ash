@@ -319,7 +319,13 @@ defmodule Ash.Error.Forbidden.Policy do
         end
 
       title(
-        ["\n", Enum.map(condition_description, &["    ", &1]), "\n", Enum.map(description, &["    ", &1]), "\n"],
+        [
+          "\n",
+          Enum.map(condition_description, &["    ", &1]),
+          "\n",
+          Enum.map(description, &["    ", &1]),
+          "\n"
+        ],
         [
           "  ",
           bypass,
