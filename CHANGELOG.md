@@ -2,6 +2,75 @@
 
 <!-- changelog -->
 
+## [v3.4.11](https://github.com/ash-project/ash/compare/v3.4.10...v3.4.11) (2024-09-13)
+
+
+
+
+### Bug Fixes:
+
+* properly add all types of extensions in `mix ash.patch.extend`
+
+* ensure that field policies don't interfere with relationship loading
+
+* properly merge provided context in atomic bulk actions
+
+* properly handle rollbacks from `DBConnection` failures for belongs to relationships
+
+* don't generate doubly nested policies when adding policies in igniter
+
+* fix Ash.Changeset.manage_relationships/4 for list primary keys (#1455)
+
+* Handle Ash.Query.filter for array values (#1452)
+
+* cast embedded time properly (#1451)
+
+* require private/non-accepted attributes after before action hooks
+
+* we cannot assume that `after_action/1` can be done atomically
+
+* support passing a forbidden error to policies per the docs
+
+* don't repor the action as the actor for policy breakdowns
+
+* check `changeset.action` before raising a required primary action error
+
+* ensure proper return types for `:stream` strategy bulk update/destroys
+
+* don't select destination attributes that don't exist
+
+* properly pass actor when running filters at runtime
+
+* misplaced curly bracket when handling struct type casting
+
+* properly leverage atomic upgrade read action for an update action
+
+* fix type definition for `atomic_upgrade_with`
+
+### Improvements:
+
+* update igniter and fix deprecation warnings
+
+* small improvements for policy breakdown formatting
+
+* honor a `_union_type` type param when casting unions
+
+* add system for `action_select`, which can limit selects from mutations
+
+* support `select_by_default?` flag on attributes
+
+* add `add_bypass` and `add_policy` igniter utilities
+
+* show informative error explaining the use of filter checks with create actions
+
+* show the actor's primary key in policy breakdowns
+
+* add an expanded description option to checks
+
+* use expanded description to display filled in filter templates in policy breakdowns
+
+* Add `Changeset.is_valid/1` guard. (#1437)
+
 ## [v3.4.10](https://github.com/ash-project/ash/compare/v3.4.9...v3.4.10) (2024-09-13)
 
 
