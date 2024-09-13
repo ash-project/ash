@@ -125,6 +125,16 @@ defmodule Ash.Test.Policy.FieldPolicyTest do
                |> Map.get(:role)
     end
 
+    test "field policies don't interfere with data loading", %{post: post} do
+      # asserting no raise as this is a regression test
+      post
+      |> Ash.load!(:reporter)
+
+      Post
+      |> Ash.Query.load(:reporter)
+      |> Ash.read!()
+    end
+
     test "can load a resource with a forbidden aggregate", %{
       representative: representative
     } do

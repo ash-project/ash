@@ -2,9 +2,8 @@ defmodule Ash.Test.Actions.BulkCreateTest do
   @moduledoc false
   use ExUnit.Case, async: true
 
-  import Ash.Expr, only: [expr: 1]
+  import Ash.Expr
   import ExUnit.CaptureLog
-  require Ash.Expr
 
   alias Ash.Test.Domain, as: Domain
 
@@ -57,6 +56,21 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     @impl Ash.Resource.Change
     def after_batch(_, _, _) do
       :ok
+    end
+  end
+
+  defmodule ChangeTitleBeforeAction do
+    use Ash.Resource.Change
+
+    @impl Ash.Resource.Change
+    def change(changeset, _opts, _context) do
+      Ash.Changeset.before_action(changeset, fn changeset ->
+        Ash.Changeset.force_change_attribute(
+          changeset,
+          :title,
+          "before_" <> Ash.Changeset.get_attribute(changeset, :title)
+        )
+      end)
     end
   end
 
@@ -205,6 +219,16 @@ defmodule Ash.Test.Actions.BulkCreateTest do
     actions do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
+
+      create :create_with_before_action do
+        accept [:title]
+        change ChangeTitleBeforeAction
+      end
+
+      create :create_with_actor_referencing_upsert_condition do
+        upsert? true
+        upsert_condition expr(upsert_conflict(:title) != ^actor(:title))
+      end
 
       create :create_with_related_posts do
         argument :related_post_ids, {:array, :uuid} do
@@ -547,6 +571,25 @@ defmodule Ash.Test.Actions.BulkCreateTest do
              )
   end
 
+  test "runs before action hooks" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
+    assert %Ash.BulkResult{records: [%{title: "before_title1"}, %{title: "before_title2"}]} =
+             Ash.bulk_create!(
+               [%{title: "title1"}, %{title: "title2"}],
+               Post,
+               :create_with_before_action,
+               return_records?: true,
+               return_errors?: true,
+               authorize?: false,
+               sorted?: true,
+               tenant: org.id
+             )
+  end
+
   test "runs changes" do
     org =
       Org
@@ -746,6 +789,63 @@ defmodule Ash.Test.Actions.BulkCreateTest do
                upsert_identity: :unique_title,
                upsert_fields: [:title2],
                upsert_condition: expr(upsert_conflict(:title) != "title3"),
+               sorted?: true,
+               authorize?: false
+             )
+  end
+
+  test "can upsert with an actor reference in the upsert condition" do
+    org =
+      Org
+      |> Ash.Changeset.for_create(:create, %{})
+      |> Ash.create!()
+
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "title1", title2: "changes", title3: "wont"},
+               %{title: "title2", title2: "changes", title3: "wont"},
+               %{title: "title3", title2: "changes", title3: "wont"}
+             ]
+           } =
+             Ash.bulk_create!(
+               [
+                 %{title: "title1", title2: "changes", title3: "wont"},
+                 %{title: "title2", title2: "changes", title3: "wont"},
+                 %{title: "title3", title2: "changes", title3: "wont"}
+               ],
+               Post,
+               :create,
+               tenant: org.id,
+               return_errors?: true,
+               return_records?: true,
+               sorted?: true,
+               return_errors?: true,
+               authorize?: false
+             )
+
+    assert %Ash.BulkResult{
+             records: [
+               %{title: "title1", title2: "did_change", title3: "wont"},
+               %{title: "title2", title2: "did_change", title3: "wont"}
+             ]
+           } =
+             Ash.bulk_create!(
+               [
+                 %{title: "title1", title2: "did_change", title3: "oh no"},
+                 %{title: "title2", title2: "did_change", title3: "what happened"},
+                 %{title: "title3", title2: "shouldn't even", title3: "be in result"}
+               ],
+               Post,
+               :create_with_actor_referencing_upsert_condition,
+               return_errors?: true,
+               return_records?: true,
+               tenant: org.id,
+               upsert?: true,
+               return_errors?: true,
+               upsert_identity: :unique_title,
+               upsert_fields: [:title2],
+               actor: %{title: "title3"},
+               upsert_condition: expr(upsert_conflict(:title) != ^actor(:title)),
                sorted?: true,
                authorize?: false
              )

@@ -1384,7 +1384,8 @@ defmodule Ash.Policy.Authorizer do
             authorizer.facts,
             filter,
             authorizer.policies,
-            success?: true
+            success?: true,
+            help_text?: false
           )
       ]
     )

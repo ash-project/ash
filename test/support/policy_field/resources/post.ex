@@ -56,6 +56,10 @@ defmodule Ash.Test.Support.PolicyField.Post do
       authorize_if relates_to_actor_via(:reporter)
     end
 
+    field_policy :reporter_id do
+      forbid_if always()
+    end
+
     field_policy :* do
       authorize_if always()
     end

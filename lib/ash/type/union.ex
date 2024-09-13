@@ -406,6 +406,18 @@ defmodule Ash.Type.Union do
     end
   end
 
+  def cast_input(%{"_union_type" => union_type} = value, constraints) do
+    case Enum.find(constraints[:types], fn {key, _} ->
+           to_string(key) == union_type
+         end) do
+      {type, _config} ->
+        cast_input(%Ash.Union{value: Map.delete(value, "_union_type"), type: type}, constraints)
+
+      _ ->
+        cast_input(Map.delete(value, "_union_type"), constraints)
+    end
+  end
+
   def cast_input(value, constraints) do
     types = constraints[:types] || []
 

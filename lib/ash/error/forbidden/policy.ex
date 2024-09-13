@@ -319,7 +319,7 @@ defmodule Ash.Error.Forbidden.Policy do
         end
 
       title(
-        [Enum.map(condition_description, &["    ", &1]), Enum.map(description, &["    ", &1])],
+        ["\n", Enum.map(condition_description, &["    ", &1]), "\n", Enum.map(description, &["    ", &1]), "\n"],
         [
           "  ",
           bypass,
@@ -372,25 +372,10 @@ defmodule Ash.Error.Forbidden.Policy do
           end
         end
 
-      {[["condition: ", describe(mod, opts, actor, subject)] | conditions], new_status}
+      {[["condition: ", describe(mod, opts, actor, subject) <> "\n"] | conditions], new_status}
     end)
     |> then(fn {conditions, status} ->
-      conditions =
-        conditions
-        |> Enum.reverse()
-        |> case do
-          [] ->
-            []
-
-          conditions ->
-            [
-              conditions
-              |> Enum.intersperse("\n"),
-              "\n"
-            ]
-        end
-
-      {conditions, status}
+      {Enum.reverse(conditions), status}
     end)
   end
 

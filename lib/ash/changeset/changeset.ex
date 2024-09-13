@@ -4448,7 +4448,7 @@ defmodule Ash.Changeset do
               input
               |> List.wrap()
               |> Enum.map(fn input ->
-                if is_map(input) || is_list(input) do
+                if is_map(input) || Keyword.keyword?(input) do
                   input
                 else
                   %{key => input}

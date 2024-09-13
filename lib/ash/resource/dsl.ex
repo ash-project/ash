@@ -679,7 +679,7 @@ defmodule Ash.Resource.Dsl do
     """,
     examples: [
       """
-      destroy :soft_delete do
+      destroy :destroy do
         primary? true
       end
       """

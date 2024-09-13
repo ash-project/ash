@@ -225,6 +225,11 @@ defmodule Ash.Actions.Read do
         query.domain
       )
 
+    source_fields =
+      if !opts[:initial_data] do
+        source_fields(query)
+      end
+
     query =
       if opts[:initial_data] do
         select = source_fields(query, opts[:lazy?] && opts[:initial_data]) ++ (query.select || [])
@@ -244,7 +249,7 @@ defmodule Ash.Actions.Read do
           query
         end
       else
-        Ash.Query.ensure_selected(query, source_fields(query))
+        Ash.Query.ensure_selected(query, source_fields)
       end
 
     {query, stop?} = add_async_limiter(query, calculations_at_runtime, opts)
@@ -261,7 +266,7 @@ defmodule Ash.Actions.Read do
             opts
           )
         else
-          do_read(query, calculations_at_runtime, calculations_in_query, opts)
+          do_read(query, calculations_at_runtime, calculations_in_query, source_fields, opts)
         end
 
       {data_result, query_ran} =
@@ -393,7 +398,13 @@ defmodule Ash.Actions.Read do
     end
   end
 
-  defp do_read(%{action: action} = query, calculations_at_runtime, calculations_in_query, opts) do
+  defp do_read(
+         %{action: action} = query,
+         calculations_at_runtime,
+         calculations_in_query,
+         source_fields,
+         opts
+       ) do
     with {:ok, %{valid?: true} = query} <- handle_multitenancy(query),
          query <- add_select_if_none_exists(query),
          query <- %{
@@ -416,7 +427,8 @@ defmodule Ash.Actions.Read do
                Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
                  query,
                  calculations_at_runtime,
-                 calculations_in_query
+                 calculations_in_query,
+                 source_fields
                ),
              {:ok, data_layer_calculations} <- hydrate_calculations(query, calculations_in_query),
              {:ok, query} <- hydrate_aggregates(query),

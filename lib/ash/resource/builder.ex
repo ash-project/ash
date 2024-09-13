@@ -350,10 +350,25 @@ defmodule Ash.Resource.Builder do
   def build_action_change(change, opts \\ []) do
     Transformer.build_entity(
       Ash.Resource.Dsl,
-      # All action types  that support changes have the same change entity, so we just say `create` here
+      # All action types that support changes have the same change entity, so we just say `create` here
       [:actions, :create],
       :change,
       Keyword.put(opts, :change, change)
+    )
+  end
+
+  @doc """
+  Builds an action validation
+  """
+  @spec build_action_validation(change :: Ash.Resource.Validation.ref(), opts :: Keyword.t()) ::
+          {:ok, Ash.Resource.Validation.t()} | {:error, term}
+  def build_action_validation(validation, opts \\ []) do
+    Transformer.build_entity(
+      Ash.Resource.Dsl,
+      # All action types that support validations have the same validation entity, so we just say `create` here
+      [:actions, :create],
+      :validate,
+      Keyword.put(opts, :validation, validation)
     )
   end
 

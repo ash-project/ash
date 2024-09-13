@@ -133,7 +133,7 @@ defmodule Ash.Actions.Create.Bulk do
       |> Enum.filter(&(&1.type == :belongs_to))
       |> Enum.map(& &1.source_attribute)
 
-    required_attrs_list =
+    attrs_to_require =
       resource
       |> Ash.Resource.Info.attributes()
       |> Enum.reject(&(&1.allow_nil? || &1.generated? || &1.name in belongs_to_attrs))
@@ -167,7 +167,7 @@ defmodule Ash.Actions.Create.Bulk do
               data_layer_can_bulk?,
               opts,
               ref,
-              required_attrs_list
+              attrs_to_require
             )
           after
             if opts[:notify?] && !opts[:return_notifications?] do
@@ -382,7 +382,7 @@ defmodule Ash.Actions.Create.Bulk do
          data_layer_can_bulk?,
          opts,
          ref,
-         required_attrs_list
+         attrs_to_require
        ) do
     %{
       must_return_records?: must_return_records_for_changes?,
@@ -404,9 +404,12 @@ defmodule Ash.Actions.Create.Bulk do
       |> Stream.map(fn changeset ->
         Ash.Changeset.require_values(
           changeset,
-          :create,
-          true,
-          required_attrs_list
+          :create
+        )
+        |> Ash.Changeset.require_values(
+          :update,
+          false,
+          changeset.action.require_attributes
         )
       end)
       |> Enum.reduce({[], []}, fn changeset, {batch, must_be_simple} ->
@@ -470,7 +473,8 @@ defmodule Ash.Actions.Create.Bulk do
                 ref,
                 changes,
                 must_return_records_for_changes?,
-                must_be_simple_results
+                must_be_simple_results,
+                attrs_to_require
               )
 
             {new_errors, new_error_count} =
@@ -523,7 +527,8 @@ defmodule Ash.Actions.Create.Bulk do
         ref,
         changes,
         must_return_records_for_changes?,
-        must_be_simple_results
+        must_be_simple_results,
+        attrs_to_require
       )
     end
   end
@@ -539,7 +544,8 @@ defmodule Ash.Actions.Create.Bulk do
          ref,
          changes,
          must_return_records_for_changes?,
-         must_be_simple_results
+         must_be_simple_results,
+         attrs_to_require
        ) do
     must_return_records? =
       opts[:notify?] ||
@@ -568,7 +574,8 @@ defmodule Ash.Actions.Create.Bulk do
       must_return_records_for_changes?,
       data_layer_can_bulk?,
       domain,
-      ref
+      ref,
+      attrs_to_require
     )
     |> run_after_action_hooks(opts, domain, ref, changesets_by_index)
     |> process_results(
@@ -1004,14 +1011,21 @@ defmodule Ash.Actions.Create.Bulk do
          must_return_records_for_changes?,
          data_layer_can_bulk?,
          domain,
-         ref
+         ref,
+         attrs_to_require
        ) do
     batch
     |> Enum.map(fn changeset ->
-      if changeset.valid? do
-        {changeset, %{notifications: new_notifications}} =
-          Ash.Changeset.run_before_actions(changeset)
-
+      with %{valid?: true} = changeset <- changeset,
+           {changeset, %{notifications: new_notifications}} <-
+             Ash.Changeset.run_before_actions(changeset),
+           %{valid?: true} = changeset <-
+             Ash.Changeset.require_values(
+               changeset,
+               :create,
+               true,
+               attrs_to_require
+             ) do
         changeset =
           changeset
           |> Ash.Changeset.hydrate_atomic_refs(opts[:actor])
@@ -1045,7 +1059,8 @@ defmodule Ash.Actions.Create.Bulk do
 
         changeset
       else
-        changeset
+        {%Ash.Changeset{} = changeset, _} -> changeset
+        %Ash.Changeset{} = changeset -> changeset
       end
     end)
     |> Enum.reject(fn
