@@ -257,7 +257,7 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
         Spark.Igniter.add_extension(igniter, module, Ash.Resource, :authorizers, extension)
 
       true ->
-        igniter
+        Spark.Igniter.add_extension(igniter, module, Ash.Resource, :extensions, extension)
     end
   end
 
