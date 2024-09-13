@@ -47,6 +47,30 @@ defmodule Ash.Resource.Igniter do
     [Ash.Resource | List.wrap(Application.get_env(app_name, :base_resources))]
   end
 
+  @doc "Adds the given code block to the block of the resource specified"
+  def add_block(igniter, resource, block, chunk) do
+    Igniter.Code.Module.find_and_update_module!(igniter, resource, fn zipper ->
+      with {:ok, zipper} <-
+             Igniter.Code.Function.move_to_function_call_in_current_scope(
+               zipper,
+               block,
+               1
+             ),
+           {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper) do
+        {:ok, Igniter.Code.Common.add_code(zipper, chunk)}
+      else
+        _ ->
+          block_with_chunk = """
+          #{block} do
+            #{chunk}
+          end
+          """
+
+          {:ok, Igniter.Code.Common.add_code(zipper, block_with_chunk)}
+      end
+    end)
+  end
+
   @doc "Adds a bypass to the top of the resource's `policies` block"
   def add_bypass(igniter, resource, condition, body) do
     bypass =
@@ -107,89 +131,21 @@ defmodule Ash.Resource.Igniter do
 
   @doc "Adds the given code block to the resource's `attributes` block"
   def add_attribute(igniter, resource, attribute) do
-    Igniter.Code.Module.find_and_update_module!(igniter, resource, fn zipper ->
-      with {:ok, zipper} <-
-             Igniter.Code.Function.move_to_function_call_in_current_scope(
-               zipper,
-               :attributes,
-               1
-             ),
-           {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper) do
-        {:ok, Igniter.Code.Common.add_code(zipper, attribute)}
-      else
-        _ ->
-          attributes_with_attribute = """
-          attributes do
-            #{attribute}
-          end
-          """
-
-          {:ok, Igniter.Code.Common.add_code(zipper, attributes_with_attribute)}
-      end
-    end)
+    add_block(igniter, resource, :attributes, attribute)
   end
 
   @doc "Adds the given code block to the resource's `actions` block"
   def add_action(igniter, resource, action) do
-    Igniter.Code.Module.find_and_update_module!(igniter, resource, fn zipper ->
-      with {:ok, zipper} <-
-             Igniter.Code.Function.move_to_function_call_in_current_scope(zipper, :actions, 1),
-           {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper) do
-        {:ok, Igniter.Code.Common.add_code(zipper, action)}
-      else
-        _ ->
-          actions_with_action = """
-          actions do
-            #{action}
-          end
-          """
-
-          {:ok, Igniter.Code.Common.add_code(zipper, actions_with_action)}
-      end
-    end)
+    add_block(igniter, resource, :actions, action)
   end
 
   @doc "Adds the given code block to the resource's `relationships` block"
   def add_relationship(igniter, resource, relationship) do
-    Igniter.Code.Module.find_and_update_module!(igniter, resource, fn zipper ->
-      with {:ok, zipper} <-
-             Igniter.Code.Function.move_to_function_call_in_current_scope(
-               zipper,
-               :relationships,
-               1
-             ),
-           {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper) do
-        {:ok, Igniter.Code.Common.add_code(zipper, relationship)}
-      else
-        _ ->
-          relationships_with_relationship = """
-          relationships do
-            #{relationship}
-          end
-          """
-
-          {:ok, Igniter.Code.Common.add_code(zipper, relationships_with_relationship)}
-      end
-    end)
+    add_block(igniter, resource, :relationships, relationship)
   end
 
   @doc "Adds the given code block to the resource's `resource` block"
   def add_resource_configuration(igniter, resource, resource_configuration) do
-    Igniter.Code.Module.find_and_update_module!(igniter, resource, fn zipper ->
-      with {:ok, zipper} <-
-             Igniter.Code.Function.move_to_function_call_in_current_scope(zipper, :resource, 1),
-           {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper) do
-        {:ok, Igniter.Code.Common.add_code(zipper, resource_configuration)}
-      else
-        _ ->
-          resource_configurations_with_resource_configuration = """
-          resource do
-            #{resource_configuration}
-          end
-          """
-
-          {:ok, Igniter.Code.Common.add_code(zipper, relationships_with_relationship)}
-      end
-    end)
+    add_block(igniter, resource, :resource, resource_configuration)
   end
 end
