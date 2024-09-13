@@ -4,68 +4,47 @@
 
 ## [v3.4.9](https://github.com/ash-project/ash/compare/v3.4.8...v3.4.9) (2024-09-13)
 
-
-
-
 ### Bug Fixes:
 
-* ensure that field policies don't interfere with relationship loading
+- [field policies] ensure that field policies don't interfere with relationship loading
 
-* properly merge provided context in atomic bulk actions
+- [bulk actions] properly merge provided context in atomic bulk actions
 
-* properly handle rollbacks from `DBConnection` failures for belongs to relationships
+- [managed relationships] properly handle rollbacks from `DBConnection` failures for belongs to relationships
 
-* don't generate doubly nested policies when adding policies in igniter
+- [`Ash.Resource.Igniter`] don't generate doubly nested policies when adding policies in igniter
 
-* fix Ash.Changeset.manage_relationships/4 for list primary keys (#1455)
+- [`Ash.Changeset`] fix Ash.Changeset.manage_relationships/4 for list primary keys (#1455)
 
-* Handle Ash.Query.filter for array values (#1452)
+- [`Ash.Filter`] Handle Ash.Query.filter for array values (#1452)
 
-* cast embedded time properly (#1451)
+- [`Ash.Type.Time`] cast embedded time properly (#1451)
 
-* require private/non-accepted attributes after before action hooks
+- [create actions] require private/non-accepted attributes _after_ before action hooks instead of _before_
 
-* we cannot assume that `after_action/1` can be done atomically
+- [built in after_action change] we cannot assume that `after_action/1` can be done atomically
 
-* support passing a forbidden error to policies per the docs
+  Previously, when you did `change after_action/3` in a resource, we would assume it was safe to be done atomically.
+  But because we cannot guarantee that your hook does not access `changeset.data`, it is not safe to make that assumption.
 
-* don't repor the action as the actor for policy breakdowns
-
-* check `changeset.action` before raising a required primary action error
-
-* ensure proper return types for `:stream` strategy bulk update/destroys
-
-* don't select destination attributes that don't exist
-
-* properly pass actor when running filters at runtime
-
-* misplaced curly bracket when handling struct type casting
-
-* properly leverage atomic upgrade read action for an update action
-
-* fix type definition for `atomic_upgrade_with`
+  Instead, you must define a module change, and explicitly define `atomic/3`.
 
 ### Improvements:
 
-* small improvements for policy breakdown formatting
+- [`Ash.Error.Forbidden.Policy`] small improvements for policy breakdown formatting
 
-* honor a `_union_type` type param when casting unions
+- [`Ash.Type.Union`] honor a `_union_type` type param when casting unions
 
-* add system for `action_select`, which can limit selects from mutations
+- [create/update/destroy actions] add system for `action_select`, which can limit selects from mutations
 
-* support `select_by_default?` flag on attributes
+  Callers can `select` when calling create/update/destroy actions, but those selects were not previously honored
+  by data layers. The reason for this is that often actions will require more fields than the fields that the caller
+  requests. Now, you can specify `action_select` in the action, and the data layer will honor that.
 
-* add `add_bypass` and `add_policy` igniter utilities
+  Additionally, the new `select_by_default?` flag on attributes causes the attribute to automatically not be selected
+  for update actions.
 
-* show informative error explaining the use of filter checks with create actions
-
-* show the actor's primary key in policy breakdowns
-
-* add an expanded description option to checks
-
-* use expanded description to display filled in filter templates in policy breakdowns
-
-* Add `Changeset.is_valid/1` guard. (#1437)
+- [attributes] support `select_by_default?` flag on attributes. This defaults to `true`.
 
 ## [v3.4.8](https://github.com/ash-project/ash/compare/v3.4.7...v3.4.8) (2024-09-09)
 
