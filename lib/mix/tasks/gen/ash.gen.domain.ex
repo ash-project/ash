@@ -26,7 +26,7 @@ defmodule Mix.Tasks.Ash.Gen.Domain do
     {%{domain: domain}, argv} = positional_args!(argv)
     domain = Igniter.Code.Module.parse(domain)
 
-    domain_file = Igniter.Code.Module.proper_location(domain)
+    domain_file = Igniter.Project.Module.proper_location(igniter, domain)
 
     app_name = Igniter.Project.Application.app_name(igniter)
 

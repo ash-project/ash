@@ -29,7 +29,7 @@ defmodule Ash.Resource.Igniter do
                Igniter.Code.Function.move_to_nth_argument(zipper, 1),
              {:ok, zipper} <- Igniter.Code.Keyword.get_key(zipper, :domain),
              module when not is_nil(module) <-
-               Igniter.Code.Module.to_module_name(zipper.node) do
+               Igniter.Project.Module.to_module_name(zipper.node) do
           {:ok, igniter, module}
         else
           _ ->

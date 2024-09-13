@@ -211,7 +211,7 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
       resource
     )
     |> Igniter.create_new_file(
-      Igniter.Code.Module.proper_location(resource),
+      Igniter.Project.Module.proper_location(igniter, resource),
       """
       defmodule #{inspect(resource)} do
         use #{base},
