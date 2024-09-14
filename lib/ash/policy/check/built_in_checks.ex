@@ -216,6 +216,20 @@ defmodule Ash.Policy.Check.Builtins do
 
   @doc """
   This check is true when the value of the specified key or path in the changeset or query context equals the specified value.
+
+  Note that the context is not shared with other queries (e.g. loads).
+
+  For example:
+  ```elixir
+  # Given this check on Profile
+  authorize_if context_equals(:allow_this?, true)
+
+  # This load will not have the context and will not be authorized
+  Ash.load!(user, :profile, context: %{allow_this?: true})
+
+  # But this will have the context and will be authorized
+  Ash.load!(user, [profile: Ash.Query.set_context(Profile, %{allow_this?: true})])
+  ```
   """
   def context_equals(key, value) do
     {Ash.Policy.Check.ContextEquals, key: key, value: value}
