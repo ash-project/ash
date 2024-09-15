@@ -159,60 +159,104 @@ defmodule Ash.Resource.Igniter do
   @doc "Returns true if the given resource defines an attribute with the provided name"
   @spec defines_attribute(Igniter.t(), Ash.Resource.t(), atom()) :: {Igniter.t(), true | false}
   def defines_attribute(igniter, resource, name) do
-    Spark.Igniter.find(igniter, resource, fn _, zipper ->
-      with {:ok, zipper} <- enter_section(zipper, :attributes),
-           {:ok, _zipper} <-
-             Igniter.Code.Function.move_to_function_call_in_current_scope(
-               zipper,
-               :attribute,
-               [2, 3],
-               &Igniter.Code.Function.argument_equals?(&1, 0, name)
-             ) do
-        {:ok, true}
+    {igniter, defines?} =
+      if name in [:inserted_at, :updated_at] do
+        has_timestamps_call(igniter, resource)
       else
-        _ ->
-          :error
-      end
-    end)
-    |> case do
-      {:ok, igniter, _module, _value} ->
-        {igniter, true}
-
-      {:error, igniter} ->
         {igniter, false}
+      end
+
+    if defines? do
+      {igniter, true}
+    else
+      Spark.Igniter.find(igniter, resource, fn _, zipper ->
+        with {:ok, zipper} <- enter_section(zipper, :attributes),
+             {:ok, _zipper} <-
+               move_to_one_of_function_call_in_current_scope(
+                 zipper,
+                 [
+                   :attribute,
+                   :uuid_primary_key,
+                   :integer_primary_key,
+                   :uuid_v7_primary_key,
+                   :create_timestamp,
+                   :update_timestamp
+                 ],
+                 [2, 3],
+                 &Igniter.Code.Function.argument_equals?(&1, 0, name)
+               ) do
+          {:ok, true}
+        else
+          _ ->
+            :error
+        end
+      end)
+      |> case do
+        {:ok, igniter, _module, _value} ->
+          {igniter, true}
+
+        {:error, igniter} ->
+          {igniter, false}
+      end
     end
   end
 
   @doc "Returns true if the given resource defines an action with the provided name"
   @spec defines_action(Igniter.t(), Ash.Resource.t(), atom()) :: {Igniter.t(), true | false}
   def defines_action(igniter, resource, name) do
-    Spark.Igniter.find(igniter, resource, fn _, zipper ->
-      with {:ok, zipper} <- enter_section(zipper, :actions),
-           {:ok, _zipper} <-
-             move_to_one_of_function_call_in_current_scope(
-               zipper,
-               [
-                 :create,
-                 :update,
-                 :read,
-                 :destroy,
-                 :action
-               ],
-               [2, 3, 4],
-               &Igniter.Code.Function.argument_equals?(&1, 0, name)
-             ) do
-        {:ok, true}
+    {igniter, defines?} =
+      if name in [:create, :read, :update, :destroy] do
+        has_default_action(igniter, resource, name)
       else
-        _ ->
-          :error
-      end
-    end)
-    |> case do
-      {:ok, igniter, _module, _value} ->
-        {igniter, true}
-
-      {:error, igniter} ->
         {igniter, false}
+      end
+
+    if defines? do
+      {igniter, true}
+    else
+      Spark.Igniter.find(igniter, resource, fn _, zipper ->
+        with {:ok, zipper} <- enter_section(zipper, :actions),
+             {:ok, _zipper} <-
+               move_to_one_of_function_call_in_current_scope(
+                 zipper,
+                 [
+                   :create,
+                   :update,
+                   :read,
+                   :destroy,
+                   :action
+                 ],
+                 [2, 3, 4],
+                 &Igniter.Code.Function.argument_equals?(&1, 0, name)
+               ) do
+          {:ok, true}
+        else
+          _ ->
+            :error
+        end
+      end)
+      |> case do
+        {:ok, igniter, _module, _value} ->
+          {igniter, true}
+
+        {:error, igniter} ->
+          {igniter, false}
+      end
+    end
+  end
+
+  @spec ensure_primary_action(Igniter.t(), Ash.Resource.t(), :create | :read | :update | :destroy) ::
+          Igniter.t()
+  def ensure_primary_action(igniter, resource, type) do
+    case has_default_action(igniter, resource, type) do
+      {igniter, true} ->
+        igniter
+
+      {igniter, false} ->
+        case has_action_with_primary(igniter, resource, type) do
+          {igniter, true} -> igniter
+          {igniter, false} -> add_default_action(igniter, resource, type)
+        end
     end
   end
 
@@ -301,6 +345,30 @@ defmodule Ash.Resource.Igniter do
     add_block(igniter, resource, :resource, resource_configuration)
   end
 
+  @doc "Ensures that created_at and updated_at timestamps exist on the resource"
+  def ensure_timestamps(igniter, resource) do
+    {igniter, defines_inserted_at?} = defines_attribute(igniter, resource, :inserted_at)
+    {igniter, defines_created_at?} = defines_attribute(igniter, resource, :created_at)
+    defines_create_timestamp? = defines_inserted_at? || defines_created_at?
+    {igniter, defines_updated_at?} = defines_attribute(igniter, resource, :updated_at)
+
+    igniter
+    |> then(fn igniter ->
+      if defines_create_timestamp? do
+        igniter
+      else
+        add_create_timestamp_call(igniter, resource)
+      end
+    end)
+    |> then(fn igniter ->
+      if defines_updated_at? do
+        igniter
+      else
+        add_update_timestamp_call(igniter, resource)
+      end
+    end)
+  end
+
   defp enter_section(zipper, name) do
     with {:ok, zipper} <-
            Igniter.Code.Function.move_to_function_call_in_current_scope(
@@ -330,6 +398,151 @@ defmodule Ash.Resource.Igniter do
          ) do
       {:ok, zipper} -> {:ok, zipper}
       :error -> move_to_one_of_function_call_in_current_scope(zipper, rest, arities, pred)
+    end
+  end
+
+  defp has_default_action(igniter, resource, type) do
+    Spark.Igniter.find(igniter, resource, fn _, zipper ->
+      with {:ok, zipper} <- enter_section(zipper, :actions),
+           {:ok, _zipper} <-
+             Igniter.Code.Function.move_to_function_call_in_current_scope(
+               zipper,
+               :defaults,
+               1,
+               fn zipper ->
+                 with {:ok, zipper} <- Igniter.Code.Function.move_to_nth_argument(zipper, 0),
+                      {:ok, _zipper} <-
+                        Igniter.Code.List.move_to_list_item(zipper, fn zipper ->
+                          if Igniter.Code.Tuple.tuple?(zipper) do
+                            with {:ok, zipper} <- Igniter.Code.Tuple.tuple_elem(zipper, 0) do
+                              Igniter.Code.Common.nodes_equal?(zipper, type)
+                            else
+                              _ -> false
+                            end
+                          else
+                            Igniter.Code.Common.nodes_equal?(zipper, type)
+                          end
+                        end) do
+                   true
+                 else
+                   _ -> false
+                 end
+               end
+             ) do
+        {:ok, true}
+      else
+        _ -> :error
+      end
+    end)
+    |> case do
+      {:ok, igniter, _module, _value} ->
+        {igniter, true}
+
+      {:error, igniter} ->
+        {igniter, false}
+    end
+  end
+
+  @spec has_action_with_primary(Igniter.t(), Ash.Resource.t(), atom()) ::
+          {Igniter.t(), true | false}
+  def has_action_with_primary(igniter, resource, type) do
+    Spark.Igniter.find(igniter, resource, fn _, zipper ->
+      with {:ok, zipper} <- enter_section(zipper, :actions),
+           {:ok, _zipper} <-
+             Igniter.Code.Function.move_to_function_call_in_current_scope(zipper, type, [1, 2]) do
+        case Igniter.Code.Common.move_to_do_block(zipper) do
+          {:ok, zipper} ->
+            Igniter.Code.Function.move_to_function_call_in_current_scope(
+              zipper,
+              :primary?,
+              1,
+              &Igniter.Code.Function.argument_equals?(&1, 0, true)
+            )
+
+          :error ->
+            with {:ok, zipper} <- Igniter.Code.Function.move_to_nth_argument(zipper, 1),
+                 {:ok, zipper} <- Igniter.Code.Keyword.get_key(zipper, :primary?),
+                 true <- Igniter.Code.Common.nodes_equal?(zipper, true) do
+              {:ok, true}
+            end
+        end
+      end
+    end)
+    |> case do
+      {:ok, igniter, _module, _value} ->
+        {igniter, true}
+
+      {:error, igniter} ->
+        {igniter, false}
+    end
+  end
+
+  defp add_default_action(igniter, resource, type) do
+    Spark.Igniter.find(igniter, resource, fn _, zipper ->
+      with {:ok, zipper} <- enter_section(zipper, :actions),
+           {:ok, _zipper} <-
+             Igniter.Code.Function.move_to_function_call_in_current_scope(
+               zipper,
+               :defaults,
+               1
+             ) do
+        {:ok, true}
+      else
+        _ -> :error
+      end
+    end)
+    |> case do
+      {:ok, igniter, module, _value} ->
+        Igniter.Project.Module.find_and_update_module!(igniter, module, fn zipper ->
+          with {:ok, zipper} <- enter_section(zipper, :actions),
+               {:ok, _zipper} <-
+                 Igniter.Code.Function.move_to_function_call_in_current_scope(
+                   zipper,
+                   :defaults,
+                   1
+                 ),
+               {:ok, zipper} <- Igniter.Code.List.prepend_new_to_list(zipper, type) do
+            {:ok, zipper}
+          else
+            _ ->
+              {:error,
+               "Failed to add a default action of type #{inspect(type)} in #{inspect(module)}"}
+          end
+        end)
+
+      {:error, igniter} ->
+        igniter
+    end
+  end
+
+  defp add_create_timestamp_call(igniter, resource) do
+    add_block(igniter, resource, :attributes, "create_timestamp :created_at")
+  end
+
+  defp add_update_timestamp_call(igniter, resource) do
+    add_block(igniter, resource, :attributes, "update_timestamp :updated_at")
+  end
+
+  defp has_timestamps_call(igniter, resource) do
+    Spark.Igniter.find(igniter, resource, fn _, zipper ->
+      with {:ok, zipper} <- enter_section(zipper, :attributes),
+           {:ok, _zipper} <-
+             Igniter.Code.Function.move_to_function_call_in_current_scope(
+               zipper,
+               :timestamps,
+               1
+             ) do
+        {:ok, true}
+      else
+        _ -> :error
+      end
+    end)
+    |> case do
+      {:ok, igniter, _module, _value} ->
+        {igniter, true}
+
+      {:error, igniter} ->
+        {igniter, false}
     end
   end
 end

@@ -26,20 +26,16 @@ defmodule Mix.Tasks.Ash.Gen.Domain do
     {%{domain: domain}, argv} = positional_args!(argv)
     domain = Igniter.Code.Module.parse(domain)
 
-    domain_file = Igniter.Project.Module.proper_location(igniter, domain)
-
     app_name = Igniter.Project.Application.app_name(igniter)
 
-    if "--ignore-if-exists" in argv && Igniter.exists?(igniter, domain_file) do
+    if "--ignore-if-exists" in argv && Igniter.Project.Module.module_exists?(igniter, domain) do
       igniter
     else
       igniter
-      |> Igniter.create_new_file(domain_file, """
-      defmodule #{inspect(domain)} do
-        use Ash.Domain
+      |> Igniter.Project.Module.create_module(domain, """
+      use Ash.Domain
 
-        resources do
-        end
+      resources do
       end
       """)
       |> Igniter.Project.Config.configure(

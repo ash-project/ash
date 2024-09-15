@@ -210,20 +210,18 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
       domain,
       resource
     )
-    |> Igniter.create_new_file(
-      Igniter.Project.Module.proper_location(igniter, resource),
+    |> Igniter.Project.Module.create_module(
+      resource,
       """
-      defmodule #{inspect(resource)} do
-        use #{base},
-          otp_app: #{inspect(app_name)},
-          domain: #{inspect(domain)}
+      use #{base},
+        otp_app: #{inspect(app_name)},
+        domain: #{inspect(domain)}
 
-        #{actions}
+      #{actions}
 
-        #{attributes}
+      #{attributes}
 
-        #{relationships}
-      end
+      #{relationships}
       """
     )
     |> extend(resource, options[:extend], argv)
