@@ -236,7 +236,6 @@ defmodule Mix.Tasks.Ash.Patch.Extend do
              Igniter.Code.Function.update_nth_argument(zipper, 1, fn values_zipper ->
                Igniter.Code.Keyword.remove_keyword_key(values_zipper, :domain)
              end) do
-        Igniter.Util.Debug.puts_code_at_node(zipper)
         {:ok, zipper}
       else
         _ ->
