@@ -467,6 +467,15 @@ defmodule Ash.Error.Forbidden.Policy do
   end
 
   defp describe(mod, opts, actor, subject) do
+    opts =
+      case subject do
+        %{resource: resource} ->
+          Keyword.put_new(opts, :resource, resource)
+
+        _ ->
+          opts
+      end
+
     description = mod.describe(opts)
 
     if subject && function_exported?(mod, :expand_description, 3) do
