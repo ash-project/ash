@@ -229,7 +229,14 @@ defmodule Ash.Error.Forbidden.Policy do
       |> then(fn {policies, title} ->
         policies
         |> Enum.map(
-          &explain_policy(&1, facts, opts[:success?] || false, opts[:actor], opts[:subject], opts[:resource])
+          &explain_policy(
+            &1,
+            facts,
+            opts[:success?] || false,
+            opts[:actor],
+            opts[:subject],
+            opts[:resource]
+          )
         )
         |> Enum.intersperse("\n")
         |> then(fn list ->
@@ -303,7 +310,8 @@ defmodule Ash.Error.Forbidden.Policy do
       describe_conditions(policy.condition, resource, facts, actor, subject)
 
     if applies == true do
-      {description, state} = describe_checks(policy.policies, resource, facts, success?, actor, subject)
+      {description, state} =
+        describe_checks(policy.policies, resource, facts, success?, actor, subject)
 
       tag =
         case state do
@@ -378,7 +386,8 @@ defmodule Ash.Error.Forbidden.Policy do
           end
         end
 
-      {[["condition: ", describe(mod, opts, resource, actor, subject) <> "\n"] | conditions], new_status}
+      {[["condition: ", describe(mod, opts, resource, actor, subject) <> "\n"] | conditions],
+       new_status}
     end)
     |> then(fn {conditions, status} ->
       {Enum.reverse(conditions), status}
