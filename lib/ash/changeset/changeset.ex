@@ -22,15 +22,15 @@ defmodule Ash.Changeset do
         callback.(changeset)
       end)
       # execute code before the transaction is started. Use for things like external calls
-      |> Ash.Changeset.before_transaction(fn changeset -> changeset end)
+      |> Ash.Changeset.before_transaction(fn changeset, context -> changeset end)
       # execute code in the transaction, before and after the data layer is called
       |> Ash.Changeset.around_action(fn changeset, callback ->
         callback.(changeset)
       end)
       # execute code in the transaction, before the data layer is called
-      |> Ash.Changeset.before_action(fn changeset -> changeset end)
+      |> Ash.Changeset.before_action(fn changeset, context -> changeset end)
       # execute code in the transaction, after the data layer is called, only if the action is successful
-      |> Ash.Changeset.after_action(fn changeset, result -> {:ok, result} end)
+      |> Ash.Changeset.after_action(fn changeset, record, context -> {:ok, result} end)
       # execute code after the transaction, both in success and error cases
       |> Ash.Changeset.after_transaction(fn changeset, success_or_error_result -> success_or_error_result end
     end
@@ -4294,7 +4294,7 @@ defmodule Ash.Changeset do
       input = [%{id: 10, rating: 10, contents: "foo"}]
 
       changeset
-      |> Ash.Changeset.after_action(fn _changeset, result ->
+      |> Ash.Changeset.after_action(fn _changeset, result, _context ->
         # An example of updating comments based on a result of other changes
         for comment <- input do
           comment = Ash.get(Comment, comment.id)
@@ -5319,19 +5319,19 @@ defmodule Ash.Changeset do
 
     result
   end)
-  |> Ash.Changeset.before_action(fn changeset ->
+  |> Ash.Changeset.before_action(fn changeset, _context ->
     IO.puts("first before")
     changeset
   end, append?: true)
-  |> Ash.Changeset.before_action(fn changeset ->
+  |> Ash.Changeset.before_action(fn changeset, _context ->
     IO.puts("second before")
     changeset
   end, append?: true)
-  |> Ash.Changeset.after_action(fn changeset, result ->
+  |> Ash.Changeset.after_action(fn _changeset, result, _context ->
     IO.puts("first after")
     {:ok, result}
   end)
-  |> Ash.Changeset.after_action(fn changeset, result ->
+  |> Ash.Changeset.after_action(fn _changeset, result, _context ->
     IO.puts("second after")
     {:ok, result}
   end)
@@ -5393,19 +5393,19 @@ defmodule Ash.Changeset do
 
     result
   end)
-  |> Ash.Changeset.before_transaction(fn changeset ->
+  |> Ash.Changeset.before_transaction(fn changeset, context ->
     IO.puts("first before")
     changeset
   end, append?: true)
-  |> Ash.Changeset.before_transaction(fn changeset ->
+  |> Ash.Changeset.before_transaction(fn changeset, context ->
     IO.puts("second before")
     changeset
   end, append?: true)
-  |> Ash.Changeset.after_transaction(fn changeset, result ->
+  |> Ash.Changeset.after_transaction(fn changeset, result, context ->
     IO.puts("first after")
     result
   end)
-  |> Ash.Changeset.after_transaction(fn changeset, result ->
+  |> Ash.Changeset.after_transaction(fn changeset, result, context ->
     IO.puts("second after")
     result
   end)
