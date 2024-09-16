@@ -9,10 +9,10 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
   end
 
   @impl true
-  def filter(_actor, _context, opts) do
+  def filter(_actor, context, opts) do
     opts = Keyword.update!(opts, :relationship_path, &List.wrap/1)
     actor_field = Keyword.get(opts, :field)
-    {last_relationship, to_many?} = relationship_info(opts[:resource], opts[:relationship_path])
+    {last_relationship, to_many?} = relationship_info(context.resource, opts[:relationship_path])
 
     pkey =
       last_relationship.destination
@@ -44,7 +44,7 @@ defmodule Ash.Policy.Check.RelatesToActorVia do
   @impl true
   def reject(actor, context, opts) do
     opts = Keyword.update!(opts, :relationship_path, &List.wrap/1)
-    {last_relationship, to_many?} = relationship_info(opts[:resource], opts[:relationship_path])
+    {last_relationship, to_many?} = relationship_info(context.resource, opts[:relationship_path])
 
     pkey =
       last_relationship.destination

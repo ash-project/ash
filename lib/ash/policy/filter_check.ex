@@ -350,7 +350,7 @@ defmodule Ash.Policy.FilterCheck do
             _ -> nil
           end
 
-        opts = Keyword.put_new(opts, :resource, authorizer.resource)
+        opts = Keyword.update(opts, :resource, authorizer.resource, &(&1 || authorizer.resource))
 
         {:ok,
          actor
