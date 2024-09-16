@@ -344,13 +344,13 @@ defmodule Ash.Policy.FilterCheck do
       end
 
       def expand_description(actor, authorizer, opts) do
-        opts = Keyword.put_new(opts, :resource, authorizer.resource)
-
         changeset =
           case authorizer.subject do
             %Ash.Changeset{} = changeset -> changeset
             _ -> nil
           end
+
+        opts = Keyword.put_new(opts, :resource, authorizer.resource)
 
         {:ok,
          actor
