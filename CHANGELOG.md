@@ -4,18 +4,15 @@
 
 ## [v3.4.12](https://github.com/ash-project/ash/compare/v3.4.11...v3.4.12) (2024-09-16)
 
-
-
-
 ### Bug Fixes:
 
-* ensure that action_select is set on seeding data
+- [`Ash.Seed`] ensure that action_select is set on seeding data
 
 ### Improvements:
 
-* add more resource updating logic
+- [`Ash.Resource.Igniter`] add more resource updating logic
 
-* add `_new` options for Ash.Resource.Igniter
+- [`Ash.Resource.Igniter`] add `_new` options for Ash.Resource.Igniter
 
 ## [v3.4.11](https://github.com/ash-project/ash/compare/v3.4.10...v3.4.11) (2024-09-13)
 
