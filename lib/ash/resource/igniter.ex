@@ -414,10 +414,12 @@ defmodule Ash.Resource.Igniter do
                       {:ok, _zipper} <-
                         Igniter.Code.List.move_to_list_item(zipper, fn zipper ->
                           if Igniter.Code.Tuple.tuple?(zipper) do
-                            with {:ok, zipper} <- Igniter.Code.Tuple.tuple_elem(zipper, 0) do
-                              Igniter.Code.Common.nodes_equal?(zipper, type)
-                            else
-                              _ -> false
+                            case Igniter.Code.Tuple.tuple_elem(zipper, 0) do
+                              {:ok, zipper} ->
+                                Igniter.Code.Common.nodes_equal?(zipper, type)
+
+                              _ ->
+                                false
                             end
                           else
                             Igniter.Code.Common.nodes_equal?(zipper, type)

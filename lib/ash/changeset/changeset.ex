@@ -458,6 +458,16 @@ defmodule Ash.Changeset do
   end
 
   @doc false
+  def set_action_select(%{action: nil} = changeset) do
+    %{
+      changeset
+      | action_select:
+          MapSet.to_list(
+            Ash.Resource.Info.selected_by_default_attribute_names(changeset.resource)
+          )
+    }
+  end
+
   def set_action_select(changeset) do
     required =
       Ash.Resource.Info.action_select(changeset.resource, changeset.action.name) || []

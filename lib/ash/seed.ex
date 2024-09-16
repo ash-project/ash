@@ -165,13 +165,13 @@ defmodule Ash.Seed do
 
   defp create_via_data_layer(changeset) do
     Ash.Changeset.with_hooks(changeset, fn changeset ->
-      Ash.DataLayer.create(changeset.resource, changeset)
+      Ash.DataLayer.create(changeset.resource, Ash.Changeset.set_action_select(changeset))
     end)
   end
 
   defp update_via_data_layer(changeset) do
     Ash.Changeset.with_hooks(changeset, fn changeset ->
-      Ash.DataLayer.update(changeset.resource, changeset)
+      Ash.DataLayer.update(changeset.resource, Ash.Changeset.set_action_select(changeset))
     end)
   end
 
