@@ -229,7 +229,7 @@ defmodule Ash.Error.Forbidden.Policy do
       |> then(fn {policies, title} ->
         policies
         |> Enum.map(
-          &explain_policy(&1, facts, opts[:success?] || false, opts[:actor], opts[:subject])
+          &explain_policy(&1, facts, opts[:success?] || false, opts[:actor], opts[:subject], opts[:resource])
         )
         |> Enum.intersperse("\n")
         |> then(fn list ->
@@ -291,7 +291,7 @@ defmodule Ash.Error.Forbidden.Policy do
   defp title(other, title, true), do: [title, ":\n", other]
   defp title(other, title, false), do: [title, "\n", other]
 
-  defp explain_policy(policy, facts, success?, actor, subject) do
+  defp explain_policy(policy, facts, success?, actor, subject, resource) do
     bypass =
       if policy.bypass? do
         "Bypass: "
@@ -300,10 +300,10 @@ defmodule Ash.Error.Forbidden.Policy do
       end
 
     {condition_description, applies} =
-      describe_conditions(policy.condition, facts, actor, subject)
+      describe_conditions(policy.condition, resource, facts, actor, subject)
 
     if applies == true do
-      {description, state} = describe_checks(policy.policies, facts, success?, actor, subject)
+      {description, state} = describe_checks(policy.policies, resource, facts, success?, actor, subject)
 
       tag =
         case state do
@@ -349,7 +349,7 @@ defmodule Ash.Error.Forbidden.Policy do
     end
   end
 
-  defp describe_conditions(condition, facts, actor, subject) do
+  defp describe_conditions(condition, resource, facts, actor, subject) do
     condition
     |> List.wrap()
     |> Enum.reduce({[], true}, fn condition, {conditions, status} ->
@@ -378,14 +378,14 @@ defmodule Ash.Error.Forbidden.Policy do
           end
         end
 
-      {[["condition: ", describe(mod, opts, actor, subject) <> "\n"] | conditions], new_status}
+      {[["condition: ", describe(mod, opts, resource, actor, subject) <> "\n"] | conditions], new_status}
     end)
     |> then(fn {conditions, status} ->
       {Enum.reverse(conditions), status}
     end)
   end
 
-  defp describe_checks(checks, facts, success?, actor, subject) do
+  defp describe_checks(checks, resource, facts, success?, actor, subject) do
     {description, state} =
       Enum.reduce(checks, {[], :unknown}, fn check, {descriptions, state} ->
         new_state =
@@ -425,6 +425,7 @@ defmodule Ash.Error.Forbidden.Policy do
         {[
            describe_check(
              check,
+             resource,
              Policy.fetch_fact(facts, check.check),
              tag,
              success?,
@@ -439,7 +440,7 @@ defmodule Ash.Error.Forbidden.Policy do
     {Enum.intersperse(Enum.reverse(description), "\n"), state}
   end
 
-  defp describe_check(check, fact_result, tag, success?, filter_check?, actor, subject) do
+  defp describe_check(check, resource, fact_result, tag, success?, filter_check?, actor, subject) do
     fact_result =
       case fact_result do
         {:ok, true} ->
@@ -458,7 +459,7 @@ defmodule Ash.Error.Forbidden.Policy do
     [
       check_type(check),
       ": ",
-      describe(check.check_module, check.check_opts, actor, subject),
+      describe(check.check_module, check.check_opts, resource, actor, subject),
       " | ",
       fact_result,
       " | ",
@@ -466,23 +467,15 @@ defmodule Ash.Error.Forbidden.Policy do
     ]
   end
 
-  defp describe(mod, opts, actor, subject) do
-    opts =
-      case subject do
-        %{resource: resource} ->
-          Keyword.put_new(opts, :resource, resource)
-
-        _ ->
-          opts
-      end
-
+  defp describe(mod, opts, resource, actor, subject) do
     description = mod.describe(opts)
 
     if subject && function_exported?(mod, :expand_description, 3) do
       authorizer =
         %Ash.Policy.Authorizer{
           subject: subject,
-          actor: actor
+          actor: actor,
+          resource: resource
         }
 
       key =
