@@ -148,6 +148,14 @@ defmodule Ash.Test.Policy.SimpleTest do
       policy action(:update) do
         authorize_if OldEnoughToDrink
         authorize_if expr(id == ^actor(:id))
+        authorize_if relates_to_actor_via(:self)
+      end
+    end
+
+    relationships do
+      belongs_to :self, __MODULE__ do
+        source_attribute :id
+        destination_attribute :id
       end
     end
   end

@@ -417,6 +417,16 @@ defmodule Ash.Actions.Read do
                  query.tenant,
                  opts[:tracer],
                  query.domain
+               ),
+             sort:
+               add_calc_context_to_sort(
+                 query.sort,
+                 opts[:actor],
+                 opts[:authorize?],
+                 query.tenant,
+                 opts[:tracer],
+                 query.resource,
+                 query.domain
                )
          },
          pre_authorization_query <- query,
@@ -1613,6 +1623,63 @@ defmodule Ash.Actions.Read do
     end)
   end
 
+  def add_calc_context_to_sort(empty, _, _, _, _, _, _) when empty in [[], nil], do: empty
+
+  def add_calc_context_to_sort(sort, actor, authorize?, tenant, tracer, resource, domain) do
+    Enum.map(sort, fn
+      {%Ash.Query.Calculation{} = calc, order} ->
+        calc = add_calc_context(calc, actor, authorize?, tenant, tracer, domain)
+
+        calc =
+          if calc.module.has_expression?() do
+            expr =
+              case calc.module.expression(calc.opts, calc.context) do
+                %Ash.Query.Function.Type{} = expr ->
+                  expr
+
+                expr ->
+                  {:ok, expr} = Ash.Query.Function.Type.new([expr, calc.type, calc.constraints])
+                  expr
+              end
+
+            {:ok, expr} =
+              Ash.Filter.hydrate_refs(
+                expr,
+                %{
+                  resource: resource,
+                  public?: false
+                }
+              )
+
+            expr =
+              add_calc_context_to_filter(
+                expr,
+                actor,
+                authorize?,
+                tenant,
+                tracer,
+                domain
+              )
+
+            %{calc | module: Ash.Resource.Calculation.Expression, opts: [expr: expr]}
+          else
+            calc
+          end
+
+        {calc, order}
+
+      {%struct{} = calc, direction} when struct in [
+              Ash.Aggregate.Calculation,
+              Ash.Resource.Calculation,
+              Ash.Resource.Aggregate
+            ] ->
+        {add_calc_context(calc, actor, authorize?, tenant, tracer, domain), direction}
+
+      {field, order} ->
+        {field, order}
+    end)
+  end
+
   @doc false
   def handle_multitenancy(query) do
     action_multitenancy = get_action(query.resource, query.action).multitenancy
@@ -1941,22 +2008,7 @@ defmodule Ash.Actions.Read do
                 {key, load}
             end
           end),
-        sort:
-          Enum.map(query.sort, fn {field, direction} ->
-            case field do
-              %struct{} = calc
-              when struct in [
-                     Ash.Query.Calculation,
-                     Ash.Aggregate.Calculation,
-                     Ash.Resource.Calculation,
-                     Ash.Resource.Aggregate
-                   ] ->
-                {add_calc_context(calc, actor, authorize?, tenant, tracer, domain), direction}
-
-              other ->
-                {other, direction}
-            end
-          end),
+        sort: add_calc_context_to_sort(query.sort, actor, authorize?, tenant, tracer, query.resource, domain),
         aggregates:
           Map.new(query.aggregates, fn {key, agg} ->
             {key,
