@@ -77,6 +77,7 @@ defmodule Ash.MixProject do
         "documentation/topics/development/testing.md",
         "documentation/topics/development/development-utilities.md",
         "documentation/topics/development/upgrading-to-3.0.md",
+        "documentation/moved/upgrade.md",
         "documentation/topics/security/actors-and-authorization.md",
         "documentation/topics/security/sensitive-data.md",
         "documentation/topics/security/policies.md",
@@ -115,6 +116,9 @@ defmodule Ash.MixProject do
         Reference: [
           ~r"documentation/topics/reference",
           ~r"documentation/dsls"
+        ],
+        Moved: [
+          ~r"documentation/moved"
         ]
       ],
       skip_undefined_reference_warnings_on: [

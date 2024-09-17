@@ -601,7 +601,7 @@ defmodule Ash.Test.Actions.LoadTest do
 
       [author] =
         Author
-        |> Ash.Query.load(posts: [:author])
+        |> Ash.Query.for_read(:read, %{}, load: [posts: [:author]])
         |> Ash.Query.filter(posts.id == ^post1.id)
         |> Ash.read!(authorize?: true)
 

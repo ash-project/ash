@@ -471,6 +471,10 @@ defmodule Ash.Query do
       type: {:protocol, Ash.ToTenant},
       doc: "set the tenant on the query"
     ],
+    load: [
+      type: :any,
+      doc: "A load statement to apply to the query"
+    ],
     skip_unknown_inputs: [
       type: {:wrap_list, {:or, [:atom, :string]}},
       doc:
@@ -521,6 +525,12 @@ defmodule Ash.Query do
     if action do
       name = fn ->
         "query:" <> Ash.Resource.Info.trace_name(query.resource) <> ":#{action_name}"
+      end
+
+      query = if opts[:load] do
+        load(query, opts[:load])
+      else
+        query
       end
 
       Ash.Tracer.span :query,
