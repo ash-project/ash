@@ -2,6 +2,15 @@
 
 <!-- changelog -->
 
+## [v3.4.14](https://github.com/ash-project/ash/compare/v3.4.13...v3.4.14) (2024-09-17)
+
+
+
+
+### Bug Fixes:
+
+* properly detect domains that don't exist yet in `ash.gen.domain`
+
 ## [v3.4.13](https://github.com/ash-project/ash/compare/v3.4.12...v3.4.13) (2024-09-17)
 
 
