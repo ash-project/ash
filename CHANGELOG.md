@@ -2,6 +2,17 @@
 
 <!-- changelog -->
 
+## [v3.4.15](https://github.com/ash-project/ash/compare/v3.4.14...v3.4.15) (2024-09-17)
+
+
+
+
+### Improvements:
+
+* add `load` option to `Ash.Query.for_read`
+
+* add backwards compat upgrade guide
+
 ## [v3.4.14](https://github.com/ash-project/ash/compare/v3.4.13...v3.4.14) (2024-09-17)
 
 
