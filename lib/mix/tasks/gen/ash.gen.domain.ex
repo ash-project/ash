@@ -27,8 +27,9 @@ defmodule Mix.Tasks.Ash.Gen.Domain do
     domain = Igniter.Code.Module.parse(domain)
 
     app_name = Igniter.Project.Application.app_name(igniter)
+    {exists?, igniter} = Igniter.Project.Module.module_exists?(igniter, domain)
 
-    if "--ignore-if-exists" in argv && Igniter.Project.Module.module_exists?(igniter, domain) do
+    if "--ignore-if-exists" in argv && exists? do
       igniter
     else
       igniter
