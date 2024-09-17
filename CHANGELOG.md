@@ -2,6 +2,19 @@
 
 <!-- changelog -->
 
+## [v3.4.13](https://github.com/ash-project/ash/compare/v3.4.12...v3.4.13) (2024-09-17)
+
+
+
+
+### Bug Fixes:
+
+* honor `skip_global_validations?` on fully atomic changesets
+
+* ensure calculation context is fully propagated to sort statements
+
+* ensure that `resource` context is set for expanding filter descriptions
+
 ## [v3.4.12](https://github.com/ash-project/ash/compare/v3.4.11...v3.4.12) (2024-09-16)
 
 ### Bug Fixes:
