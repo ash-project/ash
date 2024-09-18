@@ -527,11 +527,12 @@ defmodule Ash.Query do
         "query:" <> Ash.Resource.Info.trace_name(query.resource) <> ":#{action_name}"
       end
 
-      query = if opts[:load] do
-        load(query, opts[:load])
-      else
-        query
-      end
+      query =
+        if opts[:load] do
+          load(query, opts[:load])
+        else
+          query
+        end
 
       Ash.Tracer.span :query,
                       name,
@@ -2095,6 +2096,23 @@ defmodule Ash.Query do
           end)
 
         %{query | aggregates: new_aggregates}
+
+      Ash.Resource.Info.calculation(query.resource, field) ->
+        new_calculations =
+          Enum.reduce(query.calculations, %{}, fn
+            {_field, %{load: ^field}}, acc ->
+              acc
+
+            {field, calculation}, acc ->
+              Map.put(acc, field, calculation)
+          end)
+
+        %{query | calculations: new_calculations}
+
+      true ->
+        query
+        |> Map.update!(:calculations, &Map.delete(&1, field))
+        |> Map.update!(:aggregates, &Map.delete(&1, field))
     end
   end
 

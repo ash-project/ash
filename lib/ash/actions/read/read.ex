@@ -1668,11 +1668,12 @@ defmodule Ash.Actions.Read do
 
         {calc, order}
 
-      {%struct{} = calc, direction} when struct in [
-              Ash.Aggregate.Calculation,
-              Ash.Resource.Calculation,
-              Ash.Resource.Aggregate
-            ] ->
+      {%struct{} = calc, direction}
+      when struct in [
+             Ash.Aggregate.Calculation,
+             Ash.Resource.Calculation,
+             Ash.Resource.Aggregate
+           ] ->
         {add_calc_context(calc, actor, authorize?, tenant, tracer, domain), direction}
 
       {field, order} ->
@@ -2008,7 +2009,16 @@ defmodule Ash.Actions.Read do
                 {key, load}
             end
           end),
-        sort: add_calc_context_to_sort(query.sort, actor, authorize?, tenant, tracer, query.resource, domain),
+        sort:
+          add_calc_context_to_sort(
+            query.sort,
+            actor,
+            authorize?,
+            tenant,
+            tracer,
+            query.resource,
+            domain
+          ),
         aggregates:
           Map.new(query.aggregates, fn {key, agg} ->
             {key,
