@@ -344,7 +344,26 @@ policy action_type(:read) do
 end
 ```
 
-Keep in mind that, for create actions, many `expr/1` checks won't make sense, and may return `false` when you wouldn't expect. Expression (and other filter) policies apply to "a synthesized result" of applying the action, so related values won't be available. For this reason, you may end up wanting to use other checks that are built for working against changesets, or only simple attribute-based filter checks. Custom checks may also be warranted here.
+##### Inline checks for create actions
+
+When using expressions inside of policies that apply to create actions, you may not reference the data being created. For example:
+
+```elixir
+policy action_type(:create) do
+  # This check is fine, as we only reference the actor
+  authorize_if expr(^actor(:admin) == true)
+  # This check is not, because it contains a reference to a field
+  authorize_if expr(status == :active)
+end
+```
+
+> ### Why can't we reference data in creates? {: .info}
+>
+> We cannot allow references to the data being created in create policies, because we do not yet know what the result of the action will be.
+> For updates and destroys, referencing the data always references the data _prior_ to the action being run, and so it is deterministic.
+
+If a policy that applies to creates, would reuslt in a filter, you will get a `Ash.Error.Forbidden.CannotFilterCreates` at runtime explaining
+that you must change your check. Typically this means writing a custom `Ash.Policy.SimpleCheck` instead.
 
 Ash also comes with a set of built-in helpers for writing inline checks - see `Ash.Policy.Check.Builtins` for more information.
 

@@ -607,8 +607,7 @@ defmodule Ash.Filter do
   @doc """
   Can be used to find a simple equality predicate on an attribute
 
-  Use this when your attribute is configured with `filterable? :simple_equality`, and you want to
-  to find the value that it is being filtered on with (if any).
+  Prefer `fetch_simple_equality_predicate/2`.
   """
   def find_simple_equality_predicate(expression, attribute) do
     expression
@@ -620,6 +619,29 @@ defmodule Ash.Filter do
       %{right: right, left: left} ->
         Enum.find([right, left], fn value ->
           !Ash.Expr.expr?(value)
+        end)
+    end
+  end
+
+  @doc """
+  Can be used to find a simple equality predicate on an attribute
+
+  Use this when your attribute is configured with `filterable? :simple_equality`, and you want to
+  to find the value that it is being filtered on with (if any).
+  """
+  @spec fetch_simple_equality_predicate(Ash.Expr.t(), atom()) :: {:ok, term()} | :error
+  def fetch_simple_equality_predicate(expression, attribute) do
+    expression
+    |> find(&simple_eq?(&1, attribute), false)
+    |> case do
+      nil ->
+        :error
+
+      %{right: right, left: left} ->
+        Enum.find_value([right, left], :error, fn value ->
+          if !Ash.Expr.expr?(value) do
+            {:ok, value}
+          end
         end)
     end
   end

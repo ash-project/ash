@@ -1385,7 +1385,12 @@ defmodule Ash.Policy.Authorizer do
             filter,
             authorizer.policies,
             success?: true,
-            help_text?: false
+            help_text?: false,
+            domain: authorizer.domain,
+            resource: authorizer.resource,
+            actor: authorizer.actor,
+            subject: authorizer.subject,
+            for_fields: authorizer.for_fields
           )
       ]
     )
