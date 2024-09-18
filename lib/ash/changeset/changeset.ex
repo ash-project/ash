@@ -448,7 +448,7 @@ defmodule Ash.Changeset do
         %MapSet{} ->
           %{
             changeset
-            | select: MapSet.union(MapSet.new(changeset.select), fields) |> MapSet.to_list()
+            | select: MapSet.union(MapSet.new(changeset.select || []), fields) |> MapSet.to_list()
           }
 
         fields ->
