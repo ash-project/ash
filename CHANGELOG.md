@@ -2,6 +2,21 @@
 
 <!-- changelog -->
 
+## [v3.4.16](https://github.com/ash-project/ash/compare/v3.4.15...v3.4.16) (2024-09-18)
+
+
+
+
+### Bug Fixes:
+
+* ensure Ash.Seed always sets action_select
+
+### Improvements:
+
+* properly log successful policy breakdowns with extra info
+
+* add `Ash.Filter.fetch_simple_equality_predicate`
+
 ## [v3.4.15](https://github.com/ash-project/ash/compare/v3.4.14...v3.4.15) (2024-09-17)
 
 
