@@ -67,6 +67,7 @@ defmodule Ash.Seed do
   def seed!(resource, input, opts \\ [])
 
   def seed!(resource, input, opts) when is_list(input) do
+    # TODO: This should be implemented with bulk data layer callbacks
     Enum.map(input, &seed!(resource, &1, opts))
   end
 
@@ -305,6 +306,7 @@ defmodule Ash.Seed do
       record
       |> Ash.Changeset.new()
       |> Ash.Changeset.force_change_attribute(field, field_value)
+      |> Ash.Changeset.set_action_select()
 
     case Ash.DataLayer.update(resource, changeset) do
       {:ok, result} ->
