@@ -484,7 +484,7 @@ defmodule Ash.Actions.Read.Calculations do
     short_name = Ash.Resource.Info.short_name(resource)
     tracer = opts[:tracer]
 
-    Ash.Tracer.span :calculate,
+    Ash.Tracer.span :calculation,
                     fn ->
                       calculation_name =
                         if is_atom(calculation_name) do
@@ -493,7 +493,7 @@ defmodule Ash.Actions.Read.Calculations do
                           String.replace(to_string(calculation_name), ~r/[^a-zA-Z0-9_\-?]/, "")
                         end
 
-                      "#{short_name}:calculate:#{calculation_name}"
+                      "#{short_name}:calculation:#{calculation_name}"
                     end,
                     tracer do
       metadata = fn ->
@@ -514,7 +514,7 @@ defmodule Ash.Actions.Read.Calculations do
         }
       end
 
-      Ash.Tracer.telemetry_span [:ash, :calculate],
+      Ash.Tracer.telemetry_span [:ash, :calculation],
                                 metadata,
                                 skip?: !!opts[:initial_data] do
         Ash.Tracer.set_metadata(tracer, :action, metadata)

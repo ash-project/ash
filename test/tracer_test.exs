@@ -132,7 +132,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
         [:ash, :domain, :create],
         [:ash, :domain, :destroy],
         [:ash, :domain, :update],
-        [:ash, :calculate],
+        [:ash, :calculation],
         [:ash, :flow]
       ]
       |> Enum.flat_map(fn list ->
@@ -278,8 +278,8 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
                },
                spans: [
                  %Ash.Tracer.Simple.Span{
-                   name: "author:calculate:name_length",
-                   type: :calculate,
+                   name: "author:calculation:name_length",
+                   type: :calculation,
                    metadata: %{
                      resource: Ash.Test.TracerTest.AsyncLoadTest.Author,
                      resource_short_name: :author,
@@ -302,11 +302,11 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
                      %{resource_short_name: :author}, []}}
 
     assert_receive {:telemetry,
-                    {[:ash, :calculate, :start], %{system_time: _},
+                    {[:ash, :calculation, :start], %{system_time: _},
                      %{resource_short_name: :author, calculation: "name_length"}, []}}
 
     assert_receive {:telemetry,
-                    {[:ash, :calculate, :stop], %{duration: _, system_time: _},
+                    {[:ash, :calculation, :stop], %{duration: _, system_time: _},
                      %{resource_short_name: :author, calculation: "name_length"}, []}}
 
     refute_receive {:telemetry, _}
