@@ -1,6 +1,8 @@
 defmodule Ash.Actions.Read.Calculations do
   @moduledoc false
 
+  require Ash.Tracer
+
   def calculate(resource_or_record, calculation, opts) do
     {resource, record} =
       case resource_or_record do
@@ -118,7 +120,12 @@ defmodule Ash.Actions.Read.Calculations do
 
                     {:error, error} ->
                       if module.has_calculate?() do
-                        case module.calculate([record], calc_opts, calc_context) do
+                        case with_trace(
+                               fn -> module.calculate([record], calc_opts, calc_context) end,
+                               resource,
+                               calculation,
+                               opts
+                             ) do
                           [result] ->
                             result
 
@@ -162,7 +169,12 @@ defmodule Ash.Actions.Read.Calculations do
         end
       else
         if module.has_calculate?() do
-          case module.calculate([record], calc_opts, calc_context) do
+          case with_trace(
+                 fn -> module.calculate([record], calc_opts, calc_context) end,
+                 resource,
+                 calculation,
+                 opts
+               ) do
             [result] ->
               {:ok, result}
 
@@ -425,7 +437,14 @@ defmodule Ash.Actions.Read.Calculations do
 
     records
     |> apply_transient_calculation_values(calculation, ash_query, [])
-    |> run_calculate(calculation.module, opts, context)
+    |> run_calculate(
+      calculation.module,
+      opts,
+      context,
+      ash_query.resource,
+      calculation.name,
+      Ash.Context.to_opts(context)
+    )
     |> case do
       :unknown ->
         Enum.map(records, fn _ ->
@@ -437,8 +456,13 @@ defmodule Ash.Actions.Read.Calculations do
     end
   end
 
-  defp run_calculate(records, module, opts, context) do
-    module.calculate(records, opts, context)
+  defp run_calculate(records, module, opts, context, resource, calculation_name, run_opts) do
+    with_trace(
+      fn -> module.calculate(records, opts, context) end,
+      resource,
+      calculation_name,
+      run_opts
+    )
   rescue
     e ->
       if Enum.any?(__STACKTRACE__, fn {m, f, a, meta} ->
@@ -454,6 +478,49 @@ defmodule Ash.Actions.Read.Calculations do
         reraise e,
                 stacktrace_before ++ [{module, :calculate, 3, [fake?: true]} | stacktrace_after]
       end
+  end
+
+  defp with_trace(callback, resource, calculation_name, opts) do
+    short_name = Ash.Resource.Info.short_name(resource)
+    tracer = opts[:tracer]
+
+    Ash.Tracer.span :calculate,
+                    fn ->
+                      calculation_name =
+                        if is_atom(calculation_name) do
+                          to_string(calculation_name)
+                        else
+                          String.replace(to_string(calculation_name), ~r/[^a-zA-Z0-9_\-?]/, "")
+                        end
+
+                      "#{short_name}:calculate:#{calculation_name}"
+                    end,
+                    tracer do
+      metadata = fn ->
+        calculation_name =
+          if is_atom(calculation_name) do
+            to_string(calculation_name)
+          else
+            String.replace(to_string(calculation_name), ~r/[^a-zA-Z0-9_\-?]/, "")
+          end
+
+        %{
+          resource: resource,
+          resource_short_name: short_name,
+          calculation: calculation_name,
+          actor: opts[:actor],
+          tenant: opts[:tenant],
+          authorize?: opts[:authorize?]
+        }
+      end
+
+      Ash.Tracer.telemetry_span [:ash, :calculate],
+                                metadata,
+                                skip?: !!opts[:initial_data] do
+        Ash.Tracer.set_metadata(tracer, :action, metadata)
+        callback.()
+      end
+    end
   end
 
   defp apply_transient_calculation_values(records, calculation, ash_query, path) do

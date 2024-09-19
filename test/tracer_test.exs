@@ -28,6 +28,14 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
       end
     end
 
+    calculations do
+      calculate :name_length, :integer, fn records, _ ->
+        Enum.map(records, fn record ->
+          String.length(record.name)
+        end)
+      end
+    end
+
     relationships do
       has_many :posts, Ash.Test.TracerTest.AsyncLoadTest.Post,
         destination_attribute: :author_id,
@@ -124,6 +132,7 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
         [:ash, :domain, :create],
         [:ash, :domain, :destroy],
         [:ash, :domain, :update],
+        [:ash, :calculate],
         [:ash, :flow]
       ]
       |> Enum.flat_map(fn list ->
@@ -241,5 +250,65 @@ defmodule Ash.Test.TracerTest.AsyncLoadTest do
            ] = Ash.Tracer.Simple.gather_spans()
 
     assert Enum.any?(spans, &(&1.name == "domain:author.read"))
+  end
+
+  test "a read with calculation loads calls the tracer" do
+    Ash.Changeset.for_create(Author, :create, %{name: "anc"})
+    |> Ash.create!()
+
+    assert_receive {:telemetry,
+                    {[:ash, :domain, :create, :start], %{system_time: _},
+                     %{resource_short_name: :author}, _}}
+
+    assert_receive {:telemetry,
+                    {[:ash, :domain, :create, :stop], %{duration: _},
+                     %{resource_short_name: :author}, _}}
+
+    Author
+    |> Ash.Query.load(:name_length)
+    |> Ash.read!(tracer: Ash.Tracer.Simple)
+
+    assert [
+             %Ash.Tracer.Simple.Span{
+               type: :action,
+               name: "domain:author.read",
+               metadata: %{
+                 action: :read,
+                 resource: Ash.Test.TracerTest.AsyncLoadTest.Author
+               },
+               spans: [
+                 %Ash.Tracer.Simple.Span{
+                   name: "author:calculate:name_length",
+                   type: :calculate,
+                   metadata: %{
+                     resource: Ash.Test.TracerTest.AsyncLoadTest.Author,
+                     resource_short_name: :author,
+                     calculation: "name_length",
+                     authorize?: true
+                   },
+                   spans: []
+                 }
+                 | _
+               ]
+             }
+           ] = Ash.Tracer.Simple.gather_spans()
+
+    assert_receive {:telemetry,
+                    {[:ash, :domain, :read, :start], %{system_time: _},
+                     %{resource_short_name: :author}, []}}
+
+    assert_receive {:telemetry,
+                    {[:ash, :domain, :read, :stop], %{duration: _, system_time: _},
+                     %{resource_short_name: :author}, []}}
+
+    assert_receive {:telemetry,
+                    {[:ash, :calculate, :start], %{system_time: _},
+                     %{resource_short_name: :author, calculation: "name_length"}, []}}
+
+    assert_receive {:telemetry,
+                    {[:ash, :calculate, :stop], %{duration: _, system_time: _},
+                     %{resource_short_name: :author, calculation: "name_length"}, []}}
+
+    refute_receive {:telemetry, _}
   end
 end

@@ -8,6 +8,7 @@ defmodule Ash.Tracer do
           | :changeset
           | :query
           | :flow
+          | :calculate
           | :request_step
           | :change
           | :validation
