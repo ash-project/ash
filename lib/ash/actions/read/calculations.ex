@@ -490,7 +490,7 @@ defmodule Ash.Actions.Read.Calculations do
                         if is_atom(calculation_name) do
                           to_string(calculation_name)
                         else
-                          String.replace(to_string(calculation_name), ~r/[^a-zA-Z0-9_\-?]/, "")
+                          String.replace(inspect(calculation_name), ~r/[^a-zA-Z0-9_\-?]/, "")
                         end
 
                       "#{short_name}:calculation:#{calculation_name}"
@@ -501,7 +501,7 @@ defmodule Ash.Actions.Read.Calculations do
           if is_atom(calculation_name) do
             to_string(calculation_name)
           else
-            String.replace(to_string(calculation_name), ~r/[^a-zA-Z0-9_\-?]/, "")
+            String.replace(inspect(calculation_name), ~r/[^a-zA-Z0-9_\-?]/, "")
           end
 
         %{
