@@ -46,6 +46,16 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
         validate compare(:score, greater_than_or_equal_to: 0, less_than_or_equal_to: 10)
       end
 
+      update :with_around_action do
+        require_atomic? false
+
+        change fn changeset, _ ->
+          Ash.Changeset.around_action(changeset, fn changeset, callback ->
+            raise "Around action!"
+          end)
+        end
+      end
+
       update :increment_score do
         accept []
         change increment(:score, amount: 1, overflow_limit: 5), always_atomic?: true
@@ -104,6 +114,22 @@ defmodule Ash.Test.Actions.AtomicUpdateTest do
       )
 
     assert changeset.valid?
+  end
+
+  test "a changes" do
+    author =
+      Author
+      |> Ash.Changeset.for_create(:create, %{name: "fred", score: 0})
+      |> Ash.create!()
+
+    assert_raise Ash.Error.Unknown, ~r/Around action/, fn ->
+      Author
+      |> Ash.Query.filter(id == ^author.id)
+      |> Ash.bulk_update!(:with_around_action, %{name: "george"},
+        return_errors?: true,
+        strategy: :stream
+      )
+    end
   end
 
   test "values are eagerly validated" do
