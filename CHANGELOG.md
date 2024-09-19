@@ -2,6 +2,23 @@
 
 <!-- changelog -->
 
+## [v3.4.17](https://github.com/ash-project/ash/compare/v3.4.16...v3.4.17) (2024-09-19)
+
+
+
+
+### Bug Fixes:
+
+* handle more types in `Ash.Query.unload`
+
+* ensure_select: properly escape changeset.select (#1466)
+
+### Improvements:
+
+* add span & telemetry events for running calculations
+
+* validate action types in `action_type` check
+
 ## [v3.4.16](https://github.com/ash-project/ash/compare/v3.4.15...v3.4.16) (2024-09-18)
 
 
