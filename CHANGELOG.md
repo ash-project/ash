@@ -4,68 +4,51 @@
 
 ## [v3.4.17](https://github.com/ash-project/ash/compare/v3.4.16...v3.4.17) (2024-09-19)
 
-
-
-
 ### Bug Fixes:
 
-* handle more types in `Ash.Query.unload`
+- [`Ash.Query`] handle more types in `Ash.Query.unload`
 
-* ensure_select: properly escape changeset.select (#1466)
+- [`Ash.Changeset`] properly escape changeset.select in `Ash.Changeset.ensure_selected` (#1466)
 
 ### Improvements:
 
-* add span & telemetry events for running calculations
+- [`Ash.Tracer`] add span & telemetry events for running calculations
 
-* validate action types in `action_type` check
+- [`Ash.Policy.Check.Builtins`] validate action types in `action_type` check
 
 ## [v3.4.16](https://github.com/ash-project/ash/compare/v3.4.15...v3.4.16) (2024-09-18)
 
-
-
-
 ### Bug Fixes:
 
-* ensure Ash.Seed always sets action_select
+- [`Ash.Seed`] ensure Ash.Seed always sets action_select
 
 ### Improvements:
 
-* properly log successful policy breakdowns with extra info
+- [`Ash.Policy.Authorizer`] properly log successful policy breakdowns with extra info
 
-* add `Ash.Filter.fetch_simple_equality_predicate`
+- [`Ash.Filter`] add `Ash.Filter.fetch_simple_equality_predicate`
 
 ## [v3.4.15](https://github.com/ash-project/ash/compare/v3.4.14...v3.4.15) (2024-09-17)
 
-
-
-
 ### Improvements:
 
-* add `load` option to `Ash.Query.for_read`
-
-* add backwards compat upgrade guide
+- [`Ash.Query`] add `load` option to `Ash.Query.for_read`
 
 ## [v3.4.14](https://github.com/ash-project/ash/compare/v3.4.13...v3.4.14) (2024-09-17)
 
-
-
-
 ### Bug Fixes:
 
-* properly detect domains that don't exist yet in `ash.gen.domain`
+- [`mix ash.gen.domain`] properly detect domains that don't exist yet in `ash.gen.domain`
 
 ## [v3.4.13](https://github.com/ash-project/ash/compare/v3.4.12...v3.4.13) (2024-09-17)
 
-
-
-
 ### Bug Fixes:
 
-* honor `skip_global_validations?` on fully atomic changesets
+- [`Ash.Changeset`] honor `skip_global_validations?` on fully atomic changesets
 
-* ensure calculation context is fully propagated to sort statements
+- [`Ash.Sort`] ensure calculation context is fully propagated to sort statements
 
-* ensure that `resource` context is set for expanding filter descriptions
+- [`Ash.Policy.Authorizer`] ensure that `resource` context is set for expanding filter descriptions
 
 ## [v3.4.12](https://github.com/ash-project/ash/compare/v3.4.11...v3.4.12) (2024-09-16)
 
