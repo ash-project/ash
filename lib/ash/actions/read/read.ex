@@ -928,14 +928,18 @@ defmodule Ash.Actions.Read do
   end
 
   defp load(
-         initial_data,
+         [first | _] = initial_data,
          query,
          calculations_at_runtime,
          calculations_in_query,
          missing_pkeys?,
          opts
        ) do
-    must_be_reselected = List.wrap(query.select) -- Ash.Resource.Info.primary_key(query.resource)
+    must_be_reselected =
+      query.select
+      |> List.wrap()
+      |> Kernel.--(Ash.Resource.Info.primary_key(query.resource))
+      |> Enum.reject(&Ash.Resource.selected?(first, &1))
 
     {query, calculations_at_runtime, calculations_in_query} =
       Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(

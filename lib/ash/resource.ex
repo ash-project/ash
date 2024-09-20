@@ -398,11 +398,17 @@ defmodule Ash.Resource do
 
   def loaded?(%resource{} = record, [%Ash.Query.Calculation{} = calculation | rest], opts) do
     if calculation.calc_name do
-      resource_calculation = Ash.Resource.Info.calculation(resource, calculation.calc_name)
+      ignored_via_strict? =
+        if opts[:strict?] do
+          resource_calculation = Ash.Resource.Info.calculation(resource, calculation.calc_name)
+          resource_calculation && Enum.any?(resource_calculation.arguments)
+        else
+          false
+        end
 
       # we can't say for sure if the original arguments provided
       # were the same as these, so this is always false
-      if opts[:strict?] && (!resource_calculation || Enum.any?(resource_calculation.arguments)) do
+      if ignored_via_strict? do
         false
       else
         if calculation.load do
@@ -569,19 +575,11 @@ defmodule Ash.Resource do
   end
 
   @spec selected?(Ash.Resource.record(), atom) :: boolean
-  def selected?(%resource{} = record, field) do
-    case get_metadata(record, :selected) do
-      nil ->
-        !!Ash.Resource.Info.attribute(resource, field)
-
-      select ->
-        if field in select do
-          true
-        else
-          attribute = Ash.Resource.Info.attribute(resource, field)
-
-          attribute && attribute.primary_key?
-        end
+  def selected?(record, field) do
+    case Map.get(record, field) do
+      %Ash.NotLoaded{} -> false
+      %Ash.ForbiddenField{} -> false
+      _ -> true
     end
   end
 

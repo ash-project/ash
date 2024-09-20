@@ -324,7 +324,7 @@ defmodule Ash.Actions.Read.Calculations do
       Ash.Actions.Read.AsyncLimiter.async_or_inline(
         ash_query,
         Ash.Context.to_opts(calculation.context),
-        Enum.empty?(rest) && calculation.async?,
+        !calculation.async? && Enum.empty?(rest),
         fn ->
           {calculation.name, calculation, run_calculation(calculation, ash_query, records)}
         end
@@ -1824,10 +1824,7 @@ defmodule Ash.Actions.Read.Calculations do
   end
 
   defp loaded_and_reusable?({:ok, initial_data}, relationship_path, calculation, true) do
-    Ash.Resource.loaded?(initial_data, relationship_path ++ [calculation],
-      strict?: true,
-      type: :request
-    )
+    Ash.Resource.loaded?(initial_data, relationship_path ++ [calculation], type: :request)
   end
 
   defp loaded_and_reusable?(_initial_data, _relationship_path, _calculation, _false), do: false
