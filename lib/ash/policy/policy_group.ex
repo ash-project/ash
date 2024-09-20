@@ -14,7 +14,7 @@ defmodule Ash.Policy.PolicyGroup do
       {:error, "Policy groups must contain at least one policy."}
     else
       if Enum.any?(group.policies, fn
-           %Ash.Policy.Policy{bypass?: bypass?} ->
+           %{bypass?: bypass?} ->
              bypass?
 
            _ ->

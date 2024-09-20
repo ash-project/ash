@@ -196,6 +196,7 @@ defmodule Ash.Policy.Authorizer do
   @policy_group %Spark.Dsl.Entity{
     name: :policy_group,
     target: Ash.Policy.PolicyGroup,
+    transform: {Ash.Policy.PolicyGroup, :transform, []},
     describe: """
     Groups a set of policies together by some condition.
 
