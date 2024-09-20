@@ -2,6 +2,19 @@
 
 <!-- changelog -->
 
+## [v3.4.18](https://github.com/ash-project/ash/compare/v3.4.17...v3.4.18) (2024-09-20)
+
+
+
+
+### Bug Fixes:
+
+* properly increment version in optimist lock's non-atomic branch
+
+* ensure that policy group rules are enforced
+
+* ensure that around_transaction and around_action hooks incur simple updates
+
 ## [v3.4.17](https://github.com/ash-project/ash/compare/v3.4.16...v3.4.17) (2024-09-19)
 
 ### Bug Fixes:
