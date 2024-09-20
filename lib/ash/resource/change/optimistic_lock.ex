@@ -26,9 +26,7 @@ defmodule Ash.Resource.Change.OptimisticLock do
   @impl true
   def change(changeset, opts, context) do
     changeset
-    |> Ash.Changeset.filter(
-      {opts[:attribute], [eq: Map.get(changeset.data, opts[:attribute])]}
-    )
+    |> Ash.Changeset.filter({opts[:attribute], [eq: Map.get(changeset.data, opts[:attribute])]})
     |> Ash.Resource.Change.Increment.change([amount: 1, attribute: opts[:attribute]], context)
   end
 

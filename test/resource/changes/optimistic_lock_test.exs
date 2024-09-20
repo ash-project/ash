@@ -4,7 +4,6 @@ defmodule Ash.Test.Resource.Changes.OptimisticLockTest do
 
   alias Ash.Test.Domain, as: Domain
 
-
   defmodule Post do
     use Ash.Resource,
       domain: Domain,
@@ -55,5 +54,4 @@ defmodule Ash.Test.Resource.Changes.OptimisticLockTest do
       Ash.update!(post, %{text: "Goodbye World!"}, action: :atomic)
     end
   end
-
 end
