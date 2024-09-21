@@ -4,33 +4,27 @@
 
 ## [v3.4.19](https://github.com/ash-project/ash/compare/v3.4.18...v3.4.19) (2024-09-21)
 
-
-
-
 ### Bug Fixes:
 
-* properly generate bypasses with `Ash.Resource.Igniter.add_bypass/2`
+- [`Ash.Resource`] properly generate bypasses with `Ash.Resource.Igniter.add_bypass/2`
 
 ### Improvements:
 
-* support nested fields in input sorts
+- [`Ash.Sort`] support nested fields in input sorts
 
-* optimize the reselection of necessary attributes on lazy loading
+- [optimization] optimize the reselection of necessary attributes on lazy loading
 
-* optimize `Ash.Resource.selected?/2` in light of 3.0 changes
+- [`Ash.Resource`, optimization] optimize `Ash.Resource.selected?/2` in light of 3.0 changes
 
 ## [v3.4.18](https://github.com/ash-project/ash/compare/v3.4.17...v3.4.18) (2024-09-20)
 
-
-
-
 ### Bug Fixes:
 
-* properly increment version in optimist lock's non-atomic branch
+- [`Ash.Resource.Change.OptimisticLock`] properly increment version in optimist lock's non-atomic branch
 
-* ensure that policy group rules are enforced
+- [`Ash.Policy.Authorizer`] ensure that policy group compile time validations are enforced
 
-* ensure that around_transaction and around_action hooks incur simple updates
+- [bulk updates] ensure that around_transaction and around_action hooks incur simple updates
 
 ## [v3.4.17](https://github.com/ash-project/ash/compare/v3.4.16...v3.4.17) (2024-09-19)
 
