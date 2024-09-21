@@ -6,6 +6,25 @@ defmodule Ash.Test.Sort.SortTest do
 
   alias Ash.Test.Domain, as: Domain
 
+  defmodule Author do
+    @moduledoc false
+    use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
+
+    ets do
+      private?(true)
+    end
+
+    attributes do
+      uuid_primary_key :id
+      attribute :name, :string, public?: true
+      attribute :private_name, :string
+    end
+
+    actions do
+      defaults [:read, :create, :update]
+    end
+  end
+
   defmodule Post do
     @moduledoc false
     use Ash.Resource, domain: Domain, data_layer: Ash.DataLayer.Ets
@@ -16,11 +35,7 @@ defmodule Ash.Test.Sort.SortTest do
 
     actions do
       default_accept :*
-      read :read
-
-      create :create
-
-      update :update
+      defaults [:read, :create, :update]
     end
 
     attributes do
@@ -35,6 +50,14 @@ defmodule Ash.Test.Sort.SortTest do
       end
 
       attribute :points, :integer
+    end
+
+    relationships do
+      belongs_to :author, Author do
+        public? true
+      end
+
+      belongs_to :private_author, Author
     end
   end
 
@@ -54,6 +77,33 @@ defmodule Ash.Test.Sort.SortTest do
     test "simple string sort parses properly" do
       assert {:ok, [title: :asc, contents: :desc]} =
                Ash.Sort.parse_input(Post, "+title,-contents")
+    end
+
+    test "a string sort can parse relationships" do
+      {:ok, [{%Ash.Query.Calculation{}, :asc}] = sort} =
+        Ash.Sort.parse_input(Post, "+author.name")
+
+      Post
+      |> Ash.Query.sort(sort)
+      |> Ash.read!()
+    end
+
+    test "a string sort honors private relationships" do
+      {:error,
+       %Ash.Error.Query.NoSuchField{
+         resource: Ash.Test.Sort.SortTest.Post,
+         field: "private_author.name"
+       }} =
+        Ash.Sort.parse_input(Post, "+private_author.name")
+    end
+
+    test "a string sort honors private fields" do
+      {:error,
+       %Ash.Error.Query.NoSuchField{
+         resource: Ash.Test.Sort.SortTest.Post,
+         field: "author.private_name"
+       }} =
+        Ash.Sort.parse_input(Post, "+author.private_name")
     end
 
     test "private attributes cannot be used" do

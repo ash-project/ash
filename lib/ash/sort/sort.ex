@@ -228,12 +228,55 @@ defmodule Ash.Sort do
   defp get_field(resource, field, handler) do
     case call_handler(field, handler) do
       nil ->
-        with nil <- Ash.Resource.Info.public_attribute(resource, field),
-             nil <- Ash.Resource.Info.public_aggregate(resource, field),
-             nil <- Ash.Resource.Info.public_calculation(resource, field) do
-          nil
-        else
-          %{name: name} -> name
+        {path, field} =
+          if is_binary(field) do
+            case Enum.reverse(String.split(field, ".", trim: true)) do
+              [] -> {[], ""}
+              [field | path] -> {Enum.reverse(path), field}
+            end
+          else
+            {[], field}
+          end
+
+        case path do
+          [] ->
+            case Ash.Resource.Info.public_field(resource, field) do
+              %{name: name} -> name
+              _ -> nil
+            end
+
+          path ->
+            case related_field(resource, path, field) do
+              {:ok, path, field} ->
+                case field do
+                  %{name: name, type: type, constraints: constraints} ->
+                    case Ash.Query.Calculation.new(
+                           :__expr_sort__,
+                           Ash.Resource.Calculation.Expression,
+                           [expr: Ash.Expr.ref(path, name)],
+                           type,
+                           constraints
+                         ) do
+                      {:ok, calc} -> calc
+                      {:error, term} -> raise Ash.Error.to_ash_error(term)
+                    end
+
+                  %{name: name} ->
+                    case Ash.Query.Calculation.new(
+                           :__expr_sort__,
+                           Ash.Resource.Calculation.Expression,
+                           [expr: Ash.Expr.ref(path, name)],
+                           nil,
+                           []
+                         ) do
+                      {:ok, calc} -> calc
+                      {:error, term} -> raise Ash.Error.to_ash_error(term)
+                    end
+                end
+
+              :error ->
+                nil
+            end
         end
 
       value ->
@@ -246,6 +289,25 @@ defmodule Ash.Sort do
   end
 
   defp call_handler(_, _), do: nil
+
+  defp related_field(resource, path, field, acc \\ [])
+
+  defp related_field(resource, [], field, acc) do
+    case Ash.Resource.Info.public_field(resource, field) do
+      nil -> :error
+      field -> {:ok, Enum.reverse(acc), field}
+    end
+  end
+
+  defp related_field(resource, [first | rest], field, acc) do
+    case Ash.Resource.Info.public_relationship(resource, first) do
+      %{sortable?: true, destination: destination} ->
+        related_field(destination, rest, field, [first | acc])
+
+      _ ->
+        :error
+    end
+  end
 
   @doc """
   Reverses an Ash sort statement.
