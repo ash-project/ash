@@ -442,8 +442,23 @@ defmodule Ash.Helpers do
     domain
   end
 
+  def get_domain(%input_struct{resource: resource}, opts)
+      when input_struct in [Ash.Query, Ash.Changeset, Ash.ActionInput] do
+    get_domain(resource, opts)
+  end
+
   def get_domain([record | _], opts) do
     get_domain(record, opts)
+  end
+
+  def get_domain({%input_struct{} = input, _}, opts)
+      when input_struct in [Ash.Query, Ash.Changeset, Ash.ActionInput] do
+    get_domain(input, opts)
+  end
+
+  def get_domain({%input_struct{} = input, _, _}, opts)
+      when input_struct in [Ash.Query, Ash.Changeset, Ash.ActionInput] do
+    get_domain(input, opts)
   end
 
   def get_domain({%resource{}, _}, opts) do

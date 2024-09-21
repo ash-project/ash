@@ -161,6 +161,36 @@ defmodule Ash.Can do
           opts
         )
 
+      {%Ash.Query{} = query, name} ->
+        query
+        |> Ash.Query.for_read(name, %{})
+        |> resource_subject_input(domain, actor, opts)
+
+      {%Ash.Changeset{} = changeset, name} ->
+        changeset
+        |> Ash.Changeset.for_action(name, %{})
+        |> resource_subject_input(domain, actor, opts)
+
+      {%Ash.ActionInput{} = input, name} ->
+        input
+        |> Ash.ActionInput.for_action(name, %{})
+        |> resource_subject_input(domain, actor, opts)
+
+      {%Ash.Query{} = query, name, input} ->
+        query
+        |> Ash.Query.for_read(name, input)
+        |> resource_subject_input(domain, actor, opts)
+
+      {%Ash.Changeset{} = changeset, name, input} ->
+        changeset
+        |> Ash.Changeset.for_action(name, input)
+        |> resource_subject_input(domain, actor, opts)
+
+      {%Ash.ActionInput{} = input, name, action_input} ->
+        input
+        |> Ash.ActionInput.for_action(name, action_input)
+        |> resource_subject_input(domain, actor, opts)
+
       {%resource{} = record, name}
       when is_atom(name) and is_atom(resource) and not is_nil(name) ->
         action =

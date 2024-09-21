@@ -156,6 +156,7 @@ defmodule Ash.Actions.Destroy.Bulk do
               end)
               |> Keyword.put(:authorize?, opts[:authorize?] && opts[:authorize_query?])
               |> Keyword.put(:domain, domain)
+              |> Keyword.delete(:load)
 
             query =
               Ash.Query.do_filter(query, opts[:filter])

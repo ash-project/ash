@@ -267,6 +267,9 @@ defmodule Ash.Test.Policy.SimpleTest do
   test "Ash.can? accepts a record to determine if it can be read", %{admin: admin, user: user} do
     tweet = Ash.create!(Ash.Changeset.for_create(Tweet, :create), authorize?: false)
 
+    assert Ash.can?({Ash.Query.new(Tweet), :read}, admin)
+    assert Ash.can?({Ash.Query.new(Tweet), :read, %{}}, user)
+
     assert Ash.can?({tweet, :read}, admin)
     refute Ash.can?({tweet, :read}, user)
   end

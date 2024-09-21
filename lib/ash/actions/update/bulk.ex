@@ -118,6 +118,7 @@ defmodule Ash.Actions.Update.Bulk do
               end)
               |> Keyword.put(:authorize?, opts[:authorize?] && opts[:authorize_query?])
               |> Keyword.put(:domain, domain)
+              |> Keyword.delete(:load)
 
             if query.limit && query.limit < (opts[:batch_size] || 100) do
               read_opts = Keyword.take(read_opts, Keyword.keys(Ash.read_opts()))
