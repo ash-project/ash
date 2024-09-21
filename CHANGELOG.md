@@ -2,6 +2,23 @@
 
 <!-- changelog -->
 
+## [v3.4.19](https://github.com/ash-project/ash/compare/v3.4.18...v3.4.19) (2024-09-21)
+
+
+
+
+### Bug Fixes:
+
+* properly generate bypasses with `Ash.Resource.Igniter.add_bypass/2`
+
+### Improvements:
+
+* support nested fields in input sorts
+
+* optimize the reselection of necessary attributes on lazy loading
+
+* optimize `Ash.Resource.selected?/2` in light of 3.0 changes
+
 ## [v3.4.18](https://github.com/ash-project/ash/compare/v3.4.17...v3.4.18) (2024-09-20)
 
 
