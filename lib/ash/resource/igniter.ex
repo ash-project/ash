@@ -105,7 +105,7 @@ defmodule Ash.Resource.Igniter do
           bypass =
             quote do
               policies do
-                policy unquote(condition) do
+                bypass unquote(condition) do
                   unquote(body)
                 end
               end
