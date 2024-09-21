@@ -100,32 +100,38 @@ defmodule Ash.Can do
             message: "Invalid action/query/changeset \"#{inspect(action_or_query_or_changeset)}\""
       end
 
-    subject = %{subject | domain: domain}
+    if opts[:validate?] && !subject.valid? do
+      {:error, Ash.Error.to_error_class(subject.errors)}
+    else
+      subject = %{subject | domain: domain}
 
-    pre_flight? = Keyword.get(opts, :pre_flight?, true)
+      pre_flight? = Keyword.get(opts, :pre_flight?, true)
 
-    subject =
-      case subject do
-        %Ash.Query{} ->
-          Ash.Query.set_context(subject, %{private: %{pre_flight_authorization?: pre_flight?}})
+      subject =
+        case subject do
+          %Ash.Query{} ->
+            Ash.Query.set_context(subject, %{private: %{pre_flight_authorization?: pre_flight?}})
 
-        %Ash.Changeset{} ->
-          Ash.Changeset.set_context(subject, %{private: %{pre_flight_authorization?: pre_flight?}})
+          %Ash.Changeset{} ->
+            Ash.Changeset.set_context(subject, %{
+              private: %{pre_flight_authorization?: pre_flight?}
+            })
 
-        %Ash.ActionInput{} ->
-          Ash.ActionInput.set_context(subject, %{
-            private: %{pre_flight_authorization?: pre_flight?}
-          })
+          %Ash.ActionInput{} ->
+            Ash.ActionInput.set_context(subject, %{
+              private: %{pre_flight_authorization?: pre_flight?}
+            })
+        end
+
+      case Ash.Domain.Info.resource(domain, resource) do
+        {:ok, _} ->
+          domain
+          |> run_check(actor, subject, opts)
+          |> alter_source(domain, actor, subject, opts)
+
+        {:error, error} ->
+          {:error, error}
       end
-
-    case Ash.Domain.Info.resource(domain, resource) do
-      {:ok, _} ->
-        domain
-        |> run_check(actor, subject, opts)
-        |> alter_source(domain, actor, subject, opts)
-
-      {:error, error} ->
-        {:error, error}
     end
   end
 

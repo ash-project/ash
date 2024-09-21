@@ -769,6 +769,11 @@ defmodule Ash do
       doc:
         "If set to `:error`, the query will raise an error on a match. If set to `:filter` the query will filter out unauthorized access."
     ],
+    validate?: [
+      type: :boolean,
+      default: false,
+      doc: "Whether or not to treat an invalid action as a non-allowed action."
+    ],
     pre_flight?: [
       type: :boolean,
       default: true,
