@@ -2109,6 +2109,7 @@ defmodule Ash.Filter do
              resource,
              aggregate.name,
              aggregate.kind,
+             agg_name: aggregate.name,
              path: aggregate.relationship_path,
              query: aggregate_query,
              field: aggregate.field,
@@ -2808,6 +2809,7 @@ defmodule Ash.Filter do
                  context.resource,
                  aggregate.name,
                  aggregate.kind,
+                 agg_name: aggregate.name,
                  path: aggregate.relationship_path,
                  query: aggregate_query,
                  field: aggregate.field,
@@ -3162,7 +3164,7 @@ defmodule Ash.Filter do
       opts = Keyword.put(opts, :path, path)
 
       with {:ok, agg} <-
-             Ash.Query.Aggregate.new(
+             Aggregate.new(
                resource,
                agg_name(kind, opts),
                kind,
@@ -3535,6 +3537,7 @@ defmodule Ash.Filter do
                      related,
                      aggregate.name,
                      aggregate.kind,
+                     agg_name: aggregate.name,
                      path: aggregate.relationship_path,
                      query: aggregate_query,
                      field: aggregate.field,

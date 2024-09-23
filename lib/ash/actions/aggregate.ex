@@ -147,7 +147,7 @@ defmodule Ash.Actions.Aggregate do
                query.resource,
                name,
                kind,
-               set_opts(query, [], opts)
+               Keyword.put(set_opts(query, [], opts), :agg_name, name)
              ) do
           {:ok, aggregate} ->
             {:cont, {:ok, [aggregate | aggregates]}}
@@ -157,7 +157,12 @@ defmodule Ash.Actions.Aggregate do
         end
 
       {name, kind, agg_opts}, {:ok, aggregates} ->
-        case Ash.Query.Aggregate.new(query.resource, name, kind, set_opts(query, agg_opts, opts)) do
+        case Ash.Query.Aggregate.new(
+               query.resource,
+               name,
+               kind,
+               Keyword.put(set_opts(query, agg_opts, opts), :agg_name, name)
+             ) do
           {:ok, aggregate} ->
             {:cont, {:ok, [aggregate | aggregates]}}
 

@@ -29,7 +29,7 @@ defmodule Ash.Query.Aggregate do
   @kinds [:count, :first, :sum, :list, :max, :min, :avg, :exists, :custom]
   @type kind :: unquote(Enum.reduce(@kinds, &{:|, [], [&1, &2]}))
 
-  alias Ash.Error.Query.{NoReadAction, NoSuchRelationship}
+  alias Ash.Error.Query.{AggregatesNotSupported, NoReadAction, NoSuchRelationship}
 
   require Ash.Query
 
@@ -59,6 +59,11 @@ defmodule Ash.Query.Aggregate do
       doc:
         "The relationship path to aggregate over. Only used when adding aggregates to a query.",
       default: []
+    ],
+    agg_name: [
+      type: :any,
+      hide: true,
+      doc: "A resource calculation this calculation maps to."
     ],
     query: [
       type: :any,
@@ -180,7 +185,9 @@ defmodule Ash.Query.Aggregate do
           false
       end)
 
-    with {:ok, %Opts{} = opts} <- Opts.validate(opts) do
+    with {:ok, %Opts{} = opts} <- Opts.validate(opts),
+         agg_name = agg_name(opts),
+         :ok <- validate_supported(resource, kind, agg_name) do
       related = Ash.Resource.Info.related(resource, opts.path)
 
       query =
@@ -334,7 +341,7 @@ defmodule Ash.Query.Aggregate do
             {:ok,
              %__MODULE__{
                name: name,
-               agg_name: name,
+               agg_name: agg_name,
                resource: resource,
                constraints: constraints,
                default_value: default || default_value(kind),
@@ -365,6 +372,25 @@ defmodule Ash.Query.Aggregate do
           {:error, error}
       end
     end
+  end
+
+  defp agg_name(opts) do
+    if :agg_name in opts.__set__ do
+      opts.agg_name
+    end
+  end
+
+  defp validate_supported(resource, kind, nil) do
+    if Ash.DataLayer.data_layer_can?(resource, {:aggregate, kind}) do
+      :ok
+    else
+      {:error, AggregatesNotSupported.exception(resource: resource, feature: "using")}
+    end
+  end
+
+  # resource aggregates can only exist if supported, so we don't need to check
+  defp validate_supported(_resource, _kind, _agg_name) do
+    :ok
   end
 
   defp parse_join_filter(resource, path, filter) do

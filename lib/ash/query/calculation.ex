@@ -53,7 +53,7 @@ defmodule Ash.Query.Calculation do
     calc_name: [
       type: :any,
       hide: true,
-      doc: "A resource calculation this calculation maps to. Defaults to `name`"
+      doc: "A resource calculation this calculation maps to."
     ],
     source_context: [
       type: :map,

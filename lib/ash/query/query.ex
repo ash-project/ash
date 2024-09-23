@@ -1628,6 +1628,7 @@ defmodule Ash.Query do
                  query.resource,
                  aggregate.name,
                  aggregate.kind,
+                 agg_name: aggregate.name,
                  path: aggregate.relationship_path,
                  query: [filter: aggregate.filter, sort: aggregate.sort],
                  field: aggregate.field,
