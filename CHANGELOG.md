@@ -4,18 +4,15 @@
 
 ## [v3.4.20](https://github.com/ash-project/ash/compare/v3.4.19...v3.4.20) (2024-09-23)
 
-
-
-
 ### Bug Fixes:
 
-* don't double-load data on bulk update reads
+- [read actions] don't double-load data on bulk update reads
 
 ### Improvements:
 
-* support more formats in `Ash.can`
+- [`Ash`] support more formats in `Ash.can`
 
-* add `validate?` option to `Ash.can`/`Ash.can?`
+- [`Ash`] add `validate?` option to `Ash.can`/`Ash.can?`
 
 ## [v3.4.19](https://github.com/ash-project/ash/compare/v3.4.18...v3.4.19) (2024-09-21)
 
