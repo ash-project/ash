@@ -638,7 +638,7 @@ defmodule Ash.Expr do
 
           call = %Ash.Query.Call{name: unquote(op), args: args, operator?: true}
 
-          if Enum.any?(args, &is_nil(&1)) do
+          if Enum.any?(args, &is_nil/1) do
             IO.warn(
               "Comparing values with `nil` will always return `false`. Use `is_nil/1` instead. In: `#{inspect(call)}`"
             )

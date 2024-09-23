@@ -189,7 +189,7 @@ For example, given this policy:
 
 ```elixir
 policy action(:read_hidden) do
-  authorize_if expr(actor.is_admin == true)
+  authorize_if actor_attribute_equals(:is_admin, true)
 end
 ```
 
@@ -201,7 +201,7 @@ However, with this policy
 policy action(:read_hidden) do
   access_type :strict
 
-  authorize_if expr(actor.is_admin == true)
+  authorize_if actor_attribute_equals(:is_admin, true)
 end
 ```
 
