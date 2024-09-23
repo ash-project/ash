@@ -912,7 +912,7 @@ defmodule Ash.Changeset do
       changeset =
         case condition do
           true ->
-            atomic_update(changeset, atomic_changes)
+            apply_atomic_update(changeset, atomic_changes)
 
           false ->
             changeset
@@ -932,13 +932,16 @@ defmodule Ash.Changeset do
                 {key, new_value}
               end)
 
-            atomic_update(changeset, atomic_changes)
+            apply_atomic_update(changeset, atomic_changes)
         end
 
-      Enum.reduce(List.wrap(validations), changeset, fn {:atomic, _, condition_expr, error_expr},
-                                                        changeset ->
-        validate_atomically(changeset, condition_expr, error_expr)
-      end)
+      Enum.reduce(
+        List.wrap(validations),
+        changeset,
+        fn {:atomic, _, condition_expr, error_expr}, changeset ->
+          validate_atomically(changeset, condition_expr, error_expr)
+        end
+      )
     else
       {:ok, changeset} ->
         changeset
@@ -948,6 +951,42 @@ defmodule Ash.Changeset do
 
       :ok ->
         changeset
+    end
+  end
+
+  defp apply_atomic_update(changeset, atomics) when is_list(atomics) or is_map(atomics) do
+    Enum.reduce(atomics, changeset, fn {key, value}, changeset ->
+      apply_atomic_update(changeset, key, value)
+    end)
+  end
+
+  defp apply_atomic_update(changeset, key, value) do
+    attribute = Ash.Resource.Info.attribute(changeset.resource, key)
+
+    value =
+      Ash.Expr.walk_template(value, fn
+        {:_atomic_ref, field} ->
+          atomic_ref(changeset, field)
+
+        other ->
+          other
+      end)
+
+    case Ash.Type.cast_atomic(attribute.type, value, attribute.constraints) do
+      {:atomic, value} ->
+        value =
+          if attribute.primary_key? do
+            value
+          else
+            set_error_field(value, attribute.name)
+          end
+
+        %{changeset | atomics: Keyword.put(changeset.atomics, attribute.name, value)}
+        |> record_atomic_update_for_atomic_upgrade(attribute.name, value)
+
+      {:not_atomic, message} ->
+        {:not_atomic,
+         "Cannot atomically update #{inspect(changeset.resource)}.#{attribute.name}: #{message}"}
     end
   end
 
