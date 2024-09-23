@@ -101,7 +101,7 @@ defmodule Ash.Can do
       end
 
     if opts[:validate?] && !subject.valid? do
-      {:error, Ash.Error.to_error_class(subject.errors)}
+      {:ok, false, Ash.Error.to_error_class(subject.errors)}
     else
       subject = %{subject | domain: domain}
 
