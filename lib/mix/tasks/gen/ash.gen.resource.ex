@@ -24,8 +24,8 @@ defmodule Mix.Tasks.Ash.Gen.Resource do
   * `--attribute` or `-a` - An attribute or comma separated list of attributes to add, as `name:type`. Modifiers: `primary_key`, `public`, `sensitive`, and `required`. i.e `-a name:string:required`
   * `--relationship` or `-r` - A relationship or comma separated list of relationships to add, as `type:name:dest`. Modifiers: `public`. `belongs_to` only modifiers: `primary_key`, `sensitive`, and `required`. i.e `-r belongs_to:author:MyApp.Accounts.Author:required`
   * `--default-actions` or `-da` - A csv list of default action types to add, i.e `-da read,create`. The `create` and `update` actions accept the public attributes being added.
-  * `--uuid-primary-key` or `-u` - Adds a UUID primary key with that name. i.e `-u id`
-  * `--uuid-v7-primary-key` or `-u` - Adds a UUID primary key with that name. i.e `-u7 id`
+  * `--uuid-primary-key` or `-u` - Adds a UUIDv4 primary key with that name. i.e `-u id`
+  * `--uuid-v7-primary-key` or `-u7` - Adds a UUIDv7 primary key with that name. i.e `-u7 id`
   * `--integer-primary-key` or `-i` - Adds an integer primary key with that name. i.e `-i id`
   * `--domain` or `-d` - The domain module to add the resource to. i.e `-d MyApp.MyDomain`. This defaults to the resource's module name, minus the last segment.
   * `--extend` or `-e` - A comma separated list of modules or builtins to extend the resource with. i.e `-e postgres,Some.Extension`
