@@ -263,7 +263,7 @@ defmodule Ash.Changeset do
           around_action: [around_action_fun | {around_action_fun, map}],
           around_transaction: [around_transaction_fun | {around_transaction_fun, map}],
           attributes: %{optional(atom) => any},
-          before_action: [before_action_fun | {around_action_fun, map}],
+          before_action: [before_action_fun | {before_action_fun, map}],
           before_transaction: [before_transaction_fun | {before_transaction_fun, map}],
           context: map,
           filter: Ash.Filter.t() | nil,
