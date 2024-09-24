@@ -1006,6 +1006,9 @@ defmodule Ash do
             {:ok, Map.get(record, field)}
         end
 
+      {:ok, nil} ->
+         {:ok, nil}
+
       {:error, error} ->
         {:error, Ash.Error.to_error_class(error)}
     end
