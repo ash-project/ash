@@ -2,6 +2,27 @@
 
 <!-- changelog -->
 
+## [v3.4.21](https://github.com/ash-project/ash/compare/v3.4.20...v3.4.21) (2024-09-24)
+
+
+
+
+### Bug Fixes:
+
+* handle `nil` result in `Ash.first`
+
+* add checks for `around_transaction` and `around_action` in bulk (#1474)
+
+* include distinct from queries in aggregate query
+
+* reselect required attributes unless `reuse_values?` is `true`
+
+* properly return `{:not_atomic` while applying atomic changes
+
+### Improvements:
+
+* proper error on unsupported aggregates
+
 ## [v3.4.20](https://github.com/ash-project/ash/compare/v3.4.19...v3.4.20) (2024-09-23)
 
 ### Bug Fixes:
