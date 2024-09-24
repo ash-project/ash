@@ -939,7 +939,14 @@ defmodule Ash.Actions.Read do
       query.select
       |> List.wrap()
       |> Kernel.--(Ash.Resource.Info.primary_key(query.resource))
-      |> Enum.reject(&Ash.Resource.selected?(first, &1))
+
+    must_be_reselected =
+      if opts[:reuse_values?] do
+        must_be_reselected
+        |> Enum.reject(&Ash.Resource.selected?(first, &1))
+      else
+        must_be_reselected
+      end
 
     {query, calculations_at_runtime, calculations_in_query} =
       Ash.Actions.Read.Calculations.deselect_known_forbidden_fields(
