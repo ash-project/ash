@@ -81,6 +81,7 @@ defmodule Ash.Actions.Aggregate do
                      resource: query.resource,
                      limit: query.limit,
                      offset: query.offset,
+                     distinct: query.distinct,
                      domain: query.domain,
                      tenant: query.tenant,
                      to_tenant: query.to_tenant
