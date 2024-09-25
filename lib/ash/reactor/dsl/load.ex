@@ -9,6 +9,7 @@ defmodule Ash.Reactor.Dsl.Load do
             actor: nil,
             async?: true,
             authorize?: nil,
+            context: nil,
             description: nil,
             domain: nil,
             lazy?: nil,
@@ -29,6 +30,7 @@ defmodule Ash.Reactor.Dsl.Load do
           actor: nil | Ash.Reactor.Dsl.Actor.t(),
           async?: boolean,
           authorize?: nil | boolean,
+          context: nil | Ash.Reactor.Dsl.Context.t(),
           description: nil | String.t(),
           domain: nil | Ash.Domain.t(),
           lazy?: nil | boolean,
@@ -53,10 +55,11 @@ defmodule Ash.Reactor.Dsl.Load do
       imports: [Reactor.Dsl.Argument],
       entities: [
         actor: [Ash.Reactor.Dsl.Actor.__entity__()],
+        context: [Ash.Reactor.Dsl.Context.__entity__()],
         tenant: [Ash.Reactor.Dsl.Tenant.__entity__()],
         wait_for: [Reactor.Dsl.WaitFor.__entity__()]
       ],
-      singleton_entity_keys: [:actor, :tenant],
+      singleton_entity_keys: [:actor, :context, :tenant],
       recursive_as: :steps,
       schema:
         false

@@ -14,6 +14,7 @@ defmodule Ash.Reactor.LoadStep do
       |> maybe_set_kw(:tracer, context[:tracer])
       |> maybe_set_kw(:actor, arguments[:actor])
       |> maybe_set_kw(:tenant, arguments[:tenant])
+      |> maybe_set_kw(:context, arguments[:context])
 
     arguments.records
     |> Ash.load(arguments.load, load_options)

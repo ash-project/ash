@@ -21,6 +21,7 @@ defmodule Ash.Reactor.BulkUpdateStep do
         :authorize_query?,
         :authorize?,
         :batch_size,
+        :context,
         :domain,
         :filter,
         :lock,

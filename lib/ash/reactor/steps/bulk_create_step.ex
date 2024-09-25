@@ -18,6 +18,7 @@ defmodule Ash.Reactor.BulkCreateStep do
         :authorize_query_with,
         :authorize?,
         :batch_size,
+        :context,
         :domain,
         :max_concurrency,
         :notify?,

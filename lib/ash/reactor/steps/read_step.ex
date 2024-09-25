@@ -22,6 +22,7 @@ defmodule Ash.Reactor.ReadStep do
       [domain: options[:domain]]
       |> maybe_set_kw(:authorize?, options[:authorize?])
       |> maybe_set_kw(:load, arguments[:load])
+      |> maybe_set_kw(:context, arguments[:context])
 
     options[:resource]
     |> Query.for_read(options[:action], arguments[:input], query_options)
