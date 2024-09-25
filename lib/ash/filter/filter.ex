@@ -2998,7 +2998,6 @@ defmodule Ash.Filter do
     end
     |> case do
       false ->
-        IO.inspect(context)
         false
 
       true ->

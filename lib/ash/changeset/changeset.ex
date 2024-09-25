@@ -1645,8 +1645,11 @@ defmodule Ash.Changeset do
       if attribute.primary_key? do
         changeset
       else
+        allow_nil? =
+          attribute.allow_nil? and attribute.name not in changeset.action.require_attributes
+
         value =
-          if attribute.allow_nil? || not Ash.Expr.can_return_nil?(value) do
+          if allow_nil? || not Ash.Expr.can_return_nil?(value) do
             value
           else
             expr(
@@ -3111,7 +3114,12 @@ defmodule Ash.Changeset do
       end
     end)
     |> Enum.reduce(changeset, fn required_attribute, changeset ->
-      if changing_attribute?(changeset, required_attribute.name) do
+      setting? =
+        Map.has_key?(changeset.attributes, required_attribute.name) ||
+          Keyword.has_key?(changeset.atomics, required_attribute.name) ||
+          Map.has_key?(changeset.casted_attributes, required_attribute.name)
+
+      if setting? do
         if is_nil(get_attribute(changeset, required_attribute.name)) do
           if required_attribute.name in changeset.invalid_keys do
             changeset
