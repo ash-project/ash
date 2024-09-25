@@ -228,6 +228,12 @@ defmodule Ash.Actions.Destroy do
                       |> Helpers.select(changeset)
                       |> Helpers.restrict_field_access(changeset)
                     else
+                      destroyed =
+                        Helpers.select(destroyed, %{
+                          resource: changeset.resource,
+                          select: changeset.action_select
+                        })
+
                       {:ok, destroyed, %{notifications: []}}
                       |> Helpers.notify(changeset, opts)
                     end

@@ -28,12 +28,6 @@ defmodule Ash.Resource.Actions.SharedOptions do
       A list of resources that the action may touch, used when building transactions.
       """
     ],
-    action_select: [
-      type: {:list, :atom},
-      doc: """
-      A list of attributes that the action requires to do its work. Defaults to all attributes except those with `select_by_default? false`. On actions with no changes, it defaults to the externally selected attributes.
-      """
-    ],
     skip_unknown_inputs: [
       type: {:wrap_list, {:or, [:atom, :string]}},
       default: [],
@@ -45,6 +39,12 @@ defmodule Ash.Resource.Actions.SharedOptions do
     accept: [
       type: {:or, [{:wrap_list, :atom}, {:literal, :*}]},
       doc: "The list of attributes to accept. Use `:*` to accept all public attributes."
+    ],
+    action_select: [
+      type: {:list, :atom},
+      doc: """
+      A list of attributes that the action requires to do its work. Defaults to all attributes except those with `select_by_default? false`. On actions with no changes/notifiers, it defaults to the externally selected attributes. Keep in mind that action_select is applied *before* notifiers.
+      """
     ],
     require_attributes: [
       type: {:list, :atom},

@@ -518,9 +518,21 @@ defmodule Ash.Actions.Update do
                   end
                   |> case do
                     {:ok, result} ->
+                      result =
+                        Helpers.select(result, %{
+                          resource: changeset.resource,
+                          select: changeset.action_select
+                        })
+
                       {:ok, result, %{notifications: manage_instructions.notifications}}
 
                     {:ok, result, notifications} ->
+                      result =
+                        Helpers.select(result, %{
+                          resource: changeset.resource,
+                          select: changeset.action_select
+                        })
+
                       {:ok, result,
                        Map.update!(
                          notifications,

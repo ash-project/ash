@@ -537,11 +537,28 @@ defmodule Ash.Actions.Destroy.Bulk do
         opts
       )
 
+    action_select =
+      Enum.uniq(
+        Enum.concat(
+          Ash.Resource.Info.action_select(atomic_changeset.resource, atomic_changeset.action),
+          List.wrap(
+            opts[:select] ||
+              MapSet.to_list(
+                Ash.Resource.Info.selected_by_default_attribute_names(atomic_changeset.resource)
+              )
+          )
+        )
+      )
+
     destroy_query_opts =
       opts
       |> Keyword.take([:return_records?, :tenant, :select])
       |> Map.new()
       |> Map.put(:calculations, calculations)
+      |> Map.put(
+        :action_select,
+        action_select
+      )
 
     with {:ok, query} <-
            authorize_bulk_query(query, atomic_changeset, opts),

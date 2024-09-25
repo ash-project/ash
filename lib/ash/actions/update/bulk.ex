@@ -492,6 +492,19 @@ defmodule Ash.Actions.Update.Bulk do
     {all_changes, conditional_after_batch_hooks, calculations} =
       hooks_and_calcs_for_update_query(atomic_changeset, context, query, opts)
 
+    action_select =
+      Enum.uniq(
+        Enum.concat(
+          Ash.Resource.Info.action_select(atomic_changeset.resource, atomic_changeset.action),
+          List.wrap(
+            opts[:select] ||
+              MapSet.to_list(
+                Ash.Resource.Info.selected_by_default_attribute_names(atomic_changeset.resource)
+              )
+          )
+        )
+      )
+
     update_query_opts =
       opts
       |> Keyword.take([:return_records?, :tenant])
@@ -499,17 +512,7 @@ defmodule Ash.Actions.Update.Bulk do
       |> Map.put(:calculations, calculations)
       |> Map.put(
         :action_select,
-        Enum.uniq(
-          Enum.concat(
-            Ash.Resource.Info.action_select(atomic_changeset.resource, atomic_changeset.action),
-            List.wrap(
-              opts[:select] ||
-                MapSet.to_list(
-                  Ash.Resource.Info.selected_by_default_attribute_names(atomic_changeset.resource)
-                )
-            )
-          )
-        )
+        action_select
       )
 
     with {:ok, query} <-
@@ -534,6 +537,9 @@ defmodule Ash.Actions.Update.Bulk do
           }
 
         {:ok, results} ->
+          results =
+            Ash.Actions.Helpers.select(results, %{resource: query.resource, select: action_select})
+
           results =
             case results do
               [result] ->
@@ -1141,6 +1147,17 @@ defmodule Ash.Actions.Update.Bulk do
   defp do_stream_batches(domain, stream, action, input, opts, metadata_key, context_key) do
     resource = opts[:resource]
 
+    action_select =
+      Enum.uniq(
+        Enum.concat(
+          Ash.Resource.Info.action_select(resource, action.name),
+          List.wrap(
+            opts[:select] ||
+              MapSet.to_list(Ash.Resource.Info.selected_by_default_attribute_names(resource))
+          )
+        )
+      )
+
     manual_action_can_bulk? =
       case action.manual do
         {mod, _opts} ->
@@ -1196,7 +1213,8 @@ defmodule Ash.Actions.Update.Bulk do
             ref,
             context_key,
             metadata_key,
-            base_changeset
+            base_changeset,
+            action_select
           )
         after
           if opts[:notify?] && !opts[:return_notifications?] do
@@ -1490,7 +1508,8 @@ defmodule Ash.Actions.Update.Bulk do
          ref,
          context_key,
          metadata_key,
-         base_changeset
+         base_changeset,
+         action_select
        ) do
     %{
       must_return_records?: must_return_records_for_changes?,
@@ -1589,7 +1608,8 @@ defmodule Ash.Actions.Update.Bulk do
                 base_changeset,
                 must_return_records_for_changes?,
                 changes,
-                must_be_simple_results
+                must_be_simple_results,
+                action_select
               )
 
             {new_errors, new_error_count} =
@@ -1648,7 +1668,8 @@ defmodule Ash.Actions.Update.Bulk do
         base_changeset,
         must_return_records_for_changes?,
         changes,
-        must_be_simple_results
+        must_be_simple_results,
+        action_select
       )
     end
   end
@@ -1666,7 +1687,8 @@ defmodule Ash.Actions.Update.Bulk do
          base_changeset,
          must_return_records_for_changes?,
          changes,
-         must_be_simple_results
+         must_be_simple_results,
+         action_select
        ) do
     must_return_records? =
       opts[:notify?] ||
@@ -1695,7 +1717,8 @@ defmodule Ash.Actions.Update.Bulk do
       domain,
       ref,
       metadata_key,
-      context_key
+      context_key,
+      action_select
     )
     |> run_after_action_hooks(opts, domain, ref, metadata_key)
     |> process_results(
@@ -2072,7 +2095,8 @@ defmodule Ash.Actions.Update.Bulk do
          domain,
          ref,
          metadata_key,
-         context_key
+         context_key,
+         action_select
        ) do
     context_struct =
       case context_key do
@@ -2109,7 +2133,7 @@ defmodule Ash.Actions.Update.Bulk do
               :update,
               true
             )
-            |> Ash.Changeset.set_action_select()
+            |> Map.put(:action_select, action_select)
 
           changed? =
             Ash.Changeset.changing_attributes?(changeset) or

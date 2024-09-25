@@ -461,10 +461,7 @@ defmodule Ash.Changeset do
   def set_action_select(%{action: nil} = changeset) do
     %{
       changeset
-      | action_select:
-          MapSet.to_list(
-            Ash.Resource.Info.selected_by_default_attribute_names(changeset.resource)
-          )
+      | action_select: MapSet.to_list(Ash.Resource.Info.attribute_names(changeset.resource))
     }
   end
 

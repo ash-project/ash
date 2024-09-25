@@ -55,6 +55,23 @@ defmodule Ash.Test.Actions.UpdateTest do
       default_accept :*
       defaults [:read, :destroy, create: :*, update: :*]
 
+      update :check_non_selected_attr do
+        action_select []
+        require_atomic? false
+
+        change fn changeset, _ ->
+          Ash.Changeset.after_action(changeset, fn _changeset, result ->
+            case result.bio do
+              %Ash.NotLoaded{} ->
+                {:ok, result}
+
+              value ->
+                raise "Should have been not loaded: #{inspect(value)}"
+            end
+          end)
+        end
+      end
+
       update :set_private_attribute_to_nil do
         accept []
         change set_attribute(:non_nil_private, nil)
@@ -421,6 +438,20 @@ defmodule Ash.Test.Actions.UpdateTest do
                author
                |> Ash.Changeset.for_update(:update)
                |> Ash.update!(action: :manual_update)
+    end
+  end
+
+  describe "action_select" do
+    test "it is applied before hooks are run" do
+      profile =
+        Profile
+        |> Ash.Changeset.for_create(:create, %{bio: "foobar"})
+        |> Ash.create!()
+
+      profile
+      |> Ash.Changeset.for_update(:check_non_selected_attr, %{bio: "bio"})
+      |> Ash.Changeset.select([])
+      |> Ash.update!()
     end
   end
 

@@ -396,6 +396,12 @@ defmodule Ash.Actions.Create do
                       end
                       |> case do
                         {:ok, result, instructions} ->
+                          result =
+                            Helpers.select(result, %{
+                              resource: changeset.resource,
+                              select: changeset.action_select
+                            })
+
                           {:ok, result,
                            instructions
                            |> Map.update!(
